@@ -42,6 +42,7 @@
   --color-sidebar-accent: #363c45; /* base/sidebar-accent */
   --color-sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
   --color-sidebar-border: #ffffff1a; /* base/sidebar-border (white @ 10%) */
+  --color-drawer: #090c0f; /* Navigation Drawer Expanded bg (= base/primary-foreground) */
 
   /* FP brand + surface scale */
   --color-brand: #fa6400; /* Primary (FP orange) */

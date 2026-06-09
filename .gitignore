@@ -8,5 +8,9 @@ dist-ssr
 
 # Figma REST: never commit tokens or the large raw node dumps
 .figma_token
-figma/node-d[0-9]*.json
+figma/*.json
 !figma/node-d3.json
+!figma/navdrawer-d3.json
+
+# TS build info
+*.tsbuildinfo

@@ -2,6 +2,28 @@
 
 Built from Figma frame **"Tables Layout"** (`FP DS 2026`, node `27614:56562`).
 
+## Source: Figma REST API
+Design data is pulled via the **REST API** (file key `PxzKUl6emRr8QQ5Nb0vlwT`),
+not the Figma MCP. Reproduce with [`scripts/pull-figma.sh`](scripts/pull-figma.sh)
+(needs `FIGMA_TOKEN`); it writes `figma/node-d3.json` (skeleton) + `figma/reference.png`
+and prints a value digest via [`scripts/extract.py`](scripts/extract.py). Full-depth
+dumps are >600 MB (deep icon vectors), so traversal is capped with `&depth=`.
+
+### Confirmed by REST (previously assumed)
+- **Status colors**: Success `#22c55e` (green) ✓, Failed `#f87171` (= `base/destructive`) ✓.
+- **Strings**: bulk-bar verbs `Assign / Unassign / Unblock / Verify / More`, status
+  sequence `Success, Success, Processing, Success, Failed×9`, two-line cells
+  `Table Cell Text` / `Description Text`, tabs `Tab 1–7` with **Tab 1 active** — all verified.
+- **Type**: everything is **Geist**; 24/14/12px sizes — matches the tokens.
+- **Corrected**: the primary button reads **"Create Tax"** (verbatim Figma text node),
+  not "Create Task" — kept as-is; **likely a typo, confirm with design.**
+
+### Still unconfirmed
+- **Processing** status color: not reached at the fetched depth; kept as `#f59e0b`
+  (ASSUMPTION). `variables/local` returned 403 (token lacks `file_variables:read`;
+  endpoint is Enterprise-only), so exact token names aren't machine-pulled — values
+  are derived from node fills.
+
 ## Token mapping
 All tokens in [`src/index.css`](src/index.css) are mapped 1:1 from the frame's
 Figma variable collection and each carries a source-name comment. Notable

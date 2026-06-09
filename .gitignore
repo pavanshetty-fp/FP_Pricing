@@ -5,3 +5,8 @@ dist-ssr
 .DS_Store
 *.log
 .vite
+
+# Figma REST: never commit tokens or the large raw node dumps
+.figma_token
+figma/node-d[0-9]*.json
+!figma/node-d3.json

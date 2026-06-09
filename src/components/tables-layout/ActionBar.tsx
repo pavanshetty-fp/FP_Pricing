@@ -68,7 +68,8 @@ export function ActionBar({
         <div className="h-8 w-px bg-border" aria-hidden />
         <Button variant="primary" onClick={onCreateTask}>
           <Plus />
-          Create Task
+          {/* Verbatim label from the Figma text node (likely a typo for "Create Task"). */}
+          Create Tax
         </Button>
       </div>
     </div>

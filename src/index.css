@@ -1,74 +1,140 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
-  Design tokens mapped 1:1 from the Figma "FP DS 2026" variable collection.
-  Source variable name is noted in a comment next to each token.
-  The design is dark-only; tokens live on :root and `.dark` is set on <html>.
+  FleetPanda DS — spinoff of shadcn/ui (new-york-v4).
+  Token NAMES are kept identical to canonical shadcn so unchanged components
+  work verbatim; only the VALUES are FleetPanda's (dark-only theme), mapped
+  from the Figma "FP DS 2026" variable collection. FP-only tokens (brand,
+  drawer, surface scale, status) are added at the end.
 */
-@theme {
-  /* Typography — font/font-sans = "Geist" */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
 
-  /* Radius — Figma overrides Tailwind defaults */
-  --radius-md: 8px; /* border-radius/rounded-md */
-  --radius-lg: 10px; /* border-radius/rounded-lg */
-  --radius-full: 9999px; /* border-radius/rounded-full */
+  /* radius scale — --radius 0.625rem → md=8px, lg=10px (matches Figma) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 
-  /* Base palette (shadcn semantic tokens) */
-  --color-background: #080808; /* base/background, FP/Surface Base */
-  --color-foreground: #f0f2f5; /* base/foreground */
-  --color-card: #11161d; /* FP/Surface 1a */
-  --color-card-foreground: #f0f2f5;
-  --color-popover: #11161d; /* FP/Surface 1a */
-  --color-popover-foreground: #f0f2f5; /* base/popover-foreground */
-  --color-primary: #abb3c2; /* base/primary */
-  --color-primary-foreground: #090c0f; /* base/primary-foreground */
-  --color-muted: #1b2028; /* base/muted, FP/Surface 1b */
-  --color-muted-foreground: #9ca3af; /* base/muted-foreground */
-  --color-accent: #2e3642; /* base/accent */
-  --color-accent-foreground: #f0f2f5; /* base/accent-foreground */
-  --color-destructive: #f87171; /* base/destructive */
-  --color-destructive-foreground: #f0f2f5;
-  --color-border: #ffffff38; /* base/border (white @ ~22%) */
-  --color-input: #ffffff26; /* base/input (white @ ~15%) */
-  --color-ring: #abb3c2;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Sidebar tokens */
-  --color-sidebar: #11161d; /* base/sidebar */
-  --color-sidebar-foreground: #f0f2f5; /* base/sidebar-foreground */
-  --color-sidebar-primary: #1d4ed8; /* base/sidebar-primary */
-  --color-sidebar-primary-foreground: #f0f2f5; /* base/sidebar-primary-foreground */
-  --color-sidebar-accent: #363c45; /* base/sidebar-accent */
-  --color-sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
-  --color-sidebar-border: #ffffff1a; /* base/sidebar-border (white @ 10%) */
-  --color-drawer: #090c0f; /* Navigation Drawer Expanded bg (= base/primary-foreground) */
-
-  /* FP brand + surface scale */
-  --color-brand: #fa6400; /* Primary (FP orange) */
-  --color-fp-outline-1: #363c45; /* tailwind colors/FP/Outline 1 */
-  --color-fp-outline-2: #575757; /* tailwind colors/FP/Outline 2 */
-  --color-fp-surface-1a: #11161d; /* tailwind colors/FP/Surface 1a */
-  --color-fp-surface-1b: #1b2028; /* tailwind colors/FP/Surface 1b */
-  --color-fp-card-1: #2a2f37; /* tailwind colors/FP/Card 1 */
-  --color-fp-surface-base: #080808; /* tailwind colors/FP/Surface Base */
-
-  /* Status colors — NOTE: not present in the Figma token set for this frame.
-     Values below are assumptions for the Success/Processing/Failed states. */
-  --color-status-success: #22c55e; /* ASSUMPTION */
-  --color-status-processing: #f59e0b; /* ASSUMPTION */
-  --color-status-failed: #f87171; /* = base/destructive */
-  --color-status-pink: #ff8080; /* Status/Pink */
+  /* FleetPanda-only tokens */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-drawer: var(--drawer);
+  --color-fp-outline-1: var(--fp-outline-1);
+  --color-fp-outline-2: var(--fp-outline-2);
+  --color-fp-surface-1a: var(--fp-surface-1a);
+  --color-fp-surface-1b: var(--fp-surface-1b);
+  --color-fp-card-1: var(--fp-card-1);
+  --color-fp-surface-base: var(--fp-surface-base);
+  --color-status-success: var(--status-success);
+  --color-status-processing: var(--status-processing);
+  --color-status-failed: var(--status-failed);
+  --color-status-pink: var(--status-pink);
 }
 
-* {
-  border-color: var(--color-border);
+/*
+  FleetPanda is dark-only. Values live on :root; <html> carries `.dark` so the
+  shadcn components' `dark:` utilities activate against these same tokens.
+  Source Figma variable noted per token.
+*/
+:root {
+  --radius: 0.625rem;
+
+  --background: #080808; /* base/background, FP/Surface Base */
+  --foreground: #f0f2f5; /* base/foreground */
+  --card: #11161d; /* FP/Surface 1a */
+  --card-foreground: #f0f2f5;
+  --popover: #11161d;
+  --popover-foreground: #f0f2f5; /* base/popover-foreground */
+  --primary: #abb3c2; /* base/primary (NOTE: brand orange is --brand) */
+  --primary-foreground: #090c0f; /* base/primary-foreground */
+  --secondary: #1b2028; /* FP/Surface 1b */
+  --secondary-foreground: #f0f2f5;
+  --muted: #1b2028; /* base/muted */
+  --muted-foreground: #9ca3af; /* base/muted-foreground */
+  --accent: #2e3642; /* base/accent */
+  --accent-foreground: #f0f2f5; /* base/accent-foreground */
+  --destructive: #f87171; /* base/destructive */
+  --destructive-foreground: #f0f2f5;
+  --border: #ffffff38; /* base/border */
+  --input: #ffffff26; /* base/input */
+  --ring: #9ca3af;
+
+  --chart-1: #fa6400;
+  --chart-2: #abb3c2;
+  --chart-3: #1d4ed8;
+  --chart-4: #22c55e;
+  --chart-5: #f87171;
+
+  --sidebar: #11161d; /* base/sidebar */
+  --sidebar-foreground: #f0f2f5; /* base/sidebar-foreground */
+  --sidebar-primary: #1d4ed8; /* base/sidebar-primary */
+  --sidebar-primary-foreground: #f0f2f5; /* base/sidebar-primary-foreground */
+  --sidebar-accent: #363c45; /* base/sidebar-accent */
+  --sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
+  --sidebar-border: #ffffff1a; /* base/sidebar-border */
+  --sidebar-ring: #575757;
+
+  /* FleetPanda-only */
+  --brand: #fa6400; /* Primary (FP orange) */
+  --brand-foreground: #ffffff;
+  --drawer: #090c0f; /* Navigation Drawer Expanded bg */
+  --fp-outline-1: #363c45; /* FP/Outline 1 */
+  --fp-outline-2: #575757; /* FP/Outline 2 */
+  --fp-surface-1a: #11161d;
+  --fp-surface-1b: #1b2028;
+  --fp-card-1: #2a2f37; /* FP/Card 1 */
+  --fp-surface-base: #080808;
+  --status-success: #22c55e; /* confirmed via REST */
+  --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
+  --status-failed: #f87171; /* = destructive */
+  --status-pink: #ff8080; /* Status/Pink */
 }
 
-body {
-  margin: 0;
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+  }
 }

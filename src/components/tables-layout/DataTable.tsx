@@ -12,30 +12,36 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  Avatar,
-  Badge,
-  Button,
-  Checkbox,
   DropdownMenu,
-  Progress,
-  Switch,
-  ToggleGroup,
-} from "@/components/ui";
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { COLUMNS } from "./data";
-import type { RowStatus, TableRow } from "./types";
+import type { RowStatus, TableRow as TableRowData } from "./types";
 
 const STATUS_DOT: Record<RowStatus, string> = {
   Success: "bg-status-success",
   Processing: "bg-status-processing",
   Failed: "bg-status-failed",
 };
-
-const TOGGLE_ITEMS = [
-  { value: "bold", label: "Bold", icon: <Bold /> },
-  { value: "italic", label: "Italic", icon: <Italic /> },
-  { value: "underline", label: "Underline", icon: <Underline /> },
-];
 
 function StatusText({ status }: { status: RowStatus }) {
   return (
@@ -61,7 +67,7 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 export interface DataTableProps {
-  rows: TableRow[];
+  rows: TableRowData[];
   selectedIds: Set<string>;
   onToggleRow: (id: string) => void;
   onToggleAll: (checked: boolean) => void;
@@ -79,18 +85,17 @@ export function DataTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left" style={{ tableLayout: "fixed" }}>
+      <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {COLUMNS.map((c) => (
             <col key={c.key} style={{ width: `${c.width}px` }} />
           ))}
         </colgroup>
-        <thead>
-          <tr className="h-10 border-b border-border">
+        <TableHeader>
+          <TableRow className="h-10">
             {COLUMNS.map((col) => (
-              <th
+              <TableHead
                 key={col.key}
-                scope="col"
                 className={cn(
                   "px-3 text-xs font-medium text-muted-foreground",
                   col.align === "right" && "text-right"
@@ -99,7 +104,7 @@ export function DataTable({
                 {col.key === "select" ? (
                   <Checkbox
                     checked={headerState}
-                    onCheckedChange={onToggleAll}
+                    onCheckedChange={(c) => onToggleAll(c === true)}
                     aria-label="Select all rows"
                   />
                 ) : col.label ? (
@@ -115,11 +120,11 @@ export function DataTable({
                     )}
                   </span>
                 ) : null}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((row) => (
             <Row
               key={row.id}
@@ -128,8 +133,8 @@ export function DataTable({
               onToggle={() => onToggleRow(row.id)}
             />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -139,7 +144,7 @@ function Row({
   selected,
   onToggle,
 }: {
-  row: TableRow;
+  row: TableRowData;
   selected: boolean;
   onToggle: () => void;
 }) {
@@ -147,98 +152,123 @@ function Row({
   const [toggle, setToggle] = React.useState(row.toggle);
 
   return (
-    <tr
-      data-selected={selected}
-      className="h-14 border-b border-border transition-colors hover:bg-muted/40 data-[selected=true]:bg-muted/60"
-    >
+    <TableRow data-state={selected ? "selected" : undefined} className="h-14">
       {/* select */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <Checkbox
           checked={selected}
           onCheckedChange={onToggle}
           aria-label={`Select ${row.id}`}
         />
-      </td>
+      </TableCell>
       {/* Static */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <StatusText status={row.status} />
-      </td>
+      </TableCell>
       {/* Dropdown (two-line + chevron) */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <div className="flex items-center justify-between gap-2">
           <TwoLine title={row.dropdown.title} description={row.dropdown.description} />
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </div>
-      </td>
+      </TableCell>
       {/* Descriptive Text */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <TwoLine
           title={row.descriptive.title}
           description={row.descriptive.description}
         />
-      </td>
+      </TableCell>
       {/* Badge */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <Badge variant="outline">{row.badge}</Badge>
-      </td>
+      </TableCell>
       {/* Badge w/ avatar + status */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <span className="inline-flex items-center gap-2">
-          <Avatar fallback="U" />
+          <Avatar className="size-5">
+            <AvatarFallback className="text-[10px]">U</AvatarFallback>
+          </Avatar>
           <StatusText status={row.statusBadge} />
         </span>
-      </td>
+      </TableCell>
       {/* Switch */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <Switch
           checked={switchOn}
           onCheckedChange={setSwitchOn}
           aria-label="Toggle row"
         />
-      </td>
+      </TableCell>
       {/* Button */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <Button variant="outline" size="xs">
           Button
         </Button>
-      </td>
+      </TableCell>
       {/* Icon dropdown */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <Button variant="outline" size="icon-sm" aria-label="Open">
           <CirclePlay />
         </Button>
-      </td>
+      </TableCell>
       {/* Progress */}
-      <td className="px-3">
-        <Progress value={row.progress} className="w-24" />
-      </td>
+      <TableCell className="px-3">
+        <Progress value={row.progress} className="h-1.5 w-24" />
+      </TableCell>
       {/* Image */}
-      <td className="px-3">
+      <TableCell className="px-3">
         <div className="size-8 rounded-md border border-border bg-foreground/90" />
-      </td>
+      </TableCell>
       {/* Toggle Group */}
-      <td className="px-3">
-        <ToggleGroup items={TOGGLE_ITEMS} value={toggle} onValueChange={setToggle} />
-      </td>
+      <TableCell className="px-3">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={toggle}
+          onValueChange={(v) => v && setToggle(v)}
+        >
+          <ToggleGroupItem value="bold" aria-label="Bold" className="px-2">
+            <Bold className="size-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="italic" aria-label="Italic" className="px-2">
+            <Italic className="size-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="underline" aria-label="Underline" className="px-2">
+            <Underline className="size-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </TableCell>
       {/* Amount */}
-      <td className="px-3 text-right text-sm tabular-nums">
+      <TableCell className="px-3 text-right text-sm tabular-nums">
         {currency.format(row.amount)}
-      </td>
+      </TableCell>
       {/* Actions */}
-      <td className="px-3">
-        <DropdownMenu
-          trigger={
+      <TableCell className="px-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="Row actions">
               <MoreHorizontal />
             </Button>
-          }
-          items={[
-            { label: "Edit", icon: <Pencil /> },
-            { label: "Share", icon: <Share2 /> },
-            { label: "Delete", icon: <Trash2 />, destructive: true },
-          ]}
-        />
-      </td>
-    </tr>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <Pencil />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Share2 />
+              Share
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive">
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 }

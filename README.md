@@ -7,7 +7,23 @@ Figma frame **"Tables Layout"** (`FP DS 2026`, node `27614:56562`).
 - React 19, TypeScript (strict)
 - Vite 6
 - Tailwind CSS v4 (`@tailwindcss/vite`), tokens in [`src/index.css`](src/index.css)
-- `lucide-react` icons, `class-variance-authority` + `tailwind-merge` for variants
+- `radix-ui` (unified) primitives, `lucide-react` icons, `class-variance-authority` + `tailwind-merge`
+
+## Spinoff architecture
+This is a FleetPanda spinoff of **shadcn/ui**. The primitives in
+[`src/components/ui/`](src/components/ui) are the **canonical `new-york-v4`
+shadcn components, copied verbatim** (imports rewritten to `@/...`). FleetPanda
+diverges only in:
+- **Tokens** — shadcn's token *names* are kept so the components work unchanged;
+  the *values* in `src/index.css` are FleetPanda's (dark-only). `--radius: 0.625rem`
+  → `md=8px / lg=10px`. FP-only tokens: `--brand`, `--drawer`, FP surface/outline
+  scale, status colors.
+- **Composed components** — `tables-layout/` and `navigation-drawer/` are
+  FleetPanda-specific compositions built on top of the canonical primitives.
+
+To re-pull a fresh shadcn primitive: copy from
+`../ui/apps/v4/registry/new-york-v4/ui/<name>.tsx` and rewrite
+`@/registry/new-york-v4/...` → `@/...`.
 
 ## Getting started
 ```bash

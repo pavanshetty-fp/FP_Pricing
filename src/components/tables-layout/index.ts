@@ -4,10 +4,13 @@ export { PageHeader, type PageHeaderProps } from "./PageHeader";
 export { ActionBar, type ActionBarProps } from "./ActionBar";
 export { DataTable, type DataTableProps } from "./DataTable";
 export { BulkActionBar, type BulkActionBarProps } from "./BulkActionBar";
-export { Pagination, type PaginationProps } from "./Pagination";
+export {
+  TablePagination,
+  type TablePaginationProps,
+} from "./TablePagination";
 export { COLUMNS, SAMPLE_ROWS } from "./data";
 export type {
-  TableRow,
+  TableRow as TableRowData,
   RowStatus,
   ColumnDef,
   ColumnKey,

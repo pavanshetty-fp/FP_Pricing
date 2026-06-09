@@ -1,4 +1,4 @@
-import { Tabs } from "@/components/ui";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface PageHeaderProps {
   title?: string;
@@ -12,6 +12,7 @@ const DEFAULT_TABS = ["Tab 1", "Tab 2", "Tab 3", "Tab 4", "Tab 5", "Tab 6", "Tab
 /**
  * Figma "Pro Blocks / Page Header / 2." (id 27614:56578) + tab strip
  * (id 27667:16810). Breadcrumb is hidden in the source frame.
+ * Uses the shadcn Tabs `line` variant for the underline-style strip.
  */
 export function PageHeader({
   title = "Sub Menu 2d",
@@ -27,8 +28,16 @@ export function PageHeader({
       </div>
 
       {/* Tab strip with full-width underline separator */}
-      <div className="border-b border-border px-4">
-        <Tabs tabs={tabs} value={activeTab} onValueChange={onTabChange} />
+      <div className="border-b border-border px-2">
+        <Tabs value={activeTab} onValueChange={onTabChange}>
+          <TabsList variant="line">
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab} value={tab}>
+                {tab}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
     </header>
   );

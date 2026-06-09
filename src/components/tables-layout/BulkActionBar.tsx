@@ -55,30 +55,36 @@ export function BulkActionBar({
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         {/* Verb actions */}
-        <Button variant="ghost" onClick={onAssign}>
+        <Button variant="ghost" size="sm" onClick={onAssign}>
           <UserPlus />
           Assign
         </Button>
-        <Button variant="ghost" onClick={onUnassign}>
+        <Button variant="ghost" size="sm" onClick={onUnassign}>
           <UserMinus />
           Unassign
         </Button>
-        <Button variant="ghost" onClick={onUnblock}>
+        <Button variant="ghost" size="sm" onClick={onUnblock}>
           <ShieldOff />
           Unblock
         </Button>
-        <Button variant="ghost" onClick={onVerify}>
+        <Button variant="ghost" size="sm" onClick={onVerify}>
           <Check />
           Verify
         </Button>
 
-        <Button variant="destructive" size="icon" aria-label="Delete" onClick={onDelete}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Delete"
+          onClick={onDelete}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
           <Trash2 />
         </Button>
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-        <Button variant="ghost" onClick={onMore}>
+        <Button variant="ghost" size="sm" onClick={onMore}>
           <MoreHorizontal />
           More
         </Button>

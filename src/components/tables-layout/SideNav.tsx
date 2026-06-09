@@ -5,7 +5,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar } from "@/components/ui";
+import { Avatar, AvatarFallback } from "@/components/ui";
 
 interface NavItem {
   key: string;
@@ -63,7 +63,9 @@ export function SideNav({ activeKey = "tables", onSelect }: SideNavProps) {
       </ul>
 
       <div className="mt-auto">
-        <Avatar fallback="PS" className="size-8" />
+        <Avatar className="size-8">
+          <AvatarFallback>PS</AvatarFallback>
+        </Avatar>
       </div>
     </nav>
   );

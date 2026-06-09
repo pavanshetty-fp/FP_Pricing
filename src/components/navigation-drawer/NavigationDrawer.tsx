@@ -1,8 +1,17 @@
 import * as React from "react";
 import { ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar } from "@/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
 import type { NavGroup, NavItem, NavUser, NavBrand } from "./types";
+
+function UserAvatar({ user }: { user: NavUser }) {
+  return (
+    <Avatar className="size-8">
+      {user.avatarSrc && <AvatarImage src={user.avatarSrc} alt={user.name} />}
+      <AvatarFallback>{user.fallback}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export interface NavigationDrawerProps {
   brand: NavBrand;
@@ -201,12 +210,7 @@ function UserFooter({ user, collapsed }: { user: NavUser; collapsed: boolean }) 
   if (collapsed) {
     return (
       <div className="mt-auto">
-        <Avatar
-          src={user.avatarSrc}
-          fallback={user.fallback}
-          alt={user.name}
-          className="size-8"
-        />
+        <UserAvatar user={user} />
       </div>
     );
   }
@@ -215,12 +219,7 @@ function UserFooter({ user, collapsed }: { user: NavUser; collapsed: boolean }) 
       type="button"
       className="mt-auto flex w-full items-center gap-2 rounded-lg p-2 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50"
     >
-      <Avatar
-        src={user.avatarSrc}
-        fallback={user.fallback}
-        alt={user.name}
-        className="size-8"
-      />
+      <UserAvatar user={user} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-semibold text-sidebar-foreground">
           {user.name}

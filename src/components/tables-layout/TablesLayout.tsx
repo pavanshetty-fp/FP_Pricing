@@ -4,7 +4,7 @@ import { PageHeader } from "./PageHeader";
 import { ActionBar } from "./ActionBar";
 import { DataTable } from "./DataTable";
 import { BulkActionBar } from "./BulkActionBar";
-import { Pagination } from "./Pagination";
+import { TablePagination } from "./TablePagination";
 import { SAMPLE_ROWS } from "./data";
 import type { TableRow } from "./types";
 
@@ -59,7 +59,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS, title }: TablesLayoutProps) {
         </div>
 
         <div className="shrink-0 border-t border-border">
-          <Pagination />
+          <TablePagination />
         </div>
 
         <BulkActionBar

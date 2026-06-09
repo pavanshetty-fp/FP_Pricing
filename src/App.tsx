@@ -15,13 +15,13 @@ export function App() {
       {/* Demo switcher (not part of the Figma frame) */}
       <div className="flex items-center gap-2 border-b border-border px-4 py-2">
         <Button
-          variant={demo === "nav" ? "primary" : "outline"}
+          variant={demo === "nav" ? "default" : "outline"}
           onClick={() => setDemo("nav")}
         >
           Navigation Drawer
         </Button>
         <Button
-          variant={demo === "tables" ? "primary" : "outline"}
+          variant={demo === "tables" ? "default" : "outline"}
           onClick={() => setDemo("tables")}
         >
           Tables Layout

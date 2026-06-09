@@ -1,18 +1,62 @@
-export { Button, buttonVariants, type ButtonProps } from "./button";
-export { Badge, badgeVariants, type BadgeProps } from "./badge";
-export { Checkbox, type CheckboxProps } from "./checkbox";
-export { Switch, type SwitchProps } from "./switch";
-export { Input, type InputProps } from "./input";
-export { Progress, type ProgressProps } from "./progress";
-export { Avatar, type AvatarProps } from "./avatar";
+export { Button, buttonVariants } from "./button";
+export { Badge, badgeVariants } from "./badge";
+export { Checkbox } from "./checkbox";
+export { Switch } from "./switch";
+export { Input } from "./input";
+export { Label } from "./label";
+export { Progress } from "./progress";
+export { Separator } from "./separator";
+export { Skeleton } from "./skeleton";
+export { Toggle, toggleVariants } from "./toggle";
+export { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 export {
-  ToggleGroup,
-  type ToggleGroupProps,
-  type ToggleGroupItemDef,
-} from "./toggle-group";
-export { Tabs, type TabsProps } from "./tabs";
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarBadge,
+  AvatarGroup,
+  AvatarGroupCount,
+} from "./avatar";
+export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants } from "./tabs";
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./tooltip";
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from "./table";
+export {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "./pagination";
 export {
   DropdownMenu,
-  type DropdownMenuProps,
-  type DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "./dropdown-menu";

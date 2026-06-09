@@ -7,7 +7,8 @@ import {
   ChevronDown,
   Plus,
 } from "lucide-react";
-import { Button, Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export interface ActionBarProps {
   searchValue?: string;
@@ -15,7 +16,7 @@ export interface ActionBarProps {
   onCreateTask?: () => void;
 }
 
-/** Figma "Action bar" (id 27614:56583). */
+/** Figma "Action bar" (id 27614:56583). Controls are 32px (size="sm"). */
 export function ActionBar({
   searchValue = "",
   onSearchChange,
@@ -28,19 +29,19 @@ export function ActionBar({
         {/* Search field with attached options button (InputGroup + ButtonGroup) */}
         <div className="flex w-[348px] items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search..."
               aria-label="Search"
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="rounded-r-none pl-8"
+              className="h-8 rounded-r-none pl-8"
             />
           </div>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             aria-label="Sort options"
             className="-ml-px rounded-l-none"
           >
@@ -48,11 +49,11 @@ export function ActionBar({
           </Button>
         </div>
 
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <ListFilter />
           Filters
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Group />
           Group By
         </Button>
@@ -60,13 +61,13 @@ export function ActionBar({
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Columns3 />
           Views: Default View
           <ChevronDown />
         </Button>
         <div className="h-8 w-px bg-border" aria-hidden />
-        <Button variant="primary" onClick={onCreateTask}>
+        <Button size="sm" onClick={onCreateTask}>
           <Plus />
           {/* Verbatim label from the Figma text node (likely a typo for "Create Task"). */}
           Create Tax

@@ -1,36 +1,31 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+"use client"
 
-export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** 0–100 */
-  value?: number;
+import * as React from "react"
+import { Progress as ProgressPrimitive } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+function Progress({
+  className,
+  value,
+  ...props
+}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+  return (
+    <ProgressPrimitive.Root
+      data-slot="progress"
+      className={cn(
+        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
+        className
+      )}
+      {...props}
+    >
+      <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
+        className="h-full w-full flex-1 bg-primary transition-all"
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  )
 }
 
-/** Progress bar (track h-1.5 / rounded-full). */
-const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value = 0, ...props }, ref) => {
-    const clamped = Math.min(100, Math.max(0, value));
-    return (
-      <div
-        ref={ref}
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={clamped}
-        className={cn(
-          "relative h-1.5 w-full overflow-hidden rounded-full bg-muted",
-          className
-        )}
-        {...props}
-      >
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${clamped}%` }}
-        />
-      </div>
-    );
-  }
-);
-Progress.displayName = "Progress";
-
-export { Progress };
+export { Progress }

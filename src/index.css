@@ -1,0 +1,73 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+/*
+  Design tokens mapped 1:1 from the Figma "FP DS 2026" variable collection.
+  Source variable name is noted in a comment next to each token.
+  The design is dark-only; tokens live on :root and `.dark` is set on <html>.
+*/
+@theme {
+  /* Typography — font/font-sans = "Geist" */
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+
+  /* Radius — Figma overrides Tailwind defaults */
+  --radius-md: 8px; /* border-radius/rounded-md */
+  --radius-lg: 10px; /* border-radius/rounded-lg */
+  --radius-full: 9999px; /* border-radius/rounded-full */
+
+  /* Base palette (shadcn semantic tokens) */
+  --color-background: #080808; /* base/background, FP/Surface Base */
+  --color-foreground: #f0f2f5; /* base/foreground */
+  --color-card: #11161d; /* FP/Surface 1a */
+  --color-card-foreground: #f0f2f5;
+  --color-popover: #11161d; /* FP/Surface 1a */
+  --color-popover-foreground: #f0f2f5; /* base/popover-foreground */
+  --color-primary: #abb3c2; /* base/primary */
+  --color-primary-foreground: #090c0f; /* base/primary-foreground */
+  --color-muted: #1b2028; /* base/muted, FP/Surface 1b */
+  --color-muted-foreground: #9ca3af; /* base/muted-foreground */
+  --color-accent: #2e3642; /* base/accent */
+  --color-accent-foreground: #f0f2f5; /* base/accent-foreground */
+  --color-destructive: #f87171; /* base/destructive */
+  --color-destructive-foreground: #f0f2f5;
+  --color-border: #ffffff38; /* base/border (white @ ~22%) */
+  --color-input: #ffffff26; /* base/input (white @ ~15%) */
+  --color-ring: #abb3c2;
+
+  /* Sidebar tokens */
+  --color-sidebar: #11161d; /* base/sidebar */
+  --color-sidebar-foreground: #f0f2f5; /* base/sidebar-foreground */
+  --color-sidebar-primary: #1d4ed8; /* base/sidebar-primary */
+  --color-sidebar-primary-foreground: #f0f2f5; /* base/sidebar-primary-foreground */
+  --color-sidebar-accent: #363c45; /* base/sidebar-accent */
+  --color-sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
+  --color-sidebar-border: #ffffff1a; /* base/sidebar-border (white @ 10%) */
+
+  /* FP brand + surface scale */
+  --color-brand: #fa6400; /* Primary (FP orange) */
+  --color-fp-outline-1: #363c45; /* tailwind colors/FP/Outline 1 */
+  --color-fp-outline-2: #575757; /* tailwind colors/FP/Outline 2 */
+  --color-fp-surface-1a: #11161d; /* tailwind colors/FP/Surface 1a */
+  --color-fp-surface-1b: #1b2028; /* tailwind colors/FP/Surface 1b */
+  --color-fp-card-1: #2a2f37; /* tailwind colors/FP/Card 1 */
+  --color-fp-surface-base: #080808; /* tailwind colors/FP/Surface Base */
+
+  /* Status colors — NOTE: not present in the Figma token set for this frame.
+     Values below are assumptions for the Success/Processing/Failed states. */
+  --color-status-success: #22c55e; /* ASSUMPTION */
+  --color-status-processing: #f59e0b; /* ASSUMPTION */
+  --color-status-failed: #f87171; /* = base/destructive */
+  --color-status-pink: #ff8080; /* Status/Pink */
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

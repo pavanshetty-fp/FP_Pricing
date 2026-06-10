@@ -22,6 +22,8 @@ export interface NavigationDrawerProps {
   /** Collapsed = 52px icon rail; expanded = 256px labeled drawer. */
   collapsed?: boolean;
   onNavigate?: (key: string) => void;
+  /** Override the surface/shape — e.g. tier-2 contextual sidebar uses `bg-sidebar`. */
+  className?: string;
 }
 
 /**
@@ -35,13 +37,15 @@ export function NavigationDrawer({
   activeKey,
   collapsed = false,
   onNavigate,
+  className,
 }: NavigationDrawerProps) {
   return (
     <nav
       aria-label="Primary"
       className={cn(
         "flex h-full shrink-0 flex-col bg-drawer text-sidebar-foreground",
-        collapsed ? "w-[52px] items-center py-3" : "w-64 p-2"
+        collapsed ? "w-[52px] items-center py-3" : "w-64 p-2",
+        className
       )}
     >
       <BrandHeader brand={brand} collapsed={collapsed} />

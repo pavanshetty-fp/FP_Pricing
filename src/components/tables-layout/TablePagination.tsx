@@ -1,7 +1,8 @@
+import * as React from "react";
+import { MoreHorizontal } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -14,7 +15,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { paginationRange } from "./data";
+
+/**
+ * Jump-to-page — Figma 27728:13260. The `…` ellipsis is a popover trigger;
+ * the user types a page number and presses Enter to jump. Progressive
+ * disclosure: no separate go-to field on the bar.
+ */
+function JumpToPage({
+  totalPages,
+  onJump,
+}: {
+  totalPages: number;
+  onJump: (page: number) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [value, setValue] = React.useState("");
+
+  const submit = () => {
+    const n = Number.parseInt(value, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+      onJump(n);
+      setOpen(false);
+      setValue("");
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Jump to page"
+          className="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="center"
+        className="flex w-auto flex-col gap-1 rounded-lg bg-fp-surface-1b p-1"
+      >
+        <span className="px-1 text-xs font-medium text-primary">Jump to page</span>
+        <Input
+          autoFocus
+          value={value}
+          inputMode="numeric"
+          placeholder="Page #"
+          aria-label="Page number"
+          onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ""))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          className="h-8 w-20 rounded-md border-fp-outline-2 bg-fp-surface-1a"
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export interface TablePaginationProps {
   /** 1-based current page. */
@@ -74,7 +141,7 @@ export function TablePagination({
           {items.map((item, i) =>
             item === "ellipsis" ? (
               <PaginationItem key={`e${i}`}>
-                <PaginationEllipsis />
+                <JumpToPage totalPages={totalPages} onJump={onPageChange} />
               </PaginationItem>
             ) : (
               <PaginationItem key={item}>

@@ -29,6 +29,12 @@ export {
   SelectSeparator,
 } from "./select";
 export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+} from "./popover";
+export {
   Tooltip,
   TooltipTrigger,
   TooltipContent,

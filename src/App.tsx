@@ -7,28 +7,27 @@ import {
   KanbanSquare,
   Settings,
 } from "lucide-react";
-import { Button } from "@/components/ui";
 import { AppShell } from "@/components/app-shell";
 import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 
-type Demo = "nav" | "tables";
-
-const DEMOS: { key: Demo; label: string }[] = [
-  { key: "nav", label: "Navigation (two-tier)" },
-  { key: "tables", label: "Tables Layout" },
-];
-
-// Tier-1 (rail) = main nav. The selected item's label titles the tier-2 sidebar.
-const RAIL_NAV: NavGroup = {
+/** Contextual sub-nav for the Tables screen — Figma "Main Menu 2" drawer. */
+const TABLES_NAV: NavGroup = {
   items: [
-    { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
-    { key: "pricing", label: "Customer Pricing", icon: <GalleryVerticalEnd /> },
-    { key: "orders", label: "Orders", icon: <Table2 /> },
-    { key: "board", label: "Board", icon: <KanbanSquare /> },
-    { key: "settings", label: "Settings", icon: <Settings /> },
+    { key: "sub-1", label: "Sub Menu 1", icon: <LayoutDashboard /> },
+    {
+      key: "sub-2",
+      label: "Sub Menu 2",
+      icon: <Table2 />,
+      children: [
+        { key: "sub-2a", label: "Sub Menu 2a" },
+        { key: "sub-2b", label: "Sub Menu 2b" },
+        { key: "sub-2c", label: "Sub Menu 2c" },
+        { key: "sub-2d", label: "Sub Menu 2d" },
+      ],
+    },
   ],
 };
 
@@ -41,78 +40,114 @@ function navLabel(group: NavGroup, key: string): string {
   return "";
 }
 
-export function App() {
-  const [demo, setDemo] = React.useState<Demo>("nav");
-  // tier-1 main-nav selection → titles the sidebar; tier-2 sub-nav selection → titles the content layer
-  const [mainKey, setMainKey] = React.useState("pricing");
-  const [subKey, setSubKey] = React.useState("pricing-setup");
+interface Screen {
+  label: string;
+  icon: React.ReactNode;
+  /** Tier-2 contextual sidebar; omit for main-nav-only screens. */
+  sidebar?: NavGroup;
+  defaultSub?: string;
+  content: React.ReactNode;
+}
 
-  const activeMain = RAIL_NAV.items.find((i) => i.key === mainKey) ?? RAIL_NAV.items[0];
+const SCREENS: Record<string, Screen> = {
+  dashboard: {
+    label: "Dashboard",
+    icon: <LayoutDashboard />,
+    content: <EmptyScreen label="Dashboard" />,
+  },
+  pricing: {
+    label: "Customer Pricing",
+    icon: <GalleryVerticalEnd />,
+    sidebar: PRICING_NAV,
+    defaultSub: "pricing-setup",
+    content: <PricingContent />,
+  },
+  tables: {
+    label: "Tables",
+    icon: <Table2 />,
+    sidebar: TABLES_NAV,
+    defaultSub: "sub-2d",
+    content: <TablesLayout />,
+  },
+  board: {
+    label: "Board",
+    icon: <KanbanSquare />,
+    content: <EmptyScreen label="Board" />,
+  },
+  settings: {
+    label: "Settings",
+    icon: <Settings />,
+    content: <EmptyScreen label="Settings" />,
+  },
+};
+
+const ORDER = ["dashboard", "pricing", "tables", "board", "settings"];
+
+// Tier-1 main navigation (the rail) — one item per screen.
+const MAIN_NAV: NavGroup = {
+  items: ORDER.map((key) => ({
+    key,
+    label: SCREENS[key].label,
+    icon: SCREENS[key].icon,
+  })),
+};
+
+export function App() {
+  const [mainKey, setMainKey] = React.useState("tables");
+  const [subKey, setSubKey] = React.useState(SCREENS.tables.defaultSub ?? "");
+
+  const screen = SCREENS[mainKey];
+
+  // Switching the main nav resets the sub-nav to that screen's default.
+  const onMainNavigate = (key: string) => {
+    setMainKey(key);
+    setSubKey(SCREENS[key].defaultSub ?? "");
+  };
+
+  // Content-layer title: selected sub-nav item, or the screen name when there's no drawer.
+  const title = screen.sidebar ? navLabel(screen.sidebar, subKey) : screen.label;
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
-      {/* Demo switcher (not part of the DS) */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-        {DEMOS.map((d) => (
-          <Button
-            key={d.key}
-            variant={demo === d.key ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDemo(d.key)}
-          >
-            {d.label}
-          </Button>
-        ))}
-      </div>
-
-      <div className="min-h-0 flex-1">
-        {demo === "tables" ? (
-          <TablesLayout />
-        ) : (
-          <AppShell
-            // content-layer header = selected sub-nav item (tier-2)
-            title={navLabel(PRICING_NAV, subKey)}
-            rail={
-              <NavRail
-                brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}
-                groups={[RAIL_NAV]}
-                user={{ name: "Pavan S", email: "pavanshetty@fleetpanda.com", fallback: "PS" }}
-                activeKey={mainKey}
-                onNavigate={setMainKey}
-              />
-            }
-            sidebar={
-              <NavigationDrawer
-                className="rounded-lg bg-sidebar"
-                // sidebar header = selected main-nav item (tier-1)
-                brand={{
-                  name: activeMain.label,
-                  icon: activeMain.icon,
-                  iconClassName: "bg-sidebar-primary",
-                }}
-                groups={[PRICING_NAV]}
-                user={{ name: "shadcn", email: "m@example.com", fallback: "SC" }}
-                activeKey={subKey}
-                onNavigate={setSubKey}
-              />
-            }
-          >
-            <PricingSetupContent />
-          </AppShell>
-        )}
-      </div>
-    </div>
+    <AppShell
+      title={title}
+      rail={
+        <NavRail
+          brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}
+          groups={[MAIN_NAV]}
+          user={{ name: "Pavan S", email: "pavanshetty@fleetpanda.com", fallback: "PS" }}
+          activeKey={mainKey}
+          onNavigate={onMainNavigate}
+        />
+      }
+      sidebar={
+        screen.sidebar ? (
+          <NavigationDrawer
+            className="rounded-lg bg-sidebar"
+            brand={{
+              name: screen.label,
+              icon: screen.icon,
+              iconClassName: "bg-sidebar-primary",
+            }}
+            groups={[screen.sidebar]}
+            user={{ name: "shadcn", email: "m@example.com", fallback: "SC" }}
+            activeKey={subKey}
+            onNavigate={setSubKey}
+          />
+        ) : undefined
+      }
+    >
+      {screen.content}
+    </AppShell>
   );
 }
 
 /** Content-layer demo exercising the vertical-rhythm helpers. */
-function PricingSetupContent() {
+function PricingContent() {
   return (
     <Stack space="section" className="overflow-auto">
       <p className="max-w-prose text-sm text-muted-foreground">
         Configure base price index, margins, taxes, fees and discounts per ShipTo × Product.
       </p>
-
       <Stack space="title">
         <SectionHeading as="h3" title="Shipment Overview" />
         <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
@@ -125,5 +160,13 @@ function PricingSetupContent() {
         </div>
       </Stack>
     </Stack>
+  );
+}
+
+function EmptyScreen({ label }: { label: string }) {
+  return (
+    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+      {label} — coming soon
+    </div>
   );
 }

@@ -14,3 +14,4 @@ figma/*.json
 
 # TS build info
 *.tsbuildinfo
+dist-single/

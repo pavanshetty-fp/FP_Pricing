@@ -57,6 +57,7 @@ export function App() {
           <TablesLayout />
         ) : (
           <AppShell
+            title="Pricing Setup"
             rail={
               <NavRail
                 brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}
@@ -91,11 +92,9 @@ export function App() {
 function PricingSetupContent() {
   return (
     <Stack space="section" className="overflow-auto">
-      <SectionHeading
-        eyebrow="Customer Pricing"
-        title="Pricing Setup"
-        description="Configure base price index, margins, taxes, fees and discounts per ShipTo × Product."
-      />
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Configure base price index, margins, taxes, fees and discounts per ShipTo × Product.
+      </p>
 
       <Stack space="title">
         <SectionHeading as="h3" title="Shipment Overview" />

@@ -36,14 +36,10 @@ export function TablesLayout({ rows = SAMPLE_ROWS, title }: TablesLayoutProps) {
     setSelectedIds(checked ? new Set(rows.map((r) => r.id)) : new Set());
 
   return (
-    <AppShell rail={<SideNav />}>
+    <AppShell rail={<SideNav />} title={title ?? "Sub Menu 2d"}>
       {/* relative anchors the floating bulk-action bar; AppShell owns the 16px inset */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <PageHeader
-          title={title}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <PageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="mt-4 shrink-0">
           <ActionBar searchValue={search} onSearchChange={setSearch} />

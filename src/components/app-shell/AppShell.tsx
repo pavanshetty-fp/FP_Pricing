@@ -6,7 +6,13 @@ export interface AppShellProps {
   rail?: React.ReactNode;
   /** Tier-2 contextual sidebar (256px). Optional. Self-contained. */
   sidebar?: React.ReactNode;
-  /** Content layer. Rendered with the 16px inset unless `inset={false}`. */
+  /**
+   * Fixed page header at the top of the content layer (48px) — the name of the
+   * selected menu (from the sub-nav drawer or the main nav). A string renders the
+   * 24px semibold title; pass a node for custom header content.
+   */
+  title?: React.ReactNode;
+  /** Content layer body. Rendered with the 16px inset unless `inset={false}`. */
   children: React.ReactNode;
   /** The 16px content-layer inset is a hard layout rule — on by default. */
   inset?: boolean;
@@ -20,12 +26,14 @@ export interface AppShellProps {
  *   • 16px inset on all four sides inside the content layer.
  *
  * Geometry: 52px rail (flush, full height) · 8px gap · 256px sidebar · 8px gap ·
- * fluid content · 8px right/top/bottom margin. Rail and sidebar use distinct
- * surfaces (`--color-rail` vs `--color-sidebar`).
+ * fluid content · 8px right/top/bottom margin. The Content Layer (27634:23034)
+ * is a distinct FP/Surface-1b panel (#1b2028, rounded-md) with a fixed 48px
+ * page-header at its top (1px #363c45 bottom divider) showing the selected menu.
  */
 export function AppShell({
   rail,
   sidebar,
+  title,
   children,
   inset = true,
   className,
@@ -44,16 +52,28 @@ export function AppShell({
           the rail; gap-2 = 8px between the sidebar and the content layer. */}
       <div className="flex min-w-0 flex-1 gap-2 p-2">
         {sidebar}
-        {/* Content Layer (Figma 27634:23034): a distinct panel filled with
-            tailwind FP/Surface 1b (#1b2028), rounded-md, no border — holds all
-            of the selected menu's content, with the 16px inset inside. */}
-        <section
-          className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b",
-            inset && "p-4"
+        {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border. */}
+        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
+          {title != null && (
+            <header className="flex h-12 shrink-0 items-center gap-6 border-b border-fp-outline-1 px-4">
+              {typeof title === "string" || typeof title === "number" ? (
+                <h1 className="truncate text-2xl font-semibold leading-none text-foreground">
+                  {title}
+                </h1>
+              ) : (
+                title
+              )}
+            </header>
           )}
-        >
-          {children}
+          {/* Body: 16px inset (hard rule). Children manage their own scroll. */}
+          <div
+            className={cn(
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden",
+              inset && "p-4"
+            )}
+          >
+            {children}
+          </div>
         </section>
       </div>
     </div>

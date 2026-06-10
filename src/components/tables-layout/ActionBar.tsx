@@ -1,14 +1,7 @@
-import {
-  Search,
-  ArrowUpDown,
-  ListFilter,
-  Group,
-  Columns3,
-  ChevronDown,
-  Plus,
-} from "lucide-react";
+import { Search, ArrowUpDown, Group, Columns3, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilterPanel } from "./FilterPanel";
 
 export interface ActionBarProps {
   searchValue?: string;
@@ -49,10 +42,7 @@ export function ActionBar({
           </Button>
         </div>
 
-        <Button variant="outline" size="sm">
-          <ListFilter />
-          Filters
-        </Button>
+        <FilterPanel />
         <Button variant="outline" size="sm">
           <Group />
           Group By

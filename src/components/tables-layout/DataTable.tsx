@@ -23,12 +23,12 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -71,38 +71,75 @@ function TwoLine({ title, description }: { title: string; description: string })
   );
 }
 
-/** Per-cell dropdown — Figma "DropdownMenu / Menu" (336:4988): two groups, each
- *  a label + three items (icon + label + shortcut). Triggered by the chevron. */
-function CellDropdown() {
-  const group = (key: string) => (
-    <DropdownMenuGroup key={key}>
-      <DropdownMenuLabel className="text-xs text-muted-foreground">
-        Label Text
-      </DropdownMenuLabel>
-      {[0, 1, 2].map((i) => (
-        <DropdownMenuItem key={i}>
-          <User />
-          Dropdown Menu Item Text
-          <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-        </DropdownMenuItem>
-      ))}
-    </DropdownMenuGroup>
-  );
+/**
+ * Dropdown-column cell — Figma "Drop Down behaviour" (27999:7846). The whole
+ * two-line cell is the trigger, styled as an outlined input box:
+ *   default → no box · hover → fp-outline-2 border + fp-surface-1b fill ·
+ *   open/selected → fp-card-1 fill (border reserved so there's no layout shift).
+ * Menu: Label + a checkbox item (real toggle, stays open) + items / separator /
+ * Label + items.
+ */
+function CellDropdown({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  const [checked, setChecked] = React.useState(true);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           aria-label="Open menu"
-          className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className={cn(
+            "flex w-full items-center justify-between gap-2 rounded-md border border-transparent px-2 py-1 text-left outline-none transition-colors",
+            "hover:border-fp-outline-2 hover:bg-fp-surface-1b",
+            "focus-visible:ring-2 focus-visible:ring-ring/50",
+            "data-[state=open]:border-fp-outline-2 data-[state=open]:bg-fp-card-1"
+          )}
         >
-          <ChevronDown className="size-4" />
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm text-foreground">{title}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {description}
+            </span>
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-40">
-        {group("a")}
+      <DropdownMenuContent align="start" className="w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Label Text
+          </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={checked}
+            onCheckedChange={setChecked}
+            onSelect={(e) => e.preventDefault()}
+          >
+            Checkbox Text
+          </DropdownMenuCheckboxItem>
+          {[0, 1].map((i) => (
+            <DropdownMenuItem key={i}>
+              <User />
+              Dropdown Menu Item Text
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {group("b")}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Label Text
+          </DropdownMenuLabel>
+          {[0, 1, 2].map((i) => (
+            <DropdownMenuItem key={i}>
+              <User />
+              Dropdown Menu Item Text
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -235,12 +272,12 @@ function Row({
       <TableCell className="px-3">
         <StatusText status={row.status} />
       </TableCell>
-      {/* Dropdown (two-line + chevron → menu) */}
+      {/* Dropdown — the whole cell is the trigger (Figma 27999:7846) */}
       <TableCell className="px-3">
-        <div className="flex items-center justify-between gap-2">
-          <TwoLine title={row.dropdown.title} description={row.dropdown.description} />
-          <CellDropdown />
-        </div>
+        <CellDropdown
+          title={row.dropdown.title}
+          description={row.dropdown.description}
+        />
       </TableCell>
       {/* Descriptive Text */}
       <TableCell className="px-3">

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { AppShell } from "@/components/app-shell";
 import { SideNav } from "./SideNav";
 import { PageHeader } from "./PageHeader";
 import { ActionBar } from "./ActionBar";
@@ -35,10 +36,9 @@ export function TablesLayout({ rows = SAMPLE_ROWS, title }: TablesLayoutProps) {
     setSelectedIds(checked ? new Set(rows.map((r) => r.id)) : new Set());
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <SideNav />
-
-      <main className="relative flex min-w-0 flex-1 flex-col">
+    <AppShell rail={<SideNav />}>
+      {/* relative anchors the floating bulk-action bar; AppShell owns the 16px inset */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <PageHeader
           title={title}
           activeTab={activeTab}
@@ -49,7 +49,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS, title }: TablesLayoutProps) {
           <ActionBar searchValue={search} onSearchChange={setSearch} />
         </div>
 
-        <div className="mt-4 min-h-0 flex-1 overflow-auto px-4">
+        <div className="mt-4 min-h-0 flex-1 overflow-auto">
           <DataTable
             rows={rows}
             selectedIds={selectedIds}
@@ -66,7 +66,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS, title }: TablesLayoutProps) {
           count={selectedIds.size}
           onClear={() => setSelectedIds(new Set())}
         />
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

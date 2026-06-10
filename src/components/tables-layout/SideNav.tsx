@@ -30,7 +30,7 @@ export function SideNav({ activeKey = "tables", onSelect }: SideNavProps) {
   return (
     <nav
       aria-label="Primary"
-      className="flex h-full w-[52px] shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-3"
+      className="flex h-full w-[52px] shrink-0 flex-col items-center bg-rail py-3"
     >
       {/* Logo (36x36) */}
       <div className="mb-7 flex size-9 items-center justify-center rounded-md bg-brand text-sm font-semibold text-white">

@@ -37,7 +37,7 @@ export function TablePagination({
   };
 
   return (
-    <div className="flex h-[72px] items-center justify-between px-4 text-sm text-muted-foreground">
+    <div className="flex h-[72px] items-center justify-between text-sm text-muted-foreground">
       <span>{rangeLabel}</span>
 
       <Pagination className="mx-0 w-auto">

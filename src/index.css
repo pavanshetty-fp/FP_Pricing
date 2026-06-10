@@ -58,6 +58,7 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-drawer: var(--drawer);
+  --color-rail: var(--rail);
   --color-fp-outline-1: var(--fp-outline-1);
   --color-fp-outline-2: var(--fp-outline-2);
   --color-fp-surface-1a: var(--fp-surface-1a);
@@ -117,6 +118,7 @@
   --brand: #fa6400; /* Primary (FP orange) */
   --brand-foreground: #ffffff;
   --drawer: #090c0f; /* Navigation Drawer Expanded bg */
+  --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar #11161d (R6) */
   --fp-outline-1: #363c45; /* FP/Outline 1 */
   --fp-outline-2: #575757; /* FP/Outline 2 */
   --fp-surface-1a: #11161d;

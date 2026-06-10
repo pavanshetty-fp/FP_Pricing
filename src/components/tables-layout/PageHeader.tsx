@@ -23,12 +23,12 @@ export function PageHeader({
   return (
     <header>
       {/* Title bar (48px) */}
-      <div className="flex h-12 items-center px-4">
+      <div className="flex h-12 items-center">
         <h1 className="text-2xl font-semibold leading-none">{title}</h1>
       </div>
 
       {/* Tab strip with full-width underline separator */}
-      <div className="border-b border-border px-2">
+      <div className="-mx-4 border-b border-border px-2">
         <Tabs value={activeTab} onValueChange={onTabChange}>
           <TabsList variant="line">
             {tabs.map((tab) => (

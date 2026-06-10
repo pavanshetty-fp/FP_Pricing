@@ -23,7 +23,7 @@ export function ActionBar({
   onCreateTask,
 }: ActionBarProps) {
   return (
-    <div className="flex h-8 items-center justify-between gap-2 px-4">
+    <div className="flex h-8 items-center justify-between gap-2">
       {/* Left cluster */}
       <div className="flex items-center gap-3">
         {/* Search field with attached options button (InputGroup + ButtonGroup) */}

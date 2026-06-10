@@ -1,0 +1,58 @@
+import * as React from "react";
+import { Group, Rows3, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+/*
+  Group By menu — Figma "Action Bar Unit · Group by" (28025:1274). The Group By
+  button opens a dropdown of groupable dimensions; single-select (re-selecting
+  the active dimension clears grouping). The button reflects the active choice.
+*/
+const DIMENSIONS = [
+  "Status",
+  "Customer",
+  "ShipTo",
+  "Created At",
+  "Type",
+  "Planned At",
+  "State",
+  "City",
+  "ZIP",
+  "Source",
+  "Driver",
+  "Truck",
+  "Created By",
+  "Assigned By",
+];
+
+export function GroupByMenu() {
+  const [active, setActive] = React.useState<string | null>(null);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Group />
+          {active ? `Group by: ${active}` : "Group By"}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-[360px] w-40 overflow-y-auto">
+        {DIMENSIONS.map((d) => (
+          <DropdownMenuItem
+            key={d}
+            onSelect={() => setActive((prev) => (prev === d ? null : d))}
+          >
+            <Rows3 />
+            {d}
+            {active === d && <Check className="ml-auto size-4" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

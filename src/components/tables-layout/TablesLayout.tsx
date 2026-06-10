@@ -5,6 +5,7 @@ import { DataTable } from "./DataTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { TablePagination } from "./TablePagination";
 import { FormLayout } from "@/components/form-layout";
+import { SideSheet, type SideSheetVariant } from "@/components/side-sheet";
 import { SAMPLE_ROWS, sortRows } from "./data";
 import type { ColumnKey, SortState, TableRow } from "./types";
 
@@ -26,6 +27,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [formOpen, setFormOpen] = React.useState(false);
+  const [sheet, setSheet] = React.useState<SideSheetVariant | null>(null);
 
   // Sort the full dataset, then slice the current page.
   const sorted = React.useMemo(() => sortRows(rows, sort), [rows, sort]);
@@ -94,6 +96,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
           onToggleAll={toggleAll}
           sort={sort}
           onSort={onSort}
+          onRowAction={(variant) => setSheet(variant)}
         />
       </div>
 
@@ -111,6 +114,14 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
         count={selectedIds.size}
         onClear={() => setSelectedIds(new Set())}
       />
+
+      {sheet && (
+        <SideSheet
+          variant={sheet}
+          open
+          onOpenChange={(open) => !open && setSheet(null)}
+        />
+      )}
     </div>
   );
 }

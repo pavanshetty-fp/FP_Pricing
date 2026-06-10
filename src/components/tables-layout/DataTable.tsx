@@ -12,6 +12,9 @@ import {
   Share2,
   Trash2,
   User,
+  PanelRightOpen,
+  Table2,
+  PackagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -150,6 +153,9 @@ const currency = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
+/** Side-sheet variants a row action can open (typed inline to avoid a cycle). */
+export type RowSheetVariant = "narrow" | "wide" | "dense";
+
 export interface DataTableProps {
   rows: TableRowData[];
   selectedIds: Set<string>;
@@ -159,6 +165,8 @@ export interface DataTableProps {
   sort: SortState | null;
   /** Toggle sort for a column (parent cycles asc → desc → unsorted). */
   onSort: (key: ColumnKey) => void;
+  /** Open a side sheet from a row action. Omit to hide those menu items. */
+  onRowAction?: (variant: RowSheetVariant, row: TableRowData) => void;
 }
 
 export function DataTable({
@@ -168,6 +176,7 @@ export function DataTable({
   onToggleAll,
   sort,
   onSort,
+  onRowAction,
 }: DataTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
@@ -238,6 +247,7 @@ export function DataTable({
               row={row}
               selected={selectedIds.has(row.id)}
               onToggle={() => onToggleRow(row.id)}
+              onRowAction={onRowAction}
             />
           ))}
         </TableBody>
@@ -250,10 +260,12 @@ function Row({
   row,
   selected,
   onToggle,
+  onRowAction,
 }: {
   row: TableRowData;
   selected: boolean;
   onToggle: () => void;
+  onRowAction?: (variant: RowSheetVariant, row: TableRowData) => void;
 }) {
   const [switchOn, setSwitchOn] = React.useState(row.switchOn);
   const [toggle, setToggle] = React.useState(row.toggle);
@@ -360,6 +372,23 @@ function Row({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {onRowAction && (
+              <>
+                <DropdownMenuItem onSelect={() => onRowAction("narrow", row)}>
+                  <PanelRightOpen />
+                  View details
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onRowAction("wide", row)}>
+                  <Table2 />
+                  Tank list
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onRowAction("dense", row)}>
+                  <PackagePlus />
+                  Assign asset
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem>
               <Pencil />
               Edit

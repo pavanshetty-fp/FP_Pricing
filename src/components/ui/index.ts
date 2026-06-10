@@ -13,6 +13,24 @@ export { Label } from "./label";
 export { Textarea } from "./textarea";
 export { RadioGroup, RadioGroupItem } from "./radio-group";
 export { Slider } from "./slider";
+export { Alert, AlertTitle, AlertDescription, alertVariants } from "./alert";
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./accordion";
+export { Kbd, KbdGroup } from "./kbd";
+export {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+} from "./sheet";
 export { Progress } from "./progress";
 export { Separator } from "./separator";
 export { Skeleton } from "./skeleton";

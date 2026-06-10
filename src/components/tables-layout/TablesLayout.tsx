@@ -4,8 +4,8 @@ import { ActionBar } from "./ActionBar";
 import { DataTable } from "./DataTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { TablePagination } from "./TablePagination";
-import { SAMPLE_ROWS } from "./data";
-import type { TableRow } from "./types";
+import { SAMPLE_ROWS, sortRows } from "./data";
+import type { ColumnKey, SortState, TableRow } from "./types";
 
 export interface TablesLayoutProps {
   /** Defaults to the sample dataset that mirrors the Figma frame. */
@@ -14,13 +14,38 @@ export interface TablesLayoutProps {
 
 /**
  * "Tables Layout" content — Figma frame 27614:56562. Renders inside the
- * AppShell content layer, which supplies the rail, the contextual sidebar,
- * the page title, and the 16px inset. Owns row-selection + tab state only.
+ * AppShell content layer (rail, contextual sidebar, page title, 16px inset).
+ * Owns the data view: sort + pagination + row selection + tab state.
  */
 export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [search, setSearch] = React.useState("");
   const [activeTab, setActiveTab] = React.useState("Tab 1");
+  const [sort, setSort] = React.useState<SortState | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+
+  // Sort the full dataset, then slice the current page.
+  const sorted = React.useMemo(() => sortRows(rows, sort), [rows, sort]);
+  const pageRows = React.useMemo(
+    () => sorted.slice((page - 1) * pageSize, page * pageSize),
+    [sorted, page, pageSize]
+  );
+
+  // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
+  const onSort = (key: ColumnKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+    setPage(1);
+  };
+
+  const onPageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(1);
+  };
 
   const toggleRow = (id: string) =>
     setSelectedIds((prev) => {
@@ -30,8 +55,16 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       return next;
     });
 
+  // Select-all toggles the current page's rows.
   const toggleAll = (checked: boolean) =>
-    setSelectedIds(checked ? new Set(rows.map((r) => r.id)) : new Set());
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const r of pageRows) {
+        if (checked) next.add(r.id);
+        else next.delete(r.id);
+      }
+      return next;
+    });
 
   return (
     // relative anchors the floating bulk-action bar
@@ -44,15 +77,23 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
 
       <div className="mt-4 min-h-0 flex-1 overflow-auto">
         <DataTable
-          rows={rows}
+          rows={pageRows}
           selectedIds={selectedIds}
           onToggleRow={toggleRow}
           onToggleAll={toggleAll}
+          sort={sort}
+          onSort={onSort}
         />
       </div>
 
       <div className="shrink-0 border-t border-border">
-        <TablePagination />
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={setPage}
+          onPageSizeChange={onPageSizeChange}
+        />
       </div>
 
       <BulkActionBar

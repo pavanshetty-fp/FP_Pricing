@@ -52,3 +52,10 @@ export interface ColumnDef {
   sortable?: boolean;
   align?: "left" | "right" | "center";
 }
+
+export type SortDir = "asc" | "desc";
+
+export interface SortState {
+  key: ColumnKey;
+  dir: SortDir;
+}

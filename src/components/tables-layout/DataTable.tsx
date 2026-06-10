@@ -40,35 +40,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { COLUMNS } from "./data";
-import type { ColumnKey, RowStatus, TableRow as TableRowData } from "./types";
+import type {
+  ColumnKey,
+  RowStatus,
+  SortState,
+  TableRow as TableRowData,
+} from "./types";
 
 const STATUS_DOT: Record<RowStatus, string> = {
   Success: "bg-status-success",
   Processing: "bg-status-processing",
   Failed: "bg-status-failed",
 };
-
-type SortDir = "asc" | "desc";
-interface SortState {
-  key: ColumnKey;
-  dir: SortDir;
-}
-
-/** Value a column sorts on. Columns without per-row data sort as a no-op. */
-function sortValue(row: TableRowData, key: ColumnKey): string | number {
-  switch (key) {
-    case "status":
-      return row.status;
-    case "switch":
-      return row.switchOn ? 1 : 0;
-    case "progress":
-      return row.progress;
-    case "amount":
-      return row.amount;
-    default:
-      return 0;
-  }
-}
 
 function StatusText({ status }: { status: RowStatus }) {
   return (
@@ -135,6 +118,10 @@ export interface DataTableProps {
   selectedIds: Set<string>;
   onToggleRow: (id: string) => void;
   onToggleAll: (checked: boolean) => void;
+  /** Current sort (owned by the parent so it can sort the full dataset). */
+  sort: SortState | null;
+  /** Toggle sort for a column (parent cycles asc → desc → unsorted). */
+  onSort: (key: ColumnKey) => void;
 }
 
 export function DataTable({
@@ -142,29 +129,9 @@ export function DataTable({
   selectedIds,
   onToggleRow,
   onToggleAll,
+  sort,
+  onSort,
 }: DataTableProps) {
-  const [sort, setSort] = React.useState<SortState | null>(null);
-
-  const sortedRows = React.useMemo(() => {
-    if (!sort) return rows;
-    const factor = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = sortValue(a, sort.key);
-      const bv = sortValue(b, sort.key);
-      if (av < bv) return -1 * factor;
-      if (av > bv) return 1 * factor;
-      return 0;
-    });
-  }, [rows, sort]);
-
-  // Click cycles a sortable column: asc → desc → unsorted.
-  const onSort = (key: ColumnKey) =>
-    setSort((prev) => {
-      if (prev?.key !== key) return { key, dir: "asc" };
-      if (prev.dir === "asc") return { key, dir: "desc" };
-      return null;
-    });
-
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
@@ -228,7 +195,7 @@ export function DataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedRows.map((row) => (
+          {rows.map((row) => (
             <Row
               key={row.id}
               row={row}

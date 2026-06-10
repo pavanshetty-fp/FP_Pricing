@@ -19,6 +19,16 @@ export {
 } from "./avatar";
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants } from "./tabs";
 export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+} from "./select";
+export {
   Tooltip,
   TooltipTrigger,
   TooltipContent,

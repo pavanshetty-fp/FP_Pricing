@@ -4,6 +4,7 @@ import { ActionBar } from "./ActionBar";
 import { DataTable } from "./DataTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { TablePagination } from "./TablePagination";
+import { FormLayout } from "@/components/form-layout";
 import { SAMPLE_ROWS, sortRows } from "./data";
 import type { ColumnKey, SortState, TableRow } from "./types";
 
@@ -24,6 +25,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [sort, setSort] = React.useState<SortState | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
+  const [formOpen, setFormOpen] = React.useState(false);
 
   // Sort the full dataset, then slice the current page.
   const sorted = React.useMemo(() => sortRows(rows, sort), [rows, sort]);
@@ -66,13 +68,22 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       return next;
     });
 
+  // The "Create Form" CTA swaps the table view for the Form Layout screen.
+  if (formOpen) {
+    return <FormLayout onClose={() => setFormOpen(false)} />;
+  }
+
   return (
     // relative anchors the floating bulk-action bar
     <div className="relative flex min-h-0 flex-1 flex-col">
       <PageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="mt-4 shrink-0">
-        <ActionBar searchValue={search} onSearchChange={setSearch} />
+        <ActionBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          onCreateTask={() => setFormOpen(true)}
+        />
       </div>
 
       <div className="mt-4 min-h-0 flex-1 overflow-auto">

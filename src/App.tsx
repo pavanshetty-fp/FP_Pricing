@@ -4,7 +4,6 @@ import {
   GalleryVerticalEnd,
   LayoutDashboard,
   Table2,
-  FileText,
   KanbanSquare,
   Settings,
 } from "lucide-react";
@@ -22,19 +21,33 @@ const DEMOS: { key: Demo; label: string }[] = [
   { key: "tables", label: "Tables Layout" },
 ];
 
-// Tier-1 (rail) nav — FleetPanda primary
+// Tier-1 (rail) = main nav. The selected item's label titles the tier-2 sidebar.
 const RAIL_NAV: NavGroup = {
   items: [
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
-    { key: "tables", label: "Tables", icon: <Table2 /> },
-    { key: "forms", label: "Forms", icon: <FileText /> },
+    { key: "pricing", label: "Customer Pricing", icon: <GalleryVerticalEnd /> },
+    { key: "orders", label: "Orders", icon: <Table2 /> },
     { key: "board", label: "Board", icon: <KanbanSquare /> },
     { key: "settings", label: "Settings", icon: <Settings /> },
   ],
 };
 
+/** Resolve a nav item / sub-item label by key (searches children too). */
+function navLabel(group: NavGroup, key: string): string {
+  for (const item of group.items) {
+    if (item.key === key) return item.label;
+    for (const sub of item.children ?? []) if (sub.key === key) return sub.label;
+  }
+  return "";
+}
+
 export function App() {
   const [demo, setDemo] = React.useState<Demo>("nav");
+  // tier-1 main-nav selection → titles the sidebar; tier-2 sub-nav selection → titles the content layer
+  const [mainKey, setMainKey] = React.useState("pricing");
+  const [subKey, setSubKey] = React.useState("pricing-setup");
+
+  const activeMain = RAIL_NAV.items.find((i) => i.key === mainKey) ?? RAIL_NAV.items[0];
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -57,26 +70,30 @@ export function App() {
           <TablesLayout />
         ) : (
           <AppShell
-            title="Pricing Setup"
+            // content-layer header = selected sub-nav item (tier-2)
+            title={navLabel(PRICING_NAV, subKey)}
             rail={
               <NavRail
                 brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}
                 groups={[RAIL_NAV]}
                 user={{ name: "Pavan S", email: "pavanshetty@fleetpanda.com", fallback: "PS" }}
-                activeKey="tables"
+                activeKey={mainKey}
+                onNavigate={setMainKey}
               />
             }
             sidebar={
               <NavigationDrawer
                 className="rounded-lg bg-sidebar"
+                // sidebar header = selected main-nav item (tier-1)
                 brand={{
-                  name: "Customer Pricing",
-                  icon: <GalleryVerticalEnd />,
+                  name: activeMain.label,
+                  icon: activeMain.icon,
                   iconClassName: "bg-sidebar-primary",
                 }}
                 groups={[PRICING_NAV]}
                 user={{ name: "shadcn", email: "m@example.com", fallback: "SC" }}
-                activeKey="pricing-setup"
+                activeKey={subKey}
+                onNavigate={setSubKey}
               />
             }
           >

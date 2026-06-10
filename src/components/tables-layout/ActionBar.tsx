@@ -1,8 +1,9 @@
-import { Search, ArrowUpDown, Columns3, ChevronDown, Plus } from "lucide-react";
+import { Search, ArrowUpDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterPanel } from "./FilterPanel";
 import { GroupByMenu } from "./GroupByMenu";
+import { SavedViewsMenu } from "./SavedViewsMenu";
 
 export interface ActionBarProps {
   searchValue?: string;
@@ -49,11 +50,7 @@ export function ActionBar({
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm">
-          <Columns3 />
-          Views: Default View
-          <ChevronDown />
-        </Button>
+        <SavedViewsMenu />
         <div className="h-8 w-px bg-border" aria-hidden />
         <Button size="sm" onClick={onCreateTask}>
           <Plus />

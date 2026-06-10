@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   ChevronsUpDown,
+  ChevronUp,
   ChevronDown,
   CirclePlay,
   Bold,
@@ -10,6 +11,7 @@ import {
   Pencil,
   Share2,
   Trash2,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,8 +24,11 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -35,13 +40,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { COLUMNS } from "./data";
-import type { RowStatus, TableRow as TableRowData } from "./types";
+import type { ColumnKey, RowStatus, TableRow as TableRowData } from "./types";
 
 const STATUS_DOT: Record<RowStatus, string> = {
   Success: "bg-status-success",
   Processing: "bg-status-processing",
   Failed: "bg-status-failed",
 };
+
+type SortDir = "asc" | "desc";
+interface SortState {
+  key: ColumnKey;
+  dir: SortDir;
+}
+
+/** Value a column sorts on. Columns without per-row data sort as a no-op. */
+function sortValue(row: TableRowData, key: ColumnKey): string | number {
+  switch (key) {
+    case "status":
+      return row.status;
+    case "switch":
+      return row.switchOn ? 1 : 0;
+    case "progress":
+      return row.progress;
+    case "amount":
+      return row.amount;
+    default:
+      return 0;
+  }
+}
 
 function StatusText({ status }: { status: RowStatus }) {
   return (
@@ -54,10 +81,47 @@ function StatusText({ status }: { status: RowStatus }) {
 
 function TwoLine({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 flex-col">
       <span className="truncate text-sm text-foreground">{title}</span>
       <span className="truncate text-xs text-muted-foreground">{description}</span>
     </div>
+  );
+}
+
+/** Per-cell dropdown — Figma "DropdownMenu / Menu" (336:4988): two groups, each
+ *  a label + three items (icon + label + shortcut). Triggered by the chevron. */
+function CellDropdown() {
+  const group = (key: string) => (
+    <DropdownMenuGroup key={key}>
+      <DropdownMenuLabel className="text-xs text-muted-foreground">
+        Label Text
+      </DropdownMenuLabel>
+      {[0, 1, 2].map((i) => (
+        <DropdownMenuItem key={i}>
+          <User />
+          Dropdown Menu Item Text
+          <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuGroup>
+  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Open menu"
+          className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <ChevronDown className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-40">
+        {group("a")}
+        <DropdownMenuSeparator />
+        {group("b")}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -79,6 +143,28 @@ export function DataTable({
   onToggleRow,
   onToggleAll,
 }: DataTableProps) {
+  const [sort, setSort] = React.useState<SortState | null>(null);
+
+  const sortedRows = React.useMemo(() => {
+    if (!sort) return rows;
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = sortValue(a, sort.key);
+      const bv = sortValue(b, sort.key);
+      if (av < bv) return -1 * factor;
+      if (av > bv) return 1 * factor;
+      return 0;
+    });
+  }, [rows, sort]);
+
+  // Click cycles a sortable column: asc → desc → unsorted.
+  const onSort = (key: ColumnKey) =>
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
@@ -93,39 +179,56 @@ export function DataTable({
         </colgroup>
         <TableHeader>
           <TableRow className="h-10">
-            {COLUMNS.map((col) => (
-              <TableHead
-                key={col.key}
-                className={cn(
-                  "px-3 text-xs font-medium text-muted-foreground",
-                  col.align === "right" && "text-right"
-                )}
-              >
-                {col.key === "select" ? (
-                  <Checkbox
-                    checked={headerState}
-                    onCheckedChange={(c) => onToggleAll(c === true)}
-                    aria-label="Select all rows"
-                  />
-                ) : col.label ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1",
-                      col.align === "right" && "flex-row-reverse"
-                    )}
-                  >
-                    {col.label}
-                    {col.sortable && (
-                      <ChevronsUpDown className="size-3.5 opacity-70" />
-                    )}
-                  </span>
-                ) : null}
-              </TableHead>
-            ))}
+            {COLUMNS.map((col) => {
+              const active = sort?.key === col.key;
+              const SortIcon = !active
+                ? ChevronsUpDown
+                : sort.dir === "asc"
+                  ? ChevronUp
+                  : ChevronDown;
+              return (
+                <TableHead
+                  key={col.key}
+                  aria-sort={
+                    active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined
+                  }
+                  className={cn(
+                    "px-3 text-xs font-medium text-muted-foreground",
+                    col.align === "right" && "text-right"
+                  )}
+                >
+                  {col.key === "select" ? (
+                    <Checkbox
+                      checked={headerState}
+                      onCheckedChange={(c) => onToggleAll(c === true)}
+                      aria-label="Select all rows"
+                    />
+                  ) : col.label && col.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(col.key)}
+                      aria-label={`Sort by ${col.label}`}
+                      className={cn(
+                        "inline-flex items-center gap-1 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+                        active && "text-foreground",
+                        col.align === "right" && "flex-row-reverse"
+                      )}
+                    >
+                      {col.label}
+                      <SortIcon
+                        className={cn("size-3.5", active ? "opacity-100" : "opacity-70")}
+                      />
+                    </button>
+                  ) : col.label ? (
+                    <span>{col.label}</span>
+                  ) : null}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
+          {sortedRows.map((row) => (
             <Row
               key={row.id}
               row={row}
@@ -165,11 +268,11 @@ function Row({
       <TableCell className="px-3">
         <StatusText status={row.status} />
       </TableCell>
-      {/* Dropdown (two-line + chevron) */}
+      {/* Dropdown (two-line + chevron → menu) */}
       <TableCell className="px-3">
         <div className="flex items-center justify-between gap-2">
           <TwoLine title={row.dropdown.title} description={row.dropdown.description} />
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          <CellDropdown />
         </div>
       </TableCell>
       {/* Descriptive Text */}

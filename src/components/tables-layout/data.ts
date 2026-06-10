@@ -65,6 +65,25 @@ export const SAMPLE_ROWS: TableRow[] = Array.from({ length: 1000 }, (_, i) => {
   };
 });
 
+/**
+ * Semantic badge variant for a row status — the value→variant binding (badges
+ * are semantic variables; the variant follows the data, not hardcoded).
+ * DS gap: the badge palette has no green "success" variant, so Success maps to
+ * `verified`; Processing → neutral `secondary`; Failed → `destructive`.
+ */
+export function statusBadgeVariant(
+  status: RowStatus
+): "verified" | "secondary" | "destructive" {
+  switch (status) {
+    case "Success":
+      return "verified";
+    case "Processing":
+      return "secondary";
+    case "Failed":
+      return "destructive";
+  }
+}
+
 /** Value a column sorts on. Columns without per-row data sort as a no-op. */
 function sortValue(row: TableRow, key: ColumnKey): string | number {
   switch (key) {

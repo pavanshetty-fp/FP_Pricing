@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { COLUMNS } from "./data";
+import { COLUMNS, statusBadgeVariant } from "./data";
 import type {
   ColumnKey,
   RowStatus,
@@ -286,9 +286,9 @@ function Row({
           description={row.descriptive.description}
         />
       </TableCell>
-      {/* Badge */}
+      {/* Badge — variant resolved from the row's status (semantic-variable rule) */}
       <TableCell className="px-3">
-        <Badge variant="outline">{row.badge}</Badge>
+        <Badge variant={statusBadgeVariant(row.status)}>{row.status}</Badge>
       </TableCell>
       {/* Badge w/ avatar + status */}
       <TableCell className="px-3">

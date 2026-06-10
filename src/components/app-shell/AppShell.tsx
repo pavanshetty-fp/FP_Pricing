@@ -44,12 +44,12 @@ export function AppShell({
           the rail; gap-2 = 8px between the sidebar and the content layer. */}
       <div className="flex min-w-0 flex-1 gap-2 p-2">
         {sidebar}
-        {/* Content Layer (Figma 27634:23034): a distinct Surface-1b panel —
-            #1b2028, rounded-md, 1px border — holding all of the selected
-            menu's content, with the 16px inset inside. */}
+        {/* Content Layer (Figma 27634:23034): a distinct panel filled with
+            tailwind FP/Surface 1b (#1b2028), rounded-md, no border — holds all
+            of the selected menu's content, with the 16px inset inside. */}
         <section
           className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b",
+            "relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b",
             inset && "p-4"
           )}
         >

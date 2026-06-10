@@ -1,5 +1,11 @@
 export { Button, buttonVariants } from "./button";
-export { Badge, badgeVariants } from "./badge";
+export {
+  Badge,
+  badgeVariants,
+  BadgeNumber,
+  badgeNumberVariants,
+  type BadgeNumberProps,
+} from "./badge";
 export { Checkbox } from "./checkbox";
 export { Switch } from "./switch";
 export { Input } from "./input";

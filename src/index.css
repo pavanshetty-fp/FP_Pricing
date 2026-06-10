@@ -69,6 +69,7 @@
   --color-status-processing: var(--status-processing);
   --color-status-failed: var(--status-failed);
   --color-status-pink: var(--status-pink);
+  --color-verified: var(--verified);
 }
 
 /*
@@ -129,6 +130,7 @@
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
   --status-failed: #f87171; /* = destructive */
   --status-pink: #ff8080; /* Status/Pink */
+  --verified: #3b82f6; /* Badge "Verified" blue (DS 23:995) */
 }
 
 @layer base {

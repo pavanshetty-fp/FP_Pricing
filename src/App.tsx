@@ -6,8 +6,12 @@ import {
   Table2,
   KanbanSquare,
   Settings,
+  Tag,
+  BadgeCheck,
+  ArrowRight,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { Badge, BadgeNumber } from "@/components/ui";
 import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -69,6 +73,11 @@ const SCREENS: Record<string, Screen> = {
     defaultSub: "sub-2d",
     content: <TablesLayout />,
   },
+  badges: {
+    label: "Badges",
+    icon: <Tag />,
+    content: <BadgesContent />,
+  },
   board: {
     label: "Board",
     icon: <KanbanSquare />,
@@ -81,7 +90,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "badges", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {
@@ -157,6 +166,48 @@ function PricingContent() {
           <LabelValue label="Carrier" value="XPO Logistics" />
           <LabelValue label="ETA" value="Jun 3, 2025" />
           <LabelValue label="Status" value="In Transit" />
+        </div>
+      </Stack>
+    </Stack>
+  );
+}
+
+/** Badge playground — Figma "Badge" page (23:995). */
+function BadgesContent() {
+  return (
+    <Stack space="section" className="overflow-auto">
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Displays a badge or a component that looks like a badge.
+      </p>
+
+      <Stack space="title">
+        <SectionHeading as="h3" title="Variants" />
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge>Badge</Badge>
+          <Badge variant="secondary">Secondary</Badge>
+          <Badge variant="outline">Outline</Badge>
+          <Badge variant="ghost">Ghost</Badge>
+          <Badge variant="destructive">Destructive</Badge>
+          <Badge variant="verified">
+            <BadgeCheck />
+            Verified
+          </Badge>
+          <Badge variant="link">
+            Link
+            <ArrowRight />
+          </Badge>
+        </div>
+      </Stack>
+
+      <Stack space="title">
+        <SectionHeading as="h3" title="Badge Number" />
+        <div className="flex flex-wrap items-center gap-3">
+          <BadgeNumber count={8} />
+          <BadgeNumber count={60} variant="secondary" />
+          <BadgeNumber count={3} variant="destructive" />
+          <BadgeNumber count={12} variant="verified" />
+          <BadgeNumber count={120} max={99} variant="outline" />
+          <BadgeNumber count={500} max={20} />
         </div>
       </Stack>
     </Stack>

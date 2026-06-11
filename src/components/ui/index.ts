@@ -45,6 +45,18 @@ export {
   AlertDialogTrigger,
 } from "./alert-dialog";
 export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog";
+export {
   Sheet,
   SheetTrigger,
   SheetClose,

@@ -9,11 +9,13 @@ import {
   Tag,
   BadgeCheck,
   ArrowRight,
+  SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge, BadgeNumber } from "@/components/ui";
 import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
+import { ModalsDemo } from "@/components/modals-demo";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 
@@ -78,6 +80,11 @@ const SCREENS: Record<string, Screen> = {
     icon: <Tag />,
     content: <BadgesContent />,
   },
+  modals: {
+    label: "Modals",
+    icon: <SquareStack />,
+    content: <ModalsDemo />,
+  },
   board: {
     label: "Board",
     icon: <KanbanSquare />,
@@ -90,7 +97,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "badges", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "badges", "modals", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

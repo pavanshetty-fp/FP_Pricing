@@ -12,6 +12,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Bulk-action bar entrance — a vertical translate (200ms), not opacity alone.
+   Default state has no transform, so the docked position is correct without JS. */
+@keyframes bulk-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bulk-bar-in {
+  animation: bulk-bar-in 200ms ease-out;
+}
+
 @theme inline {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
 

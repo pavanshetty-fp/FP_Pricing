@@ -76,8 +76,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   }
 
   return (
-    // relative anchors the floating bulk-action bar
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <PageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="mt-4 shrink-0">
@@ -88,16 +87,32 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
         />
       </div>
 
-      <div className="mt-4 min-h-0 flex-1 overflow-auto">
-        <DataTable
-          rows={pageRows}
-          selectedIds={selectedIds}
-          onToggleRow={toggleRow}
-          onToggleAll={toggleAll}
-          sort={sort}
-          onSort={onSort}
-          onRowAction={(variant) => setSheet(variant)}
-        />
+      {/* Table region — `relative` anchors the floating bulk-action bar so it
+          sits 20px above the pagination unit, centred to the content. */}
+      <div className="relative mt-4 min-h-0 flex-1">
+        <div className="h-full overflow-auto">
+          <DataTable
+            rows={pageRows}
+            selectedIds={selectedIds}
+            onToggleRow={toggleRow}
+            onToggleAll={toggleAll}
+            sort={sort}
+            onSort={onSort}
+            onRowAction={(variant) => setSheet(variant)}
+          />
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
+            <div className="pointer-events-auto">
+              <BulkActionBar
+                count={selectedIds.size}
+                onClear={() => setSelectedIds(new Set())}
+                onDelete={() => setSelectedIds(new Set())}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-border">
@@ -109,11 +124,6 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
           onPageSizeChange={onPageSizeChange}
         />
       </div>
-
-      <BulkActionBar
-        count={selectedIds.size}
-        onClear={() => setSelectedIds(new Set())}
-      />
 
       {sheet && (
         <SideSheet

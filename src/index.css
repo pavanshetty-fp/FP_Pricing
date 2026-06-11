@@ -123,13 +123,77 @@
 }
 
 /*
-  FleetPanda is dark-only. Values live on :root; <html> carries `.dark` so the
-  shadcn components' `dark:` utilities activate against these same tokens.
-  Source Figma variable noted per token.
+  Light + dark themes. `:root` is LIGHT (Style Guide "Colors" Light column,
+  21275:7). `<html class="dark">` flips to the FleetPanda DARK values below —
+  the FP surfaces/values we mapped from the Figma variable collection. The
+  shadcn `dark:` utilities still resolve against these same tokens.
+  Constants (brand, brand-foreground) are declared once on :root and inherited
+  by both themes.
 */
 :root {
   --radius: 0.625rem;
 
+  /* Light — shadcn token set, Style Guide Light column */
+  --background: #ffffff;
+  --foreground: #030405;
+  --card: #ffffff;
+  --card-foreground: #030405;
+  --popover: #ffffff;
+  --popover-foreground: #030405;
+  --primary: #090c0f;
+  --primary-foreground: #f0f2f5;
+  --secondary: #cad1db;
+  --secondary-foreground: #090c0f;
+  --muted: #cad1db;
+  --muted-foreground: #596475;
+  --accent: #cad1db;
+  --accent-foreground: #090c0f;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: #cdd4de; /* guide #abb3c2 lightened slightly for hairlines */
+  --input: #abb3c2;
+  --ring: #727d8f;
+
+  --chart-1: #ea580c;
+  --chart-2: #0d9488;
+  --chart-3: #164e63;
+  --chart-4: #fbbf24;
+  --chart-5: #f59e0b;
+
+  --sidebar: #f0f2f5;
+  --sidebar-foreground: #030405;
+  --sidebar-primary: #090c0f;
+  --sidebar-primary-foreground: #f0f2f5;
+  --sidebar-accent: #cad1db;
+  --sidebar-accent-foreground: #090c0f;
+  --sidebar-border: #cdd4de;
+  --sidebar-ring: #727d8f;
+
+  /* FleetPanda-only — constants (theme-independent) */
+  --brand: #fa6400; /* Primary (FP orange) */
+  --brand-foreground: #ffffff;
+
+  /* FleetPanda-only — LIGHT surface/chrome/status (derived to pair with above) */
+  --drawer: #f0f2f5; /* nav drawer chrome */
+  --rail: #e9ecf1; /* icon rail — a hair darker than the drawer */
+  --fp-outline-1: #e2e5ea;
+  --fp-outline-2: #cad1db;
+  --fp-surface-1a: #ffffff;
+  --fp-surface-1b: #f4f6f9; /* content layer — off-white, distinct from cards */
+  --fp-card-1: #e9ecf1;
+  --fp-surface-base: #ffffff;
+  --status-success: #16a34a;
+  --status-processing: #d97706;
+  --status-failed: #dc2626;
+  --status-pink: #db2777;
+  --verified: #2563eb;
+}
+
+/*
+  FleetPanda DARK — the original FP values (mapped from the Figma variable
+  collection). Applied when `<html>` carries `.dark`. Source variable per token.
+*/
+.dark {
   --background: #080808; /* base/background, FP/Surface Base */
   --foreground: #f0f2f5; /* base/foreground */
   --card: #11161d; /* FP/Surface 1a */
@@ -165,11 +229,9 @@
   --sidebar-border: #ffffff1a; /* base/sidebar-border */
   --sidebar-ring: #575757;
 
-  /* FleetPanda-only */
-  --brand: #fa6400; /* Primary (FP orange) */
-  --brand-foreground: #ffffff;
+  /* FleetPanda-only — dark surface/chrome/status */
   --drawer: #090c0f; /* Navigation Drawer Expanded bg */
-  --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar #11161d (R6) */
+  --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar (R6) */
   --fp-outline-1: #363c45; /* FP/Outline 1 */
   --fp-outline-2: #575757; /* FP/Outline 2 */
   --fp-surface-1a: #11161d;

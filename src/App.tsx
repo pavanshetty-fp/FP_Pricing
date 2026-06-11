@@ -18,6 +18,7 @@ import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { ModalsDemo } from "@/components/modals-demo";
 import { InfoCardsDemo } from "@/components/info-cards";
+import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 
@@ -133,6 +134,7 @@ export function App() {
   return (
     <AppShell
       title={title}
+      headerAction={<ThemeToggle />}
       rail={
         <NavRail
           brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}

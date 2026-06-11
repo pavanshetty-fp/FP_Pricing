@@ -12,6 +12,8 @@ export interface AppShellProps {
    * 24px semibold title; pass a node for custom header content.
    */
   title?: React.ReactNode;
+  /** Optional right-aligned controls in the page header (e.g. theme toggle). */
+  headerAction?: React.ReactNode;
   /** Content layer body. Rendered with the 16px inset unless `inset={false}`. */
   children: React.ReactNode;
   /** The 16px content-layer inset is a hard layout rule — on by default. */
@@ -34,6 +36,7 @@ export function AppShell({
   rail,
   sidebar,
   title,
+  headerAction,
   children,
   inset = true,
   className,
@@ -54,7 +57,7 @@ export function AppShell({
         {sidebar}
         {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border. */}
         <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
-          {title != null && (
+          {(title != null || headerAction != null) && (
             <header className="flex h-12 shrink-0 items-center gap-6 border-b border-fp-outline-1 px-4">
               {typeof title === "string" || typeof title === "number" ? (
                 <h1 className="truncate text-2xl font-semibold leading-none text-foreground">
@@ -62,6 +65,9 @@ export function AppShell({
                 </h1>
               ) : (
                 title
+              )}
+              {headerAction != null && (
+                <div className="ml-auto flex items-center gap-2">{headerAction}</div>
               )}
             </header>
           )}

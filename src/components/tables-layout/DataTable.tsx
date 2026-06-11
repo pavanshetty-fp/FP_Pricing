@@ -42,6 +42,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { InvoiceCard } from "@/components/info-cards";
 import { COLUMNS, statusBadgeVariant } from "./data";
 import type {
   ColumnKey,
@@ -359,9 +365,21 @@ function Row({
           </ToggleGroupItem>
         </ToggleGroup>
       </TableCell>
-      {/* Amount */}
+      {/* Amount — hovering reveals the price-breakdown information card */}
       <TableCell className="px-3 text-right text-sm tabular-nums">
-        {currency.format(row.amount)}
+        <HoverCard openDelay={120} closeDelay={80}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              className="rounded-sm underline decoration-dotted underline-offset-4 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              {currency.format(row.amount)}
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent align="end" side="left" className="w-[380px]">
+            <InvoiceCard />
+          </HoverCardContent>
+        </HoverCard>
       </TableCell>
       {/* Actions */}
       <TableCell className="px-3">

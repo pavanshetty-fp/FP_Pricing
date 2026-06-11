@@ -96,6 +96,7 @@ export {
   PopoverContent,
   PopoverAnchor,
 } from "./popover";
+export { HoverCard, HoverCardTrigger, HoverCardContent } from "./hover-card";
 export {
   Tooltip,
   TooltipTrigger,

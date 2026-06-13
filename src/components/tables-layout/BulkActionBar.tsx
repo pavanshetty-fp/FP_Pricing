@@ -211,9 +211,9 @@ export function BulkActionBar(props: BulkActionBarProps) {
                       <CommandItem
                         key={item.key}
                         value={item.label}
+                        icon={item.icon}
                         onSelect={() => onField?.(item.key)}
                       >
-                        {item.icon}
                         {item.label}
                       </CommandItem>
                     ))}

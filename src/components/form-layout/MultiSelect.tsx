@@ -1,11 +1,28 @@
 import * as React from "react";
-import { Plus, X, Check } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+/** Small circular initial badge used as a token / item leading glyph. */
+function InitialBadge({ label }: { label: string }) {
+  return (
+    <span className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
+      {label[0]}
+    </span>
+  );
+}
 
 /*
   Token multi-select / combobox — "Dropdown … Add Margins" (Figma 27593:15012).
@@ -56,9 +73,7 @@ export function MultiSelect({
               key={opt}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-fp-surface-1b py-1 pr-1 pl-1.5 text-sm"
             >
-              <span className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
-                {opt[0]}
-              </span>
+              <InitialBadge label={opt} />
               {opt}
               <span
                 role="button"
@@ -80,24 +95,30 @@ export function MultiSelect({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1">
-        {OPTIONS.map((opt) => {
-          const active = selected.includes(opt);
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => toggle(opt)}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent"
-            >
-              <span className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
-                {opt[0]}
-              </span>
-              <span className="flex-1">{opt}</span>
-              {active && <Check className="size-4 text-foreground" />}
-            </button>
-          );
-        })}
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) p-0"
+      >
+        <Command>
+          <CommandInput placeholder="Search margins..." />
+          <CommandList>
+            <CommandEmpty>No options found.</CommandEmpty>
+            <CommandGroup>
+              {OPTIONS.map((opt) => (
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  icon={<InitialBadge label={opt} />}
+                  selected={selected.includes(opt)}
+                  // keep the menu open for multi-select; cmdk doesn't close it
+                  onSelect={() => toggle(opt)}
+                >
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );

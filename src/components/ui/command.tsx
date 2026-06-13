@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, CheckIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -99,10 +99,34 @@ function CommandSeparator({
   );
 }
 
+/**
+ * Command item — Figma "Command / Item" (430:20061). Beyond the raw cmdk item,
+ * this surfaces the component's documented properties as ergonomic props:
+ *   - `icon`        → leading slot (the "Icon" variant; an INSTANCE_SWAP in Figma)
+ *   - `selected`    → trailing ✓ (the "Selected" variant)
+ *   - `shortcut`    → trailing shortcut text (the "Shortcut Text" property)
+ *   - `showShortcut`→ toggles the shortcut (the "Show Shortcut" BOOLEAN, default true)
+ * The Default/Hover/Disabled "State" variant is left to cmdk (it drives
+ * `data-[selected]`/`data-[disabled]`), so it isn't a manual prop. Passing only
+ * `children` keeps the plain shadcn behaviour — every existing call still works.
+ */
 function CommandItem({
   className,
+  children,
+  icon,
+  selected,
+  shortcut,
+  showShortcut = true,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+}: React.ComponentProps<typeof CommandPrimitive.Item> & {
+  icon?: React.ReactNode;
+  selected?: boolean;
+  shortcut?: React.ReactNode;
+  showShortcut?: boolean;
+}) {
+  // Only compose the structured layout when an FP prop is supplied; otherwise
+  // render children verbatim (backward-compatible with bare cmdk usage).
+  const structured = icon != null || selected != null || shortcut != null;
   return (
     <CommandPrimitive.Item
       data-slot="command-item"
@@ -111,7 +135,20 @@ function CommandItem({
         className
       )}
       {...props}
-    />
+    >
+      {structured ? (
+        <>
+          {icon}
+          <span className="flex-1 truncate">{children}</span>
+          {selected && <CheckIcon className="ml-auto size-4 text-foreground" />}
+          {shortcut != null && showShortcut && (
+            <CommandShortcut>{shortcut}</CommandShortcut>
+          )}
+        </>
+      ) : (
+        children
+      )}
+    </CommandPrimitive.Item>
   );
 }
 

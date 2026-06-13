@@ -6,30 +6,23 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { InvoiceCard } from "./InvoiceCard";
-import { BarChartCard, DonutCard, PaybackCard } from "./ChartCards";
+import { InvoiceCard } from "@/components/info-cards";
 
-/*
-  Info Cards — Figma "Information Card & tooltip" (27597:62089). Showcases the
-  information-card variants that surface on hover. The Invoice card is wired to
-  the table's amount column; the rest are here for other scenarios.
-*/
-export function InfoCardsDemo() {
+/**
+ * Hover Card showcase — Figma "Hover Card" (216:2886). The link-style trigger
+ * states plus a canonical account-preview card and the amount-breakdown wiring.
+ */
+export function HoverCardDemo() {
   return (
-    <Stack space="section" className="overflow-auto">
+    <Stack space="section" className="overflow-auto pb-10">
       <p className="max-w-prose text-sm text-muted-foreground">
-        Information cards surface contextual detail on hover. The Invoice
-        breakdown is wired to the Tables amount column; hover the trigger below
-        to preview it, and see the other card variants for further scenarios.
+        A hover card surfaces contextual detail on pointer hover. The link-style
+        trigger is plain by default, underlines on hover, and rings on keyboard
+        focus.
       </p>
 
       <Stack space="title">
-        <SectionHeading as="h3" title="Trigger states" />
-        <p className="text-sm text-muted-foreground">
-          The link-style trigger (Figma "Hover Card / Trigger"): plain by
-          default, underlined on hover, ring on keyboard focus. Hover the
-          account handle for the canonical preview card.
-        </p>
+        <SectionHeading as="h3" title="Account preview" />
         <HoverCard openDelay={120} closeDelay={80}>
           <HoverCardTrigger variant="link">@nextjs</HoverCardTrigger>
           <HoverCardContent className="w-80">
@@ -67,22 +60,6 @@ export function InfoCardsDemo() {
             <InvoiceCard />
           </HoverCardContent>
         </HoverCard>
-      </Stack>
-
-      <Stack space="title">
-        <SectionHeading as="h3" title="Invoice breakdown" />
-        <div className="w-[412px] max-w-full rounded-lg border border-border bg-fp-surface-1b p-6">
-          <InvoiceCard />
-        </div>
-      </Stack>
-
-      <Stack space="title">
-        <SectionHeading as="h3" title="Chart cards" />
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <BarChartCard />
-          <DonutCard />
-          <PaybackCard className="lg:col-span-2" />
-        </div>
       </Stack>
     </Stack>
   );

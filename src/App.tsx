@@ -6,20 +6,27 @@ import {
   Table2,
   KanbanSquare,
   Settings,
+  Component,
   Tag,
-  BadgeCheck,
-  ArrowRight,
-  SquareStack,
-  CreditCard,
+  Inbox,
   TextCursorInput,
+  MousePointerClick,
+  CreditCard,
+  Search,
+  SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { Badge, BadgeNumber } from "@/components/ui";
 import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { ModalsDemo } from "@/components/modals-demo";
-import { InfoCardsDemo } from "@/components/info-cards";
 import { FieldsDemo } from "@/components/fields-demo";
+import {
+  BadgeDemo,
+  EmptyDemo,
+  HoverCardDemo,
+  InformationCardDemo,
+  InputGroupDemo,
+} from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
@@ -42,6 +49,45 @@ const TABLES_NAV: NavGroup = {
   ],
 };
 
+/**
+ * The ShadCN component demos, one per Figma component page. Listed in the
+ * contextual drawer by their component-page name; the active drawer item
+ * selects the content shown.
+ */
+const COMPONENT_PAGES: {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+}[] = [
+  { key: "badge", label: "Badge", icon: <Tag />, content: <BadgeDemo /> },
+  { key: "empty", label: "Empty", icon: <Inbox />, content: <EmptyDemo /> },
+  { key: "field", label: "Field", icon: <TextCursorInput />, content: <FieldsDemo /> },
+  {
+    key: "hover-card",
+    label: "Hover Card",
+    icon: <MousePointerClick />,
+    content: <HoverCardDemo />,
+  },
+  {
+    key: "information-card",
+    label: "Information Card",
+    icon: <CreditCard />,
+    content: <InformationCardDemo />,
+  },
+  {
+    key: "input-group",
+    label: "Input Group",
+    icon: <Search />,
+    content: <InputGroupDemo />,
+  },
+  { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
+];
+
+const COMPONENTS_NAV: NavGroup = {
+  items: COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
+};
+
 /** Resolve a nav item / sub-item label by key (searches children too). */
 function navLabel(group: NavGroup, key: string): string {
   for (const item of group.items) {
@@ -58,6 +104,8 @@ interface Screen {
   sidebar?: NavGroup;
   defaultSub?: string;
   content: React.ReactNode;
+  /** When set, content is chosen by the active sub-nav key (a drawer per page). */
+  pages?: { key: string; label: string; content: React.ReactNode }[];
 }
 
 const SCREENS: Record<string, Screen> = {
@@ -80,25 +128,13 @@ const SCREENS: Record<string, Screen> = {
     defaultSub: "sub-2d",
     content: <TablesLayout />,
   },
-  badges: {
-    label: "Badges",
-    icon: <Tag />,
-    content: <BadgesContent />,
-  },
-  modals: {
-    label: "Modals",
-    icon: <SquareStack />,
-    content: <ModalsDemo />,
-  },
-  "info-cards": {
-    label: "Info Cards",
-    icon: <CreditCard />,
-    content: <InfoCardsDemo />,
-  },
-  fields: {
-    label: "Fields",
-    icon: <TextCursorInput />,
-    content: <FieldsDemo />,
+  components: {
+    label: "ShadCN components",
+    icon: <Component />,
+    sidebar: COMPONENTS_NAV,
+    defaultSub: COMPONENT_PAGES[0].key,
+    content: null,
+    pages: COMPONENT_PAGES,
   },
   board: {
     label: "Board",
@@ -112,7 +148,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "badges", "modals", "info-cards", "fields", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "components", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {
@@ -137,6 +173,12 @@ export function App() {
 
   // Content-layer title: selected sub-nav item, or the screen name when there's no drawer.
   const title = screen.sidebar ? navLabel(screen.sidebar, subKey) : screen.label;
+
+  // When a screen defines per-page content, the active drawer key selects it.
+  const content = screen.pages
+    ? (screen.pages.find((p) => p.key === subKey)?.content ??
+      screen.pages[0].content)
+    : screen.content;
 
   return (
     <AppShell
@@ -168,7 +210,7 @@ export function App() {
         ) : undefined
       }
     >
-      {screen.content}
+      {content}
     </AppShell>
   );
 }
@@ -189,48 +231,6 @@ function PricingContent() {
           <LabelValue label="Carrier" value="XPO Logistics" />
           <LabelValue label="ETA" value="Jun 3, 2025" />
           <LabelValue label="Status" value="In Transit" />
-        </div>
-      </Stack>
-    </Stack>
-  );
-}
-
-/** Badge playground — Figma "Badge" page (23:995). */
-function BadgesContent() {
-  return (
-    <Stack space="section" className="overflow-auto">
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Displays a badge or a component that looks like a badge.
-      </p>
-
-      <Stack space="title">
-        <SectionHeading as="h3" title="Variants" />
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge>Badge</Badge>
-          <Badge variant="secondary">Secondary</Badge>
-          <Badge variant="outline">Outline</Badge>
-          <Badge variant="ghost">Ghost</Badge>
-          <Badge variant="destructive">Destructive</Badge>
-          <Badge variant="verified">
-            <BadgeCheck />
-            Verified
-          </Badge>
-          <Badge variant="link">
-            Link
-            <ArrowRight />
-          </Badge>
-        </div>
-      </Stack>
-
-      <Stack space="title">
-        <SectionHeading as="h3" title="Badge Number" />
-        <div className="flex flex-wrap items-center gap-3">
-          <BadgeNumber count={8} />
-          <BadgeNumber count={60} variant="secondary" />
-          <BadgeNumber count={3} variant="destructive" />
-          <BadgeNumber count={12} variant="verified" />
-          <BadgeNumber count={120} max={99} variant="outline" />
-          <BadgeNumber count={500} max={20} />
         </div>
       </Stack>
     </Stack>

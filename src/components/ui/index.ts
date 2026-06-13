@@ -42,6 +42,14 @@ export {
   FieldContent,
 } from "./field";
 export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupInput,
+  InputGroupTextarea,
+} from "./input-group";
+export {
   Command,
   CommandInput,
   CommandList,

@@ -9,6 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
+  Field as UIField,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,7 +36,10 @@ import { ChoicePills } from "./ChoicePills";
   component whose variant/state follows the data (layout-template composition).
 */
 
-/** Section = muted group heading + its fields. */
+/**
+ * Section = a FieldSet with a label-variant legend (Figma "Field / Legend").
+ * Headings stay muted to match the form's existing rhythm.
+ */
 function Section({
   title,
   children,
@@ -37,40 +48,52 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
-      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+    <FieldSet className="gap-4">
+      <FieldLegend variant="label" className="mb-0 text-muted-foreground">
+        {title}
+      </FieldLegend>
       {children}
-    </section>
+    </FieldSet>
   );
 }
 
-/** Field = label (+ optional required marker) + control + helper text. */
+/**
+ * Field = the DS Field scaffold (label + control + description/error).
+ * When `error` is set the field flips to the Data Invalid=True variant:
+ * `data-invalid` reddens the label and FieldError replaces the description.
+ */
 function Field({
   label,
   required,
   description,
+  error,
+  htmlFor,
   children,
   className,
 }: {
   label?: string;
   required?: boolean;
   description?: string;
+  error?: string;
+  htmlFor?: string;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <UIField data-invalid={error ? true : undefined} className={className}>
       {label && (
-        <label className="text-sm font-medium text-foreground">
+        <FieldLabel htmlFor={htmlFor}>
           {label}
           {required && <span className="text-destructive"> *</span>}
-        </label>
+        </FieldLabel>
       )}
       {children}
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
+      {error ? (
+        <FieldError>{error}</FieldError>
+      ) : (
+        description && <FieldDescription>{description}</FieldDescription>
       )}
-    </div>
+    </UIField>
   );
 }
 
@@ -125,6 +148,12 @@ export function FormLayout({ onClose }: FormLayoutProps) {
   const [range2, setRange2] = React.useState<number[]>([60]);
   const fmt = (n: number) => n.toFixed(2);
 
+  // Required-field example → exercises the Data Invalid=True variant + FieldError.
+  const [name, setName] = React.useState("");
+  const [nameTouched, setNameTouched] = React.useState(false);
+  const nameError =
+    nameTouched && name.trim() === "" ? "This field is required." : undefined;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Header band */}
@@ -149,8 +178,21 @@ export function FormLayout({ onClose }: FormLayoutProps) {
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-10">
           <Section title="Input Fields">
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-              <Field label="Default" description="This is an input description.">
-                <Input placeholder="Placeholder" />
+              <Field
+                label="Default"
+                required
+                htmlFor="form-name"
+                description="This is an input description."
+                error={nameError}
+              >
+                <Input
+                  id="form-name"
+                  placeholder="Placeholder"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  aria-invalid={!!nameError}
+                />
               </Field>
               <Field
                 label="Phone Number"

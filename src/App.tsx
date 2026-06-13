@@ -11,6 +11,7 @@ import {
   ArrowRight,
   SquareStack,
   CreditCard,
+  TextCursorInput,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge, BadgeNumber } from "@/components/ui";
@@ -18,6 +19,7 @@ import { Stack, SectionHeading, LabelValue } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { ModalsDemo } from "@/components/modals-demo";
 import { InfoCardsDemo } from "@/components/info-cards";
+import { FieldsDemo } from "@/components/fields-demo";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
@@ -93,6 +95,11 @@ const SCREENS: Record<string, Screen> = {
     icon: <CreditCard />,
     content: <InfoCardsDemo />,
   },
+  fields: {
+    label: "Fields",
+    icon: <TextCursorInput />,
+    content: <FieldsDemo />,
+  },
   board: {
     label: "Board",
     icon: <KanbanSquare />,
@@ -105,7 +112,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "badges", "modals", "info-cards", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "badges", "modals", "info-cards", "fields", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

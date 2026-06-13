@@ -1,5 +1,6 @@
 import * as React from "react";
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
@@ -9,10 +10,53 @@ function HoverCard({
   return <HoverCardPrimitive.Root data-slot="hover-card" {...props} />;
 }
 
+/**
+ * Trigger States — Figma "Hover Card / Trigger" (216:3085). The `link` variant
+ * bakes the documented states so call sites don't hand-roll them:
+ *   Default → plain · Hover → underline · Focus → ring · Disabled → dimmed.
+ * Omit `variant` (or pass `asChild`) for the bare pass-through used when the
+ * trigger is a custom element.
+ */
+const hoverCardTriggerVariants = cva(
+  "inline-flex w-fit cursor-pointer items-center rounded-sm font-medium text-foreground underline-offset-4 outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: { variant: { link: "" } },
+  }
+);
+
 function HoverCardTrigger({
+  className,
+  variant,
+  children,
+  asChild,
   ...props
-}: React.ComponentProps<typeof HoverCardPrimitive.Trigger>) {
-  return <HoverCardPrimitive.Trigger data-slot="hover-card-trigger" {...props} />;
+}: React.ComponentProps<typeof HoverCardPrimitive.Trigger> &
+  VariantProps<typeof hoverCardTriggerVariants>) {
+  // A variant renders its own focusable <button>; without one, pass through
+  // (preserving the existing `asChild` API for custom trigger elements).
+  if (variant) {
+    return (
+      <HoverCardPrimitive.Trigger data-slot="hover-card-trigger" asChild>
+        <button
+          className={cn(hoverCardTriggerVariants({ variant }), className)}
+          {...(props as React.ComponentProps<"button">)}
+          type="button"
+        >
+          {children}
+        </button>
+      </HoverCardPrimitive.Trigger>
+    );
+  }
+  return (
+    <HoverCardPrimitive.Trigger
+      data-slot="hover-card-trigger"
+      className={className}
+      asChild={asChild}
+      {...props}
+    >
+      {children}
+    </HoverCardPrimitive.Trigger>
+  );
 }
 
 function HoverCardContent({
@@ -37,4 +81,9 @@ function HoverCardContent({
   );
 }
 
-export { HoverCard, HoverCardTrigger, HoverCardContent };
+export {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+  hoverCardTriggerVariants,
+};

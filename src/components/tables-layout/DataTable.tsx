@@ -368,13 +368,8 @@ function Row({
       {/* Amount — hovering reveals the price-breakdown information card */}
       <TableCell className="px-3 text-right text-sm tabular-nums">
         <HoverCard openDelay={120} closeDelay={80}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              className="rounded-sm underline decoration-dotted underline-offset-4 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              {currency.format(row.amount)}
-            </button>
+          <HoverCardTrigger variant="link" className="ml-auto tabular-nums">
+            {currency.format(row.amount)}
           </HoverCardTrigger>
           <HoverCardContent align="end" side="left" className="w-[380px]">
             <InvoiceCard />

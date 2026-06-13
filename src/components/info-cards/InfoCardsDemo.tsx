@@ -1,9 +1,11 @@
+import { CalendarDays } from "lucide-react";
 import { Stack, SectionHeading } from "@/components/typography";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InvoiceCard } from "./InvoiceCard";
 import { BarChartCard, DonutCard, PaybackCard } from "./ChartCards";
 
@@ -22,18 +24,44 @@ export function InfoCardsDemo() {
       </p>
 
       <Stack space="title">
-        <SectionHeading as="h3" title="Hover trigger" />
+        <SectionHeading as="h3" title="Trigger states" />
         <p className="text-sm text-muted-foreground">
-          Hover the amount to reveal the breakdown card.
+          The link-style trigger (Figma "Hover Card / Trigger"): plain by
+          default, underlined on hover, ring on keyboard focus. Hover the
+          account handle for the canonical preview card.
         </p>
         <HoverCard openDelay={120} closeDelay={80}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              className="w-fit cursor-default rounded-md px-2 py-1 text-sm font-medium tabular-nums underline decoration-dotted underline-offset-4 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              $2.90
-            </button>
+          <HoverCardTrigger variant="link">@nextjs</HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="flex gap-4">
+              <Avatar>
+                <AvatarImage src="https://github.com/vercel.png" alt="@nextjs" />
+                <AvatarFallback>VC</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold">@nextjs</h4>
+                <p className="text-sm">
+                  The React Framework – created and maintained by @vercel.
+                </p>
+                <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+                  <CalendarDays className="size-4" />
+                  Joined December 2021
+                </div>
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      </Stack>
+
+      <Stack space="title">
+        <SectionHeading as="h3" title="Amount breakdown trigger" />
+        <p className="text-sm text-muted-foreground">
+          The same link trigger wired to a currency amount — as used in the
+          Tables amount column.
+        </p>
+        <HoverCard openDelay={120} closeDelay={80}>
+          <HoverCardTrigger variant="link" className="tabular-nums">
+            $2.90
           </HoverCardTrigger>
           <HoverCardContent align="start" className="w-[380px]">
             <InvoiceCard />

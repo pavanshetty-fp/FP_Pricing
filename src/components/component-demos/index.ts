@@ -3,3 +3,4 @@ export { EmptyDemo } from "./EmptyDemo";
 export { HoverCardDemo } from "./HoverCardDemo";
 export { InformationCardDemo } from "./InformationCardDemo";
 export { InputGroupDemo } from "./InputGroupDemo";
+export { InputOTPDemo } from "./InputOTPDemo";

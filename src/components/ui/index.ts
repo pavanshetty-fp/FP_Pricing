@@ -50,6 +50,12 @@ export {
   InputGroupTextarea,
 } from "./input-group";
 export {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "./input-otp";
+export {
   Command,
   CommandInput,
   CommandList,

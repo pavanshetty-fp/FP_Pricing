@@ -13,6 +13,7 @@ import {
   MousePointerClick,
   CreditCard,
   Search,
+  RectangleEllipsis,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -26,6 +27,7 @@ import {
   HoverCardDemo,
   InformationCardDemo,
   InputGroupDemo,
+  InputOTPDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -80,6 +82,12 @@ const COMPONENT_PAGES: {
     label: "Input Group",
     icon: <Search />,
     content: <InputGroupDemo />,
+  },
+  {
+    key: "input-otp",
+    label: "Input OTP",
+    icon: <RectangleEllipsis />,
+    content: <InputOTPDemo />,
   },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];

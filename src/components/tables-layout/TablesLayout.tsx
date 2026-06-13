@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SearchX } from "lucide-react";
 import { PageHeader } from "./PageHeader";
 import { ActionBar } from "./ActionBar";
 import { DataTable } from "./DataTable";
@@ -6,8 +7,32 @@ import { BulkActionBar } from "./BulkActionBar";
 import { TablePagination } from "./TablePagination";
 import { FormLayout } from "@/components/form-layout";
 import { SideSheet, type SideSheetVariant } from "@/components/side-sheet";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { SAMPLE_ROWS, sortRows } from "./data";
 import type { ColumnKey, SortState, TableRow } from "./types";
+
+/** Free-text match across a row's visible text columns. */
+function matchesSearch(row: TableRow, q: string): boolean {
+  const haystack = [
+    row.status,
+    row.dropdown.title,
+    row.dropdown.description,
+    row.descriptive.title,
+    row.descriptive.description,
+    row.badge,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
 
 export interface TablesLayoutProps {
   /** Defaults to the sample dataset that mirrors the Figma frame. */
@@ -29,12 +54,18 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [formOpen, setFormOpen] = React.useState(false);
   const [sheet, setSheet] = React.useState<SideSheetVariant | null>(null);
 
-  // Sort the full dataset, then slice the current page.
-  const sorted = React.useMemo(() => sortRows(rows, sort), [rows, sort]);
+  // Filter by search, then sort the full dataset, then slice the current page.
+  const query = search.trim().toLowerCase();
+  const filtered = React.useMemo(
+    () => (query ? rows.filter((r) => matchesSearch(r, query)) : rows),
+    [rows, query]
+  );
+  const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort]);
   const pageRows = React.useMemo(
     () => sorted.slice((page - 1) * pageSize, page * pageSize),
     [sorted, page, pageSize]
   );
+  const isEmpty = sorted.length === 0;
 
   // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
   const onSort = (key: ColumnKey) => {
@@ -82,7 +113,10 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       <div className="mt-4 shrink-0">
         <ActionBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           onCreateTask={() => setFormOpen(true)}
         />
       </div>
@@ -91,15 +125,46 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
           sits 20px above the pagination unit, centred to the content. */}
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full overflow-auto">
-          <DataTable
-            rows={pageRows}
-            selectedIds={selectedIds}
-            onToggleRow={toggleRow}
-            onToggleAll={toggleAll}
-            sort={sort}
-            onSort={onSort}
-            onRowAction={(variant) => setSheet(variant)}
-          />
+          {isEmpty ? (
+            // Zero-results state — Figma "Empty" (18672:2962), icon media variant.
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <SearchX />
+                </EmptyMedia>
+                <EmptyTitle>No matching records</EmptyTitle>
+                <EmptyDescription>
+                  {query
+                    ? `No records match “${search.trim()}”. Try a different term or clear the search.`
+                    : "There's nothing here yet."}
+                </EmptyDescription>
+              </EmptyHeader>
+              {query && (
+                <EmptyContent>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setPage(1);
+                    }}
+                  >
+                    Clear search
+                  </Button>
+                </EmptyContent>
+              )}
+            </Empty>
+          ) : (
+            <DataTable
+              rows={pageRows}
+              selectedIds={selectedIds}
+              onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
+              sort={sort}
+              onSort={onSort}
+              onRowAction={(variant) => setSheet(variant)}
+            />
+          )}
         </div>
 
         {selectedIds.size > 0 && (

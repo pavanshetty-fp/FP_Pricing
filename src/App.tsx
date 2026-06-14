@@ -23,6 +23,7 @@ import {
   ChevronsUpDown,
   Minus,
   PanelLeft,
+  Loader,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -46,6 +47,7 @@ import {
   SelectDemo,
   SeparatorDemo,
   SidebarDemo,
+  SkeletonDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -126,6 +128,7 @@ const COMPONENT_PAGES: {
   { key: "select", label: "Select", icon: <ChevronsUpDown />, content: <SelectDemo /> },
   { key: "separator", label: "Separator", icon: <Minus />, content: <SeparatorDemo /> },
   { key: "sidebar", label: "Sidebar", icon: <PanelLeft />, content: <SidebarDemo /> },
+  { key: "skeleton", label: "Skeleton", icon: <Loader />, content: <SkeletonDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

@@ -13,3 +13,4 @@ export { RadioGroupDemo } from "./RadioGroupDemo";
 export { SelectDemo } from "./SelectDemo";
 export { SeparatorDemo } from "./SeparatorDemo";
 export { SidebarDemo } from "./SidebarDemo";
+export { SkeletonDemo } from "./SkeletonDemo";

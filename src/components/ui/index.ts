@@ -170,6 +170,9 @@ export {
   PopoverTrigger,
   PopoverContent,
   PopoverAnchor,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
 } from "./popover";
 export { HoverCard, HoverCardTrigger, HoverCardContent } from "./hover-card";
 export {

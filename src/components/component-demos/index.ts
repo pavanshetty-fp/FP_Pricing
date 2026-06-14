@@ -19,3 +19,4 @@ export { SonnerDemo } from "./SonnerDemo";
 export { SwitchDemo } from "./SwitchDemo";
 export { TabsDemo } from "./TabsDemo";
 export { TextareaDemo } from "./TextareaDemo";
+export { TooltipDemo } from "./TooltipDemo";

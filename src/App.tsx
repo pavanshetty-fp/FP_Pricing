@@ -25,6 +25,7 @@ import {
   PanelLeft,
   Loader,
   SlidersHorizontal,
+  Bell,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -50,7 +51,9 @@ import {
   SidebarDemo,
   SkeletonDemo,
   SliderDemo,
+  SonnerDemo,
 } from "@/components/component-demos";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
@@ -132,6 +135,7 @@ const COMPONENT_PAGES: {
   { key: "sidebar", label: "Sidebar", icon: <PanelLeft />, content: <SidebarDemo /> },
   { key: "skeleton", label: "Skeleton", icon: <Loader />, content: <SkeletonDemo /> },
   { key: "slider", label: "Slider", icon: <SlidersHorizontal />, content: <SliderDemo /> },
+  { key: "sonner", label: "Sonner", icon: <Bell />, content: <SonnerDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 
@@ -232,6 +236,7 @@ export function App() {
     : screen.content;
 
   return (
+    <>
     <AppShell
       title={title}
       headerAction={<ThemeToggle />}
@@ -263,6 +268,8 @@ export function App() {
     >
       {content}
     </AppShell>
+    <Toaster position="bottom-right" />
+    </>
   );
 }
 

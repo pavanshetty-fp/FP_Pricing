@@ -170,6 +170,7 @@ export {
 export { Progress } from "./progress";
 export { Separator } from "./separator";
 export { Skeleton } from "./skeleton";
+export { Toaster } from "./sonner";
 export { Toggle, toggleVariants } from "./toggle";
 export { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 export {

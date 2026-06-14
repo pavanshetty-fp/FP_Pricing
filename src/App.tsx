@@ -14,6 +14,7 @@ import {
   CreditCard,
   Search,
   RectangleEllipsis,
+  Rows3,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -28,6 +29,7 @@ import {
   InformationCardDemo,
   InputGroupDemo,
   InputOTPDemo,
+  ItemDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -89,6 +91,7 @@ const COMPONENT_PAGES: {
     icon: <RectangleEllipsis />,
     content: <InputOTPDemo />,
   },
+  { key: "item", label: "Item", icon: <Rows3 />, content: <ItemDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

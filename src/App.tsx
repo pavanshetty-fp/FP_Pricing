@@ -28,6 +28,7 @@ import {
   Bell,
   ToggleRight,
   AppWindow,
+  Text,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -56,6 +57,7 @@ import {
   SonnerDemo,
   SwitchDemo,
   TabsDemo,
+  TextareaDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/theme";
@@ -142,6 +144,7 @@ const COMPONENT_PAGES: {
   { key: "sonner", label: "Sonner", icon: <Bell />, content: <SonnerDemo /> },
   { key: "switch", label: "Switch", icon: <ToggleRight />, content: <SwitchDemo /> },
   { key: "tabs", label: "Tabs", icon: <AppWindow />, content: <TabsDemo /> },
+  { key: "textarea", label: "Textarea", icon: <Text />, content: <TextareaDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

@@ -24,6 +24,7 @@ import {
   Minus,
   PanelLeft,
   Loader,
+  SlidersHorizontal,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -48,6 +49,7 @@ import {
   SeparatorDemo,
   SidebarDemo,
   SkeletonDemo,
+  SliderDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -129,6 +131,7 @@ const COMPONENT_PAGES: {
   { key: "separator", label: "Separator", icon: <Minus />, content: <SeparatorDemo /> },
   { key: "sidebar", label: "Sidebar", icon: <PanelLeft />, content: <SidebarDemo /> },
   { key: "skeleton", label: "Skeleton", icon: <Loader />, content: <SkeletonDemo /> },
+  { key: "slider", label: "Slider", icon: <SlidersHorizontal />, content: <SliderDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

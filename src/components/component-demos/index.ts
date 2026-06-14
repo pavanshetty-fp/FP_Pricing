@@ -14,3 +14,4 @@ export { SelectDemo } from "./SelectDemo";
 export { SeparatorDemo } from "./SeparatorDemo";
 export { SidebarDemo } from "./SidebarDemo";
 export { SkeletonDemo } from "./SkeletonDemo";
+export { SliderDemo } from "./SliderDemo";

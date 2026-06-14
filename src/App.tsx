@@ -19,6 +19,7 @@ import {
   Navigation,
   MessageSquare,
   LoaderCircle,
+  CircleDot,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -38,6 +39,7 @@ import {
   NavigationMenuDemo,
   PopoverDemo,
   ProgressDemo,
+  RadioGroupDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -109,6 +111,12 @@ const COMPONENT_PAGES: {
   },
   { key: "popover", label: "Popover", icon: <MessageSquare />, content: <PopoverDemo /> },
   { key: "progress", label: "Progress", icon: <LoaderCircle />, content: <ProgressDemo /> },
+  {
+    key: "radio-group",
+    label: "Radio Group",
+    icon: <CircleDot />,
+    content: <RadioGroupDemo />,
+  },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

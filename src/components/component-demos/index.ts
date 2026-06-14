@@ -8,3 +8,4 @@ export { ItemDemo } from "./ItemDemo";
 export { MenubarDemo } from "./MenubarDemo";
 export { NavigationMenuDemo } from "./NavigationMenuDemo";
 export { PopoverDemo } from "./PopoverDemo";
+export { ProgressDemo } from "./ProgressDemo";

@@ -18,6 +18,7 @@ import {
   Menu,
   Navigation,
   MessageSquare,
+  LoaderCircle,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -36,6 +37,7 @@ import {
   MenubarDemo,
   NavigationMenuDemo,
   PopoverDemo,
+  ProgressDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -106,6 +108,7 @@ const COMPONENT_PAGES: {
     content: <NavigationMenuDemo />,
   },
   { key: "popover", label: "Popover", icon: <MessageSquare />, content: <PopoverDemo /> },
+  { key: "progress", label: "Progress", icon: <LoaderCircle />, content: <ProgressDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

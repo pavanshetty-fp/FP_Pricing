@@ -26,6 +26,7 @@ import {
   Loader,
   SlidersHorizontal,
   Bell,
+  ToggleRight,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -52,6 +53,7 @@ import {
   SkeletonDemo,
   SliderDemo,
   SonnerDemo,
+  SwitchDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/theme";
@@ -136,6 +138,7 @@ const COMPONENT_PAGES: {
   { key: "skeleton", label: "Skeleton", icon: <Loader />, content: <SkeletonDemo /> },
   { key: "slider", label: "Slider", icon: <SlidersHorizontal />, content: <SliderDemo /> },
   { key: "sonner", label: "Sonner", icon: <Bell />, content: <SonnerDemo /> },
+  { key: "switch", label: "Switch", icon: <ToggleRight />, content: <SwitchDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

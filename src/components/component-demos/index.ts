@@ -6,3 +6,4 @@ export { InputGroupDemo } from "./InputGroupDemo";
 export { InputOTPDemo } from "./InputOTPDemo";
 export { ItemDemo } from "./ItemDemo";
 export { MenubarDemo } from "./MenubarDemo";
+export { NavigationMenuDemo } from "./NavigationMenuDemo";

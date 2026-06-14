@@ -86,6 +86,17 @@ export {
   MenubarSubContent,
 } from "./menubar";
 export {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuContent,
+  NavigationMenuTrigger,
+  NavigationMenuLink,
+  NavigationMenuIndicator,
+  NavigationMenuViewport,
+  navigationMenuTriggerStyle,
+} from "./navigation-menu";
+export {
   Command,
   CommandInput,
   CommandList,

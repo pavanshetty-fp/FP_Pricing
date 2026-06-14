@@ -10,3 +10,4 @@ export { NavigationMenuDemo } from "./NavigationMenuDemo";
 export { PopoverDemo } from "./PopoverDemo";
 export { ProgressDemo } from "./ProgressDemo";
 export { RadioGroupDemo } from "./RadioGroupDemo";
+export { SelectDemo } from "./SelectDemo";

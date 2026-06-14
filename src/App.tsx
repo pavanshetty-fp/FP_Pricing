@@ -22,6 +22,7 @@ import {
   CircleDot,
   ChevronsUpDown,
   Minus,
+  PanelLeft,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -44,6 +45,7 @@ import {
   RadioGroupDemo,
   SelectDemo,
   SeparatorDemo,
+  SidebarDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -123,6 +125,7 @@ const COMPONENT_PAGES: {
   },
   { key: "select", label: "Select", icon: <ChevronsUpDown />, content: <SelectDemo /> },
   { key: "separator", label: "Separator", icon: <Minus />, content: <SeparatorDemo /> },
+  { key: "sidebar", label: "Sidebar", icon: <PanelLeft />, content: <SidebarDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

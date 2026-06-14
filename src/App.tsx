@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   Bell,
   ToggleRight,
+  AppWindow,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -54,6 +55,7 @@ import {
   SliderDemo,
   SonnerDemo,
   SwitchDemo,
+  TabsDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/theme";
@@ -139,6 +141,7 @@ const COMPONENT_PAGES: {
   { key: "slider", label: "Slider", icon: <SlidersHorizontal />, content: <SliderDemo /> },
   { key: "sonner", label: "Sonner", icon: <Bell />, content: <SonnerDemo /> },
   { key: "switch", label: "Switch", icon: <ToggleRight />, content: <SwitchDemo /> },
+  { key: "tabs", label: "Tabs", icon: <AppWindow />, content: <TabsDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

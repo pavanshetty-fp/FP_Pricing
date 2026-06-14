@@ -15,6 +15,7 @@ import {
   Search,
   RectangleEllipsis,
   Rows3,
+  Menu,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -30,6 +31,7 @@ import {
   InputGroupDemo,
   InputOTPDemo,
   ItemDemo,
+  MenubarDemo,
 } from "@/components/component-demos";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
@@ -92,6 +94,7 @@ const COMPONENT_PAGES: {
     content: <InputOTPDemo />,
   },
   { key: "item", label: "Item", icon: <Rows3 />, content: <ItemDemo /> },
+  { key: "menubar", label: "Menubar", icon: <Menu />, content: <MenubarDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
 ];
 

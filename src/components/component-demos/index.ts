@@ -5,3 +5,4 @@ export { InformationCardDemo } from "./InformationCardDemo";
 export { InputGroupDemo } from "./InputGroupDemo";
 export { InputOTPDemo } from "./InputOTPDemo";
 export { ItemDemo } from "./ItemDemo";
+export { MenubarDemo } from "./MenubarDemo";

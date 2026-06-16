@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Boxes,
-  GalleryVerticalEnd,
   LayoutDashboard,
   Table2,
   KanbanSquare,
@@ -37,7 +36,7 @@ import {
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { Stack, SectionHeading, LabelValue } from "@/components/typography";
+import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
@@ -86,7 +85,7 @@ import {
 } from "@/components/ui/field";
 import { ThemeToggle } from "@/components/theme";
 import { usePreferences, type ActionBarComponent } from "@/components/preferences";
-import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
+import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 
 /** Contextual sub-nav for the Tables screen — Figma "Main Menu 2" drawer. */
@@ -212,13 +211,6 @@ const SCREENS: Record<string, Screen> = {
     icon: <LayoutDashboard />,
     content: <EmptyScreen label="Dashboard" />,
   },
-  pricing: {
-    label: "Customer Pricing",
-    icon: <GalleryVerticalEnd />,
-    sidebar: PRICING_NAV,
-    defaultSub: "pricing-setup",
-    content: <PricingContent />,
-  },
   tables: {
     label: "Tables",
     icon: <Table2 />,
@@ -258,7 +250,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "components", "accordion", "component-control", "board", "settings"];
+const ORDER = ["dashboard", "tables", "components", "accordion", "component-control", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {
@@ -391,28 +383,6 @@ export function App() {
     </AppShell>
     <Toaster position="bottom-right" />
     </>
-  );
-}
-
-/** Content-layer demo exercising the vertical-rhythm helpers. */
-function PricingContent() {
-  return (
-    <Stack space="section" className="overflow-auto">
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Configure base price index, margins, taxes, fees and discounts per ShipTo × Product.
-      </p>
-      <Stack space="title">
-        <SectionHeading as="h3" title="Shipment Overview" />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
-          <LabelValue label="Order ID" value="#SHP-20481" />
-          <LabelValue label="Origin" value="Chicago, IL" />
-          <LabelValue label="Destination" value="Atlanta, GA" />
-          <LabelValue label="Carrier" value="XPO Logistics" />
-          <LabelValue label="ETA" value="Jun 3, 2025" />
-          <LabelValue label="Status" value="In Transit" />
-        </div>
-      </Stack>
-    </Stack>
   );
 }
 

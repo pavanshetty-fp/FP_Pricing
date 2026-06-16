@@ -7,6 +7,7 @@ import {
   KanbanSquare,
   Settings,
   Component,
+  ListCollapse,
   Tag,
   Inbox,
   TextCursorInput,
@@ -38,6 +39,7 @@ import { TablesLayout } from "@/components/tables-layout";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
+  AccordionDemo,
   BadgeDemo,
   EmptyDemo,
   HoverCardDemo,
@@ -62,6 +64,14 @@ import {
   TooltipDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
@@ -95,6 +105,7 @@ const COMPONENT_PAGES: {
   icon: React.ReactNode;
   content: React.ReactNode;
 }[] = [
+  { key: "accordion", label: "Accordion", icon: <ListCollapse />, content: <AccordionDemo /> },
   { key: "badge", label: "Badge", icon: <Tag />, content: <BadgeDemo /> },
   { key: "empty", label: "Empty", icon: <Inbox />, content: <EmptyDemo /> },
   { key: "field", label: "Field", icon: <TextCursorInput />, content: <FieldsDemo /> },
@@ -247,10 +258,63 @@ export function App() {
       screen.pages[0].content)
     : screen.content;
 
+  // Breadcrumb = Home › rail item › (drawer group) › drawer item. Only shown on
+  // multi-level paths (i.e. screens that have a contextual drawer). The last
+  // crumb is the current page; ancestors navigate. (docs/content-layer.md)
+  const crumbs: { label: string; onClick?: () => void }[] = screen.sidebar
+    ? [
+        { label: "Home", onClick: () => onMainNavigate("dashboard") },
+        { label: screen.label, onClick: () => setSubKey(screen.defaultSub ?? "") },
+      ]
+    : [];
+  if (screen.sidebar) {
+    for (const item of screen.sidebar.items) {
+      if (item.key === subKey) {
+        crumbs.push({ label: item.label });
+        break;
+      }
+      const child = item.children?.find((c) => c.key === subKey);
+      if (child) {
+        crumbs.push({
+          label: item.label,
+          onClick: () => setSubKey(item.children![0].key),
+        });
+        crumbs.push({ label: child.label });
+        break;
+      }
+    }
+  }
+  const breadcrumb = screen.sidebar ? (
+    <Breadcrumb>
+      <BreadcrumbList>
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          return (
+            <React.Fragment key={c.label + i}>
+              <BreadcrumbItem>
+                {isLast || !c.onClick ? (
+                  <BreadcrumbPage>{c.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <button type="button" onClick={c.onClick}>
+                      {c.label}
+                    </button>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!isLast && <BreadcrumbSeparator />}
+            </React.Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  ) : undefined;
+
   return (
     <>
     <AppShell
       title={title}
+      breadcrumb={breadcrumb}
       headerAction={<ThemeToggle />}
       rail={
         <NavRail

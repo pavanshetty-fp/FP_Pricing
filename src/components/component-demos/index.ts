@@ -1,3 +1,4 @@
+export { AccordionDemo } from "./AccordionDemo";
 export { BadgeDemo } from "./BadgeDemo";
 export { EmptyDemo } from "./EmptyDemo";
 export { HoverCardDemo } from "./HoverCardDemo";

@@ -22,6 +22,15 @@ export {
 } from "./accordion";
 export { Kbd, KbdGroup } from "./kbd";
 export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from "./breadcrumb";
+export {
   Empty,
   EmptyHeader,
   EmptyMedia,

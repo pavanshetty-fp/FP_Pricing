@@ -7,6 +7,7 @@ import {
   Settings,
   Component,
   ListCollapse,
+  FileText,
   Tag,
   Inbox,
   TextCursorInput,
@@ -38,6 +39,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
+import { FormLayout } from "@/components/form-layout";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
@@ -218,6 +220,11 @@ const SCREENS: Record<string, Screen> = {
     defaultSub: "sub-2d",
     content: <TablesLayout />,
   },
+  "form-layout": {
+    label: "Form Layout",
+    icon: <FileText />,
+    content: <FormLayout />,
+  },
   components: {
     label: "ShadCN components",
     icon: <Component />,
@@ -250,7 +257,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "tables", "components", "accordion", "component-control", "board", "settings"];
+const ORDER = ["dashboard", "tables", "form-layout", "components", "accordion", "component-control", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

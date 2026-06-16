@@ -156,12 +156,13 @@ export function FormLayout({ onClose }: FormLayoutProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Header band */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border">
-        <div className="flex flex-col">
-          <h2 className="text-base font-semibold">Create Form</h2>
-        </div>
-        {onClose && (
+      {/* Header band — only in the inline/overlay flow (Create Form CTA). As a
+          standalone screen the AppShell page header already titles the form. */}
+      {onClose && (
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border">
+          <div className="flex flex-col">
+            <h2 className="text-base font-semibold">Create Form</h2>
+          </div>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -170,8 +171,8 @@ export function FormLayout({ onClose }: FormLayoutProps) {
           >
             <X />
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Scrollable body */}
       <div className="min-h-0 flex-1 overflow-auto py-6">

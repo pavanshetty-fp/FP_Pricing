@@ -174,13 +174,17 @@ export function EditableTable() {
     <div>
       {/* Bottom-left corner squared so the Add chip connects as an extension. */}
       <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
-        <table className="w-full border-collapse">
+        <table className="w-full table-fixed border-collapse">
+          {/* Last column is pinned to exactly 52px (the delete/confirm control).
+              The four data columns keep their 26/22/26/26 proportions; in a
+              fixed layout the browser reserves the 52px and scales the
+              percentages to the remaining width. */}
           <colgroup>
             <col className="w-[26%]" />
             <col className="w-[22%]" />
             <col className="w-[26%]" />
             <col className="w-[26%]" />
-            <col className="w-[76px]" />
+            <col className="w-[52px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-fp-surface-1a">
@@ -237,9 +241,9 @@ export function EditableTable() {
                     default → hover reveals trash → click swaps the same cell
                     space for a 52×52 vertical split: ✕ cancel (top, dark) over
                     ✓ confirm (bottom, red). */}
-                <td className="px-1 align-middle">
+                <td className="p-0 align-middle">
                   {confirmId === row.id ? (
-                    <div className="ml-auto flex size-[52px] flex-col overflow-hidden rounded-md">
+                    <div className="flex size-[52px] flex-col overflow-hidden rounded-md">
                       <button
                         type="button"
                         onClick={() => setConfirmId(null)}
@@ -265,7 +269,7 @@ export function EditableTable() {
                       type="button"
                       onClick={() => setConfirmId(row.id)}
                       aria-label="Delete row"
-                      className="ml-auto flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-none transition-[color,opacity,background-color] group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="mx-auto flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-none transition-[color,opacity,background-color] group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       <Trash2 className="size-4" />
                     </button>

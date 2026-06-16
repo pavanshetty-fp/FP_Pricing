@@ -118,7 +118,6 @@ const COMPONENT_PAGES: {
   icon: React.ReactNode;
   content: React.ReactNode;
 }[] = [
-  { key: "accordion", label: "Accordion", icon: <ListCollapse />, content: <AccordionDemo /> },
   { key: "badge", label: "Badge", icon: <Tag />, content: <BadgeDemo /> },
   { key: "empty", label: "Empty", icon: <Inbox />, content: <EmptyDemo /> },
   { key: "field", label: "Field", icon: <TextCursorInput />, content: <FieldsDemo /> },
@@ -235,6 +234,11 @@ const SCREENS: Record<string, Screen> = {
     content: null,
     pages: COMPONENT_PAGES,
   },
+  accordion: {
+    label: "Accordion",
+    icon: <ListCollapse />,
+    content: <AccordionDemo />,
+  },
   "component-control": {
     label: "Component Control",
     icon: <ToggleLeft />,
@@ -254,7 +258,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "components", "component-control", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "components", "accordion", "component-control", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

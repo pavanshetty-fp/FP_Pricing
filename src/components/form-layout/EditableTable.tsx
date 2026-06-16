@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +107,8 @@ export function EditableTable() {
     makeRow("er-1"),
     makeRow("er-2"),
   ]);
+  // Row id whose delete is awaiting inline confirmation (✕ / red ✓).
+  const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
   const update = (id: string, patch: Partial<EditableRow>) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -126,7 +128,7 @@ export function EditableTable() {
             <col className="w-[22%]" />
             <col className="w-[26%]" />
             <col className="w-[26%]" />
-            <col className="w-10" />
+            <col className="w-[76px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-fp-surface-1a">
@@ -180,15 +182,41 @@ export function EditableTable() {
                     onChange={(v) => update(row.id, { ownership: v })}
                   />
                 </td>
+                {/* Last column — delete with inline confirm (Figma 28133:1526):
+                    default → hover reveals trash → click reveals ✕ / red ✓. */}
                 <td className="px-1 align-middle">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(row.id)}
-                    aria-label="Delete row"
-                    className="flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-none transition-[color,opacity,background-color] group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  {confirmId === row.id ? (
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmId(null)}
+                        aria-label="Cancel delete"
+                        className="flex size-7 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <X className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeRow(row.id);
+                          setConfirmId(null);
+                        }}
+                        aria-label="Confirm delete"
+                        className="flex size-7 items-center justify-center rounded-sm bg-destructive text-white outline-none transition-colors hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <Check className="size-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(row.id)}
+                      aria-label="Delete row"
+                      className="ml-auto flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-none transition-[color,opacity,background-color] group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -196,9 +224,16 @@ export function EditableTable() {
         </table>
       </div>
 
-      <Button variant="outline" size="sm" className="mt-3" onClick={addRow}>
-        <Plus />
-        Add more
+      {/* Add a full row — compact Surface-Base chip (Figma 28133:1526):
+          "Add Row" when empty, "Add more" once rows exist. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={addRow}
+        className="mt-2 h-7 gap-1.5 rounded-md bg-background px-2.5 text-foreground hover:bg-background/80"
+      >
+        <Plus className="size-4" />
+        {rows.length > 0 ? "Add more" : "Add Row"}
       </Button>
     </div>
   );

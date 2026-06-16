@@ -16,8 +16,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { SAMPLE_ROWS, sortRows } from "./data";
+import { COLUMNS, SAMPLE_ROWS, sortRows } from "./data";
 import type { ColumnKey, SortState, TableRow } from "./types";
+
+/** Columns the column-filters menu can toggle (everything with a header label). */
+const TOGGLE_COLUMNS = COLUMNS.filter((c) => c.label).map((c) => ({
+  key: c.key as string,
+  label: c.label,
+}));
 
 /** Free-text match across a row's visible text columns. */
 function matchesSearch(row: TableRow, q: string): boolean {
@@ -53,6 +59,17 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [pageSize, setPageSize] = React.useState(25);
   const [formOpen, setFormOpen] = React.useState(false);
   const [sheet, setSheet] = React.useState<SideSheetVariant | null>(null);
+  const [hiddenColumns, setHiddenColumns] = React.useState<Set<ColumnKey>>(
+    new Set()
+  );
+
+  const toggleColumn = (key: string) =>
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key as ColumnKey)) next.delete(key as ColumnKey);
+      else next.add(key as ColumnKey);
+      return next;
+    });
 
   // Filter by search, then sort the full dataset, then slice the current page.
   const query = search.trim().toLowerCase();
@@ -118,6 +135,9 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
             setPage(1);
           }}
           onCreateTask={() => setFormOpen(true)}
+          columns={TOGGLE_COLUMNS}
+          hiddenColumns={hiddenColumns}
+          onToggleColumn={toggleColumn}
         />
       </div>
 
@@ -163,6 +183,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
               sort={sort}
               onSort={onSort}
               onRowAction={(variant) => setSheet(variant)}
+              hidden={hiddenColumns}
             />
           )}
         </div>

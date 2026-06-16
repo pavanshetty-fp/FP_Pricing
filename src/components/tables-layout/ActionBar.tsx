@@ -1,6 +1,14 @@
-import { Search, ArrowUpDown, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FilterPanel } from "./FilterPanel";
 import { GroupByMenu } from "./GroupByMenu";
 import { SavedViewsMenu } from "./SavedViewsMenu";
@@ -9,6 +17,12 @@ export interface ActionBarProps {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   onCreateTask?: () => void;
+  /** Toggleable columns for the search's column-filters menu. */
+  columns?: { key: string; label: string }[];
+  /** Currently hidden column keys. */
+  hiddenColumns?: Set<string>;
+  /** Toggle a column's visibility. */
+  onToggleColumn?: (key: string) => void;
 }
 
 /** Figma "Action bar" (id 27614:56583). Controls are 32px (size="sm"). */
@@ -16,6 +30,9 @@ export function ActionBar({
   searchValue = "",
   onSearchChange,
   onCreateTask,
+  columns = [],
+  hiddenColumns,
+  onToggleColumn,
 }: ActionBarProps) {
   return (
     <div className="flex h-8 items-center justify-between gap-2">
@@ -34,14 +51,34 @@ export function ActionBar({
               className="h-8 rounded-r-none pl-8"
             />
           </div>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label="Sort options"
-            className="-ml-px rounded-l-none"
-          >
-            <ArrowUpDown />
-          </Button>
+          {/* Column filters — show/hide table columns (Figma "Search bar with
+              column filters"). */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Column filters"
+                className="-ml-px rounded-l-none"
+              >
+                <SlidersHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel>Columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {columns.map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  checked={!hiddenColumns?.has(c.key)}
+                  onCheckedChange={() => onToggleColumn?.(c.key)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <FilterPanel />

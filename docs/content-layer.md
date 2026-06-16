@@ -23,60 +23,57 @@ The two spacing laws are unchanged and still govern placement:
 
 ```
 ┌─ Content Layer (Surface-1b, rounded-md, no outer border) ──────────┐
-│  Page Header  (fixed, does not scroll)                             │
-│    • Breadcrumb row        Home › Settings › Profile details        │
-│    • Title row             Title of The Menu        [headerAction]  │
+│  Page Header (48px, fixed)   Title of The Menu      [headerAction]  │
 │  ───────────────────────── 1px divider (--fp-outline-1) ────────── │
+│  Breadcrumb band (fixed)   Home › Settings › Profile details        │  ← optional
 │  Body  (16px inset; owns its own scroll)                           │
 │    …the screen's content arranges here…                            │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Header** — fixed at the top, never scrolls.
-- **Body** — everything below the divider; scrolls independently; carries the
-  16px inset (the hard layout rule). Children manage their own internal scroll.
+- **Header** — fixed one-row (48px): title + optional right-aligned action.
+- **Breadcrumb band** — fixed, **below** the header divider, above the body.
+  Optional (Settings toggle) and only present on screens with a drawer path.
+- **Body** — scrolls independently; carries the 16px inset (the hard layout
+  rule). Children manage their own internal scroll.
 
 ---
 
-## 2. Page header
+## 2. Page header + breadcrumb band
 
-**Change from today:** the header was a single 48px row showing only the page
-title. It becomes a **two-row** header — a breadcrumb line above the title line —
-**but only on multi-level paths**. On a single-level (rail-only) screen the
-breadcrumb row is **hidden** and the header stays one-row / 48px (see §2 rule).
+The header stays a **single 48px row** — the **"Title of The Menu"** (the deepest
+selected nav item, from the rail or the drawer; `text-2xl font-semibold`) with
+the **`headerAction`** slot (e.g. theme toggle) right-aligned. Unchanged from the
+original shell.
 
-### Rows
-1. **Breadcrumb row** — the navigation path, e.g. `Home › Settings › Profile
-   details`.
-   - Separator icon: **Lucide `ChevronRight`** (the Figma offers it as a 5-set
-     INSTANCE_SWAP; per the locked icon rule we use Lucide only).
-   - Ancestor crumbs are muted (`text-muted-foreground`) and **link/navigate**;
-     the **last crumb is the current page** — `text-foreground`, not a link
-     (`aria-current="page"`).
-2. **Title row** — the **"Title of The Menu"**: the title of the page the user
-   navigated to. Sourced from the **deepest selected nav item** — it can come
-   from the **main menu (rail)** or the **secondary menu (drawer)**. Rendered as
-   the 24px semibold heading (today's `text-2xl font-semibold`).
-   - **`headerAction`** slot (e.g. the theme toggle) is **right-aligned on the
-     title row** (decision c).
+The **breadcrumb** is a separate **band below the header divider** (a fixed
+~40px row, `px-4` to align with the body inset), above the body — *not* inside
+the header. It is **optional** (see §2.1) and only present on screens that have
+a drawer path.
 
-### Geometry (confirm exact px against Figma in build)
-- **Multi-level path → two-row header, ~72px:** `~12px` top/bottom padding,
-  `~16px` horizontal (matching the body inset edge), breadcrumb row `20px` +
-  `4px` gap + title row `24px`.
-- **Single-level path → one-row header, 48px** (today's header; no breadcrumb).
-- 1px bottom divider (`--fp-outline-1`), unchanged.
+### Breadcrumb
+- The navigation path, e.g. `Home › Tables › Sub Menu 2 › Sub Menu 2d`.
+- Separator icon: **Lucide `ChevronRight`** (the Figma offers it as a 5-set
+  INSTANCE_SWAP; per the locked icon rule we use Lucide only).
+- Ancestor crumbs are muted (`text-muted-foreground`) and **link/navigate**;
+  the **last crumb is the current page** — `text-foreground`, not a link
+  (`aria-current="page"`).
+
+### 2.1 Optional — Settings toggle
+The breadcrumb band is **user-toggleable** from the **Settings** page
+(*Layout → Breadcrumbs*). The choice persists to `localStorage` (`fp-breadcrumb`,
+default **on**). When off, the band is not rendered on any screen.
 
 ### Breadcrumb source rule
 The breadcrumb is **derived from the active nav path**, not authored per page.
 The path is: **a fixed `Home` root → rail item → (drawer group, if any) → drawer
-item/sub-item** (decision b). Each segment maps to a nav node; clicking an
-ancestor navigates there; the last crumb is the current page (non-link).
+item/sub-item**. Each segment maps to a nav node; clicking an ancestor navigates
+there; the last crumb is the current page (non-link).
 
-**Single-level paths** (a rail-only screen with no drawer, e.g. Dashboard):
-**hide the breadcrumb row** and keep the one-row 48px header (decision a). The
-breadcrumb only appears once the path is 2+ levels deep (i.e. a drawer item or
-sub-item is selected). `Home` counts as the root but does not, by itself, make a
+**Single-level paths** (a rail-only screen with no drawer, e.g. Dashboard): **no
+breadcrumb band** — only screens with a drawer show it. The band appears once the
+path is 2+ levels deep (a drawer item/sub-item is selected). `Home` is the root
+but does not, by itself, make a
 path "multi-level" — the row shows when there is a real rail/drawer path beyond
 the current screen.
 
@@ -166,11 +163,12 @@ Accordion is already in the unified package).
 
 - Port `breadcrumb.tsx` from the local shadcn clone (exists there; not yet in
   `src/components/ui`) → register in the `ui` barrel. Chevron = Lucide.
-- `AppShell` gains a `breadcrumb?` prop (an array of `{ label, key/onNavigate }`
-  segments, or a ready node). Header restructures into the two rows; `title` and
-  `headerAction` stay as-is.
-- `App.tsx` derives the breadcrumb from `MAIN_NAV` + the active screen's drawer
-  path (rail label → drawer item/sub-item), passing it to `AppShell`.
+- `AppShell` takes a `breadcrumb?` node and renders it as a fixed band **below**
+  the one-row header; `title` and `headerAction` stay on the header row.
+- `App.tsx` derives the breadcrumb (`Home` → rail → drawer path) and passes it
+  only when `screen.sidebar` *and* the `showBreadcrumb` preference is on; the
+  preference is owned in `App`, persisted to `localStorage` (`fp-breadcrumb`),
+  and toggled from the **Settings** page (`SettingsContent`).
 - **Accordion:** build an FP wrapper/variant over the existing `accordion`
   primitive — a card-styled trigger with a title + inline metadata points
   (`• data 1 • data 2`) and the rotating chevron. Enforce the stacking order
@@ -180,9 +178,10 @@ Accordion is already in the unified package).
 ---
 
 ## Resolved decisions (2026-06-14)
-- **(a) Single-level breadcrumb →** hide the breadcrumb row; one-row 48px header.
-- **(b) Root crumb →** a fixed **`Home`** root, then the rail → drawer path.
-- **(c) headerAction →** right-aligned to the **title row**.
-- **(d) Exact header height** and breadcrumb type scale — finalise against the
-  Figma page-header measurements during build. *(only remaining build-time
-  detail)*
+- **Placement →** breadcrumb is a fixed band **below** the 48px header (not a
+  two-row header). *(updated per user request after first build)*
+- **Optional →** toggleable from Settings (*Layout → Breadcrumbs*), persisted to
+  `localStorage` (`fp-breadcrumb`, default on).
+- **Single-level screens →** no breadcrumb band (only drawer screens show it).
+- **Root crumb →** a fixed **`Home`** root, then the rail → drawer path.
+- **headerAction →** right-aligned on the header (title) row.

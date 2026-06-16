@@ -13,9 +13,9 @@ export interface AppShellProps {
    */
   title?: React.ReactNode;
   /**
-   * Optional breadcrumb (the nav path) shown on a row above the title. When
-   * present the header is two-row (~72px); when omitted it stays one-row (48px).
-   * See `docs/content-layer.md`.
+   * Optional breadcrumb (the nav path). Rendered as a slim band **below** the
+   * page-header divider, above the body. Omit it (e.g. via the Settings toggle)
+   * and the band disappears entirely. See `docs/content-layer.md`.
    */
   breadcrumb?: React.ReactNode;
   /** Optional right-aligned controls in the page header (e.g. theme toggle). */
@@ -56,7 +56,7 @@ export function AppShell({
     ) : (
       title
     );
-  const hasHeader = title != null || headerAction != null || breadcrumb != null;
+  const hasHeader = title != null || headerAction != null;
   return (
     <div
       className={cn(
@@ -73,31 +73,24 @@ export function AppShell({
         {sidebar}
         {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border. */}
         <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
-          {hasHeader &&
-            (breadcrumb != null ? (
-              /* Multi-level path → two-row header (~72px): breadcrumb + title. */
-              <header className="flex shrink-0 flex-col gap-1 border-b border-fp-outline-1 px-4 py-3">
-                <div className="flex h-5 items-center">{breadcrumb}</div>
-                <div className="flex items-center gap-6">
-                  {titleEl}
-                  {headerAction != null && (
-                    <div className="ml-auto flex items-center gap-2">
-                      {headerAction}
-                    </div>
-                  )}
+          {/* Page header — one row (48px): title + optional right-aligned action. */}
+          {hasHeader && (
+            <header className="flex h-12 shrink-0 items-center gap-6 border-b border-fp-outline-1 px-4">
+              {titleEl}
+              {headerAction != null && (
+                <div className="ml-auto flex items-center gap-2">
+                  {headerAction}
                 </div>
-              </header>
-            ) : (
-              /* Single-level path → one-row header (48px). */
-              <header className="flex h-12 shrink-0 items-center gap-6 border-b border-fp-outline-1 px-4">
-                {titleEl}
-                {headerAction != null && (
-                  <div className="ml-auto flex items-center gap-2">
-                    {headerAction}
-                  </div>
-                )}
-              </header>
-            ))}
+              )}
+            </header>
+          )}
+          {/* Breadcrumb band — below the header, above the body. Optional
+              (Settings toggle); fixed (does not scroll with content). */}
+          {breadcrumb != null && (
+            <div className="flex h-10 shrink-0 items-center px-4">
+              {breadcrumb}
+            </div>
+          )}
           {/* Body: 16px inset (hard rule). Children manage their own scroll. */}
           <div
             className={cn(

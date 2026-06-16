@@ -72,6 +72,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Switch } from "@/components/ui/switch";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import { ThemeToggle } from "@/components/theme";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
@@ -241,6 +250,17 @@ export function App() {
   const [mainKey, setMainKey] = React.useState("tables");
   const [subKey, setSubKey] = React.useState(SCREENS.tables.defaultSub ?? "");
 
+  // Breadcrumb visibility — a layout preference toggled from the Settings page,
+  // persisted to localStorage (default on). See docs/content-layer.md.
+  const [showBreadcrumb, setShowBreadcrumb] = React.useState(
+    () =>
+      typeof localStorage === "undefined" ||
+      localStorage.getItem("fp-breadcrumb") !== "off"
+  );
+  React.useEffect(() => {
+    localStorage.setItem("fp-breadcrumb", showBreadcrumb ? "on" : "off");
+  }, [showBreadcrumb]);
+
   const screen = SCREENS[mainKey];
 
   // Switching the main nav resets the sub-nav to that screen's default.
@@ -253,10 +273,19 @@ export function App() {
   const title = screen.sidebar ? navLabel(screen.sidebar, subKey) : screen.label;
 
   // When a screen defines per-page content, the active drawer key selects it.
-  const content = screen.pages
-    ? (screen.pages.find((p) => p.key === subKey)?.content ??
-      screen.pages[0].content)
-    : screen.content;
+  // Settings renders live content wired to app preferences.
+  const content =
+    mainKey === "settings" ? (
+      <SettingsContent
+        showBreadcrumb={showBreadcrumb}
+        onShowBreadcrumbChange={setShowBreadcrumb}
+      />
+    ) : screen.pages ? (
+      screen.pages.find((p) => p.key === subKey)?.content ??
+      screen.pages[0].content
+    ) : (
+      screen.content
+    );
 
   // Breadcrumb = Home › rail item › (drawer group) › drawer item. Only shown on
   // multi-level paths (i.e. screens that have a contextual drawer). The last
@@ -284,7 +313,7 @@ export function App() {
       }
     }
   }
-  const breadcrumb = screen.sidebar ? (
+  const breadcrumb = screen.sidebar && showBreadcrumb ? (
     <Breadcrumb>
       <BreadcrumbList>
         {crumbs.map((c, i) => {
@@ -367,6 +396,39 @@ function PricingContent() {
           <LabelValue label="Status" value="In Transit" />
         </div>
       </Stack>
+    </Stack>
+  );
+}
+
+/** Settings screen — app preferences. Currently the content-layer toggles. */
+function SettingsContent({
+  showBreadcrumb,
+  onShowBreadcrumbChange,
+}: {
+  showBreadcrumb: boolean;
+  onShowBreadcrumbChange: (v: boolean) => void;
+}) {
+  return (
+    <Stack space="section" className="max-w-2xl overflow-auto">
+      <p className="text-sm text-muted-foreground">
+        Manage how the workspace looks and behaves.
+      </p>
+      <FieldSet>
+        <FieldLegend>Layout</FieldLegend>
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="set-breadcrumb">Breadcrumbs</FieldLabel>
+            <FieldDescription>
+              Show the navigation path below the page header.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="set-breadcrumb"
+            checked={showBreadcrumb}
+            onCheckedChange={onShowBreadcrumbChange}
+          />
+        </Field>
+      </FieldSet>
     </Stack>
   );
 }

@@ -31,8 +31,9 @@ import {
   AppWindow,
   Text,
   MessageCircle,
-  Settings2,
+  LayoutPanelTop,
   PanelTop,
+  ToggleLeft,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -178,10 +179,10 @@ const COMPONENTS_NAV: NavGroup = {
   items: COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
 };
 
-/** Settings sub-nav. */
-const SETTINGS_NAV: NavGroup = {
+/** Component Control sub-nav — toggles for content-layer + action-bar components. */
+const COMPONENT_CONTROL_NAV: NavGroup = {
   items: [
-    { key: "general", label: "General", icon: <Settings2 /> },
+    { key: "content-layer", label: "Content layer", icon: <LayoutPanelTop /> },
     { key: "action-bar", label: "Action bar", icon: <PanelTop /> },
   ],
 };
@@ -234,6 +235,13 @@ const SCREENS: Record<string, Screen> = {
     content: null,
     pages: COMPONENT_PAGES,
   },
+  "component-control": {
+    label: "Component Control",
+    icon: <ToggleLeft />,
+    sidebar: COMPONENT_CONTROL_NAV,
+    defaultSub: "content-layer",
+    content: null,
+  },
   board: {
     label: "Board",
     icon: <KanbanSquare />,
@@ -242,13 +250,11 @@ const SCREENS: Record<string, Screen> = {
   settings: {
     label: "Settings",
     icon: <Settings />,
-    sidebar: SETTINGS_NAV,
-    defaultSub: "general",
-    content: null,
+    content: <EmptyScreen label="Settings" />,
   },
 };
 
-const ORDER = ["dashboard", "pricing", "tables", "components", "board", "settings"];
+const ORDER = ["dashboard", "pricing", "tables", "components", "component-control", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {
@@ -280,11 +286,11 @@ export function App() {
   // When a screen defines per-page content, the active drawer key selects it.
   // Settings renders live content wired to app preferences.
   const content =
-    mainKey === "settings" ? (
+    mainKey === "component-control" ? (
       subKey === "action-bar" ? (
-        <SettingsActionBar />
+        <ActionBarControl />
       ) : (
-        <SettingsGeneral />
+        <ContentLayerControl />
       )
     ) : screen.pages ? (
       screen.pages.find((p) => p.key === subKey)?.content ??
@@ -431,16 +437,16 @@ function SettingRow({
   );
 }
 
-/** Settings → General — layout preferences. */
-function SettingsGeneral() {
+/** Component Control → Content layer — content-layer component toggles. */
+function ContentLayerControl() {
   const { showBreadcrumb, setShowBreadcrumb } = usePreferences();
   return (
     <Stack space="section" className="max-w-2xl overflow-auto">
       <p className="text-sm text-muted-foreground">
-        Manage how the workspace looks and behaves.
+        Control which content-layer components are shown.
       </p>
       <FieldSet>
-        <FieldLegend>Layout</FieldLegend>
+        <FieldLegend>Content layer</FieldLegend>
         <SettingRow
           id="set-breadcrumb"
           label="Breadcrumbs"
@@ -467,7 +473,7 @@ const ACTION_BAR_SETTINGS: {
   { key: "cta", label: "Create CTA", description: "The primary create button." },
 ];
 
-function SettingsActionBar() {
+function ActionBarControl() {
   const { actionBar, setActionBarComponent } = usePreferences();
   return (
     <Stack space="section" className="max-w-2xl overflow-auto">

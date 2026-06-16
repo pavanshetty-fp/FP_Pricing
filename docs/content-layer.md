@@ -60,9 +60,11 @@ the breadcrumb the header grows to ~80px; without it, it's the ~48px title row.
   (`aria-current="page"`).
 
 ### 2.1 Optional — Settings toggle
-The breadcrumb band is **user-toggleable** from the **Settings** page
-(*Layout → Breadcrumbs*). The choice persists to `localStorage` (`fp-breadcrumb`,
-default **on**). When off, the band is not rendered on any screen.
+The breadcrumb is **user-toggleable** from **Settings → General → Breadcrumbs**.
+The choice persists to `localStorage` (`fp-breadcrumb`, default **on**) via the
+app `PreferencesProvider`. When off, it is not rendered on any screen. (Settings
+also has an **Action bar** page that toggles individual action-bar components
+through the same preferences store.)
 
 ### Breadcrumb source rule
 The breadcrumb is **derived from the active nav path**, not authored per page.

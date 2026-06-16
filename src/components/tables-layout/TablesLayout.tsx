@@ -8,6 +8,7 @@ import { TablePagination } from "./TablePagination";
 import { FormLayout } from "@/components/form-layout";
 import { SideSheet, type SideSheetVariant } from "@/components/side-sheet";
 import { Button } from "@/components/ui/button";
+import { usePreferences } from "@/components/preferences";
 import {
   Empty,
   EmptyContent,
@@ -62,6 +63,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
   const [hiddenColumns, setHiddenColumns] = React.useState<Set<ColumnKey>>(
     new Set()
   );
+  const { actionBar } = usePreferences();
 
   const toggleColumn = (key: string) =>
     setHiddenColumns((prev) => {
@@ -138,6 +140,7 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hiddenColumns}
           onToggleColumn={toggleColumn}
+          visible={actionBar}
         />
       </div>
 

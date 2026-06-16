@@ -31,6 +31,8 @@ import {
   AppWindow,
   Text,
   MessageCircle,
+  Settings2,
+  PanelTop,
   SquareStack,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -82,6 +84,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { ThemeToggle } from "@/components/theme";
+import { usePreferences, type ActionBarComponent } from "@/components/preferences";
 import { NavRail, NavigationDrawer, PRICING_NAV } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 
@@ -175,6 +178,14 @@ const COMPONENTS_NAV: NavGroup = {
   items: COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
 };
 
+/** Settings sub-nav. */
+const SETTINGS_NAV: NavGroup = {
+  items: [
+    { key: "general", label: "General", icon: <Settings2 /> },
+    { key: "action-bar", label: "Action bar", icon: <PanelTop /> },
+  ],
+};
+
 /** Resolve a nav item / sub-item label by key (searches children too). */
 function navLabel(group: NavGroup, key: string): string {
   for (const item of group.items) {
@@ -231,7 +242,9 @@ const SCREENS: Record<string, Screen> = {
   settings: {
     label: "Settings",
     icon: <Settings />,
-    content: <EmptyScreen label="Settings" />,
+    sidebar: SETTINGS_NAV,
+    defaultSub: "general",
+    content: null,
   },
 };
 
@@ -250,16 +263,8 @@ export function App() {
   const [mainKey, setMainKey] = React.useState("tables");
   const [subKey, setSubKey] = React.useState(SCREENS.tables.defaultSub ?? "");
 
-  // Breadcrumb visibility — a layout preference toggled from the Settings page,
-  // persisted to localStorage (default on). See docs/content-layer.md.
-  const [showBreadcrumb, setShowBreadcrumb] = React.useState(
-    () =>
-      typeof localStorage === "undefined" ||
-      localStorage.getItem("fp-breadcrumb") !== "off"
-  );
-  React.useEffect(() => {
-    localStorage.setItem("fp-breadcrumb", showBreadcrumb ? "on" : "off");
-  }, [showBreadcrumb]);
+  // Breadcrumb visibility — a layout preference from the Settings page.
+  const { showBreadcrumb } = usePreferences();
 
   const screen = SCREENS[mainKey];
 
@@ -276,10 +281,11 @@ export function App() {
   // Settings renders live content wired to app preferences.
   const content =
     mainKey === "settings" ? (
-      <SettingsContent
-        showBreadcrumb={showBreadcrumb}
-        onShowBreadcrumbChange={setShowBreadcrumb}
-      />
+      subKey === "action-bar" ? (
+        <SettingsActionBar />
+      ) : (
+        <SettingsGeneral />
+      )
     ) : screen.pages ? (
       screen.pages.find((p) => p.key === subKey)?.content ??
       screen.pages[0].content
@@ -400,14 +406,34 @@ function PricingContent() {
   );
 }
 
-/** Settings screen — app preferences. Currently the content-layer toggles. */
-function SettingsContent({
-  showBreadcrumb,
-  onShowBreadcrumbChange,
+/** A single labelled toggle row. */
+function SettingRow({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
 }: {
-  showBreadcrumb: boolean;
-  onShowBreadcrumbChange: (v: boolean) => void;
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
+  return (
+    <Field orientation="horizontal">
+      <FieldContent>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        <FieldDescription>{description}</FieldDescription>
+      </FieldContent>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+    </Field>
+  );
+}
+
+/** Settings → General — layout preferences. */
+function SettingsGeneral() {
+  const { showBreadcrumb, setShowBreadcrumb } = usePreferences();
   return (
     <Stack space="section" className="max-w-2xl overflow-auto">
       <p className="text-sm text-muted-foreground">
@@ -415,19 +441,51 @@ function SettingsContent({
       </p>
       <FieldSet>
         <FieldLegend>Layout</FieldLegend>
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldLabel htmlFor="set-breadcrumb">Breadcrumbs</FieldLabel>
-            <FieldDescription>
-              Show the navigation path below the page header.
-            </FieldDescription>
-          </FieldContent>
-          <Switch
-            id="set-breadcrumb"
-            checked={showBreadcrumb}
-            onCheckedChange={onShowBreadcrumbChange}
+        <SettingRow
+          id="set-breadcrumb"
+          label="Breadcrumbs"
+          description="Show the navigation path below the page title."
+          checked={showBreadcrumb}
+          onChange={setShowBreadcrumb}
+        />
+      </FieldSet>
+    </Stack>
+  );
+}
+
+/** Settings → Action bar — show/hide individual action-bar components. */
+const ACTION_BAR_SETTINGS: {
+  key: ActionBarComponent;
+  label: string;
+  description: string;
+}[] = [
+  { key: "search", label: "Search", description: "The search input." },
+  { key: "columnFilters", label: "Column filters", description: "The show/hide-columns button on the search bar." },
+  { key: "filters", label: "Filters", description: "The faceted filters menu." },
+  { key: "groupBy", label: "Group By", description: "The group-by menu." },
+  { key: "savedViews", label: "Saved Views", description: "The views switcher." },
+  { key: "cta", label: "Create CTA", description: "The primary create button." },
+];
+
+function SettingsActionBar() {
+  const { actionBar, setActionBarComponent } = usePreferences();
+  return (
+    <Stack space="section" className="max-w-2xl overflow-auto">
+      <p className="text-sm text-muted-foreground">
+        Choose which components appear in the table action bar.
+      </p>
+      <FieldSet>
+        <FieldLegend>Action bar components</FieldLegend>
+        {ACTION_BAR_SETTINGS.map((c) => (
+          <SettingRow
+            key={c.key}
+            id={`set-ab-${c.key}`}
+            label={c.label}
+            description={c.description}
+            checked={actionBar[c.key]}
+            onChange={(v) => setActionBarComponent(c.key, v)}
           />
-        </Field>
+        ))}
       </FieldSet>
     </Stack>
   );

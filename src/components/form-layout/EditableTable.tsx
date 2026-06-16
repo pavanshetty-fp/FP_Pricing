@@ -63,10 +63,12 @@ function CellSelect({
         <button
           type="button"
           className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-md border border-transparent px-2 py-1 text-left outline-none transition-colors",
-            "hover:border-fp-outline-2 hover:bg-fp-surface-1b",
-            "focus-visible:ring-2 focus-visible:ring-ring/50",
-            "data-[state=open]:border-fp-outline-2 data-[state=open]:bg-fp-card-1"
+            // Fills the whole cell (no inset, no outline) — the hover/open
+            // background covers the entire td, per the design.
+            "flex h-full w-full items-center justify-between gap-2 px-3 py-2.5 text-left outline-none transition-colors",
+            "hover:bg-fp-surface-1b",
+            "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+            "data-[state=open]:bg-fp-surface-1b"
           )}
         >
           <span className="flex min-w-0 flex-col">
@@ -156,7 +158,7 @@ export function EditableTable() {
                 key={row.id}
                 className="group/row border-b border-border last:border-b-0"
               >
-                <td className="px-2 py-1.5 align-middle">
+                <td className="p-0 align-middle">
                   <CellSelect
                     value={row.peripheral}
                     options={PERIPHERAL_OPTIONS}
@@ -171,14 +173,14 @@ export function EditableTable() {
                     className="h-9 border-transparent bg-transparent hover:border-input focus-visible:border-ring"
                   />
                 </td>
-                <td className="px-2 py-1.5 align-middle">
+                <td className="p-0 align-middle">
                   <CellSelect
                     value={row.condition}
                     options={CONDITION_OPTIONS}
                     onChange={(v) => update(row.id, { condition: v })}
                   />
                 </td>
-                <td className="px-2 py-1.5 align-middle">
+                <td className="p-0 align-middle">
                   <CellSelect
                     value={row.ownership}
                     options={OWNERSHIP_OPTIONS}

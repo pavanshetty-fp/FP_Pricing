@@ -23,17 +23,17 @@ The two spacing laws are unchanged and still govern placement:
 
 ```
 ┌─ Content Layer (Surface-1b, rounded-md, no outer border) ──────────┐
-│  Page Header (48px, fixed)   Title of The Menu      [headerAction]  │
+│  Page Header (fixed)   Title of The Menu          [headerAction]    │
+│                        Home › Settings › Profile details            │  ← optional, under the title
 │  ───────────────────────── 1px divider (--fp-outline-1) ────────── │
-│  Breadcrumb band (fixed)   Home › Settings › Profile details        │  ← optional
 │  Body  (16px inset; owns its own scroll)                           │
 │    …the screen's content arranges here…                            │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Header** — fixed one-row (48px): title + optional right-aligned action.
-- **Breadcrumb band** — fixed, **below** the header divider, above the body.
-  Optional (Settings toggle) and only present on screens with a drawer path.
+- **Header** — fixed. Title row (+ optional right-aligned action); the breadcrumb,
+  when shown, sits **directly below the title text, inside the header unit**,
+  above the divider. ~48px title-only, ~80px with the breadcrumb.
 - **Body** — scrolls independently; carries the 16px inset (the hard layout
   rule). Children manage their own internal scroll.
 
@@ -46,10 +46,10 @@ selected nav item, from the rail or the drawer; `text-2xl font-semibold`) with
 the **`headerAction`** slot (e.g. theme toggle) right-aligned. Unchanged from the
 original shell.
 
-The **breadcrumb** is a separate **band below the header divider** (a fixed
-~40px row, `px-4` to align with the body inset), above the body — *not* inside
-the header. It is **optional** (see §2.1) and only present on screens that have
-a drawer path.
+The **breadcrumb** sits **directly below the title text, inside the header unit**
+(above the header's bottom divider) — not in a band below the whole header. It is
+**optional** (see §2.1) and only present on screens that have a drawer path. With
+the breadcrumb the header grows to ~80px; without it, it's the ~48px title row.
 
 ### Breadcrumb
 - The navigation path, e.g. `Home › Tables › Sub Menu 2 › Sub Menu 2d`.
@@ -178,8 +178,9 @@ Accordion is already in the unified package).
 ---
 
 ## Resolved decisions (2026-06-14)
-- **Placement →** breadcrumb is a fixed band **below** the 48px header (not a
-  two-row header). *(updated per user request after first build)*
+- **Placement →** breadcrumb sits **directly below the title text, inside the
+  header unit** (above the divider) — not a band below the whole header.
+  *(refined twice per user request after first build)*
 - **Optional →** toggleable from Settings (*Layout → Breadcrumbs*), persisted to
   `localStorage` (`fp-breadcrumb`, default on).
 - **Single-level screens →** no breadcrumb band (only drawer screens show it).

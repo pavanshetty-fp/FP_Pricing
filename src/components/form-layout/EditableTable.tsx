@@ -234,15 +234,17 @@ export function EditableTable() {
                   />
                 </td>
                 {/* Last column — delete with inline confirm (Figma 28133:1526):
-                    default → hover reveals trash → click reveals ✕ / red ✓. */}
+                    default → hover reveals trash → click swaps the same cell
+                    space for a 52×52 vertical split: ✕ cancel (top, dark) over
+                    ✓ confirm (bottom, red). */}
                 <td className="px-1 align-middle">
                   {confirmId === row.id ? (
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="ml-auto flex size-[52px] flex-col overflow-hidden rounded-md">
                       <button
                         type="button"
                         onClick={() => setConfirmId(null)}
                         aria-label="Cancel delete"
-                        className="flex size-7 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                        className="flex flex-1 items-center justify-center bg-fp-card-1 text-foreground outline-none transition-colors hover:bg-accent focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                       >
                         <X className="size-4" />
                       </button>
@@ -253,7 +255,7 @@ export function EditableTable() {
                           setConfirmId(null);
                         }}
                         aria-label="Confirm delete"
-                        className="flex size-7 items-center justify-center rounded-sm bg-destructive text-white outline-none transition-colors hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-ring/50"
+                        className="flex flex-1 items-center justify-center bg-destructive text-white outline-none transition-colors hover:bg-destructive/90 focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                       >
                         <Check className="size-4" />
                       </button>

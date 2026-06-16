@@ -2,7 +2,6 @@ import * as React from "react";
 import { ChevronDown, Plus, Trash2, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,11 +63,12 @@ function CellSelect({
           type="button"
           className={cn(
             // Fills the whole cell (no inset, no outline) — the hover/open
-            // background covers the entire td, per the design.
+            // background covers the entire td, per the design. The cell sits on
+            // Surface-1b, so the hover lift uses --accent to stay visible.
             "flex h-full w-full items-center justify-between gap-2 px-3 py-2.5 text-left outline-none transition-colors",
-            "hover:bg-fp-surface-1b",
+            "hover:bg-accent",
             "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-            "data-[state=open]:bg-fp-surface-1b"
+            "data-[state=open]:bg-accent"
           )}
         >
           <span className="flex min-w-0 flex-col">
@@ -91,6 +91,53 @@ function CellSelect({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * A free-text cell that fills the whole td (no inner input box). Mirrors
+ * CellSelect: borderless, full-cell hover lift, and inset focus ring while
+ * typing. Carries the full set of input states:
+ *  - default / filled → text-foreground (placeholder muted when empty)
+ *  - hover            → bg-accent (same lift as the dropdown cells)
+ *  - typing / focus   → inset ring + Surface-1a wash
+ *  - disabled         → muted + not-allowed cursor
+ */
+function CellInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    // Absolutely fills the cell (the parent td is `relative`). A table cell
+    // gives no definite height for `h-full` to resolve against, so `inset-0`
+    // is what makes the hover/focus surface span the entire td.
+    <label
+      className={cn(
+        "absolute inset-0 flex cursor-text items-stretch transition-colors",
+        "hover:bg-accent",
+        "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
+        disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
+      )}
+    >
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={cn(
+          "h-full w-full min-w-0 bg-transparent px-3 text-sm text-foreground outline-none",
+          "placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        )}
+      />
+    </label>
   );
 }
 
@@ -165,12 +212,11 @@ export function EditableTable() {
                     onChange={(v) => update(row.id, { peripheral: v })}
                   />
                 </td>
-                <td className="px-2 py-1.5 align-middle">
-                  <Input
+                <td className="relative p-0 align-middle">
+                  <CellInput
                     value={row.serial}
-                    onChange={(e) => update(row.id, { serial: e.target.value })}
+                    onChange={(v) => update(row.id, { serial: v })}
                     placeholder="Enter Serial No."
-                    className="h-9 border-transparent bg-transparent hover:border-input focus-visible:border-ring"
                   />
                 </td>
                 <td className="p-0 align-middle">

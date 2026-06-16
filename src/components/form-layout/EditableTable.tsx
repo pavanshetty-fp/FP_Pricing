@@ -121,7 +121,8 @@ export function EditableTable() {
 
   return (
     <div>
-      <div className="overflow-hidden rounded-md border border-border">
+      {/* Bottom-left corner squared so the Add chip connects as an extension. */}
+      <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
         <table className="w-full border-collapse">
           <colgroup>
             <col className="w-[26%]" />
@@ -224,17 +225,19 @@ export function EditableTable() {
         </table>
       </div>
 
-      {/* Add a full row — compact Surface-Base chip flush under the table's
-          bottom-left (Figma 28133:1526): "Add Row" when empty, "Add more"
-          once rows exist. */}
+      {/* Add a full row — a Surface-Base chip that connects to the table's
+          bottom-left as an extension (squared top corners, -1px seam overlap).
+          Collapsed it shows only "+"; on hover the label slides out. */}
       <Button
         variant="ghost"
         size="sm"
         onClick={addRow}
-        className="h-7 gap-1 rounded-md bg-background px-2.5 text-foreground hover:bg-background/80"
+        className="group -mt-px h-7 gap-0 rounded-t-none rounded-b-md bg-background px-2 text-foreground hover:bg-background/80"
       >
-        <Plus className="size-4" />
-        {rows.length > 0 ? "Add more" : "Add Row"}
+        <Plus className="size-4 shrink-0" />
+        <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,padding] duration-200 group-hover:max-w-[90px] group-hover:pl-1.5 group-hover:opacity-100">
+          {rows.length > 0 ? "Add more" : "Add Row"}
+        </span>
       </Button>
     </div>
   );

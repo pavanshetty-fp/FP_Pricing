@@ -224,13 +224,14 @@ export function EditableTable() {
         </table>
       </div>
 
-      {/* Add a full row — compact Surface-Base chip (Figma 28133:1526):
-          "Add Row" when empty, "Add more" once rows exist. */}
+      {/* Add a full row — compact Surface-Base chip flush under the table's
+          bottom-left (Figma 28133:1526): "Add Row" when empty, "Add more"
+          once rows exist. */}
       <Button
         variant="ghost"
         size="sm"
         onClick={addRow}
-        className="mt-2 h-7 gap-1.5 rounded-md bg-background px-2.5 text-foreground hover:bg-background/80"
+        className="h-7 gap-1 rounded-md bg-background px-2.5 text-foreground hover:bg-background/80"
       >
         <Plus className="size-4" />
         {rows.length > 0 ? "Add more" : "Add Row"}

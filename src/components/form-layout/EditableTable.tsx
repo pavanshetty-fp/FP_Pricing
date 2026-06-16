@@ -109,6 +109,8 @@ export function EditableTable() {
   ]);
   // Row id whose delete is awaiting inline confirmation (✕ / red ✓).
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
+  // Add chip: icon-only until hovered/focused, then the label slides out.
+  const [addExpanded, setAddExpanded] = React.useState(false);
 
   const update = (id: string, patch: Partial<EditableRow>) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -226,17 +228,27 @@ export function EditableTable() {
       </div>
 
       {/* Add a full row — a Surface-Base chip that connects to the table's
-          bottom-left as an extension (squared top corners, -1px seam overlap).
-          Collapsed it shows only "+"; on hover the label slides out. */}
+          bottom-left as an extension (squared top corners), sitting 1px below
+          the table stroke. Icon-only until hover/focus, then "Add row" slides
+          out. Hover is JS-driven so it's reliable inside the flex button. */}
       <Button
         variant="ghost"
         size="sm"
         onClick={addRow}
-        className="group -mt-px h-7 gap-0 rounded-t-none rounded-b-md bg-background px-2 text-foreground hover:bg-background/80"
+        onMouseEnter={() => setAddExpanded(true)}
+        onMouseLeave={() => setAddExpanded(false)}
+        onFocus={() => setAddExpanded(true)}
+        onBlur={() => setAddExpanded(false)}
+        className="mt-px h-7 gap-0 rounded-t-none rounded-b-md bg-background px-2 text-foreground hover:bg-background/80"
       >
         <Plus className="size-4 shrink-0" />
-        <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,padding] duration-200 group-hover:max-w-[90px] group-hover:pl-1.5 group-hover:opacity-100">
-          {rows.length > 0 ? "Add more" : "Add Row"}
+        <span
+          className={cn(
+            "overflow-hidden whitespace-nowrap transition-[max-width,opacity,padding] duration-200",
+            addExpanded ? "max-w-[90px] pl-1.5 opacity-100" : "max-w-0 opacity-0"
+          )}
+        >
+          Add row
         </span>
       </Button>
     </div>

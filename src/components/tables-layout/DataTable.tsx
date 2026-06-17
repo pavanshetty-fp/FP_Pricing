@@ -82,10 +82,10 @@ function TwoLine({ title, description }: { title: string; description: string })
 }
 
 /**
- * Dropdown-column cell — Figma "Drop Down behaviour" (27999:7846). The whole
- * two-line cell is the trigger, styled as an outlined input box:
- *   default → no box · hover → fp-outline-2 border + fp-surface-1b fill ·
- *   open/selected → fp-card-1 fill (border reserved so there's no layout shift).
+ * Dropdown-column cell — Figma "Table / Cell" (28165:3806). The whole two-line
+ * cell is the trigger and fills the entire td; the hover/open lift is the same
+ * full-cell behaviour as the form table's CellSelect: no inset outline, the
+ * --accent fill covers the whole cell (the cell sits on Surface-1b).
  * Menu: Label + a checkbox item (real toggle, stays open) + items / separator /
  * Label + items.
  */
@@ -104,10 +104,10 @@ function CellDropdown({
           type="button"
           aria-label="Open menu"
           className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-md border border-transparent px-2 py-1 text-left outline-none transition-colors",
-            "hover:border-fp-outline-2 hover:bg-fp-surface-1b",
-            "focus-visible:ring-2 focus-visible:ring-ring/50",
-            "data-[state=open]:border-fp-outline-2 data-[state=open]:bg-fp-card-1"
+            "flex h-full w-full items-center justify-between gap-2 px-3 py-2.5 text-left outline-none transition-colors",
+            "hover:bg-accent",
+            "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+            "data-[state=open]:bg-accent"
           )}
         >
           <span className="flex min-w-0 flex-col">
@@ -194,7 +194,9 @@ export function DataTable({
   const visibleColumns = COLUMNS.filter((c) => !hidden?.has(c.key));
 
   return (
-    <div className="overflow-x-auto">
+    // Outer stroke around the whole table (Figma 28165:3758) — 1px fp-outline-2
+    // (#575757), rounded; the scroll container clips the rounded corners.
+    <div className="overflow-x-auto rounded-md border border-fp-outline-2">
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
@@ -415,7 +417,9 @@ function Row({
         <TableCell
           key={col.key}
           className={cn(
-            "px-3",
+            // Dropdown cells zero their padding so the trigger fills the whole
+            // cell (full-cell hover, like the form table); others keep px-3.
+            col.key === "dropdown" ? "p-0" : "px-3",
             col.align === "right" && "text-right text-sm tabular-nums"
           )}
         >

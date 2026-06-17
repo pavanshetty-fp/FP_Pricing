@@ -120,6 +120,13 @@
   --color-status-failed: var(--status-failed);
   --color-status-pink: var(--status-pink);
   --color-verified: var(--verified);
+  --color-fp-banner-info: var(--fp-banner-info);
+  --color-fp-banner-caution: var(--fp-banner-caution);
+  --color-fp-banner-warning: var(--fp-banner-warning);
+  --color-fp-banner-success: var(--fp-banner-success);
+  --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
+  --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
+  --color-fp-banner-accent-success: var(--fp-banner-accent-success);
 }
 
 /*
@@ -187,6 +194,15 @@
   --status-failed: #dc2626;
   --status-pink: #db2777;
   --verified: #2563eb;
+  /* Banners (28149:1712) — Type 1 solid fills (white text) keep the saturated
+     design hexes; Type 2 accents darkened so they read on a light card. */
+  --fp-banner-info: #3730a3;
+  --fp-banner-caution: #854d0e;
+  --fp-banner-warning: #991b1b;
+  --fp-banner-success: #166534;
+  --fp-banner-accent-caution: #b45309;
+  --fp-banner-accent-warning: #b91c1c;
+  --fp-banner-accent-success: #4d7c0f;
 }
 
 /*
@@ -243,6 +259,15 @@
   --status-failed: #f87171; /* = destructive */
   --status-pink: #ff8080; /* Status/Pink */
   --verified: #3b82f6; /* Badge "Verified" blue (DS 23:995) */
+  /* Banners (28149:1712) — exact design values. Type 1 = solid fills (white
+     text); Type 2 = light accents for icon+text on the Card-1 surface. */
+  --fp-banner-info: #3730a3;
+  --fp-banner-caution: #854d0e;
+  --fp-banner-warning: #991b1b;
+  --fp-banner-success: #166534;
+  --fp-banner-accent-caution: #fcd34d;
+  --fp-banner-accent-warning: #fca5a5;
+  --fp-banner-accent-success: #bef264;
 }
 
 @layer base {

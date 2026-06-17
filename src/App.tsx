@@ -35,6 +35,8 @@ import {
   PanelTop,
   ToggleLeft,
   SquareStack,
+  Blocks,
+  Megaphone,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -45,6 +47,7 @@ import { FieldsDemo } from "@/components/fields-demo";
 import {
   AccordionDemo,
   BadgeDemo,
+  BannersDemo,
   EmptyDemo,
   HoverCardDemo,
   InformationCardDemo,
@@ -179,6 +182,20 @@ const COMPONENTS_NAV: NavGroup = {
   items: COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
 };
 
+/** FP custom (non-shadcn) components, surfaced under the "Custom components" menu. */
+const CUSTOM_COMPONENT_PAGES: {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+}[] = [
+  { key: "banners", label: "Banners", icon: <Megaphone />, content: <BannersDemo /> },
+];
+
+const CUSTOM_COMPONENTS_NAV: NavGroup = {
+  items: CUSTOM_COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
+};
+
 /** Component Control sub-nav — toggles for content-layer + action-bar components. */
 const COMPONENT_CONTROL_NAV: NavGroup = {
   items: [
@@ -233,6 +250,14 @@ const SCREENS: Record<string, Screen> = {
     content: null,
     pages: COMPONENT_PAGES,
   },
+  "custom-components": {
+    label: "Custom components",
+    icon: <Blocks />,
+    sidebar: CUSTOM_COMPONENTS_NAV,
+    defaultSub: CUSTOM_COMPONENT_PAGES[0].key,
+    content: null,
+    pages: CUSTOM_COMPONENT_PAGES,
+  },
   accordion: {
     label: "Accordion",
     icon: <ListCollapse />,
@@ -257,7 +282,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "tables", "form-layout", "components", "accordion", "component-control", "board", "settings"];
+const ORDER = ["dashboard", "tables", "form-layout", "components", "custom-components", "accordion", "component-control", "board", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import { Accordion as AccordionPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { Stack, SectionHeading } from "@/components/typography";
@@ -21,7 +20,25 @@ const ITEMS = [
   { title: "Shipment #SHP-20483", body: "Origin Newark, NJ → Boston, MA. Carrier Old Dominion. ETA Jun 4." },
 ];
 
-/** FP content-layer accordion item — card surface, leading chevron, inline metadata. */
+/**
+ * FP accordion disclosure icon — a solid triangle (Figma 28124:3910). Not part
+ * of the Lucide icon bank, so it's hard-coded here; uses currentColor and
+ * rotates 90° when its trigger opens. Points right collapsed, down when open.
+ */
+function FpTriangle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M4.32419 14.1135L12.1386 9.4735C12.6435 9.17416 12.9456 8.63483 12.9469 8.03083V8.02816C12.9469 7.42683 12.6474 6.8895 12.1469 6.58952L4.33187 1.89152C3.83139 1.59085 3.23555 1.59085 2.73635 1.89152C2.23651 2.19218 1.93827 2.73018 1.93827 3.33085L1.93827 12.6688C1.93827 13.2682 2.23523 13.8055 2.73251 14.1062C3.22915 14.4068 3.82435 14.4102 4.32419 14.1135Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** FP content-layer accordion item — card surface, leading triangle, inline metadata. */
 function FpAccordionItem({
   value,
   title,
@@ -43,7 +60,7 @@ function FpAccordionItem({
             "hover:bg-fp-surface-1b focus-visible:ring-2 focus-visible:ring-ring/50"
           )}
         >
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
+          <FpTriangle className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
           <span className="font-semibold text-foreground">{title}</span>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="size-1 rounded-full bg-muted-foreground/60" />

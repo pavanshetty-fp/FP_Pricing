@@ -51,27 +51,29 @@ function FpAccordionItem({
   return (
     <AccordionPrimitive.Item
       value={value}
-      className="overflow-hidden rounded-md border border-border bg-fp-surface-1a"
+      // Header surface = FP/Card 1 (#2A2F37); the expanded body is the darker
+      // Surface 1a (#11161D), separated by a Card-1 hairline (Figma 28124:3973).
+      className="overflow-hidden rounded-md bg-fp-card-1"
     >
       <AccordionPrimitive.Header className="flex">
         <AccordionPrimitive.Trigger
           className={cn(
             "group flex w-full items-center gap-2 px-4 py-4 text-left text-sm outline-none transition-colors",
-            "hover:bg-fp-surface-1b focus-visible:ring-2 focus-visible:ring-ring/50"
+            "hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
           )}
         >
           <FpTriangle className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
           <span className="font-semibold text-foreground">{title}</span>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-1 rounded-full bg-muted-foreground/60" />
+            <span className="size-1 rounded-full bg-muted-foreground" />
             data 1
-            <span className="size-1 rounded-full bg-muted-foreground/60" />
+            <span className="size-1 rounded-full bg-muted-foreground" />
             data 2
           </span>
         </AccordionPrimitive.Trigger>
       </AccordionPrimitive.Header>
       <AccordionPrimitive.Content className="overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="border-t border-border px-4 py-4 text-muted-foreground">
+        <div className="border-t border-fp-card-1 bg-fp-surface-1a px-4 py-4 text-muted-foreground">
           {body}
         </div>
       </AccordionPrimitive.Content>

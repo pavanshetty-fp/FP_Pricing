@@ -54,7 +54,8 @@ interface CardField {
 
 interface KanbanCard {
   fields: CardField[];
-  alert?: AlertStatus;
+  /** Optional alert footer. With `button` it splits left/right; without, it centers. */
+  alert?: { status: AlertStatus; button?: boolean };
 }
 
 interface Lane {
@@ -74,22 +75,26 @@ const LANES: Lane[] = [
   {
     color: "grey",
     title: "Header Title Lane 1",
-    cards: [{ fields: FIELDS }, { fields: FIELDS, alert: "success" }, { fields: FIELDS }],
+    cards: [
+      { fields: FIELDS },
+      { fields: FIELDS, alert: { status: "success" } },
+      { fields: FIELDS },
+    ],
   },
   {
     color: "blue",
     title: "Header Title Lane 2",
-    cards: [{ fields: FIELDS, alert: "caution" }, { fields: FIELDS }],
+    cards: [{ fields: FIELDS, alert: { status: "caution", button: true } }, { fields: FIELDS }],
   },
   {
     color: "yellow",
     title: "Header Title Lane 3",
-    cards: [{ fields: FIELDS }, { fields: FIELDS, alert: "warning" }],
+    cards: [{ fields: FIELDS }, { fields: FIELDS, alert: { status: "warning", button: true } }],
   },
   {
     color: "green",
     title: "Header Title Lane 4",
-    cards: [{ fields: FIELDS, alert: "default" }],
+    cards: [{ fields: FIELDS, alert: { status: "default" } }],
   },
 ];
 
@@ -107,17 +112,27 @@ function CardFields({ fields }: { fields: CardField[] }) {
   );
 }
 
-/** Card alert footer — Info icon + accent text + a Button, split by a divider. */
-function CardAlert({ status }: { status: AlertStatus }) {
+/**
+ * Card alert footer — Info icon + accent text, split by a divider. Two
+ * variants: with a Button (left/right split) or without (centered).
+ */
+function CardAlert({ status, button }: { status: AlertStatus; button?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-fp-outline-1 px-3 py-2">
+    <div
+      className={cn(
+        "flex items-center gap-2 border-t border-fp-outline-1 px-3 py-2",
+        button ? "justify-between" : "justify-center"
+      )}
+    >
       <span className={cn("flex items-center gap-2 text-xs", ALERT_ACCENT[status])}>
         <Info className="size-4 shrink-0" />
         Make more happen
       </span>
-      <Button variant="outline" size="xs">
-        Button
-      </Button>
+      {button && (
+        <Button variant="outline" size="xs">
+          Button
+        </Button>
+      )}
     </div>
   );
 }
@@ -129,7 +144,7 @@ function Card({ card }: { card: KanbanCard }) {
         <h4 className="text-sm font-semibold text-foreground">Card Title</h4>
         <CardFields fields={card.fields} />
       </div>
-      {card.alert && <CardAlert status={card.alert} />}
+      {card.alert && <CardAlert status={card.alert.status} button={card.alert.button} />}
     </div>
   );
 }

@@ -127,6 +127,18 @@
   --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
   --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
   --color-fp-banner-accent-success: var(--fp-banner-accent-success);
+  /* Kanban lane accents (27631:11154) — theme-independent palette used for the
+     lane top-strip + count pill. Literal values (same in light/dark). */
+  --color-fp-lane-grey: #64748b;
+  --color-fp-lane-blue: #3b82f6;
+  --color-fp-lane-yellow: #eab308;
+  --color-fp-lane-green: #22c55e;
+  --color-fp-lane-cyan: #06b6d4;
+  --color-fp-lane-purple: #6366f1;
+  --color-fp-lane-violet: #8b5cf6;
+  --color-fp-lane-pink: #d946ef;
+  --color-fp-lane-orange: #f59e0b;
+  --color-fp-lane-red: #f43f5e;
 }
 
 /*

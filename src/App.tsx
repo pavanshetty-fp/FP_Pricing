@@ -42,6 +42,7 @@ import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
+import { KanbanBoard } from "@/components/kanban-board";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
@@ -273,7 +274,7 @@ const SCREENS: Record<string, Screen> = {
   board: {
     label: "Board",
     icon: <KanbanSquare />,
-    content: <EmptyScreen label="Board" />,
+    content: <KanbanBoard />,
   },
   settings: {
     label: "Settings",

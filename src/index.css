@@ -139,6 +139,13 @@
   --color-fp-lane-pink: #d946ef;
   --color-fp-lane-orange: #f59e0b;
   --color-fp-lane-red: #f43f5e;
+  /* Chart palette (449:6176) — categorical series colors, theme-independent.
+     chart-1 = brand. Used by Recharts cards on the Dashboard. */
+  --color-chart-1: #fa6400;
+  --color-chart-2: #3b82f6;
+  --color-chart-3: #22c55e;
+  --color-chart-4: #eab308;
+  --color-chart-5: #8b5cf6;
 }
 
 /*

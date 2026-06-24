@@ -43,6 +43,7 @@ import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
+import { Dashboard } from "@/components/dashboard";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
@@ -229,7 +230,7 @@ const SCREENS: Record<string, Screen> = {
   dashboard: {
     label: "Dashboard",
     icon: <LayoutDashboard />,
-    content: <EmptyScreen label="Dashboard" />,
+    content: <Dashboard />,
   },
   tables: {
     label: "Tables",

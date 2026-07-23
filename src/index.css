@@ -186,7 +186,7 @@
   --chart-4: #fbbf24;
   --chart-5: #f59e0b;
 
-  --sidebar: #f0f2f5;
+  --sidebar: #fafbf8; /* Navigation Drawer Expanded (light) — 28679:1109 */
   --sidebar-foreground: #030405;
   --sidebar-primary: #090c0f;
   --sidebar-primary-foreground: #f0f2f5;
@@ -200,12 +200,12 @@
   --brand-foreground: #ffffff;
 
   /* FleetPanda-only — LIGHT surface/chrome/status (derived to pair with above) */
-  --drawer: #f0f2f5; /* nav drawer chrome */
-  --rail: #e9ecf1; /* icon rail — a hair darker than the drawer */
+  --drawer: #fafbf8; /* Navigation Drawer Expanded (light) — 28679:1109 */
+  --rail: #efefeb; /* Navigation Menu Default / icon rail (light) — 28679:1109 */
   --fp-outline-1: #e2e5ea;
   --fp-outline-2: #cad1db;
   --fp-surface-1a: #ffffff;
-  --fp-surface-1b: #f4f6f9; /* content layer — off-white, distinct from cards */
+  --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
   --fp-surface-base: #ffffff;
   --status-success: #16a34a;

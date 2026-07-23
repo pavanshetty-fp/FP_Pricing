@@ -163,7 +163,7 @@
   --radius: 0.625rem;
 
   /* Light — shadcn token set, Style Guide Light column */
-  --background: #ffffff;
+  --background: #efefeb; /* full app background / Surface Base (light) — 28681:807 */
   --foreground: #030405;
   --card: #ffffff;
   --card-foreground: #030405;
@@ -210,7 +210,7 @@
   --fp-surface-1a: #ffffff;
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
-  --fp-surface-base: #ffffff;
+  --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
   --status-success: #16a34a;
   --status-processing: #d97706;
   --status-failed: #dc2626;

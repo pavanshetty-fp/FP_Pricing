@@ -72,8 +72,9 @@ export function AppShell({
           the rail; gap-2 = 8px between the sidebar and the content layer. */}
       <div className="flex min-w-0 flex-1 gap-2 p-2">
         {sidebar}
-        {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border. */}
-        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
+        {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border;
+            soft drop shadow lifts it off the app background (28679:1109). */}
+        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b shadow-fp-surface">
           {/* Page header. Title row (48px when alone); the optional breadcrumb
               sits directly beneath the title text, inside the header unit, above
               the divider. */}

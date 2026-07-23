@@ -146,6 +146,9 @@
   --color-chart-3: #22c55e;
   --color-chart-4: #eab308;
   --color-chart-5: #8b5cf6;
+  /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
+     off the app background with a soft drop shadow (black 15%). */
+  --shadow-fp-surface: 0 4px 4px 0 rgb(0 0 0 / 0.15);
 }
 
 /*

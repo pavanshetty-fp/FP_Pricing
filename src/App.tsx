@@ -44,6 +44,7 @@ import {
   ListChecks,
   RectangleHorizontal,
   Ruler,
+  Shapes,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -51,7 +52,12 @@ import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Dashboard } from "@/components/dashboard";
-import { SurfacesReference, FoundationsReference } from "@/components/visual-references";
+import {
+  SurfacesReference,
+  FoundationsReference,
+  PatternsReference,
+  AppNavContext,
+} from "@/components/visual-references";
 import {
   CommonMistakesReference,
   DecisionRulesReference,
@@ -222,6 +228,7 @@ const VISUAL_REFERENCE_PAGES: {
 }[] = [
   { key: "surfaces", label: "Surfaces & Elevation", icon: <Layers />, content: <SurfacesReference /> },
   { key: "foundations", label: "Foundations", icon: <Ruler />, content: <FoundationsReference /> },
+  { key: "patterns", label: "Patterns", icon: <Shapes />, content: <PatternsReference /> },
 ];
 
 const VISUAL_REFERENCES_NAV: NavGroup = {
@@ -371,6 +378,12 @@ export function App() {
     setSubKey(SCREENS[key].defaultSub ?? "");
   };
 
+  // Jump to a specific screen (+ optional sub-page) — used by reference screens.
+  const goTo = (main: string, sub?: string) => {
+    setMainKey(main);
+    setSubKey(sub ?? SCREENS[main]?.defaultSub ?? "");
+  };
+
   // Content-layer title: selected sub-nav item, or the screen name when there's no drawer.
   const title = screen.sidebar ? navLabel(screen.sidebar, subKey) : screen.label;
 
@@ -443,7 +456,7 @@ export function App() {
   ) : undefined;
 
   return (
-    <>
+    <AppNavContext.Provider value={goTo}>
     <AppShell
       title={title}
       breadcrumb={breadcrumb}
@@ -477,7 +490,7 @@ export function App() {
       {content}
     </AppShell>
     <Toaster position="bottom-right" />
-    </>
+    </AppNavContext.Provider>
   );
 }
 

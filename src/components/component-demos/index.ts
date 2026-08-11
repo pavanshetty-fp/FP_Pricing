@@ -44,3 +44,4 @@ export { ComboboxDemo } from "./ComboboxDemo";
 export { CalendarDemo } from "./CalendarDemo";
 export { CarouselDemo } from "./CarouselDemo";
 export { ResizableDemo } from "./ResizableDemo";
+export { DatePickerDemo } from "./DatePickerDemo";

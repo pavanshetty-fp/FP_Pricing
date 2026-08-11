@@ -65,6 +65,7 @@ import {
   GalleryHorizontal,
   Columns2,
   Grip,
+  CalendarRange,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -131,6 +132,7 @@ import {
   CalendarDemo,
   CarouselDemo,
   ResizableDemo,
+  DatePickerDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -257,6 +259,7 @@ const COMPONENT_PAGES: {
   { key: "context-menu", label: "Context Menu", icon: <SquareMousePointer />, content: <ContextMenuDemo /> },
   { key: "combobox", label: "Combobox", icon: <TextSearch />, content: <ComboboxDemo /> },
   { key: "calendar", label: "Calendar", icon: <CalendarDays />, content: <CalendarDemo /> },
+  { key: "date-picker", label: "Date Picker", icon: <CalendarRange />, content: <DatePickerDemo /> },
   { key: "carousel", label: "Carousel", icon: <GalleryHorizontal />, content: <CarouselDemo /> },
   { key: "resizable", label: "Resizable", icon: <Columns2 />, content: <ResizableDemo /> },
   { key: "button-group", label: "Button Group", icon: <Grip />, content: <ButtonGroupDemo /> },

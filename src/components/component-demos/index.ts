@@ -1,5 +1,6 @@
 export { AccordionDemo } from "./AccordionDemo";
 export { BadgeDemo } from "./BadgeDemo";
+export { ButtonDemo } from "./ButtonDemo";
 export { BannersDemo } from "./BannersDemo";
 export { EmptyDemo } from "./EmptyDemo";
 export { HoverCardDemo } from "./HoverCardDemo";

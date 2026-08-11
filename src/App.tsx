@@ -42,6 +42,7 @@ import {
   Split,
   TriangleAlert,
   ListChecks,
+  RectangleHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -59,6 +60,7 @@ import { FieldsDemo } from "@/components/fields-demo";
 import {
   AccordionDemo,
   BadgeDemo,
+  ButtonDemo,
   BannersDemo,
   EmptyDemo,
   HoverCardDemo,
@@ -134,6 +136,7 @@ const COMPONENT_PAGES: {
   icon: React.ReactNode;
   content: React.ReactNode;
 }[] = [
+  { key: "button", label: "Button", icon: <RectangleHorizontal />, content: <ButtonDemo /> },
   { key: "badge", label: "Badge", icon: <Tag />, content: <BadgeDemo /> },
   { key: "empty", label: "Empty", icon: <Inbox />, content: <EmptyDemo /> },
   { key: "field", label: "Field", icon: <TextCursorInput />, content: <FieldsDemo /> },

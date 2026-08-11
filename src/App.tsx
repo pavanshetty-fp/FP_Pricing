@@ -37,6 +37,10 @@ import {
   SquareStack,
   Blocks,
   Megaphone,
+  BookOpen,
+  Layers,
+  Split,
+  TriangleAlert,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -44,6 +48,11 @@ import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Dashboard } from "@/components/dashboard";
+import {
+  SurfacesReference,
+  CommonMistakesReference,
+  DecisionRulesReference,
+} from "@/components/visual-references";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
@@ -198,6 +207,23 @@ const CUSTOM_COMPONENTS_NAV: NavGroup = {
   items: CUSTOM_COMPONENT_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
 };
 
+/** Visual References — live showroom of DS foundations, patterns, and rules.
+    Grows in batches; each entry is one reference screen in the tier-2 drawer. */
+const VISUAL_REFERENCE_PAGES: {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+}[] = [
+  { key: "surfaces", label: "Surfaces & Elevation", icon: <Layers />, content: <SurfacesReference /> },
+  { key: "decision-rules", label: "Decision Rules", icon: <Split />, content: <DecisionRulesReference /> },
+  { key: "common-mistakes", label: "Common Mistakes", icon: <TriangleAlert />, content: <CommonMistakesReference /> },
+];
+
+const VISUAL_REFERENCES_NAV: NavGroup = {
+  items: VISUAL_REFERENCE_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
+};
+
 /** Component Control sub-nav — toggles for content-layer + action-bar components. */
 const COMPONENT_CONTROL_NAV: NavGroup = {
   items: [
@@ -277,6 +303,14 @@ const SCREENS: Record<string, Screen> = {
     icon: <KanbanSquare />,
     content: <KanbanBoard />,
   },
+  "visual-references": {
+    label: "Visual References",
+    icon: <BookOpen />,
+    sidebar: VISUAL_REFERENCES_NAV,
+    defaultSub: VISUAL_REFERENCE_PAGES[0].key,
+    content: null,
+    pages: VISUAL_REFERENCE_PAGES,
+  },
   settings: {
     label: "Settings",
     icon: <Settings />,
@@ -284,7 +318,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "tables", "form-layout", "components", "custom-components", "accordion", "component-control", "board", "settings"];
+const ORDER = ["dashboard", "tables", "form-layout", "components", "custom-components", "accordion", "component-control", "board", "visual-references", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

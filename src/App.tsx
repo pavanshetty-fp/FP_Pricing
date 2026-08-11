@@ -43,6 +43,7 @@ import {
   TriangleAlert,
   ListChecks,
   RectangleHorizontal,
+  Ruler,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -50,7 +51,7 @@ import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Dashboard } from "@/components/dashboard";
-import { SurfacesReference } from "@/components/visual-references";
+import { SurfacesReference, FoundationsReference } from "@/components/visual-references";
 import {
   CommonMistakesReference,
   DecisionRulesReference,
@@ -220,6 +221,7 @@ const VISUAL_REFERENCE_PAGES: {
   content: React.ReactNode;
 }[] = [
   { key: "surfaces", label: "Surfaces & Elevation", icon: <Layers />, content: <SurfacesReference /> },
+  { key: "foundations", label: "Foundations", icon: <Ruler />, content: <FoundationsReference /> },
 ];
 
 const VISUAL_REFERENCES_NAV: NavGroup = {

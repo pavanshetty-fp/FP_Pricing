@@ -75,24 +75,24 @@ export function CommonMistakesReference() {
           }
         />
 
-        {/* 2 — --primary misused as brand */}
+        {/* 2 — primary CTA is neutral, not brand */}
         <Pair
-          title="Accent / CTA: --primary vs --brand"
-          why="--primary is the neutral grey; the orange accent is --brand. Using primary as the CTA color is the most common miss."
+          title="Primary CTA: neutral, not brand"
+          why="The primary CTA is the neutral bg-primary — near-white in FP, near-black in Light. bg-brand (orange) is a special accent: use it only where a brand emphasis is specifically called for, not as the default CTA."
           wrong={
-            <>
-              <button className="h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground">
-                Primary action
-              </button>
-              <Code>{`bg-primary  /* neutral! */`}</Code>
-            </>
-          }
-          right={
             <>
               <button className="h-9 w-full rounded-md bg-brand text-sm font-medium text-brand-foreground">
                 Primary action
               </button>
-              <Code>{`bg-brand text-brand-foreground`}</Code>
+              <Code>{`bg-brand  /* not the default CTA */`}</Code>
+            </>
+          }
+          right={
+            <>
+              <button className="h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground">
+                Primary action
+              </button>
+              <Code>{`bg-primary text-primary-foreground`}</Code>
             </>
           }
         />

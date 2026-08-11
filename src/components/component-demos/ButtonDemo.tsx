@@ -48,8 +48,10 @@ export function ButtonDemo() {
       <p className="text-sm text-muted-foreground">
         <code className="text-foreground">Button</code> — six variants, five
         sizes (+ icon sizes), and the full state set. Drive intent by variant;
-        the primary action on a view is a single <code>default</code> button
-        (neutral) — reserve <code>bg-brand</code> for the app's primary CTA.
+        the primary action on a view is a single <code>default</code> button —
+        the neutral <code>bg-primary</code> (near-white in FP, near-black in
+        Light). Use <code>bg-brand</code> (orange) only where a brand emphasis
+        is specifically called for.
       </p>
 
       {/* Variants */}

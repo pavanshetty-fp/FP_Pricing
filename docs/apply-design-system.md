@@ -29,8 +29,10 @@ Follow every one of these or fidelity drops:
    `bg-card`, `border-border`, `text-muted-foreground`, `bg-brand`,
    `bg-fp-surface-1b`, etc. Never `bg-[#111]` or inline hex. If a color you need
    isn't a token, add it to the token layer — don't hardcode.
-2. **`--brand` (`#fa6400`) is the accent/CTA orange.** `--primary` is the neutral
-   grey — do not use it as the brand color.
+2. **The primary CTA is the neutral `bg-primary`** — near-white in FP, near-black
+   in Light. `--brand` (`#fa6400`, orange) is a *special accent*, used only where a
+   brand emphasis is specifically called for; it is **not** the default CTA. (Don't
+   confuse the tokens: `--brand` is the orange, `--primary` is the neutral.)
 3. **Icons: Lucide only** (`lucide-react`). Never Tabler / Hugeicons / Phosphor /
    Remix / random SVGs.
 4. **Two modes.** Ship both Light (`:root`) and FP (`.dark`); default to FP. A
@@ -397,8 +399,8 @@ For quick lookup or non-Tailwind contexts. Prefer the utility (middle column) in
 | `text-foreground` | `#030405` | `#f0f2f5` | Primary text |
 | `bg-card` | `#ffffff` | `#11161d` | Card / raised panel (= Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | Menus, popovers, dropdowns |
-| `bg-primary` | `#090c0f` | `#f8fafc` | Neutral primary — near-white in FP (NOT the brand) |
-| `bg-brand` / `text-brand` | `#fa6400` | `#fa6400` | **Brand orange** — accent, primary CTA |
+| `bg-primary` | `#090c0f` | `#f8fafc` | Neutral primary — **the default CTA** (near-black Light / near-white FP) |
+| `bg-brand` / `text-brand` | `#fa6400` | `#fa6400` | **Brand orange** — special accent, only when specified (NOT the default CTA) |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | Secondary/label text |
 | `bg-accent` | `#cad1db` | `#2a2f37` | Hover fill / subtle emphasis |
 | `bg-muted` | `#cad1db` | `#1b2028` | Muted surface |
@@ -465,9 +467,10 @@ render as FP. Available primitives (don't rebuild these):
 
 `button` (variants: default / secondary / outline / ghost / destructive / link; sizes sm/default/lg/icon), `button-group`, `input`, `textarea`, `label`, `field` (label+control+description/error, `data-invalid` state), `checkbox` (Minus for indeterminate), `switch`, `radio-group`, `slider`, `select`, `combobox` (Popover+Command), `popover`, `hover-card`, `dropdown-menu`, `context-menu`, `dialog`, `alert-dialog`, `sheet` (side sheet), `command` (⌘K), `alert`, `accordion`, `collapsible`, `tabs`, `table`, `pagination`, `badge` (+ `BadgeNumber`), `avatar`, `progress`, `spinner`, `separator`, `scroll-area`, `skeleton`, `toggle`/`toggle-group`, `aspect-ratio`, `resizable`, `carousel`, `calendar` (react-day-picker), `date-picker` (Popover+Calendar), `tooltip`, `kbd`, `empty`, `input-group`, `input-otp`, `item`, `menubar`, `navigation-menu`, `sidebar`, `sonner` (toasts).
 
-**Button hierarchy:** one primary action per view — the primary CTA is
-`bg-brand text-brand-foreground` (orange). Everything else is `secondary` /
-`outline` / `ghost`.
+**Button hierarchy:** one primary action per view — the primary CTA is the
+neutral `bg-primary text-primary-foreground` (near-white in FP, near-black in
+Light). `bg-brand` (orange) is reserved for where a brand emphasis is
+specifically called for. Everything else is `secondary` / `outline` / `ghost`.
 
 **FP-composed patterns** (rebuild these from the primitives + tokens as needed):
 - **Data table** — `rounded-md` with an **outer stroke** `border border-fp-outline-2`; header row on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use the `status-*` tokens by row meaning.

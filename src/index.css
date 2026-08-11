@@ -244,12 +244,12 @@
   --secondary-foreground: #f0f2f5;
   --muted: #1b2028; /* base/muted */
   --muted-foreground: #9ca3af; /* base/muted-foreground */
-  --accent: #2e3642; /* base/accent */
+  --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */
   --accent-foreground: #f0f2f5; /* base/accent-foreground */
   --destructive: #f87171; /* base/destructive */
   --destructive-foreground: #f0f2f5;
-  --border: #ffffff38; /* base/border */
-  --input: #ffffff26; /* base/input */
+  --border: #575757; /* FP column → FP/Outline 2 */
+  --input: #575757; /* FP column → FP/Outline 2 */
   --ring: #9ca3af;
 
   --chart-1: #fa6400;

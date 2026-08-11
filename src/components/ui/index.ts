@@ -255,3 +255,20 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "./dropdown-menu";
+export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./collapsible";
+export { AspectRatio } from "./aspect-ratio";
+export { ScrollArea, ScrollBar } from "./scroll-area";
+export { Spinner } from "./spinner";
+export { Calendar, CalendarDayButton } from "./calendar";
+export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText, buttonGroupVariants } from "./button-group";
+export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./resizable";
+export {
+  Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext,
+} from "./carousel";
+export type { CarouselApi } from "./carousel";
+export {
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
+  ContextMenuCheckboxItem, ContextMenuRadioItem, ContextMenuLabel, ContextMenuSeparator,
+  ContextMenuShortcut, ContextMenuGroup, ContextMenuSub, ContextMenuSubContent,
+  ContextMenuSubTrigger, ContextMenuRadioGroup,
+} from "./context-menu";

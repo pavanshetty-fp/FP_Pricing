@@ -56,6 +56,15 @@ import {
   Ellipsis,
   Power,
   Group,
+  ChevronsDownUp,
+  Ratio,
+  ScrollText,
+  SquareMousePointer,
+  TextSearch,
+  CalendarDays,
+  GalleryHorizontal,
+  Columns2,
+  Grip,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -112,6 +121,16 @@ import {
   PaginationDemo,
   ToggleDemo,
   ToggleGroupDemo,
+  CollapsibleDemo,
+  AspectRatioDemo,
+  ScrollAreaDemo,
+  SpinnerDemo,
+  ButtonGroupDemo,
+  ContextMenuDemo,
+  ComboboxDemo,
+  CalendarDemo,
+  CarouselDemo,
+  ResizableDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -231,6 +250,16 @@ const COMPONENT_PAGES: {
   { key: "pagination", label: "Pagination", icon: <Ellipsis />, content: <PaginationDemo /> },
   { key: "toggle", label: "Toggle", icon: <Power />, content: <ToggleDemo /> },
   { key: "toggle-group", label: "Toggle Group", icon: <Group />, content: <ToggleGroupDemo /> },
+  { key: "collapsible", label: "Collapsible", icon: <ChevronsDownUp />, content: <CollapsibleDemo /> },
+  { key: "aspect-ratio", label: "Aspect Ratio", icon: <Ratio />, content: <AspectRatioDemo /> },
+  { key: "scroll-area", label: "Scroll Area", icon: <ScrollText />, content: <ScrollAreaDemo /> },
+  { key: "spinner", label: "Spinner", icon: <LoaderCircle />, content: <SpinnerDemo /> },
+  { key: "context-menu", label: "Context Menu", icon: <SquareMousePointer />, content: <ContextMenuDemo /> },
+  { key: "combobox", label: "Combobox", icon: <TextSearch />, content: <ComboboxDemo /> },
+  { key: "calendar", label: "Calendar", icon: <CalendarDays />, content: <CalendarDemo /> },
+  { key: "carousel", label: "Carousel", icon: <GalleryHorizontal />, content: <CarouselDemo /> },
+  { key: "resizable", label: "Resizable", icon: <Columns2 />, content: <ResizableDemo /> },
+  { key: "button-group", label: "Button Group", icon: <Grip />, content: <ButtonGroupDemo /> },
 ];
 
 const COMPONENTS_NAV: NavGroup = {

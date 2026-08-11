@@ -45,6 +45,17 @@ import {
   RectangleHorizontal,
   Ruler,
   Shapes,
+  CircleAlert,
+  CircleUserRound,
+  Slash,
+  SquareCheckBig,
+  Command,
+  SquareMenu,
+  Keyboard,
+  Tags,
+  Ellipsis,
+  Power,
+  Group,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -90,6 +101,17 @@ import {
   TabsDemo,
   TextareaDemo,
   TooltipDemo,
+  AlertDemo,
+  AvatarDemo,
+  BreadcrumbDemo,
+  CheckboxDemo,
+  CommandDemo,
+  DropdownMenuDemo,
+  KbdDemo,
+  LabelDemo,
+  PaginationDemo,
+  ToggleDemo,
+  ToggleGroupDemo,
 } from "@/components/component-demos";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -198,6 +220,17 @@ const COMPONENT_PAGES: {
   { key: "textarea", label: "Textarea", icon: <Text />, content: <TextareaDemo /> },
   { key: "tooltip", label: "Tooltip", icon: <MessageCircle />, content: <TooltipDemo /> },
   { key: "modals", label: "Modals", icon: <SquareStack />, content: <ModalsDemo /> },
+  { key: "alert", label: "Alert", icon: <CircleAlert />, content: <AlertDemo /> },
+  { key: "avatar", label: "Avatar", icon: <CircleUserRound />, content: <AvatarDemo /> },
+  { key: "breadcrumb", label: "Breadcrumb", icon: <Slash />, content: <BreadcrumbDemo /> },
+  { key: "checkbox", label: "Checkbox", icon: <SquareCheckBig />, content: <CheckboxDemo /> },
+  { key: "command", label: "Command", icon: <Command />, content: <CommandDemo /> },
+  { key: "dropdown-menu", label: "Dropdown Menu", icon: <SquareMenu />, content: <DropdownMenuDemo /> },
+  { key: "kbd", label: "Kbd", icon: <Keyboard />, content: <KbdDemo /> },
+  { key: "label", label: "Label", icon: <Tags />, content: <LabelDemo /> },
+  { key: "pagination", label: "Pagination", icon: <Ellipsis />, content: <PaginationDemo /> },
+  { key: "toggle", label: "Toggle", icon: <Power />, content: <ToggleDemo /> },
+  { key: "toggle-group", label: "Toggle Group", icon: <Group />, content: <ToggleGroupDemo /> },
 ];
 
 const COMPONENTS_NAV: NavGroup = {

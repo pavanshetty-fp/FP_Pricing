@@ -139,7 +139,18 @@ function CardAlert({ status, button }: { status: AlertStatus; button?: boolean }
 
 function Card({ card }: { card: KanbanCard }) {
   return (
-    <div className="overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a">
+    <div
+      role="button"
+      tabIndex={0}
+      className={cn(
+        // A card is a clickable surface; the full state set:
+        // default → hover (brighter outline + lift) → focus → active.
+        "cursor-pointer overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a outline-none transition-[color,border-color,box-shadow]",
+        "hover:border-fp-outline-2 hover:shadow-fp-surface",
+        "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
+        "active:border-fp-outline-2 active:bg-fp-card-1"
+      )}
+    >
       <div className="space-y-3 p-3">
         <h4 className="text-sm font-semibold text-foreground">Card Title</h4>
         <CardFields fields={card.fields} />

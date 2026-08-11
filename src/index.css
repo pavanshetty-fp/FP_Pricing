@@ -236,11 +236,11 @@
   --foreground: #f0f2f5; /* base/foreground */
   --card: #11161d; /* FP/Surface 1a */
   --card-foreground: #f0f2f5;
-  --popover: #11161d;
+  --popover: #1b2028; /* FP column → FP/Surface 1b */
   --popover-foreground: #f0f2f5; /* base/popover-foreground */
-  --primary: #abb3c2; /* base/primary (NOTE: brand orange is --brand) */
+  --primary: #f8fafc; /* FP column → slate/50 (brand orange is --brand) */
   --primary-foreground: #090c0f; /* base/primary-foreground */
-  --secondary: #1b2028; /* FP/Surface 1b */
+  --secondary: #2a2f37; /* FP column → FP/Card 1 */
   --secondary-foreground: #f0f2f5;
   --muted: #1b2028; /* base/muted */
   --muted-foreground: #9ca3af; /* base/muted-foreground */

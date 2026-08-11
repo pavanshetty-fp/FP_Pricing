@@ -41,6 +41,7 @@ import {
   Layers,
   Split,
   TriangleAlert,
+  ListChecks,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Stack } from "@/components/typography";
@@ -48,11 +49,11 @@ import { TablesLayout } from "@/components/tables-layout";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Dashboard } from "@/components/dashboard";
+import { SurfacesReference } from "@/components/visual-references";
 import {
-  SurfacesReference,
   CommonMistakesReference,
   DecisionRulesReference,
-} from "@/components/visual-references";
+} from "@/components/dos-and-donts";
 import { ModalsDemo } from "@/components/modals-demo";
 import { FieldsDemo } from "@/components/fields-demo";
 import {
@@ -216,12 +217,25 @@ const VISUAL_REFERENCE_PAGES: {
   content: React.ReactNode;
 }[] = [
   { key: "surfaces", label: "Surfaces & Elevation", icon: <Layers />, content: <SurfacesReference /> },
-  { key: "decision-rules", label: "Decision Rules", icon: <Split />, content: <DecisionRulesReference /> },
-  { key: "common-mistakes", label: "Common Mistakes", icon: <TriangleAlert />, content: <CommonMistakesReference /> },
 ];
 
 const VISUAL_REFERENCES_NAV: NavGroup = {
   items: VISUAL_REFERENCE_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
+};
+
+/** Do's and Don'ts — the guidance layer: when to use what, and what to avoid. */
+const DOS_DONTS_PAGES: {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+}[] = [
+  { key: "decision-rules", label: "Decision Rules", icon: <Split />, content: <DecisionRulesReference /> },
+  { key: "common-mistakes", label: "Common Mistakes", icon: <TriangleAlert />, content: <CommonMistakesReference /> },
+];
+
+const DOS_DONTS_NAV: NavGroup = {
+  items: DOS_DONTS_PAGES.map((p) => ({ key: p.key, label: p.label, icon: p.icon })),
 };
 
 /** Component Control sub-nav — toggles for content-layer + action-bar components. */
@@ -311,6 +325,14 @@ const SCREENS: Record<string, Screen> = {
     content: null,
     pages: VISUAL_REFERENCE_PAGES,
   },
+  "dos-donts": {
+    label: "Do's and Don'ts",
+    icon: <ListChecks />,
+    sidebar: DOS_DONTS_NAV,
+    defaultSub: DOS_DONTS_PAGES[0].key,
+    content: null,
+    pages: DOS_DONTS_PAGES,
+  },
   settings: {
     label: "Settings",
     icon: <Settings />,
@@ -318,7 +340,7 @@ const SCREENS: Record<string, Screen> = {
   },
 };
 
-const ORDER = ["dashboard", "tables", "form-layout", "components", "custom-components", "accordion", "component-control", "board", "visual-references", "settings"];
+const ORDER = ["dashboard", "tables", "form-layout", "components", "custom-components", "accordion", "component-control", "board", "visual-references", "dos-donts", "settings"];
 
 // Tier-1 main navigation (the rail) — one item per screen.
 const MAIN_NAV: NavGroup = {

@@ -40,6 +40,34 @@ export function FieldsDemo() {
         orientation handling and accessible wiring.
       </p>
 
+      {/* Input states — the raw control across its states (Focus is forced
+          here so it reads statically; on a real input it triggers on focus). */}
+      <Stack space="title">
+        <SectionHeading as="h3" title="Input states" />
+        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {[
+            { label: "Default", node: <Input placeholder="Placeholder" /> },
+            {
+              label: "Focus",
+              node: (
+                <Input
+                  placeholder="Placeholder"
+                  className="border-ring ring-[3px] ring-ring/50"
+                />
+              ),
+            },
+            { label: "Filled", node: <Input defaultValue="Acme Logistics" /> },
+            { label: "Disabled", node: <Input placeholder="Placeholder" disabled /> },
+            { label: "Invalid", node: <Input defaultValue="not-an-email" aria-invalid /> },
+          ].map((s) => (
+            <div key={s.label} className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">{s.label}</span>
+              {s.node}
+            </div>
+          ))}
+        </div>
+      </Stack>
+
       {/* Orientation */}
       <Stack space="title">
         <SectionHeading as="h3" title="Orientation" />

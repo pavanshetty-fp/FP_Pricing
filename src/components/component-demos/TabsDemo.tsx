@@ -35,6 +35,10 @@ export function TabsDemo() {
                 {t.label}
               </TabsTrigger>
             ))}
+            {/* Disabled tab state */}
+            <TabsTrigger value="archived" disabled>
+              Archived
+            </TabsTrigger>
           </TabsList>
           {TABS.map((t) => (
             <TabsContent key={t.value} value={t.value}>

@@ -242,7 +242,7 @@
   --primary-foreground: #090c0f; /* base/primary-foreground */
   --secondary: #2a2f37; /* FP column → FP/Card 1 */
   --secondary-foreground: #f0f2f5;
-  --muted: #1b2028; /* base/muted */
+  --muted: #1b2028; /* FP column → FP/Card 2 (= #1b2028) */
   --muted-foreground: #9ca3af; /* base/muted-foreground */
   --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */
   --accent-foreground: #f0f2f5; /* base/accent-foreground */

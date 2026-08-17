@@ -147,7 +147,9 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       {/* Table region — `relative` anchors the floating bulk-action bar so it
           sits 20px above the pagination unit, centred to the content. */}
       <div className="relative mt-4 min-h-0 flex-1">
-        <div className="h-full overflow-auto">
+        {/* Height provider only — the DataTable owns the scroll so its header
+            stays sticky (a second scroll container here would hide the header). */}
+        <div className="h-full min-h-0">
           {isEmpty ? (
             // Zero-results state — Figma "Empty" (18672:2962), icon media variant.
             <Empty className="h-full">

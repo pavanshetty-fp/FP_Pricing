@@ -195,15 +195,18 @@ export function DataTable({
 
   return (
     // Outer stroke around the whole table (Figma 28165:3758) — 1px fp-outline-2
-    // (#575757), rounded; the scroll container clips the rounded corners.
-    <div className="overflow-x-auto rounded-md border border-fp-outline-2">
+    // (#575757), rounded; this element owns BOTH scroll axes so the sticky header
+    // pins to its top. The shadcn <Table> wraps the table in its own
+    // `overflow-x-auto` div — neutralize it (`table-container` → overflow-visible)
+    // so THIS element is the sticky header's scroll anchor, not that inner wrapper.
+    <div className="h-full overflow-auto rounded-md border border-fp-outline-2 [&_[data-slot=table-container]]:overflow-visible">
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
             <col key={c.key} style={{ width: `${c.width}px` }} />
           ))}
         </colgroup>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-20">
           <TableRow className="h-10">
             {visibleColumns.map((col) => {
               const active = sort?.key === col.key;
@@ -219,7 +222,11 @@ export function DataTable({
                     active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined
                   }
                   className={cn(
-                    "px-3 text-xs font-medium text-muted-foreground",
+                    // Solid fill (Surface 1a) + bottom hairline so body rows
+                    // scroll UNDER the header, not through the titles. Stickiness
+                    // is on the <thead> (th-level sticky is unreliable with
+                    // collapsed table borders).
+                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right"
                   )}
                 >

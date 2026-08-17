@@ -1,69 +1,70 @@
 # Apply the FleetPanda Design System (FP-DS-2026) to a prototype
 
-**Purpose.** Feed this entire file to your AI coding tool (Claude, Cursor, v0, etc.)
-as context *before* it builds. It contains the exact design tokens, the setup, and
-the rules needed to make **any** new prototype — with its own screens, concepts,
-and flows — adopt the FleetPanda look, behaviour, and structure at ~100% fidelity.
+> **Auto-generated bundle** — do not hand-edit. Concatenation of the
+> `docs/ds/` module set, produced by `docs/ds/build-bundle.sh`. Edit the
+> modules and regenerate. Feed this whole file to your AI tool before it builds.
 
-You bring the product ideas and flows; this system supplies the **visual language,
-components, layout, and interaction rules**. Map your content into these — never
-restyle away from them.
 
 ---
 
-## 0. What this design system is
-- A spinoff of **shadcn/ui (new-york style)** on **Tailwind CSS v4** + **React**.
-- **Two modes only: `Light` and `FP`** (the FleetPanda brand look — a dark theme).
-  There is no separate "dark"; **FP _is_ the dark theme**, applied via `.dark` on
-  `<html>`. **FP is the default.**
-- Brand accent is **orange `#fa6400`** (this is `--brand`, *not* `--primary`).
-- The "FP-ness" of any screen = **these token values + these components + these
-  rules**. shadcn primitives are standard; the tokens make them look FleetPanda.
+# FP-DS-2026 — constitution (non-negotiable)
+
+The locked rules. Everything else elaborates these; don't violate them without an
+explicit, deliberate decision. Full detail lives in the category `2-rules.md` files.
+
+## What this system is
+- A spinoff of **shadcn/ui (new-york)** on **Tailwind v4 + React**.
+- **Two modes only: Light (`:root`) and FP (`.dark`, the default).** FP *is* the
+  dark theme — there is no separate "dark." A toggle flips `.dark` on `<html>` and
+  persists to `localStorage('fp-theme')`.
+- Purpose: a library of **generic layout templates + behavioural rules** to
+  constrain AI-prompted designs — **not a real app**. Build reusable, generically
+  labelled templates; document rules; don't build domain features.
+
+## The accuracy contract
+1. **Tokens, never raw hex.** If a color isn't a token, add it to the token layer.
+2. **Primary CTA is the neutral `bg-primary`** (near-white FP / near-black Light).
+   `--brand` (`#fa6400`, orange) is a *special accent*, only when specified — **not**
+   the default CTA.
+3. **Icons: Lucide only** (`lucide-react`). Never Tabler / Hugeicons / Phosphor / Remix.
+4. **Two modes**, FP default; toggle persists.
+5. **Translate, don't trace.** Re-map a foreign/light mock to FP tokens; never copy a
+   literal palette.
+6. **Semantic variants.** A component's variant follows the *meaning of the data*.
+7. **Compose, don't reinvent.** Reach for the existing component set; reconcile
+   tokens rather than duplicating components.
+8. **Scale discipline.** Radius ramp, type scale, named spacing — no one-off values.
+
+## Locked structure
+- **Shell:** tier-1 icon rail (Surface Base, flush) + contextual tier-2 drawer +
+  one content layer (Surface-1b, rounded, `shadow-fp-surface`, **no outer border**).
+- **Layout laws L1–L5** → `ux/2-rules`. **Hierarchy laws H1–H4** → `ux/2-rules`.
+- **Color governance** → `ui/2-rules`: drive off tokens; `--brand` is the orange,
+  not `--primary`; status by soft tint, not saturated fill.
+
+See `map.md` for where each area is documented in full.
+
 
 ---
 
-## 1. The accuracy contract (non-negotiable rules)
-Follow every one of these or fidelity drops:
+# Adopting FP-DS in a new prototype — setup
 
-1. **Use tokens, never raw hex.** Always `bg-background`, `text-foreground`,
-   `bg-card`, `border-border`, `text-muted-foreground`, `bg-brand`,
-   `bg-fp-surface-1b`, etc. Never `bg-[#111]` or inline hex. If a color you need
-   isn't a token, add it to the token layer — don't hardcode.
-2. **The primary CTA is the neutral `bg-primary`** — near-white in FP, near-black
-   in Light. `--brand` (`#fa6400`, orange) is a *special accent*, used only where a
-   brand emphasis is specifically called for; it is **not** the default CTA. (Don't
-   confuse the tokens: `--brand` is the orange, `--primary` is the neutral.)
-3. **Icons: Lucide only** (`lucide-react`). Never Tabler / Hugeicons / Phosphor /
-   Remix / random SVGs.
-4. **Two modes.** Ship both Light (`:root`) and FP (`.dark`); default to FP. A
-   theme toggle flips `.dark` on `<html>` and persists to `localStorage`.
-5. **Translate, don't trace.** If you're handed a light-mode mock (or a mock from
-   another product), re-map every color to these tokens. Never copy a foreign
-   palette or a literal white-card look.
-6. **Semantic variants.** A component's variant is chosen by the *meaning of the
-   data*, not hardcoded — a status badge's color follows the row status; a banner's
-   status follows severity.
-7. **Compose, don't reinvent.** Reach for the component set below before building a
-   primitive from scratch. Reconcile *tokens* rather than duplicating components.
-8. **Scale discipline.** Corners use the radius ramp, text uses the type scale,
-   spacing uses the named steps — not arbitrary one-off values.
+Three steps to make a new prototype adopt the FleetPanda look at high fidelity.
 
----
+## Step 1 — stack
+Tailwind CSS v4 (`@import "tailwindcss"`), React, `lucide-react`,
+`class-variance-authority`, `clsx` + `tailwind-merge` (the `cn()` helper). Install
+**shadcn/ui (new-york)** primitives as normal — the tokens restyle them into FP.
+Optional deps only when needed: `recharts` (charts), `sonner` (toasts), `cmdk`
+(command), `input-otp`.
 
-## 2. Setup (3 steps)
+## Step 2 — drop in the tokens
+Replace your global stylesheet with the **verbatim token stylesheet** — the single
+source of truth that defines both modes and every FP token. It lives in
+[`ui/6-execute.md`](../ui/6-execute.md) (and in the repo as `src/index.css`). Copy
+it as-is; shadcn's token utilities resolve against it automatically.
 
-**Step 1 — stack.** Tailwind CSS v4 (`@import "tailwindcss"`), React, `lucide-react`,
-`class-variance-authority`, `clsx` + `tailwind-merge` (the `cn()` helper). For the
-components, install **shadcn/ui (new-york)** primitives as normal — the tokens
-below restyle them into FP. Optional deps only when needed: `recharts` (charts),
-`sonner` (toasts), `cmdk` (command), `input-otp`.
-
-**Step 2 — drop in the tokens.** Replace your global stylesheet with the
-`globals.css` in §3. This is the **single source of truth** — copy it verbatim.
-It defines both modes and every FP token; shadcn's `dark:`/token utilities resolve
-against it automatically.
-
-**Step 3 — wire the theme.**
+## Step 3 — wire the theme
 - Load the **Geist** font (the CSS imports it).
 - Default the app to FP: `<html class="dark">`.
 - Add a pre-paint script so a saved `light` choice applies before first paint:
@@ -72,16 +73,240 @@ against it automatically.
     try { if (localStorage.getItem('fp-theme') === 'light') document.documentElement.classList.remove('dark'); } catch {}
   </script>
   ```
-- A theme toggle button flips `document.documentElement.classList.toggle('dark')`
-  and writes `localStorage.setItem('fp-theme', isDark ? 'dark' : 'light')`.
+- A theme toggle flips `document.documentElement.classList.toggle('dark')` and
+  writes `localStorage.setItem('fp-theme', isDark ? 'dark' : 'light')`.
+
+Then compose screens from the component set ([`ui/6-execute.md`](../ui/6-execute.md))
+following the `ux/`, `ui/`, and `interactions/` rules. Run
+[`conformance.md`](conformance.md) before finishing.
+
 
 ---
 
-## 3. `globals.css` — the token source of truth (paste verbatim)
+# UI · Fundamentals & principles
 
-This is the exact stylesheet the FleetPanda DS ships. Every color, radius, type,
-spacing, and shadow token lives here. Do not edit the values.
+*The visual surface: tokens, color, type, surfaces — "how it looks."* The mental
+model behind the UI rules ([`2-rules.md`](2-rules.md)).
 
+## Two modes only
+**Light (`:root`) and FP (`.dark`, the default).** FP *is* the dark theme — there is
+no separate "dark." A toggle flips `.dark` on `<html>` and persists to
+`localStorage('fp-theme')`. Token **names** match canonical shadcn so components
+work verbatim; only the **values** are FleetPanda's. `@theme inline` maps
+`--color-x: var(--x)` per theme (it does *not* emit `:root` custom properties — you
+can't read tokens off `:root` via `getComputedStyle`).
+
+## Everything is a token
+`--brand #fa6400` is the orange (NOT `--primary`). Token families: base shadcn set,
+plus FP-only deltas — `--rail`, `--drawer`, `--fp-surface-1a/1b`, `--fp-card-1`,
+`--fp-lane`, `--fp-outline-1/2`, `--fp-surface-base`, `--status-*`, `--verified`,
+`--fp-banner-*`, `--color-chart-1..5`, `--fp-lane-*`. Scales: radius `sm 6 · md 8 ·
+lg 10 · xl 14` (anchored to `--radius`), heading styles `text-heading-sm..xl`
+(24/36/48/60), named spacing. Font: **Geist** (400/500/600). Numbers `tabular-nums`.
+
+## Surface & elevation stack
+A stack of surfaces that step in lightness and lift with shadow.
+- **Light:** background `#efefeb` → drawer `#fafbf8` → content layer `#ffffff`. Rail
+  is **flush**; drawer + content **float** with `shadow-fp-surface`.
+- **FP:** background/rail `#080808` → drawer `#090c0f` → content `#1b2028`, cards
+  `#11161d`, inner `#2a2f37`.
+- The content layer has **no outer border** — it lifts with shadow.
+
+## Token quick reference (hex, both modes)
+| Utility | Light | FP | Use |
+|---|---|---|---|
+| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base |
+| `text-foreground` | `#030405` | `#f0f2f5` | primary text |
+| `bg-card` | `#ffffff` | `#11161d` | card (Surface 1a) |
+| `bg-popover` | `#ffffff` | `#1b2028` | menus/popovers |
+| `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
+| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — accent only |
+| `text-muted-foreground` | `#596475` | `#9ca3af` | secondary/label |
+| `bg-accent` | `#cad1db` | `#2a2f37` | hover fill |
+| `bg-destructive` | `#dc2626` | `#f87171` | danger/delete |
+| `border-border` | `#cdd4de` | `#575757` | default hairline |
+| `ring-ring` | `#727d8f` | `#9ca3af` | focus ring |
+| `bg-rail` | `#efefeb` | `#080808` | tier-1 rail |
+| `bg-drawer`/`bg-sidebar` | `#fafbf8` | `#090c0f`/`#11161d` | tier-2 drawer |
+| `bg-fp-surface-1a` | `#ffffff` | `#11161d` | card surface |
+| `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** |
+| `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | inner card / pressed tint |
+| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | Kanban lane track |
+| `border-fp-outline-1` | `#e2e5ea` | `#363c45` | subtle divider |
+| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (table stroke) |
+| `text-status-success` | `#16a34a` | `#22c55e` | success |
+| `text-status-processing` | `#d97706` | `#f59e0b` | processing/caution |
+| `text-status-failed` | `#dc2626` | `#f87171` | failed |
+| `text-verified` | `#2563eb` | `#3b82f6` | verified blue |
+| `shadow-fp-surface` | `0 4px 4px rgb(0 0 0 / .15)` | (same) | surface lift |
+
+**Theme-independent palettes** (same in both modes): chart series `chart-1..5`
+(`#fa6400`/`#3b82f6`/`#22c55e`/`#eab308`/`#8b5cf6`); Kanban lane accents
+`bg-fp-lane-*`; banner fills `bg-fp-banner-*` + inline accents
+`text-fp-banner-accent-*`.
+
+The full verbatim stylesheet is in [`6-execute.md`](6-execute.md).
+
+
+---
+
+# UI · Rules & behaviour  *(canonical)*
+
+The normative rules for the visual surface. **Single source** — Do's/Don'ts, Common
+mistakes, and Checks derive from these.
+
+## Token discipline
+- **Use tokens, never raw hex.** `bg-background`, `text-foreground`, `bg-card`,
+  `bg-brand`, `bg-fp-surface-1b`, etc. If a color you need isn't a token, **add it
+  to the token layer** — don't hardcode.
+- **Scale discipline.** Corners from the radius ramp (`sm 6 · md 8 · lg 10 · xl 14`;
+  buttons/inputs → `md`, cards → `lg`), text from the type scale, spacing from the
+  named steps. No one-off values.
+
+## Color governance
+- **`--brand` (`#fa6400`, orange) is the accent, not `--primary`.** Don't confuse
+  the tokens.
+- **The primary CTA is the neutral `bg-primary text-primary-foreground`** (near-white
+  FP / near-black Light). `bg-brand` is a *special accent*, used only where a brand
+  emphasis is specifically called for — never the default CTA. (Brand-as-CTA isn't a
+  rule yet; revisit once enough patterns exist.) *(Emphasis-budget — one primary per
+  view — is canonical in `ux/2-rules` H3.)*
+- **Status is shown by soft tint**, not a saturated block: `bg-status-*/10
+  text-status-*` (a highlighted "best" cell follows the same rule).
+- **Semantic variants.** A component's variant follows the *meaning of the data*,
+  never a hardcoded literal — e.g. `statusBadgeVariant(status)` maps Success→verified,
+  Processing→secondary, Failed→destructive. Derive the variant from the value.
+- **Add a status color** by joining the family: `--status-<name>` in `:root` *and*
+  `.dark`, a `--color-status-<name>` mapping in `@theme inline`, a soft-tint badge
+  variant, applied by data meaning.
+
+## Icons
+- **Lucide only** (`lucide-react`). Never Tabler / Hugeicons / Phosphor / Remix / emoji
+  / one-off SVGs. When a glyph isn't in the Lucide bank, inline an SVG with
+  `currentColor` — don't pull another set.
+
+## Surfaces & elevation
+- The **content layer** is `rounded-md bg-fp-surface-1b shadow-fp-surface` with **no
+  outer border** — it lifts with shadow.
+- Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
+  the content layer.
+- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-fp-lane`.
+- Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
+  no shadow.
+- **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
+  `ux/2-rules` H2, since it's a composition rule; the surface tokens live here.*
+
+## Theming
+- **Two modes**, FP default. Ship both Light (`:root`) and FP (`.dark`); the toggle
+  flips `.dark` and persists to `fp-theme`. Translate a foreign/light mock to these
+  tokens — never copy a literal palette (translate, don't trace).
+
+
+---
+
+# UI · Do's & don'ts
+
+Quick pointers into [`2-rules.md`](2-rules.md). One line each.
+
+## Do
+- **Drive every color/radius/spacing from tokens.**
+- **Use the neutral `bg-primary` for the primary CTA** (near-white FP / near-black Light).
+- **Show status by soft tint** (`bg-status-*/10 text-status-*`).
+- **Pick component variants by the data's meaning** (semantic).
+- **Use Lucide icons only.**
+- **Lift the content layer with `shadow-fp-surface`, no border.**
+- **Land radii on the ramp** — buttons/inputs `md`, cards `lg`.
+
+## Don't
+- **Don't hardcode hex** (`bg-[#fa6400]`) — use `bg-brand`.
+- **Don't use `bg-brand` as the default CTA** — it's a special accent.
+- **Don't use a saturated status fill** where a soft tint belongs.
+- **Don't put an outer border on the content layer.**
+- **Don't use arbitrary radii** (`rounded-[5px]`).
+- **Don't add Tabler/Hugeicons/Phosphor/Remix/emoji.**
+- **Don't trace a light/foreign mock** — re-map to FP tokens.
+
+
+---
+
+# UI · Common mistakes (❌ / ✅)
+
+Anti-patterns for the visual surface, each pointing back to [`2-rules.md`](2-rules.md).
+(The in-app **Do's and Don'ts → Common Mistakes** page renders these as visual pairs.)
+
+- **Brand color** — ❌ `bg-[#fa6400]` · ✅ `bg-brand`. Hardcoded hex breaks theming (Light/FP) and drifts from the palette.
+- **Primary CTA** — ❌ `bg-brand` as the default primary button · ✅ `bg-primary text-primary-foreground`. `bg-brand` (orange) is a special accent, only when specified.
+- **Status color** — ❌ a saturated `bg-status-success` block (incl. a highlighted "best" cell) · ✅ the soft tint `bg-status-success/10 text-status-success`.
+- **Content layer** — ❌ an outer `border` · ✅ no border + `shadow-fp-surface` to lift it.
+- **Radius** — ❌ `rounded-[5px]` · ✅ the scale: `rounded-md` (buttons/inputs), `rounded-lg` (cards).
+- **Icons** — ❌ Tabler / Hugeicons / Phosphor / Remix / emoji · ✅ `lucide-react` only.
+- **Light mock** — ❌ copy the white cards / a foreign palette · ✅ re-map every color to FP tokens (dark-primary). Translate, don't trace.
+
+
+---
+
+# UI · Checks
+
+Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
+[`00-meta/conformance.md`](../00-meta/conformance.md) ship-gate.
+
+- [ ] Every color is a token (no raw hex / no foreign palette).
+- [ ] The primary CTA is the neutral `bg-primary`; `bg-brand` appears only as a deliberate accent.
+- [ ] Status shown by soft tint (`status-*/10`), not saturated fills.
+- [ ] Component variants follow the data's meaning (semantic).
+- [ ] All icons are Lucide.
+- [ ] Both Light and FP render; FP is default; toggle persists to `fp-theme`.
+- [ ] Surfaces layer correctly (background → drawer → content) with `shadow-fp-surface` on floating chrome; content layer has no outer border.
+- [ ] Radii / type / spacing come from the scale, not one-off values.
+- [ ] Text contrast ≥ WCAG AA in both modes.
+
+
+---
+
+# UI · Execute
+
+The building blocks and visual recipes — plus the verbatim token stylesheet.
+
+## Primitives inventory (don't rebuild these)
+Install shadcn/ui (new-york); the tokens restyle them into FP. Available:
+
+`button` (default/secondary/outline/ghost/destructive/link; sizes sm/default/lg/icon),
+`button-group`, `input`, `textarea`, `label`, `field`, `checkbox` (Minus for
+indeterminate), `switch`, `radio-group`, `slider`, `select`, `combobox`
+(Popover+Command), `popover`, `hover-card`, `dropdown-menu`, `context-menu`,
+`dialog`, `alert-dialog`, `sheet`, `command` (⌘K), `alert`, `accordion`,
+`collapsible`, `tabs`, `table`, `pagination`, `badge` (+`BadgeNumber`), `avatar`,
+`progress`, `spinner`, `separator`, `scroll-area`, `skeleton`, `toggle`/`toggle-group`,
+`aspect-ratio`, `resizable`, `carousel`, `calendar` (react-day-picker), `date-picker`,
+`tooltip`, `kbd`, `empty`, `input-group`, `input-otp`, `item`, `menubar`,
+`navigation-menu`, `sidebar`, `sonner`.
+
+Extra deps beyond the base stack: `input-otp`, `sonner`, `recharts`,
+`react-day-picker@^9`, `embla-carousel-react`, `react-resizable-panels@4` (v4 API:
+`orientation` + Group/Panel/Separator). **Confirm before adding a runtime dep.**
+
+## Typography rhythm helpers
+`Stack` (section/title/heading/body/pair spacing), `Eyebrow`, `SectionHeading`,
+`LabelValue` (`components/typography`). Use these for vertical rhythm rather than
+ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title→body,
+12px within a group.
+
+## FP-composed patterns (rebuild from primitives + tokens)
+- **Data table** — `rounded-md` with an **outer stroke** `border border-fp-outline-2`; header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
+- **Editable table cell** — the trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`); hover/open paint `bg-accent` across the entire cell, no inset outline; two-line cell = title over description.
+- **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behaviour: `interactions/6-execute`.)*
+- **Banners** — Callout (Type 1): full-width solid `bg-fp-banner-{status}`, white text, optional CTA/dismiss. Inline alert (Type 2): compact 32px bar on `bg-fp-card-1`, icon+text in `text-fp-banner-accent-{status}`.
+- **Cards / KPI tiles** — `rounded-lg border border-fp-outline-1 bg-card p-4/5`; number `text-2xl/3xl font-semibold tabular-nums`; delta pill green (`bg-status-success/15 text-status-success`) / red (`bg-destructive/15 text-destructive`) with `ArrowUp`/`ArrowDown`.
+- **Kanban** — fixed-width lanes (`w-[340px] bg-fp-lane rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack. `bg-fp-lane` is a hair lighter than `bg-fp-card-1` in light mode so white cards read on top.
+- **Charts** — Recharts; setup + gotchas in `interactions/6-execute`.
+
+Reference implementations: `tables-layout/`, `form-layout/`, `side-sheet/`,
+`modals-demo/`, `info-cards/`, `fields-demo/`, `kanban-board/`, `dashboard/`,
+`component-demos/` (a `<Name>Demo.tsx` per primitive).
+
+## Token stylesheet (`globals.css`) — paste verbatim
+This is the single source of truth (both modes, every token). Reproduced from the
+repo's `src/index.css`.
 ```css
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
 @import "tailwindcss";
@@ -199,6 +424,7 @@ spacing, and shadow token lives here. Do not edit the values.
   --color-fp-surface-1a: var(--fp-surface-1a);
   --color-fp-surface-1b: var(--fp-surface-1b);
   --color-fp-card-1: var(--fp-card-1);
+  --color-fp-lane: var(--fp-lane);
   --color-fp-surface-base: var(--fp-surface-base);
   --color-status-success: var(--status-success);
   --color-status-processing: var(--status-processing);
@@ -295,6 +521,7 @@ spacing, and shadow token lives here. Do not edit the values.
   --fp-surface-1a: #ffffff;
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
+  --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
   --status-success: #16a34a;
   --status-processing: #d97706;
@@ -360,6 +587,7 @@ spacing, and shadow token lives here. Do not edit the values.
   --fp-surface-1a: #11161d;
   --fp-surface-1b: #1b2028;
   --fp-card-1: #2a2f37; /* FP/Card 1 */
+  --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
   --fp-surface-base: #080808;
   --status-success: #22c55e; /* confirmed via REST */
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
@@ -388,166 +616,515 @@ spacing, and shadow token lives here. Do not edit the values.
 }
 ```
 
----
-
-## 4. Token quick reference (hex, both modes)
-For quick lookup or non-Tailwind contexts. Prefer the utility (middle column) in code.
-
-| Token / utility | Light | FP (dark, default) | Use for |
-|---|---|---|---|
-| `bg-background` | `#efefeb` | `#080808` | Full app background / Surface Base |
-| `text-foreground` | `#030405` | `#f0f2f5` | Primary text |
-| `bg-card` | `#ffffff` | `#11161d` | Card / raised panel (= Surface 1a) |
-| `bg-popover` | `#ffffff` | `#1b2028` | Menus, popovers, dropdowns |
-| `bg-primary` | `#090c0f` | `#f8fafc` | Neutral primary — **the default CTA** (near-black Light / near-white FP) |
-| `bg-brand` / `text-brand` | `#fa6400` | `#fa6400` | **Brand orange** — special accent, only when specified (NOT the default CTA) |
-| `text-muted-foreground` | `#596475` | `#9ca3af` | Secondary/label text |
-| `bg-accent` | `#cad1db` | `#2a2f37` | Hover fill / subtle emphasis |
-| `bg-muted` | `#cad1db` | `#1b2028` | Muted surface |
-| `bg-destructive` | `#dc2626` | `#f87171` | Danger / delete |
-| `border-border` | `#cdd4de` | `#575757` | Default hairline border |
-| `ring-ring` | `#727d8f` | `#9ca3af` | Focus ring |
-| `bg-rail` | `#efefeb` | `#080808` | Tier-1 icon rail (flush w/ background) |
-| `bg-drawer` / `bg-sidebar` | `#fafbf8` | `#090c0f` / `#11161d` | Tier-2 nav drawer |
-| `bg-fp-surface-1a` | `#ffffff` | `#11161d` | Card surface |
-| `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **Content layer** |
-| `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | Elevated inner card (e.g. Kanban lane) |
-| `border-fp-outline-1` | `#e2e5ea` | `#363c45` | Subtle divider/hairline |
-| `border-fp-outline-2` | `#cad1db` | `#575757` | Stronger outline (e.g. table stroke) |
-| `text-status-success` | `#16a34a` | `#22c55e` | Success / positive |
-| `text-status-processing` | `#d97706` | `#f59e0b` | Processing / caution |
-| `text-status-failed` | `#dc2626` | `#f87171` | Failed |
-| `text-status-pink` | `#db2777` | `#ff8080` | Pink status |
-| `text-verified` | `#2563eb` | `#3b82f6` | "Verified" blue |
-| `shadow-fp-surface` | `0 4px 4px rgb(0 0 0 / .15)` | (same) | Surface elevation shadow |
-
-**Theme-independent palettes** (identical in both modes):
-- **Chart series:** `chart-1` `#fa6400` (brand) · `chart-2` `#3b82f6` · `chart-3` `#22c55e` · `chart-4` `#eab308` · `chart-5` `#8b5cf6` (utilities: `fill-chart-1`, `stroke-chart-2`, `bg-chart-3`…).
-- **Kanban lane accents** (`bg-fp-lane-*`): grey `#64748b`, blue `#3b82f6`, yellow `#eab308`, green `#22c55e`, cyan `#06b6d4`, purple `#6366f1`, violet `#8b5cf6`, pink `#d946ef`, orange `#f59e0b`, red `#f43f5e`.
-- **Banner (callout) fills** `bg-fp-banner-{info|caution|warning|success}`: `#3730a3` / `#854d0e` / `#991b1b` / `#166534` (white text). **Inline-alert accents** `text-fp-banner-accent-{caution|warning|success}`: light on FP (`#fcd34d`/`#fca5a5`/`#bef264`), darkened on light (`#b45309`/`#b91c1c`/`#4d7c0f`).
 
 ---
 
-## 5. Surface & elevation system
-The FP look is a **stack of surfaces** that step in lightness and lift with shadows.
+# UX · Fundamentals & principles
 
-**Light mode** (warm neutrals): background `#efefeb` → drawer `#fafbf8` → content layer `#ffffff`. The **rail is flush** with the background; the **drawer and content layer float** above it with `shadow-fp-surface`.
+*Structure, flow, information, spatial grouping — "where things go / how they're
+organized."* The mental model behind the UX rules ([`2-rules.md`](2-rules.md)).
 
-**FP mode** (dark): background/rail `#080808` → drawer `#090c0f` → content layer Surface-1b `#1b2028`, cards Surface-1a `#11161d`, inner cards `#2a2f37`.
+## The core idea
+Great structure means the reader can tell **what belongs with what** and **what
+matters most** *without reading*. Layout carries meaning before a single word does.
 
-Rules:
-- The **content layer** is a `rounded-md bg-fp-surface-1b shadow-fp-surface` panel with **no outer border**.
-- Cards use `bg-card` (= Surface 1a) with a `border-fp-outline-1` hairline — this is how they separate on the (white/1b) content layer.
-- Elevated inner cards (a card inside a card, e.g. a Kanban lane) step up to `bg-fp-card-1`.
-- Apply `shadow-fp-surface` to floating chrome (drawer, content layer). The rail gets **no shadow**.
+## Principles
 
----
+- **Everything lives in one frame.** Every screen is the AppShell — the shell is
+  the frame, so structure is consistent across the app. No full-bleed pages. (→ L1)
 
-## 6. Layout & shell (adapt to your screens)
-If your prototype is an app with navigation, use this shell; if it's a single view,
-you can skip the shell and still use the surfaces/cards/tokens.
+- **One header stack, in a fixed order.** A screen's chrome reads top-down in a
+  predictable sequence (title → breadcrumb → tabs → toolbar), so users learn it
+  once. (→ L2/L4)
 
-- **Tier-1 rail:** 52px icon rail (`bg-rail`) that hover-expands to a 256px overlay
-  (`bg-drawer`). One item per top-level screen; works on every screen.
-- **Tier-2 drawer (optional):** contextual sub-nav for the active screen, rendered
-  as a `rounded-lg bg-sidebar shadow-fp-surface` panel (256px).
-- **Content layer:** fills the remaining space; `rounded-md bg-fp-surface-1b
-  shadow-fp-surface`, no outer border. Holds a fixed **header** (page title
-  `text-2xl font-semibold`, optional breadcrumb directly under the title text,
-  a bottom `border-fp-outline-1` divider) then a scrolling body.
-- **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content and an **8px**
-  outer margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
-- **Stacking order inside a content body:** action bar → tabs → accordions → content.
+- **Each unit answers a distinct question.** Breadcrumb = *where am I?* · Tabs =
+  *which slice?* · Toolbar = *act on this?* Include a unit only when its question
+  is real for the screen. (→ L5)
 
----
+- **Compose in levels.** UI nests as Page → Region → Group → Compound-row → Atom.
+  Each level has one job; nothing floats between levels. Declaring a thing's level
+  fixes how it looks and sits. (→ H1)
 
-## 7. Components (use these; map your UI onto them)
-Install shadcn/ui (new-york) for the base primitives — with the tokens above they
-render as FP. Available primitives (don't rebuild these):
+- **Proximity is meaning.** Related units sit closer than unrelated ones; the gap
+  *inside* a group must be smaller than the gap *between* groups, or grouping
+  inverts. Separation (space > divider > box) is a ladder — pick the lightest that
+  reads.
 
-`button` (variants: default / secondary / outline / ghost / destructive / link; sizes sm/default/lg/icon), `button-group`, `input`, `textarea`, `label`, `field` (label+control+description/error, `data-invalid` state), `checkbox` (Minus for indeterminate), `switch`, `radio-group`, `slider`, `select`, `combobox` (Popover+Command), `popover`, `hover-card`, `dropdown-menu`, `context-menu`, `dialog`, `alert-dialog`, `sheet` (side sheet), `command` (⌘K), `alert`, `accordion`, `collapsible`, `tabs`, `table`, `pagination`, `badge` (+ `BadgeNumber`), `avatar`, `progress`, `spinner`, `separator`, `scroll-area`, `skeleton`, `toggle`/`toggle-group`, `aspect-ratio`, `resizable`, `carousel`, `calendar` (react-day-picker), `date-picker` (Popover+Calendar), `tooltip`, `kbd`, `empty`, `input-group`, `input-otp`, `item`, `menubar`, `navigation-menu`, `sidebar`, `sonner` (toasts).
+- **Emphasis is a budget** *(canonical home for this cross-cutting principle)*. One
+  primary thing per view — one primary group, one primary action. Emphasis is
+  spent, not sprinkled; when everything is emphasized, nothing is. (→ H3)
 
-**Button hierarchy:** one primary action per view — the primary CTA is the
-neutral `bg-primary text-primary-foreground` (near-white in FP, near-black in
-Light). `bg-brand` (orange) is reserved for where a brand emphasis is
-specifically called for. Everything else is `secondary` / `outline` / `ghost`.
+- **Density via slots.** A dense row is a fixed set of ordered slots. Extra data
+  extends a slot; it never drops an unaligned element into the row. (→ H4)
 
-**FP-composed patterns** (rebuild these from the primitives + tokens as needed):
-- **Data table** — `rounded-md` with an **outer stroke** `border border-fp-outline-2`; header row on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use the `status-*` tokens by row meaning.
-- **Editable table cell (dropdown/input)** — the trigger **fills the whole cell** (`td` gets `p-0`, control gets `h-full w-full`); hover/open paint **`bg-accent` across the entire cell, no inset outline**; two-line cell = title (`text-foreground`) over description (`text-muted-foreground`).
-- **Stacked delete-confirm** — after a trash click, the same action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`.
-- **Banners** (two types): **Callout** = full-width solid `bg-fp-banner-{status}` bar, white text, optional CTA or dismiss ✕; **Inline alert** = compact 32px bar on `bg-fp-card-1` where the icon+text take `text-fp-banner-accent-{status}`.
-- **Cards / KPI tiles** — `rounded-lg border border-fp-outline-1 bg-card p-4/5`; number `text-2xl/3xl font-semibold tabular-nums`; delta pill green (`bg-status-success/15 text-status-success`) / red (`bg-destructive/15 text-destructive`) with an `ArrowUp`/`ArrowDown`.
-- **Charts** — Recharts; see §8.
-- **Kanban** — fixed-width lanes (`w-[340px] bg-fp-card-1 rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), and a scrollable card stack.
+- **Match chrome to complexity.** A three-row list doesn't need breadcrumb + seven
+  tabs + a full toolbar. Structure scales down with the content.
+
+See [`4-common-mistakes.md`](4-common-mistakes.md) for the grouping-failure catalog
+these principles guard against.
+
 
 ---
 
-## 8. Interaction & behaviour rules
-- **Feedback for every action** — loading, empty, success, error states exist;
-  use `sonner` toasts for confirmations, inline `field` errors for validation.
-- **Reversible/guarded destructive actions** — the 52px confirm, or `AlertDialog`.
-- **Focus** — every interactive element shows a visible ring:
-  `focus-visible:ring-2 focus-visible:ring-ring/50` (add `ring-inset` inside cells).
-- **Hover** — subtle: `hover:bg-accent` (full-cell for table cells).
-- **Charts (Recharts) — two gotchas that are easy to miss:**
-  1. `var(--token)` does **not** resolve inside SVG presentation attributes.
-     Read the token to a hex at runtime (`getComputedStyle` on an in-tree element,
-     re-read on theme change) and pass that to `stroke`/`fill`; or use the
-     theme-independent `chart-1..5` hexes for series colors.
-  2. Set **`isAnimationActive={false}`** on series so they render immediately.
-     Convention: `--brand`/`chart-1` primary series, `--fp-outline-1` gridlines,
-     `--muted-foreground` axis ticks.
+# UX · Rules & behaviour  *(canonical)*
+
+The normative rules for structure, flow, and grouping. **Single source** — the
+Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
+
+## Shell & spacing
+- **Tier-1 rail:** 52px icon rail (`bg-rail`), flush with the background, hover-
+  expands to a 256px overlay (`bg-drawer`). One item per top-level screen.
+- **Tier-2 drawer (optional):** contextual sub-nav, a `rounded-lg bg-sidebar
+  shadow-fp-surface` panel (256px).
+- **Content layer:** fills the rest — `rounded-md bg-fp-surface-1b shadow-fp-surface`,
+  **no outer border**. A fixed header, then a scrolling body.
+- **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
+  margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
+
+## Layout laws
+
+**L1 — Everything lives in the AppShell.** Every app screen is rail + optional
+drawer + one content layer. No full-bleed pages, no page-owned top chrome. (A lone
+standalone view may omit the shell but still uses the surfaces/tokens.)
+
+**L2 — One header stack, fixed order.** The header carries title → breadcrumb; a
+tab row and the search/filter/action toolbar sit directly beneath. Collapse
+multiple source top-bars into this single stack — never a second full-width top-bar.
+
+**L3 — Toolbar: filters left, actions right.** Filters are a left-aligned group of
+identically-styled controls; view switches and the **one** primary action are
+right-aligned. A toolbar carries a single primary action.
+
+**L4 — Zone order inside the content body.** `header → toolbar → summary/insight
+band → data region` — always that order, consistent gap between zones, tighter
+(16px) inset within each.
+
+**L5 — Header units, include by relevance.** The three units are *optional*, each
+answering a distinct question — include one only when that question is real:
+- **Breadcrumb** (*where am I?*) — only when nested ≥2 levels; every crumb a
+  navigable ancestor; last crumb static.
+- **Tabs** (*which slice?*) — only when ≥2 mutually-exclusive facets of the *same*
+  dataset exist (switching filters the view, not the destination). Different pages
+  are **navigation**, not tabs. One facet → drop the tab row.
+- **Toolbar** (*act on this?*) — only when the dataset needs search / filter /
+  action.
+
+  The title is always present; dropped units keep the fixed order. Never ship a
+  placeholder unit (one-level breadcrumb, lone tab, dead-control toolbar).
+
+## Molecule-hierarchy laws
+
+**H1 — Five levels, one job each.** Page (shell) · Region (`bg-fp-surface-1b`) ·
+Group (`bg-card`, radius lg) · Compound-row (a fixed set of ordered slots) · Atom
+(token-driven control). A component declares its level; that fixes its surface
+token, radius, and padding. Nothing floats between levels.
+
+**H2 — Elevation steps once per level.** Nesting moves up exactly one surface
+(`surface-1b → card → fp-card-1`). Never stack two fills of the same weight — a
+same-fill-on-same-fill element flattens the hierarchy and vanishes. *(Surface
+tokens: see `ui/2-rules`.)*
+
+**H3 — Emphasis budget.** One primary action per view; status by **soft tint**, not
+saturated fill; brand orange reserved for a deliberate accent. *(This is the
+canonical home; the CTA-neutral facet is stated in `ui/2-rules`.)*
+
+**H4 — Density via fixed slots.** A data-dense row is an ordered slot set (identity
+· data grid · viz · action). Extra data extends a slot; it never adds an unaligned
+element.
+
+## Content-layer anatomy
+- **Header band:** page title `text-2xl font-semibold`; optional breadcrumb directly
+  under the title text; a bottom `border-fp-outline-1` divider.
+- **Breadcrumb source rule:** the trail reflects the real nav ancestry (rail screen
+  → drawer sub-menu → current), not an invented path.
+- **Stacking order inside the body:** action bar → tabs → accordions → content
+  (a concrete instance of L4).
+- **Responsive width** follows drawer presence (content reflows when the drawer is
+  absent).
+
+## Navigation — two tiers
+Rail = tier-1 main nav (one item per screen); drawer = tier-2 contextual sub-nav
+for the active screen. Content title = the selected sub-menu (or screen name when
+there's no drawer). Tabs are **not** navigation (see L5).
+
 
 ---
 
-## 9. Typography & spacing rhythm
-- Font: **Geist**. Weights used: 400 / 500 / 600.
-- Display headings: `text-heading-sm|md|lg|xl` (24 / 36 / 48 / 60px, semibold).
-- Body: Tailwind's default `text-xs…` ramp. Labels/secondary in `text-muted-foreground`.
-- Numbers: `tabular-nums`.
-- Radius: `rounded-sm 6 · md 8 · lg 10 · xl 14` (buttons/inputs/cards land on md–lg).
-- Vertical rhythm between stacked blocks: 96px between sections, 24px eyebrow→title,
-  16px title→body, 12px within a group (use `gap-*` / the `--spacing-section-*` tokens).
+# UX · Do's & don'ts
+
+Quick pointers into [`2-rules.md`](2-rules.md). One line each.
+
+## Do
+- **Put every screen in the AppShell** with one header stack. (L1/L2)
+- **Include a header unit only when its question is real** — breadcrumb when nested, tabs for real facets, toolbar when the data needs it. (L5)
+- **Keep the fixed zone order** — header → toolbar → summary → data — even when a unit is dropped. (L4)
+- **Filters left, one primary action right** in the toolbar. (L3)
+- **Compose in levels** (Page → Region → Group → Compound-row → Atom); step elevation once. (H1/H2)
+- **Build dense rows as fixed ordered slots.** (H4)
+
+## Don't
+- **Don't ship a full-bleed page** or a second stacked top-bar. (L1/L2)
+- **Don't use tabs to navigate** between different pages/objects — that's the rail's job. (L5)
+- **Don't render a lone tab, a one-level breadcrumb, or a dead-control toolbar** — no placeholder units. (L5)
+- **Don't reorder the header stack.** (L2/L4)
+- **Don't emphasize more than one group/action.** (H3)
+- **Don't cram unaligned elements into a row.** (H4)
+
 
 ---
 
-## 10. Decision rules (when to use what)
-- **Sheet vs Dialog** — Sheet = edge-anchored panel for a focused sub-task or record detail that keeps page context (forms, detail views, asset pickers; can be wide). Dialog = centered modal for a short, self-contained decision or message (confirm, quick create, alert; blocks until resolved).
-- **Toast (Sonner) vs Banner** — Toast = transient, dismissible feedback about an action just taken (auto-dismisses; not tied to a region). Banner = persistent, section-level message about state (a filter is active, a warning applies here; stays until resolved/dismissed).
-- **Banner Callout vs Inline alert** — Callout (Type 1) = prominent solid-fill bar with an optional CTA or dismiss. Inline alert (Type 2) = compact 32px bar on the card surface, status shown by icon + text color.
-- **Card vs inner card** — `bg-card` = a panel directly on the content layer (separates via a `border-fp-outline-1` hairline). `bg-fp-card-1` = a card nested inside another card/lane (steps up one elevation).
-- **Select vs Dropdown menu** — Select = pick one value to set a field (returns a value; forms). Dropdown menu = trigger a set of actions/toggles (row actions, column filters; items *do* things).
+# UX · Common mistakes (❌ / ✅)
 
-## 11. Common mistakes (❌ wrong / ✅ right)
-- **Brand color** — ❌ `bg-[#fa6400]` · ✅ `bg-brand`. Hardcoded hex breaks theming (Light/FP) and drifts from the palette.
-- **Accent / CTA** — ❌ `bg-primary` as the primary button (it's the neutral) · ✅ `bg-brand text-brand-foreground`. `--brand` is the orange; `--primary` is near-white in FP.
-- **Icons** — ❌ Tabler / Hugeicons / Phosphor / Remix / emoji · ✅ `lucide-react` only.
-- **Content layer** — ❌ an outer `border` · ✅ no border + `shadow-fp-surface` to lift it.
-- **Radius** — ❌ `rounded-[5px]` · ✅ the scale: `rounded-md` (buttons/inputs), `rounded-lg` (cards).
-- **Light mock** — ❌ copy the white cards / a foreign palette · ✅ re-map every color to FP tokens (dark-primary). Translate, don't trace.
+Anti-patterns for structure & grouping, each pointing back to a rule in
+[`2-rules.md`](2-rules.md). (The in-app **Do's and Don'ts → Common Mistakes** page
+renders these as visual pairs.)
 
-## 12. Conformance checklist (self-check before shipping)
+## Shell & header
+- **Page frame (L1/L2)** — ❌ a full-bleed page with a second stacked top-bar · ✅ the AppShell with one header stack (title → breadcrumb → tabs → toolbar).
+- **Header stack (L5)** — ❌ breadcrumb + tabs + a heavy toolbar on a three-row list · ✅ each unit earns its place; a simple screen is just title + a minimal toolbar.
+- **Breadcrumb (L5)** — ❌ a one-item crumb on a top-level screen, or crumbs that don't navigate · ✅ show only ≥2 levels deep, every crumb navigable, last crumb static.
+- **Tabs (L5)** — ❌ tabs used to jump between different pages, or a lone single tab · ✅ tabs = facets of one dataset; one facet → no tab row.
+- **Toolbar (L5)** — ❌ search + filters + group-by on a trivial list, or two filled CTAs · ✅ only supported controls, filters left, one neutral primary right.
+
+## Hierarchy
+- **Elevation (H2)** — ❌ same-weight fill nested on the same fill · ✅ step up one surface (`surface-1b → card → fp-card-1`).
+- **Emphasis budget (H3)** — ❌ several groups/CTAs all emphasized · ✅ one primary per view; the rest quiet.
+- **Dense row (H4)** — ❌ unaligned elements crammed into a row · ✅ a fixed set of ordered slots (identity · data grid · viz · action).
+
+## Grouping *(reserved — pending)*
+The 12-theme **grouping-failure catalog** (proximity/spacing, containment,
+separation method, hierarchy, semantic grouping, action grouping, toolbar
+composition, row/cell, labels, state, responsive, cross-zone) is being pruned. Once
+finalized, its surviving scenarios land here as ❌/✅ pairs with their derived rules
+in [`2-rules.md`](2-rules.md).
+
+
+---
+
+# UX · Checks
+
+Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
+[`00-meta/conformance.md`](../00-meta/conformance.md) ship-gate.
+
+- [ ] Screen is in the AppShell with one header stack. (L1/L2)
+- [ ] Content zones in order: header → toolbar → summary → data. (L4)
+- [ ] Header units earn their place — breadcrumb only if nested, tabs only for real facets, toolbar only if the data needs it; no placeholder units. (L5)
+- [ ] Tabs are facets of one dataset, not navigation between pages. (L5)
+- [ ] Composition nests in levels; elevation steps once per level. (H1/H2)
+- [ ] One primary group / one primary action per view. (H3)
+- [ ] Dense rows are fixed ordered slots, not crammed elements. (H4)
+- [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
+
+
+---
+
+# UX · Execute
+
+How to build the structure the UX rules describe. Code idioms for the shell + zones.
+
+## AppShell skeleton
+```tsx
+// 8px gaps + 8px outer margin (spacing law). Rail flush, drawer + content float.
+<div className="flex h-screen gap-2 p-2 bg-background">
+  <nav className="w-13 shrink-0 bg-rail" />                        {/* 52px rail */}
+  <aside className="w-64 shrink-0 rounded-lg bg-sidebar shadow-fp-surface" /> {/* drawer */}
+  <main className="flex-1 min-w-0 rounded-md bg-fp-surface-1b shadow-fp-surface
+                   overflow-hidden flex flex-col">                 {/* content layer — no border */}
+    {/* header stack + zones */}
+  </main>
+</div>
+```
+The repo's implementation is `src/components/app-shell/` + `navigation-drawer/`;
+the nav registry is `App.tsx` (`SCREENS` + `ORDER`).
+
+## Header stack (L2) — fixed order
+```tsx
+<div className="border-b border-fp-outline-1 px-5 py-3">
+  <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+  {nested && <Breadcrumb className="mt-1.5" />}   {/* only when ≥2 levels deep */}
+  {facets && <Tabs className="mt-3" />}           {/* only for real facets */}
+</div>
+{/* then the toolbar zone below */}
+```
+
+## Toolbar (L3) — filters left, one primary right
+```tsx
+<div className="flex items-center gap-2 p-4">
+  <div className="flex items-center gap-2">{/* search · filters · group-by */}</div>
+  <div className="flex-1" />
+  {/* view switches */} <Button>Publish</Button>   {/* neutral bg-primary, single primary */}
+</div>
+```
+
+## Zone order (L4)
+Stack, in order, with a consistent gap between and 16px inset within:
+`header → toolbar → summary/insight band → data region`.
+
+## Five levels (H1) — pick the level, its container follows
+| Level | Container |
+|---|---|
+| Region | `bg-fp-surface-1b` (the content layer) |
+| Group | `bg-card` + `border-fp-outline-1`, radius `lg` |
+| Compound-row | a fixed grid of ordered slots |
+| Atom | a token-driven control |
+
+Step elevation once (H2): `surface-1b → card → fp-card-1`. Never nest same-weight fills.
+
+## Compound row (H4) — fixed slots
+```tsx
+// each row uses the SAME column template so slots align down the table
+<div className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3">
+  {/* identity · data grid · viz · action */}
+</div>
+```
+
+Reference implementations: `tables-layout/`, `form-layout/`, `kanban-board/`,
+`dashboard/`.
+
+
+---
+
+# Interactions · Fundamentals & principles
+
+*Behaviour, state, feedback, motion, accessibility — "how it behaves."* The mental
+model behind the interaction rules ([`2-rules.md`](2-rules.md)).
+
+## Principles
+
+- **Feedback for every action.** Every action has a visible response — loading,
+  empty, success, and error states all exist. Nothing happens silently.
+
+- **Guard the irreversible.** Destructive actions are reversible or confirmed
+  before they fire (the 52px inline confirm, or an `AlertDialog`).
+
+- **State is designed, not incidental.** A component is designed for all its states
+  — resting, hover, focus, active, disabled, loading, empty. The loading skeleton
+  holds the loaded shape so layout doesn't jump.
+
+- **Interaction is always visible.** What's interactive looks interactive; focus is
+  always shown (a visible ring); hover is a subtle, consistent cue.
+
+- **Accessible by default.** Keyboard-operable, visible focus, `aria-label` on
+  icon-only controls, contrast ≥ AA, motion that respects `prefers-reduced-motion`.
+  Accessibility isn't a pass at the end — it's the resting behaviour.
+
+- **Motion is functional, not decorative.** Movement clarifies a change (a bar
+  docking, a panel entering); it's brief and purposeful. Static template charts
+  render without a mount animation.
+
+See [`4-common-mistakes.md`](4-common-mistakes.md) for the failures these guard against.
+
+
+---
+
+# Interactions · Rules & behaviour  *(canonical)*
+
+The normative rules for behaviour, state, feedback, and accessibility. **Single
+source** — Do's/Don'ts, Common mistakes, and Checks derive from these.
+
+## Feedback & state
+- **Feedback for every action** — loading, empty, success, error states exist. Use
+  `sonner` toasts for confirmations, inline `field` errors for validation.
+- **State completeness** — design resting / hover / focus / active / disabled /
+  loading / empty. A loading skeleton preserves the loaded group's shape.
+
+## Destructive actions
+- **Reversible or guarded** — use the 52px stacked confirm (in a table action cell)
+  or an `AlertDialog`. Never fire a destructive action on a single unguarded click.
+
+## Focus
+- **Every interactive element shows a visible ring:** `focus-visible:ring-2
+  focus-visible:ring-ring/50` (add `ring-inset` inside table cells).
+
+## Hover
+- **Subtle:** `hover:bg-accent`. For table cells, hover paints the **full cell**
+  (`bg-accent` across the whole `td`, no inset outline).
+
+## Accessibility
+- **Keyboard-operable** — every control reachable and operable by keyboard.
+- **`aria-label` on icon-only buttons.**
+- **Contrast ≥ WCAG AA** in both Light and FP.
+- **Respect `prefers-reduced-motion`** — gate non-essential motion.
+
+## Charts (Recharts)
+- **`var(--token)` does NOT resolve in SVG presentation attributes** — resolve
+  tokens to hex at runtime (`getComputedStyle` on an in-tree element, re-read on
+  theme change via a `MutationObserver` on `documentElement.class`), or use the
+  theme-independent `chart-1..5` hexes.
+- **Disable the mount animation** (`isAnimationActive={false}`) — Recharts' reveal
+  is rAF-driven and stalls headless; static template charts should render fully.
+- Convention: `--brand`/`chart-1` primary series, `--fp-outline-1` gridlines,
+  `--muted-foreground` axis ticks.
+
+Build recipes for all of the above: [`6-execute.md`](6-execute.md).
+
+
+---
+
+# Interactions · Do's & don'ts
+
+Quick pointers into [`2-rules.md`](2-rules.md). One line each.
+
+## Do
+- **Give every action visible feedback** (toast / inline error / state change).
+- **Guard destructive actions** (52px confirm or `AlertDialog`).
+- **Show a visible focus ring** on every interactive element.
+- **Keep hover subtle** — `bg-accent`, full-cell for table cells.
+- **Give icon-only buttons an `aria-label`.**
+- **Design every state** — resting / hover / focus / active / disabled / loading / empty.
+- **Disable chart mount animation** and resolve tokens to hex for Recharts.
+
+## Don't
+- **Don't fire a destructive action on one unguarded click.**
+- **Don't ship a control with no visible focus state.**
+- **Don't leave an action silent** (no loading / success / error).
+- **Don't pass `var(--token)` to a Recharts `stroke`/`fill`** — it won't resolve.
+- **Don't let a loading skeleton change the loaded shape** (layout jump).
+- **Don't animate non-essential motion** without honoring `prefers-reduced-motion`.
+
+
+---
+
+# Interactions · Common mistakes (❌ / ✅)
+
+Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rules.md).
+
+- **Focus** — ❌ a control with no visible focus state · ✅ `focus-visible:ring-2 focus-visible:ring-ring/50` (`ring-inset` in cells).
+- **Destructive** — ❌ delete fires on a single unguarded click · ✅ the 52px confirm or an `AlertDialog`.
+- **Silent action** — ❌ an action with no loading/success/error feedback · ✅ a `sonner` toast or inline `field` error.
+- **Recharts color** — ❌ `stroke="var(--brand)"` (renders invisible — `var()` doesn't resolve in SVG attributes) · ✅ resolve to hex at runtime, or use the `chart-1..5` hexes.
+- **Chart mount** — ❌ default animation (stalls headless, shows a sliver) · ✅ `isAnimationActive={false}`.
+- **Skeleton** — ❌ a loading shape that differs from the loaded shape (layout jumps) · ✅ a skeleton that holds the loaded group's shape.
+- **Icon buttons** — ❌ an icon-only button with no label · ✅ `aria-label`.
+
+
+---
+
+# Interactions · Checks
+
+Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
+[`00-meta/conformance.md`](../00-meta/conformance.md) ship-gate.
+
+- [ ] Feedback for every action (loading / empty / success / error).
+- [ ] Destructive actions guarded (52px confirm or `AlertDialog`).
+- [ ] Visible focus rings on every interactive element.
+- [ ] Keyboard-operable throughout.
+- [ ] Icon-only buttons have `aria-label`.
+- [ ] Text contrast ≥ WCAG AA in both modes.
+- [ ] Reduced motion respected; charts render without mount animation.
+- [ ] Loading skeletons hold the loaded shape (no layout jump).
+
+
+---
+
+# Interactions · Execute
+
+Build recipes for the interaction rules.
+
+## Focus & hover
+```tsx
+// visible focus ring on any interactive element (ring-inset inside table cells)
+className="outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+// subtle hover; table cells paint the full cell
+className="hover:bg-accent"
+```
+
+## Guarded destructive — the 52px stacked confirm
+In a table action cell, a trash click swaps the cell for a 52×52 vertical split:
+✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`),
+clipped `rounded-md`. For page-level destructive actions use `AlertDialog` instead.
+
+## Feedback
+- Confirmations → `sonner` toasts. (Sonner's clone reads theme via `next-themes`;
+  instead observe the `.dark` class the `ThemeToggle` flips — no `next-themes`.)
+- Validation → inline `field` errors (`data-invalid` state on the field).
+- Provide loading / empty states (`skeleton`, `empty`) that hold the loaded shape.
+
+## Charts (Recharts)
+```tsx
+// var(--token) does NOT resolve in SVG attributes — resolve to hex at runtime,
+// theme-aware, re-reading on theme change; disable the mount animation.
+const el = useRef<HTMLDivElement>(null);
+const [colors, setColors] = useState<string[]>([]);
+useEffect(() => {
+  const read = () => setColors(
+    ["--color-chart-1","--color-chart-2","--color-chart-3","--color-chart-4","--color-chart-5"]
+      .map(v => getComputedStyle(el.current!).getPropertyValue(v).trim())
+  );
+  read();
+  const mo = new MutationObserver(read);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => mo.disconnect();
+}, []);
+// <Area ... isAnimationActive={false} stroke={colors[0]} />
+```
+Convention: `chart-1`/`--brand` primary series, `--fp-outline-1` gridlines,
+`--muted-foreground` axis ticks. Reference: `dashboard/`.
+
+## Editable-cell hover behaviour
+The trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`);
+hover/open paint `bg-accent` across the entire cell, no inset outline. (Visual spec:
+`ui/6-execute`.) Reference: `tables-layout/`, `form-layout/`.
+
+## Headless-preview gotchas (when verifying)
+- Radix triggers need `pointerdown → pointerup → click` (synthetic `.click()` won't open them).
+- `requestAnimationFrame` is paused in the backgrounded tab — prefer a CSS keyframe whose default state is the resting position.
+- Controlled inputs: set value via the native setter, then dispatch `input`.
+- Reads right after a click see pre-render state; re-read after React flushes.
+
+(Full verify loop: [`../00-meta/workflow.md`](../00-meta/workflow.md).)
+
+
+---
+
+# Conformance checklist — the ship-gate
+
+Self-check before shipping. This rolls up each category's `5-checks.md`; see those
+for the rule each check derives from. (This is also the rubric the
+`fp-ds-heuristics-eval` skill scores against.)
+
+## UI
 - [ ] Every color is a token (no raw hex / no foreign palette).
-- [ ] `--brand` orange is the accent/primary CTA; `--primary` is not misused as brand.
+- [ ] The primary CTA is the neutral `bg-primary`; `bg-brand` (orange) appears only as a deliberate accent, never as the default CTA.
 - [ ] All icons are Lucide.
 - [ ] Both Light and FP render; FP is default; toggle persists to `fp-theme`.
-- [ ] Surfaces layer correctly (background → drawer → content) with `shadow-fp-surface`
-      on floating chrome; content layer has no outer border.
+- [ ] Surfaces layer correctly (background → drawer → content) with `shadow-fp-surface` on floating chrome; content layer has no outer border.
+- [ ] Status shown by soft tint (`status-*/10`), not saturated fills.
 - [ ] Component variants follow data meaning (semantic).
-- [ ] One primary action per view; consistent button hierarchy.
-- [ ] Visible focus rings; keyboard-operable; icon-only buttons have `aria-label`.
+- [ ] Radii / type / spacing come from the scale, not one-off values.
 - [ ] Text contrast ≥ WCAG AA in both modes.
-- [ ] Radii/type/spacing come from the scale, not one-off values.
+
+## UX
+- [ ] Elevation steps once per level; no same-weight fill nested on itself.
+- [ ] Screen is in the AppShell with one header stack; content zones in order (header → toolbar → summary → data).
+- [ ] Header units earn their place: breadcrumb only if nested, tabs only for real facets, toolbar only if the data needs it — no placeholder units.
+- [ ] Dense rows are fixed ordered slots, not crammed elements.
+- [ ] One primary group / one primary action per view.
+
+## Interactions
+- [ ] Feedback for every action (loading / empty / success / error).
+- [ ] Destructive actions guarded (52px confirm or `AlertDialog`).
+- [ ] Visible focus rings; keyboard-operable; icon-only buttons have `aria-label`.
+- [ ] Reduced motion respected; charts render without mount animation.
+
 
 ---
 
-## 13. Prompt preamble (copy-paste to your tool)
-> Build using the FleetPanda Design System defined in this file. Use Tailwind v4 +
+# Prompt preamble
+
+Copy-paste this to your AI coding tool before it builds. Hand it alongside the
+token stylesheet from [`ui/6-execute.md`](../ui/6-execute.md) (or the generated
+`apply-design-system.md` bundle).
+
+> Build using the FleetPanda Design System (FP-DS-2026). Use Tailwind v4 +
 > shadcn/ui (new-york) + Lucide icons. Paste the provided `globals.css` as the
 > global stylesheet and drive **all** color/radius/spacing from its tokens — never
 > hardcode hex. Default to the FP (dark) theme with a Light toggle on `.dark`.
 > Compose screens from the listed components and follow the surface/elevation,
-> layout, and interaction rules. My prototype's screens and flows differ from the
-> reference — adapt my content into this system; do not restyle away from it. Run
-> the §10 conformance checklist before finishing.
+> layout, and interaction rules. The primary CTA is the neutral `bg-primary`, not
+> the brand orange. Put every screen in the AppShell with one header stack, and
+> include header units (breadcrumb / tabs / toolbar) only when relevant. My
+> prototype's screens and flows differ from the reference — adapt my content into
+> this system; do not restyle away from it. Run the conformance checklist before
+> finishing.
+

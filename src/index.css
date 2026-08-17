@@ -114,6 +114,7 @@
   --color-fp-surface-1a: var(--fp-surface-1a);
   --color-fp-surface-1b: var(--fp-surface-1b);
   --color-fp-card-1: var(--fp-card-1);
+  --color-fp-lane: var(--fp-lane);
   --color-fp-surface-base: var(--fp-surface-base);
   --color-status-success: var(--status-success);
   --color-status-processing: var(--status-processing);
@@ -210,6 +211,7 @@
   --fp-surface-1a: #ffffff;
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
+  --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
   --status-success: #16a34a;
   --status-processing: #d97706;
@@ -275,6 +277,7 @@
   --fp-surface-1a: #11161d;
   --fp-surface-1b: #1b2028;
   --fp-card-1: #2a2f37; /* FP/Card 1 */
+  --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
   --fp-surface-base: #080808;
   --status-success: #22c55e; /* confirmed via REST */
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */

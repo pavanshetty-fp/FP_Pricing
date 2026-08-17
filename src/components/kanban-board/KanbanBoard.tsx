@@ -162,7 +162,7 @@ function Card({ card }: { card: KanbanCard }) {
 
 function KanbanLane({ lane }: { lane: Lane }) {
   return (
-    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-fp-card-1">
+    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-fp-lane">
       {/* Colored top strip */}
       <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} />
       {/* Lane header */}

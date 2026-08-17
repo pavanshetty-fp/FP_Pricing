@@ -69,6 +69,12 @@ pre-render state (re-read after React flushes).
 change. Verify the single file by serving over a throwaway `python -m http.server`.
 
 ## Git
-Commit/push only when asked; branch first if on default. End commit messages with
-`Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`. The
-`pavanshetty-rgb/FP-DS-2026` remote is reference-only — don't push unless told.
+- **Canonical remote:** `origin` → `git@github.com:pavanshetty-fp/FP-DS-2026.git`
+  (public), over **SSH** (key `~/.ssh/id_ed25519`); `main` tracks `origin/main`.
+- Commits go straight to `main` (the established solo-repo pattern — no branches).
+- **Commit/push only when the user asks.** End commit messages with
+  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+- Historical note: the old `pavanshetty-rgb/FP-DS-2026` remote is **superseded** —
+  `pavanshetty-fp/FP-DS-2026` is now the live home.
+- GitHub Pages scaffolding (Vite `base: /FP-DS-2026/`, an Actions workflow) is
+  committed.

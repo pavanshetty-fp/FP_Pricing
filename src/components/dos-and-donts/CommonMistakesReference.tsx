@@ -188,7 +188,7 @@ export function CommonMistakesReference() {
           why="Status is shown with the soft-tint pattern (bg-status-*/10 + text-status-*), never a saturated block that fights the surface. Same rule for a highlighted 'best' cell. (H3)"
           wrong={
             <>
-              <div className="flex h-9 items-center justify-center rounded-md bg-status-success text-xs font-medium text-white">
+              <div className="flex h-9 items-center justify-center rounded-md bg-status-success text-xs font-medium text-status-foreground">
                 Best $2.4489
               </div>
               <Code>{`bg-status-success  /* solid fill */`}</Code>

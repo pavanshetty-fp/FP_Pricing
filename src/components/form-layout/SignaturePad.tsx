@@ -13,6 +13,10 @@ export function SignaturePad() {
   const [hasInk, setHasInk] = React.useState(false);
 
   // Size the bitmap to the element (accounting for DPR) so strokes stay crisp.
+  // A canvas takes no CSS tokens, so the ink colour is read off the element as a
+  // computed custom property and re-read when the theme class flips (same pattern
+  // as Dashboard's useThemeColors) — never a hardcoded hex, which would only
+  // read on one of the two themes.
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -21,13 +25,20 @@ export function SignaturePad() {
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(dpr, dpr);
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "#e5e7eb";
-    }
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const readInk = () => {
+      const ink = getComputedStyle(canvas).getPropertyValue("--foreground").trim();
+      ctx.strokeStyle = ink || "currentColor";
+    };
+    readInk();
+    const obs = new MutationObserver(readInk);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
   }, []);
 
   const pos = (e: React.PointerEvent) => {

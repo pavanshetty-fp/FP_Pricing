@@ -20,7 +20,7 @@ const badgeVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive/20",
         // verified — fixed DS blue + BadgeCheck icon (pass as child)
-        verified: "bg-verified text-white hover:bg-verified/90",
+        verified: "bg-verified text-verified-foreground hover:bg-verified/90",
         link: "text-primary underline-offset-4 hover:underline",
       },
     },
@@ -59,7 +59,7 @@ const badgeNumberVariants = cva(
         outline: "border border-border text-foreground",
         ghost: "text-foreground",
         destructive: "bg-destructive/10 text-destructive",
-        verified: "bg-verified text-white",
+        verified: "bg-verified text-verified-foreground",
       },
     },
     defaultVariants: {

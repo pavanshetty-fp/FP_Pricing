@@ -31,7 +31,7 @@ const MODULES: Module[] = [
 function CompletionBurst() {
   return (
     <CircleCheck
-      className="module-check-pop size-5 shrink-0 text-white"
+      className="module-check-pop size-5 shrink-0 text-brand-foreground"
       strokeWidth={2.25}
     />
   );

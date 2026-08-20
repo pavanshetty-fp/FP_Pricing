@@ -31,12 +31,14 @@ function Card({
 }
 
 /* ── Bar chart — "Price Breakdown per gal" ─────────────────────────────────── */
+/* Series colours come from the categorical chart palette (--chart-1..5, 449:6176)
+   so these bars match the Recharts cards on the Dashboard. */
 const BARS = [
-  { label: "Base Price", value: 8065, color: "bg-[#2f6bff]" },
-  { label: "Fee", value: 4000, color: "bg-[#f59e0b]" },
-  { label: "Tax", value: 2000, color: "bg-[#f43f5e]" },
-  { label: "Discount", value: 2000, color: "bg-[#a855f7]" },
-  { label: "Margin", value: 4000, color: "bg-[#22c55e]" },
+  { label: "Base Price", value: 8065, color: "bg-chart-2" },
+  { label: "Fee", value: 4000, color: "bg-chart-4" },
+  { label: "Tax", value: 2000, color: "bg-chart-1" },
+  { label: "Discount", value: 2000, color: "bg-chart-5" },
+  { label: "Margin", value: 4000, color: "bg-chart-3" },
 ];
 const Y_TICKS = [8000, 6000, 4000, 2000, 0];
 const Y_MAX = 8500;
@@ -77,9 +79,11 @@ export function BarChartCard({ className }: { className?: string }) {
 }
 
 /* ── Donut — "Amount you Earned" ───────────────────────────────────────────── */
+/* Conic-gradient stops need a resolvable colour value, so the chart tokens are
+   referenced as CSS vars rather than hexes. */
 const DONUT = [
-  { label: "Base price", value: 8065, amount: "+$8,065.00", color: "#f59e0b" },
-  { label: "Margin", value: 4000, amount: "+$4,000.00", color: "#22c55e" },
+  { label: "Base price", value: 8065, amount: "+$8,065.00", color: "var(--color-chart-4)" },
+  { label: "Margin", value: 4000, amount: "+$4,000.00", color: "var(--color-chart-3)" },
 ];
 
 export function DonutCard({ className }: { className?: string }) {

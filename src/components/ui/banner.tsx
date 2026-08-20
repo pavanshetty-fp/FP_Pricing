@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 type BannerStatus = "info" | "caution" | "warning" | "success";
 
 const calloutVariants = cva(
-  "flex items-center gap-3 rounded-md px-4 py-3 text-white",
+  "flex items-center gap-3 rounded-md px-4 py-3 text-fp-banner-foreground",
   {
     variants: {
       status: {
@@ -61,7 +61,7 @@ function BannerCallout({
       className={cn(calloutVariants({ status }), className)}
       {...props}
     >
-      <span className="mt-0.5 shrink-0 self-start text-white/90 [&_svg]:size-5">
+      <span className="mt-0.5 shrink-0 self-start text-fp-banner-foreground/90 [&_svg]:size-5">
         {icon ?? <Info />}
       </span>
       <p className="flex-1 text-sm leading-snug">{children}</p>
@@ -72,7 +72,7 @@ function BannerCallout({
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
-          className="-mr-1 shrink-0 self-start rounded-sm p-1 text-white/80 outline-none transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
+          className="-mr-1 shrink-0 self-start rounded-sm p-1 text-fp-banner-foreground/80 outline-none transition-colors hover:bg-fp-banner-foreground/15 hover:text-fp-banner-foreground focus-visible:ring-2 focus-visible:ring-fp-banner-foreground/50"
         >
           <X className="size-4" />
         </button>

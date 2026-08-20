@@ -16,10 +16,13 @@ interface UploadedFile {
   kind: "PDF" | "DOC" | "PNG";
 }
 
+/* File-kind chips are categorical, not semantic — the hues come from the DS
+   status/verified tokens so both themes track the token layer (never Tailwind's
+   stock palette, whose -400 steps are tuned for dark grounds only). */
 const KIND_STYLE: Record<UploadedFile["kind"], string> = {
-  PDF: "bg-red-500/15 text-red-400",
-  DOC: "bg-blue-500/15 text-blue-400",
-  PNG: "bg-amber-500/15 text-amber-400",
+  PDF: "bg-status-failed/15 text-status-failed",
+  DOC: "bg-verified/15 text-verified",
+  PNG: "bg-status-processing/15 text-status-processing",
 };
 
 const INITIAL_FILES: UploadedFile[] = [

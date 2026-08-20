@@ -149,11 +149,14 @@
   --color-fp-card-1: var(--fp-card-1);
   --color-fp-lane: var(--fp-lane);
   --color-fp-surface-base: var(--fp-surface-base);
+  --color-status-foreground: var(--status-foreground);
   --color-status-success: var(--status-success);
   --color-status-processing: var(--status-processing);
   --color-status-failed: var(--status-failed);
   --color-status-pink: var(--status-pink);
   --color-verified: var(--verified);
+  --color-verified-foreground: var(--verified-foreground);
+  --color-fp-banner-foreground: var(--fp-banner-foreground);
   --color-fp-banner-info: var(--fp-banner-info);
   --color-fp-banner-caution: var(--fp-banner-caution);
   --color-fp-banner-warning: var(--fp-banner-warning);
@@ -235,6 +238,12 @@
   /* FleetPanda-only — constants (theme-independent) */
   --brand: #fa6400; /* Primary (FP orange) */
   --brand-foreground: #ffffff;
+  /* Paired foregrounds for the saturated fills. White in BOTH themes per the DS
+     (badge 23:995 "Verified", banners 28149:1712 Type 1 solid fills, status
+     fills) — declared as tokens so no component reaches for `text-white`. */
+  --verified-foreground: #ffffff;
+  --fp-banner-foreground: #ffffff;
+  --status-foreground: #ffffff;
 
   /* FleetPanda-only — LIGHT surface/chrome/status (derived to pair with above) */
   --drawer: #fafbf8; /* Navigation Drawer Expanded (light) — 28679:1109 */

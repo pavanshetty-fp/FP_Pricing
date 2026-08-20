@@ -62,7 +62,7 @@ function BrandHeader({ brand, collapsed }: { brand: NavBrand; collapsed: boolean
   const tile = (
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-lg text-white [&_svg]:size-5",
+        "flex size-9 shrink-0 items-center justify-center rounded-lg text-brand-foreground [&_svg]:size-5",
         brand.iconClassName ?? "bg-brand"
       )}
     >
@@ -73,7 +73,7 @@ function BrandHeader({ brand, collapsed }: { brand: NavBrand; collapsed: boolean
   return (
     <div className="flex h-12 items-center gap-2 px-2">
       {tile}
-      <span className="truncate text-base font-semibold text-white">{brand.name}</span>
+      <span className="truncate text-base font-semibold text-sidebar-foreground">{brand.name}</span>
     </div>
   );
 }

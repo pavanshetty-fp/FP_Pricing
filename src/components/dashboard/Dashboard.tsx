@@ -286,7 +286,7 @@ function CustomersCard() {
       <div className="mt-5 grid grid-cols-3 gap-3">
         {SEGMENTS.map((s) => (
           <div key={s.label} className="flex flex-col gap-1">
-            <span className={cn("inline-flex size-7 items-center justify-center rounded-md text-white [&_svg]:size-4", s.color)}>
+            <span className={cn("inline-flex size-7 items-center justify-center rounded-md text-status-foreground [&_svg]:size-4", s.color)}>
               {s.icon}
             </span>
             <span className="mt-1 text-lg font-semibold tabular-nums text-foreground">

@@ -35,7 +35,7 @@ export function TopBar({ user, unread = 0 }: TopBarProps) {
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3">
       {/* Left — brand logo */}
       <div className="flex flex-1 items-center gap-2">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white [&_svg]:size-5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground [&_svg]:size-5">
           <Boxes />
         </span>
         <span className="truncate text-base font-semibold text-foreground">FleetPanda</span>

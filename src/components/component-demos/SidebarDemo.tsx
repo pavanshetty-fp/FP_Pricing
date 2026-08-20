@@ -67,7 +67,7 @@ function MailExample() {
     <Frame>
       {/* Icon rail (the "Sidebar 16" 48px column) */}
       <div className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-sidebar-border bg-sidebar py-2">
-        <div className="flex size-8 items-center justify-center rounded-md bg-brand text-white">
+        <div className="flex size-8 items-center justify-center rounded-md bg-brand text-brand-foreground">
           <Boxes className="size-4" />
         </div>
         {RAIL_ICONS.map((r) => (
@@ -167,7 +167,7 @@ function GroupedExample() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" className="gap-3">
-                <div className="flex size-8 items-center justify-center rounded-md bg-brand text-white">
+                <div className="flex size-8 items-center justify-center rounded-md bg-brand text-brand-foreground">
                   <Boxes className="size-4" />
                 </div>
                 <div className="flex flex-1 flex-col text-left leading-tight">

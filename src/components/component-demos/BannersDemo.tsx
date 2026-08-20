@@ -26,7 +26,7 @@ function CalloutAction() {
   return (
     <button
       type="button"
-      className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium text-white outline-none transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/50"
+      className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium text-fp-banner-foreground outline-none transition-colors hover:bg-fp-banner-foreground/15 focus-visible:ring-2 focus-visible:ring-white/50"
     >
       Action Button
       <ArrowRight className="size-4" />

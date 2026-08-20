@@ -145,7 +145,7 @@ function Card({ card }: { card: KanbanCard }) {
       className={cn(
         // A card is a clickable surface; the full state set:
         // default → hover (brighter outline + lift) → focus → active.
-        "cursor-pointer overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a outline-none transition-[color,border-color,box-shadow]",
+        "cursor-pointer overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
         "hover:border-fp-outline-2 hover:shadow-fp-surface",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
         "active:border-fp-outline-2 active:bg-fp-card-1"
@@ -162,7 +162,7 @@ function Card({ card }: { card: KanbanCard }) {
 
 function KanbanLane({ lane }: { lane: Lane }) {
   return (
-    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-fp-lane">
+    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-accent">
       {/* Colored top strip */}
       <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} />
       {/* Lane header */}

@@ -1,12 +1,10 @@
-import { ChevronsUpDown } from "lucide-react";
+import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
-import type { NavBrand, NavGroup, NavUser } from "./types";
+import type { NavGroup } from "./types";
+import { ModuleSwitcher } from "./ModuleSwitcher";
 
 export interface NavRailProps {
-  brand: NavBrand;
   groups: NavGroup[];
-  user: NavUser;
   activeKey?: string;
   onNavigate?: (key: string) => void;
 }
@@ -15,44 +13,37 @@ export interface NavRailProps {
  * Tier-1 icon rail that expands to a 256px labeled drawer on hover —
  * Figma "Main Navigation Menu Interaction" (node 27634:21171).
  *
- * Collapsed 52px (`bg-rail` #080808). On hover it expands to 256px as an
- * **overlay** (`bg-drawer` #090c0f) — the 52px footprint stays reserved so the
- * content never reflows; icons keep their position and labels fade in.
+ * Collapsed 52px (`bg-rail` #080808). On hover — or while the module switcher is
+ * open — it expands to 256px as an **overlay**; the 52px footprint stays reserved
+ * so content never reflows; icons keep position and labels fade in. The surface
+ * stays `bg-rail` in both states (the colour does not change on expand).
  */
 export function NavRail({
-  brand,
   groups,
-  user,
   activeKey,
   onNavigate,
 }: NavRailProps) {
+  const [moduleOpen, setModuleOpen] = React.useState(false);
   return (
     // reserves the 52px footprint; the panel below overlays on hover
     <div className="relative h-full w-[52px] shrink-0">
       <nav
         aria-label="Primary"
+        data-expanded={moduleOpen ? "true" : undefined}
         className={cn(
           "group absolute inset-y-0 left-0 z-30 flex w-[52px] flex-col overflow-hidden",
-          "bg-rail py-3 shadow-none transition-[width,background-color,box-shadow] duration-200 ease-out",
-          "hover:w-64 hover:bg-drawer hover:shadow-xl"
+          "bg-rail py-3 shadow-none transition-[width,box-shadow] duration-200 ease-out",
+          "hover:w-64 hover:shadow-xl",
+          "data-[expanded=true]:w-64 data-[expanded=true]:shadow-xl"
         )}
       >
-        {/* Brand — tile (size-9) centered in 52px via px-2; wordmark fades in */}
-        <div className="mb-7 flex h-9 shrink-0 items-center gap-3 px-2">
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg text-white [&_svg]:size-5",
-              brand.iconClassName ?? "bg-brand"
-            )}
-          >
-            {brand.icon}
-          </span>
-          <span className="truncate text-base font-semibold text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            {brand.name}
-          </span>
-        </div>
+        {/* Module switcher — top: the selected module. Opening it pins the rail open. */}
+        <ModuleSwitcher onOpenChange={setModuleOpen} />
 
-        {/* Nav groups (tier-1 uses top-level items; nested children belong to tier-2) */}
+        {/* Divider — clear separation between the module and its menus */}
+        <div className="mx-2 my-3 h-px shrink-0 bg-sidebar-border" aria-hidden />
+
+        {/* Nav groups — the menus for the selected module (nested children belong to tier-2) */}
         <div className="flex flex-1 flex-col gap-4">
           {groups.map((group, i) => (
             <ul key={group.label ?? i} className="flex flex-col gap-1">
@@ -75,7 +66,7 @@ export function NavRail({
                       <span className="flex size-5 shrink-0 items-center justify-center">
                         {item.icon}
                       </span>
-                      <span className="truncate opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                      <span className="truncate opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-data-[expanded=true]:opacity-100">
                         {item.label}
                       </span>
                     </button>
@@ -85,26 +76,6 @@ export function NavRail({
             </ul>
           ))}
         </div>
-
-        {/* User footer — avatar (size-8) centered via px-2.5; meta fades in */}
-        <button
-          type="button"
-          className="mt-auto flex shrink-0 items-center gap-2 px-2.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
-          <Avatar className="size-8 shrink-0">
-            {user.avatarSrc && <AvatarImage src={user.avatarSrc} alt={user.name} />}
-            <AvatarFallback>{user.fallback}</AvatarFallback>
-          </Avatar>
-          <span className="flex min-w-0 flex-1 flex-col opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            <span className="truncate text-sm font-semibold text-sidebar-foreground">
-              {user.name}
-            </span>
-            <span className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </span>
-          </span>
-          <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-        </button>
       </nav>
     </div>
   );

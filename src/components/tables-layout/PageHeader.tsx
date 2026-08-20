@@ -11,7 +11,8 @@ const DEFAULT_TABS = ["Tab 1", "Tab 2", "Tab 3", "Tab 4", "Tab 5", "Tab 6", "Tab
 /**
  * Tab strip (Figma id 27667:16810), shadcn Tabs `line` variant. The page title
  * now lives in the AppShell content-layer header; this renders the tabs only.
- * `-mx-4` lets the underline separator span the full content-layer width.
+ * `-mx-4` lets the underline separator span the full content-layer width; `-mt-2.5`
+ * pulls it flush beneath the compact (ClickUp-style) header.
  */
 export function PageHeader({
   tabs = DEFAULT_TABS,
@@ -19,7 +20,7 @@ export function PageHeader({
   onTabChange,
 }: PageHeaderProps) {
   return (
-    <div className="-mx-4 border-b border-border px-2">
+    <div className="-mx-4 -mt-2.5 border-b border-border px-2">
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList variant="line">
           {tabs.map((tab) => (

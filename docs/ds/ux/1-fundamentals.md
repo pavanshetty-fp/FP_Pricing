@@ -9,12 +9,14 @@ matters most** *without reading*. Layout carries meaning before a single word do
 
 ## Principles
 
-- **Everything lives in one frame.** Every screen is the AppShell — the shell is
-  the frame, so structure is consistent across the app. No full-bleed pages. (→ L1)
+- **Everything lives in one frame.** Every screen is the AppShell — a single
+  global top bar (Tier-0) + rail + optional drawer + content layer — so structure
+  is consistent across the app. No full-bleed pages, no page-owned top chrome. (→ L1)
 
-- **One header stack, in a fixed order.** A screen's chrome reads top-down in a
-  predictable sequence (title → breadcrumb → tabs → toolbar), so users learn it
-  once. (→ L2/L4)
+- **Compact header, in a fixed order.** A screen's chrome reads top-down in a
+  predictable sequence (global top bar → breadcrumb-as-title → tabs → toolbar), so
+  users learn it once. The content header is compact — the breadcrumb is the title,
+  no divider. (→ L2/L4)
 
 - **Each unit answers a distinct question.** Breadcrumb = *where am I?* · Tabs =
   *which slice?* · Toolbar = *act on this?* Include a unit only when its question

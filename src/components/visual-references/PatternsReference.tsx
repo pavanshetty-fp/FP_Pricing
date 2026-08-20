@@ -95,7 +95,7 @@ export function PatternsReference() {
         <Pattern
           title="Rail → drawer → content"
           spec={[
-            <>Tier-1 <strong>rail</strong>: 52px icon strip (<code>bg-rail</code>), hover-expands to a 256px overlay (<code>bg-drawer</code>). Flush with the background, no shadow.</>,
+            <>Tier-1 <strong>rail</strong>: 52px icon strip (<code>bg-rail</code>), hover-expands to a 256px overlay (<code>bg-sidebar</code>). Flush with the background, no shadow.</>,
             <>Tier-2 <strong>drawer</strong>: 256px contextual sub-nav (<code>rounded-lg bg-sidebar shadow-fp-surface</code>).</>,
             <><strong>Content layer</strong>: fills the rest — <code>rounded-md bg-fp-surface-1b shadow-fp-surface</code>, <strong>no outer border</strong>.</>,
             <>Spacing laws: <code>8px</code> gaps + <code>8px</code> outer margin (<code>p-2 gap-2</code>); <code>16px</code> inset in the content body.</>,

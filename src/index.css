@@ -28,6 +28,39 @@
   animation: bulk-bar-in 200ms ease-out;
 }
 
+/* Module-switch progress — a thin bar that fills left→right on selection. */
+@keyframes module-switch-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.module-switch-progress {
+  transform-origin: left center;
+  animation: module-switch-progress 600ms ease-out forwards;
+}
+
+/* Completion celebration — a circled tick that pops in with a slight overshoot. */
+@keyframes module-check-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.module-check-pop {
+  animation: module-check-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 @theme inline {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
 
@@ -250,8 +283,8 @@
   --accent-foreground: #f0f2f5; /* base/accent-foreground */
   --destructive: #f87171; /* base/destructive */
   --destructive-foreground: #f0f2f5;
-  --border: #575757; /* FP column → FP/Outline 2 */
-  --input: #575757; /* FP column → FP/Outline 2 */
+  --border: #363c45; /* FP column → FP/Outline 1 (updated) */
+  --input: #363c45; /* FP column → FP/Outline 1 (updated) */
   --ring: #9ca3af;
 
   --chart-1: #fa6400;
@@ -270,7 +303,7 @@
   --sidebar-ring: #575757;
 
   /* FleetPanda-only — dark surface/chrome/status */
-  --drawer: #090c0f; /* Navigation Drawer Expanded bg */
+  --drawer: #292929; /* FP/Drawer (updated) */
   --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar (R6) */
   --fp-outline-1: #363c45; /* FP/Outline 1 */
   --fp-outline-2: #575757; /* FP/Outline 2 */
@@ -298,9 +331,33 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Subtle, low-contrast scrollbars — thin line, transparent track (Firefox). */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
+  }
+
+  /* WebKit/Blink: a thin, rounded thumb on a transparent track. The 3px
+     transparent border + content-box clip makes the visible thumb read as a
+     hairline; it only firms up on hover. */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--fp-outline-2);
   }
 }

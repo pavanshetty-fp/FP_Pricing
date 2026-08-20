@@ -7,6 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /*
   Group By menu — Figma "Action Bar Unit · Group by" (28025:1274). The Group By
@@ -30,17 +35,35 @@ const DIMENSIONS = [
   "Assigned By",
 ];
 
-export function GroupByMenu() {
+export function GroupByMenu({ compact = false }: { compact?: boolean }) {
   const [active, setActive] = React.useState<string | null>(null);
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Group />
-          {active ? `Group by: ${active}` : "Group By"}
-        </Button>
-      </DropdownMenuTrigger>
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={active ? `Group by: ${active}` : "Group by"}
+                className={active ? "text-foreground" : undefined}
+              >
+                <Group />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{active ? `Group by: ${active}` : "Group by"}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Group />
+            {active ? `Group by: ${active}` : "Group By"}
+          </Button>
+        </DropdownMenuTrigger>
+      )}
       <DropdownMenuContent align="start" className="max-h-[360px] w-40 overflow-y-auto">
         {DIMENSIONS.map((d) => (
           <DropdownMenuItem

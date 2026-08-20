@@ -9,6 +9,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /*
   Faceted Filter panel — Figma "Action Bar Unit · Filter interactions"
@@ -44,7 +49,7 @@ const OPTIONS: Option[] = [
   { key: "o6", label: "Option Label 6" },
 ];
 
-export function FilterPanel() {
+export function FilterPanel({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [facet, setFacet] = React.useState(FACETS[0]);
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
@@ -68,12 +73,25 @@ export function FilterPanel() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ListFilter />
-          Filters
-        </Button>
-      </PopoverTrigger>
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Filters">
+                <ListFilter />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Filters</TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm">
+            <ListFilter />
+            Filters
+          </Button>
+        </PopoverTrigger>
+      )}
       <PopoverContent align="start" className="w-[600px] overflow-hidden p-0">
         <div className="flex h-[264px]">
           {/* Facet side menu */}

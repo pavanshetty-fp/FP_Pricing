@@ -4,24 +4,36 @@ The normative rules for structure, flow, and grouping. **Single source** — the
 Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
 
 ## Shell & spacing
+- **Tier-0 global top bar:** a full-width app-chrome band across the very top,
+  above the rail + content (`bg-background`, bottom `border-border`, ~48px). Carries
+  the **brand logo** (left), **global search** (⌘K, centered), and **notifications
+  + account menu** (right). Exactly one, app-level (see L1).
 - **Tier-1 rail:** 52px icon rail (`bg-rail`), flush with the background, hover-
-  expands to a 256px overlay (`bg-drawer`). One item per top-level screen.
+  expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
+  One item per top-level screen. **Navigation only** — the brand logo lives in the
+  top bar; a **module switcher** sits at the top of the rail.
 - **Tier-2 drawer (optional):** contextual sub-nav, a `rounded-lg bg-sidebar
   shadow-fp-surface` panel (256px).
 - **Content layer:** fills the rest — `rounded-md bg-fp-surface-1b shadow-fp-surface`,
-  **no outer border**. A fixed header, then a scrolling body.
+  **no outer border**. A compact header (L2), then a scrolling body.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
   margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
 
 ## Layout laws
 
-**L1 — Everything lives in the AppShell.** Every app screen is rail + optional
-drawer + one content layer. No full-bleed pages, no page-owned top chrome. (A lone
-standalone view may omit the shell but still uses the surfaces/tokens.)
+**L1 — Everything lives in the AppShell.** Every app screen is the global top bar
+(Tier-0) + rail + optional drawer + one content layer. The **global top bar is
+app-level chrome** — exactly one, full-width (brand · global search · account).
+Beyond that one bar: no *page-owned* top chrome and no *per-screen* second
+top-bar. (A lone standalone view may omit the shell but still uses the
+surfaces/tokens.) *(Supersedes the archived L1 — see bottom.)*
 
-**L2 — One header stack, fixed order.** The header carries title → breadcrumb; a
-tab row and the search/filter/action toolbar sit directly beneath. Collapse
-multiple source top-bars into this single stack — never a second full-width top-bar.
+**L2 — Compact content header (default).** The content-layer header is compact
+(ClickUp-style): the **breadcrumb path doubles as the title** — no separate big
+title line, and **no bottom divider**. The tab row and the search/filter/action
+toolbar sit **~12px** directly beneath. Global chrome belongs to the Tier-0 bar
+(L1) — never add a per-screen full-width top-bar. *(Supersedes the archived L2 —
+see bottom.)*
 
 **L3 — Toolbar: filters left, actions right.** Filters are a left-aligned group of
 identically-styled controls; view switches and the **one** primary action are
@@ -65,8 +77,9 @@ canonical home; the CTA-neutral facet is stated in `ui/2-rules`.)*
 element.
 
 ## Content-layer anatomy
-- **Header band:** page title `text-2xl font-semibold`; optional breadcrumb directly
-  under the title text; a bottom `border-fp-outline-1` divider.
+- **Header band (compact, default):** the **breadcrumb path is the header** — it
+  doubles as the title (no separate `text-2xl` title line) and there is **no bottom
+  divider**; the tab row / toolbar sit ~12px beneath. Crumbs sit ~4px apart.
 - **Breadcrumb source rule:** the trail reflects the real nav ancestry (rail screen
   → drawer sub-menu → current), not an invented path.
 - **Stacking order inside the body:** action bar → tabs → accordions → content
@@ -74,7 +87,20 @@ element.
 - **Responsive width** follows drawer presence (content reflows when the drawer is
   absent).
 
-## Navigation — two tiers
-Rail = tier-1 main nav (one item per screen); drawer = tier-2 contextual sub-nav
-for the active screen. Content title = the selected sub-menu (or screen name when
-there's no drawer). Tabs are **not** navigation (see L5).
+## Navigation — two tiers (+ global top bar)
+Tier-0 **global top bar** = app chrome (brand · global search · account), spanning
+full width above everything. Rail = tier-1 main nav (one item per screen); drawer =
+tier-2 contextual sub-nav for the active screen. Content title = the breadcrumb path
+(compact header). Tabs are **not** navigation (see L5).
+
+## Archived rules *(superseded — kept for reference, not enforced)*
+Superseded **2026-08-18**, when the Tier-0 global top bar and the compact content
+header became canonical. Retained for context, not enforced.
+- **L1 (archived):** *Every app screen is rail + optional drawer + one content
+  layer. No full-bleed pages, no page-owned top chrome.* — superseded: the app now
+  has exactly one canonical global top bar (Tier-0).
+- **L2 (archived):** *One header stack, fixed order. The header carries title →
+  breadcrumb; a tab row and the toolbar sit directly beneath. Collapse multiple
+  source top-bars into this single stack — never a second full-width top-bar.* —
+  superseded by the compact header (breadcrumb-as-title, no divider) + the Tier-0
+  bar. (The "no per-screen duplicate top-bar" intent is retained in the new L1.)

@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  Boxes,
   LayoutDashboard,
   Table2,
   KanbanSquare,
@@ -66,10 +65,16 @@ import {
   Columns2,
   Grip,
   CalendarRange,
+  X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
 import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
+import { DataActionControl, DataActionControlOpt2, ImportExport } from "@/components/data-action-control";
+import { SAMPLE_ROWS } from "@/components/tables-layout/data";
+import type { ColumnKey } from "@/components/tables-layout/types";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { FormLayout } from "@/components/form-layout";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Dashboard } from "@/components/dashboard";
@@ -156,6 +161,7 @@ import { ThemeToggle } from "@/components/theme";
 import { usePreferences, type ActionBarComponent } from "@/components/preferences";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
+import { TopBar } from "@/components/top-bar";
 
 /** Contextual sub-nav for the Tables screen — Figma "Main Menu 2" drawer. */
 const TABLES_NAV: NavGroup = {
@@ -170,6 +176,15 @@ const TABLES_NAV: NavGroup = {
         { key: "sub-2b", label: "Sub Menu 2b" },
         { key: "sub-2c", label: "Sub Menu 2c" },
         { key: "sub-2d", label: "Sub Menu 2d" },
+      ],
+    },
+    {
+      key: "data-action-control",
+      label: "Data Action Control",
+      icon: <SlidersHorizontal />,
+      children: [
+        { key: "dac-opt-1", label: "Opt 1" },
+        { key: "dac-opt-2", label: "Opt 2" },
       ],
     },
   ],
@@ -431,6 +446,10 @@ const MAIN_NAV: NavGroup = {
 export function App() {
   const [mainKey, setMainKey] = React.useState("tables");
   const [subKey, setSubKey] = React.useState(SCREENS.tables.defaultSub ?? "");
+  // Opt 2 headline (title) visibility — toggled from a nav item under Data Action Control.
+  const [opt2Headline, setOpt2Headline] = React.useState(true);
+  // Where a jump (e.g. Create Form) came from, so Cancel / ✕ can return there.
+  const [prevLoc, setPrevLoc] = React.useState<{ main: string; sub: string } | null>(null);
 
   // Breadcrumb visibility — a layout preference from the Settings page.
   const { showBreadcrumb } = usePreferences();
@@ -443,10 +462,33 @@ export function App() {
     setSubKey(SCREENS[key].defaultSub ?? "");
   };
 
-  // Jump to a specific screen (+ optional sub-page) — used by reference screens.
+  // Jump to a specific screen (+ optional sub-page) — used by reference screens
+  // and the Create Form CTA. Remembers where we came from for goBack().
   const goTo = (main: string, sub?: string) => {
+    setPrevLoc({ main: mainKey, sub: subKey });
     setMainKey(main);
     setSubKey(sub ?? SCREENS[main]?.defaultSub ?? "");
+  };
+
+  // Return to wherever the last goTo() jumped from (Cancel / ✕ on the form).
+  const goBack = () => {
+    if (prevLoc) {
+      setMainKey(prevLoc.main);
+      setSubKey(prevLoc.sub);
+      setPrevLoc(null);
+    } else {
+      onMainNavigate("tables");
+    }
+  };
+
+  // Sub-nav clicks navigate — except the Opt 2 headline toggle, which flips a
+  // preference instead of navigating.
+  const onSubNavigate = (key: string) => {
+    if (key === "dac-opt2-headline") {
+      setOpt2Headline((v) => !v);
+      return;
+    }
+    setSubKey(key);
   };
 
   // Content-layer title: selected sub-nav item, or the screen name when there's no drawer.
@@ -461,6 +503,12 @@ export function App() {
       ) : (
         <ContentLayerControl />
       )
+    ) : mainKey === "tables" && subKey === "dac-opt-1" ? (
+      <DataActionControl />
+    ) : mainKey === "tables" && subKey === "dac-opt-2" ? (
+      <DataActionControlOpt2 />
+    ) : mainKey === "form-layout" ? (
+      <FormLayout onClose={goBack} standalone />
     ) : screen.pages ? (
       screen.pages.find((p) => p.key === subKey)?.content ??
       screen.pages[0].content
@@ -520,17 +568,71 @@ export function App() {
     </Breadcrumb>
   ) : undefined;
 
+  // Tables screens use a ClickUp-style compact header: the breadcrumb path doubles
+  // as the title (no big title line, no bottom divider), and the content pulls up
+  // close beneath it. Applies to the tabbed layouts + Opt 2; Opt 1 keeps a full header.
+  const compactTablesHeader = mainKey === "tables" && subKey !== "dac-opt-1";
+  // Opt 2 keeps the compact spacing (no divider, tabs pulled up) but shows the
+  // menu title like Opt 1 (title + breadcrumb) — unless the headline toggle is off.
+  const opt2ShowTitle = mainKey === "tables" && subKey === "dac-opt-2" && opt2Headline;
+  // Opt 1 — full header with the title only (no breadcrumb, no divider).
+  const opt1 = mainKey === "tables" && subKey === "dac-opt-1";
+
+  // Tables sidebar with the Opt 2 headline toggle appended under Data Action Control.
+  const sidebarNav: NavGroup | undefined =
+    mainKey === "tables"
+      ? {
+          ...TABLES_NAV,
+          items: TABLES_NAV.items.map((it) =>
+            it.key === "data-action-control"
+              ? {
+                  ...it,
+                  children: [
+                    ...(it.children ?? []),
+                    {
+                      key: "dac-opt2-headline",
+                      label: `Opt 2 headline: ${opt2Headline ? "On" : "Off"}`,
+                    },
+                  ],
+                }
+              : it
+          ),
+        }
+      : screen.sidebar;
+
   return (
     <AppNavContext.Provider value={goTo}>
     <AppShell
-      title={title}
-      breadcrumb={breadcrumb}
-      headerAction={<ThemeToggle />}
+      title={compactTablesHeader && !opt2ShowTitle && breadcrumb ? breadcrumb : title}
+      breadcrumb={(compactTablesHeader && !opt2ShowTitle) || opt1 ? undefined : breadcrumb}
+      compactHeader={compactTablesHeader}
+      headerDivider={!opt1}
+      headerAction={
+        mainKey === "form-layout" ? (
+          <>
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" aria-label="Close form" onClick={goBack}>
+              <X />
+            </Button>
+          </>
+        ) : mainKey === "tables" && (subKey === "dac-opt-1" || subKey === "dac-opt-2") ? (
+          <TooltipProvider>
+            <ThemeToggle />
+            <ImportExport rows={SAMPLE_ROWS} hidden={new Set<ColumnKey>()} compact />
+          </TooltipProvider>
+        ) : (
+          <ThemeToggle />
+        )
+      }
+      topBar={
+        <TopBar
+          user={{ name: "Pavan S", email: "pavanshetty@fleetpanda.com", fallback: "PS" }}
+          unread={3}
+        />
+      }
       rail={
         <NavRail
-          brand={{ name: "FleetPanda", icon: <Boxes />, iconClassName: "bg-brand" }}
           groups={[MAIN_NAV]}
-          user={{ name: "Pavan S", email: "pavanshetty@fleetpanda.com", fallback: "PS" }}
           activeKey={mainKey}
           onNavigate={onMainNavigate}
         />
@@ -544,10 +646,9 @@ export function App() {
               icon: screen.icon,
               iconClassName: "bg-sidebar-primary",
             }}
-            groups={[screen.sidebar]}
-            user={{ name: "shadcn", email: "m@example.com", fallback: "SC" }}
+            groups={[sidebarNav ?? screen.sidebar]}
             activeKey={subKey}
-            onNavigate={setSubKey}
+            onNavigate={onSubNavigate}
           />
         ) : undefined
       }

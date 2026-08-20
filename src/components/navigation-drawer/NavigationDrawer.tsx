@@ -1,28 +1,17 @@
 import * as React from "react";
-import { ChevronRight, ChevronsUpDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
-import type { NavGroup, NavItem, NavUser, NavBrand } from "./types";
-
-function UserAvatar({ user }: { user: NavUser }) {
-  return (
-    <Avatar className="size-8">
-      {user.avatarSrc && <AvatarImage src={user.avatarSrc} alt={user.name} />}
-      <AvatarFallback>{user.fallback}</AvatarFallback>
-    </Avatar>
-  );
-}
+import type { NavGroup, NavItem, NavBrand } from "./types";
 
 export interface NavigationDrawerProps {
   brand: NavBrand;
   groups: NavGroup[];
-  user: NavUser;
   /** key of the active item / sub-item */
   activeKey?: string;
   /** Collapsed = 52px icon rail; expanded = 256px labeled drawer. */
   collapsed?: boolean;
   onNavigate?: (key: string) => void;
-  /** Override the surface/shape — e.g. tier-2 contextual sidebar uses `bg-sidebar`. */
+  /** Override the surface/shape — e.g. tier-2 contextual sidebar adds shadow + radius. */
   className?: string;
 }
 
@@ -33,7 +22,6 @@ export interface NavigationDrawerProps {
 export function NavigationDrawer({
   brand,
   groups,
-  user,
   activeKey,
   collapsed = false,
   onNavigate,
@@ -43,7 +31,7 @@ export function NavigationDrawer({
     <nav
       aria-label="Primary"
       className={cn(
-        "flex h-full shrink-0 flex-col bg-drawer text-sidebar-foreground",
+        "flex h-full shrink-0 flex-col bg-sidebar text-sidebar-foreground",
         collapsed ? "w-[52px] items-center py-3" : "w-64 p-2",
         className
       )}
@@ -66,8 +54,6 @@ export function NavigationDrawer({
           />
         ))}
       </div>
-
-      <UserFooter user={user} collapsed={collapsed} />
     </nav>
   );
 }
@@ -210,27 +196,3 @@ function Item({
   );
 }
 
-function UserFooter({ user, collapsed }: { user: NavUser; collapsed: boolean }) {
-  if (collapsed) {
-    return (
-      <div className="mt-auto">
-        <UserAvatar user={user} />
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className="mt-auto flex w-full items-center gap-2 rounded-lg p-2 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50"
-    >
-      <UserAvatar user={user} />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-semibold text-sidebar-foreground">
-          {user.name}
-        </span>
-        <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-      </span>
-      <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
-    </button>
-  );
-}

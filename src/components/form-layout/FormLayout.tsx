@@ -141,9 +141,12 @@ function RadioTile({ value }: { value: string }) {
 
 export interface FormLayoutProps {
   onClose?: () => void;
+  /** Standalone screen — the AppShell header titles the form (+ carries the ✕),
+   *  so skip the inline header band but still wire Cancel/Submit to onClose. */
+  standalone?: boolean;
 }
 
-export function FormLayout({ onClose }: FormLayoutProps) {
+export function FormLayout({ onClose, standalone }: FormLayoutProps) {
   const [range1, setRange1] = React.useState<number[]>([15, 80]);
   const [range2, setRange2] = React.useState<number[]>([60]);
   const fmt = (n: number) => n.toFixed(2);
@@ -158,7 +161,7 @@ export function FormLayout({ onClose }: FormLayoutProps) {
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Header band — only in the inline/overlay flow (Create Form CTA). As a
           standalone screen the AppShell page header already titles the form. */}
-      {onClose && (
+      {onClose && !standalone && (
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-border">
           <div className="flex flex-col">
             <h2 className="text-base font-semibold">Create Form</h2>

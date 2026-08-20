@@ -5,7 +5,7 @@ Anti-patterns for structure & grouping, each pointing back to a rule in
 renders these as visual pairs.)
 
 ## Shell & header
-- **Page frame (L1/L2)** — ❌ a full-bleed page with a second stacked top-bar · ✅ the AppShell with one header stack (title → breadcrumb → tabs → toolbar).
+- **Page frame (L1/L2)** — ❌ a *page-owned* top-bar duplicating the global chrome · ✅ the AppShell: one Tier-0 global top bar (brand · search · account) + a compact content header (breadcrumb-as-title, no divider) → tabs → toolbar.
 - **Header stack (L5)** — ❌ breadcrumb + tabs + a heavy toolbar on a three-row list · ✅ each unit earns its place; a simple screen is just title + a minimal toolbar.
 - **Breadcrumb (L5)** — ❌ a one-item crumb on a top-level screen, or crumbs that don't navigate · ✅ show only ≥2 levels deep, every crumb navigable, last crumb static.
 - **Tabs (L5)** — ❌ tabs used to jump between different pages, or a lone single tab · ✅ tabs = facets of one dataset; one facet → no tab row.

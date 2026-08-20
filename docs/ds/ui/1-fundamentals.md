@@ -21,16 +21,21 @@ lg 10 · xl 14` (anchored to `--radius`), heading styles `text-heading-sm..xl`
 
 ## Surface & elevation stack
 A stack of surfaces that step in lightness and lift with shadow.
-- **Light:** background `#efefeb` → drawer `#fafbf8` → content layer `#ffffff`. Rail
+- **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
+  chrome, full width above the rail + content.
+- **Light:** background `#efefeb` → sidebar `#fafbf8` → content layer `#ffffff`. Rail
   is **flush**; drawer + content **float** with `shadow-fp-surface`.
-- **FP:** background/rail `#080808` → drawer `#090c0f` → content `#1b2028`, cards
+- **FP:** background/rail `#080808` → sidebar `#11161d` → content `#1b2028`, cards
   `#11161d`, inner `#2a2f37`.
+- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does
+  not change on expand). `--drawer` (#292929) and `--fp-lane` are **legacy** — no
+  longer bound to the main nav / Kanban lanes.
 - The content layer has **no outer border** — it lifts with shadow.
 
 ## Token quick reference (hex, both modes)
 | Utility | Light | FP | Use |
 |---|---|---|---|
-| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base |
+| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base / global top bar |
 | `text-foreground` | `#030405` | `#f0f2f5` | primary text |
 | `bg-card` | `#ffffff` | `#11161d` | card (Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus/popovers |
@@ -39,16 +44,18 @@ A stack of surfaces that step in lightness and lift with shadow.
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary/label |
 | `bg-accent` | `#cad1db` | `#2a2f37` | hover fill |
 | `bg-destructive` | `#dc2626` | `#f87171` | danger/delete |
-| `border-border` | `#cdd4de` | `#575757` | default hairline |
+| `border-border` | `#cdd4de` | `#363c45` | default hairline |
 | `ring-ring` | `#727d8f` | `#9ca3af` | focus ring |
 | `bg-rail` | `#efefeb` | `#080808` | tier-1 rail |
-| `bg-drawer`/`bg-sidebar` | `#fafbf8` | `#090c0f`/`#11161d` | tier-2 drawer |
+| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay (base/sidebar) |
+| `bg-drawer` | `#fafbf8` | `#292929` | legacy (FP/Drawer) — not currently bound |
 | `bg-fp-surface-1a` | `#ffffff` | `#11161d` | card surface |
 | `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** |
 | `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | inner card / pressed tint |
-| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | Kanban lane track |
+| `bg-accent` (Kanban lane) | `#cad1db` | `#2a2f37` | Kanban lane track (lanes bind here now) |
+| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | legacy — superseded by `bg-accent` for lanes |
 | `border-fp-outline-1` | `#e2e5ea` | `#363c45` | subtle divider |
-| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (table stroke) |
+| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (available; table stroke now uses `border`) |
 | `text-status-success` | `#16a34a` | `#22c55e` | success |
 | `text-status-processing` | `#d97706` | `#f59e0b` | processing/caution |
 | `text-status-failed` | `#dc2626` | `#f87171` | failed |

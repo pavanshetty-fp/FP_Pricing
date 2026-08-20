@@ -27,12 +27,17 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 12px within a group.
 
 ## FP-composed patterns (rebuild from primitives + tokens)
-- **Data table** — `rounded-md` with an **outer stroke** `border border-fp-outline-2`; header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
+- **App shell** — Tier-0 global top bar + tier-1 rail + optional tier-2 drawer + content layer; laid out as a `flex-col` (top bar on top) over a `flex` row (rail + padded region). Spacing laws: 8px gaps/outer margin, 16px content-body inset.
+- **Global top bar** — full-width `bg-background border-b border-border` band (`h-12`); three equal flex thirds: **brand logo** left · **global search** centered (`Input` + `Search` icon + `⌘K` `Kbd`) · **notifications + account** right (`Bell` with an unread dot · `Avatar` + `DropdownMenu`).
+- **Rail (tier-1)** — 52px `bg-rail`, hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does not change on expand; 52px footprint reserved, no reflow). **Navigation only** — the brand lives in the top bar; a **module switcher** sits at the rail's top (opens in-place and pins the rail open).
+- **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
+- **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
+- **Data table** — `rounded-md` with an **outer stroke** `border border-border` (follows the `border` token → FP/Outline 1); header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
 - **Editable table cell** — the trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`); hover/open paint `bg-accent` across the entire cell, no inset outline; two-line cell = title over description.
 - **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behaviour: `interactions/6-execute`.)*
 - **Banners** — Callout (Type 1): full-width solid `bg-fp-banner-{status}`, white text, optional CTA/dismiss. Inline alert (Type 2): compact 32px bar on `bg-fp-card-1`, icon+text in `text-fp-banner-accent-{status}`.
 - **Cards / KPI tiles** — `rounded-lg border border-fp-outline-1 bg-card p-4/5`; number `text-2xl/3xl font-semibold tabular-nums`; delta pill green (`bg-status-success/15 text-status-success`) / red (`bg-destructive/15 text-destructive`) with `ArrowUp`/`ArrowDown`.
-- **Kanban** — fixed-width lanes (`w-[340px] bg-fp-lane rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack. `bg-fp-lane` is a hair lighter than `bg-fp-card-1` in light mode so white cards read on top.
+- **Kanban** — fixed-width lanes (`w-[340px] bg-accent rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack; cards sit on `bg-fp-surface-1b`. *(The `--fp-lane` token is legacy — lanes now bind to `accent` / FP-Card-1.)*
 - **Charts** — Recharts; setup + gotchas in `interactions/6-execute`.
 
 Reference implementations: `tables-layout/`, `form-layout/`, `side-sheet/`,
@@ -295,8 +300,8 @@ repo's `src/index.css`.
   --accent-foreground: #f0f2f5; /* base/accent-foreground */
   --destructive: #f87171; /* base/destructive */
   --destructive-foreground: #f0f2f5;
-  --border: #575757; /* FP column → FP/Outline 2 */
-  --input: #575757; /* FP column → FP/Outline 2 */
+  --border: #363c45; /* FP column → FP/Outline 1 (updated) */
+  --input: #363c45; /* FP column → FP/Outline 1 (updated) */
   --ring: #9ca3af;
 
   --chart-1: #fa6400;
@@ -315,7 +320,7 @@ repo's `src/index.css`.
   --sidebar-ring: #575757;
 
   /* FleetPanda-only — dark surface/chrome/status */
-  --drawer: #090c0f; /* Navigation Drawer Expanded bg */
+  --drawer: #292929; /* FP/Drawer (updated) */
   --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar (R6) */
   --fp-outline-1: #363c45; /* FP/Outline 1 */
   --fp-outline-2: #575757; /* FP/Outline 2 */
@@ -343,10 +348,24 @@ repo's `src/index.css`.
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Subtle, low-contrast scrollbars — thin line, transparent track (Firefox). */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
   }
+  /* WebKit/Blink: a thin, rounded thumb on a transparent track; firms up on hover. */
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background-color: var(--fp-outline-2); }
 }
 ```

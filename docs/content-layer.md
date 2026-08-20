@@ -7,6 +7,13 @@
 > "Accordion & Content Layer Behaviour" (`28099:192`).
 > Built in: `AppShell` (two-row header + `breadcrumb` prop), `App.tsx`
 > (path derivation), `ui/breadcrumb.tsx`, `component-demos/AccordionDemo.tsx`.
+>
+> **Update (2026-08-18) — compact header is now the default.** The content-layer
+> header no longer renders the big `text-2xl` title or the bottom divider: the
+> **breadcrumb path doubles as the title**, and the tab row / toolbar pull up to
+> ~12px beneath it (breadcrumb crumbs 4px apart). A new **Tier-0 global top bar**
+> (brand · global search · notifications · account) now sits above the whole shell.
+> The title + divider anatomy described below is the earlier (archived) form.
 
 The **content layer** is the `bg-fp-surface-1b`, `rounded-md` panel that sits to
 the right of the icon rail and the optional contextual drawer. It is where every

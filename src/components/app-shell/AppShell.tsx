@@ -2,6 +2,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export interface AppShellProps {
+  /** Global top bar — a full-width chrome band above the rail + content. Optional. */
+  topBar?: React.ReactNode;
   /** Tier-1 icon rail (52px, flush, full height). Self-contained (owns its surface). */
   rail?: React.ReactNode;
   /** Tier-2 contextual sidebar (256px). Optional. Self-contained. */
@@ -25,6 +27,10 @@ export interface AppShellProps {
   children: React.ReactNode;
   /** The 16px content-layer inset is a hard layout rule — on by default. */
   inset?: boolean;
+  /** Tighter page header (less vertical padding) for dense, ClickUp-style tops. */
+  compactHeader?: boolean;
+  /** Bottom hairline under the (non-compact) header. On by default. */
+  headerDivider?: boolean;
   className?: string;
 }
 
@@ -40,6 +46,7 @@ export interface AppShellProps {
  * page-header at its top (1px #363c45 bottom divider) showing the selected menu.
  */
 export function AppShell({
+  topBar,
   rail,
   sidebar,
   title,
@@ -47,11 +54,13 @@ export function AppShell({
   headerAction,
   children,
   inset = true,
+  compactHeader = false,
+  headerDivider = true,
   className,
 }: AppShellProps) {
   const titleEl =
     typeof title === "string" || typeof title === "number" ? (
-      <h1 className="truncate text-2xl font-semibold leading-none text-foreground">
+      <h1 className="truncate text-xl font-semibold leading-none text-foreground">
         {title}
       </h1>
     ) : (
@@ -61,17 +70,21 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "flex h-screen overflow-hidden bg-background text-foreground",
+        "flex h-screen flex-col overflow-hidden bg-background text-foreground",
         className
       )}
     >
-      {/* Tier-1 rail: flush left, full height (outside the padded region). */}
-      {rail}
+      {/* Global top bar: full-width chrome band above the rail + content. */}
+      {topBar}
 
-      {/* Padded region: p-2 = 8px outer margin (top/right/bottom) + 8px gap from
-          the rail; gap-2 = 8px between the sidebar and the content layer. */}
-      <div className="flex min-w-0 flex-1 gap-2 p-2">
-        {sidebar}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Tier-1 rail: flush left, full height (outside the padded region). */}
+        {rail}
+
+        {/* Padded region: p-2 = 8px outer margin (top/right/bottom) + 8px gap from
+            the rail; gap-2 = 8px between the sidebar and the content layer. */}
+        <div className="flex min-w-0 flex-1 gap-2 p-2">
+          {sidebar}
         {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border;
             soft drop shadow lifts it off the app background (28679:1109). */}
         <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b shadow-fp-surface">
@@ -79,7 +92,7 @@ export function AppShell({
               sits directly beneath the title text, inside the header unit, above
               the divider. */}
           {hasHeader && (
-            <header className="flex shrink-0 flex-col gap-1 border-b border-fp-outline-1 px-4 py-3">
+            <header className={cn("flex shrink-0 flex-col gap-1 px-4", compactHeader ? "py-1" : "py-3", !compactHeader && headerDivider && "border-b border-fp-outline-1")}>
               <div className="flex items-center gap-6">
                 {titleEl}
                 {headerAction != null && (
@@ -103,6 +116,7 @@ export function AppShell({
             {children}
           </div>
         </section>
+        </div>
       </div>
     </div>
   );

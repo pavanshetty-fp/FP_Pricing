@@ -17,13 +17,15 @@ How to build the structure the UX rules describe. Code idioms for the shell + zo
 The repo's implementation is `src/components/app-shell/` + `navigation-drawer/`;
 the nav registry is `App.tsx` (`SCREENS` + `ORDER`).
 
-## Header stack (L2) — fixed order
+## Header stack (L2) — compact, fixed order
+The Tier-0 global top bar (brand · global search · account) sits above the whole
+shell. The **content-layer header is compact**: the breadcrumb IS the title (no
+`text-2xl` title line, no bottom divider); tabs/toolbar pull up ~12px beneath.
 ```tsx
-<div className="border-b border-fp-outline-1 px-5 py-3">
-  <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-  {nested && <Breadcrumb className="mt-1.5" />}   {/* only when ≥2 levels deep */}
-  {facets && <Tabs className="mt-3" />}           {/* only for real facets */}
+<div className="px-4 py-1">                       {/* compact header — no divider */}
+  <Breadcrumb />                                  {/* the breadcrumb doubles as the title */}
 </div>
+{facets && <Tabs className="-mt-3.5" />}          {/* pulled up ~12px; only for real facets */}
 {/* then the toolbar zone below */}
 ```
 

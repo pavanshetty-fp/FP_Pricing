@@ -106,16 +106,21 @@ lg 10 · xl 14` (anchored to `--radius`), heading styles `text-heading-sm..xl`
 
 ## Surface & elevation stack
 A stack of surfaces that step in lightness and lift with shadow.
-- **Light:** background `#efefeb` → drawer `#fafbf8` → content layer `#ffffff`. Rail
+- **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
+  chrome, full width above the rail + content.
+- **Light:** background `#efefeb` → sidebar `#fafbf8` → content layer `#ffffff`. Rail
   is **flush**; drawer + content **float** with `shadow-fp-surface`.
-- **FP:** background/rail `#080808` → drawer `#090c0f` → content `#1b2028`, cards
+- **FP:** background/rail `#080808` → sidebar `#11161d` → content `#1b2028`, cards
   `#11161d`, inner `#2a2f37`.
+- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does
+  not change on expand). `--drawer` (#292929) and `--fp-lane` are **legacy** — no
+  longer bound to the main nav / Kanban lanes.
 - The content layer has **no outer border** — it lifts with shadow.
 
 ## Token quick reference (hex, both modes)
 | Utility | Light | FP | Use |
 |---|---|---|---|
-| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base |
+| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base / global top bar |
 | `text-foreground` | `#030405` | `#f0f2f5` | primary text |
 | `bg-card` | `#ffffff` | `#11161d` | card (Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus/popovers |
@@ -124,16 +129,18 @@ A stack of surfaces that step in lightness and lift with shadow.
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary/label |
 | `bg-accent` | `#cad1db` | `#2a2f37` | hover fill |
 | `bg-destructive` | `#dc2626` | `#f87171` | danger/delete |
-| `border-border` | `#cdd4de` | `#575757` | default hairline |
+| `border-border` | `#cdd4de` | `#363c45` | default hairline |
 | `ring-ring` | `#727d8f` | `#9ca3af` | focus ring |
 | `bg-rail` | `#efefeb` | `#080808` | tier-1 rail |
-| `bg-drawer`/`bg-sidebar` | `#fafbf8` | `#090c0f`/`#11161d` | tier-2 drawer |
+| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay (base/sidebar) |
+| `bg-drawer` | `#fafbf8` | `#292929` | legacy (FP/Drawer) — not currently bound |
 | `bg-fp-surface-1a` | `#ffffff` | `#11161d` | card surface |
 | `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** |
 | `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | inner card / pressed tint |
-| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | Kanban lane track |
+| `bg-accent` (Kanban lane) | `#cad1db` | `#2a2f37` | Kanban lane track (lanes bind here now) |
+| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | legacy — superseded by `bg-accent` for lanes |
 | `border-fp-outline-1` | `#e2e5ea` | `#363c45` | subtle divider |
-| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (table stroke) |
+| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (available; table stroke now uses `border`) |
 | `text-status-success` | `#16a34a` | `#22c55e` | success |
 | `text-status-processing` | `#d97706` | `#f59e0b` | processing/caution |
 | `text-status-failed` | `#dc2626` | `#f87171` | failed |
@@ -190,7 +197,7 @@ mistakes, and Checks derive from these.
   outer border** — it lifts with shadow.
 - Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
   the content layer.
-- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-fp-lane`.
+- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-accent` (the `--fp-lane` token is legacy).
 - Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
   no shadow.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
@@ -256,7 +263,7 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Component variants follow the data's meaning (semantic).
 - [ ] All icons are Lucide.
 - [ ] Both Light and FP render; FP is default; toggle persists to `fp-theme`.
-- [ ] Surfaces layer correctly (background → drawer → content) with `shadow-fp-surface` on floating chrome; content layer has no outer border.
+- [ ] Surfaces layer correctly (background → sidebar → content; global top bar on `bg-background`) with `shadow-fp-surface` on floating chrome; content layer has no outer border.
 - [ ] Radii / type / spacing come from the scale, not one-off values.
 - [ ] Text contrast ≥ WCAG AA in both modes.
 
@@ -292,12 +299,17 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 12px within a group.
 
 ## FP-composed patterns (rebuild from primitives + tokens)
-- **Data table** — `rounded-md` with an **outer stroke** `border border-fp-outline-2`; header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
+- **App shell** — Tier-0 global top bar + tier-1 rail + optional tier-2 drawer + content layer; laid out as a `flex-col` (top bar on top) over a `flex` row (rail + padded region). Spacing laws: 8px gaps/outer margin, 16px content-body inset.
+- **Global top bar** — full-width `bg-background border-b border-border` band (`h-12`); three equal flex thirds: **brand logo** left · **global search** centered (`Input` + `Search` icon + `⌘K` `Kbd`) · **notifications + account** right (`Bell` with an unread dot · `Avatar` + `DropdownMenu`).
+- **Rail (tier-1)** — 52px `bg-rail`, hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does not change on expand; 52px footprint reserved, no reflow). **Navigation only** — the brand lives in the top bar; a **module switcher** sits at the rail's top (opens in-place and pins the rail open).
+- **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
+- **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
+- **Data table** — `rounded-md` with an **outer stroke** `border border-border` (follows the `border` token → FP/Outline 1); header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
 - **Editable table cell** — the trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`); hover/open paint `bg-accent` across the entire cell, no inset outline; two-line cell = title over description.
 - **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behaviour: `interactions/6-execute`.)*
 - **Banners** — Callout (Type 1): full-width solid `bg-fp-banner-{status}`, white text, optional CTA/dismiss. Inline alert (Type 2): compact 32px bar on `bg-fp-card-1`, icon+text in `text-fp-banner-accent-{status}`.
 - **Cards / KPI tiles** — `rounded-lg border border-fp-outline-1 bg-card p-4/5`; number `text-2xl/3xl font-semibold tabular-nums`; delta pill green (`bg-status-success/15 text-status-success`) / red (`bg-destructive/15 text-destructive`) with `ArrowUp`/`ArrowDown`.
-- **Kanban** — fixed-width lanes (`w-[340px] bg-fp-lane rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack. `bg-fp-lane` is a hair lighter than `bg-fp-card-1` in light mode so white cards read on top.
+- **Kanban** — fixed-width lanes (`w-[340px] bg-accent rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack; cards sit on `bg-fp-surface-1b`. *(The `--fp-lane` token is legacy — lanes now bind to `accent` / FP-Card-1.)*
 - **Charts** — Recharts; setup + gotchas in `interactions/6-execute`.
 
 Reference implementations: `tables-layout/`, `form-layout/`, `side-sheet/`,
@@ -560,8 +572,8 @@ repo's `src/index.css`.
   --accent-foreground: #f0f2f5; /* base/accent-foreground */
   --destructive: #f87171; /* base/destructive */
   --destructive-foreground: #f0f2f5;
-  --border: #575757; /* FP column → FP/Outline 2 */
-  --input: #575757; /* FP column → FP/Outline 2 */
+  --border: #363c45; /* FP column → FP/Outline 1 (updated) */
+  --input: #363c45; /* FP column → FP/Outline 1 (updated) */
   --ring: #9ca3af;
 
   --chart-1: #fa6400;
@@ -580,7 +592,7 @@ repo's `src/index.css`.
   --sidebar-ring: #575757;
 
   /* FleetPanda-only — dark surface/chrome/status */
-  --drawer: #090c0f; /* Navigation Drawer Expanded bg */
+  --drawer: #292929; /* FP/Drawer (updated) */
   --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar (R6) */
   --fp-outline-1: #363c45; /* FP/Outline 1 */
   --fp-outline-2: #575757; /* FP/Outline 2 */
@@ -608,11 +620,25 @@ repo's `src/index.css`.
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Subtle, low-contrast scrollbars — thin line, transparent track (Firefox). */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
   }
+  /* WebKit/Blink: a thin, rounded thumb on a transparent track; firms up on hover. */
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background-color: var(--fp-outline-2); }
 }
 ```
 
@@ -630,12 +656,14 @@ matters most** *without reading*. Layout carries meaning before a single word do
 
 ## Principles
 
-- **Everything lives in one frame.** Every screen is the AppShell — the shell is
-  the frame, so structure is consistent across the app. No full-bleed pages. (→ L1)
+- **Everything lives in one frame.** Every screen is the AppShell — a single
+  global top bar (Tier-0) + rail + optional drawer + content layer — so structure
+  is consistent across the app. No full-bleed pages, no page-owned top chrome. (→ L1)
 
-- **One header stack, in a fixed order.** A screen's chrome reads top-down in a
-  predictable sequence (title → breadcrumb → tabs → toolbar), so users learn it
-  once. (→ L2/L4)
+- **Compact header, in a fixed order.** A screen's chrome reads top-down in a
+  predictable sequence (global top bar → breadcrumb-as-title → tabs → toolbar), so
+  users learn it once. The content header is compact — the breadcrumb is the title,
+  no divider. (→ L2/L4)
 
 - **Each unit answers a distinct question.** Breadcrumb = *where am I?* · Tabs =
   *which slice?* · Toolbar = *act on this?* Include a unit only when its question
@@ -672,24 +700,36 @@ The normative rules for structure, flow, and grouping. **Single source** — the
 Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
 
 ## Shell & spacing
+- **Tier-0 global top bar:** a full-width app-chrome band across the very top,
+  above the rail + content (`bg-background`, bottom `border-border`, ~48px). Carries
+  the **brand logo** (left), **global search** (⌘K, centered), and **notifications
+  + account menu** (right). Exactly one, app-level (see L1).
 - **Tier-1 rail:** 52px icon rail (`bg-rail`), flush with the background, hover-
-  expands to a 256px overlay (`bg-drawer`). One item per top-level screen.
+  expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
+  One item per top-level screen. **Navigation only** — the brand logo lives in the
+  top bar; a **module switcher** sits at the top of the rail.
 - **Tier-2 drawer (optional):** contextual sub-nav, a `rounded-lg bg-sidebar
   shadow-fp-surface` panel (256px).
 - **Content layer:** fills the rest — `rounded-md bg-fp-surface-1b shadow-fp-surface`,
-  **no outer border**. A fixed header, then a scrolling body.
+  **no outer border**. A compact header (L2), then a scrolling body.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
   margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
 
 ## Layout laws
 
-**L1 — Everything lives in the AppShell.** Every app screen is rail + optional
-drawer + one content layer. No full-bleed pages, no page-owned top chrome. (A lone
-standalone view may omit the shell but still uses the surfaces/tokens.)
+**L1 — Everything lives in the AppShell.** Every app screen is the global top bar
+(Tier-0) + rail + optional drawer + one content layer. The **global top bar is
+app-level chrome** — exactly one, full-width (brand · global search · account).
+Beyond that one bar: no *page-owned* top chrome and no *per-screen* second
+top-bar. (A lone standalone view may omit the shell but still uses the
+surfaces/tokens.) *(Supersedes the archived L1 — see bottom.)*
 
-**L2 — One header stack, fixed order.** The header carries title → breadcrumb; a
-tab row and the search/filter/action toolbar sit directly beneath. Collapse
-multiple source top-bars into this single stack — never a second full-width top-bar.
+**L2 — Compact content header (default).** The content-layer header is compact
+(ClickUp-style): the **breadcrumb path doubles as the title** — no separate big
+title line, and **no bottom divider**. The tab row and the search/filter/action
+toolbar sit **~12px** directly beneath. Global chrome belongs to the Tier-0 bar
+(L1) — never add a per-screen full-width top-bar. *(Supersedes the archived L2 —
+see bottom.)*
 
 **L3 — Toolbar: filters left, actions right.** Filters are a left-aligned group of
 identically-styled controls; view switches and the **one** primary action are
@@ -733,8 +773,9 @@ canonical home; the CTA-neutral facet is stated in `ui/2-rules`.)*
 element.
 
 ## Content-layer anatomy
-- **Header band:** page title `text-2xl font-semibold`; optional breadcrumb directly
-  under the title text; a bottom `border-fp-outline-1` divider.
+- **Header band (compact, default):** the **breadcrumb path is the header** — it
+  doubles as the title (no separate `text-2xl` title line) and there is **no bottom
+  divider**; the tab row / toolbar sit ~12px beneath. Crumbs sit ~4px apart.
 - **Breadcrumb source rule:** the trail reflects the real nav ancestry (rail screen
   → drawer sub-menu → current), not an invented path.
 - **Stacking order inside the body:** action bar → tabs → accordions → content
@@ -742,10 +783,23 @@ element.
 - **Responsive width** follows drawer presence (content reflows when the drawer is
   absent).
 
-## Navigation — two tiers
-Rail = tier-1 main nav (one item per screen); drawer = tier-2 contextual sub-nav
-for the active screen. Content title = the selected sub-menu (or screen name when
-there's no drawer). Tabs are **not** navigation (see L5).
+## Navigation — two tiers (+ global top bar)
+Tier-0 **global top bar** = app chrome (brand · global search · account), spanning
+full width above everything. Rail = tier-1 main nav (one item per screen); drawer =
+tier-2 contextual sub-nav for the active screen. Content title = the breadcrumb path
+(compact header). Tabs are **not** navigation (see L5).
+
+## Archived rules *(superseded — kept for reference, not enforced)*
+Superseded **2026-08-18**, when the Tier-0 global top bar and the compact content
+header became canonical. Retained for context, not enforced.
+- **L1 (archived):** *Every app screen is rail + optional drawer + one content
+  layer. No full-bleed pages, no page-owned top chrome.* — superseded: the app now
+  has exactly one canonical global top bar (Tier-0).
+- **L2 (archived):** *One header stack, fixed order. The header carries title →
+  breadcrumb; a tab row and the toolbar sit directly beneath. Collapse multiple
+  source top-bars into this single stack — never a second full-width top-bar.* —
+  superseded by the compact header (breadcrumb-as-title, no divider) + the Tier-0
+  bar. (The "no per-screen duplicate top-bar" intent is retained in the new L1.)
 
 
 ---
@@ -763,7 +817,7 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Build dense rows as fixed ordered slots.** (H4)
 
 ## Don't
-- **Don't ship a full-bleed page** or a second stacked top-bar. (L1/L2)
+- **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)
 - **Don't use tabs to navigate** between different pages/objects — that's the rail's job. (L5)
 - **Don't render a lone tab, a one-level breadcrumb, or a dead-control toolbar** — no placeholder units. (L5)
 - **Don't reorder the header stack.** (L2/L4)
@@ -780,7 +834,7 @@ Anti-patterns for structure & grouping, each pointing back to a rule in
 renders these as visual pairs.)
 
 ## Shell & header
-- **Page frame (L1/L2)** — ❌ a full-bleed page with a second stacked top-bar · ✅ the AppShell with one header stack (title → breadcrumb → tabs → toolbar).
+- **Page frame (L1/L2)** — ❌ a *page-owned* top-bar duplicating the global chrome · ✅ the AppShell: one Tier-0 global top bar (brand · search · account) + a compact content header (breadcrumb-as-title, no divider) → tabs → toolbar.
 - **Header stack (L5)** — ❌ breadcrumb + tabs + a heavy toolbar on a three-row list · ✅ each unit earns its place; a simple screen is just title + a minimal toolbar.
 - **Breadcrumb (L5)** — ❌ a one-item crumb on a top-level screen, or crumbs that don't navigate · ✅ show only ≥2 levels deep, every crumb navigable, last crumb static.
 - **Tabs (L5)** — ❌ tabs used to jump between different pages, or a lone single tab · ✅ tabs = facets of one dataset; one facet → no tab row.
@@ -806,7 +860,7 @@ in [`2-rules.md`](2-rules.md).
 Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 [`00-meta/conformance.md`](../00-meta/conformance.md) ship-gate.
 
-- [ ] Screen is in the AppShell with one header stack. (L1/L2)
+- [ ] Screen is in the AppShell: one global top bar (Tier-0) + a compact content header (breadcrumb-as-title, no divider); no page-owned/duplicate top-bar. (L1/L2)
 - [ ] Content zones in order: header → toolbar → summary → data. (L4)
 - [ ] Header units earn their place — breadcrumb only if nested, tabs only for real facets, toolbar only if the data needs it; no placeholder units. (L5)
 - [ ] Tabs are facets of one dataset, not navigation between pages. (L5)
@@ -837,13 +891,15 @@ How to build the structure the UX rules describe. Code idioms for the shell + zo
 The repo's implementation is `src/components/app-shell/` + `navigation-drawer/`;
 the nav registry is `App.tsx` (`SCREENS` + `ORDER`).
 
-## Header stack (L2) — fixed order
+## Header stack (L2) — compact, fixed order
+The Tier-0 global top bar (brand · global search · account) sits above the whole
+shell. The **content-layer header is compact**: the breadcrumb IS the title (no
+`text-2xl` title line, no bottom divider); tabs/toolbar pull up ~12px beneath.
 ```tsx
-<div className="border-b border-fp-outline-1 px-5 py-3">
-  <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-  {nested && <Breadcrumb className="mt-1.5" />}   {/* only when ≥2 levels deep */}
-  {facets && <Tabs className="mt-3" />}           {/* only for real facets */}
+<div className="px-4 py-1">                       {/* compact header — no divider */}
+  <Breadcrumb />                                  {/* the breadcrumb doubles as the title */}
 </div>
+{facets && <Tabs className="-mt-3.5" />}          {/* pulled up ~12px; only for real facets */}
 {/* then the toolbar zone below */}
 ```
 

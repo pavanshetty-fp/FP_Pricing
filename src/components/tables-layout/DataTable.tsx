@@ -176,6 +176,9 @@ export interface DataTableProps {
   onRowAction?: (variant: RowSheetVariant, row: TableRowData) => void;
   /** Hidden column keys (driven by the action bar's column-filters menu). */
   hidden?: Set<ColumnKey>;
+  /** Optional control rendered in the header's rightmost cell, revealed on
+   *  header hover (e.g. the column tools popover). */
+  headerAction?: React.ReactNode;
 }
 
 export function DataTable({
@@ -187,6 +190,7 @@ export function DataTable({
   onSort,
   onRowAction,
   hidden,
+  headerAction,
 }: DataTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
@@ -194,12 +198,13 @@ export function DataTable({
   const visibleColumns = COLUMNS.filter((c) => !hidden?.has(c.key));
 
   return (
-    // Outer stroke around the whole table (Figma 28165:3758) — 1px fp-outline-2
-    // (#575757), rounded; this element owns BOTH scroll axes so the sticky header
-    // pins to its top. The shadcn <Table> wraps the table in its own
-    // `overflow-x-auto` div — neutralize it (`table-container` → overflow-visible)
-    // so THIS element is the sticky header's scroll anchor, not that inner wrapper.
-    <div className="h-full overflow-auto rounded-md border border-fp-outline-2 [&_[data-slot=table-container]]:overflow-visible">
+    // Outer stroke around the whole table (Figma 28165:3758) — bound to the
+    // `border` token (follows the FP variable; updated to FP/Outline 1), rounded.
+    // This element owns BOTH scroll axes so the sticky header pins to its top; the
+    // shadcn <Table> wraps the table in its own `overflow-x-auto` div — neutralize
+    // it (`table-container` → overflow-visible) so THIS element is the sticky
+    // header's scroll anchor, not that inner wrapper.
+    <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
@@ -207,7 +212,7 @@ export function DataTable({
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
-          <TableRow className="h-10">
+          <TableRow className="group/hdr h-10">
             {visibleColumns.map((col) => {
               const active = sort?.key === col.key;
               const SortIcon = !active
@@ -254,6 +259,8 @@ export function DataTable({
                     </button>
                   ) : col.label ? (
                     <span>{col.label}</span>
+                  ) : col.key === "actions" ? (
+                    <div className="flex justify-end">{headerAction}</div>
                   ) : null}
                 </TableHead>
               );

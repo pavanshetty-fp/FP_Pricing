@@ -38,7 +38,7 @@ mistakes, and Checks derive from these.
   outer border** — it lifts with shadow.
 - Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
   the content layer.
-- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-fp-lane`.
+- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-accent` (the `--fp-lane` token is legacy).
 - Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
   no shadow.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in

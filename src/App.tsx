@@ -66,6 +66,7 @@ import {
   Grip,
   CalendarRange,
   X,
+  Archive,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -158,10 +159,20 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { ThemeToggle } from "@/components/theme";
-import { usePreferences, type ActionBarComponent } from "@/components/preferences";
+import {
+  usePreferences,
+  type ActionBarComponent,
+  type EditableCellIcon,
+} from "@/components/preferences";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import type { NavGroup } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
+// The from-scratch DAC rebuild, kept under Tables › Archive for comparison.
+import {
+  DacRebuildOpt1,
+  DacRebuildOpt2,
+  ExportMenu,
+} from "@/components/experiments/dac-rebuild";
 
 /** Contextual sub-nav for the Tables screen — Figma "Main Menu 2" drawer. */
 const TABLES_NAV: NavGroup = {
@@ -179,16 +190,29 @@ const TABLES_NAV: NavGroup = {
       ],
     },
     {
-      key: "data-action-control",
-      label: "Data Action Control",
-      icon: <SlidersHorizontal />,
+      key: "archive",
+      label: "Archive",
+      icon: <Archive />,
       children: [
-        { key: "dac-opt-1", label: "Opt 1" },
-        { key: "dac-opt-2", label: "Opt 2" },
+        { key: "arc-tables-layout", label: "Tables Layout" },
+        { key: "arc-opt-2", label: "Opt 2" },
+        { key: "arc-rebuild-1", label: "Rebuild — Opt 1" },
+        { key: "arc-rebuild-2", label: "Rebuild — Opt 2" },
       ],
     },
   ],
 };
+
+/**
+ * Everything under Tables › Archive. The keys outside this set render the
+ * finalized default layout (the Data Action Control "Opt 1" unit).
+ */
+const ARCHIVE_KEYS = new Set([
+  "arc-tables-layout",
+  "arc-opt-2",
+  "arc-rebuild-1",
+  "arc-rebuild-2",
+]);
 
 /**
  * The ShadCN component demos, one per Figma component page. Listed in the
@@ -335,6 +359,7 @@ const COMPONENT_CONTROL_NAV: NavGroup = {
   items: [
     { key: "content-layer", label: "Content layer", icon: <LayoutPanelTop /> },
     { key: "action-bar", label: "Action bar", icon: <PanelTop /> },
+    { key: "table-cell", label: "Table cell", icon: <TextCursorInput /> },
   ],
 };
 
@@ -350,6 +375,8 @@ function navLabel(group: NavGroup, key: string): string {
 interface Screen {
   label: string;
   icon: React.ReactNode;
+  /** Drawer heading override — defaults to `label`. */
+  drawerTitle?: string;
   /** Tier-2 contextual sidebar; omit for main-nav-only screens. */
   sidebar?: NavGroup;
   defaultSub?: string;
@@ -369,7 +396,9 @@ const SCREENS: Record<string, Screen> = {
     icon: <Table2 />,
     sidebar: TABLES_NAV,
     defaultSub: "sub-2d",
-    content: <TablesLayout />,
+    // The finalized Data Action Control unit is the default layout for every
+    // Tables page; the superseded layouts live under Archive.
+    content: <DataActionControl />,
   },
   "form-layout": {
     label: "Form Layout",
@@ -448,6 +477,8 @@ export function App() {
   const [subKey, setSubKey] = React.useState(SCREENS.tables.defaultSub ?? "");
   // Opt 2 headline (title) visibility — toggled from a nav item under Data Action Control.
   const [opt2Headline, setOpt2Headline] = React.useState(true);
+  // TEMPORARY (experiment) — headline toggle for the rebuilt Opt 2.
+  const [expOpt2Headline, setExpOpt2Headline] = React.useState(true);
   // Where a jump (e.g. Create Form) came from, so Cancel / ✕ can return there.
   const [prevLoc, setPrevLoc] = React.useState<{ main: string; sub: string } | null>(null);
 
@@ -484,8 +515,12 @@ export function App() {
   // Sub-nav clicks navigate — except the Opt 2 headline toggle, which flips a
   // preference instead of navigating.
   const onSubNavigate = (key: string) => {
-    if (key === "dac-opt2-headline") {
+    if (key === "arc-opt2-headline") {
       setOpt2Headline((v) => !v);
+      return;
+    }
+    if (key === "arc-rebuild2-headline") {
+      setExpOpt2Headline((v) => !v);
       return;
     }
     setSubKey(key);
@@ -500,13 +535,19 @@ export function App() {
     mainKey === "component-control" ? (
       subKey === "action-bar" ? (
         <ActionBarControl />
+      ) : subKey === "table-cell" ? (
+        <TableCellControl />
       ) : (
         <ContentLayerControl />
       )
-    ) : mainKey === "tables" && subKey === "dac-opt-1" ? (
-      <DataActionControl />
-    ) : mainKey === "tables" && subKey === "dac-opt-2" ? (
+    ) : mainKey === "tables" && subKey === "arc-tables-layout" ? (
+      <TablesLayout />
+    ) : mainKey === "tables" && subKey === "arc-opt-2" ? (
       <DataActionControlOpt2 />
+    ) : mainKey === "tables" && subKey === "arc-rebuild-1" ? (
+      <DacRebuildOpt1 />
+    ) : mainKey === "tables" && subKey === "arc-rebuild-2" ? (
+      <DacRebuildOpt2 />
     ) : mainKey === "form-layout" ? (
       <FormLayout onClose={goBack} standalone />
     ) : screen.pages ? (
@@ -522,7 +563,10 @@ export function App() {
   const crumbs: { label: string; onClick?: () => void }[] = screen.sidebar
     ? [
         { label: "Home", onClick: () => onMainNavigate("dashboard") },
-        { label: screen.label, onClick: () => setSubKey(screen.defaultSub ?? "") },
+        {
+          label: screen.drawerTitle ?? screen.label,
+          onClick: () => setSubKey(screen.defaultSub ?? ""),
+        },
       ]
     : [];
   if (screen.sidebar) {
@@ -542,7 +586,9 @@ export function App() {
       }
     }
   }
-  const breadcrumb = screen.sidebar && showBreadcrumb ? (
+  const isTables = mainKey === "tables";
+  const archived = isTables && ARCHIVE_KEYS.has(subKey);
+  const breadcrumb = screen.sidebar && (showBreadcrumb || archived) ? (
     <Breadcrumb>
       <BreadcrumbList>
         {crumbs.map((c, i) => {
@@ -568,54 +614,72 @@ export function App() {
     </Breadcrumb>
   ) : undefined;
 
-  // Tables screens use a ClickUp-style compact header: the breadcrumb path doubles
-  // as the title (no big title line, no bottom divider), and the content pulls up
-  // close beneath it. Applies to the tabbed layouts + Opt 2; Opt 1 keeps a full header.
-  const compactTablesHeader = mainKey === "tables" && subKey !== "dac-opt-1";
-  // Opt 2 keeps the compact spacing (no divider, tabs pulled up) but shows the
-  // menu title like Opt 1 (title + breadcrumb) — unless the headline toggle is off.
-  const opt2ShowTitle = mainKey === "tables" && subKey === "dac-opt-2" && opt2Headline;
-  // Opt 1 — full header with the title only (no breadcrumb, no divider).
-  const opt1 = mainKey === "tables" && subKey === "dac-opt-1";
+  /**
+   * Header treatment per screen.
+   *   "title" — title alone, no breadcrumb, no divider (the finalized default).
+   *   "crumb" — the breadcrumb path IS the header (compact, L2).
+   *   "both"  — title with the breadcrumb beneath it.
+   * Archived layouts keep the treatment they were designed with.
+   */
+  let headerMode: "title" | "crumb" | "both" = "both";
+  if (isTables) {
+    if (!archived) headerMode = "title";
+    else if (subKey === "arc-tables-layout") headerMode = "crumb";
+    else if (subKey === "arc-opt-2") headerMode = opt2Headline ? "both" : "crumb";
+    else if (subKey === "arc-rebuild-1") headerMode = "title";
+    else headerMode = expOpt2Headline ? "both" : "crumb";
+  }
+  const compactHeader = isTables && headerMode !== "title";
+  const headerTitle = headerMode === "crumb" && breadcrumb ? breadcrumb : title;
+  const headerCrumb = headerMode === "both" ? breadcrumb : undefined;
+  const isRebuild = subKey === "arc-rebuild-1" || subKey === "arc-rebuild-2";
 
-  // Tables sidebar with the Opt 2 headline toggle appended under Data Action Control.
-  const sidebarNav: NavGroup | undefined =
-    mainKey === "tables"
-      ? {
-          ...TABLES_NAV,
-          items: TABLES_NAV.items.map((it) =>
-            it.key === "data-action-control"
-              ? {
-                  ...it,
-                  children: [
-                    ...(it.children ?? []),
-                    {
-                      key: "dac-opt2-headline",
-                      label: `Opt 2 headline: ${opt2Headline ? "On" : "Off"}`,
-                    },
-                  ],
-                }
-              : it
-          ),
-        }
-      : screen.sidebar;
+  // Tables sidebar with each archived screen's headline toggle appended.
+  const sidebarNav: NavGroup | undefined = isTables
+    ? {
+        ...TABLES_NAV,
+        items: TABLES_NAV.items.map((it) =>
+          it.key === "archive"
+            ? {
+                ...it,
+                children: [
+                  ...(it.children ?? []),
+                  {
+                    key: "arc-opt2-headline",
+                    label: `Opt 2 headline: ${opt2Headline ? "On" : "Off"}`,
+                  },
+                  {
+                    key: "arc-rebuild2-headline",
+                    label: `Rebuild Opt 2 headline: ${expOpt2Headline ? "On" : "Off"}`,
+                  },
+                ],
+              }
+            : it
+        ),
+      }
+    : screen.sidebar;
 
   return (
     <AppNavContext.Provider value={goTo}>
     <AppShell
-      title={compactTablesHeader && !opt2ShowTitle && breadcrumb ? breadcrumb : title}
-      breadcrumb={(compactTablesHeader && !opt2ShowTitle) || opt1 ? undefined : breadcrumb}
-      compactHeader={compactTablesHeader}
-      headerDivider={!opt1}
+      title={headerTitle}
+      breadcrumb={headerCrumb}
+      compactHeader={compactHeader}
+      headerDivider={!isTables}
       headerAction={
-        mainKey === "form-layout" ? (
+        isTables && isRebuild ? (
+          <>
+            <ThemeToggle />
+            <ExportMenu />
+          </>
+        ) : mainKey === "form-layout" ? (
           <>
             <ThemeToggle />
             <Button variant="ghost" size="icon" aria-label="Close form" onClick={goBack}>
               <X />
             </Button>
           </>
-        ) : mainKey === "tables" && (subKey === "dac-opt-1" || subKey === "dac-opt-2") ? (
+        ) : isTables ? (
           <TooltipProvider>
             <ThemeToggle />
             <ImportExport rows={SAMPLE_ROWS} hidden={new Set<ColumnKey>()} compact />
@@ -642,7 +706,7 @@ export function App() {
           <NavigationDrawer
             className="rounded-lg bg-sidebar shadow-fp-surface"
             brand={{
-              name: screen.label,
+              name: screen.drawerTitle ?? screen.label,
               icon: screen.icon,
               iconClassName: "bg-sidebar-primary",
             }}
@@ -738,6 +802,42 @@ function ActionBarControl() {
             description={c.description}
             checked={actionBar[c.key]}
             onChange={(v) => setActionBarComponent(c.key, v)}
+          />
+        ))}
+      </FieldSet>
+    </Stack>
+  );
+}
+
+/** Component Control → Table cell — the editable cell's optional affordances. */
+const EDITABLE_ICON_SETTINGS: {
+  key: EditableCellIcon;
+  label: string;
+  description: string;
+}[] = [
+  { key: "leading", label: "Leading icon", description: "Icon before the text in the editable cell." },
+  { key: "trailing", label: "Trailing icon", description: "Icon after the text, signalling the cell is editable." },
+];
+
+function TableCellControl() {
+  const { editableIcons, setEditableIcon } = usePreferences();
+  return (
+    <Stack space="section" className="max-w-2xl overflow-auto">
+      <p className="text-sm text-muted-foreground">
+        The <strong className="font-medium text-foreground">Editable</strong> column
+        reads as a plain table cell and behaves as a text field — click it to edit in
+        place. Both icons are optional.
+      </p>
+      <FieldSet>
+        <FieldLegend>Editable cell</FieldLegend>
+        {EDITABLE_ICON_SETTINGS.map((c) => (
+          <SettingRow
+            key={c.key}
+            id={`set-editable-${c.key}`}
+            label={c.label}
+            description={c.description}
+            checked={editableIcons[c.key]}
+            onChange={(v) => setEditableIcon(c.key, v)}
           />
         ))}
       </FieldSet>

@@ -16,6 +16,7 @@ import type {
 export const COLUMNS: ColumnDef[] = [
   { key: "select", label: "", width: 40 },
   { key: "status", label: "Static", width: 145.9, sortable: true },
+  { key: "editable", label: "Editable", width: 175, sortable: true },
   { key: "dropdown", label: "Dropdown", width: 172 },
   { key: "descriptive", label: "Descriptive Text", width: 145.9 },
   { key: "badge", label: "Badge", width: 85 },
@@ -54,6 +55,7 @@ export const SAMPLE_ROWS: TableRow[] = Array.from({ length: 1000 }, (_, i) => {
   return {
     id: `row-${i + 1}`,
     status,
+    editable: "Editable Text",
     dropdown: { title: "Table Cell Text", description: "Description Text" },
     descriptive: { title: "Table Cell Text", description: "Description Text" },
     badge: "Badge",

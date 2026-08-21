@@ -31,6 +31,8 @@ import { COLUMNS, SAMPLE_ROWS, sortRows } from "@/components/tables-layout/data"
 import type { ColumnKey, SortState, TableRow } from "@/components/tables-layout/types";
 import { useAppNav } from "@/components/visual-references";
 import { BoardView } from "./BoardView";
+import { ScopeSelector } from "./ScopeSelector";
+import { inScope, scopeCounts, scopeLabel, type ScopeKey } from "./scope";
 import { matchesScoped, SEARCH_FIELDS, type PresetState, type PresetView } from "./helpers";
 
 /** Columns the show/hide control can toggle (everything with a header label). */
@@ -41,6 +43,7 @@ const TOGGLE_COLUMNS = COLUMNS.filter((c) => c.label).map((c) => ({
 
 const DEFAULT_STATE: PresetState = {
   search: "", colScope: "status", colQuery: "", sort: null, hidden: [], view: "table", pageSize: 25,
+  scope: "all",
 };
 const stateKey = (s: PresetState) => JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
 let presetSeq = 0;
@@ -80,6 +83,7 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
   const [colScope, setColScope] = React.useState("status");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<"table" | "board">("table");
+  const [scope, setScope] = React.useState<ScopeKey>("all");
   const [sort, setSort] = React.useState<SortState | null>(null);
   const [hidden, setHidden] = React.useState<Set<ColumnKey>>(new Set());
   const [page, setPage] = React.useState(1);
@@ -93,9 +97,16 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
   /* ---- derived data: global search AND column search both apply ---- */
   const gq = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
-  const filtered = React.useMemo(
+  // Search/column-search first: the scope counts are computed over that set, so
+  // each count says "how many would I see if I picked this line".
+  const searchMatched = React.useMemo(
     () => rows.filter((r) => matchesScoped(r, gq, "all") && matchesScoped(r, cq, colScope)),
     [rows, gq, cq, colScope]
+  );
+  const counts = React.useMemo(() => scopeCounts(searchMatched), [searchMatched]);
+  const filtered = React.useMemo(
+    () => (scope === "all" ? searchMatched : searchMatched.filter((r) => inScope(r, scope))),
+    [searchMatched, scope]
   );
   const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort]);
   const pageRows = React.useMemo(
@@ -105,18 +116,20 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
   const isEmpty = sorted.length === 0;
 
   /* ---- preset dirty tracking ---- */
-  const current: PresetState = { search, colScope, colQuery, sort, hidden: [...hidden], view, pageSize };
+  const current: PresetState = { search, colScope, colQuery, sort, hidden: [...hidden], view, pageSize, scope };
   const activePreset = presets.find((p) => p.id === activeId) ?? null;
   const dirty = stateKey(current) !== stateKey(activePreset ? activePreset.state : DEFAULT_STATE);
 
   const applyState = (s: PresetState) => {
     setSearch(s.search); setColScope(s.colScope); setColQuery(s.colQuery);
-    setSort(s.sort); setHidden(new Set(s.hidden)); setView(s.view); setPageSize(s.pageSize); setPage(1);
+    setSort(s.sort); setHidden(new Set(s.hidden)); setView(s.view); setPageSize(s.pageSize);
+    setScope(s.scope ?? "all"); setPage(1);
   };
 
   /* ---- handlers ---- */
   const onSearchChange = (v: string) => { setSearch(v); setPage(1); };
   const onColQuery = (v: string) => { setColQuery(v); setPage(1); };
+  const onScopeChange = (s: ScopeKey) => { setScope(s); setPage(1); };
   const onSort = (key: ColumnKey) => {
     setSort((p) => (p?.key !== key ? { key, dir: "asc" } : p.dir === "asc" ? { key, dir: "desc" } : null));
     setPage(1);
@@ -161,8 +174,8 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* ===== Row 1 — preset view tabs (from Opt 2) ===== */}
-        <div className="-mx-4 -mt-4 flex items-center gap-1 border-b border-border px-3">
+        {/* ===== Row 1 — preset view tabs (left) · line-of-service scope (right) ===== */}
+        <div className="-mx-4 -mt-4 flex items-center gap-1 border-b border-border px-3 py-0.5">
           <button
             type="button"
             onClick={resetToDefault}
@@ -211,6 +224,11 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
           >
             <Plus className="size-4" /> View
           </button>
+
+          {/* Scope is right-aligned: preset views own the left of the row. */}
+          <div className="ml-auto pl-3">
+            <ScopeSelector value={scope} counts={counts} onChange={onScopeChange} />
+          </div>
         </div>
 
         {/* ===== Row 2 — toolbar: left (search · filters · group by) · right (view · column tools · CTA) ===== */}
@@ -341,11 +359,15 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
                   <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
                   <EmptyTitle>No matching records</EmptyTitle>
                   <EmptyDescription>
-                    No records match the current search{cq ? ` in ${colLabel}` : ""}. Try a different term or clear the search.
+                    No records match the current search{cq ? ` in ${colLabel}` : ""}
+                    {scope !== "all" ? ` within ${scopeLabel(scope)}` : ""}. Try a different
+                    term, or clear the filters.
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" size="sm" onClick={() => { onSearchChange(""); onColQuery(""); }}>Clear search</Button>
+                  <Button variant="outline" size="sm" onClick={() => { onSearchChange(""); onColQuery(""); onScopeChange("all"); }}>
+                    {scope === "all" ? "Clear search" : "Clear search and scope"}
+                  </Button>
                 </EmptyContent>
               </Empty>
             ) : (

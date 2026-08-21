@@ -14,6 +14,9 @@ export default defineConfig({
   // For the single-file build, relative base so it runs from file://.
   base: singleFile ? "./" : "/FP-DS-2026/",
   plugins: [react(), tailwindcss(), ...(singleFile ? [viteSingleFile()] : [])],
+  // Honour a PORT assigned by the environment (e.g. running two dev servers
+  // side by side); falls back to Vite's default 5173 when unset.
+  server: { port: process.env.PORT ? Number(process.env.PORT) : undefined },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

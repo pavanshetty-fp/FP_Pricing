@@ -18,6 +18,14 @@ const ACTION_BAR_DEFAULT: Record<ActionBarComponent, boolean> = {
   cta: true,
 };
 
+/** Optional affordances on the editable table cell. */
+export type EditableCellIcon = "leading" | "trailing";
+
+const EDITABLE_ICONS_DEFAULT: Record<EditableCellIcon, boolean> = {
+  leading: true,
+  trailing: true,
+};
+
 interface PreferencesValue {
   /** Show the breadcrumb under the page title. */
   showBreadcrumb: boolean;
@@ -25,6 +33,9 @@ interface PreferencesValue {
   /** Per-component action-bar visibility. */
   actionBar: Record<ActionBarComponent, boolean>;
   setActionBarComponent: (key: ActionBarComponent, v: boolean) => void;
+  /** Leading/trailing icons on the editable table cell. */
+  editableIcons: Record<EditableCellIcon, boolean>;
+  setEditableIcon: (key: EditableCellIcon, v: boolean) => void;
 }
 
 const PreferencesContext = React.createContext<PreferencesValue | null>(null);
@@ -79,14 +90,39 @@ export function PreferencesProvider({
     []
   );
 
+  const [editableIcons, setEditableIcons] = React.useState<
+    Record<EditableCellIcon, boolean>
+  >(() => {
+    if (typeof localStorage === "undefined") return EDITABLE_ICONS_DEFAULT;
+    try {
+      const saved = localStorage.getItem("fp-editable-icons");
+      return saved
+        ? { ...EDITABLE_ICONS_DEFAULT, ...JSON.parse(saved) }
+        : EDITABLE_ICONS_DEFAULT;
+    } catch {
+      return EDITABLE_ICONS_DEFAULT;
+    }
+  });
+  React.useEffect(() => {
+    localStorage.setItem("fp-editable-icons", JSON.stringify(editableIcons));
+  }, [editableIcons]);
+
+  const setEditableIcon = React.useCallback(
+    (key: EditableCellIcon, v: boolean) =>
+      setEditableIcons((prev) => ({ ...prev, [key]: v })),
+    []
+  );
+
   const value = React.useMemo(
     () => ({
       showBreadcrumb,
       setShowBreadcrumb,
       actionBar,
       setActionBarComponent,
+      editableIcons,
+      setEditableIcon,
     }),
-    [showBreadcrumb, actionBar, setActionBarComponent]
+    [showBreadcrumb, actionBar, setActionBarComponent, editableIcons, setEditableIcon]
   );
 
   return (

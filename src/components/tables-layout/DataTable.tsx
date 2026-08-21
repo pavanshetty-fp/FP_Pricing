@@ -16,6 +16,7 @@ import {
   PanelRightOpen,
   Table2,
   PackagePlus,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -49,6 +50,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { InvoiceCard } from "@/components/info-cards";
+import { usePreferences } from "@/components/preferences";
 import { COLUMNS, statusBadgeVariant } from "./data";
 import type {
   ColumnDef,
@@ -70,6 +72,90 @@ function StatusText({ status }: { status: RowStatus }) {
       <span className={cn("size-1.5 rounded-full", STATUS_DOT[status])} />
       {status}
     </span>
+  );
+}
+
+/**
+ * Editable text cell — reads as a plain Static cell, behaves as a text field.
+ * Click (or focus + Enter) turns it into an input in place; Enter commits,
+ * Escape reverts, blur commits. Leading/trailing icons are optional and toggled
+ * from Component Control → Table cell.
+ *
+ * Follows the DS editable-cell recipe: the control fills the whole cell (the
+ * `td` drops its padding) so hover paints `bg-accent` edge to edge, with the
+ * focus ring inset rather than outside the cell.
+ */
+function CellEditable({
+  value,
+  onChange,
+  leading,
+  trailing,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  leading: boolean;
+  trailing: boolean;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(value);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (next && next !== value) onChange(next);
+    else setDraft(value);
+  };
+
+  // One frame shared by both states, so switching to the input shifts nothing.
+  const frame =
+    "flex h-full w-full items-center gap-2 px-3 py-2.5 text-left text-sm outline-none transition-colors";
+
+  if (editing) {
+    return (
+      <div className={cn(frame, "bg-accent ring-2 ring-ring/50 ring-inset")}>
+        {leading && <Tag className="size-4 shrink-0 text-muted-foreground" />}
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setDraft(value);
+              setEditing(false);
+            }
+          }}
+          aria-label="Edit cell text"
+          autoFocus
+          className="min-w-0 flex-1 bg-transparent p-0 text-sm text-foreground outline-none"
+        />
+        {trailing && <Pencil className="size-4 shrink-0 text-muted-foreground" />}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
+      className={cn(
+        frame,
+        "hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+      )}
+    >
+      {leading && <Tag className="size-4 shrink-0 text-muted-foreground" />}
+      <span className="min-w-0 flex-1 truncate text-foreground">{value}</span>
+      {trailing && <Pencil className="size-4 shrink-0 text-muted-foreground" />}
+    </button>
   );
 }
 
@@ -285,6 +371,11 @@ export function DataTable({
   hidden,
   headerAction,
 }: DataTableProps) {
+  // Cell edits live here (keyed by row id) rather than inside Row: rows unmount
+  // when the page changes, and an edit must outlive that.
+  const [edits, setEdits] = React.useState<Record<string, string>>({});
+  const { editableIcons } = usePreferences();
+
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
@@ -390,6 +481,11 @@ export function DataTable({
               // First row demonstrates an expandable nested sub-table.
               expandable={idx === 0}
               detailWidth={viewportWidth}
+              editableValue={edits[row.id] ?? row.editable}
+              onEditableChange={(next) =>
+                setEdits((prev) => ({ ...prev, [row.id]: next }))
+              }
+              editableIcons={editableIcons}
             />
           ))}
         </TableBody>
@@ -406,11 +502,17 @@ function Row({
   onRowAction,
   expandable = false,
   detailWidth,
+  editableValue,
+  onEditableChange,
+  editableIcons,
 }: {
   row: TableRowData;
   columns: ColumnDef[];
   selected: boolean;
   onToggle: () => void;
+  editableValue: string;
+  onEditableChange: (next: string) => void;
+  editableIcons: Record<"leading" | "trailing", boolean>;
   onRowAction?: (variant: RowSheetVariant, row: TableRowData) => void;
   /** When true, the row shows a disclosure chevron that reveals a nested table. */
   expandable?: boolean;
@@ -433,6 +535,14 @@ function Row({
       />
     ),
     status: <StatusText status={row.status} />,
+    editable: (
+      <CellEditable
+        value={editableValue}
+        onChange={onEditableChange}
+        leading={editableIcons.leading}
+        trailing={editableIcons.trailing}
+      />
+    ),
     dropdown: (
       <CellDropdown
         title={row.dropdown.title}
@@ -567,7 +677,7 @@ function Row({
             className={cn(
               // Dropdown cells zero their padding so the trigger fills the whole
               // cell (full-cell hover, like the form table); others keep px-3.
-              col.key === "dropdown" ? "p-0" : "px-3",
+              col.key === "dropdown" || col.key === "editable" ? "p-0" : "px-3",
               col.align === "right" && "text-right text-sm tabular-nums",
               // When expanded, carry the green accent up the parent row's left
               // edge so the line runs from the top of this row into the nested

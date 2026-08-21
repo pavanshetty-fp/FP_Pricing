@@ -10,6 +10,8 @@ export interface TableRow {
   id: string;
   /** col "Static" — plain status label */
   status: RowStatus;
+  /** col "Editable" — inline-editable text, same treatment as a Static cell */
+  editable: string;
   /** col "Dropdown" — two-line text with a trailing chevron */
   dropdown: TwoLineText;
   /** col "Descriptive Text" — two-line text */
@@ -31,6 +33,7 @@ export interface TableRow {
 export type ColumnKey =
   | "select"
   | "status"
+  | "editable"
   | "dropdown"
   | "descriptive"
   | "badge"

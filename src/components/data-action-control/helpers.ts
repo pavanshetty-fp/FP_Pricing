@@ -1,4 +1,5 @@
 import type { ColumnKey, RowStatus, SortState, TableRow } from "@/components/tables-layout/types";
+import type { ScopeKey } from "./scope";
 
 /* ---- Scoped search ---- */
 
@@ -11,6 +12,7 @@ export interface SearchField {
 /** Columns a keyword can be scoped to. `all` (below) searches every field. */
 export const SEARCH_FIELDS: SearchField[] = [
   { key: "status", label: "Static", text: (r) => r.status },
+  { key: "editable", label: "Editable", text: (r) => r.editable },
   { key: "dropdown", label: "Dropdown", text: (r) => `${r.dropdown.title} ${r.dropdown.description}` },
   { key: "descriptive", label: "Descriptive Text", text: (r) => `${r.descriptive.title} ${r.descriptive.description}` },
   { key: "badge", label: "Badge", text: (r) => r.badge },
@@ -36,6 +38,7 @@ interface ExportField {
 
 const EXPORT_FIELDS: ExportField[] = [
   { key: "status", label: "Static", value: (r) => r.status },
+  { key: "editable", label: "Editable", value: (r) => r.editable },
   { key: "dropdown", label: "Dropdown", value: (r) => r.dropdown.title },
   { key: "descriptive", label: "Descriptive Text", value: (r) => r.descriptive.title },
   { key: "badge", label: "Badge", value: (r) => r.badge },
@@ -109,4 +112,6 @@ export interface PresetState {
   hidden: ColumnKey[];
   view: "table" | "board";
   pageSize: number;
+  /** Line-of-service scope. Optional so Opt 2 (archived) still type-checks. */
+  scope?: ScopeKey;
 }

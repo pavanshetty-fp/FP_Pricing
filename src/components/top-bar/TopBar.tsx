@@ -1,8 +1,15 @@
-import { Search, Bell, ChevronDown, UserRound, Settings, LogOut, Boxes } from "lucide-react";
+import * as React from "react";
+import { Search, Bell, ChevronDown, UserRound, Settings, LogOut, Boxes, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SideSheet } from "@/components/side-sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -28,9 +35,11 @@ export interface TopBarProps {
 
 /**
  * Global application top bar — a full-width chrome band above the rail + content.
- * Left: global search (⌘K). Right: notifications + profile menu.
+ * Centre: global search + the keyboard-shortcuts CTA. Right: notifications +
+ * profile menu.
  */
 export function TopBar({ user, unread = 0 }: TopBarProps) {
+  const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3">
       {/* Left — brand logo */}
@@ -41,17 +50,34 @@ export function TopBar({ user, unread = 0 }: TopBarProps) {
         <span className="truncate text-base font-semibold text-foreground">FleetPanda</span>
       </div>
 
-      {/* Center — global search */}
+      {/* Center — global search + keyboard shortcuts */}
       <div className="flex flex-1 justify-center">
-        <div className="relative w-full max-w-md">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search"
-            aria-label="Search"
-            className="h-9 rounded-md pr-12 pl-8"
-          />
-          <Kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">⌘K</Kbd>
+        <div className="flex w-full max-w-md items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search"
+              aria-label="Search"
+              className="h-9 rounded-md pl-8"
+            />
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Keyboard shortcuts"
+                  onClick={() => setShortcutsOpen(true)}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <Keyboard />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Keyboard shortcuts</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -94,6 +120,12 @@ export function TopBar({ user, unread = 0 }: TopBarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SideSheet
+        variant="shortcuts"
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+      />
     </header>
   );
 }

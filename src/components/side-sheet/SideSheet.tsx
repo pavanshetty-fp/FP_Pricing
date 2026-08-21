@@ -3,8 +3,9 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SheetNarrow } from "./SheetNarrow";
 import { SheetWide } from "./SheetWide";
 import { SheetDense } from "./SheetDense";
+import { SheetShortcuts } from "./SheetShortcuts";
 
-export type SideSheetVariant = "narrow" | "wide" | "dense";
+export type SideSheetVariant = "narrow" | "wide" | "dense" | "shortcuts";
 
 /*
   Side Sheet — Figma "Side Sheet" (27610:58293). One right-anchored sheet shell
@@ -16,6 +17,7 @@ const WIDTH: Record<SideSheetVariant, string> = {
   narrow: "w-[560px] sm:max-w-[560px]",
   wide: "w-[1200px] max-w-[96vw] sm:max-w-[1200px]",
   dense: "w-[1000px] max-w-[96vw] sm:max-w-[1000px]",
+  shortcuts: "w-[480px] sm:max-w-[480px]",
 };
 
 export interface SideSheetProps {
@@ -36,6 +38,7 @@ export function SideSheet({ variant, open, onOpenChange, title }: SideSheetProps
         {variant === "narrow" && <SheetNarrow title={title} />}
         {variant === "wide" && <SheetWide title={title} />}
         {variant === "dense" && <SheetDense title={title} />}
+        {variant === "shortcuts" && <SheetShortcuts title={title} />}
       </SheetContent>
     </Sheet>
   );

@@ -3,6 +3,7 @@ import {
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   CirclePlay,
   Bold,
   Italic,
@@ -160,6 +161,98 @@ const currency = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
+/* ---------------------------------------------------------------------------
+ * Nested (expandable) sub-table — read-only example of a child dataset.
+ * Treatment (per reference): END-TO-END — the sub-table runs full-bleed inside
+ * the parent's row (no inset card, no indent), on a recessed `bg-background`
+ * surface (one step below the content layer) with a left accent to tie it to
+ * the parent. Generous row rhythm, muted column headers, a two-line
+ * "Effective Duration" cell. The parent row sits on the lighter content-layer
+ * surface above with a filled badge, so it stays the more prominent tier.
+ * ------------------------------------------------------------------------- */
+const NESTED_COLUMNS = [
+  "Product",
+  "Vendor",
+  "Market",
+  "Base Price",
+  "Effective Duration",
+  "Created at",
+] as const;
+
+type NestedRow = {
+  product: string;
+  vendor: string;
+  market: string;
+  price: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  createdAt: string;
+};
+
+const NESTED_ROWS: NestedRow[] = [
+  { product: "Dyed Diesel", vendor: "Lard Oil", market: "Iowa", price: "$0.10", effectiveFrom: "07/27/2025 12:30 PM", effectiveTo: "07/28/2026 11:59 PM", createdAt: "07/27/2025 12:20 PM" },
+  { product: "CLR Diesel", vendor: "Lard Oil", market: "Iowa", price: "$0.20", effectiveFrom: "07/27/2025 12:30 PM", effectiveTo: "07/28/2026 11:59 PM", createdAt: "07/27/2025 12:20 PM" },
+  { product: "Dyed Diesel", vendor: "Fronk Oil", market: "Iowa", price: "$0.10", effectiveFrom: "07/27/2025 12:30 PM", effectiveTo: "07/28/2026 11:59 PM", createdAt: "07/27/2025 12:20 PM" },
+  { product: "CLR Diesel", vendor: "Fronk Oil", market: "Iowa", price: "$0.25", effectiveFrom: "07/27/2025 12:30 PM", effectiveTo: "07/28/2026 11:59 PM", createdAt: "07/27/2025 12:20 PM" },
+  { product: "Dyed Diesel", vendor: "AllStar Fuel", market: "Iowa", price: "$0.25", effectiveFrom: "07/27/2025 12:30 PM", effectiveTo: "07/28/2026 11:59 PM", createdAt: "07/27/2025 12:20 PM" },
+];
+
+function NestedTable({ width }: { width?: number }) {
+  return (
+    // Pinned to the visible viewport width (sticky left) so the detail's columns
+    // sit comfortably and don't scroll away with the wide parent grid. The td
+    // behind it carries the recessed fill end-to-end; this adds the left accent.
+    <div
+      className="sticky left-0 border-l-2 border-status-success/70 bg-background"
+      style={{ width }}
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              {NESTED_COLUMNS.map((label) => (
+                <th
+                  key={label}
+                  className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium text-muted-foreground"
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {NESTED_ROWS.map((row, i) => (
+              <tr key={i} className="border-t border-border/60">
+                <td className="whitespace-nowrap px-4 py-3.5 text-foreground">
+                  {row.product}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">
+                  {row.vendor}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">
+                  {row.market}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5 tabular-nums text-foreground">
+                  {row.price}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5 tabular-nums text-muted-foreground">
+                  <div className="flex flex-col leading-snug">
+                    <span>{row.effectiveFrom}</span>
+                    <span>{row.effectiveTo}</span>
+                  </div>
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5 tabular-nums text-muted-foreground">
+                  {row.createdAt}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /** Side-sheet variants a row action can open (typed inline to avoid a cycle). */
 export type RowSheetVariant = "narrow" | "wide" | "dense";
 
@@ -197,6 +290,21 @@ export function DataTable({
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
   const visibleColumns = COLUMNS.filter((c) => !hidden?.has(c.key));
 
+  // Measure the scroll viewport so an expanded row's detail can fill the VISIBLE
+  // width (not the table's much wider scroll width) — its columns then sit
+  // comfortably like the reference and stay pinned as the grid scrolls sideways.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [viewportWidth, setViewportWidth] = React.useState<number>();
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setViewportWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     // Outer stroke around the whole table (Figma 28165:3758) — bound to the
     // `border` token (follows the FP variable; updated to FP/Outline 1), rounded.
@@ -204,7 +312,10 @@ export function DataTable({
     // shadcn <Table> wraps the table in its own `overflow-x-auto` div — neutralize
     // it (`table-container` → overflow-visible) so THIS element is the sticky
     // header's scroll anchor, not that inner wrapper.
-    <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+    <div
+      ref={scrollRef}
+      className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible"
+    >
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
@@ -268,7 +379,7 @@ export function DataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
+          {rows.map((row, idx) => (
             <Row
               key={row.id}
               row={row}
@@ -276,6 +387,9 @@ export function DataTable({
               selected={selectedIds.has(row.id)}
               onToggle={() => onToggleRow(row.id)}
               onRowAction={onRowAction}
+              // First row demonstrates an expandable nested sub-table.
+              expandable={idx === 0}
+              detailWidth={viewportWidth}
             />
           ))}
         </TableBody>
@@ -290,15 +404,23 @@ function Row({
   selected,
   onToggle,
   onRowAction,
+  expandable = false,
+  detailWidth,
 }: {
   row: TableRowData;
   columns: ColumnDef[];
   selected: boolean;
   onToggle: () => void;
   onRowAction?: (variant: RowSheetVariant, row: TableRowData) => void;
+  /** When true, the row shows a disclosure chevron that reveals a nested table. */
+  expandable?: boolean;
+  /** Visible viewport width, so the expanded detail fills the screen, not the
+   *  table's wider scroll width. */
+  detailWidth?: number;
 }) {
   const [switchOn, setSwitchOn] = React.useState(row.switchOn);
   const [toggle, setToggle] = React.useState(row.toggle);
+  const [expanded, setExpanded] = React.useState(false);
 
   // One renderer per column key — header and body share the same visible set,
   // so hiding a column (column-filters menu) drops both in lockstep.
@@ -426,20 +548,63 @@ function Row({
   };
 
   return (
-    <TableRow data-state={selected ? "selected" : undefined} className="h-14">
-      {columns.map((col) => (
-        <TableCell
-          key={col.key}
-          className={cn(
-            // Dropdown cells zero their padding so the trigger fills the whole
-            // cell (full-cell hover, like the form table); others keep px-3.
-            col.key === "dropdown" ? "p-0" : "px-3",
-            col.align === "right" && "text-right text-sm tabular-nums"
-          )}
-        >
-          {cells[col.key]}
-        </TableCell>
-      ))}
-    </TableRow>
+    <>
+      <TableRow
+        data-state={selected ? "selected" : undefined}
+        data-expanded={expanded ? "true" : undefined}
+        // A subtle tint anchors the parent while its children are open, so the
+        // parent row stays at least as prominent as the nested sub-table.
+        // Drop the bottom divider when expanded so the green accent rail runs
+        // seamlessly from this row into the nested block (no grey notch).
+        className={cn(
+          "h-14",
+          expanded && "border-b-0 bg-muted/40 hover:bg-muted/40"
+        )}
+      >
+        {columns.map((col, ci) => (
+          <TableCell
+            key={col.key}
+            className={cn(
+              // Dropdown cells zero their padding so the trigger fills the whole
+              // cell (full-cell hover, like the form table); others keep px-3.
+              col.key === "dropdown" ? "p-0" : "px-3",
+              col.align === "right" && "text-right text-sm tabular-nums",
+              // When expanded, carry the green accent up the parent row's left
+              // edge so the line runs from the top of this row into the nested
+              // detail below as one continuous rail.
+              ci === 0 && expanded && "border-l-2 border-status-success/70"
+            )}
+          >
+            {col.key === "status" && expandable ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? "Collapse row" : "Expand row"}
+                  className="-ml-1 rounded p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <ChevronRight
+                    className={cn("size-4 transition-transform", expanded && "rotate-90")}
+                  />
+                </button>
+                {cells[col.key]}
+              </div>
+            ) : (
+              cells[col.key]
+            )}
+          </TableCell>
+        ))}
+      </TableRow>
+      {expandable && expanded && (
+        <TableRow className="hover:bg-transparent data-[state=selected]:bg-transparent">
+          {/* Recessed surface spans the full row (end-to-end); the inner detail
+              is pinned to the visible width so its columns stay comfortable. */}
+          <TableCell colSpan={columns.length} className="bg-background p-0">
+            <NestedTable width={detailWidth} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }

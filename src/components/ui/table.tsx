@@ -57,7 +57,15 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        // Row states paint on `accent`, not `muted`. In the FP dark theme
+        // `--muted` is #1b2028 — the SAME value as `--fp-surface-1b`, the content
+        // layer every table sits on — so muted-based hover/selected fills
+        // composited to a zero pixel change and were invisible. `--accent`
+        // (#2a2f37 dark) is distinct, and in light mode accent and muted are
+        // both #cad1db, so light rendering is pixel-identical to before.
+        // This also matches the cell-level hover the DS already uses
+        // (`hover:bg-accent` in the editable/dropdown cells).
+        "border-b transition-colors hover:bg-accent/50 has-aria-expanded:bg-accent/50 data-[state=selected]:bg-accent",
         className
       )}
       {...props}

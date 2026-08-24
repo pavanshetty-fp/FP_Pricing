@@ -18,3 +18,4 @@ dist-single/
 
 # Doc export/backup zips (docs are tracked as source; zips are redundant binaries)
 docs/*.zip
+dist-unified

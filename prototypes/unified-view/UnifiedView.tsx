@@ -1,0 +1,329 @@
+import * as React from "react";
+import {
+  Fuel,
+  ClipboardList,
+  Users,
+  Database,
+  Upload,
+  SearchX,
+  CalendarOff,
+  Construction,
+} from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { TopBar } from "@/components/top-bar";
+import { NavRail } from "@/components/navigation-drawer";
+import { ThemeToggle } from "@/components/theme";
+import { BulkActionBar } from "@/components/tables-layout/BulkActionBar";
+import { TablePagination } from "@/components/tables-layout/TablePagination";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { FuelOrdersToolbar } from "./FuelOrdersToolbar";
+import { FuelOrdersTable } from "./FuelOrdersTable";
+import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
+import {
+  FUEL_ORDERS,
+  FUEL_ORDER_COLUMNS,
+  dateKeyOf,
+  formatFullDate,
+  matchesFuelOrder,
+  sortFuelOrders,
+  startOfDay,
+} from "./data";
+import type { FuelOrderColumnKey, SortState } from "./types";
+
+/*
+  Unified View — the FleetPanda Sales Console recreated on FP-DS.
+
+  A standalone prototype: it ships as its own HTML and is NOT a section of the
+  FP DS 2026 gallery. It consumes the design system (components from
+  `@/components/*`, tokens from `@/index.css`) but owns its own shell and entry
+  point, so app-level decisions here never leak into the DS showcase.
+
+  Shell: Tier-0 top bar (brand · global search · notifications · account — the
+  account menu is where Profile lives, so Profile is not a rail destination) ·
+  Tier-1 52px rail carrying the module switcher + the four workspace
+  destinations · NO Tier-2 sidebar, because this workspace has no second nav
+  level — so the content layer takes the full remaining width.
+*/
+
+const NAV_ITEMS = [
+  { key: "fuel-orders", label: "Fuel Orders", icon: <Fuel /> },
+  { key: "asset-orders", label: "Asset Orders", icon: <ClipboardList /> },
+  { key: "customers", label: "Customers", icon: <Users /> },
+  { key: "assets", label: "Assets", icon: <Database /> },
+];
+
+/** Columns the column-visibility menu can toggle (everything with a label). */
+const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
+  key: c.key,
+  label: c.label,
+}));
+
+/** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
+function FuelOrdersScreen() {
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [search, setSearch] = React.useState("");
+  const [sort, setSort] = React.useState<SortState | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const [hiddenColumns, setHiddenColumns] = React.useState<
+    Set<FuelOrderColumnKey>
+  >(new Set());
+  const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  const [views, setViews] = React.useState(["Default"]);
+  const [activeView, setActiveView] = React.useState("Default");
+
+  const addView = () => {
+    const name = `View ${views.length}`;
+    setViews((v) => [...v, name]);
+    setActiveView(name);
+  };
+
+  const toggleColumn = (key: FuelOrderColumnKey) =>
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const query = search.trim().toLowerCase();
+  // Date scopes the list first — every row on screen belongs to the selected
+  // delivery date — then the search narrows within it.
+  const dateKey = dateKeyOf(date);
+  const onDate = React.useMemo(
+    () => FUEL_ORDERS.filter((r) => r.dateKey === dateKey),
+    [dateKey]
+  );
+  const filtered = React.useMemo(
+    () => (query ? onDate.filter((r) => matchesFuelOrder(r, query)) : onDate),
+    [onDate, query]
+  );
+  const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
+  const pageRows = React.useMemo(
+    () => sorted.slice((page - 1) * pageSize, page * pageSize),
+    [sorted, page, pageSize]
+  );
+
+  // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
+  const onSort = (key: FuelOrderColumnKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+    setPage(1);
+  };
+
+  const toggleRow = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAll = (checked: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const r of pageRows) {
+        if (checked) next.add(r.id);
+        else next.delete(r.id);
+      }
+      return next;
+    });
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <FuelOrdersViewBar
+        views={views}
+        activeView={activeView}
+        onSelectView={setActiveView}
+        onAddView={addView}
+      />
+
+      <div className="mt-4 shrink-0">
+        <FuelOrdersToolbar
+          searchValue={search}
+          onSearchChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          columns={TOGGLE_COLUMNS}
+          hiddenColumns={hiddenColumns}
+          onToggleColumn={toggleColumn}
+          date={date}
+          onDateChange={(d) => {
+            setDate(d);
+            setPage(1);
+          }}
+        />
+      </div>
+
+      {/* Table region — `relative` anchors the floating bulk-action bar. */}
+      <div className="relative mt-4 min-h-0 flex-1">
+        <div className="h-full min-h-0">
+          {sorted.length === 0 ? (
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  {query ? <SearchX /> : <CalendarOff />}
+                </EmptyMedia>
+                <EmptyTitle>
+                  {query ? "No matching orders" : "Nothing scheduled"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {query
+                    ? `No fuel orders on ${formatFullDate(date)} match “${search.trim()}”.`
+                    : `No fuel orders are scheduled for ${formatFullDate(date)}.`}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {query ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setPage(1);
+                    }}
+                  >
+                    Clear search
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDate(startOfDay(new Date()));
+                      setPage(1);
+                    }}
+                  >
+                    Go to today
+                  </Button>
+                )}
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <FuelOrdersTable
+              rows={pageRows}
+              selectedIds={selectedIds}
+              onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
+              sort={sort}
+              onSort={onSort}
+              hidden={hiddenColumns}
+            />
+          )}
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
+            <div className="pointer-events-auto">
+              <BulkActionBar
+                count={selectedIds.size}
+                onClear={() => setSelectedIds(new Set())}
+                onDelete={() => setSelectedIds(new Set())}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border">
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder for the rail destinations this pass hasn't built. */
+function NotBuiltYet({ label }: { label: string }) {
+  return (
+    <Empty className="h-full">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Construction />
+        </EmptyMedia>
+        <EmptyTitle>{label}</EmptyTitle>
+        <EmptyDescription>
+          Not built yet — Fuel Orders is the screen in this pass.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
+export function UnifiedView() {
+  const [navKey, setNavKey] = React.useState("fuel-orders");
+  const active = NAV_ITEMS.find((i) => i.key === navKey) ?? NAV_ITEMS[0];
+
+  return (
+    <TooltipProvider>
+      <AppShell
+        title={active.label}
+        /* The preset-view row owns the only hairline under the header. */
+        headerDivider={false}
+        topBar={
+          <TopBar
+            user={{
+              name: "Pavan Shetty",
+              email: "pavanshetty@fleetpanda.com",
+              fallback: "PS",
+            }}
+            unread={3}
+          />
+        }
+        rail={
+          <NavRail
+            groups={[{ items: NAV_ITEMS }]}
+            activeKey={navKey}
+            onNavigate={setNavKey}
+          />
+        }
+        /* No Tier-2 sidebar — the content layer takes the full width. */
+        headerAction={
+          <>
+            <ThemeToggle />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Export">
+                  <Upload />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export</TooltipContent>
+            </Tooltip>
+          </>
+        }
+      >
+        {navKey === "fuel-orders" ? (
+          <FuelOrdersScreen />
+        ) : (
+          <NotBuiltYet label={active.label} />
+        )}
+      </AppShell>
+    </TooltipProvider>
+  );
+}

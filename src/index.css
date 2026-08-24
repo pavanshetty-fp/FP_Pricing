@@ -156,6 +156,10 @@
   --color-status-pink: var(--status-pink);
   --color-verified: var(--verified);
   --color-verified-foreground: var(--verified-foreground);
+  --color-order-delivery: var(--order-delivery);
+  --color-order-delivery-foreground: var(--order-delivery-foreground);
+  --color-order-extraction: var(--order-extraction);
+  --color-order-extraction-foreground: var(--order-extraction-foreground);
   --color-fp-banner-foreground: var(--fp-banner-foreground);
   --color-fp-banner-info: var(--fp-banner-info);
   --color-fp-banner-caution: var(--fp-banner-caution);
@@ -260,6 +264,16 @@
   --status-failed: #dc2626;
   --status-pink: #db2777;
   --verified: #2563eb;
+  /* Order-type badges (Delivery / Extraction) — pastel fill + deep same-hue
+     text. Deliberately NOT overridden in `.dark`: a pastel reads as a pastel in
+     both themes, so both modes share one pair per type.
+     KNOWN GAP: these four hues are NOT sourced from the DS Figma file — the DS
+     badge palette has no pastel variants. Replace with the real DS pastels when
+     they exist. Consumed as `bg-order-delivery text-order-delivery-foreground`. */
+  --order-delivery: #a8c9ef;
+  --order-delivery-foreground: #16324f;
+  --order-extraction: #f0c9a4;
+  --order-extraction-foreground: #5a3313;
   /* Banners (28149:1712) — Type 1 solid fills (white text) keep the saturated
      design hexes; Type 2 accents darkened so they read on a light card. */
   --fp-banner-info: #3730a3;

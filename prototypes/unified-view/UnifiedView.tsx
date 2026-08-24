@@ -13,7 +13,7 @@ import { AppShell } from "@/components/app-shell";
 import { TopBar } from "@/components/top-bar";
 import { NavRail } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
-import { BulkActionBar } from "@/components/tables-layout/BulkActionBar";
+import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +65,18 @@ import type { FuelOrder, FuelOrderColumnKey, SortState } from "./types";
   destinations · NO Tier-2 sidebar, because this workspace has no second nav
   level — so the content layer takes the full remaining width.
 */
+
+/** Shared with the order sheet — one list, so bulk and single edits agree. */
+const DRIVER_OPTIONS = ["Shriya", "Shriya Test 2", "Aakash"];
+const TAG_OPTIONS = [
+  "Keep Full",
+  "Rush",
+  "Night",
+  "Weekend",
+  "Split Load",
+  "Hazmat",
+  "After Hours",
+];
 
 const NAV_ITEMS = [
   { key: "fuel-orders", label: "Fuel Orders", icon: <Fuel /> },
@@ -212,6 +224,54 @@ function FuelOrdersScreen() {
       return null;
     });
     setPage(1);
+  };
+
+  /** Apply a change to every selected order. */
+  const applyToSelected = (fn: (r: FuelOrder) => FuelOrder) =>
+    setRows((prev) => prev.map((r) => (selectedIds.has(r.id) ? fn(r) : r)));
+
+  const bulk = {
+    setProduct: (product: string) =>
+      // Collapses each order onto one line, keeping ITS OWN total — a bulk
+      // product change shouldn't silently rewrite quantities too.
+      applyToSelected((r) => ({ ...r, products: [{ name: product, gal: r.qtyGal }] })),
+    setDriver: (driver: string | null) =>
+      applyToSelected((r) => ({
+        ...r,
+        driver: driver
+          ? {
+              name: driver,
+              initials: driver
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase(),
+            }
+          : null,
+        // Status follows the driver everywhere, bulk edits included.
+        status: driver ? "Assigned" : "Unassigned",
+      })),
+    setPlannedDate: (d: Date) =>
+      applyToSelected((r) => ({
+        ...r,
+        planned: { date: DATE_FMT.format(d), time: r.planned?.time ?? "12:00 PM" },
+      })),
+    setPlannedTime: (time: string) =>
+      applyToSelected((r) => ({
+        ...r,
+        planned: { date: r.planned?.date ?? r.date.title, time },
+      })),
+    addTags: (tags: string[]) =>
+      // Adds to what each order already carries rather than replacing.
+      applyToSelected((r) => ({
+        ...r,
+        tags: Array.from(new Set([...r.tags, ...tags])),
+      })),
+    remove: () => {
+      setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      setSelectedIds(new Set());
+    },
   };
 
   /** Fold a sheet draft back onto its row. */
@@ -369,10 +429,18 @@ function FuelOrdersScreen() {
         {selectedIds.size > 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
             <div className="pointer-events-auto">
-              <BulkActionBar
+              <FuelOrdersBulkBar
                 count={selectedIds.size}
                 onClear={() => setSelectedIds(new Set())}
-                onDelete={() => setSelectedIds(new Set())}
+                onSetProduct={bulk.setProduct}
+                onSetDriver={bulk.setDriver}
+                onSetPlannedDate={bulk.setPlannedDate}
+                onSetPlannedTime={bulk.setPlannedTime}
+                onAddTags={bulk.addTags}
+                onDelete={bulk.remove}
+                productOptions={productNames}
+                driverOptions={DRIVER_OPTIONS}
+                tagOptions={TAG_OPTIONS}
               />
             </div>
           </div>

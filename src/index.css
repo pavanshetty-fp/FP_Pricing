@@ -181,6 +181,10 @@
   --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
   --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
   --color-fp-banner-accent-success: var(--fp-banner-accent-success);
+  --color-pastel-blue: var(--pastel-blue);
+  --color-pastel-blue-foreground: var(--pastel-blue-foreground);
+  --color-pastel-amber: var(--pastel-amber);
+  --color-pastel-amber-foreground: var(--pastel-amber-foreground);
   /* Kanban lane accents (27631:11154) — theme-independent palette used for the
      lane top-strip + count pill. Literal values (same in light/dark). */
   --color-fp-lane-grey: #64748b;
@@ -255,6 +259,23 @@
   /* FleetPanda-only — constants (theme-independent) */
   --brand: #fa6400; /* Primary (FP orange) */
   --brand-foreground: #ffffff;
+
+  /* Pastel accents — the soft badge / code-disc palette. Each pair is a fill +
+     a foreground dark enough to stay legible on it.
+
+     Declared once here on :root and deliberately NOT overridden in .dark: a
+     pastel should read as a pastel in both themes, so both modes share one pair.
+
+     KNOWN GAP — these are NOT sourced from the DS Figma file. The FP DS 2026
+     library was searched for "pastel" and has no pastel variants. The two pairs
+     below came from the unified-view prototype, where a designer picked them, so
+     they are carried verbatim rather than re-invented. Extending the set (green,
+     rose, …) needs Figma-sourced values first — do NOT add invented hexes here;
+     adding a pair is a one-line change once the library has them. */
+  --pastel-blue: #a8c9ef;
+  --pastel-blue-foreground: #16324f;
+  --pastel-amber: #f0c9a4;
+  --pastel-amber-foreground: #5a3313;
   /* Paired foregrounds for the saturated fills. White in BOTH themes per the DS
      (badge 23:995 "Verified", banners 28149:1712 Type 1 solid fills, status
      fills) — declared as tokens so no component reaches for `text-white`. */
@@ -313,6 +334,17 @@
   --primary-foreground: #090c0f; /* base/primary-foreground */
   --secondary: #2a2f37; /* FP column → FP/Card 1 */
   --secondary-foreground: #f0f2f5;
+  /* CONSTRAINT — do not let --muted equal --fp-surface-1b.
+     In FP dark this value is byte-identical to --fp-surface-1b (#1b2028), and
+     --popover aliases to that same primitive. So ANY `bg-muted` fill sitting on
+     the content layer, or inside a popover / dropdown / side sheet, composites
+     to a zero pixel change and is invisible. Verified in Figma: the duplication
+     starts in the library — `FP/Card 2` and `FP/Surface 1b` BOTH hold #1b2028,
+     and base/muted aliases Card 2 while base/popover aliases Surface 1b
+     (file PxzKUl6emRr8QQ5Nb0vlwT). Re-pointing --muted needs that decided in
+     Figma first; until then, fills that need to read on those surfaces use
+     --accent (#2a2f37). Light mode is unaffected either way: there --muted and
+     --accent are both #cad1db, so muted→accent is a pixel no-op. */
   --muted: #1b2028; /* FP column → FP/Card 2 (= #1b2028) */
   --muted-foreground: #9ca3af; /* base/muted-foreground */
   --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */

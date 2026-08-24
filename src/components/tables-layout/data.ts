@@ -1,3 +1,4 @@
+import type { StatusTone } from "@/components/ui/status-chip";
 import type {
   ColumnDef,
   ColumnKey,
@@ -68,20 +69,38 @@ export const SAMPLE_ROWS: TableRow[] = Array.from({ length: 1000 }, (_, i) => {
 });
 
 /**
- * Semantic badge variant for a row status — the value→variant binding (badges
- * are semantic variables; the variant follows the data, not hardcoded).
- * DS gap: the badge palette has no green "success" variant, so Success maps to
- * `verified`; Processing → neutral `secondary`; Failed → `destructive`.
+ * THE status mapping for this dataset. Per the DS's colour governance a status
+ * carries no colour until a usage rule binds it — the DS ships `StatusTone`
+ * channels, and this application-side function is that binding. Everything
+ * else that needs a status colour derives from here, so there is one
+ * vocabulary rather than two.
+ */
+export function statusTone(status: RowStatus): StatusTone {
+  switch (status) {
+    case "Success":
+      return "success";
+    case "Processing":
+      return "processing";
+    case "Failed":
+      return "failed";
+  }
+}
+
+/**
+ * Badge variant for a row status, DERIVED from `statusTone` so the filled-badge
+ * treatment cannot drift from the chip treatment.
+ * DS gap: the badge palette has no green "success" variant, so success maps to
+ * `verified`; processing → neutral `secondary`; failed → `destructive`.
  */
 export function statusBadgeVariant(
   status: RowStatus
 ): "verified" | "secondary" | "destructive" {
-  switch (status) {
-    case "Success":
+  switch (statusTone(status)) {
+    case "success":
       return "verified";
-    case "Processing":
+    case "processing":
       return "secondary";
-    case "Failed":
+    default:
       return "destructive";
   }
 }

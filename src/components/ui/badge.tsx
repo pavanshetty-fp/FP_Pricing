@@ -22,10 +22,29 @@ const badgeVariants = cva(
         // verified — fixed DS blue + BadgeCheck icon (pass as child)
         verified: "bg-verified text-verified-foreground hover:bg-verified/90",
         link: "text-primary underline-offset-4 hover:underline",
+        // Pastel fills — one pair per hue, same in both themes. Applications
+        // bind meaning to a hue; the DS only ships the hues. See index.css.
+        "pastel-blue":
+          "bg-pastel-blue text-pastel-blue-foreground hover:bg-pastel-blue/90",
+        "pastel-amber":
+          "bg-pastel-amber text-pastel-amber-foreground hover:bg-pastel-amber/90",
+      },
+      /**
+       * Geometry, independent of colour.
+       *   pill — the default badge.
+       *   disc — a 16px circle carrying one or two characters (a "code disc").
+       *          Prefer the CodeDisc component over `shape="disc"` directly: it
+       *          enforces the tooltip + aria-label that stop the letter being
+       *          the only carrier of meaning.
+       */
+      shape: {
+        pill: "",
+        disc: "size-4 justify-center rounded-full p-0 text-[9px] font-semibold",
       },
     },
     defaultVariants: {
       variant: "default",
+      shape: "pill",
     },
   }
 )
@@ -33,6 +52,7 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
+  shape = "pill",
   asChild = false,
   ...props
 }: React.ComponentProps<"span"> &
@@ -43,7 +63,8 @@ function Badge({
     <Comp
       data-slot="badge"
       data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      data-shape={shape}
+      className={cn(badgeVariants({ variant, shape }), className)}
       {...props}
     />
   )

@@ -96,6 +96,7 @@ import {
   BadgeDemo,
   ButtonDemo,
   BannersDemo,
+  StatusChipDemo,
   EmptyDemo,
   HoverCardDemo,
   InformationCardDemo,
@@ -316,6 +317,7 @@ const CUSTOM_COMPONENT_PAGES: {
   content: React.ReactNode;
 }[] = [
   { key: "banners", label: "Banners", icon: <Megaphone />, content: <BannersDemo /> },
+  { key: "status-chip", label: "Status chip", icon: <CircleDot />, content: <StatusChipDemo /> },
 ];
 
 const CUSTOM_COMPONENTS_NAV: NavGroup = {

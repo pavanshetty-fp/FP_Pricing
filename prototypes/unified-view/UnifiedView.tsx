@@ -82,6 +82,21 @@ const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
 function FuelOrdersScreen() {
   const [rows, setRows] = React.useState(FUEL_ORDERS);
+  // Picker options come from the data, so the sheet can't offer a value the
+  // table has never seen.
+  const uniq = (xs: string[]) => Array.from(new Set(xs));
+  const customers = React.useMemo(
+    () => uniq(FUEL_ORDERS.map((r) => r.customer.title)),
+    []
+  );
+  const shipTos = React.useMemo(
+    () => uniq(FUEL_ORDERS.map((r) => r.customer.description)),
+    []
+  );
+  const productNames = React.useMemo(
+    () => uniq(FUEL_ORDERS.flatMap((r) => r.products.map((p) => p.name))),
+    []
+  );
   const [openOrderId, setOpenOrderId] = React.useState<string | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [search, setSearch] = React.useState("");
@@ -215,11 +230,8 @@ function FuelOrdersScreen() {
               customer: { title: draft.customer, description: draft.shipTo },
               products: draft.products,
               qtyGal: draft.products.reduce((n, p) => n + p.gal, 0),
-              dateKey: dateKeyOf(draft.deliveryDate),
-              date: {
-                title: DATE_FMT.format(draft.deliveryDate),
-                description: r.date.description,
-              },
+              // Date of Delivery was dropped from the sheet, so the row keeps
+              // its own; only the planned date/time is editable here.
               planned:
                 plannedDate && draft.plannedTime.trim()
                   ? {
@@ -371,6 +383,9 @@ function FuelOrdersScreen() {
         open={openOrderId !== null}
         onOpenChange={(o) => !o && setOpenOrderId(null)}
         onSave={saveOrder}
+        customers={customers}
+        shipTos={shipTos}
+        productNames={productNames}
       />
 
       <div className="shrink-0 border-t border-border">

@@ -51,29 +51,14 @@ import {
 } from "@/components/ui/hover-card";
 import { InvoiceCard } from "@/components/info-cards";
 import { usePreferences } from "@/components/preferences";
-import { COLUMNS, statusBadgeVariant } from "./data";
+import { StatusChip } from "@/components/ui/status-chip";
+import { COLUMNS, statusBadgeVariant, statusTone } from "./data";
 import type {
   ColumnDef,
   ColumnKey,
-  RowStatus,
   SortState,
   TableRow as TableRowData,
 } from "./types";
-
-const STATUS_DOT: Record<RowStatus, string> = {
-  Success: "bg-status-success",
-  Processing: "bg-status-processing",
-  Failed: "bg-status-failed",
-};
-
-function StatusText({ status }: { status: RowStatus }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <span className={cn("size-1.5 rounded-full", STATUS_DOT[status])} />
-      {status}
-    </span>
-  );
-}
 
 /**
  * Editable text cell — reads as a plain Static cell, behaves as a text field.
@@ -534,7 +519,7 @@ function Row({
         aria-label={`Select ${row.id}`}
       />
     ),
-    status: <StatusText status={row.status} />,
+    status: <StatusChip tone={statusTone(row.status)}>{row.status}</StatusChip>,
     editable: (
       <CellEditable
         value={editableValue}
@@ -561,7 +546,7 @@ function Row({
         <Avatar className="size-5">
           <AvatarFallback className="text-[10px]">U</AvatarFallback>
         </Avatar>
-        <StatusText status={row.statusBadge} />
+        <StatusChip tone={statusTone(row.statusBadge)}>{row.statusBadge}</StatusChip>
       </span>
     ),
     switch: (

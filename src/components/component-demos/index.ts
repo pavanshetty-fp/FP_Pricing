@@ -2,6 +2,7 @@ export { AccordionDemo } from "./AccordionDemo";
 export { BadgeDemo } from "./BadgeDemo";
 export { ButtonDemo } from "./ButtonDemo";
 export { BannersDemo } from "./BannersDemo";
+export { StatusChipDemo } from "./StatusChipDemo";
 export { EmptyDemo } from "./EmptyDemo";
 export { HoverCardDemo } from "./HoverCardDemo";
 export { InformationCardDemo } from "./InformationCardDemo";

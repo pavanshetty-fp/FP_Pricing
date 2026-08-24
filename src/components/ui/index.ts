@@ -7,6 +7,12 @@ export {
   type BadgeNumberProps,
 } from "./badge";
 export { CodeDisc, type CodeDiscProps, type CodeDiscTone } from "./code-disc";
+export {
+  StatusChip,
+  type StatusChipProps,
+  type StatusChipVariant,
+  type StatusTone,
+} from "./status-chip";
 export { Checkbox } from "./checkbox";
 export { Switch } from "./switch";
 export { Input } from "./input";

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +24,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -35,6 +31,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  BeforeAfterTable,
+  BulkEditDialog,
+  OrderMiniTable,
+  StandingLoad,
+  type OrderRef,
+} from "./BulkEditDialog";
+import { DATE_FMT } from "./data";
+import type { FuelOrder } from "./types";
 
 /**
  * Floating bulk-action bar for Fuel Orders.
@@ -45,6 +50,20 @@ import {
  * before the destructive zone, and Delete always behind an AlertDialog. Labels
  * are mandatory on the field actions, per the DS's own note that these are never
  * icon-only.
+ *
+ * Every field action opens the two-step `BulkEditDialog` — pick, then review
+ * what already exists and what changes, then commit. That is `02-rules/
+ * interaction-and-behavior.md` §4b (locked decision 11), which assigns each
+ * attribute an editor by CARDINALITY, and these are not all the same tier:
+ *
+ *   Tier 1  scalar, one value for every row      Planned date, Planned time
+ *   Tier 2  one value per row                    Driver
+ *   Tier 3  a collection per row                 Products, Tags
+ *
+ * They previously shared one flat popover that committed on click, which met
+ * none of §4b: no dialog, no scope+count header, no preview, and — worst — no
+ * confirmation on Products, which REPLACES an order's product lines and so
+ * silently rewrites the Qty column that sums them.
  *
  * THREE DELIBERATE DIFFERENCES FROM THE DS BAR:
  *
@@ -62,17 +81,17 @@ import {
  *    the component takes no way to change them. This screen's set is the five
  *    fields a dispatcher edits across orders, plus Delete. No Copy, no More.
  *
- * 3. ELEVATION. `interaction-and-behavior.md` §4b specifies `--shadow-md` for
- *    this bar. Measured, that is WEAKER than the `shadow-lg` this file used to
- *    carry (Tailwind's md is 10% black at 4px; lg is 10% black at 10px), and
- *    both are effectively invisible here — because of difference 1's root
- *    cause. The bar only ever appears WHEN ROWS ARE SELECTED, so its real
- *    backdrop on three sides is selected rows, and the selected-row fill is
- *    `--accent` = #2a2f37 in FP-dark, byte-identical to this bar's own
- *    `--fp-card-1`. Measured delta against its own backdrop: [0,0,0]. With no
- *    fill contrast available the shadow carries the whole separation, so this
- *    uses `shadow-fp-overlay` — a new overlay elevation tier, theme-aware
- *    because 10% black does not register on #2a2f37. See src/index.css.
+ * 3. ELEVATION. §4b specifies `--shadow-md` for this bar. Measured, that is
+ *    WEAKER than the `shadow-lg` this file used to carry (Tailwind's md is 10%
+ *    black at 4px; lg is 10% black at 10px), and both are effectively invisible
+ *    here — because of difference 1's root cause. The bar only ever appears
+ *    WHEN ROWS ARE SELECTED, so its real backdrop on three sides is selected
+ *    rows, and the selected-row fill is `--accent` = #2a2f37 in FP-dark,
+ *    byte-identical to this bar's own `--fp-card-1`. Measured delta against its
+ *    own backdrop: [0,0,0]. With no fill contrast available the shadow carries
+ *    the whole separation, so this uses `shadow-fp-overlay` — a new overlay
+ *    elevation tier, theme-aware because 10% black does not register on
+ *    #2a2f37. See src/index.css.
  *
  * DS FOLLOW-UP: parameterise `tables-layout/BulkActionBar` so the verb set is a
  * prop, and move the fill off `bg-popover`. Then this file deletes itself.
@@ -95,66 +114,57 @@ export interface FuelOrdersBulkBarProps {
   productOptions: string[];
   driverOptions: string[];
   tagOptions: string[];
+  /** The orders being edited — what the preview step reads. */
+  selectedOrders: FuelOrder[];
+  /**
+   * Every order NOT in the selection. A driver's standing load is derived from
+   * this, so an order that is both already theirs and in the selection is
+   * counted once, under "being added", rather than appearing on both sides.
+   */
+  unselectedOrders: FuelOrder[];
 }
 
-/** Field action — a labelled trigger opening a small editor. */
+/** Bar trigger — a labelled button that opens that action's dialog. */
 function FieldAction({
   icon,
   label,
-  children,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
-  children: React.ReactNode;
+  onClick: () => void;
 }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm">
-          {icon}
-          {label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" side="top" sideOffset={8} className="w-auto p-0">
-        {children}
-      </PopoverContent>
-    </Popover>
+    <Button variant="ghost" size="sm" onClick={onClick}>
+      {icon}
+      {label}
+    </Button>
   );
 }
 
-/** Single-select list used by Products and Driver. */
-function PickList({
-  placeholder,
-  options,
-  extra,
-  onPick,
-}: {
-  placeholder: string;
-  options: string[];
-  /** An option that maps to `null`, e.g. "— Unassigned". */
-  extra?: { label: string; value: null };
-  onPick: (value: string | null) => void;
-}) {
-  return (
-    <Command className="w-64">
-      <CommandInput placeholder={placeholder} />
-      <CommandList>
-        <CommandEmpty>No options found.</CommandEmpty>
-        <CommandGroup>
-          {extra && (
-            <CommandItem value={extra.label} onSelect={() => onPick(null)}>
-              {extra.label}
-            </CommandItem>
-          )}
-          {options.map((o) => (
-            <CommandItem key={o} value={o} onSelect={() => onPick(o)}>
-              {o}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  );
+type ActionKey = "products" | "driver" | "date" | "time" | "tags";
+
+/**
+ * Order -> the identity every summary table renders. Lives here rather than
+ * beside `OrderRef` so BulkEditDialog exports components only and stays inside
+ * react-refresh's one-warning budget.
+ */
+function toOrderRef(o: FuelOrder): OrderRef {
+  return {
+    orderNo: o.orderNo,
+    typeLabel: o.type.label,
+    shipTo: o.customer.description,
+  };
+}
+
+/** "Shriya Test 2" -> "ST". Matches how the Driver column builds its avatar. */
+function initialsOf(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 export function FuelOrdersBulkBar({
@@ -169,146 +179,367 @@ export function FuelOrdersBulkBar({
   productOptions,
   driverOptions,
   tagOptions,
+  selectedOrders,
+  unselectedOrders,
 }: FuelOrdersBulkBarProps) {
+  const [action, setAction] = React.useState<ActionKey | null>(null);
+
+  // Pending values — nothing is committed until Confirm on step 2.
+  const [product, setProduct] = React.useState<string | null>(null);
+  // `undefined` = nothing picked yet; `null` = the explicit "Unassigned" option.
+  const [driver, setDriver] = React.useState<string | null | undefined>(undefined);
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
   const [time, setTime] = React.useState("");
-  const [pendingTags, setPendingTags] = React.useState<string[]>([]);
+  const [tags, setTags] = React.useState<string[]>([]);
+
+  const close = () => {
+    setAction(null);
+    setProduct(null);
+    setDriver(undefined);
+    setDate(undefined);
+    setTime("");
+    setTags([]);
+  };
+
+  /**
+   * Every driver's standing load, keyed by name — SCOPED TO THE DELIVERY
+   * DATE(S) THE SELECTION IS ON. The dataset spans four days (TOTAL 115 rows
+   * over dayOffset -1..+2) while the list is date-filtered to one, so counting
+   * every date answered a question nobody asked: it reported Shriya at 38 when
+   * only 12 of those share the day being dispatched. A driver's load on the day
+   * you are assigning is the number that decides whether to give them another
+   * order. Selections cannot straddle dates today — the date filter scopes the
+   * list first — but this keys off the selection rather than the filter so it
+   * stays correct if that ever changes.
+   */
+  const scopeDateKeys = React.useMemo(
+    () => new Set(selectedOrders.map((o) => o.dateKey)),
+    [selectedOrders]
+  );
+  const standingLoad = React.useMemo(() => {
+    const m = new Map<string, FuelOrder[]>();
+    for (const o of unselectedOrders) {
+      if (!o.driver) continue;
+      if (!scopeDateKeys.has(o.dateKey)) continue;
+      const list = m.get(o.driver.name);
+      if (list) list.push(o);
+      else m.set(o.driver.name, [o]);
+    }
+    return m;
+  }, [unselectedOrders, scopeDateKeys]);
+
+  const added = selectedOrders.map(toOrderRef);
+
+  /** Before/after rows for one field. */
+  const preview = (before: (o: FuelOrder) => string, after: string) =>
+    selectedOrders.map((o) => ({
+      orderNo: o.orderNo,
+      before: before(o),
+      after,
+    }));
 
   if (count <= 0) return null;
 
   return (
-    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
-      {/* Count chip — primary filled, with a clear ×. */}
-      <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
-        {count} Selected
-        <button
-          type="button"
-          aria-label="Clear selection"
-          onClick={onClear}
-          className="rounded-sm text-primary-foreground/80 outline-none transition-colors hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
-          <X className="size-3.5" />
-        </button>
-      </span>
+    <>
+      <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
+        {/* Count chip — primary filled, with a clear ×. */}
+        <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
+          {count} Selected
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onClick={onClear}
+            className="rounded-sm text-primary-foreground/80 outline-none transition-colors hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <X className="size-3.5" />
+          </button>
+        </span>
 
-      <FieldAction icon={<Package />} label="Products">
-        <PickList
-          placeholder="Search products..."
-          options={productOptions}
-          onPick={(v) => v && onSetProduct(v)}
+        <FieldAction
+          icon={<Package />}
+          label="Products"
+          onClick={() => setAction("products")}
         />
-      </FieldAction>
-
-      <FieldAction icon={<User />} label="Driver">
-        <PickList
-          placeholder="Search drivers..."
-          options={driverOptions}
-          extra={{ label: "— Unassigned", value: null }}
-          onPick={(v) => onSetDriver(v)}
+        <FieldAction
+          icon={<User />}
+          label="Driver"
+          onClick={() => setAction("driver")}
         />
-      </FieldAction>
+        <FieldAction
+          icon={<CalendarIcon />}
+          label="Planned date"
+          onClick={() => setAction("date")}
+        />
+        <FieldAction
+          icon={<Clock />}
+          label="Planned time"
+          onClick={() => setAction("time")}
+        />
+        <FieldAction
+          icon={<Tag />}
+          label="Add tags"
+          onClick={() => setAction("tags")}
+        />
 
-      <FieldAction icon={<CalendarIcon />} label="Planned date">
-        <Calendar mode="single" onSelect={(d) => d && onSetPlannedDate(d)} autoFocus />
-      </FieldAction>
+        <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-      <FieldAction icon={<Clock />} label="Planned time">
-        <div className="flex w-56 flex-col gap-2 p-3">
-          <label className="text-xs font-medium text-muted-foreground">
+        {/* Delete — icon only, and always behind a confirm. */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Delete"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Delete {count} {count === 1 ? "order" : "orders"}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This will affect {count} {count === 1 ? "order" : "orders"} and
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={onDelete}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {/* ---- Tier 3 · Products. Replaces the product lines, so the preview is
+           the only thing standing between the operator and a rewritten Qty. --- */}
+      <BulkEditDialog
+        open={action === "products"}
+        onOpenChange={(o) => !o && close()}
+        title="Products"
+        scopeVerb="Set the product on"
+        count={count}
+        canProceed={product !== null}
+        summaryDescription="Each order's existing product lines are replaced by this one product, keeping that order's own total gallons."
+        onConfirm={() => product && onSetProduct(product)}
+        summary={
+          <BeforeAfterTable
+            valueHeader="Products"
+            rows={preview(
+              (o) => o.products.map((p) => p.name).join(", "),
+              product ?? ""
+            )}
+          />
+        }
+      >
+        <Command className="rounded-md border border-border">
+          <CommandInput placeholder="Search products..." />
+          <CommandList>
+            <CommandEmpty>No products found.</CommandEmpty>
+            <CommandGroup>
+              {productOptions.map((p) => (
+                <CommandItem
+                  key={p}
+                  value={p}
+                  selected={product === p}
+                  onSelect={() => setProduct(p)}
+                >
+                  {p}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </BulkEditDialog>
+
+      {/* ---- Tier 2 · Driver. The list surfaces each driver's standing load,
+           and the summary opens it up next to what is being added. ---------- */}
+      <BulkEditDialog
+        open={action === "driver"}
+        onOpenChange={(o) => !o && close()}
+        title="Driver"
+        scopeVerb="Assign driver to"
+        count={count}
+        canProceed={driver !== undefined}
+        summaryDescription={
+          driver
+            ? "The driver will be assigned to all the selected orders."
+            : "The driver will be cleared from all the selected orders, returning them to Unassigned."
+        }
+        onConfirm={() => driver !== undefined && onSetDriver(driver)}
+        summary={
+          <div className="flex flex-col gap-5">
+            {driver ? (
+              <StandingLoad
+                name={driver}
+                orders={(standingLoad.get(driver) ?? []).map(toOrderRef)}
+              />
+            ) : null}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-muted-foreground">
+                {driver ? "Orders being added" : "Orders being unassigned"}
+              </span>
+              <OrderMiniTable orders={added} />
+            </div>
+          </div>
+        }
+      >
+        <Command className="rounded-md border border-border">
+          <CommandInput placeholder="Search driver" />
+          <CommandList>
+            <CommandEmpty>No drivers found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="Unassigned"
+                selected={driver === null}
+                onSelect={() => setDriver(null)}
+              >
+                <span className="text-muted-foreground italic">— Unassigned</span>
+              </CommandItem>
+              {driverOptions.map((d) => {
+                const n = standingLoad.get(d)?.length ?? 0;
+                return (
+                  <CommandItem
+                    key={d}
+                    value={d}
+                    selected={driver === d}
+                    onSelect={() => setDriver(d)}
+                    icon={
+                      <Avatar className="size-6">
+                        <AvatarFallback className="text-[10px]">
+                          {initialsOf(d)}
+                        </AvatarFallback>
+                      </Avatar>
+                    }
+                    // `tracking-normal` undoes CommandShortcut's tracking-widest,
+                    // which is sized for keycaps ("⌘K") not a phrase.
+                    shortcut={
+                      <span className="tracking-normal">
+                        {n === 0
+                          ? "No orders assigned"
+                          : `${n} ${n === 1 ? "order" : "orders"} assigned`}
+                      </span>
+                    }
+                  >
+                    {d}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </BulkEditDialog>
+
+      {/* ---- Tier 1 · Planned date. Scalar, but rows differ going in — some
+           carry no planned date at all, so the preview still informs. ------- */}
+      <BulkEditDialog
+        open={action === "date"}
+        onOpenChange={(o) => !o && close()}
+        title="Planned date"
+        scopeVerb="Set the planned date on"
+        count={count}
+        canProceed={date !== undefined}
+        summaryDescription="This planned date replaces whatever each selected order carries now. The delivery date is unaffected."
+        onConfirm={() => date && onSetPlannedDate(date)}
+        summary={
+          <BeforeAfterTable
+            valueHeader="planned date"
+            rows={preview(
+              (o) => o.planned?.date ?? "",
+              date ? DATE_FMT.format(date) : ""
+            )}
+          />
+        }
+      >
+        <div className="flex justify-center">
+          <Calendar mode="single" selected={date} onSelect={setDate} autoFocus />
+        </div>
+      </BulkEditDialog>
+
+      {/* ---- Tier 1 · Planned time. ------------------------------------- */}
+      <BulkEditDialog
+        open={action === "time"}
+        onOpenChange={(o) => !o && close()}
+        title="Planned time"
+        scopeVerb="Set the planned time on"
+        count={count}
+        canProceed={time.trim().length > 0}
+        summaryDescription="This planned time replaces whatever each selected order carries now."
+        onConfirm={() => time.trim() && onSetPlannedTime(time.trim())}
+        summary={
+          <BeforeAfterTable
+            valueHeader="planned time"
+            rows={preview((o) => o.planned?.time ?? "", time.trim())}
+          />
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <label htmlFor="bulk-planned-time" className="text-sm font-medium">
             Planned time
           </label>
           <Input
+            id="bulk-planned-time"
             autoFocus
             value={time}
             placeholder="e.g. 1:35 AM"
             onChange={(e) => setTime(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && time.trim()) onSetPlannedTime(time.trim());
-            }}
           />
-          <Button
-            size="sm"
-            disabled={!time.trim()}
-            onClick={() => onSetPlannedTime(time.trim())}
-          >
-            Apply to {count}
-          </Button>
         </div>
-      </FieldAction>
+      </BulkEditDialog>
 
-      <FieldAction icon={<Tag />} label="Add tags">
-        <div className="w-64">
-          <Command>
-            <CommandInput placeholder="Search tags..." />
-            <CommandList>
-              <CommandEmpty>No tags found.</CommandEmpty>
-              <CommandGroup>
-                {tagOptions.map((t) => (
-                  <CommandItem
-                    key={t}
-                    value={t}
-                    selected={pendingTags.includes(t)}
-                    onSelect={() =>
-                      setPendingTags((prev) =>
-                        prev.includes(t)
-                          ? prev.filter((x) => x !== t)
-                          : [...prev, t]
-                      )
-                    }
-                  >
-                    {t}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-          <div className="border-t border-border p-2">
-            <Button
-              size="sm"
-              className="w-full"
-              disabled={pendingTags.length === 0}
-              onClick={() => {
-                onAddTags(pendingTags);
-                setPendingTags([]);
-              }}
-            >
-              Add to {count}
-            </Button>
-          </div>
-        </div>
-      </FieldAction>
-
-      <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-
-      {/* Delete — icon only, and always behind a confirm. */}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Delete"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {count} {count === 1 ? "order" : "orders"}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will affect {count} {count === 1 ? "order" : "orders"} and
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onDelete}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      {/* ---- Tier 3 · Tags. ADDITIVE — the preview shows the union, not a
+           replacement, which is why "before" is never struck through here in
+           spirit even though the shared table renders it that way. --------- */}
+      <BulkEditDialog
+        open={action === "tags"}
+        onOpenChange={(o) => !o && close()}
+        title="Add tags"
+        scopeVerb="Add tags to"
+        count={count}
+        canProceed={tags.length > 0}
+        summaryDescription="These tags are ADDED to whatever each order already carries — nothing is removed."
+        onConfirm={() => tags.length > 0 && onAddTags(tags)}
+        summary={
+          <BeforeAfterTable
+            valueHeader="tags"
+            rows={selectedOrders.map((o) => ({
+              orderNo: o.orderNo,
+              before: o.tags.join(", "),
+              after: Array.from(new Set([...o.tags, ...tags])).join(", "),
+            }))}
+          />
+        }
+      >
+        <Command className="rounded-md border border-border">
+          <CommandInput placeholder="Search tags..." />
+          <CommandList>
+            <CommandEmpty>No tags found.</CommandEmpty>
+            <CommandGroup>
+              {tagOptions.map((t) => (
+                <CommandItem
+                  key={t}
+                  value={t}
+                  selected={tags.includes(t)}
+                  onSelect={() =>
+                    setTags((prev) =>
+                      prev.includes(t)
+                        ? prev.filter((x) => x !== t)
+                        : [...prev, t]
+                    )
+                  }
+                >
+                  {t}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </BulkEditDialog>
+    </>
   );
 }

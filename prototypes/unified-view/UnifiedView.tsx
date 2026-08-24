@@ -226,6 +226,20 @@ function FuelOrdersScreen() {
     setPage(1);
   };
 
+  /**
+   * The two sides the bulk dialogs preview against. Derived from the FULL row
+   * list, not the visible page: the selection survives paging, so a preview
+   * built from the page would silently under-report what is about to change.
+   */
+  const selectedOrders = React.useMemo(
+    () => rows.filter((r) => selectedIds.has(r.id)),
+    [rows, selectedIds]
+  );
+  const unselectedOrders = React.useMemo(
+    () => rows.filter((r) => !selectedIds.has(r.id)),
+    [rows, selectedIds]
+  );
+
   /** Apply a change to every selected order. */
   const applyToSelected = (fn: (r: FuelOrder) => FuelOrder) =>
     setRows((prev) => prev.map((r) => (selectedIds.has(r.id) ? fn(r) : r)));
@@ -441,6 +455,8 @@ function FuelOrdersScreen() {
                 productOptions={productNames}
                 driverOptions={DRIVER_OPTIONS}
                 tagOptions={TAG_OPTIONS}
+                selectedOrders={selectedOrders}
+                unselectedOrders={unselectedOrders}
               />
             </div>
           </div>

@@ -42,17 +42,20 @@ import type { FuelOrderColumnKey } from "./types";
  * settled on a different split, and this now follows it exactly:
  *
  *   LEFT   320px search input (leading glyph, trailing clear ×) · Filters · Group By
- *   RIGHT  view switch │ search-by-column · show/hide columns │ [date] · Create
+ *   RIGHT  [date] │ view switch │ search-by-column · show/hide columns │ Create
  *
  * Both dividers, the `gap-1` right cluster, the `gap-3` left cluster, the 32px
  * control height, the ghost `icon-sm` tools with tooltips, and the `bg-accent`
  * active state on the view switch are the DS's values, not re-derived here.
  *
- * ONE ADDITION, which is the point of keeping it: the DELIVERY-DATE STEPPER sits
- * in the right cluster, ahead of the CTA. The DS unit has no such control
- * because its demo table is not date-scoped; this screen's every row is, and the
- * value has to stay readable without opening a panel. It keeps the position it
- * already held.
+ * ONE ADDITION, which is the point of keeping it: the DELIVERY-DATE STEPPER
+ * LEADS the right cluster. The DS unit has no such control because its demo
+ * table is not date-scoped; this screen's every row is, and the value has to
+ * stay readable without opening a panel. It sits ahead of the icon tools rather
+ * than between them and the CTA, so the cluster reads outward from what scopes
+ * the data (the date) through how it is presented (view, columns) to the action
+ * that adds to it (Create) — and the date no longer splits the icon tools from
+ * the button they have nothing to do with.
  *
  * TWO SUBSTITUTIONS, both because the DS parts are welded to the DS's own demo
  * data rather than because this screen wants something different:
@@ -174,8 +177,14 @@ export function FuelOrdersToolbar({
         <GroupByMenu />
       </div>
 
-      {/* RIGHT — view switch │ column tools │ date · Create */}
+      {/* RIGHT — date │ view switch │ column tools │ Create */}
       <div className="flex items-center gap-1">
+        {/* KEPT from the previous toolbar — every row on screen is scoped by it,
+            so it leads the cluster rather than sitting next to the CTA. */}
+        <DateFilter value={date} onChange={onDateChange} />
+
+        <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+
         <IconTool
           label="Table view"
           active={view === "table"}
@@ -313,14 +322,10 @@ export function FuelOrdersToolbar({
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-        {/* KEPT from the previous toolbar — every row on screen is scoped by it. */}
-        <div className="flex items-center gap-2">
-          <DateFilter value={date} onChange={onDateChange} />
-          <Button size="sm" onClick={onCreateOrder}>
-            <Plus />
-            Create Order
-          </Button>
-        </div>
+        <Button size="sm" onClick={onCreateOrder}>
+          <Plus />
+          Create Order
+        </Button>
       </div>
     </div>
   );

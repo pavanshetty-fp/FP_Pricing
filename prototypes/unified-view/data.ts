@@ -295,6 +295,59 @@ export function sortFuelOrders(
   });
 }
 
+/**
+ * Per-column search — the fields the toolbar's "Search by column" tool offers.
+ * This is the screen's analogue of the DS's `data-action-control/helpers.ts`
+ * SEARCH_FIELDS, which is bound to that demo's own row shape and so cannot be
+ * pointed at a FuelOrder. Same contract: a label for the picker and a text
+ * projection to match against.
+ *
+ * Deliberately omits `select` and `actions` (no text) and Qty — a numeric
+ * substring match on gallons ("2,092" vs "2092") misleads more than it helps,
+ * and the column sorts instead.
+ */
+export interface FuelOrderSearchField {
+  key: string;
+  label: string;
+  text: (r: FuelOrder) => string;
+}
+
+export const FUEL_ORDER_SEARCH_FIELDS: FuelOrderSearchField[] = [
+  { key: "order", label: "Order #", text: (r) => r.orderNo },
+  { key: "type", label: "Type", text: (r) => r.type.label },
+  {
+    key: "customer",
+    label: "Customer",
+    text: (r) => `${r.customer.title} ${r.customer.description}`,
+  },
+  {
+    key: "products",
+    label: "Product",
+    text: (r) => r.products.map((p) => p.name).join(" "),
+  },
+  { key: "date", label: "Date of Delivery", text: (r) => r.date.title },
+  {
+    key: "planned",
+    label: "Planned Date & Time",
+    text: (r) => (r.planned ? `${r.planned.date} ${r.planned.time}` : ""),
+  },
+  { key: "status", label: "Status", text: (r) => r.status },
+  { key: "driver", label: "Driver", text: (r) => r.driver?.name ?? "Unassigned" },
+  { key: "tags", label: "Tags", text: (r) => r.tags.join(" ") },
+];
+
+/** Match a row against a lowercased query inside ONE column. */
+export function matchesFuelOrderIn(
+  row: FuelOrder,
+  q: string,
+  scope: string
+): boolean {
+  if (!q) return true;
+  const field = FUEL_ORDER_SEARCH_FIELDS.find((f) => f.key === scope);
+  if (!field) return true;
+  return field.text(row).toLowerCase().includes(q);
+}
+
 /** Free-text match across a row's text columns. */
 export function matchesFuelOrder(row: FuelOrder, q: string): boolean {
   return [

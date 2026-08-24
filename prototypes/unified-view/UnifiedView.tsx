@@ -15,6 +15,7 @@ import { NavRail } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -30,7 +31,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FuelOrdersToolbar } from "./FuelOrdersToolbar";
+import {
+  ColumnSearchChip,
+  FuelOrdersToolbar,
+  type FuelOrdersView,
+} from "./FuelOrdersToolbar";
 import { FuelOrdersTable } from "./FuelOrdersTable";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
@@ -46,6 +51,7 @@ import {
   dateKeyOf,
   formatFullDate,
   matchesFuelOrder,
+  matchesFuelOrderIn,
   sortFuelOrders,
   startOfDay,
 } from "./data";
@@ -119,6 +125,10 @@ function FuelOrdersScreen() {
     Set<FuelOrderColumnKey>
   >(new Set());
   const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  // Search-by-column and the view switch — both part of the DS toolbar unit.
+  const [colScope, setColScope] = React.useState("customer");
+  const [colQuery, setColQuery] = React.useState("");
+  const [view, setView] = React.useState<FuelOrdersView>("table");
   const [views, setViews] = React.useState<SavedView[]>([]);
   const [activeViewId, setActiveViewId] = React.useState<string | null>(null);
   const viewSeq = React.useRef(0);
@@ -131,6 +141,8 @@ function FuelOrdersScreen() {
     hidden: [...hiddenColumns],
     pageSize,
     dateKey: dateKeyOf(date),
+    colScope,
+    colQuery,
   };
 
   const defaultState: ViewState = React.useMemo(
@@ -141,6 +153,8 @@ function FuelOrdersScreen() {
       hidden: [],
       pageSize: 25,
       dateKey: dateKeyOf(startOfDay(new Date())),
+      colScope: "customer",
+      colQuery: "",
     }),
     []
   );
@@ -161,6 +175,8 @@ function FuelOrdersScreen() {
     setPageSize(st.pageSize);
     const [y, m, d] = st.dateKey.split("-").map(Number);
     setDate(new Date(y, m - 1, d));
+    setColScope(st.colScope);
+    setColQuery(st.colQuery);
     setPage(1);
   };
 
@@ -206,9 +222,17 @@ function FuelOrdersScreen() {
     () => rows.filter((r) => r.dateKey === dateKey),
     [rows, dateKey]
   );
+  // Global search and column search BOTH apply, per the DS unit — the toolbar
+  // input narrows across every column, the popover narrows within one.
+  const cq = colQuery.trim().toLowerCase();
   const filtered = React.useMemo(
-    () => (query ? onDate.filter((r) => matchesFuelOrder(r, query)) : onDate),
-    [onDate, query]
+    () =>
+      onDate.filter(
+        (r) =>
+          (!query || matchesFuelOrder(r, query)) &&
+          (!cq || matchesFuelOrderIn(r, cq, colScope))
+      ),
+    [onDate, query, cq, colScope]
   );
   const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
   const pageRows = React.useMemo(
@@ -374,9 +398,33 @@ function FuelOrdersScreen() {
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hiddenColumns}
           onToggleColumn={toggleColumn}
+          onShowAllColumns={() => setHiddenColumns(new Set())}
+          onHideAllColumns={() =>
+            setHiddenColumns(new Set(TOGGLE_COLUMNS.map((c) => c.key)))
+          }
+          colScope={colScope}
+          onColScopeChange={(v) => {
+            setColScope(v);
+            setPage(1);
+          }}
+          colQuery={colQuery}
+          onColQueryChange={(v) => {
+            setColQuery(v);
+            setPage(1);
+          }}
+          view={view}
+          onViewChange={setView}
           date={date}
           onDateChange={(d) => {
             setDate(d);
+            setPage(1);
+          }}
+        />
+        <ColumnSearchChip
+          colScope={colScope}
+          colQuery={colQuery}
+          onClear={() => {
+            setColQuery("");
             setPage(1);
           }}
         />
@@ -385,7 +433,35 @@ function FuelOrdersScreen() {
       {/* Table region — `relative` anchors the floating bulk-action bar. */}
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {view === "board" ? (
+            /* The DS toolbar unit ships a Table/Board switch, so the control is
+               here. The board itself is NOT built for this screen: the DS's
+               `data-action-control/BoardView` is bound to that demo's row shape,
+               and a real Fuel Orders board needs a lane dimension decided
+               (status? driver? delivery date?) rather than guessed. Same honest
+               empty state the rail uses for the unbuilt modules. */
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Construction />
+                </EmptyMedia>
+                <EmptyTitle>Board view</EmptyTitle>
+                <EmptyDescription>
+                  Not built yet — the lane dimension for Fuel Orders hasn't been
+                  decided. The table is the built view.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("table")}
+                >
+                  Back to table
+                </Button>
+              </EmptyContent>
+            </Empty>
+          ) : sorted.length === 0 ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -440,7 +516,7 @@ function FuelOrdersScreen() {
           )}
         </div>
 
-        {selectedIds.size > 0 && (
+        {view === "table" && selectedIds.size > 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
             <div className="pointer-events-auto">
               <FuelOrdersBulkBar
@@ -473,7 +549,15 @@ function FuelOrdersScreen() {
         productNames={productNames}
       />
 
-      <div className="shrink-0 border-t border-border">
+      {/* Pagination belongs to the paged table. The board view has no paged
+          list, so a "Showing 1-25 of 57" footer under it would be describing
+          something that isn't on screen. */}
+      <div
+        className={cn(
+          "shrink-0 border-t border-border",
+          view === "board" && "hidden"
+        )}
+      >
         <TablePagination
           page={page}
           pageSize={pageSize}

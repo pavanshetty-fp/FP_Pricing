@@ -49,6 +49,10 @@ export interface ViewState {
   pageSize: number;
   /** Delivery date as `YYYY-MM-DD` — views are date-scoped like everything else. */
   dateKey: string;
+  /** Which column the "Search by column" tool is pointed at. */
+  colScope: string;
+  /** Its query. Captured so a saved view restores the narrowing it was built with. */
+  colQuery: string;
 }
 
 export interface SavedView {
@@ -66,6 +70,8 @@ export function viewStateKey(s: ViewState): string {
     hidden: [...s.hidden].sort(),
     pageSize: s.pageSize,
     dateKey: s.dateKey,
+    colScope: s.colScope,
+    colQuery: s.colQuery,
   });
 }
 

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
@@ -33,12 +34,17 @@ import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
   (Figma "Side Sheet" 27610:58293) rather than chosen here:
     • SheetContent      gap-0 p-4-less  (`gap-0 p-0`), width 560 = DS `narrow`
     • header            border-b, p-4, items-start justify-between gap-4
-    • body              p-4, flex-col gap-7        ← 28px BETWEEN GROUPS
-    • SheetSection      flex-col gap-3             ← 12px between fields
+    • body              p-4, flex-col gap-10       ← 40px BETWEEN GROUPS *
+    • SheetSection      flex-col gap-5             ← 20px between fields  *
     • SheetField        flex-col gap-1.5           ← 6px label→control
     • two-up rows       grid grid-cols-2 gap-4
     • RadioGroup        gap-3
     • footer            border-t, p-4, items-center justify-end gap-3
+
+  * DELIBERATE OVERRIDE of the DS's gap-7 / gap-3. This sheet carries far more
+    fields than the DS reference, and at the DS rhythm the groups stopped
+    reading as groups. The ratio is kept at roughly 1:2 so the hierarchy is
+    unchanged — only the scale moved. Everything else above is the DS's.
 
   Edits are held in draft state so Cancel discards them; Save lifts the draft to
   the caller. Product lines live in ProductTable, which owns the derived total —
@@ -46,6 +52,11 @@ import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
 */
 
 const DRIVERS = ["Shriya", "Shriya Test 2", "Aakash"];
+
+const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
+  Assigned: "success",
+  Unassigned: "processing",
+};
 
 /** Sample option sets — the source app never exposed these lists. */
 const TAG_OPTIONS = [
@@ -66,7 +77,6 @@ export interface OrderDraft {
   products: { name: string; gal: number }[];
   plannedDate: Date | null;
   plannedTime: string;
-  status: FuelOrderStatus;
   driver: string | null;
   tags: string[];
   urgent: boolean;
@@ -85,7 +95,6 @@ function draftFrom(order: FuelOrder): OrderDraft {
     products: order.products.map((p) => ({ ...p })),
     plannedDate: order.planned ? delivery : null,
     plannedTime: order.planned?.time ?? "",
-    status: order.status,
     driver: order.driver?.name ?? null,
     tags: [...order.tags],
     urgent: false,
@@ -127,6 +136,9 @@ export function OrderSheet({
   const set = <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
 
+  // Derived, never stored: a driver means Assigned.
+  const status: FuelOrderStatus = draft.driver ? "Assigned" : "Unassigned";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -134,9 +146,18 @@ export function OrderSheet({
         showCloseButton={false}
         className="w-[560px] gap-0 p-0 sm:max-w-[560px]"
       >
-        {/* Header — the order number and nothing else. */}
+        {/* Header — order number plus the DERIVED status. Status is no longer a
+            field: an order is Assigned exactly when it has a driver, so offering
+            a separate control only created a way for the two to disagree. */}
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <SheetTitle className="text-base">Order #: {order.orderNo}</SheetTitle>
+          <div className="flex items-center gap-2.5">
+            <SheetTitle className="text-base">
+              Order #: {order.orderNo}
+            </SheetTitle>
+            <StatusChip tone={STATUS_TONE[status]} variant="soft">
+              {status}
+            </StatusChip>
+          </div>
           <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
             <X className="size-4" />
             <span className="sr-only">Close</span>
@@ -144,13 +165,13 @@ export function OrderSheet({
         </div>
 
         {/* Body — gap-7 between groups, per the DS sheet. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-auto p-4">
-          <SheetSection title="Order Details">
+        <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
+          <SheetSection className="gap-5" title="Order Details">
             {/* 12px from the label to the options (the DS field default is 6px),
                 and the two options sit 24px apart instead of being stretched to
                 half-width each by a 2-col grid. `mb-2` keeps the extra air below
                 the borderless row before the bordered selects. */}
-            <SheetField label="Order Type" className="mb-2 gap-3">
+            <SheetField label="Order Type" className="gap-3">
               <RadioGroup
                 value={draft.typeCode}
                 onValueChange={(v) => set("typeCode", v as OrderTypeCode)}
@@ -233,23 +254,9 @@ export function OrderSheet({
               </Select>
             </SheetField>
 
-            <SheetField label="Status">
-              <Select
-                value={draft.status}
-                onValueChange={(v) => set("status", v as FuelOrderStatus)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Assigned">Assigned</SelectItem>
-                  <SelectItem value="Unassigned">Unassigned</SelectItem>
-                </SelectContent>
-              </Select>
-            </SheetField>
           </SheetSection>
 
-          <SheetSection title="Schedule">
+          <SheetSection className="gap-5" title="Schedule">
             {/* Plan Date and Plan Time side by side. */}
             <div className="grid grid-cols-2 gap-4">
               <SheetField label="Plan Date">
@@ -300,7 +307,7 @@ export function OrderSheet({
             </div>
           </SheetSection>
 
-          <SheetSection title="Product Details">
+          <SheetSection className="gap-5" title="Product Details">
             <ProductTable
               lines={draft.products}
               options={productNames}
@@ -308,7 +315,7 @@ export function OrderSheet({
             />
           </SheetSection>
 
-          <SheetSection title="Tags">
+          <SheetSection className="gap-5" title="Tags">
             <TokenMultiSelect
               options={TAG_OPTIONS}
               value={draft.tags}
@@ -318,7 +325,7 @@ export function OrderSheet({
             />
           </SheetSection>
 
-          <SheetSection title="Delivery Details">
+          <SheetSection className="gap-5" title="Delivery Details">
             <SheetField label="Site">
               <Select value={draft.site} onValueChange={(v) => set("site", v)}>
                 <SelectTrigger className="w-full">

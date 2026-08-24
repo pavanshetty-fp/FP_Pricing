@@ -92,6 +92,10 @@ function relativeLabel(offset: number, d: Date): string {
  *    the Type column now carries two values, so both need to appear.
  *  • Tags. The source app's tag control was empty in every capture, so these
  *    labels are invented placeholders for the truncation behaviour.
+ *  • Two rows lost their driver. As transcribed they carried a driver AND the
+ *    status "Unassigned" (source orders 4592861 and 4592860), which cannot hold
+ *    once status is derived from driver presence. They are driverless here so
+ *    the data satisfies the derivation. See the note on `status` below.
  *
  * The planned TIME per row is the single time the source list actually showed;
  * the planned DATE is derived from the row's day offset.
@@ -105,7 +109,7 @@ function relativeLabel(offset: number, d: Date): string {
 interface Seed
   extends Omit<
     FuelOrder,
-    "id" | "orderNo" | "qtyGal" | "date" | "dateKey" | "planned"
+    "id" | "orderNo" | "qtyGal" | "date" | "dateKey" | "planned" | "status"
   > {
   /** Days from today. 0 = today, -1 = yesterday. */
   dayOffset: number;
@@ -121,7 +125,6 @@ const SEED: Seed[] = [
     dayOffset: 0,
     plannedTime: "1:35 AM",
     tags: [],
-    status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
   {
@@ -131,7 +134,6 @@ const SEED: Seed[] = [
     dayOffset: 0,
     plannedTime: "12:11 AM",
     tags: ["Rush", "Night"],
-    status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
   {
@@ -141,7 +143,6 @@ const SEED: Seed[] = [
     dayOffset: 1,
     plannedTime: "12:11 AM",
     tags: ["Split Load"],
-    status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
   {
@@ -154,7 +155,6 @@ const SEED: Seed[] = [
     dayOffset: -1,
     plannedTime: "11:49 PM",
     tags: [],
-    status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
   {
@@ -164,8 +164,7 @@ const SEED: Seed[] = [
     dayOffset: -1,
     plannedTime: "11:46 PM",
     tags: ["Keep Full", "After Hours"],
-    status: "Unassigned",
-    driver: { name: "Shriya Test 2", initials: "ST" },
+    driver: null,
   },
   {
     type: { code: "D", label: "Delivery" },
@@ -177,8 +176,7 @@ const SEED: Seed[] = [
     dayOffset: 0,
     plannedTime: "11:44 PM",
     tags: ["Hazmat", "Rush", "Night"],
-    status: "Unassigned",
-    driver: { name: "Shriya", initials: "S" },
+    driver: null,
   },
   {
     type: { code: "E", label: "Extraction" },
@@ -190,7 +188,6 @@ const SEED: Seed[] = [
     dayOffset: 2,
     plannedTime: "9:00 AM",
     tags: [],
-    status: "Unassigned",
     driver: null,
   },
   {
@@ -204,7 +201,6 @@ const SEED: Seed[] = [
     dayOffset: 0,
     plannedTime: null,
     tags: ["Weekend"],
-    status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
   {
@@ -218,7 +214,6 @@ const SEED: Seed[] = [
     dayOffset: 1,
     plannedTime: "1:00 PM",
     tags: ["Split Load", "Keep Full", "Rush", "Night"],
-    status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
   {
@@ -233,7 +228,6 @@ const SEED: Seed[] = [
     dayOffset: 0,
     plannedTime: null,
     tags: ["Split Load", "Keep Full", "Rush", "Night"],
-    status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
 ];
@@ -260,6 +254,10 @@ export const FUEL_ORDERS: FuelOrder[] = (() => {
       planned: plannedTime
         ? { date: DATE_FMT.format(when), time: plannedTime }
         : null,
+      // Derived, never seeded: an order is Assigned exactly when it has a
+      // driver. Keeping it derived here means the table and the order sheet
+      // cannot disagree about the same row.
+      status: seed.driver ? "Assigned" : "Unassigned",
     };
   });
 })();

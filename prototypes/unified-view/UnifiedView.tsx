@@ -239,7 +239,8 @@ function FuelOrdersScreen() {
                       time: draft.plannedTime.trim(),
                     }
                   : null,
-              status: draft.status,
+              // Status follows the driver; the sheet has no status field.
+              status: draft.driver ? "Assigned" : "Unassigned",
               driver: draft.driver
                 ? {
                     name: draft.driver,

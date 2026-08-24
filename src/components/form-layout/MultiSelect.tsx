@@ -18,7 +18,7 @@ import {
 /** Small circular initial badge used as a token / item leading glyph. */
 function InitialBadge({ label }: { label: string }) {
   return (
-    <span className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
+    <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[9px] font-semibold uppercase">
       {label[0]}
     </span>
   );

@@ -146,14 +146,15 @@ export function OrderSheet({
         {/* Body — gap-7 between groups, per the DS sheet. */}
         <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-auto p-4">
           <SheetSection title="Order Details">
-            {/* A radio row has no input border, so the section's 12px gap reads
-                tighter here than between two bordered controls. +8px optically
-                matches the rest of the stack. */}
-            <SheetField label="Order Type" className="mb-2">
+            {/* 12px from the label to the options (the DS field default is 6px),
+                and the two options sit 24px apart instead of being stretched to
+                half-width each by a 2-col grid. `mb-2` keeps the extra air below
+                the borderless row before the bordered selects. */}
+            <SheetField label="Order Type" className="mb-2 gap-3">
               <RadioGroup
                 value={draft.typeCode}
                 onValueChange={(v) => set("typeCode", v as OrderTypeCode)}
-                className="grid-cols-2"
+                className="flex gap-6"
               >
                 {(
                   [
@@ -289,7 +290,7 @@ export function OrderSheet({
               </SheetField>
             </div>
 
-            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+            <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Mark as Urgent</span>
               <Switch
                 checked={draft.urgent}

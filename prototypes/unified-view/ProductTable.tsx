@@ -243,11 +243,25 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
               </tr>
             ))}
           </tbody>
+          {/* Summary row — inside the table so it reads as part of the ledger and
+              stays aligned to the Quantity column. Derived from the rows above,
+              so it can never disagree with them. */}
+          <tfoot>
+            <tr className="border-t border-border bg-fp-surface-1a">
+              <td className="px-3 py-2.5 text-sm font-medium text-foreground">
+                Total
+              </td>
+              <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-foreground">
+                {total.toLocaleString()}
+              </td>
+              <td aria-hidden />
+            </tr>
+          </tfoot>
         </table>
       </div>
 
-      {/* Add chip left (attached to the table), derived total right. */}
-      <div className="flex items-center justify-between">
+      {/* Add chip, attached to the table's squared bottom-left corner. */}
+      <div className="flex items-center">
         <Button
           variant="ghost"
           size="sm"
@@ -268,15 +282,6 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
             Add product
           </span>
         </Button>
-
-        {/* Derived — it must always equal the lines above. */}
-        <span className="text-sm text-muted-foreground">
-          Total{" "}
-          <span className="text-base font-semibold tabular-nums text-foreground">
-            {total.toLocaleString()}
-          </span>{" "}
-          gal
-        </span>
       </div>
     </div>
   );

@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:unified": "UNIFIED=1 vite",
     "build": "tsc -b && vite build",
     "build:single": "tsc -b && SINGLEFILE=1 vite build --outDir dist-single",
     "build:unified": "tsc -b && UNIFIED=1 vite build",
     "preview": "vite preview",
+    "preview:unified": "UNIFIED=1 vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint ."
   },

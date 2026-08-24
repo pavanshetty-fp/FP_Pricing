@@ -23,16 +23,28 @@ there, as they are not yet sourced from the Figma file.
 
 ## Run it
 
-Dev server (the DS gallery and this prototype are served by the same Vite dev
-server, on their own URLs):
+This prototype has **its own server on its own port**, where it is the root — so
+the bare origin can only ever resolve to the Unified View.
 
-```bash
-npm run dev
-```
+| Command | URL | Serves |
+|---|---|---|
+| `npm run dev:unified` | **http://localhost:4300/** | this prototype, from source |
+| `npm run preview:unified` | **http://localhost:4173/** | the built `dist-unified` artifact |
+| `npm run dev` | http://localhost:5173/FP-DS-2026/ | the DS gallery |
 
-then open, on whatever port Vite reports (the dev `base` is `/FP-DS-2026/`):
+Both prototype ports are `strictPort`, so a clash fails loudly instead of
+sliding to a free port and leaving you looking at whatever owns the one you
+expected.
 
-**http://localhost:5173/FP-DS-2026/prototypes/unified-view/index.html**
+**Do not open the prototype as a path under the gallery's dev server**
+(`.../FP-DS-2026/prototypes/unified-view/index.html`). It renders, but Vite
+injects its HMR client into the page, and any dev-server restart makes that
+client reload the tab to the server root — i.e. the gallery. That is what made
+"the wrong HTML" keep appearing. Use port 4300.
+
+Likewise, preview the built artifact with `preview:unified` rather than serving
+`dist-unified/` through the dev server, for the same reason — `vite preview`
+injects no HMR client.
 
 ## Build the standalone HTML
 
@@ -40,16 +52,8 @@ then open, on whatever port Vite reports (the dev `base` is `/FP-DS-2026/`):
 npm run build:unified
 ```
 
-Writes a single self-contained file to `dist-unified/` — all JS, CSS and assets
+Writes a single self-contained file to `dist-unified/index.html` — all JS and CSS
 inlined, so it opens by double-click and can be shared as one file.
-
-To preview the built artifact in a browser, serve it statically rather than
-through the Vite dev server — Vite injects its HMR client into any HTML it
-serves, which will reload the page out from under you:
-
-```bash
-python3 -m http.server 4173 --directory dist-unified
-```
 
 ## Why src/index.css declares @source roots
 

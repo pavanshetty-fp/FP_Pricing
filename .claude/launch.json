@@ -4,8 +4,29 @@
     {
       "name": "fp-ds",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "unified-view",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:unified"
+      ],
+      "port": 4300
+    },
+    {
+      "name": "unified-view-built",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview:unified"
+      ],
+      "port": 4173
     }
   ]
 }

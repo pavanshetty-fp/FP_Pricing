@@ -32,7 +32,12 @@ import {
 } from "@/components/ui/tooltip";
 import { FuelOrdersToolbar } from "./FuelOrdersToolbar";
 import { FuelOrdersTable } from "./FuelOrdersTable";
-import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
+import {
+  FuelOrdersViewBar,
+  viewStateKey,
+  type SavedView,
+  type ViewState,
+} from "./FuelOrdersViewBar";
 import {
   FUEL_ORDERS,
   FUEL_ORDER_COLUMNS,
@@ -83,13 +88,75 @@ function FuelOrdersScreen() {
     Set<FuelOrderColumnKey>
   >(new Set());
   const [date, setDate] = React.useState(() => startOfDay(new Date()));
-  const [views, setViews] = React.useState(["Default"]);
-  const [activeView, setActiveView] = React.useState("Default");
+  const [views, setViews] = React.useState<SavedView[]>([]);
+  const [activeViewId, setActiveViewId] = React.useState<string | null>(null);
+  const viewSeq = React.useRef(0);
 
-  const addView = () => {
-    const name = `View ${views.length}`;
-    setViews((v) => [...v, name]);
-    setActiveView(name);
+  // A view captures the state a user would otherwise have to rebuild by hand.
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hiddenColumns],
+    pageSize,
+    dateKey: dateKeyOf(date),
+  };
+
+  const defaultState: ViewState = React.useMemo(
+    () => ({
+      search: "",
+      sortKey: null,
+      sortDir: null,
+      hidden: [],
+      pageSize: 25,
+      dateKey: dateKeyOf(startOfDay(new Date())),
+    }),
+    []
+  );
+
+  const activeView = views.find((v) => v.id === activeViewId) ?? null;
+  const dirty =
+    viewStateKey(current) !==
+    viewStateKey(activeView ? activeView.state : defaultState);
+
+  const applyState = (st: ViewState) => {
+    setSearch(st.search);
+    setSort(
+      st.sortKey && st.sortDir
+        ? { key: st.sortKey as FuelOrderColumnKey, dir: st.sortDir }
+        : null
+    );
+    setHiddenColumns(new Set(st.hidden as FuelOrderColumnKey[]));
+    setPageSize(st.pageSize);
+    const [y, m, d] = st.dateKey.split("-").map(Number);
+    setDate(new Date(y, m - 1, d));
+    setPage(1);
+  };
+
+  const applyView = (id: string) => {
+    const v = views.find((x) => x.id === id);
+    if (!v) return;
+    applyState(v.state);
+    setActiveViewId(id);
+  };
+  const resetToDefault = () => {
+    applyState(defaultState);
+    setActiveViewId(null);
+  };
+  const createView = (name: string) => {
+    const id = `view-${++viewSeq.current}`;
+    setViews((prev) => [...prev, { id, name, state: current }]);
+    setActiveViewId(id);
+  };
+  const renameView = (id: string, name: string) =>
+    setViews((prev) => prev.map((v) => (v.id === id ? { ...v, name } : v)));
+  const updateView = (id: string) =>
+    setViews((prev) =>
+      prev.map((v) => (v.id === id ? { ...v, state: current } : v))
+    );
+  const deleteView = (id: string) => {
+    setViews((prev) => prev.filter((v) => v.id !== id));
+    if (activeViewId === id) setActiveViewId(null);
   };
 
   const toggleColumn = (key: FuelOrderColumnKey) =>
@@ -150,9 +217,14 @@ function FuelOrdersScreen() {
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         views={views}
-        activeView={activeView}
-        onSelectView={setActiveView}
-        onAddView={addView}
+        activeId={activeViewId}
+        dirty={dirty}
+        onApply={applyView}
+        onResetToDefault={resetToDefault}
+        onCreate={createView}
+        onRename={renameView}
+        onUpdate={updateView}
+        onDelete={deleteView}
       />
 
       <div className="mt-4 shrink-0">

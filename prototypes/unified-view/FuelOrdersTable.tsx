@@ -203,25 +203,41 @@ function ProductCell({ products }: { products: ProductQty[] }) {
  * break down, so they stay plain text rather than offering a dead trigger.
  */
 function QtyCell({ products, total }: { products: ProductQty[]; total: number }) {
-  const value = (
-    <>
-      <span className="font-medium tabular-nums">{QTY_FMT.format(total)}</span>{" "}
-      <span className="text-xs text-muted-foreground">gal</span>
-    </>
-  );
+  const amount = QTY_FMT.format(total);
 
   if (products.length < 2) {
-    return <span className="text-sm text-foreground">{value}</span>;
+    return (
+      <span className="text-sm text-foreground">
+        <span className="font-medium tabular-nums">{amount}</span>{" "}
+        <span className="text-xs text-muted-foreground">gal</span>
+      </span>
+    );
   }
 
   return (
     <HoverCard openDelay={120} closeDelay={80}>
-      <HoverCardTrigger
-        variant="link"
-        aria-label={`${QTY_FMT.format(total)} gallons across ${products.length} products`}
-        className="text-sm"
-      >
-        {value}
+      {/*
+        Bare `asChild` trigger rather than `variant="link"`. That variant puts
+        `hover:underline` on the trigger itself, and CSS text-decoration set on
+        an ancestor is drawn across all inline descendants — a child cannot
+        cancel it — so the "gal" unit got underlined too. Underlining the number
+        span directly off `group-hover` keeps the rule on the value alone.
+
+        The trigger still covers number + unit so the hover target stays
+        comfortable; only the ink moved. Affordances from the DS link variant
+        (cursor, radius, underline-offset, focus ring) are carried over by hand.
+      */}
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${amount} gallons across ${products.length} products`}
+          className="group/qty cursor-pointer rounded-sm text-sm text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <span className="font-medium tabular-nums underline-offset-4 group-hover/qty:underline group-focus-visible/qty:underline">
+            {amount}
+          </span>{" "}
+          <span className="text-xs text-muted-foreground">gal</span>
+        </button>
       </HoverCardTrigger>
       <HoverCardContent align="start" side="top" className="w-[280px]">
         <BreakdownCard

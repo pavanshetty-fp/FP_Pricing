@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
@@ -54,7 +54,6 @@ export function DateFilter({ value, onChange }: DateFilterProps) {
             size="sm"
             aria-label={`Delivery date: ${formatFullDate(value)}. Pick a date`}
           >
-            <CalendarDays />
             {formatFullDate(value)}
           </Button>
         </PopoverTrigger>

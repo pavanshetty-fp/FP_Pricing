@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -34,11 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { BreakdownCard } from "./BreakdownCard";
 import { FUEL_ORDER_COLUMNS } from "./data";
 import type {
@@ -55,49 +52,25 @@ import type {
 
 const QTY_FMT = new Intl.NumberFormat("en-US");
 
-/**
- * Order-type badge fills. Pastel surface + deep same-hue text, held in the token
- * layer (`--order-delivery*` / `--order-extraction*` in index.css) so no hex
- * appears here. One pair per type, shared by light and dark.
- */
-const TYPE_CLASS: Record<OrderTypeCode, string> = {
-  D: "bg-order-delivery text-order-delivery-foreground",
-  E: "bg-order-extraction text-order-extraction-foreground",
+/*
+  The two mappings below are ALL this screen owns about type and status. The
+  rendering lives in the DS (`CodeDisc`, `StatusChip`); the DS ships hues and
+  channels and binds no meaning to them, so declaring the meaning is the
+  application's job. This is the same split the DS's own table uses via
+  `statusTone` in tables-layout/data.ts.
+*/
+
+/** Order type → pastel hue. */
+const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
+  D: "pastel-blue",
+  E: "pastel-amber",
 };
 
-/**
- * Status colour. Both the dot and the label take it (the dot via `bg-current`),
- * so one class drives the whole chip.
- *
- * Values are existing DS status tokens — no new colour is introduced:
- * Assigned → `status-success` (green), Unassigned → `status-processing` (amber).
- * This is the usage rule that binds meaning to those hues for this screen; per
- * DS colour governance a status carries no colour until such a rule exists.
- */
-const STATUS_COLOR: Record<FuelOrderStatus, string> = {
-  Assigned: "text-status-success",
-  Unassigned: "text-status-processing",
+/** Order status → colour channel. */
+const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
+  Assigned: "success",
+  Unassigned: "processing",
 };
-
-/**
- * Status chip — dot + coloured label on no fill. This is the DS's own status
- * form (`StatusText` in tables-layout/DataTable.tsx: a 6px dot on a
- * `status-*` token beside the label, not a filled Badge); the label now takes
- * the same token so the chip reads as one colour.
- */
-function StatusBadge({ status }: { status: FuelOrderStatus }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 text-sm font-medium",
-        STATUS_COLOR[status]
-      )}
-    >
-      <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
-      {status}
-    </span>
-  );
-}
 
 function TwoLine({ title, description }: TwoLineData) {
   return (
@@ -105,30 +78,6 @@ function TwoLine({ title, description }: TwoLineData) {
       <span className="truncate text-sm text-foreground">{title}</span>
       <span className="truncate text-xs text-muted-foreground">{description}</span>
     </div>
-  );
-}
-
-/**
- * Type cell — a 16px pastel disc carrying just the code (D / E). The full word is
- * the tooltip and the aria-label, so the letter is never the only thing carrying
- * the meaning.
- */
-function TypeCell({ code, label }: { code: OrderTypeCode; label: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge
-          aria-label={label}
-          className={cn(
-            "size-4 shrink-0 justify-center rounded-full p-0 text-[9px] font-semibold",
-            TYPE_CLASS[code]
-          )}
-        >
-          {code}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
   );
 }
 
@@ -428,13 +377,29 @@ function Row({
         {row.orderNo}
       </span>
     ),
-    type: <TypeCell code={row.type.code} label={row.type.label} />,
+    type: (
+      <CodeDisc
+        code={row.type.code}
+        label={row.type.label}
+        tone={TYPE_TONE[row.type.code]}
+      />
+    ),
     customer: <TwoLine {...row.customer} />,
     products: <ProductCell products={row.products} />,
     qtyGal: <QtyCell products={row.products} total={row.qtyGal} />,
     date: <TwoLine {...row.date} />,
     window: <WindowCell window={row.window} />,
-    status: <StatusBadge status={row.status} />,
+    status: (
+      // `variant="text"` = dot + coloured label, no fill. NOTE the contrast gap
+      // documented on StatusChip: text/success and text/processing fail AA on a
+      // light surface (3.30 / 3.19) because the light `--status-*` values are
+      // too pale for text on #ffffff. FP-dark is this screen's default and the
+      // treatment was chosen there; revisit if light mode becomes primary, or
+      // once Figma supplies darker light-mode status values.
+      <StatusChip tone={STATUS_TONE[row.status]} variant="text">
+        {row.status}
+      </StatusChip>
+    ),
     driver: row.driver ? (
       <span className="flex min-w-0 items-center gap-2">
         <Avatar className="size-5 shrink-0">

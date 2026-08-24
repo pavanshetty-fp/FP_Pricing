@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CalendarDays, Clock, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
-import { formatFullDate, totalGal } from "./data";
+import { formatFullDate } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
 
 /*
@@ -40,8 +41,8 @@ import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
     • footer            border-t, p-4, items-center justify-end gap-3
 
   Edits are held in draft state so Cancel discards them; Save lifts the draft to
-  the caller. Qty is never an input — it is the sum of the product lines, so it
-  is shown derived rather than offered as a field that could contradict them.
+  the caller. Product lines live in ProductTable, which owns the derived total —
+  the total is never an input, since it must always equal the lines above it.
 */
 
 const DRIVERS = ["Shriya", "Shriya Test 2", "Aakash"];
@@ -126,28 +127,6 @@ export function OrderSheet({
   const set = <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
 
-  const setProduct = (i: number, patch: Partial<{ name: string; gal: number }>) =>
-    set(
-      "products",
-      draft.products.map((p, idx) => (idx === i ? { ...p, ...patch } : p))
-    );
-
-  const addProduct = () => {
-    const unused = productNames.find(
-      (n) => !draft.products.some((p) => p.name === n)
-    );
-    set("products", [
-      ...draft.products,
-      { name: unused ?? productNames[0] ?? "", gal: 0 },
-    ]);
-  };
-
-  const removeProduct = (i: number) =>
-    set(
-      "products",
-      draft.products.filter((_, idx) => idx !== i)
-    );
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -167,7 +146,10 @@ export function OrderSheet({
         {/* Body — gap-7 between groups, per the DS sheet. */}
         <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-auto p-4">
           <SheetSection title="Order Details">
-            <SheetField label="Order Type">
+            {/* A radio row has no input border, so the section's 12px gap reads
+                tighter here than between two bordered controls. +8px optically
+                matches the rest of the stack. */}
+            <SheetField label="Order Type" className="mb-2">
               <RadioGroup
                 value={draft.typeCode}
                 onValueChange={(v) => set("typeCode", v as OrderTypeCode)}
@@ -318,73 +300,11 @@ export function OrderSheet({
           </SheetSection>
 
           <SheetSection title="Product Details">
-            {draft.products.map((p, i) => (
-              <div key={i} className="flex items-end gap-2">
-                {/* Product left, gallons right. */}
-                <div className="grid min-w-0 flex-1 grid-cols-2 gap-4">
-                  <SheetField label={i === 0 ? "Product" : undefined}>
-                    <Select
-                      value={p.name}
-                      onValueChange={(v) => setProduct(i, { name: v })}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productNames.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </SheetField>
-
-                  <SheetField label={i === 0 ? "Quantity (Gal)" : undefined}>
-                    <div className="relative">
-                      <Input
-                        inputMode="numeric"
-                        value={String(p.gal)}
-                        onChange={(e) =>
-                          setProduct(i, {
-                            gal:
-                              Number(e.target.value.replace(/[^0-9]/g, "")) || 0,
-                          })
-                        }
-                        className="pr-10 tabular-nums"
-                      />
-                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">
-                        gal
-                      </span>
-                    </div>
-                  </SheetField>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${p.name || "product"}`}
-                  disabled={draft.products.length === 1}
-                  onClick={() => removeProduct(i)}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            ))}
-
-            <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={addProduct}>
-                <Plus />
-                Add product
-              </Button>
-              {/* Derived — it must always equal the lines above. */}
-              <span className="text-sm text-muted-foreground">
-                Total{" "}
-                <span className="text-base font-semibold tabular-nums text-foreground">
-                  {totalGal(draft.products).toLocaleString()}
-                </span>{" "}
-                gal
-              </span>
-            </div>
+            <ProductTable
+              lines={draft.products}
+              options={productNames}
+              onChange={(next) => set("products", next)}
+            />
           </SheetSection>
 
           <SheetSection title="Tags">

@@ -42,3 +42,20 @@ npm run build:unified
 
 Writes a single self-contained file to `dist-unified/` — all JS, CSS and assets
 inlined, so it opens by double-click and can be shared as one file.
+
+To preview the built artifact in a browser, serve it statically rather than
+through the Vite dev server — Vite injects its HMR client into any HTML it
+serves, which will reload the page out from under you:
+
+```bash
+python3 -m http.server 4173 --directory dist-unified
+```
+
+## Why src/index.css declares @source roots
+
+This prototype builds with Vite `root` pointed at its own folder, which anchors
+Tailwind v4's automatic source detection here and silently drops every utility
+used only under `src/` — the rail loses `bg-rail` and `w-[52px]`, the content
+layer loses `bg-fp-surface-1b`, the brand tile loses `bg-brand`. The explicit
+`@source "../src"` / `@source "../prototypes"` in `src/index.css` pins the roots
+so the generated CSS is identical whichever entry is built. Don't remove them.

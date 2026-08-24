@@ -3,6 +3,19 @@
 @import "tw-animate-css";
 
 /*
+  Explicit source roots (paths are relative to THIS file).
+
+  Tailwind v4 otherwise auto-detects sources from the build's working directory.
+  The Unified View prototype builds with Vite `root` set to its own folder
+  (UNIFIED=1), which anchored detection there and silently dropped every utility
+  used only under src/ — the rail lost `bg-rail` / `w-[52px]`, the content layer
+  lost `bg-fp-surface-1b`, the brand tile lost `bg-brand`. Declaring the roots
+  here makes the generated CSS identical no matter which entry is being built.
+*/
+@source "../src";
+@source "../prototypes";
+
+/*
   FleetPanda DS — spinoff of shadcn/ui (new-york-v4).
   Token NAMES are kept identical to canonical shadcn so unchanged components
   work verbatim; only the VALUES are FleetPanda's (dark-only theme), mapped

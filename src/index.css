@@ -164,6 +164,10 @@
   --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
   --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
   --color-fp-banner-accent-success: var(--fp-banner-accent-success);
+  --color-pastel-blue: var(--pastel-blue);
+  --color-pastel-blue-foreground: var(--pastel-blue-foreground);
+  --color-pastel-amber: var(--pastel-amber);
+  --color-pastel-amber-foreground: var(--pastel-amber-foreground);
   /* Kanban lane accents (27631:11154) — theme-independent palette used for the
      lane top-strip + count pill. Literal values (same in light/dark). */
   --color-fp-lane-grey: #64748b;
@@ -238,6 +242,23 @@
   /* FleetPanda-only — constants (theme-independent) */
   --brand: #fa6400; /* Primary (FP orange) */
   --brand-foreground: #ffffff;
+
+  /* Pastel accents — the soft badge / code-disc palette. Each pair is a fill +
+     a foreground dark enough to stay legible on it.
+
+     Declared once here on :root and deliberately NOT overridden in .dark: a
+     pastel should read as a pastel in both themes, so both modes share one pair.
+
+     KNOWN GAP — these are NOT sourced from the DS Figma file. The FP DS 2026
+     library was searched for "pastel" and has no pastel variants. The two pairs
+     below came from the unified-view prototype, where a designer picked them, so
+     they are carried verbatim rather than re-invented. Extending the set (green,
+     rose, …) needs Figma-sourced values first — do NOT add invented hexes here;
+     adding a pair is a one-line change once the library has them. */
+  --pastel-blue: #a8c9ef;
+  --pastel-blue-foreground: #16324f;
+  --pastel-amber: #f0c9a4;
+  --pastel-amber-foreground: #5a3313;
   /* Paired foregrounds for the saturated fills. White in BOTH themes per the DS
      (badge 23:995 "Verified", banners 28149:1712 Type 1 solid fills, status
      fills) — declared as tokens so no component reaches for `text-white`. */

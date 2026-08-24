@@ -1,6 +1,6 @@
 import { BadgeCheck, ArrowRight } from "lucide-react";
 import { Stack, SectionHeading } from "@/components/typography";
-import { Badge, BadgeNumber } from "@/components/ui";
+import { Badge, BadgeNumber, CodeDisc } from "@/components/ui";
 
 /** Badge playground — Figma "Badge" page (23:995). */
 export function BadgeDemo() {
@@ -26,6 +26,35 @@ export function BadgeDemo() {
             Link
             <ArrowRight />
           </Badge>
+        </div>
+      </Stack>
+
+      <Stack space="title">
+        <SectionHeading
+          as="h3"
+          title="Pastel variants"
+          description="Soft fills that read as a pastel in both themes — one pair per hue, shared across Light and FP. The DS ships the hues; an application binds the meaning."
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant="pastel-blue">Pastel blue</Badge>
+          <Badge variant="pastel-amber">Pastel amber</Badge>
+        </div>
+      </Stack>
+
+      <Stack space="title">
+        <SectionHeading
+          as="h3"
+          title="Code disc"
+          description="A 16px pastel circle carrying an initial, for dense rows where a full pill will not fit. The full word is both the tooltip and the aria-label, so the letter is never the only carrier of meaning — hover or tab to one."
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <CodeDisc code="D" label="Delivery" tone="pastel-blue" />
+          <CodeDisc code="E" label="Extraction" tone="pastel-amber" />
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            inline in a row:
+            <CodeDisc code="D" label="Delivery" />
+            Table Cell Text
+          </span>
         </div>
       </Stack>
 

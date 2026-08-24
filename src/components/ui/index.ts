@@ -6,6 +6,7 @@ export {
   badgeNumberVariants,
   type BadgeNumberProps,
 } from "./badge";
+export { CodeDisc, type CodeDiscProps, type CodeDiscTone } from "./code-disc";
 export { Checkbox } from "./checkbox";
 export { Switch } from "./switch";
 export { Input } from "./input";

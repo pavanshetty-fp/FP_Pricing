@@ -3,7 +3,6 @@ import type {
   FuelOrderColumnDef,
   FuelOrderColumnKey,
   ProductQty,
-  SchedulingWindow,
   SortState,
 } from "./types";
 
@@ -19,14 +18,16 @@ export const FUEL_ORDER_COLUMNS: FuelOrderColumnDef[] = [
   { key: "select", label: "", width: 40 },
   { key: "order", label: "Order #", width: 120, sortable: true },
   { key: "type", label: "Type", width: 70 },
-  { key: "customer", label: "Customer", width: 210 },
-  { key: "products", label: "Product", width: 210 },
-  { key: "qtyGal", label: "Qty (Gal)", width: 110, sortable: true },
-  { key: "date", label: "Date of Delivery", width: 150, sortable: true },
-  { key: "window", label: "Scheduling Window", width: 180 },
-  { key: "status", label: "Status", width: 140, sortable: true },
-  { key: "driver", label: "Driver", width: 150 },
-  { key: "actions", label: "", width: 44 },
+  { key: "customer", label: "Customer", width: 200 },
+  { key: "products", label: "Product", width: 190 },
+  { key: "qtyGal", label: "Qty (Gal)", width: 105, sortable: true },
+  { key: "date", label: "Date of Delivery", width: 140, sortable: true },
+  { key: "planned", label: "Planned Date & Time", width: 150, sortable: true },
+  { key: "status", label: "Status", width: 135, sortable: true },
+  { key: "driver", label: "Driver", width: 140 },
+  { key: "tags", label: "Tags", width: 200 },
+  // Sticky: the row-open chevron stays reachable while the grid scrolls.
+  { key: "actions", label: "", width: 52 },
 ];
 
 /** Sum of a row's product lines — the Qty (Gal) value. */
@@ -36,7 +37,7 @@ export function totalGal(products: ProductQty[]): number {
 
 /* -------------------------------------------------------------- dates ----- */
 
-const DATE_FMT = new Intl.DateTimeFormat("en-US", {
+export const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
@@ -89,10 +90,11 @@ function relativeLabel(offset: number, d: Date): string {
  *    split, so the lines below are apportioned to sum to the observed total.
  *  • Two rows are typed Extraction. The captured screens were all Delivery, but
  *    the Type column now carries two values, so both need to appear.
- *  • Scheduling windows. The source list showed a single time per row, not a
- *    range. That captured time is kept as the window's `from`; the `to` is it
- *    plus three hours (the user's own "1pm to 4pm" shape). Swap these if real
- *    dispatch windows are round rather than offset from a planned time.
+ *  • Tags. The source app's tag control was empty in every capture, so these
+ *    labels are invented placeholders for the truncation behaviour.
+ *
+ * The planned TIME per row is the single time the source list actually showed;
+ * the planned DATE is derived from the row's day offset.
  *
  * Dates are stored as an offset from today rather than the literal "Aug 24,
  * 2026" strings that were captured. The captured meaning was "today and
@@ -101,12 +103,15 @@ function relativeLabel(offset: number, d: Date): string {
  * of today.
  */
 interface Seed
-  extends Omit<FuelOrder, "id" | "orderNo" | "qtyGal" | "date" | "dateKey"> {
+  extends Omit<
+    FuelOrder,
+    "id" | "orderNo" | "qtyGal" | "date" | "dateKey" | "planned"
+  > {
   /** Days from today. 0 = today, -1 = yesterday. */
   dayOffset: number;
+  /** Planned time; the planned DATE is derived from `dayOffset`. `null` = none. */
+  plannedTime: string | null;
 }
-
-const W = (from: string, to: string): SchedulingWindow => ({ from, to });
 
 const SEED: Seed[] = [
   {
@@ -114,7 +119,8 @@ const SEED: Seed[] = [
     customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 0,
-    window: W("1:35 AM", "4:35 AM"),
+    plannedTime: "1:35 AM",
+    tags: [],
     status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
@@ -123,7 +129,8 @@ const SEED: Seed[] = [
     customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 0,
-    window: W("12:11 AM", "3:11 AM"),
+    plannedTime: "12:11 AM",
+    tags: ["Rush", "Night"],
     status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
@@ -132,7 +139,8 @@ const SEED: Seed[] = [
     customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 1,
-    window: W("12:11 AM", "3:11 AM"),
+    plannedTime: "12:11 AM",
+    tags: ["Split Load"],
     status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
@@ -144,7 +152,8 @@ const SEED: Seed[] = [
       { name: "200* Diesel Onroad clear", gal: 300 },
     ],
     dayOffset: -1,
-    window: W("11:49 PM", "2:49 AM"),
+    plannedTime: "11:49 PM",
+    tags: [],
     status: "Assigned",
     driver: { name: "Shriya", initials: "S" },
   },
@@ -153,7 +162,8 @@ const SEED: Seed[] = [
     customer: { title: "Gonzalez, Palmer and Miller", description: "Gonzalez, Palmer and Miller" },
     products: [{ name: "123", gal: 300 }],
     dayOffset: -1,
-    window: W("11:46 PM", "2:46 AM"),
+    plannedTime: "11:46 PM",
+    tags: ["Keep Full", "After Hours"],
     status: "Unassigned",
     driver: { name: "Shriya Test 2", initials: "ST" },
   },
@@ -165,7 +175,8 @@ const SEED: Seed[] = [
       { name: "CLR DSL", gal: 350 },
     ],
     dayOffset: 0,
-    window: W("11:44 PM", "2:44 AM"),
+    plannedTime: "11:44 PM",
+    tags: ["Hazmat", "Rush", "Night"],
     status: "Unassigned",
     driver: { name: "Shriya", initials: "S" },
   },
@@ -177,7 +188,8 @@ const SEED: Seed[] = [
       { name: "CLR DSL", gal: 350 },
     ],
     dayOffset: 2,
-    window: W("9:00 AM", "12:00 PM"),
+    plannedTime: "9:00 AM",
+    tags: [],
     status: "Unassigned",
     driver: null,
   },
@@ -190,7 +202,8 @@ const SEED: Seed[] = [
       { name: "CTL1", gal: 100 },
     ],
     dayOffset: 0,
-    window: null,
+    plannedTime: null,
+    tags: ["Weekend"],
     status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
@@ -203,7 +216,8 @@ const SEED: Seed[] = [
       { name: "CTL1", gal: 100 },
     ],
     dayOffset: 1,
-    window: W("1:00 PM", "4:00 PM"),
+    plannedTime: "1:00 PM",
+    tags: ["Split Load", "Keep Full", "Rush", "Night"],
     status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
@@ -217,7 +231,8 @@ const SEED: Seed[] = [
       { name: "CTL1", gal: 100 },
     ],
     dayOffset: 0,
-    window: null,
+    plannedTime: null,
+    tags: ["Split Load", "Keep Full", "Rush", "Night"],
     status: "Assigned",
     driver: { name: "Aakash", initials: "A" },
   },
@@ -230,7 +245,7 @@ const NEWEST_ORDER_NO = 4592866;
 export const FUEL_ORDERS: FuelOrder[] = (() => {
   const today = startOfDay(new Date());
   return Array.from({ length: TOTAL }, (_, i) => {
-    const { dayOffset, ...seed } = SEED[i % SEED.length];
+    const { dayOffset, plannedTime, ...seed } = SEED[i % SEED.length];
     const when = addDays(today, dayOffset);
     return {
       ...seed,
@@ -242,6 +257,9 @@ export const FUEL_ORDERS: FuelOrder[] = (() => {
         description: relativeLabel(dayOffset, when),
       },
       dateKey: dateKeyOf(when),
+      planned: plannedTime
+        ? { date: DATE_FMT.format(when), time: plannedTime }
+        : null,
     };
   });
 })();
@@ -255,6 +273,9 @@ function sortValue(row: FuelOrder, key: FuelOrderColumnKey): string | number {
       return row.qtyGal;
     case "date":
       return row.dateKey;
+    case "planned":
+      // Rows with no planned time sort last in ascending order.
+      return row.planned ? `${row.dateKey} ${row.planned.time}` : "\uffff";
     case "status":
       return row.status;
     default:
@@ -285,7 +306,8 @@ export function matchesFuelOrder(row: FuelOrder, q: string): boolean {
     row.customer.description,
     row.products.map((p) => p.name).join(" "),
     row.date.title,
-    row.window ? `${row.window.from} ${row.window.to}` : "",
+    row.planned ? `${row.planned.date} ${row.planned.time}` : "",
+    row.tags.join(" "),
     row.status,
     row.driver?.name ?? "Unassigned",
   ]

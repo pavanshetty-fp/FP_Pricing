@@ -14,11 +14,15 @@ export interface OrderType {
   label: "Delivery" | "Extraction";
 }
 
-/** A scheduling window — the from/to the delivery is booked between. */
-export interface SchedulingWindow {
-  /** Pre-formatted 12-hour time, e.g. "1:35 AM". */
-  from: string;
-  to: string;
+/**
+ * When the delivery is planned. Rendered as two lines — date over time — and no
+ * longer a from/to range.
+ */
+export interface PlannedAt {
+  /** Formatted date, e.g. "Aug 24, 2026". */
+  date: string;
+  /** Formatted 12-hour time, e.g. "1:35 AM". */
+  time: string;
 }
 
 /**
@@ -58,8 +62,10 @@ export interface FuelOrder {
   date: TwoLine;
   /** `YYYY-MM-DD` of the delivery date — what the toolbar date filter matches. */
   dateKey: string;
-  /** col "Scheduling Window" — from/to range, or `null` for an em-dash */
-  window: SchedulingWindow | null;
+  /** col "Planned Date & Time" — date over time, or `null` for an em-dash */
+  planned: PlannedAt | null;
+  /** col "Tags" — free-form labels; the cell truncates past what fits */
+  tags: string[];
   /** col "Status" */
   status: FuelOrderStatus;
   /** col "Driver" — `null` renders "— Unassigned" */
@@ -74,9 +80,10 @@ export type FuelOrderColumnKey =
   | "products"
   | "qtyGal"
   | "date"
-  | "window"
+  | "planned"
   | "status"
   | "driver"
+  | "tags"
   | "actions";
 
 export interface FuelOrderColumnDef {

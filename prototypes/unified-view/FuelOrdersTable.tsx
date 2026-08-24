@@ -3,11 +3,7 @@ import {
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
-  MoreHorizontal,
-  PanelRightOpen,
-  Pencil,
-  UserPlus,
-  Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,13 +12,6 @@ import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
@@ -45,7 +34,7 @@ import type {
   FuelOrderStatus,
   OrderTypeCode,
   ProductQty,
-  SchedulingWindow,
+  PlannedAt,
   SortState,
   TwoLine as TwoLineData,
 } from "./types";
@@ -81,15 +70,18 @@ function TwoLine({ title, description }: TwoLineData) {
   );
 }
 
-/** Scheduling window — a from/to range, or an em-dash when none is booked. */
-function WindowCell({ window }: { window: SchedulingWindow | null }) {
-  if (!window) {
+/** Planned date over planned time. Em-dash when nothing is planned yet. */
+function PlannedCell({ planned }: { planned: PlannedAt | null }) {
+  if (!planned) {
     return <span className="text-sm text-muted-foreground">—</span>;
   }
   return (
-    <span className="truncate text-sm tabular-nums text-foreground">
-      {window.from} – {window.to}
-    </span>
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-sm text-foreground">{planned.date}</span>
+      <span className="truncate text-xs tabular-nums text-muted-foreground">
+        {planned.time}
+      </span>
+    </div>
   );
 }
 
@@ -198,6 +190,110 @@ function ProductCell({ products }: { products: ProductQty[] }) {
 }
 
 /**
+ * Tags cell — badges, as many as genuinely fit, remainder behind a "+N" chip.
+ *
+ * Same measured approach as ProductCell but measuring BADGES rather than a
+ * joined string, and capped at two even when more would fit: a row of tags is
+ * scannable at two and becomes noise past that.
+ */
+const TAGS_MAX = 2;
+
+function TagsCell({ tags }: { tags: string[] }) {
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = React.useState(Math.min(tags.length, TAGS_MAX));
+
+  React.useLayoutEffect(() => {
+    const row = rowRef.current;
+    const measure = measureRef.current;
+    if (!row || !measure || tags.length === 0) return;
+
+    const compute = () => {
+      const avail = row.clientWidth;
+      if (!avail) return;
+      const kids = [...measure.children] as HTMLElement[];
+      const badges = kids.slice(0, tags.length);
+      const chip = kids[tags.length];
+      const chipW = chip ? chip.offsetWidth + 4 : 0;
+
+      let fit = 0;
+      let used = 0;
+      for (let i = 0; i < Math.min(badges.length, TAGS_MAX); i++) {
+        const w = badges[i].offsetWidth + (i > 0 ? 4 : 0);
+        const remains = i < tags.length - 1;
+        if (used + w + (remains ? chipW : 0) > avail) break;
+        used += w;
+        fit = i + 1;
+      }
+      // Always show at least one tag; it truncates rather than vanishing.
+      setVisible(Math.max(1, fit));
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [tags]);
+
+  if (tags.length === 0) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  const hidden = tags.length - visible;
+
+  return (
+    <div
+      ref={rowRef}
+      className="relative flex min-w-0 items-center gap-1 overflow-hidden"
+    >
+      {tags.slice(0, visible).map((t) => (
+        <Badge key={t} variant="secondary" className="min-w-0 truncate">
+          {t}
+        </Badge>
+      ))}
+
+      {hidden > 0 && (
+        <HoverCard openDelay={120} closeDelay={80}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Show all ${tags.length} tags`}
+              className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Badge variant="outline" className="cursor-pointer tabular-nums">
+                +{hidden}
+              </Badge>
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent align="start" side="top" className="w-[220px]">
+            <BreakdownCard
+              title={`All tags (${tags.length})`}
+              rows={tags.map((t) => ({ label: t }))}
+            />
+          </HoverCardContent>
+        </HoverCard>
+      )}
+
+      {/* Measurement only — never painted, never hit-tested. */}
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-1 whitespace-nowrap"
+      >
+        {tags.map((t) => (
+          <Badge key={t} variant="secondary">
+            {t}
+          </Badge>
+        ))}
+        <Badge variant="outline" className="tabular-nums">
+          +{Math.max(1, tags.length - 1)}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Qty cell — the row total, with a per-product gallon breakdown on hover when
  * the order has more than one product line. Single-line orders have nothing to
  * break down, so they stay plain text rather than offering a dead trigger.
@@ -261,7 +357,7 @@ export interface FuelOrdersTableProps {
   sort: SortState | null;
   onSort: (key: FuelOrderColumnKey) => void;
   hidden?: Set<FuelOrderColumnKey>;
-  /** Open the order's side sheet. Omit to hide those row actions. */
+  /** Open the order's side sheet — the chevron in the sticky last column. */
   onOpenOrder?: (row: FuelOrder) => void;
 }
 
@@ -315,7 +411,10 @@ export function FuelOrdersTable({
                   }
                   className={cn(
                     "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
-                    col.align === "right" && "text-right"
+                    col.align === "right" && "text-right",
+                    // Pinned so the row-open control stays reachable while the
+                    // grid scrolls sideways. z-30 clears the sticky thead (z-20).
+                    col.key === "actions" && "sticky right-0 z-30"
                   )}
                 >
                   {col.key === "select" ? (
@@ -404,7 +503,7 @@ function Row({
     products: <ProductCell products={row.products} />,
     qtyGal: <QtyCell products={row.products} total={row.qtyGal} />,
     date: <TwoLine {...row.date} />,
-    window: <WindowCell window={row.window} />,
+    planned: <PlannedCell planned={row.planned} />,
     status: (
       // `variant="text"` = dot + coloured label, no fill. NOTE the contrast gap
       // documented on StatusChip: text/success and text/processing fail AA on a
@@ -430,49 +529,46 @@ function Row({
         — Unassigned
       </span>
     ),
+    tags: <TagsCell tags={row.tags} />,
     actions: (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Row actions">
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {onOpenOrder && (
-            <>
-              <DropdownMenuItem onSelect={() => onOpenOrder(row)}>
-                <PanelRightOpen />
-                View details
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          <DropdownMenuItem>
-            <Pencil />
-            Edit order
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <UserPlus />
-            Assign driver
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">
-            <Trash2 />
-            Cancel order
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Open order ${row.orderNo}`}
+          onClick={() => onOpenOrder?.(row)}
+        >
+          <ChevronRight />
+        </Button>
+      </div>
     ),
   };
 
   return (
-    <TableRow data-state={selected ? "selected" : undefined} className="h-14">
+    <TableRow
+      data-state={selected ? "selected" : undefined}
+      className="group/row h-14"
+    >
       {columns.map((col) => (
         <TableCell
           key={col.key}
-          className={cn("px-3", col.align === "right" && "text-right")}
+          className={cn(
+            "px-3",
+            col.align === "right" && "text-right",
+            // The pinned cell needs its own opaque fill or the scrolling grid
+            // shows through it. That fill would also hide the row's hover and
+            // selected tints, so those are re-applied as a `before` overlay
+            // using the same token and alpha the row itself uses — the pinned
+            // cell then matches the rest of the row exactly instead of
+            // approximating it with a hardcoded composite.
+            col.key === "actions" &&
+              "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-accent/50 group-data-[state=selected]/row:before:bg-accent"
+          )}
         >
-          {cells[col.key]}
+          {/* `relative` lifts real content above the overlay. */}
+          <span className={cn(col.key === "actions" && "relative")}>
+            {cells[col.key]}
+          </span>
         </TableCell>
       ))}
     </TableRow>

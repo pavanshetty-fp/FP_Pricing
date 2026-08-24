@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/tooltip";
 import { FuelOrdersToolbar } from "./FuelOrdersToolbar";
 import { FuelOrdersTable } from "./FuelOrdersTable";
+import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
   FuelOrdersViewBar,
   viewStateKey,
@@ -39,6 +40,7 @@ import {
   type ViewState,
 } from "./FuelOrdersViewBar";
 import {
+  DATE_FMT,
   FUEL_ORDERS,
   FUEL_ORDER_COLUMNS,
   dateKeyOf,
@@ -47,7 +49,7 @@ import {
   sortFuelOrders,
   startOfDay,
 } from "./data";
-import type { FuelOrderColumnKey, SortState } from "./types";
+import type { FuelOrder, FuelOrderColumnKey, SortState } from "./types";
 
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
@@ -79,6 +81,8 @@ const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
 
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
 function FuelOrdersScreen() {
+  const [rows, setRows] = React.useState(FUEL_ORDERS);
+  const [openOrderId, setOpenOrderId] = React.useState<string | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortState | null>(null);
@@ -172,8 +176,8 @@ function FuelOrdersScreen() {
   // delivery date — then the search narrows within it.
   const dateKey = dateKeyOf(date);
   const onDate = React.useMemo(
-    () => FUEL_ORDERS.filter((r) => r.dateKey === dateKey),
-    [dateKey]
+    () => rows.filter((r) => r.dateKey === dateKey),
+    [rows, dateKey]
   );
   const filtered = React.useMemo(
     () => (query ? onDate.filter((r) => matchesFuelOrder(r, query)) : onDate),
@@ -193,6 +197,52 @@ function FuelOrdersScreen() {
       return null;
     });
     setPage(1);
+  };
+
+  /** Fold a sheet draft back onto its row. */
+  const saveOrder = (order: FuelOrder, draft: OrderDraft) => {
+    const plannedDate = draft.plannedDate;
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id !== order.id
+          ? r
+          : {
+              ...r,
+              type: {
+                code: draft.typeCode,
+                label: draft.typeCode === "D" ? "Delivery" : "Extraction",
+              },
+              customer: { title: draft.customer, description: draft.shipTo },
+              products: draft.products,
+              qtyGal: draft.products.reduce((n, p) => n + p.gal, 0),
+              dateKey: dateKeyOf(draft.deliveryDate),
+              date: {
+                title: DATE_FMT.format(draft.deliveryDate),
+                description: r.date.description,
+              },
+              planned:
+                plannedDate && draft.plannedTime.trim()
+                  ? {
+                      date: DATE_FMT.format(plannedDate),
+                      time: draft.plannedTime.trim(),
+                    }
+                  : null,
+              status: draft.status,
+              driver: draft.driver
+                ? {
+                    name: draft.driver,
+                    initials: draft.driver
+                      .split(" ")
+                      .map((w) => w[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase(),
+                  }
+                : null,
+              tags: draft.tags,
+            }
+      )
+    );
   };
 
   const toggleRow = (id: string) =>
@@ -298,6 +348,7 @@ function FuelOrdersScreen() {
               sort={sort}
               onSort={onSort}
               hidden={hiddenColumns}
+              onOpenOrder={(row) => setOpenOrderId(row.id)}
             />
           )}
         </div>
@@ -314,6 +365,13 @@ function FuelOrdersScreen() {
           </div>
         )}
       </div>
+
+      <OrderSheet
+        order={rows.find((r) => r.id === openOrderId) ?? null}
+        open={openOrderId !== null}
+        onOpenChange={(o) => !o && setOpenOrderId(null)}
+        onSave={saveOrder}
+      />
 
       <div className="shrink-0 border-t border-border">
         <TablePagination

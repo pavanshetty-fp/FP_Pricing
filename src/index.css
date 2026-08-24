@@ -203,6 +203,22 @@
   /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
      off the app background with a soft drop shadow (black 15%). */
   --shadow-fp-surface: 0 4px 4px 0 rgb(0 0 0 / 0.15);
+  /* Overlay elevation — the tier ABOVE the content layer, for elements that
+     float over their own content (the bulk-action bar today; dialogs and
+     popovers should follow). Two-layer umbra/penumbra, with the alphas held in
+     per-theme vars because a black shadow on a dark surface reads far weaker
+     than the same alpha on white: FP-dark needs ~3x the opacity light does to
+     separate at all. Geometry scales the DS's one-step `--shadow-fp-surface`
+     (0 4px 4px) up to an overlay tier.
+     DS FOLLOW-UP: this tier does not exist in Figma yet — `interaction-and-
+     behavior.md` §4b specifies `--shadow-md` for the bulk bar, which is WEAKER
+     than the shadow-lg it replaced and renders invisible in FP-dark. The
+     geometry and alphas below are derived, NOT Figma-sourced (the REST token
+     had expired and the Desktop Bridge was not connected when this was
+     written). Confirm both in 28679:1109 and correct here. */
+  --shadow-fp-overlay:
+    0 12px 28px -8px var(--fp-shadow-umbra),
+    0 4px 10px -4px var(--fp-shadow-penumbra);
 }
 
 /*
@@ -289,6 +305,10 @@
   --fp-card-1: #e9ecf1;
   --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
+  /* Overlay shadow alphas (light) — black on white reads strongly, so these
+     stay close to the DS's existing 15%. Consumed by --shadow-fp-overlay. */
+  --fp-shadow-umbra: rgb(0 0 0 / 0.18);
+  --fp-shadow-penumbra: rgb(0 0 0 / 0.1);
   --status-success: #16a34a;
   --status-processing: #d97706;
   --status-failed: #dc2626;
@@ -366,6 +386,12 @@
   --fp-card-1: #2a2f37; /* FP/Card 1 */
   --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
   --fp-surface-base: #080808;
+  /* Overlay shadow alphas (FP dark) — deliberately ~3x the light values. The
+     bulk bar's own fill (--fp-card-1 #2a2f37) is byte-identical to the
+     selected-row fill it floats over, so the shadow is the ONLY thing
+     separating them and a 10-18% black simply does not register on #2a2f37. */
+  --fp-shadow-umbra: rgb(0 0 0 / 0.55);
+  --fp-shadow-penumbra: rgb(0 0 0 / 0.35);
   --status-success: #22c55e; /* confirmed via REST */
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
   --status-failed: #f87171; /* = destructive */

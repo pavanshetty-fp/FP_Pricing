@@ -41,12 +41,12 @@ import {
  *
  * Geometry, entrance animation, count chip and delete-confirm are the DS's
  * "FAB bulk actions" (Figma 27631:11151) — `bulk-bar-in`, rounded-lg, 1px
- * border, p-1.5, shadow-lg, a primary count chip with a clear ×, a hairline
+ * border, p-1.5, a primary count chip with a clear ×, a hairline
  * before the destructive zone, and Delete always behind an AlertDialog. Labels
  * are mandatory on the field actions, per the DS's own note that these are never
  * icon-only.
  *
- * TWO DELIBERATE DIFFERENCES FROM THE DS BAR:
+ * THREE DELIBERATE DIFFERENCES FROM THE DS BAR:
  *
  * 1. FILL. The DS bar uses `bg-popover`, and in BOTH themes `--popover` is the
  *    same value as `--fp-surface-1b` (#1b2028 dark, #ffffff light) — the content
@@ -61,6 +61,18 @@ import {
  *    Unverify) plus Copy and a ··· More menu are not this screen's actions, and
  *    the component takes no way to change them. This screen's set is the five
  *    fields a dispatcher edits across orders, plus Delete. No Copy, no More.
+ *
+ * 3. ELEVATION. `interaction-and-behavior.md` §4b specifies `--shadow-md` for
+ *    this bar. Measured, that is WEAKER than the `shadow-lg` this file used to
+ *    carry (Tailwind's md is 10% black at 4px; lg is 10% black at 10px), and
+ *    both are effectively invisible here — because of difference 1's root
+ *    cause. The bar only ever appears WHEN ROWS ARE SELECTED, so its real
+ *    backdrop on three sides is selected rows, and the selected-row fill is
+ *    `--accent` = #2a2f37 in FP-dark, byte-identical to this bar's own
+ *    `--fp-card-1`. Measured delta against its own backdrop: [0,0,0]. With no
+ *    fill contrast available the shadow carries the whole separation, so this
+ *    uses `shadow-fp-overlay` — a new overlay elevation tier, theme-aware
+ *    because 10% black does not register on #2a2f37. See src/index.css.
  *
  * DS FOLLOW-UP: parameterise `tables-layout/BulkActionBar` so the verb set is a
  * prop, and move the fill off `bg-popover`. Then this file deletes itself.
@@ -164,7 +176,7 @@ export function FuelOrdersBulkBar({
   if (count <= 0) return null;
 
   return (
-    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-lg">
+    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
       {/* Count chip — primary filled, with a clear ×. */}
       <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
         {count} Selected

@@ -244,10 +244,24 @@ export function FuelOrdersViewBar({
           bottom instead; 10px of margin plus the row's own 2px of bottom padding
           puts exactly 12px between the button's lower edge and the divider.
         */}
+        <Button
+          size="xs"
+          className="mb-2.5 ml-auto self-end rounded-[4px]"
+          onClick={onCreateOrder}
+        >
+          <Plus />
+          Create Order
+        </Button>
+
         {/*
           Export, moved down from the page header so both actions for this list
           sit together. `icon-xs` (24px) matches the CTA's height, and the same
           self-end/mb-2.5 puts them on one baseline.
+
+          It is the rightmost item, so it carries the `mr-1` that keeps this row
+          aligned with the toolbar below: the row cancels the content layer's
+          16px inset with -mx-4 and re-pads at px-3, so without the extra 4px the
+          trailing control would sit proud of every toolbar control under it.
         */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -256,22 +270,13 @@ export function FuelOrdersViewBar({
               size="icon-xs"
               aria-label="Export"
               onClick={onExport}
-              className="mb-2.5 ml-auto self-end"
+              className="mr-1 mb-2.5 ml-1.5 self-end"
             >
               <Upload />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Export</TooltipContent>
         </Tooltip>
-
-        <Button
-          size="xs"
-          className="mr-1 ml-1.5 self-end mb-2.5 rounded-[4px]"
-          onClick={onCreateOrder}
-        >
-          <Plus />
-          Create Order
-        </Button>
       </div>
 
       <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>

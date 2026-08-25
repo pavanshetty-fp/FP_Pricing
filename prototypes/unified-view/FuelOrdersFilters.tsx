@@ -29,21 +29,70 @@ const CUSTOMERS = uniq(FUEL_ORDERS.map((o) => o.customer.title));
 const SHIP_TOS = uniq(FUEL_ORDERS.map((o) => o.customer.description));
 const PRODUCTS = uniq(FUEL_ORDERS.flatMap((o) => o.products.map((p) => p.name)));
 
+/**
+ * Category options, TRANSCRIBED from the source app's own picker — not invented
+ * and not tidied.
+ *
+ * The casing really is inconsistent there: `aviation_fuel` is snake_case while
+ * `Auto Engine Oil` is title case, and `bio` / `diesel` / `ethanol` are lower
+ * case next to `Diesel Engine Oil` and `Fuel Oil`. Reproduced verbatim, because
+ * normalising it here would hide a data-quality problem that belongs to the
+ * source. Order is the source's: case-INSENSITIVE alphabetical, which is why
+ * `aviation_fuel` sorts after `Auto Trans Fluid` and `bio` before `Brake Fluid`.
+ *
+ * INCOMPLETE — the captures scroll only as far as "Fuels", so this is the A–F
+ * slice of a longer list. Everything from G onward is still uncaptured. The
+ * facet says so under the options rather than pretending the list ends here.
+ */
+const CATEGORIES = [
+  "Accessories",
+  "Additive",
+  "Antifreeze",
+  "Auto Engine Oil",
+  "Auto Trans Fluid",
+  "aviation_fuel",
+  "bio",
+  "Brake Fluid",
+  "Chemicals",
+  "Container",
+  "DEF",
+  "DEF Pkd",
+  "diesel",
+  "Diesel Engine Oil",
+  "ethanol",
+  "Food Grade",
+  "Fuel Oil",
+  "Fuels",
+];
+
 interface Facet {
   key: string;
   label: string;
   options?: string[];
-  /** Known gap — the source app's options for this facet weren't captured. */
-  unknown?: boolean;
+  /**
+   * Whether the options pane gets a search field. Off for facets whose whole
+   * list is visible at once — a search box over two checkboxes is a control that
+   * can only ever filter to one of them.
+   */
+  searchable?: boolean;
+  /** Shown under the options when the captured list is known to be partial. */
+  partialNote?: string;
 }
 
 const FACETS: Facet[] = [
   { key: "type", label: "Type", options: ["Delivery", "Extraction"] },
   { key: "status", label: "Status", options: ["Assigned", "Unassigned"] },
-  { key: "customer", label: "Customer", options: CUSTOMERS },
-  { key: "shipTo", label: "Ship-To", options: SHIP_TOS },
-  { key: "category", label: "Category", unknown: true },
-  { key: "product", label: "Product", options: PRODUCTS },
+  { key: "customer", label: "Customer", options: CUSTOMERS, searchable: true },
+  { key: "shipTo", label: "Ship-To", options: SHIP_TOS, searchable: true },
+  {
+    key: "category",
+    label: "Category",
+    options: CATEGORIES,
+    searchable: true,
+    partialNote:
+      "Captured A–F only — categories from G onward aren\u2019t in the source screenshots yet.",
+  },
+  { key: "product", label: "Product", options: PRODUCTS, searchable: true },
 ];
 
 export function FuelOrdersFilters() {
@@ -114,48 +163,51 @@ export function FuelOrdersFilters() {
 
           {/* Options pane */}
           <div className="flex min-w-0 flex-1 flex-col">
-            {facet.unknown ? (
-              // Known gap — this facet exists in the source app but its options
-              // were not captured. Left visible rather than invented.
-              <p className="p-3 text-sm text-muted-foreground">
-                Options for “{facet.label}” haven’t been captured from the source
-                app yet.
-              </p>
-            ) : (
-              <>
-                <div className="p-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={`Search ${facet.label.toLowerCase()}`}
-                      className="h-8 pl-8"
-                    />
-                  </div>
+            {facet.searchable && (
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${facet.label.toLowerCase()}…`}
+                    className="h-8 pl-8"
+                  />
                 </div>
-                <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
-                  {options.map((opt) => {
-                    const id = `${facet.key}:${opt}`;
-                    return (
-                      <div key={id} className="flex min-h-8 items-center gap-2 py-1">
-                        <Checkbox
-                          checked={checked.has(id)}
-                          onCheckedChange={() => toggle(id)}
-                          aria-label={opt}
-                        />
-                        <span className="flex-1 text-sm">{opt}</span>
-                      </div>
-                    );
-                  })}
-                  {options.length === 0 && (
-                    <p className="px-2 py-1 text-sm text-muted-foreground">
-                      No matches.
-                    </p>
-                  )}
-                </div>
-              </>
+              </div>
             )}
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-auto px-2 pb-2",
+                // Without the search field above it, the list would start flush
+                // against the panel's top edge.
+                !facet.searchable && "pt-2"
+              )}
+            >
+              {options.map((opt) => {
+                const id = `${facet.key}:${opt}`;
+                return (
+                  <div key={id} className="flex min-h-8 items-center gap-2 py-1">
+                    <Checkbox
+                      checked={checked.has(id)}
+                      onCheckedChange={() => toggle(id)}
+                      aria-label={opt}
+                    />
+                    <span className="flex-1 text-sm">{opt}</span>
+                  </div>
+                );
+              })}
+              {options.length === 0 && (
+                <p className="px-2 py-1 text-sm text-muted-foreground">
+                  No matches.
+                </p>
+              )}
+              {facet.partialNote && !query && (
+                <p className="border-t border-border px-2 pt-2 pb-1 text-xs text-muted-foreground">
+                  {facet.partialNote}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

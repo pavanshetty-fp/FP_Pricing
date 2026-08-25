@@ -18,43 +18,104 @@ import {
 /*
   Faceted Filter panel — Figma "Action Bar Unit · Filter interactions"
   (27665:14074). Opens from the Filters button: a side menu (facets) + an
-  options pane (search + checkbox list, some options expand into sub-selections)
-  + a Clear All / Apply Filters footer.
+  options pane (checkbox list, some options expand into sub-selections) + a
+  Clear All / Apply Filters footer.
 */
 
-const FACETS = ["Menu 1", "Menu 2", "Menu 3"];
-
-interface Option {
+export interface FilterOption {
   key: string;
   label: string;
   sub?: { title: string; items: { key: string; label: string }[] };
 }
 
-const OPTIONS: Option[] = [
-  { key: "o1", label: "Option Label 1" },
+export interface Facet {
+  key: string;
+  label: string;
+  options: FilterOption[];
+  /**
+   * Whether this facet's options pane gets a search field.
+   *
+   * A facet gets one when its list **cannot be taken in at once**; it does not
+   * when the list is short enough to scan. On a two-option facet a search field
+   * is a control that can only ever filter to one of the two — noise, and it
+   * pushes the options down for nothing.
+   *
+   * This is deliberately an explicit per-facet flag rather than a length
+   * threshold. A threshold silently changes a facet's affordance as its options
+   * grow or shrink, so the same facet gains and loses a control without anyone
+   * deciding.
+   */
+  searchable?: boolean;
+}
+
+const DEFAULT_FACETS: Facet[] = [
   {
-    key: "o4",
-    label: "Option Label 4",
-    sub: {
-      title: "Title 1",
-      items: [
-        { key: "o4-s1", label: "Sub Selection 1" },
-        { key: "o4-s2", label: "Sub Selection 2" },
-      ],
-    },
+    key: "menu-1",
+    label: "Menu 1",
+    // Long enough that scanning is work — this one earns a search field.
+    searchable: true,
+    options: [
+      { key: "o1", label: "Option Label 1" },
+      {
+        key: "o4",
+        label: "Option Label 4",
+        sub: {
+          title: "Title 1",
+          items: [
+            { key: "o4-s1", label: "Sub Selection 1" },
+            { key: "o4-s2", label: "Sub Selection 2" },
+          ],
+        },
+      },
+      { key: "o2", label: "Option Label 2" },
+      { key: "o3", label: "Option Label 3" },
+      { key: "o5", label: "Option Label 5" },
+      { key: "o6", label: "Option Label 6" },
+    ],
   },
-  { key: "o2", label: "Option Label 2" },
-  { key: "o3", label: "Option Label 3" },
-  { key: "o5", label: "Option Label 5" },
-  { key: "o6", label: "Option Label 6" },
+  {
+    key: "menu-2",
+    // Two options: a search field here could only ever filter to one of them.
+    label: "Menu 2",
+    options: [
+      { key: "m2-a", label: "Option Label A" },
+      { key: "m2-b", label: "Option Label B" },
+    ],
+  },
+  {
+    key: "menu-3",
+    label: "Menu 3",
+    options: [
+      { key: "m3-a", label: "Option Label A" },
+      { key: "m3-b", label: "Option Label B" },
+      { key: "m3-c", label: "Option Label C" },
+      { key: "m3-d", label: "Option Label D" },
+    ],
+  },
 ];
 
-export function FilterPanel({ compact = false }: { compact?: boolean }) {
+export function FilterPanel({
+  compact = false,
+  facets = DEFAULT_FACETS,
+}: {
+  compact?: boolean;
+  facets?: Facet[];
+}) {
   const [open, setOpen] = React.useState(false);
-  const [facet, setFacet] = React.useState(FACETS[0]);
+  const [facetKey, setFacetKey] = React.useState(facets[0]?.key ?? "");
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
+
+  const active = facets.find((f) => f.key === facetKey) ?? facets[0];
+
+  // Switching facets clears the query. Carrying it over would let a term typed
+  // on a searchable facet silently filter a facet with no field to clear it in.
+  const selectFacet = (key: string) => {
+    setFacetKey(key);
+    setQuery("");
+    setExpanded(null);
+  };
 
   const toggle = (key: string) =>
     setChecked((prev) => {
@@ -64,12 +125,14 @@ export function FilterPanel({ compact = false }: { compact?: boolean }) {
       return next;
     });
 
-  const subCount = (opt: Option) =>
+  const subCount = (opt: FilterOption) =>
     opt.sub ? opt.sub.items.filter((s) => checked.has(s.key)).length : 0;
 
-  const options = OPTIONS.filter((o) =>
-    o.label.toLowerCase().includes(query.toLowerCase())
-  );
+  const options = active.searchable
+    ? active.options.filter((o) =>
+        o.label.toLowerCase().includes(query.toLowerCase())
+      )
+    : active.options;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -96,38 +159,48 @@ export function FilterPanel({ compact = false }: { compact?: boolean }) {
         <div className="flex h-[264px]">
           {/* Facet side menu */}
           <div className="flex w-[200px] shrink-0 flex-col gap-1 border-r border-border p-2">
-            {FACETS.map((f) => (
+            {facets.map((f) => (
               <button
-                key={f}
+                key={f.key}
                 type="button"
-                onClick={() => setFacet(f)}
+                onClick={() => selectFacet(f.key)}
                 className={cn(
                   "flex h-8 items-center rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50",
-                  facet === f
+                  active.key === f.key
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {f}
+                {f.label}
               </button>
             ))}
           </div>
 
           {/* Options pane */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="p-2">
-              <div className="relative">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search object"
-                  className="h-8 pl-8"
-                />
+            {active.searchable && (
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${active.label}…`}
+                    aria-label={`Search ${active.label}`}
+                    className="h-8 pl-8"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-auto px-2 pb-2",
+                // Without the search field above it, the list would start flush
+                // against the panel edge.
+                !active.searchable && "pt-2"
+              )}
+            >
               {options.map((opt) => {
                 const n = subCount(opt);
                 const isOpen = expanded === opt.key;

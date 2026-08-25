@@ -36,8 +36,27 @@ npm run preview:unified        # serves it at http://localhost:4173/
    query instead: `http://localhost:4173/?v=<anything>`. I lost a round of
    debugging to this — source, disk and wire all said the fix was there while the
    DOM showed the old classes.
-3. **`preview_start` ignores the `name` in `.claude/launch.json`** and starts the
-   gallery dev server regardless. Use `preview_start` with an explicit `url`.
+3. **There are TWO `.claude/launch.json` files, and the harness reads the one in
+   the PARENT folder** — `/Users/pavanshetty/Documents/FP DS 2026/.claude/`, not
+   the repo's. Chat sessions are rooted at the parent directory, so that is the
+   config `preview_start` and the pane's play button actually use.
+
+   This was previously written up as "`preview_start` ignores the `name`". It
+   does not. The parent config simply defined one entry — `fp-ds-dev`, running
+   `npm run dev`, i.e. the GALLERY — so every server start produced the gallery
+   whatever name was asked for, and the pane then rebound to it and reclaimed the
+   tab on any pane operation (a `resize_window` was enough). That is the real
+   cause of "the wrong HTML keeps loading".
+
+   Both files now list **`unified-view` first**, so a bare `preview_start` and
+   the play button both bring up the prototype on `:4300`. Note the parent file
+   is OUTSIDE the repo and therefore not version-controlled — a fresh clone gets
+   the repo's copy only, and the parent one has to be recreated by hand.
+
+   Also: `UNIFIED=1 vite` runs with `strictPort: true` on 4300, so it fails
+   rather than falling back if anything else holds that port. An orphaned dev
+   server from an earlier session squatting on 4300 will block it; free the port
+   before starting.
 4. **`src/index.css` must keep its `@source "../src"` / `@source "../prototypes"`
    lines.** The prototype builds with Vite `root` set to its own folder, which
    re-anchors Tailwind v4's source detection. Without those lines every utility

@@ -1619,6 +1619,13 @@ strongest dark rim is the weakest possible light one.
 **What the code does meanwhile.** `border-fp-outline-1 dark:border-fp-outline-2`
 — a `dark:` variant over two real tokens. One library variable would replace it.
 
+**Same gap, second property: an overlay *surface* token.** The fill has the same
+problem as the rim — the value wanted is "the top of the surface ladder", and no
+single token expresses it: light tops out at `#ffffff` (`--fp-surface-1a`), dark
+at `#2a2f37` (`--fp-card-1`). The code carries
+`bg-fp-surface-1a dark:bg-fp-card-1`. One `--fp-surface-overlay` variable would
+replace both that and the rim variant.
+
 **Not an ask: the shadow scale.** An earlier revision escalated the dark shadow
 alpha to 55% because the library's 10% separates by only `[4,5,5]` on a dark
 surface. That was the wrong fix. Black on a dark surface has almost no range, so

@@ -123,11 +123,27 @@ export function BulkActionBar(props: BulkActionBarProps) {
   return (
     // `bulk-bar-in` slides the bar up 16px over 200ms; its default (docked)
     // state has no transform, so placement is correct without any JS timing.
-    /* `bg-popover` is byte-identical to `--fp-surface-1b` in BOTH themes — the
-       content layer this bar floats over — so the old fill was the same
-       token==surface collision one level up. Card-1 steps off it, and the
-       overlay tier carries the separation the fill cannot. */
-    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-fp-outline-1 bg-fp-card-1 p-1.5 shadow-fp-overlay dark:border-fp-outline-2">
+    /* Fill is the TOP of the surface ladder in each theme, which is not one
+       token: light tops out at #ffffff (`--fp-surface-1a`), dark at #2a2f37
+       (`--fp-card-1`). Hence the `dark:` pair, same shape as the rim.
+
+       The bar floats over TWO backdrops — selected rows (`--accent`) and the
+       content layer — and no fill clears both in either theme:
+
+                        vs selected rows   vs content layer   rim contrast
+         light  #ffffff     [53,46,36]         [0,0,0]         [29,26,21]
+         light  #e9ecf1     [31,27,22]         [22,19,14]       [7,7,7]
+         dark   #2a2f37      [0,0,0]          [15,15,15]       [45,40,32]
+
+       Light takes white: it is what the bar should read as, it separates far
+       harder from the selected rows the bar actually sits on, and it gives the
+       rim 4x the contrast card-1 does. The white-on-white stretch over the
+       content layer is carried by the rim and `--shadow-fp-overlay`.
+
+       (`bg-popover` — the original fill — is byte-identical to
+       `--fp-surface-1b` in BOTH themes, so it collided with the content layer
+       outright.) */
+    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-1.5 shadow-fp-overlay dark:border-fp-outline-2 dark:bg-fp-card-1">
       {/* Count chip — primary filled */}
       <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
         {count} Selected

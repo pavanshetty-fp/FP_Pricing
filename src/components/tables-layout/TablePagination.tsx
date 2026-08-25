@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { paginationRange } from "./data";
 
 /**
@@ -93,6 +94,14 @@ export interface TablePaginationProps {
   pageSizeOptions?: number[];
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  /**
+   * Override the footer band. The default `h-[72px]` is the Figma spec, which
+   * centres the 36px controls with 18px of air each side. Screens that own their
+   * own vertical rhythm — where the gap above the footer and the gap below it are
+   * set by the page, not by the band — pass `h-9` so the band is exactly its
+   * content and the page's own padding does the spacing.
+   */
+  className?: string;
 }
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50, 100];
@@ -109,6 +118,7 @@ export function TablePagination({
   pageSizeOptions = DEFAULT_PAGE_SIZES,
   onPageChange,
   onPageSizeChange,
+  className,
 }: TablePaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -121,7 +131,12 @@ export function TablePagination({
   };
 
   return (
-    <div className="flex h-[72px] items-center justify-between text-sm text-muted-foreground">
+    <div
+      className={cn(
+        "flex h-[72px] items-center justify-between text-sm text-muted-foreground",
+        className
+      )}
+    >
       <span>
         Showing {from.toLocaleString()}-{to.toLocaleString()} of{" "}
         {total.toLocaleString()}

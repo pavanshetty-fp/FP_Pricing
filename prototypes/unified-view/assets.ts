@@ -248,32 +248,124 @@ const SEED: Seed[] = [
   },
 ];
 
-const TOTAL = 38;
+/**
+ * 250 rows — ten pages at the default 25 per page.
+ *
+ * The count is deliberate: with only two pages `paginationRange` returns
+ * [1, 2] and the DS pagination never shows its windowed form, so the ellipsis
+ * and the jump-to-page popover behind it (Figma 27728:13260) could not be seen
+ * at all. Ten pages exercises the whole control.
+ */
+const TOTAL = 250;
 
-/** Rotate the alphanumeric ids per cycle so no two rows share one. */
-const bump = (s: string, n: number) =>
-  n === 0
-    ? s
-    : s.slice(0, -1) + "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[(n * 7) % 32];
+/**
+ * Deterministic PRNG (mulberry32), fixed seed.
+ *
+ * NOT Math.random(). The rows have to be identical on every render, HMR update
+ * and StrictMode double-invoke — a list that reshuffles itself when you page
+ * through it reads as a bug, and no screenshot would ever match twice.
+ */
+function rng(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const ALNUM = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Name pools, covering all three shapes: alphabetical, numeric, alphanumeric. */
+const NAME_FIRST = [
+  "Northgate", "Skyline", "Redline", "Cedar Yard", "Bay", "Harbor", "Ridgeline",
+  "Junction", "Lakeside", "Ironwood", "Prairie", "Summit", "Foxglove", "Kestrel",
+];
+const NAME_LAST = [
+  "Tank", "Bulk", "Hauler", "Pod", "Skid", "Trailer", "Depot Tank", "Cradle",
+];
+const CODE_PREFIX = ["PG-Crate", "TW-Unit", "PR-Cyl", "TR-Barrel", "LB-Tote"];
 
 export const ASSETS: Asset[] = (() => {
   const today = startOfDay(new Date());
-  return Array.from({ length: TOTAL }, (_, i) => {
-    const cycle = Math.floor(i / SEED.length);
-    const { createdDaysAgo, ...seed } = SEED[i % SEED.length];
+  const rand = rng(20260825);
+  const pick = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)];
+  const int = (lo: number, hi: number) => lo + Math.floor(rand() * (hi - lo + 1));
+  const alnum = (n: number) =>
+    Array.from({ length: n }, () => ALNUM[Math.floor(rand() * ALNUM.length)]).join("");
+
+  const usedIds = new Set<string>();
+  const uniqueAlnum = () => {
+    let v = alnum(8);
+    while (usedIds.has(v)) v = alnum(8);
+    usedIds.add(v);
+    return v;
+  };
+
+  const rows: Asset[] = [];
+
+  // The eight curated seeds keep their exact values, so the recognisable rows
+  // stay put and the shapes above are anchored to real examples.
+  SEED.forEach((seed, i) => {
+    const { createdDaysAgo, ...rest } = seed;
     const created = new Date(today);
-    created.setDate(created.getDate() - createdDaysAgo - cycle * 11);
-    return {
-      ...seed,
+    created.setDate(created.getDate() - createdDaysAgo);
+    usedIds.add(seed.uniqueId);
+    rows.push({
+      ...rest,
       id: `as-${i + 1}`,
-      uniqueId: bump(seed.uniqueId, cycle),
-      erpId: String(Number(seed.erpId) + cycle),
-      tankMonitorId: seed.tankMonitor ? bump(seed.tankMonitorId, cycle) : "",
       createdOn: DATE_FMT.format(created),
       createdOnKey: dateKeyOf(created),
       note: "",
-    };
+    });
   });
+
+  // The rest are generated to the same shapes.
+  for (let i = SEED.length; i < TOTAL; i++) {
+    const shape = rand();
+    const displayName =
+      shape < 0.6
+        ? `${pick(NAME_FIRST)} ${pick(NAME_LAST)} ${int(1, 48)}`   // alphabetical
+        : shape < 0.8
+          ? String(int(10000, 99999))                              // numeric
+          : `${pick(CODE_PREFIX)}-${int(100, 999)}`;               // alphanumeric
+
+    const monitored = rand() < 0.55;
+    const products = (() => {
+      const n = int(1, 4);
+      const pool = [...PRODUCT_COMPATIBILITY];
+      const out: string[] = [];
+      for (let k = 0; k < n && pool.length; k++) {
+        out.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
+      }
+      return out;
+    })();
+
+    const created = new Date(today);
+    created.setDate(created.getDate() - int(20, 1800));
+
+    rows.push({
+      id: `as-${i + 1}`,
+      displayName,
+      uniqueId: uniqueAlnum(),
+      erpId: String(int(1000, 9999)) + String(int(100000000000, 999999999999)),
+      hub: pick(HUBS),
+      los: pick(ASSET_LOS),
+      products,
+      capacityGal: pick([250, 400, 500, 1000, 2000, 2500, 4000, 6500, 9000, 10000, 12000]),
+      tankMonitor: monitored,
+      tankMonitorId: monitored ? `TM${alnum(6)}` : "",
+      createdOn: DATE_FMT.format(created),
+      createdOnKey: dateKeyOf(created),
+      status: pick<AssetStatus>([
+        "Active", "Active", "Active", "In Use", "In Use", "Inactive", "Terminated",
+      ]),
+      note: "",
+    });
+  }
+
+  return rows;
 })();
 
 /* ---- sorting / searching ---- */

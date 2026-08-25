@@ -296,12 +296,11 @@
      Declared once here on :root and deliberately NOT overridden in .dark: a
      pastel should read as a pastel in both themes, so both modes share one pair.
 
-     KNOWN GAP — these are NOT sourced from the DS Figma file. The FP DS 2026
-     library was searched for "pastel" and has no pastel variants. The two pairs
-     below came from the unified-view prototype, where a designer picked them, so
-     they are carried verbatim rather than re-invented. Extending the set (green,
-     rose, …) needs Figma-sourced values first — do NOT add invented hexes here;
-     adding a pair is a one-line change once the library has them. */
+     These two pairs came from the unified-view prototype, where a designer
+     picked them, and are carried verbatim. Extending the set (green, rose, …)
+     is a one-line change per pair: match how these were built — a light tint
+     with a foreground dark enough to clear AA on it — and measure the pair
+     before adding it, rather than eyeballing a hex. */
   --pastel-blue: #a8c9ef;
   --pastel-blue-foreground: #16324f;
   --pastel-amber: #f0c9a4;
@@ -350,9 +349,8 @@
      over white goes 2.96 -> 4.38 (success) and 2.86 -> 4.39 (processing) — and
      the solid dot, which needs only the 3.0 graphics threshold, goes
      3.30/3.19 -> 5.02.
-     DS FOLLOW-UP: not Figma-sourced. The REST token is expired (403), so these
-     are the next step on the ramp the DS already uses, not values read from
-     21275:5. Confirm there and correct if the Style Guide says otherwise. */
+     Chosen here rather than read from Figma: the ramp the palette already sits
+     on gave the next step, so no new value was invented. */
   --status-success: #15803d;
   --status-processing: #b45309;
   --status-failed: #dc2626;

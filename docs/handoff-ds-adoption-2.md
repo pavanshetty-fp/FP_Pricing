@@ -27,6 +27,12 @@ anything. Non-negotiables: **tokens, never raw hex**; **Lucide icons only**;
 
 Six tasks, independent, one commit each.
 
+> **Visual values are decided in this repo.** There is no Figma round-trip in the
+> loop — pick values from a scale the DS already uses (the next step on a ramp, an
+> existing surface token, an existing radius step), put them in the token layer,
+> and measure them. Never invent a one-off hex, and never lift pixel values from
+> product screenshots. Push to Figma only if asked.
+
 > **Verify by measuring, not by looking.** Three defects in this batch were
 > invisible in a screenshot and only showed up as RGB deltas — one was a literal
 > `[0,0,0]`. Read computed values and confirm a fill actually differs from the
@@ -75,10 +81,11 @@ reads far weaker than the same alpha on white:
 Measured over the selected-row backdrop: FP-dark `[4,5,5]` → **`[23,26,30]`**;
 light `[20,21,22]` → **`[36,38,39]`**.
 
-**⚠️ These values are DERIVED, not Figma-sourced.** The REST token had expired
-and the Desktop Bridge was not connected when this was written. Confirm the
-geometry and both alphas against `28679:1109` and correct them — and correct
-§4b, which still names `--shadow-md` for this bar.
+**These values were chosen here, not read from Figma** — that is fine, the repo
+is where visual values are decided now. They are scaled off the DS's existing
+`--shadow-fp-surface` rather than invented, and the deltas above are what they
+buy. Adjust them here if they read heavy; there is no Figma round-trip to wait
+for. **Do correct §4b**, which still names `--shadow-md` for this bar.
 
 **Then apply it** to `tables-layout/BulkActionBar.tsx`, today
 `bg-popover … shadow-lg` → `bg-fp-card-1 … shadow-fp-overlay`. `--popover` is
@@ -214,9 +221,11 @@ unfinished, a fade is the fix — not restoring a full-strength rule.)
 
 1. **The CTA's corner radius is 4px, which is OFF the DS radius scale** — it runs
    `xs 2px / sm 6px / md 8px / lg 10px`, with no 4px step. It is currently a raw
-   `rounded-[4px]` literal. Either add a 4px step to the scale in Figma
-   (`21322:119`) and use the token, or move the button to `rounded-sm` (6px).
-   **Do not let a raw value into the base** — everything downstream inherits it.
+   `rounded-[4px]` literal. Resolve it one of two ways: add a 4px step to the
+   scale in `src/index.css` and consume it as a token, or move the button to
+   `rounded-sm` (6px). **Do not let a raw literal into the base** — everything
+   downstream inherits it. This is a call to make here, not something to wait on
+   Figma for.
 2. **This contradicts locked decision 8**, which puts "title + primary CTA
    OUTSIDE the data container" — the preset-view row is *inside* it. The
    placement was requested directly, so the prototype follows it, but the two

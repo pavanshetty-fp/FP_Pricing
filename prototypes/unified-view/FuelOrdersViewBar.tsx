@@ -231,8 +231,9 @@ export function FuelOrdersViewBar({
           `rounded-[4px]` is OFF the DS radius scale, which runs
           xs 2px / sm 6px / md 8px / lg 10px — there is no 4px step. Asked for
           directly, so it stands as a literal, but it is the one raw value in
-          this file. DS FOLLOW-UP: either add a 4px step in Figma (21322:119) and
-          swap this for the token, or move the button to `rounded-sm` (6px).
+          this file. FOLLOW-UP: either add a 4px step to the radius scale in
+          src/index.css and swap this for the token, or move the button to
+          `rounded-sm` (6px). A decision to make here, not a Figma round-trip.
 
           `mr-1` is load-bearing: this row cancels the content layer's 16px inset
           with -mx-4 and re-pads at px-3 (12px) so its hairline spans the whole

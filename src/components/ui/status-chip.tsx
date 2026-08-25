@@ -90,8 +90,9 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  * unchanged at 4.13 because `--status-failed` stays aligned with `--destructive`,
  * and the `destructive` Badge variant ships the same recipe. If `soft` needs to
  * carry body text on light surfaces, the tint has to stop being a straight alpha
- * of the label colour — that is a Figma decision, not something to invent here.
- * Meanwhile `dot` and `text` are both safe on light.
+ * of the label colour — it needs its own token pair (a fixed tint plus a
+ * foreground measured against it), the way the pastel pairs are built. Until
+ * then `dot` and `text` are both safe on light and `soft` is large-text only.
  */
 export function StatusChip({
   tone = "neutral",

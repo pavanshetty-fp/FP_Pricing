@@ -217,12 +217,24 @@ export function FuelOrdersViewBar({
           Primary CTA, moved up here from the toolbar's right cluster so it sits
           on the preset-view row.
 
+          `size="xs"` — the DS step below `sm` (h-6/24px vs h-8/32px). This row
+          carries text tabs, not controls, so the 32px button sat heavy on it.
+
           `mr-1` is load-bearing: this row cancels the content layer's 16px inset
           with -mx-4 and re-pads at px-3 (12px) so its hairline spans the whole
           panel, which would leave the button 4px further right than the toolbar
           controls below it. The extra 4px puts both right edges on the same line.
+
+          `self-end mb-2.5` sets the gap to the hairline. The row is
+          `items-center`, so the button opts out of centring and measures from the
+          bottom instead; 10px of margin plus the row's own 2px of bottom padding
+          puts exactly 12px between the button's lower edge and the divider.
         */}
-        <Button size="sm" className="mr-1 ml-auto" onClick={onCreateOrder}>
+        <Button
+          size="xs"
+          className="mr-1 ml-auto self-end mb-2.5"
+          onClick={onCreateOrder}
+        >
           <Plus />
           Create Order
         </Button>

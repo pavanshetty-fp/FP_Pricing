@@ -8,6 +8,10 @@ export {
 } from "./badge";
 export { CodeDisc, type CodeDiscProps, type CodeDiscTone } from "./code-disc";
 export {
+  MultiSelectList,
+  type MultiSelectListProps,
+} from "./multi-select-list";
+export {
   StatusChip,
   type StatusChipProps,
   type StatusChipVariant,

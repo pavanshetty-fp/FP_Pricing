@@ -38,7 +38,7 @@ import {
   StandingLoad,
   type OrderRef,
 } from "./BulkEditDialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectList } from "@/components/ui/multi-select-list";
 import { DATE_FMT, splitGallons } from "./data";
 import type { FuelOrder } from "./types";
 
@@ -159,91 +159,6 @@ function toOrderRef(o: FuelOrder): OrderRef {
     typeLabel: o.type.label,
     shipTo: o.customer.description,
   };
-}
-
-/**
- * Multi-select option list — checkbox rows, with the current selection as
- * removable chips above them.
- *
- * That shape is the DS's, not a preference: `02-rules/interaction-and-
- * behavior.md` §2 says "List presentation: standardize on CHECKBOX ROWS for
- * multi-select (chips above for what's chosen)", and "cardinality is explicit
- * in the affordance". Products and Tags both let an order carry several values,
- * so both use this.
- *
- * It replaces `CommandItem`'s `selected` prop, which renders a small trailing
- * check. That check is correct for a single-select list — it marks the one
- * chosen row — but on a multi-select list it reads as "this is the current
- * value" rather than "tick as many as you like", and with nothing yet chosen
- * the list is indistinguishable from a single-select one.
- *
- * The Checkbox is `pointer-events-none`: the ROW owns the click via `onSelect`,
- * so letting the box take its own would double-toggle back to where it started.
- */
-function MultiSelectList({
-  placeholder,
-  empty,
-  options,
-  value,
-  onChange,
-}: {
-  placeholder: string;
-  empty: string;
-  options: string[];
-  value: string[];
-  onChange: (next: string[]) => void;
-}) {
-  const toggle = (o: string) =>
-    onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
-
-  return (
-    <div className="flex flex-col gap-2">
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {value.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2.5 text-xs text-foreground"
-            >
-              {v}
-              <button
-                type="button"
-                aria-label={`Remove ${v}`}
-                onClick={() => toggle(v)}
-                className="rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <Command className="rounded-md border border-border">
-        <CommandInput placeholder={placeholder} />
-        <CommandList>
-          <CommandEmpty>{empty}</CommandEmpty>
-          <CommandGroup>
-            {options.map((o) => (
-              <CommandItem
-                key={o}
-                value={o}
-                onSelect={() => toggle(o)}
-                icon={
-                  <Checkbox
-                    checked={value.includes(o)}
-                    className="pointer-events-none"
-                    tabIndex={-1}
-                  />
-                }
-              >
-                {o}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </div>
-  );
 }
 
 /** "Shriya Test 2" -> "ST". Matches how the Driver column builds its avatar. */

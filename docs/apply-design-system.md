@@ -383,8 +383,8 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 - **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
 - **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
 - **Data table** — `rounded-md` with an **outer stroke** `border border-border` (follows the `border` token → FP/Outline 1); header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
-- **Status chip** — one component, three treatments, via `StatusChip` (`ui/status-chip.tsx`): `dot` (token-coloured dot, neutral label — the quietest, for dense grids), `text` (dot **and** label share the tone via `bg-current`, no fill), `soft` (`bg-status-*/10` + tone text — the canonical treatment for a state that must be noticed, same recipe as the `destructive` Badge variant). The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. Prefer `dot` in Light until darker light-mode status values are decided in Figma; do not invent them.
-- **Pastel code disc** — a 16px pastel circle carrying an initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(KNOWN GAP: the pastels are not Figma-sourced; see `index.css`.)*
+- **Status chip** — one component, three treatments, via `StatusChip` (`ui/status-chip.tsx`): `dot` (token-coloured dot, neutral label — the quietest, for dense grids), `text` (dot **and** label share the tone via `bg-current`, no fill), `soft` (`bg-status-*/10` + tone text — the canonical treatment for a state that must be noticed, same recipe as the `destructive` Badge variant). The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
+- **Pastel code disc** — a 16px pastel circle carrying an initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(Both pastel pairs were chosen in the repo and measure AAA; extending the set is a one-line change per pair — measure the pair before adding it. See `00-meta/token-provenance.md`.)*
 - **Bulk-attribute edit** — never a popover that commits on click. Three tiers by cardinality (scalar → single input; one-value-per-row → searchable select; a collection per row → multi-select), each opening a **dialog**, each taking the same two-step shape via `BulkEditDialog` (`components/bulk-edit/`): (1) picker, header leading with **scope + count**, primary gated until a value is picked; (2) per-row **before/after** preview, title becomes "View Summary", footer becomes `Go back` / `Confirm`; (3) commit → **toast**. Destructive replaces arm before they commit. **Why both steps earn their keep:** the operator must see the state that *already exists* on the target before piling onto it — `StandingItems` surfaces that standing state in step 1, `BeforeAfterTable` shows the delta in step 2. Collapsing to one step removes the only chance to notice you are about to replace something. `before` renders muted + `line-through` so a row reads as a replacement, with an em-dash fallback so "had nothing" and "had something" stay distinct. The dialog always reopens on step 1 — reopening mid-flow would offer a Confirm for a value the operator can no longer see. Body scrolls at `max-h-[55vh]`; header and footer stay put. **Inner panels use `bg-fp-surface-1b`, not `bg-fp-card-1`** — measured against the dialog's own `bg-background`, card-1 is only [6,3,6] away in light (near-invisible) while surface-1b is [16,16,20] light / [19,24,32] dark.
 - **Faceted filter panel** — facet side-menu + options pane. **The search field is per-facet and opt-in** (`Facet.searchable`): a facet gets one when its option list *cannot be taken in at once*, and does not when the list is short enough to scan — on a two-option facet a search field can only ever filter to one of the two, and it pushes the options down for nothing. Use an **explicit flag, not a length threshold**: a threshold silently changes a facet's affordance as its options grow or shrink, so the same facet gains and loses a control without anyone deciding. When the field is absent the option list needs its own `pt-2`, or it starts flush against the panel edge; placeholder reads `Search {facet}…`, matching the DS's `Search…` convention. Switching facets clears the query — carrying it over lets a term typed on a searchable facet silently filter a facet with no field to clear it in.
 - **Table row states** — hover and selected are their own tokens, `--fp-row-hover` / `--fp-row-selected`, **not** `--accent`. A row state is a full-width wash *behind* content, so it must sit far quieter than a control fill: borrowing `--accent` gave light-mode rows a `[53,46,36]` step off `#ffffff` when selected and `[26,23,18]` on hover — a control-emphasis value doing a background's job. The tokens keep an ordered, subtle progression off the content layer — light `hover [11,10,7] -> selected [22,19,14]`, dark `[7,7,7] -> [15,15,15]` — with selected always the stronger of the two. Anything that mirrors a row wash (a sticky column overlay, an expanded-parent tint, the `tfoot` band) binds the same two tokens, or it drifts out of step with the row it belongs to.
@@ -1592,117 +1592,113 @@ hover/open paint `bg-accent` across the entire cell, no inset outline. (Visual s
 
 ---
 
-# Figma asks — open gaps in the FP DS 2026 library
+# Token provenance — values decided in code, and what they derive from
 
-Each entry is a **precise** ask: what to add, why the code cannot source it
-today, and what the code does in the meantime. The rule is *tokens, never raw
-hex*, so anything on this list is a place the code is currently carrying a value
-the library does not hold. Keep the list short by closing items, not by dropping
-them.
+**Figma sourcing is not a precondition.** Design values are decided here, in the
+token layer. This file is a *provenance register*, not a request queue: it records
+which values were chosen in the repo and what each one derives from, so a later
+reader can tell a considered decision from a guess. Nothing on this list is
+blocked, and nothing here should stop work.
 
-File: `PxzKUl6emRr8QQ5Nb0vlwT` (FP DS 2026)
+What still holds, from the constitution: **tokens, never raw hex.** A value
+belongs in `src/index.css`, defined for **both** themes — that rule is about
+having one place to change it, and was never about Figma.
+
+Preference order when a value is needed:
+
+1. an existing token;
+2. a step on a ramp the palette already sits on (the light status colours are
+   Tailwind `*-600`, so `*-700` is on-ramp, not invention);
+3. a value derived from two existing tokens — a composite, a midpoint;
+4. a considered new value, with the reasoning written beside it.
+
+Then **measure the result** rather than asserting it. Round-trip to Figma
+(`PxzKUl6emRr8QQ5Nb0vlwT`) only when Pavan says it is required.
 
 ---
 
-## 1. An overlay-tier rim token
+## 1. Overlay tier — rim and surface are `dark:` pairs
 
-**Ask:** one colour variable for the rim of elements that float *over their own
-content* — the bulk-action bar today, dialogs and popovers next. It needs a value
-per theme, and the two are not the same token.
+The bulk-action bar floats over its own content, and neither its rim nor its fill
+can be one token, because the value wanted is "the top of the surface ladder" and
+the two themes disagree about which token that is:
 
-**Why the code cannot source it.** There is no overlay rim in the library, and no
-single existing token works in both themes. Measured against the bar's real
-backdrop (selected rows, `--accent`):
-
-| rim candidate | FP-dark | Light |
+| | FP-dark | Light |
 |---|---|---|
-| `--fp-outline-1` | `[12,13,14]` | `[24,20,15]` |
-| `--fp-outline-2` | `[45,40,32]` | **`[0,0,0]`** — identical to `--accent` |
-| `--border` | `[12,13,14]` | **`[3,3,3]`** — near-invisible |
+| rim | `--fp-outline-2` `[45,40,32]` | `--fp-outline-1` `[24,20,15]` |
+| fill | `--fp-card-1` | `--fp-surface-1a` (`#ffffff`) |
 
-`--fp-outline-2` is byte-identical to `--accent` in the light column, so the
-strongest dark rim is the weakest possible light one.
+`--fp-outline-2` is byte-identical to `--accent` in light, so the strongest dark
+rim is the weakest possible light one. Hence
+`border-fp-outline-1 dark:border-fp-outline-2` and
+`bg-fp-surface-1a dark:bg-fp-card-1`.
 
-**What the code does meanwhile.** `border-fp-outline-1 dark:border-fp-outline-2`
-— a `dark:` variant over two real tokens. One library variable would replace it.
+**Derivation:** all four are existing tokens; only the pairing is new. A single
+`--fp-surface-overlay` / `--fp-rim-overlay` pair would collapse both `dark:`
+variants — worth doing whenever someone wants to, here or in Figma.
 
-**Same gap, second property: an overlay *surface* token.** The fill has the same
-problem as the rim — the value wanted is "the top of the surface ladder", and no
-single token expresses it: light tops out at `#ffffff` (`--fp-surface-1a`), dark
-at `#2a2f37` (`--fp-card-1`). The code carries
-`bg-fp-surface-1a dark:bg-fp-card-1`. One `--fp-surface-overlay` variable would
-replace both that and the rim variant.
+**Settled, not open: the shadow.** An earlier revision escalated the dark shadow
+alpha to 55% because 10% black separates by only `[4,5,5]` on a dark surface.
+That was the wrong fix — black on dark has almost no range, so a shadow can never
+be the separator there. **On dark, elevation is a lighter rim; the shadow is
+ambient depth.** With the rim carrying separation, `--shadow-fp-overlay` is the
+library's `shadow/xl` geometry at 10% in both themes.
 
-**Not an ask: the shadow scale.** An earlier revision escalated the dark shadow
-alpha to 55% because the library's 10% separates by only `[4,5,5]` on a dark
-surface. That was the wrong fix. Black on a dark surface has almost no range, so
-a shadow can never be the separator there — **on dark, elevation is a lighter rim;
-the shadow is ambient depth.** With the rim above carrying separation,
-`--shadow-fp-overlay` is now the library's `shadow/xl` verbatim (black @10%, both
-themes). The shadow scale was correct for light all along and needs no change.
-
-*(Related: the library ships `shadow/sm`, `/lg`, `/xl` and **no `shadow/md`** — any
-rule naming `--shadow-md` names a token this DS does not have.)*
+*(Aside: the library ships `shadow/sm`, `/lg`, `/xl` and no `shadow/md` — any rule
+naming `--shadow-md` names a token this DS has never had.)*
 
 ---
 
-## 2. Pastel badge hues
+## 2. Pastel hues — `--pastel-blue`, `--pastel-amber`
 
-**Ask:** a pastel palette — fill + a foreground dark enough to carry text on it —
-starting with the blue and amber pairs already in use, and ideally a green and a
-rose so the set is usable beyond two categories.
+Chosen in a prototype and carried verbatim. Both pairs measure AAA against their
+own foregrounds (7.65:1 and 7.09:1).
 
-**Why the code cannot source it.** The library was searched for "pastel"; it has
-no pastel variants. The badge palette is all solid or soft-tint.
-
-**What the code does meanwhile.** `--pastel-blue` / `--pastel-amber` (+
-`-foreground`) are carried in `src/index.css` under a `KNOWN GAP` marker. They
-came from a prototype where a designer picked them, so they have provenance, but
-they are not library values. No third or fourth pastel has been added precisely
-because inventing more hexes would deepen the gap. Both current pairs measure
-AAA (7.65:1, 7.09:1).
+**Derivation:** picked by eye, then measured. Extending the set (green, rose, …)
+is a one-line change per pair — match how these were built, a light tint with a
+foreground dark enough to clear AA on it, and **measure the pair before adding
+it** rather than eyeballing a hex.
 
 ---
 
-## 3. Light-column status colours that can carry text
+## 3. Light status colours — `text` fixed, `soft` is large-text only
 
-**Ask:** darker light-mode values for `--status-success`, `--status-processing`
-and `--status-failed`, or a paired `-foreground` per status.
-
-**Why this is a real defect, not a preference.** The DS requires contrast ≥ WCAG
-AA in both themes. The current light values cannot meet it when the status colour
-is used as *text*:
+The light `--status-success` / `--status-processing` values moved one step down
+their own ramp (green-600 → green-700, amber-600 → amber-700) because they failed
+AA as *text*. Green and amber are far lighter than red/pink/blue at the same
+step, which is why only those two needed it.
 
 | treatment | FP-dark | Light |
 |---|---|---|
-| `StatusChip` text/success | 7.18 ✓ | **3.30 ✗** |
-| `StatusChip` text/processing | 7.62 ✓ | **3.19 ✗** |
-| `StatusChip` soft/success | 6.04 ✓ | **2.96 ✗** |
-| `StatusChip` soft/processing | 6.38 ✓ | **2.86 ✗** |
-| `StatusChip` soft/failed | 5.15 ✓ | **4.13 ✗** |
+| `text/success` | 7.18 | 3.30 → **5.02** ✓ |
+| `text/processing` | 7.62 | 3.19 → **5.02** ✓ |
+| `text/failed` | 5.91 | 4.83 ✓ |
+| `soft/success` | 6.04 | 2.96 → 4.38 — large text only |
+| `soft/processing` | 6.38 | 2.86 → 4.39 — large text only |
+| `soft/failed` | 5.15 | 4.13 — large text only |
 
-This is **not** introduced by `StatusChip` — the shipped `destructive` Badge
-variant already fails identically at 4.13 in light, using the same
-`bg-*/10 text-*` recipe.
+**Still open, and fixable here.** A 10% tint of the label's own hue lifts the
+background faster than it darkens the text, so `soft` lands at ~4.4 rather than
+4.5. Darkening the token further would fix the pill but make the dot and the
+`text` label heavier than they should be. The real fix is for the tint to **stop
+being a straight alpha of the label colour** — a fixed tint plus a foreground
+measured against it, the way the pastel pairs are built. `soft/failed` is
+unchanged because `--status-failed` stays aligned with `--destructive`, and the
+`destructive` Badge variant ships the same recipe, so both move together.
 
-**What the code does meanwhile.** The failures are recorded in
-`ui/status-chip.tsx`, in `ui/6-execute.md`, and surfaced in the gallery page
-itself, with the guidance: prefer the `dot` treatment on light surfaces (its
-label stays `foreground`, so it measures 20.5:1 there) and reserve `text` / `soft`
-for FP-dark or for the `failed` / `neutral` tones.
+Until then: `dot` and `text` are safe on light; `soft` is large-text only.
 
 ---
 
-## 4. A 4px step on the radius ramp — or a decision not to have one
+## 4. Radius ramp has no 4px step
 
-**Ask:** either add a 4px step to the radius scale (`21322:119`, currently
-`xs 2 · sm 6 · md 8 · lg 10 · xl 14`) or confirm that 4px is off-system.
+The ramp is `xs 2 · sm 6 · md 8 · lg 10 · xl 14`. A prototype wanted a raw
+`rounded-[4px]` on the preset-row CTA; it uses `rounded-sm` (6px) instead, the
+nearest on-scale step, because a raw literal in a base component propagates
+downstream.
 
-**Why it came up.** A prototype used a raw `rounded-[4px]` on the preset-row CTA.
-Raw values in a base component propagate to everything downstream.
-
-**What the code does meanwhile.** The CTA uses `rounded-sm` (6px), the nearest
-on-scale step. Nothing is blocked; this is a scale question, not a defect.
+**Open question, not a blocker:** add a 4px step or confirm 4px is off-system.
+Either can be decided here.
 
 
 ---

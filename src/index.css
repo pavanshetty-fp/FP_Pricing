@@ -161,6 +161,8 @@
   --color-fp-surface-1b: var(--fp-surface-1b);
   --color-fp-card-1: var(--fp-card-1);
   --color-fp-lane: var(--fp-lane);
+  --color-fp-row-hover: var(--fp-row-hover);
+  --color-fp-row-selected: var(--fp-row-selected);
   --color-fp-surface-base: var(--fp-surface-base);
   --color-status-foreground: var(--status-foreground);
   --color-status-success: var(--status-success);
@@ -320,6 +322,17 @@
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
   --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
+  /* Table row interaction states. Their own tokens because rows previously
+     borrowed --accent, which is a CONTROL-emphasis value and reads far too
+     heavy as a row wash on a white content layer: selected measured a
+     [53,46,36] step off #ffffff and hover (accent/50) [26,23,18]. A row state
+     is a whole-width wash behind content, so it has to stay far quieter than
+     a control fill. Both values already existed in this palette — hover is
+     the subtle tint --fp-lane carries, selected is --fp-card-1 — so nothing
+     is invented; they are just named for the job now.
+     Progression off white: hover [11,10,7] -> selected [22,19,14]. */
+  --fp-row-hover: #f4f5f8;
+  --fp-row-selected: #e9ecf1;
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
   /* Overlay shadow alphas (light) — black on white reads strongly, so these
      stay close to the DS's existing 15%. Consumed by --shadow-fp-overlay. */
@@ -399,6 +412,14 @@
   --fp-surface-1b: #1b2028;
   --fp-card-1: #2a2f37; /* FP/Card 1 */
   --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
+  /* Row states, dark. Chosen to preserve exactly what shipped: selected is
+     --fp-card-1 (unchanged), and hover is the midpoint of the
+     surface-1b -> card-1 step, which is precisely what `accent/50`
+     composited to over the content layer. So dark renders identically and
+     only light changes.
+     Progression off the content layer: hover [7,7,7] -> selected [15,15,15]. */
+  --fp-row-hover: #22272f;
+  --fp-row-selected: #2a2f37;
   --fp-surface-base: #080808;
   /* Overlay shadow alphas (FP dark) — deliberately ~3x the light values. The
      bulk bar's own fill (--fp-card-1 #2a2f37) is byte-identical to the

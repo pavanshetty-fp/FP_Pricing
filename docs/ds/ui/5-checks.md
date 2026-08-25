@@ -43,3 +43,9 @@ theme can silently fail in the other. Before shipping a fill:
    before reading, or you will capture mid-transition values.
 5. If no fill can separate (the overlay case), the shadow must carry it — use
    `--shadow-fp-overlay`, and verify the separation rather than assuming it.
+6. **Do not borrow a control-emphasis token for a background wash.** `--accent`
+   is sized to fill a button or a menu row; behind a full table row it reads as
+   a block of colour. Measured, light rows on `--accent` sat `[53,46,36]` off
+   `#ffffff` when selected. A wash needs its own token — see `--fp-row-hover`
+   / `--fp-row-selected`. The tell is scale: the larger the painted area, the
+   quieter the value has to be for the same perceived weight.

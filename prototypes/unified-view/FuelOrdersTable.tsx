@@ -562,7 +562,7 @@ function Row({
             // cell then matches the rest of the row exactly instead of
             // approximating it with a hardcoded composite.
             col.key === "actions" &&
-              "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-accent/50 group-data-[state=selected]/row:before:bg-accent"
+              "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover group-data-[state=selected]/row:before:bg-fp-row-selected"
           )}
         >
           {/* `relative` lifts real content above the overlay. */}

@@ -653,7 +653,7 @@ function Row({
         // seamlessly from this row into the nested block (no grey notch).
         className={cn(
           "h-14",
-          expanded && "border-b-0 bg-accent/40 hover:bg-accent/40"
+          expanded && "border-b-0 bg-fp-row-hover hover:bg-fp-row-hover"
         )}
       >
         {columns.map((col, ci) => (

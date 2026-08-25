@@ -45,7 +45,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
       data-slot="table-footer"
       className={cn(
         // `accent`, not `muted` — see the --muted constraint in index.css.
-        "border-t bg-accent/50 font-medium [&>tr]:last:border-b-0",
+        "border-t bg-fp-row-hover font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -66,7 +66,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
         // both #cad1db, so light rendering is pixel-identical to before.
         // This also matches the cell-level hover the DS already uses
         // (`hover:bg-accent` in the editable/dropdown cells).
-        "border-b transition-colors hover:bg-accent/50 has-aria-expanded:bg-accent/50 data-[state=selected]:bg-accent",
+        "border-b transition-colors hover:bg-fp-row-hover has-aria-expanded:bg-fp-row-hover data-[state=selected]:bg-fp-row-selected",
         className
       )}
       {...props}

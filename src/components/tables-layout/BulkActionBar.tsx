@@ -123,7 +123,11 @@ export function BulkActionBar(props: BulkActionBarProps) {
   return (
     // `bulk-bar-in` slides the bar up 16px over 200ms; its default (docked)
     // state has no transform, so placement is correct without any JS timing.
-    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+    /* `bg-popover` is byte-identical to `--fp-surface-1b` in BOTH themes — the
+       content layer this bar floats over — so the old fill was the same
+       token==surface collision one level up. Card-1 steps off it, and the
+       overlay tier carries the separation the fill cannot. */
+    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
       {/* Count chip — primary filled */}
       <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
         {count} Selected

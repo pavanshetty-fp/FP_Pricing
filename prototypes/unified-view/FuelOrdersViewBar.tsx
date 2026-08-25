@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, MoreHorizontal, Plus } from "lucide-react";
+import { Check, MoreHorizontal, Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * Preset-view row.
@@ -89,6 +94,8 @@ export interface FuelOrdersViewBarProps {
   onDelete: (id: string) => void;
   /** Primary CTA — rendered at the right end of this row. */
   onCreateOrder?: () => void;
+  /** Export — sits immediately left of the CTA. */
+  onExport?: () => void;
 }
 
 const tabCls = (isActive: boolean) =>
@@ -120,6 +127,7 @@ export function FuelOrdersViewBar({
   onUpdate,
   onDelete,
   onCreateOrder,
+  onExport,
 }: FuelOrdersViewBarProps) {
   const [dialog, setDialog] = React.useState<{
     mode: "new" | "rename";
@@ -220,6 +228,12 @@ export function FuelOrdersViewBar({
           `size="xs"` — the DS step below `sm` (h-6/24px vs h-8/32px). This row
           carries text tabs, not controls, so the 32px button sat heavy on it.
 
+          `rounded-[4px]` is OFF the DS radius scale, which runs
+          xs 2px / sm 6px / md 8px / lg 10px — there is no 4px step. Asked for
+          directly, so it stands as a literal, but it is the one raw value in
+          this file. DS FOLLOW-UP: either add a 4px step in Figma (21322:119) and
+          swap this for the token, or move the button to `rounded-sm` (6px).
+
           `mr-1` is load-bearing: this row cancels the content layer's 16px inset
           with -mx-4 and re-pads at px-3 (12px) so its hairline spans the whole
           panel, which would leave the button 4px further right than the toolbar
@@ -230,9 +244,29 @@ export function FuelOrdersViewBar({
           bottom instead; 10px of margin plus the row's own 2px of bottom padding
           puts exactly 12px between the button's lower edge and the divider.
         */}
+        {/*
+          Export, moved down from the page header so both actions for this list
+          sit together. `icon-xs` (24px) matches the CTA's height, and the same
+          self-end/mb-2.5 puts them on one baseline.
+        */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Export"
+              onClick={onExport}
+              className="mb-2.5 ml-auto self-end"
+            >
+              <Upload />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Export</TooltipContent>
+        </Tooltip>
+
         <Button
           size="xs"
-          className="mr-1 ml-auto self-end mb-2.5"
+          className="mr-1 ml-1.5 self-end mb-2.5 rounded-[4px]"
           onClick={onCreateOrder}
         >
           <Plus />

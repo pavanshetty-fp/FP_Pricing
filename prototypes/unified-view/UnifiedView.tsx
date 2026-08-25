@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Users,
   Database,
-  Upload,
   SearchX,
   CalendarOff,
   Construction,
@@ -25,12 +24,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   ColumnSearchChip,
   FuelOrdersToolbar,
@@ -558,12 +552,9 @@ function FuelOrdersScreen() {
       {/* Pagination belongs to the paged table. The board view has no paged
           list, so a "Showing 1-25 of 57" footer under it would be describing
           something that isn't on screen. */}
-      <div
-        className={cn(
-          "shrink-0 border-t border-border",
-          view === "board" && "hidden"
-        )}
-      >
+      {/* No top hairline: the table's own last-row rule already closes the list,
+          so a second line here read as a stray divider. */}
+      <div className={cn("shrink-0", view === "board" && "hidden")}>
         <TablePagination
           page={page}
           pageSize={pageSize}
@@ -624,19 +615,9 @@ export function UnifiedView() {
           />
         }
         /* No Tier-2 sidebar — the content layer takes the full width. */
-        headerAction={
-          <>
-            <ThemeToggle />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Export">
-                  <Upload />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Export</TooltipContent>
-            </Tooltip>
-          </>
-        }
+        /* Export moved onto the preset-view row next to Create Order, so the
+           page header carries only the theme toggle. */
+        headerAction={<ThemeToggle />}
       >
         {navKey === "fuel-orders" ? (
           <FuelOrdersScreen />

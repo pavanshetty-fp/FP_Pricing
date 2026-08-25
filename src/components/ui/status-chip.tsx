@@ -66,26 +66,32 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  * ```
  *
  * CONTRAST — measured label-vs-fill ratios, both themes. `dot` keeps a
- * `foreground` label and is safe everywhere (14.6 dark / 20.5 light). The
- * coloured treatments are NOT safe on light surfaces:
+ * `foreground` label and is safe everywhere (14.6 dark / 20.5 light).
  *
- *   variant/tone          FP-dark      Light
- *   text/success          7.18  ok     3.30  FAILS AA
- *   text/processing       7.62  ok     3.19  FAILS AA
- *   text/failed           5.91  ok     4.83  ok
- *   text/neutral          6.44  ok     5.99  ok
- *   soft/success          6.04  ok     2.96  FAILS AA
- *   soft/processing       6.38  ok     2.86  FAILS AA
- *   soft/failed           5.15  ok     4.13  FAILS AA
- *   soft/neutral          5.45  ok     5.24  ok
+ *   variant/tone          FP-dark      Light (was -> now)
+ *   text/success          7.18  ok     3.30 FAILED -> 5.02  ok
+ *   text/processing       7.62  ok     3.19 FAILED -> 5.02  ok
+ *   text/failed           5.91  ok     4.83  ok    (unchanged)
+ *   text/neutral          6.44  ok     5.99  ok    (unchanged)
+ *   soft/success          6.04  ok     2.96 FAILED -> 4.38  ok for large only
+ *   soft/processing       6.38  ok     2.86 FAILED -> 4.39  ok for large only
+ *   soft/failed           5.15  ok     4.13 FAILED -> 4.13  still short
+ *   soft/neutral          5.45  ok     5.24  ok    (unchanged)
  *
- * KNOWN GAP — this is NOT introduced here: the light `--status-*` values
- * (#16a34a / #d97706 / #dc2626) are simply too light to carry text on #ffffff,
- * and the existing `destructive` Badge variant already ships the same failing
- * recipe (`bg-destructive/10 text-destructive` = 4.13 in light). Fixing it needs
- * darker light-mode status values decided in Figma — do not invent them here.
- * Until then: prefer `dot` on light surfaces, and reserve `text`/`soft` for
- * FP-dark or for the `failed`/`neutral` tones.
+ * FIXED for `text`: the light `--status-success` / `--status-processing` values
+ * moved one step down the ramp they already sit on (green-600 -> green-700,
+ * amber-600 -> amber-700). Green and amber are far lighter than red/pink/blue at
+ * the same step, which is why only those two needed it. See the note beside the
+ * tokens in `src/index.css`.
+ *
+ * STILL SHORT for `soft` on light. A 10% tint of the label's own hue lifts the
+ * background much faster than it darkens the text, so the pill lands at ~4.4
+ * rather than 4.5 — fine for large text, short of AA for body. `soft/failed` is
+ * unchanged at 4.13 because `--status-failed` stays aligned with `--destructive`,
+ * and the `destructive` Badge variant ships the same recipe. If `soft` needs to
+ * carry body text on light surfaces, the tint has to stop being a straight alpha
+ * of the label colour — that is a Figma decision, not something to invent here.
+ * Meanwhile `dot` and `text` are both safe on light.
  */
 export function StatusChip({
   tone = "neutral",

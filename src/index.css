@@ -334,10 +334,27 @@
   --fp-row-hover: #f4f5f8;
   --fp-row-selected: #e9ecf1;
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
-  /* Overlay shadow alphas (light) — black on white reads strongly, so these
-     stay close to the DS's existing 15%. Consumed by --shadow-fp-overlay. */
-  --status-success: #16a34a;
-  --status-processing: #d97706;
+  /* Status values, LIGHT. The palette is the Tailwind ramp — dark uses the 500
+     step, light the 600. The rule here is not "always 600" but "the lightest
+     step that clears AA (4.5:1) as TEXT on the white content layer", because
+     `StatusChip variant="text"` and `variant="soft"` both paint the label in
+     this colour. Green and amber are far lighter than red/pink/blue at the same
+     step, so only those two need 700; the rest already clear it at 600.
+     Measured on #ffffff, before -> after:
+       success     3.30 FAIL  -> 5.02 PASS   (green-600 -> green-700)
+       processing  3.19 FAIL  -> 5.02 PASS   (amber-600 -> amber-700)
+       failed      4.83 PASS  (unchanged, and stays aligned with --destructive)
+       pink        4.60 PASS  (unchanged)
+       verified    5.17 PASS  (unchanged)
+     The soft pill improves with them — the label on a 10% tint of its own hue
+     over white goes 2.96 -> 4.38 (success) and 2.86 -> 4.39 (processing) — and
+     the solid dot, which needs only the 3.0 graphics threshold, goes
+     3.30/3.19 -> 5.02.
+     DS FOLLOW-UP: not Figma-sourced. The REST token is expired (403), so these
+     are the next step on the ramp the DS already uses, not values read from
+     21275:5. Confirm there and correct if the Style Guide says otherwise. */
+  --status-success: #15803d;
+  --status-processing: #b45309;
   --status-failed: #dc2626;
   --status-pink: #db2777;
   --verified: #2563eb;
@@ -421,10 +438,6 @@
   --fp-row-hover: #22272f;
   --fp-row-selected: #2a2f37;
   --fp-surface-base: #080808;
-  /* Overlay shadow alphas (FP dark) — deliberately ~3x the light values. The
-     bulk bar's own fill (--fp-card-1 #2a2f37) is byte-identical to the
-     selected-row fill it floats over, so the shadow is the ONLY thing
-     separating them and a 10-18% black simply does not register on #2a2f37. */
   --status-success: #22c55e; /* confirmed via REST */
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
   --status-failed: #f87171; /* = destructive */

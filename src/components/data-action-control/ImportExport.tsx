@@ -32,6 +32,12 @@ export interface ImportExportProps {
   hidden: Set<ColumnKey>;
   /** Icon-only trigger with a tooltip (compact toolbars). */
   compact?: boolean;
+  /**
+   * Icon-button size when `compact`. `icon-xs` (24px) matches the preset-view
+   * row, whose text tabs make a 32px control sit heavy; `icon-sm` (32px) suits a
+   * toolbar of other 32px controls.
+   */
+  compactSize?: "icon-xs" | "icon-sm";
 }
 
 /**
@@ -39,7 +45,12 @@ export interface ImportExportProps {
  * over the visible columns (so "what you see is what you get"). Import opens a
  * file picker — a template stub here; wire real parsing per prototype.
  */
-export function ImportExport({ rows, hidden, compact = false }: ImportExportProps) {
+export function ImportExport({
+  rows,
+  hidden,
+  compact = false,
+  compactSize = "icon-sm",
+}: ImportExportProps) {
   const [importOpen, setImportOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -62,7 +73,7 @@ export function ImportExport({ rows, hidden, compact = false }: ImportExportProp
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Import / Export">
+                <Button variant="ghost" size={compactSize} aria-label="Import / Export">
                   <Upload className="size-4" />
                 </Button>
               </DropdownMenuTrigger>

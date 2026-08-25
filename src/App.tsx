@@ -72,7 +72,12 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Stack } from "@/components/typography";
 import { TablesLayout } from "@/components/tables-layout";
-import { DataActionControl, DataActionControlOpt2, ImportExport } from "@/components/data-action-control";
+import {
+  DataActionControl,
+  DataActionControlOpt2,
+  ImportExport,
+  ScopeStepper,
+} from "@/components/data-action-control";
 import { SAMPLE_ROWS } from "@/components/tables-layout/data";
 import type { ColumnKey } from "@/components/tables-layout/types";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -402,7 +407,21 @@ const SCREENS: Record<string, Screen> = {
     defaultSub: "sub-2d",
     // The finalized Data Action Control unit is the default layout for every
     // Tables page; the superseded layouts live under Archive.
-    content: <DataActionControl />,
+    content: (
+      <DataActionControl
+        scopeControl={<ScopeStepper label="Tue, Aug 25, 2026" />}
+        exportAction={
+          <TooltipProvider>
+            <ImportExport
+              rows={SAMPLE_ROWS}
+              hidden={new Set<ColumnKey>()}
+              compact
+              compactSize="icon-xs"
+            />
+          </TooltipProvider>
+        }
+      />
+    ),
   },
   "form-layout": {
     label: "Form Layout",
@@ -683,11 +702,6 @@ export function App() {
               <X />
             </Button>
           </>
-        ) : isTables ? (
-          <TooltipProvider>
-            <ThemeToggle />
-            <ImportExport rows={SAMPLE_ROWS} hidden={new Set<ColumnKey>()} compact />
-          </TooltipProvider>
         ) : (
           <ThemeToggle />
         )

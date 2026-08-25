@@ -77,7 +77,23 @@ function IconTool({
  * Filters · Group By) paired with Opt 2's preset-view tab bar and icon right
  * cluster: view switch · search-by-column · show/hide columns · Create Form.
  */
-export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] }) {
+export function DataActionControl({
+  rows = SAMPLE_ROWS,
+  scopeControl,
+  exportAction,
+}: {
+  rows?: TableRow[];
+  /**
+   * 4a — optional scope control (a date stepper, a period picker…). Leads the
+   * toolbar's RIGHT cluster so the row reads outward: what SCOPES the view ->
+   * how it is PRESENTED (view switch, column tools) -> the action that ADDS to
+   * it. It does not belong between the icon tools and the CTA, which would split
+   * the tools from a button they have nothing to do with.
+   */
+  scopeControl?: React.ReactNode;
+  /** 4c — export control, seated immediately right of the primary CTA. */
+  exportAction?: React.ReactNode;
+}) {
   const goTo = useAppNav();
   const [search, setSearch] = React.useState("");
   const [colScope, setColScope] = React.useState("status");
@@ -225,9 +241,30 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
             <Plus className="size-4" /> View
           </button>
 
-          {/* Scope is right-aligned: preset views own the left of the row. */}
-          <div className="ml-auto pl-3">
+          {/* Right end of the preset row: scope, then the primary CTA, then
+              Export. `self-end mb-2.5` opts the actions out of the row's
+              `items-center` and measures from the bottom instead — 10px margin
+              plus the row's own 2px bottom padding lands them exactly 12px above
+              the hairline.
+
+              `mr-1` on the LAST item is a 4px inset correction, not decoration:
+              this row cancels the content layer's 16px inset with `-mx-4` and
+              re-pads at `px-3` (12px) so its hairline spans the full panel.
+              Without it the trailing item sits 4px proud of every toolbar
+              control below. IF YOU REORDER THESE, THE `mr-1` MOVES TO WHICHEVER
+              IS LAST. */}
+          <div className="ml-auto flex items-center gap-1 pl-3">
             <ScopeSelector value={scope} counts={counts} onChange={onScopeChange} />
+            <Button
+              size="xs"
+              className="self-end mb-2.5 rounded-sm"
+              onClick={() => goTo("form-layout")}
+            >
+              <Plus /> Create Form
+            </Button>
+            {exportAction && (
+              <div className="self-end mb-2.5 mr-1">{exportAction}</div>
+            )}
           </div>
         </div>
 
@@ -255,8 +292,14 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
             <GroupByMenu />
           </div>
 
-          {/* RIGHT — from Opt 2: view switch │ search-by-col + show/hide │ Create Form */}
+          {/* RIGHT — scope (4a) │ view switch │ search-by-col + show/hide */}
           <div className="flex items-center gap-1">
+            {scopeControl && (
+              <>
+                {scopeControl}
+                <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+              </>
+            )}
             <IconTool label="Table view" active={view === "table"} onClick={() => setView("table")}><Table2 /></IconTool>
             <IconTool label="Board view" active={view === "board"} onClick={() => setView("board")}><KanbanSquare /></IconTool>
 
@@ -327,11 +370,6 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
               </PopoverContent>
             </Popover>
 
-            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-
-            <Button size="sm" onClick={() => goTo("form-layout")}>
-              <Plus /> Create Form
-            </Button>
           </div>
         </div>
 
@@ -394,7 +432,9 @@ export function DataActionControl({ rows = SAMPLE_ROWS }: { rows?: TableRow[] })
         </div>
 
         {view === "table" && !isEmpty && (
-          <div className="shrink-0 border-t border-border">
+          // 4d — no `border-t` here: the table's own rules already close the
+          // list, so a full-strength divider on top of them read as a stray.
+          <div className="shrink-0">
             <TablePagination page={page} pageSize={pageSize} total={sorted.length} onPageChange={setPage} onPageSizeChange={onPageSizeChange} />
           </div>
         )}

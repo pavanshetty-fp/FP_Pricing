@@ -783,6 +783,49 @@ answering a distinct question — include one only when that question is real:
   The title is always present; dropped units keep the fixed order. Never ship a
   placeholder unit (one-level breadcrumb, lone tab, dead-control toolbar).
 
+## Action placement — amends the "CTA outside the data container" decision
+
+The primary CTA and the export control sit at the **right end of the preset-view
+row**, which is *inside* the data container. That contradicts the earlier locked
+decision putting "title + primary CTA outside the data container", and the two
+should not both stand.
+
+**Resolution: the CTA is placed relative to the data it acts on, not relative to
+the container boundary.** A "Create" that adds a row to *this* list belongs with
+that list's own controls; hoisting it to the page header separates it from the
+scope (preset view, line of service, date) that determines what it will create.
+The container boundary was a proxy for "give the action prominence", and the
+preset row gives it that without the separation.
+
+The earlier decision still holds for **page-level** actions — ones that are not
+scoped by anything inside the container.
+
+Row composition, left to right:
+`Default · <saved views> · + View … [scope] [primary CTA] [export]`
+
+Three details in that row are load-bearing rather than decorative:
+
+- **4px inset correction.** The row cancels the content layer's 16px inset with
+  `-mx-4` and re-pads at `px-3` (12px) so its hairline spans the full panel.
+  Without an extra `mr-1` on the **rightmost** item, that item sits 4px proud of
+  every toolbar control below it. Measured with it: both right edges land on the
+  same x. **If you reorder the trailing items, the `mr-1` moves to whichever is
+  last.**
+- **Sizes.** CTA `xs` (24px), export `icon-xs` (24px). That row carries text
+  tabs, not controls; a 32px `sm` button sits heavy on it.
+- **`self-end mb-2.5`.** The row is `items-center`, so the actions opt out of
+  centring and measure from the bottom: 10px margin + the row's own 2px bottom
+  padding puts them exactly 12px above the hairline.
+
+**Scope controls lead the toolbar's right cluster**, so the row reads outward:
+what *scopes* the view → how it is *presented* (view switch, column tools) → the
+action that *adds* to it. A scope control placed between the icon tools and the
+CTA splits the tools from a button they have nothing to do with.
+
+*(DS FOLLOW-UP: the external `interaction-and-behavior.md` still carries the
+superseded wording of locked decision 8 — that document is not in this repo and
+must be amended to match.)*
+
 ## Molecule-hierarchy laws
 
 **H1 — Five levels, one job each.** Page (shell) · Region (`bg-fp-surface-1b`) ·

@@ -41,8 +41,10 @@ const PRODUCTS = uniq(FUEL_ORDERS.flatMap((o) => o.products.map((p) => p.name)))
  * `aviation_fuel` sorts after `Auto Trans Fluid` and `bio` before `Brake Fluid`.
  *
  * INCOMPLETE — the captures scroll only as far as "Fuels", so this is the A–F
- * slice of a longer list. Everything from G onward is still uncaptured. The
- * facet says so under the options rather than pretending the list ends here.
+ * slice of a longer list; everything from G onward is still uncaptured. That
+ * used to be stated in a note under the options, removed on request. The gap
+ * is recorded here instead: add the rest when the remaining screens are
+ * captured.
  */
 const CATEGORIES = [
   "Accessories",
@@ -75,8 +77,6 @@ interface Facet {
    * can only ever filter to one of them.
    */
   searchable?: boolean;
-  /** Shown under the options when the captured list is known to be partial. */
-  partialNote?: string;
 }
 
 const FACETS: Facet[] = [
@@ -84,14 +84,7 @@ const FACETS: Facet[] = [
   { key: "status", label: "Status", options: ["Assigned", "Unassigned"] },
   { key: "customer", label: "Customer", options: CUSTOMERS, searchable: true },
   { key: "shipTo", label: "Ship-To", options: SHIP_TOS, searchable: true },
-  {
-    key: "category",
-    label: "Category",
-    options: CATEGORIES,
-    searchable: true,
-    partialNote:
-      "Captured A–F only — categories from G onward aren\u2019t in the source screenshots yet.",
-  },
+    { key: "category", label: "Category", options: CATEGORIES, searchable: true },
   { key: "product", label: "Product", options: PRODUCTS, searchable: true },
 ];
 
@@ -200,11 +193,6 @@ export function FuelOrdersFilters() {
               {options.length === 0 && (
                 <p className="px-2 py-1 text-sm text-muted-foreground">
                   No matches.
-                </p>
-              )}
-              {facet.partialNote && !query && (
-                <p className="border-t border-border px-2 pt-2 pb-1 text-xs text-muted-foreground">
-                  {facet.partialNote}
                 </p>
               )}
             </div>

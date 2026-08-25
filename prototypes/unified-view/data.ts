@@ -296,6 +296,29 @@ export function sortFuelOrders(
 }
 
 /**
+ * Split an order's total gallons across N products.
+ *
+ * A bulk product change REPLACES an order's lines, and Qty (Gal) is the sum of
+ * those lines — so the split has to preserve the order's own total exactly or
+ * the bulk edit silently invents or destroys volume. Divides evenly and puts the
+ * remainder on the FIRST line, so `sum(splitGallons(t, n)) === t` for every t
+ * and n.
+ *
+ * ASSUMPTION, and the reason it is visible in the preview: an even split is a
+ * guess. The source app has no bulk multi-product edit to copy, and nothing on
+ * the order says how volume should divide between products. The confirm step
+ * prints the resulting gallons per line so the operator sees the guess before
+ * committing it rather than discovering it afterwards.
+ */
+export function splitGallons(total: number, n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  const out = Array.from({ length: n }, () => base);
+  out[0] += total - base * n;
+  return out;
+}
+
+/**
  * Per-column search — the fields the toolbar's "Search by column" tool offers.
  * This is the screen's analogue of the DS's `data-action-control/helpers.ts`
  * SEARCH_FIELDS, which is bound to that demo's own row shape and so cannot be

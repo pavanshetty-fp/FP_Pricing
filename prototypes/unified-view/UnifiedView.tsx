@@ -52,6 +52,7 @@ import {
   formatFullDate,
   matchesFuelOrder,
   matchesFuelOrderIn,
+  splitGallons,
   sortFuelOrders,
   startOfDay,
 } from "./data";
@@ -269,10 +270,15 @@ function FuelOrdersScreen() {
     setRows((prev) => prev.map((r) => (selectedIds.has(r.id) ? fn(r) : r)));
 
   const bulk = {
-    setProduct: (product: string) =>
-      // Collapses each order onto one line, keeping ITS OWN total — a bulk
-      // product change shouldn't silently rewrite quantities too.
-      applyToSelected((r) => ({ ...r, products: [{ name: product, gal: r.qtyGal }] })),
+    setProducts: (names: string[]) =>
+      // Replaces each order's lines, keeping ITS OWN total — a bulk product
+      // change shouldn't silently rewrite quantities too. With several products
+      // the total splits across them (see splitGallons), so the sum, and so the
+      // Qty column, is unchanged either way.
+      applyToSelected((r) => {
+        const split = splitGallons(r.qtyGal, names.length);
+        return { ...r, products: names.map((name, i) => ({ name, gal: split[i] })) };
+      }),
     setDriver: (driver: string | null) =>
       applyToSelected((r) => ({
         ...r,
@@ -522,7 +528,7 @@ function FuelOrdersScreen() {
               <FuelOrdersBulkBar
                 count={selectedIds.size}
                 onClear={() => setSelectedIds(new Set())}
-                onSetProduct={bulk.setProduct}
+                onSetProducts={bulk.setProducts}
                 onSetDriver={bulk.setDriver}
                 onSetPlannedDate={bulk.setPlannedDate}
                 onSetPlannedTime={bulk.setPlannedTime}

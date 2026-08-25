@@ -38,7 +38,8 @@ import {
   StandingLoad,
   type OrderRef,
 } from "./BulkEditDialog";
-import { DATE_FMT } from "./data";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DATE_FMT, splitGallons } from "./data";
 import type { FuelOrder } from "./types";
 
 /**
@@ -102,8 +103,11 @@ import type { FuelOrder } from "./types";
 export interface FuelOrdersBulkBarProps {
   count: number;
   onClear: () => void;
-  /** Replace every selected order's product lines with one product. */
-  onSetProduct: (product: string) => void;
+  /**
+   * Replace every selected order's product lines with these products, splitting
+   * that order's own total gallons across them.
+   */
+  onSetProducts: (products: string[]) => void;
   /** `null` clears the driver, which also makes the orders Unassigned. */
   onSetDriver: (driver: string | null) => void;
   onSetPlannedDate: (date: Date) => void;
@@ -157,6 +161,91 @@ function toOrderRef(o: FuelOrder): OrderRef {
   };
 }
 
+/**
+ * Multi-select option list — checkbox rows, with the current selection as
+ * removable chips above them.
+ *
+ * That shape is the DS's, not a preference: `02-rules/interaction-and-
+ * behavior.md` §2 says "List presentation: standardize on CHECKBOX ROWS for
+ * multi-select (chips above for what's chosen)", and "cardinality is explicit
+ * in the affordance". Products and Tags both let an order carry several values,
+ * so both use this.
+ *
+ * It replaces `CommandItem`'s `selected` prop, which renders a small trailing
+ * check. That check is correct for a single-select list — it marks the one
+ * chosen row — but on a multi-select list it reads as "this is the current
+ * value" rather than "tick as many as you like", and with nothing yet chosen
+ * the list is indistinguishable from a single-select one.
+ *
+ * The Checkbox is `pointer-events-none`: the ROW owns the click via `onSelect`,
+ * so letting the box take its own would double-toggle back to where it started.
+ */
+function MultiSelectList({
+  placeholder,
+  empty,
+  options,
+  value,
+  onChange,
+}: {
+  placeholder: string;
+  empty: string;
+  options: string[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const toggle = (o: string) =>
+    onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2.5 text-xs text-foreground"
+            >
+              {v}
+              <button
+                type="button"
+                aria-label={`Remove ${v}`}
+                onClick={() => toggle(v)}
+                className="rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <Command className="rounded-md border border-border">
+        <CommandInput placeholder={placeholder} />
+        <CommandList>
+          <CommandEmpty>{empty}</CommandEmpty>
+          <CommandGroup>
+            {options.map((o) => (
+              <CommandItem
+                key={o}
+                value={o}
+                onSelect={() => toggle(o)}
+                icon={
+                  <Checkbox
+                    checked={value.includes(o)}
+                    className="pointer-events-none"
+                    tabIndex={-1}
+                  />
+                }
+              >
+                {o}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </div>
+  );
+}
+
 /** "Shriya Test 2" -> "ST". Matches how the Driver column builds its avatar. */
 function initialsOf(name: string) {
   return name
@@ -170,7 +259,7 @@ function initialsOf(name: string) {
 export function FuelOrdersBulkBar({
   count,
   onClear,
-  onSetProduct,
+  onSetProducts,
   onSetDriver,
   onSetPlannedDate,
   onSetPlannedTime,
@@ -185,7 +274,7 @@ export function FuelOrdersBulkBar({
   const [action, setAction] = React.useState<ActionKey | null>(null);
 
   // Pending values — nothing is committed until Confirm on step 2.
-  const [product, setProduct] = React.useState<string | null>(null);
+  const [products, setProducts] = React.useState<string[]>([]);
   // `undefined` = nothing picked yet; `null` = the explicit "Unassigned" option.
   const [driver, setDriver] = React.useState<string | null | undefined>(undefined);
   const [date, setDate] = React.useState<Date | undefined>(undefined);
@@ -194,7 +283,7 @@ export function FuelOrdersBulkBar({
 
   const close = () => {
     setAction(null);
-    setProduct(null);
+    setProducts([]);
     setDriver(undefined);
     setDate(undefined);
     setTime("");
@@ -322,39 +411,42 @@ export function FuelOrdersBulkBar({
         open={action === "products"}
         onOpenChange={(o) => !o && close()}
         title="Products"
-        scopeVerb="Set the product on"
+        scopeVerb="Set the products on"
         count={count}
-        canProceed={product !== null}
-        summaryDescription="Each order's existing product lines are replaced by this one product, keeping that order's own total gallons."
-        onConfirm={() => product && onSetProduct(product)}
+        canProceed={products.length > 0}
+        summaryDescription={
+          products.length === 1
+            ? "Each order's existing product lines are replaced by this one product, keeping that order's own total gallons."
+            : `Each order's existing product lines are replaced by these ${products.length} products. That order's own total gallons are split evenly across them, so the Qty column does not change.`
+        }
+        onConfirm={() => products.length > 0 && onSetProducts(products)}
         summary={
           <BeforeAfterTable
             valueHeader="Products"
-            rows={preview(
-              (o) => o.products.map((p) => p.name).join(", "),
-              product ?? ""
-            )}
+            rows={selectedOrders.map((o) => {
+              const split = splitGallons(o.qtyGal, products.length);
+              return {
+                orderNo: o.orderNo,
+                before: o.products
+                  .map((pr) => `${pr.name} (${pr.gal.toLocaleString()} gal)`)
+                  .join(", "),
+                // Gallons are printed, not just names: the split is an
+                // assumption (see splitGallons) and this is where it is visible.
+                after: products
+                  .map((n, i) => `${n} (${split[i].toLocaleString()} gal)`)
+                  .join(", "),
+              };
+            })}
           />
         }
       >
-        <Command className="rounded-md border border-border">
-          <CommandInput placeholder="Search products..." />
-          <CommandList>
-            <CommandEmpty>No products found.</CommandEmpty>
-            <CommandGroup>
-              {productOptions.map((p) => (
-                <CommandItem
-                  key={p}
-                  value={p}
-                  selected={product === p}
-                  onSelect={() => setProduct(p)}
-                >
-                  {p}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <MultiSelectList
+          placeholder="Search products..."
+          empty="No products found."
+          options={productOptions}
+          value={products}
+          onChange={setProducts}
+        />
       </BulkEditDialog>
 
       {/* ---- Tier 2 · Driver. The list surfaces each driver's standing load,
@@ -515,30 +607,13 @@ export function FuelOrdersBulkBar({
           />
         }
       >
-        <Command className="rounded-md border border-border">
-          <CommandInput placeholder="Search tags..." />
-          <CommandList>
-            <CommandEmpty>No tags found.</CommandEmpty>
-            <CommandGroup>
-              {tagOptions.map((t) => (
-                <CommandItem
-                  key={t}
-                  value={t}
-                  selected={tags.includes(t)}
-                  onSelect={() =>
-                    setTags((prev) =>
-                      prev.includes(t)
-                        ? prev.filter((x) => x !== t)
-                        : [...prev, t]
-                    )
-                  }
-                >
-                  {t}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <MultiSelectList
+          placeholder="Search tags..."
+          empty="No tags found."
+          options={tagOptions}
+          value={tags}
+          onChange={setTags}
+        />
       </BulkEditDialog>
     </>
   );

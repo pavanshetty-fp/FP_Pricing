@@ -2,15 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "fp-ds",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev"
-      ],
-      "port": 5173
-    },
-    {
       "name": "unified-view",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -18,6 +9,15 @@
         "dev:unified"
       ],
       "port": 4300
+    },
+    {
+      "name": "fp-ds",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173
     },
     {
       "name": "unified-view-built",

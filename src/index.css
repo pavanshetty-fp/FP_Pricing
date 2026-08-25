@@ -204,37 +204,37 @@
      off the app background with a soft drop shadow (black 15%). */
   --shadow-fp-surface: 0 4px 4px 0 rgb(0 0 0 / 0.15);
   /* Overlay elevation — the tier ABOVE the content layer, for elements that
-     float over their own content (the bulk-action bar today; dialogs and
-     popovers should follow).
+     float over their own content (the bulk-action bar; dialogs and popovers
+     should follow).
 
-     GEOMETRY IS FIGMA-SOURCED. Read from the FP DS 2026 library's `shadow/xl`
-     effect style: `0 8px 10px -6px` + `0 20px 25px -5px`, two-layer
-     umbra/penumbra. (The library ships shadow/sm, /lg and /xl — there is no
-     shadow/md in FP DS 2026 at all, so the §4b reference to `--shadow-md` names
-     a token this DS does not have.)
+     FULLY FIGMA-SOURCED. This is the FP DS 2026 library's `shadow/xl` effect
+     style verbatim: `0 8px 10px -6px` + `0 20px 25px -5px`, black @10%, the same
+     in both themes. (The library ships shadow/sm, /lg and /xl — there is no
+     shadow/md, so any rule naming `--shadow-md` names a token this DS does not
+     have.)
 
-     ALPHAS: light is Figma-true, dark is not, and the asymmetry is measured.
-     Every shadow style in the library is black at 10% in both columns — the
-     scale was designed against white. Over this bar's real backdrop (selected
-     rows) the two themes are not the same problem:
+     WHY THERE ARE NO PER-THEME ALPHAS ANY MORE. An earlier revision escalated
+     the dark alpha to 55% because 10% black over the bar's real backdrop
+     (selected rows, `--accent` #2a2f37) separates by only [4,5,5]. That was
+     fighting the medium: black on a dark surface has almost no range, so the
+     shadow can never be the separator there.
 
-       FP-dark   fill delta [0,0,0]   — `--fp-card-1` IS `--accent` (#2a2f37),
-                                        so the fill cannot separate at all and
-                                        the shadow carries it alone. At Figma's
-                                        10% that is [4,5,5]: invisible. 55%
-                                        gives [23,26,30].
-       Light     fill delta [31,27,22] — `--fp-card-1` #e9ecf1 sits clear of
-                                        `--accent` #cad1db, so the fill already
-                                        separates and the shadow only reinforces
-                                        it. Figma's 10% gives [20,21,22], which
-                                        is enough; no deviation needed.
+     ON DARK, ELEVATION IS A LIGHTER RIM — NOT A DARKER SHADOW. Measured against
+     `--accent`, per theme:
+         rim --fp-outline-1   dark [12,13,14]   light [24,20,15]
+         rim --fp-outline-2   dark [45,40,32]   light  [0,0,0]  <-- collides
+         fill --fp-card-1     dark  [0,0,0]     light [31,27,22]
+     So the rim token has to differ by theme — `--fp-outline-2` is byte-identical
+     to `--accent` in light. Overlay-tier elements therefore carry
+     `border-fp-outline-1 dark:border-fp-outline-2`, which gives BOTH themes a
+     working rim, and the shadow returns to being ambient depth at Figma's 10%.
 
-     DS FOLLOW-UP: the library needs dark-column shadow alphas. Until it has
-     them, --fp-shadow-* below is the one place that divergence lives — do not
-     scatter per-theme shadow literals elsewhere. */
+     DS FOLLOW-UP (Figma): the library has no overlay-rim token. One variable
+     would replace the `dark:` variant above. The shadow scale itself needs no
+     change — it was correct for light all along. */
   --shadow-fp-overlay:
-    0 8px 10px -6px var(--fp-shadow-penumbra),
-    0 20px 25px -5px var(--fp-shadow-umbra);
+    0 8px 10px -6px rgb(0 0 0 / 0.1),
+    0 20px 25px -5px rgb(0 0 0 / 0.1);
 }
 
 /*
@@ -323,9 +323,6 @@
   --fp-surface-base: #efefeb; /* Surface Base (light) — matches full background, 28681:807 */
   /* Overlay shadow alphas (light) — black on white reads strongly, so these
      stay close to the DS's existing 15%. Consumed by --shadow-fp-overlay. */
-  /* Figma-true: the library's shadow scale is black @10% throughout. */
-  --fp-shadow-umbra: rgb(0 0 0 / 0.1);
-  --fp-shadow-penumbra: rgb(0 0 0 / 0.1);
   --status-success: #16a34a;
   --status-processing: #d97706;
   --status-failed: #dc2626;
@@ -407,10 +404,6 @@
      bulk bar's own fill (--fp-card-1 #2a2f37) is byte-identical to the
      selected-row fill it floats over, so the shadow is the ONLY thing
      separating them and a 10-18% black simply does not register on #2a2f37. */
-  /* Escalated: Figma has no dark-column shadow alphas, and its 10% measures
-     [4,5,5] over this bar's backdrop — invisible. See --shadow-fp-overlay. */
-  --fp-shadow-umbra: rgb(0 0 0 / 0.55);
-  --fp-shadow-penumbra: rgb(0 0 0 / 0.35);
   --status-success: #22c55e; /* confirmed via REST */
   --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
   --status-failed: #f87171; /* = destructive */

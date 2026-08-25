@@ -48,3 +48,44 @@ mistakes, and Checks derive from these.
 - **Two modes**, FP default. Ship both Light (`:root`) and FP (`.dark`); the toggle
   flips `.dark` and persists to `fp-theme`. Translate a foreign/light mock to these
   tokens — never copy a literal palette (translate, don't trace).
+
+---
+
+*Folded in from `02-rules/interaction-and-behavior.md` — see the provenance note in `interactions/2-rules.md`.*
+
+## 9. Visual restraint (color governance)
+
+Promoted from the smoke-test feedback. The DS provides colored chips, badges,
+ribbons and accents, but **color usage is governed, not free**.
+
+- **Neutrals by default, everywhere.** Until a Layer 2 usage rule binds a
+  color to a semantic role, every chip, badge, status, tag, and indicator
+  renders neutral (surface = `--color-muted` / `--color-secondary`,
+  foreground = `--color-foreground` or `--color-muted-foreground`).
+- **Brand orange (`--color-brand` = #FA6400) is reserved for**: primary CTA
+  fill, active-tab indicator, brand mark, and intentional brand-led moments
+  (e.g. the FP logo tile). Not used for hover surfaces, selected-row tints,
+  inline links, or generic interactive states.
+- **Destructive color (`--color-destructive`) appears only on a destructive
+  action's label text or icon glyph** — never as a button fill, never as a
+  row tint. The Edit/Share/**Delete** row-action menu is the canonical
+  example: only "Delete"'s label is red.
+  - **Carve-out — the final confirm in a guarded destructive flow.** Where a
+    destructive action has already been guarded (a second, armed press, or an
+    `AlertDialog`), that last control MAY take the destructive fill: at that
+    point the fill is the warning, and the user has passed a deliberate step to
+    reach it. This is the only fill exception; menu rows and row actions keep
+    label-only. *(Amended when this rule was folded into the repo — the shipped
+    `BulkEditDialog` armed confirm relies on it.)*
+- **Status semantics** (Success/Warning/Error etc.) exist as variants in the
+  DS components, but render **neutral** in generated output until a usage
+  rule defines which records get which color and why. This applies to:
+  order statuses (Unassigned · Active · Blocked · Cancelled · etc.), tag
+  chips (Gold/Silver/Platinum Customer, High/Less Priority, etc.), pricing
+  flags (P/M), and severity banners (per §3 diagnostic disclosure — those
+  WERE earned: warning/error/info already have a usage rule).
+- **References do not inform color usage.** The reference screens are
+  saturated with category-coded colors that have not been governed. Mining
+  references for *structure* and *behavior* is encouraged; copying their
+  color choices is not.
+- When in doubt: **render neutral, flag a usage-rule gap.** Do not invent.

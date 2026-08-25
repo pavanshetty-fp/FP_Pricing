@@ -208,6 +208,47 @@ mistakes, and Checks derive from these.
   flips `.dark` and persists to `fp-theme`. Translate a foreign/light mock to these
   tokens — never copy a literal palette (translate, don't trace).
 
+---
+
+*Folded in from `02-rules/interaction-and-behavior.md` — see the provenance note in `interactions/2-rules.md`.*
+
+## 9. Visual restraint (color governance)
+
+Promoted from the smoke-test feedback. The DS provides colored chips, badges,
+ribbons and accents, but **color usage is governed, not free**.
+
+- **Neutrals by default, everywhere.** Until a Layer 2 usage rule binds a
+  color to a semantic role, every chip, badge, status, tag, and indicator
+  renders neutral (surface = `--color-muted` / `--color-secondary`,
+  foreground = `--color-foreground` or `--color-muted-foreground`).
+- **Brand orange (`--color-brand` = #FA6400) is reserved for**: primary CTA
+  fill, active-tab indicator, brand mark, and intentional brand-led moments
+  (e.g. the FP logo tile). Not used for hover surfaces, selected-row tints,
+  inline links, or generic interactive states.
+- **Destructive color (`--color-destructive`) appears only on a destructive
+  action's label text or icon glyph** — never as a button fill, never as a
+  row tint. The Edit/Share/**Delete** row-action menu is the canonical
+  example: only "Delete"'s label is red.
+  - **Carve-out — the final confirm in a guarded destructive flow.** Where a
+    destructive action has already been guarded (a second, armed press, or an
+    `AlertDialog`), that last control MAY take the destructive fill: at that
+    point the fill is the warning, and the user has passed a deliberate step to
+    reach it. This is the only fill exception; menu rows and row actions keep
+    label-only. *(Amended when this rule was folded into the repo — the shipped
+    `BulkEditDialog` armed confirm relies on it.)*
+- **Status semantics** (Success/Warning/Error etc.) exist as variants in the
+  DS components, but render **neutral** in generated output until a usage
+  rule defines which records get which color and why. This applies to:
+  order statuses (Unassigned · Active · Blocked · Cancelled · etc.), tag
+  chips (Gold/Silver/Platinum Customer, High/Less Priority, etc.), pricing
+  flags (P/M), and severity banners (per §3 diagnostic disclosure — those
+  WERE earned: warning/error/info already have a usage rule).
+- **References do not inform color usage.** The reference screens are
+  saturated with category-coded colors that have not been governed. Mining
+  references for *structure* and *behavior* is encouraged; copying their
+  color choices is not.
+- When in doubt: **render neutral, flag a usage-rule gap.** Do not invent.
+
 
 ---
 
@@ -278,8 +319,12 @@ fine in Light can composite to a literal `[0,0,0]` in FP-dark:
 | `--muted` | `--fp-surface-1b`, `--popover` | FP-dark, both `#1b2028` |
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
+| `--fp-outline-2` | `--accent` | Light, both `#cad1db` |
 
-This family has now caused four separate defects. Before shipping a fill:
+This family has now caught five token pairs. Note that the colliding pair
+differs BY THEME — `--accent`/`--fp-card-1` collide only in dark,
+`--fp-outline-2`/`--accent` only in light — so a single token chosen for one
+theme can silently fail in the other. Before shipping a fill:
 
 1. Identify the **actual** surface behind the element — not the one you assume.
    For an overlay, that is whatever it floats over (for the bulk bar, selected
@@ -875,6 +920,87 @@ header became canonical. Retained for context, not enforced.
   superseded by the compact header (breadcrumb-as-title, no divider) + the Tier-0
   bar. (The "no per-screen duplicate top-bar" intent is retained in the new L1.)
 
+---
+
+*Folded in from `02-rules/interaction-and-behavior.md` — see the provenance note in `interactions/2-rules.md`.*
+
+## 10. Page layout — title outside, container inside
+
+Promoted from the smoke-test feedback (R1, R2, R3).
+
+- **Every list/data page is laid out as: page header strip OUTSIDE the data
+  container, content INSIDE one rounded bordered container.**
+- The **page header strip** (above the container) carries:
+  - left: page title (and optional breadcrumb)
+  - right: the **single primary CTA for the page**, if any (e.g.
+    `+ Create Order`, `+ Create Tax`) + utility icon buttons
+- The **data container** (`--fp-surface-1b`, `rounded-md`, **no outer border** —
+  it lifts on `--shadow-fp-surface`)
+  holds, top-to-bottom:
+  - section tabs (when present)
+  - the standard toolbar (per §4)
+  - the table body
+  - the pagination row
+- **SUPERSEDED — the primary CTA sits with the data it acts on.** This rule
+  previously read "tables do not carry a redundant create CTA inside the
+  toolbar; one primary CTA per page, at the page header." It is replaced by
+  *Action placement* in `ux/2-rules.md`: a CTA scoped by something inside the
+  container (preset view, line of service, date) belongs at the right end of
+  the preset-view row, not hoisted to the page header where it is separated
+  from the scope that determines what it creates. The page-header placement
+  still holds for genuinely **page-level** actions. There is still exactly one
+  primary CTA per view.
+- **Pagination is mandatory** at the bottom of any paginated list, in three
+  slots: `Showing N–N of N` (left) · page numbers `‹ 1 2 3 … N ›` (center) ·
+  page-size selector `25 ▾` (right).
+- Any editable region declares `mode` (static|dynamic) explicitly.
+- Any aggregated value has an accessible breakdown affordance.
+- Create/edit of non-trivial records uses a full-page form, not a modal.
+- Every mutating action yields a toast + visible state propagation.
+- Multi-select uses chips+checkbox picker; single-select uses Replace semantics.
+- Lists expose: search, filters (with count badge), views, create CTA, pagination.
+- Destructive or bulk-overwrite actions require an explicit confirmation step.
+- Bulk multi-value edits offer an Add-vs-Replace choice.
+- **State transitions are surface-agnostic** — board drag, detail dropdown,
+  and bulk action share one state machine.
+- **Detail / read views use Side Sheet or Modal**, never a full page.
+- **Row action buttons that reflect a lifecycle state** must pair with a kebab
+  that exposes the allowed transitions.
+- **Outreach uses a message-composer dialog** with prefilled subject + body
+  templated from the record.
+- **Lists may expose an alternate-view toggle** (Board/Table, Table/Map);
+  toolbar state is shared across views.
+- **Bulk action bars use fast-path-inline + More-menu** structure when
+  options exceed ~5; the More menu splits "Set or change" vs "Apply an
+  action"; inapplicable options are visible-but-disabled.
+- **Bulk mutations that change a computed value get a per-row before/after
+  preview** before commit; pure replace-all may skip the preview.
+- **Two-pane workspaces** declare per-pane drag/fullscreen/close controls.
+- **Bulk-attribute editors pick a tier** by attribute cardinality (scalar /
+  single-value-per-row / grouped multi-value); tier-3 dialogs always carry
+  mode tabs + per-group scope label.
+- **Diagnostic disclosure is non-blocking by default**: severity-coded banner
+  with counts + Show Details expand-to-table; Confirm stays enabled. Block
+  only for hard-safety / destructive cases.
+- **Severity vocabulary is consistent**: amber=warning, red=error,
+  yellow/neutral=info.
+- **Color governance (§9)**: chips/badges/statuses render neutral until a
+  Layer 2 usage rule binds a color to a meaning. Destructive color appears
+  only on action labels, never as fills.
+- **Brand orange is reserved** for primary CTA fills, active-tab indicator,
+  and brand mark. Not used for hover, selected-row, or generic interactive
+  states.
+- **Page layout (§10)**: page title + single primary CTA live OUTSIDE the
+  data container; tabs + toolbar + table + pagination live INSIDE one
+  rounded bordered container.
+- **Pagination is mandatory** at the bottom of any paginated list — three
+  slots: showing-count · page numbers · page-size selector.
+- **Rail and contextual sidebar use distinct surface tokens** (`--color-rail`
+  vs `--color-sidebar`).
+- **Bulk action bar** is a compact neutral floating pill — not a full
+  toolbar. Equal-weight icon+label actions, no primary fills, destructive
+  as small icon only.
+
 
 ---
 
@@ -1088,6 +1214,258 @@ source** — Do's/Don'ts, Common mistakes, and Checks derive from these.
 
 Build recipes for all of the above: [`6-execute.md`](6-execute.md).
 
+---
+
+# Interaction & behaviour — folded in from `02-rules/`
+
+*Provenance: this ruleset previously lived at `02-rules/interaction-and-behavior.md`,
+outside the repo, in two copies that had already drifted from each other. It was
+the document handoffs cited as authoritative, which is why its stale rules kept
+being carried forward — nobody edits an archived file. Folded in here so it is
+versioned, regenerated into `apply-design-system.md`, and reviewed alongside the
+code that implements it.*
+
+*Corrections applied during the fold, each one deliberate rather than silent:*
+
+1. *Bulk-action bar surface/radius/shadow — was `--color-popover` / `--color-card`,
+   `--radius-md`, `--shadow-md`. `--popover` is byte-identical to
+   `--fp-surface-1b` in both themes, and **FP DS 2026 has no `shadow/md` at
+   all**. Now `--fp-card-1`, `rounded-lg`, `--shadow-fp-overlay`.*
+2. *Data-container surface — was `--color-card`; the content layer is
+   `--fp-surface-1b` with no outer border.*
+3. *Primary-CTA placement — the "never inside the toolbar" rule is marked
+   superseded and points at its replacement.*
+4. *Destructive colour — a carve-out added for the final confirm in a guarded
+   flow, which the shipped `BulkEditDialog` relies on.*
+
+## 1. Editing model
+
+- **One editable-table primitive**, distinguished by a `mode` prop:
+  **static (read-only)** ↔ **dynamic (editable)**. Covers read-only and editable
+  data tables, tier tables, and pickers. Cell editors: text,
+  number(+unit), single-select, searchable-select, chip-multiselect.
+- **Inline cell editing**: a cell expands in place (chevron) to its editor; edits
+  save inline. Use for quick edits within a data table.
+- **Full-page form** (not a modal) for create/edit of any non-trivial record.
+  Header (title + context + close), stacked sections, **sticky footer** with the
+  primary save ("Confirm and Save" / "Update and Save"). Modals are reserved for
+  short, single-purpose tasks.
+
+## 2. Selection & pickers (standardize ONE)
+
+- Canonical picker: **empty-state CTA → search + option list → selected items
+  become removable chips** ("N Added") → collapses to chips + "Add More".
+- List presentation: standardize on **checkbox rows** for multi-select (chips
+  above for what's chosen). (Flows showed both checkbox and per-row "+ Add";
+  pick checkbox as the default.)
+- **Cardinality is explicit in the affordance:** multi → "Add"; single → "Replace".
+- **Type/mode toggle** (radio-card group) may **swap the form body**: e.g.
+  scalar input ↔ tiered/ranged editable table.
+
+## 3. Disclosure & feedback
+
+- **Progressive disclosure**: start minimal (a selector or CTA); reveal detail on
+  action. Don't render empty complex UI up front.
+- **Save → toast → recompute → propagate.** On save: show a success toast,
+  recompute derived values (effective price, sums, totals), and update related
+  state. Observed propagations: scope badge **Customer → ShipTo**, pending
+  **counter decrement**, **new row prepended** to its list (recency ordering).
+- **Breakdown popover**: any aggregated/rolled-up value is clickable → a popover
+  with its itemized breakdown. Covers calculation rollups (→ Grand Total),
+  interval/tier tables, and **count → member list**.
+- **The breakdown idiom extends to diagnostic disclosure**: a summary
+  banner with severity-coded counts ("2 over capacity · 2 incompatible")
+  expands via **Show Details** into a per-row issue table. Same shape, applied
+  to validation problems rather than computed totals. Severity vocabulary:
+  **amber = warning** (soft limit), **red = error** (hard mismatch),
+  **yellow/neutral = info** (missing data). Diagnostics are **non-blocking**
+  by default — Confirm stays enabled and the user proceeds on judgment;
+  block only for hard-safety or destructive operations.
+
+## 4. Tables (list & data)
+
+- **Standard toolbar**: search · column filter · **Filters** (with active-count
+  badge) · Group By · **saved Views** · primary **create CTA**. Views capture
+  table state (filters/group/columns) under a name; the Views control splits
+  **Preset** vs **Saved**, is searchable + reorderable, tracks an **Unsaved
+  Changes** dirty state (Discard / Add New), and saving a view emits a toast.
+- **Cell vocabulary**: value-only · **value+meta** ("$1.05 / 2 margins";
+  "Volume Based / N intervals") · link (breakdown or navigate) · **count→popover**
+  · status (Active/Inactive) · scope badge · trailing settings gear.
+- **Row expansion / inline edit** via chevron.
+- **Grouping**: a single-select Group By (e.g. Customer / Product / Index) turns
+  the table into collapsible **group-header rows** with adaptive member-count
+  summaries; expanding reveals the nested rows. The active dimension shows as a
+  removable chip. Selection/inline-edit behave identically in grouped mode — the
+  table is **one component with modes** (flat · grouped · selectable · editable),
+  not separate components.
+- **Bulk + context bar** (sticky bottom): select-all, count of filtered subset,
+  clear-filters, bulk actions.
+- **Faceted filtering**: a two-pane panel (facet list with per-facet counts +
+  options) with Clear all / Apply. On apply → toast, a count badge on the Filters
+  button, and an **applied-filter chip bar** (removable chips + "N More" overflow)
+  below the toolbar. Hierarchical facets (e.g. Customer→ShipTos) use a **tree
+  multi-select with tristate parent checkboxes**.
+- **Empty-state rows**: NA cells + a per-row CTA (e.g. "Setup Pricing").
+- **Pagination** footer.
+
+## 4b. Bulk operations
+
+- **Row multi-select → sticky bulk-edit bar**: "N Selected" + per-attribute edit
+  actions. Each action opens the **same editor primitive** used for single edits
+  (searchable-select for single-value attributes; chip picker for multi-value).
+- **Bar shape**: a small set of **fast-path actions inline** (the most-common
+  operations for that record type) + a **`More ▾`** menu for the long tail.
+  More is organised into two labelled groups: **"Set or change"** (attribute
+  mutations, two-column layout for many attributes) and **"Apply an action"**
+  (compound/state actions like Duplicate, Verify). Inapplicable options are
+  **visible-but-disabled**, not hidden.
+- A trailing **destructive (trash)** affordance + **dismiss (✕)** sit separate
+  from the per-attribute mutations.
+- **Three tiers of bulk-attribute editor** — pick by the attribute's cardinality:
+  - *Tier 1 — scalar* (same value applies to all): single input dialog
+    (e.g. Extend Planned Time). Optional two-step preview (see below).
+  - *Tier 2 — single-value-per-row* (pick one value, applies to each row):
+    searchable-select dialog (e.g. Driver, Truck).
+  - *Tier 3 — multi-value-per-row* (each row carries a collection):
+    a richer dialog with **mode tabs** (`Edit per <group>` vs `Replace all
+    <attribute>`), **grouped sub-editors** (one mini-editor per existing
+    value, scoped `N parents · N children`), and **inline diagnostic banners**
+    (per §3) for per-row constraint problems.
+- **Add vs Replace** is the underlying semantic for any non-scalar bulk edit
+  — expressed as **radio cards** when each mode is light, or as **mode tabs**
+  when each mode owns a non-trivial body. Same semantic, two layouts.
+- **Destructive bulk replace requires confirmation** ("N … will be replaced by
+  X" → Cancel / Confirm).
+- **Bulk mutations that change a computed value across rows take a two-step
+  shape**: (1) input dialog (header leads with scope + count), (2) **per-row
+  before/after preview** with `Go back` / `Confirm`, (3) commit. Pure
+  replace-all mutations (where a preview adds no information) stay
+  single-step.
+- **Apply → toast → recompute across every affected row.**
+- One sticky-bottom bar component, two modes: **bulk-edit** (acting on a
+  selection) and **context** (framing a filtered subset).
+- **Visual treatment** (smoke-test corrected): the bar is a **compact
+  neutral floating pill** — not a full-width toolbar.
+  - Surface: `--fp-card-1`, 1px `--color-border`, `rounded-lg`,
+    `--shadow-fp-overlay`. Centered horizontally above the pane
+    footer, ~720px wide max (content-sized).
+  - Left: a small **count chip** with an inline dismiss (`N Selected ✕`),
+    visually a single token.
+  - Actions: **icon + label, all equal visual weight**, neutral surface.
+    No primary fills inside the bar. No ghost-vs-solid hierarchy. Apply
+    spacing-2 between actions.
+  - Destructive: a small icon glyph in `--color-destructive` — no fill, no
+    tinted background.
+  - `More ▾`: the same neutral icon+label as the others, last in the row.
+
+## 5. Navigation & shell
+
+- **Management hub**: back-nav header + **entity-type tabs**, each tab = a list +
+  create/edit form for one reference entity.
+- **Tabbed section pages** with right-aligned section links.
+- App shell is always the **DS sidebar shell** (52px rail + 256px sidebar +
+  content), never the legacy top-nav seen in the references.
+- **Two-pane workspace** is a recognised page archetype for operations where
+  two surfaces must be cross-referenced live (orders ↔ shift planner; pricing
+  ↔ tank levels). Panes stack with a resizable divider and each carries its
+  own drag-handle / fullscreen / close controls — independently dockable.
+
+## 6. Status & lifecycle
+
+- **Labelled toggle row** (label + helper + switch) controls active/inactive;
+  reflected as a status value in lists. List fields are a **projection of form
+  fields** (status toggle ↔ status column; picker count ↔ count cell).
+- Records carry lifecycle states (e.g. shift **COMPLETED**) shown as a status
+  control, sometimes with a dropdown to change state.
+
+## 7. Banners & notes
+
+- **Action/reminder banner**: pending-work summary + CTA ("49 pending · Show All").
+- **Dismissible info note**: contextual, closeable.
+
+## 8. Board / detail / outreach archetypes
+
+### 8.1 Status Kanban board
+- Lanes = states of one **status machine**; each lane has a colored header and
+  a count badge.
+- **Drag a card across lanes → transitions the record's status.** The same
+  transition fires from anywhere else that can change status (see §8.5).
+- Each lane can carry its own footer **`+ Create`** for in-place record
+  creation in that initial state.
+- **Card-level status decoration**: optional full-width ribbon at the bottom of
+  a card for cross-cutting flags (Urgent, Overdue, At Risk).
+- Page-level actions (e.g. Accounting Sync) live in the page header, not on
+  cards or lanes.
+
+### 8.2 Entity card
+A reusable card molecule for a record summary:
+header (id + small color-coded **stage badge**) → body of **label / value**
+pairs → optional ribbon. The same card is used in Kanban lanes, related-record
+sections, and search results.
+
+### 8.3 Alternate-view toggle on a list
+A segmented control next to the standard toolbar that flips the same dataset
+between representations: **Board ⇄ Table**, **Table ⇄ Map**. The toolbar
+(search, filters, views, date range) is shared across views; only the body
+rendering changes. Group-by/saved-views still apply where they make sense for
+the active view.
+
+### 8.4 Record-detail overlay (read view with light inline edits)
+Opens from a card or row click. **Default container = Side Sheet** for deep
+detail next to the list, or **Modal** for peek. Structure:
+- Header: title + record id + utility actions (Download, Share) + close.
+- Collapsible **accordion sections** (Order Details · Delivery Partner · …).
+- Inside a section, a **property grid** (§8.6) on top, **sub-entity tables**
+  below, and a **document gallery** (§8.7) when relevant.
+
+This is a **detail / read view**, distinct from the **full-page form** rule
+for non-trivial create/edit (§1). Read-with-light-edit → overlay; substantive
+create/edit → full page.
+
+### 8.5 One state machine, many surfaces
+A record's status transitions are defined once and exposed through *every*
+surface that touches the record — board drag, status dropdown in the detail
+overlay, bulk-edit on the list. Same allowed transitions, same side effects
+(toast + propagation, §3). Surfaces never invent their own transitions.
+
+### 8.6 Property grid with mixed-affordance rows
+For detail views, use **one property-grid molecule** with row variants — *not*
+seven separate field components:
+- static value
+- inline-edit (pencil) — opens a small inline editor on click
+- link (opens a related view or external resource)
+- dropdown (drives a state machine or enum)
+- value-with-helper-note (small caption clarifies meaning/visibility)
+
+Two-column layout on desktop; collapses to one column on narrow widths.
+
+### 8.7 Attachment / document gallery
+For records that carry files: thumbnail cards with name + kebab (preview,
+download, rename, delete), an **Upload** affordance, and horizontal **carousel
+arrows** for overflow. Same molecule for images, PDFs, contracts.
+
+### 8.8 Row action with lifecycle state
+A data-table row action can **double as a state indicator**: the button label
+*is* the current state (`Invite` → `Invite Sent` → `Invite Re-sent`), and the
+**kebab next to it exposes transitions** (Re-send · Acknowledge · Submit ·
+Cancel). Generalizes far beyond invites — any per-row workflow with multiple
+transitions follows this shape.
+
+### 8.9 Message-composer dialog (outreach)
+For sending a templated message about a record (invite a partner, escalate to
+a customer, notify a driver):
+- Fields: **To · Subject · Personal Message**, all required.
+- Subject + Body are **prefilled from a template** that references the record
+  (`"<Broker> | Delivery Order Request #<OrderNumber>"`).
+- Sends to a real channel (email/SMS/in-app) — on success: toast +
+  state-propagation on the originating row (§8.8).
+
+Same composer shape applies regardless of the channel; the To field's input
+type adapts (email vs phone vs user-picker).
+
+---
+
 
 ---
 
@@ -1203,6 +1581,114 @@ hover/open paint `bg-accent` across the entire cell, no inset outline. (Visual s
 - Reads right after a click see pre-render state; re-read after React flushes.
 
 (Full verify loop: [`../00-meta/workflow.md`](../00-meta/workflow.md).)
+
+
+---
+
+# Figma asks — open gaps in the FP DS 2026 library
+
+Each entry is a **precise** ask: what to add, why the code cannot source it
+today, and what the code does in the meantime. The rule is *tokens, never raw
+hex*, so anything on this list is a place the code is currently carrying a value
+the library does not hold. Keep the list short by closing items, not by dropping
+them.
+
+File: `PxzKUl6emRr8QQ5Nb0vlwT` (FP DS 2026)
+
+---
+
+## 1. An overlay-tier rim token
+
+**Ask:** one colour variable for the rim of elements that float *over their own
+content* — the bulk-action bar today, dialogs and popovers next. It needs a value
+per theme, and the two are not the same token.
+
+**Why the code cannot source it.** There is no overlay rim in the library, and no
+single existing token works in both themes. Measured against the bar's real
+backdrop (selected rows, `--accent`):
+
+| rim candidate | FP-dark | Light |
+|---|---|---|
+| `--fp-outline-1` | `[12,13,14]` | `[24,20,15]` |
+| `--fp-outline-2` | `[45,40,32]` | **`[0,0,0]`** — identical to `--accent` |
+| `--border` | `[12,13,14]` | **`[3,3,3]`** — near-invisible |
+
+`--fp-outline-2` is byte-identical to `--accent` in the light column, so the
+strongest dark rim is the weakest possible light one.
+
+**What the code does meanwhile.** `border-fp-outline-1 dark:border-fp-outline-2`
+— a `dark:` variant over two real tokens. One library variable would replace it.
+
+**Not an ask: the shadow scale.** An earlier revision escalated the dark shadow
+alpha to 55% because the library's 10% separates by only `[4,5,5]` on a dark
+surface. That was the wrong fix. Black on a dark surface has almost no range, so
+a shadow can never be the separator there — **on dark, elevation is a lighter rim;
+the shadow is ambient depth.** With the rim above carrying separation,
+`--shadow-fp-overlay` is now the library's `shadow/xl` verbatim (black @10%, both
+themes). The shadow scale was correct for light all along and needs no change.
+
+*(Related: the library ships `shadow/sm`, `/lg`, `/xl` and **no `shadow/md`** — any
+rule naming `--shadow-md` names a token this DS does not have.)*
+
+---
+
+## 2. Pastel badge hues
+
+**Ask:** a pastel palette — fill + a foreground dark enough to carry text on it —
+starting with the blue and amber pairs already in use, and ideally a green and a
+rose so the set is usable beyond two categories.
+
+**Why the code cannot source it.** The library was searched for "pastel"; it has
+no pastel variants. The badge palette is all solid or soft-tint.
+
+**What the code does meanwhile.** `--pastel-blue` / `--pastel-amber` (+
+`-foreground`) are carried in `src/index.css` under a `KNOWN GAP` marker. They
+came from a prototype where a designer picked them, so they have provenance, but
+they are not library values. No third or fourth pastel has been added precisely
+because inventing more hexes would deepen the gap. Both current pairs measure
+AAA (7.65:1, 7.09:1).
+
+---
+
+## 3. Light-column status colours that can carry text
+
+**Ask:** darker light-mode values for `--status-success`, `--status-processing`
+and `--status-failed`, or a paired `-foreground` per status.
+
+**Why this is a real defect, not a preference.** The DS requires contrast ≥ WCAG
+AA in both themes. The current light values cannot meet it when the status colour
+is used as *text*:
+
+| treatment | FP-dark | Light |
+|---|---|---|
+| `StatusChip` text/success | 7.18 ✓ | **3.30 ✗** |
+| `StatusChip` text/processing | 7.62 ✓ | **3.19 ✗** |
+| `StatusChip` soft/success | 6.04 ✓ | **2.96 ✗** |
+| `StatusChip` soft/processing | 6.38 ✓ | **2.86 ✗** |
+| `StatusChip` soft/failed | 5.15 ✓ | **4.13 ✗** |
+
+This is **not** introduced by `StatusChip` — the shipped `destructive` Badge
+variant already fails identically at 4.13 in light, using the same
+`bg-*/10 text-*` recipe.
+
+**What the code does meanwhile.** The failures are recorded in
+`ui/status-chip.tsx`, in `ui/6-execute.md`, and surfaced in the gallery page
+itself, with the guidance: prefer the `dot` treatment on light surfaces (its
+label stays `foreground`, so it measures 20.5:1 there) and reserve `text` / `soft`
+for FP-dark or for the `failed` / `neutral` tones.
+
+---
+
+## 4. A 4px step on the radius ramp — or a decision not to have one
+
+**Ask:** either add a 4px step to the radius scale (`21322:119`, currently
+`xs 2 · sm 6 · md 8 · lg 10 · xl 14`) or confirm that 4px is off-system.
+
+**Why it came up.** A prototype used a raw `rounded-[4px]` on the preset-row CTA.
+Raw values in a base component propagate to everything downstream.
+
+**What the code does meanwhile.** The CTA uses `rounded-sm` (6px), the nearest
+on-scale step. Nothing is blocked; this is a scale question, not a defect.
 
 
 ---

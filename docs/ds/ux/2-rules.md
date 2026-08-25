@@ -147,3 +147,84 @@ header became canonical. Retained for context, not enforced.
   source top-bars into this single stack — never a second full-width top-bar.* —
   superseded by the compact header (breadcrumb-as-title, no divider) + the Tier-0
   bar. (The "no per-screen duplicate top-bar" intent is retained in the new L1.)
+
+---
+
+*Folded in from `02-rules/interaction-and-behavior.md` — see the provenance note in `interactions/2-rules.md`.*
+
+## 10. Page layout — title outside, container inside
+
+Promoted from the smoke-test feedback (R1, R2, R3).
+
+- **Every list/data page is laid out as: page header strip OUTSIDE the data
+  container, content INSIDE one rounded bordered container.**
+- The **page header strip** (above the container) carries:
+  - left: page title (and optional breadcrumb)
+  - right: the **single primary CTA for the page**, if any (e.g.
+    `+ Create Order`, `+ Create Tax`) + utility icon buttons
+- The **data container** (`--fp-surface-1b`, `rounded-md`, **no outer border** —
+  it lifts on `--shadow-fp-surface`)
+  holds, top-to-bottom:
+  - section tabs (when present)
+  - the standard toolbar (per §4)
+  - the table body
+  - the pagination row
+- **SUPERSEDED — the primary CTA sits with the data it acts on.** This rule
+  previously read "tables do not carry a redundant create CTA inside the
+  toolbar; one primary CTA per page, at the page header." It is replaced by
+  *Action placement* in `ux/2-rules.md`: a CTA scoped by something inside the
+  container (preset view, line of service, date) belongs at the right end of
+  the preset-view row, not hoisted to the page header where it is separated
+  from the scope that determines what it creates. The page-header placement
+  still holds for genuinely **page-level** actions. There is still exactly one
+  primary CTA per view.
+- **Pagination is mandatory** at the bottom of any paginated list, in three
+  slots: `Showing N–N of N` (left) · page numbers `‹ 1 2 3 … N ›` (center) ·
+  page-size selector `25 ▾` (right).
+- Any editable region declares `mode` (static|dynamic) explicitly.
+- Any aggregated value has an accessible breakdown affordance.
+- Create/edit of non-trivial records uses a full-page form, not a modal.
+- Every mutating action yields a toast + visible state propagation.
+- Multi-select uses chips+checkbox picker; single-select uses Replace semantics.
+- Lists expose: search, filters (with count badge), views, create CTA, pagination.
+- Destructive or bulk-overwrite actions require an explicit confirmation step.
+- Bulk multi-value edits offer an Add-vs-Replace choice.
+- **State transitions are surface-agnostic** — board drag, detail dropdown,
+  and bulk action share one state machine.
+- **Detail / read views use Side Sheet or Modal**, never a full page.
+- **Row action buttons that reflect a lifecycle state** must pair with a kebab
+  that exposes the allowed transitions.
+- **Outreach uses a message-composer dialog** with prefilled subject + body
+  templated from the record.
+- **Lists may expose an alternate-view toggle** (Board/Table, Table/Map);
+  toolbar state is shared across views.
+- **Bulk action bars use fast-path-inline + More-menu** structure when
+  options exceed ~5; the More menu splits "Set or change" vs "Apply an
+  action"; inapplicable options are visible-but-disabled.
+- **Bulk mutations that change a computed value get a per-row before/after
+  preview** before commit; pure replace-all may skip the preview.
+- **Two-pane workspaces** declare per-pane drag/fullscreen/close controls.
+- **Bulk-attribute editors pick a tier** by attribute cardinality (scalar /
+  single-value-per-row / grouped multi-value); tier-3 dialogs always carry
+  mode tabs + per-group scope label.
+- **Diagnostic disclosure is non-blocking by default**: severity-coded banner
+  with counts + Show Details expand-to-table; Confirm stays enabled. Block
+  only for hard-safety / destructive cases.
+- **Severity vocabulary is consistent**: amber=warning, red=error,
+  yellow/neutral=info.
+- **Color governance (§9)**: chips/badges/statuses render neutral until a
+  Layer 2 usage rule binds a color to a meaning. Destructive color appears
+  only on action labels, never as fills.
+- **Brand orange is reserved** for primary CTA fills, active-tab indicator,
+  and brand mark. Not used for hover, selected-row, or generic interactive
+  states.
+- **Page layout (§10)**: page title + single primary CTA live OUTSIDE the
+  data container; tabs + toolbar + table + pagination live INSIDE one
+  rounded bordered container.
+- **Pagination is mandatory** at the bottom of any paginated list — three
+  slots: showing-count · page numbers · page-size selector.
+- **Rail and contextual sidebar use distinct surface tokens** (`--color-rail`
+  vs `--color-sidebar`).
+- **Bulk action bar** is a compact neutral floating pill — not a full
+  toolbar. Equal-weight icon+label actions, no primary fills, destructive
+  as small icon only.

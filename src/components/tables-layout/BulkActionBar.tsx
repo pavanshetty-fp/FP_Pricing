@@ -127,7 +127,7 @@ export function BulkActionBar(props: BulkActionBarProps) {
        content layer this bar floats over — so the old fill was the same
        token==surface collision one level up. Card-1 steps off it, and the
        overlay tier carries the separation the fill cannot. */
-    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
+    <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-fp-outline-1 bg-fp-card-1 p-1.5 shadow-fp-overlay dark:border-fp-outline-2">
       {/* Count chip — primary filled */}
       <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
         {count} Selected

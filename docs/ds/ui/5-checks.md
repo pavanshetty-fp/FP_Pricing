@@ -24,8 +24,12 @@ fine in Light can composite to a literal `[0,0,0]` in FP-dark:
 | `--muted` | `--fp-surface-1b`, `--popover` | FP-dark, both `#1b2028` |
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
+| `--fp-outline-2` | `--accent` | Light, both `#cad1db` |
 
-This family has now caused four separate defects. Before shipping a fill:
+This family has now caught five token pairs. Note that the colliding pair
+differs BY THEME — `--accent`/`--fp-card-1` collide only in dark,
+`--fp-outline-2`/`--accent` only in light — so a single token chosen for one
+theme can silently fail in the other. Before shipping a fill:
 
 1. Identify the **actual** surface behind the element — not the one you assume.
    For an overlay, that is whatever it floats over (for the bulk bar, selected

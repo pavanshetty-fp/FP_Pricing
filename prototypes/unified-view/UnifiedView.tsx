@@ -33,6 +33,7 @@ import {
 import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
+import { AssetsScreen } from "./AssetsScreen";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
   FuelOrdersViewBar,
@@ -702,6 +703,8 @@ export function UnifiedView() {
           <AssetOrdersScreen />
         ) : navKey === "customers" ? (
           <CustomersScreen />
+        ) : navKey === "assets" ? (
+          <AssetsScreen />
         ) : (
           <NotBuiltYet label={active.label} />
         )}

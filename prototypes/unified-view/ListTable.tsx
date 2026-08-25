@@ -1,0 +1,246 @@
+import * as React from "react";
+import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+/**
+ * Generic list table — the chrome only, with cells supplied by the caller.
+ *
+ * The chrome is the DS DataTable's (Figma 28165:3758) and is copied from
+ * FuelOrdersTable rather than re-derived, so the three lists are identical
+ * where they should be: outer stroke on `border`, sticky Surface-1a header with
+ * a bottom hairline so rows scroll under it, 40px header row, 56px body rows,
+ * px-3 cells, the asc → desc → unsorted sort glyph cycle, and a pinned trailing
+ * actions column whose opaque fill re-applies the row's hover/selected tint as a
+ * `before` overlay (otherwise the pinned cell hides it).
+ *
+ * FuelOrdersTable is deliberately NOT refactored onto this. Its Product and Tags
+ * cells carry measured-width truncation with a ResizeObserver, which nothing
+ * else needs; moving it would be churn without benefit. This exists so Asset
+ * Orders and Customers do not each re-copy the chrome a third and fourth time.
+ *
+ * DS FOLLOW-UP: this shell, `TwoLineCell` and `OverflowBadge` are not
+ * screen-specific. They belong beside `tables-layout/DataTable` once the DS
+ * version can take a column set and a cell renderer as props.
+ */
+
+export interface ListColumn<K extends string> {
+  key: K;
+  label: string;
+  width: number;
+  sortable?: boolean;
+  align?: "left" | "right";
+}
+
+export interface ListSort<K extends string> {
+  key: K;
+  dir: "asc" | "desc";
+}
+
+export interface ListTableProps<Row, K extends string> {
+  rows: Row[];
+  columns: ListColumn<K>[];
+  hidden?: Set<K>;
+  sort: ListSort<K> | null;
+  onSort: (key: K) => void;
+  /** Stable identity for the React key. */
+  rowId: (row: Row) => string;
+  /** Cell content per column. `actions` is supplied by this component. */
+  renderCell: (row: Row, key: K) => React.ReactNode;
+  /** Opens the row's side sheet, via the pinned chevron. */
+  onOpenRow?: (row: Row) => void;
+  /** Accessible label for that chevron, e.g. `Open order 4592866`. */
+  openLabel: (row: Row) => string;
+  /** Which column key holds the pinned chevron. */
+  actionsKey: K;
+}
+
+export function ListTable<Row, K extends string>({
+  rows,
+  columns,
+  hidden,
+  sort,
+  onSort,
+  rowId,
+  renderCell,
+  onOpenRow,
+  openLabel,
+  actionsKey,
+}: ListTableProps<Row, K>) {
+  const visible = columns.filter((c) => !hidden?.has(c.key));
+
+  return (
+    <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+      <Table style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          {visible.map((c) => (
+            <col key={c.key} style={{ width: `${c.width}px` }} />
+          ))}
+        </colgroup>
+        <TableHeader className="sticky top-0 z-20">
+          <TableRow className="h-10">
+            {visible.map((col) => {
+              const active = sort?.key === col.key;
+              const SortIcon = !active
+                ? ChevronsUpDown
+                : sort.dir === "asc"
+                  ? ChevronUp
+                  : ChevronDown;
+              return (
+                <TableHead
+                  key={col.key}
+                  aria-sort={
+                    active
+                      ? sort.dir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                  className={cn(
+                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    col.align === "right" && "text-right",
+                    col.key === actionsKey && "sticky right-0 z-30"
+                  )}
+                >
+                  {col.label && col.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(col.key)}
+                      aria-label={`Sort by ${col.label}`}
+                      className={cn(
+                        "inline-flex items-center gap-1 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+                        active && "text-foreground"
+                      )}
+                    >
+                      {col.label}
+                      <SortIcon
+                        className={cn(
+                          "size-3.5",
+                          active ? "opacity-100" : "opacity-70"
+                        )}
+                      />
+                    </button>
+                  ) : col.label ? (
+                    <span>{col.label}</span>
+                  ) : null}
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={rowId(row)} className="group/row h-14">
+              {visible.map((col) => (
+                <TableCell
+                  key={col.key}
+                  className={cn(
+                    "px-3",
+                    col.align === "right" && "text-right",
+                    col.key === actionsKey &&
+                      "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover group-data-[state=selected]/row:before:bg-fp-row-selected"
+                  )}
+                >
+                  <span className={cn(col.key === actionsKey && "relative")}>
+                    {col.key === actionsKey ? (
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={openLabel(row)}
+                          onClick={() => onOpenRow?.(row)}
+                        >
+                          <ChevronRight />
+                        </Button>
+                      </div>
+                    ) : (
+                      renderCell(row, col.key)
+                    )}
+                  </span>
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/** Primary over a muted secondary — the DS two-line cell. */
+export function TwoLineCell({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-sm text-foreground">{title}</span>
+      <span className="truncate text-xs text-muted-foreground">{description}</span>
+    </div>
+  );
+}
+
+/**
+ * First value plus a `+N` for the rest, the remainder behind a hover card. The
+ * same idiom the Fuel Orders Product and Tags cells use, except the visible
+ * count is fixed at one rather than measured — for these columns the COUNT is
+ * the information and the first value is only an anchor.
+ */
+export function OverflowList({
+  values,
+  label,
+}: {
+  values: string[];
+  label: string;
+}) {
+  if (values.length === 0) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+  const [first, ...rest] = values;
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate text-sm text-foreground">{first}</span>
+      {rest.length > 0 && (
+        <HoverCard openDelay={80}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Show all ${values.length} ${label}`}
+              className="shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Badge variant="secondary" className="tabular-nums">
+                +{rest.length}
+              </Badge>
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent align="start" className="w-auto max-w-72 p-2">
+            <div className="flex flex-col gap-1">
+              {values.map((v) => (
+                <span key={v} className="text-sm text-foreground">
+                  {v}
+                </span>
+              ))}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      )}
+    </div>
+  );
+}

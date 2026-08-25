@@ -81,7 +81,12 @@ export function viewStateKey(s: ViewState): string {
 }
 
 export interface FuelOrdersViewBarProps {
-  views: SavedView[];
+  /**
+   * Only the id and name are read here — the captured state is opaque to this
+   * component, which is why Asset Orders and Customers can reuse the row with
+   * their own state shapes.
+   */
+  views: { id: string; name: string }[];
   /** `null` = the Default view is active. */
   activeId: string | null;
   /** Current state differs from the active view (or from default). */
@@ -94,6 +99,8 @@ export interface FuelOrdersViewBarProps {
   onDelete: (id: string) => void;
   /** Primary CTA — rendered at the right end of this row. */
   onCreateOrder?: () => void;
+  /** CTA label. Defaults to Fuel Orders' own verb. */
+  ctaLabel?: string;
   /** Export — sits immediately left of the CTA. */
   onExport?: () => void;
 }
@@ -128,6 +135,7 @@ export function FuelOrdersViewBar({
   onDelete,
   onCreateOrder,
   onExport,
+  ctaLabel = "Create Order",
 }: FuelOrdersViewBarProps) {
   const [dialog, setDialog] = React.useState<{
     mode: "new" | "rename";
@@ -251,7 +259,7 @@ export function FuelOrdersViewBar({
           onClick={onCreateOrder}
         >
           <Plus />
-          Create Order
+          {ctaLabel}
         </Button>
 
         {/*

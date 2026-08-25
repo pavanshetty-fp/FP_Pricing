@@ -71,7 +71,7 @@ interface ViewState {
 const keyOf = (s: ViewState) =>
   JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
 
-export function AssetsScreen() {
+export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | null } = {}) {
   const [rows, setRows] = React.useState<Asset[]>(ASSETS);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
@@ -121,6 +121,13 @@ export function AssetsScreen() {
   };
 
   const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+
+  // A global-search hit lands here: open that asset's sheet on arrival.
+  React.useEffect(() => {
+    if (!focus) return;
+    setCreating(false);
+    setOpenId(focus.id);
+  }, [focus]);
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();

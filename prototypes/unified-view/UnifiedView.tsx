@@ -34,6 +34,7 @@ import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
+import { GlobalSearch } from "./GlobalSearch";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
   FuelOrdersViewBar,
@@ -97,7 +98,7 @@ const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
 }));
 
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
-function FuelOrdersScreen() {
+function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null }) {
   const [rows, setRows] = React.useState(FUEL_ORDERS);
   // Picker options come from the data, so the sheet can't offer a value the
   // table has never seen.
@@ -215,6 +216,13 @@ function FuelOrdersScreen() {
       else next.add(key);
       return next;
     });
+
+  // A global-search hit lands here: open that order's sheet on arrival.
+  React.useEffect(() => {
+    if (!focus) return;
+    setCreating(false);
+    setOpenOrderId(focus.id);
+  }, [focus]);
 
   const query = search.trim().toLowerCase();
   // Date scopes the list first — every row on screen belongs to the selected
@@ -667,6 +675,14 @@ function NotBuiltYet({ label }: { label: string }) {
 
 export function UnifiedView() {
   const [navKey, setNavKey] = React.useState("fuel-orders");
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  /**
+   * The record a global-search hit asked for. Passed to the destination screen
+   * as `focusId`, which opens that record's sheet on arrival. Keyed by an
+   * incrementing nonce so choosing the SAME record twice still re-opens it —
+   * without it the prop would not change and nothing would happen.
+   */
+  const [focus, setFocus] = React.useState<{ id: string; n: number } | null>(null);
   const active = NAV_ITEMS.find((i) => i.key === navKey) ?? NAV_ITEMS[0];
 
   return (
@@ -683,6 +699,8 @@ export function UnifiedView() {
               fallback: "PS",
             }}
             unread={3}
+            searchPlaceholder="Search everything"
+            onSearchActivate={() => setSearchOpen(true)}
           />
         }
         rail={
@@ -698,16 +716,26 @@ export function UnifiedView() {
         headerAction={<ThemeToggle />}
       >
         {navKey === "fuel-orders" ? (
-          <FuelOrdersScreen />
+          <FuelOrdersScreen focus={focus} />
         ) : navKey === "asset-orders" ? (
-          <AssetOrdersScreen />
+          <AssetOrdersScreen focus={focus} />
         ) : navKey === "customers" ? (
-          <CustomersScreen />
+          <CustomersScreen focus={focus} />
         ) : navKey === "assets" ? (
-          <AssetsScreen />
+          <AssetsScreen focus={focus} />
         ) : (
           <NotBuiltYet label={active.label} />
         )}
+        <GlobalSearch
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          onNavigate={(key: string, recordId: string | null) => {
+            setNavKey(key);
+            setFocus(
+              recordId ? { id: recordId, n: Date.now() } : null
+            );
+          }}
+        />
       </AppShell>
     </TooltipProvider>
   );

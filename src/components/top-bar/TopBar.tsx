@@ -2,6 +2,8 @@ import * as React from "react";
 import { Search, Bell, ChevronDown, UserRound, Settings, LogOut, Boxes, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SideSheet } from "@/components/side-sheet";
 import {
@@ -31,6 +33,15 @@ export interface TopBarProps {
   user: TopBarUser;
   /** Unread notification count — shows a dot when > 0. */
   unread?: number;
+  /**
+   * Turn the search field into a trigger for a command palette. When supplied,
+   * the field stops accepting inline typing and instead opens on click, focus or
+   * ⌘K/Ctrl-K — the palette owns the query from there. Left out, the field stays
+   * a plain input, so existing callers are unaffected.
+   */
+  onSearchActivate?: () => void;
+  /** Placeholder for the search field. */
+  searchPlaceholder?: string;
 }
 
 /**
@@ -38,8 +49,27 @@ export interface TopBarProps {
  * Centre: global search + the keyboard-shortcuts CTA. Right: notifications +
  * profile menu.
  */
-export function TopBar({ user, unread = 0 }: TopBarProps) {
+export function TopBar({
+  user,
+  unread = 0,
+  onSearchActivate,
+  searchPlaceholder = "Search",
+}: TopBarProps) {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
+
+  // ⌘K / Ctrl-K opens the palette from anywhere, which is what the field's own
+  // hint promises. Only bound when there is a palette to open.
+  React.useEffect(() => {
+    if (!onSearchActivate) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onSearchActivate();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onSearchActivate]);
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3">
       {/* Left — brand logo */}
@@ -57,10 +87,24 @@ export function TopBar({ user, unread = 0 }: TopBarProps) {
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search"
+              placeholder={searchPlaceholder}
               aria-label="Search"
-              className="h-9 rounded-md pl-8"
+              // As a palette trigger the field must not swallow the query: it is
+              // read-only so typing goes to the palette's own input instead of
+              // being lost here, and the caret is hidden to match.
+              readOnly={Boolean(onSearchActivate)}
+              onClick={onSearchActivate}
+              onFocus={onSearchActivate}
+              className={cn(
+                "h-9 rounded-md pl-8",
+                onSearchActivate && "cursor-pointer caret-transparent"
+              )}
             />
+            {onSearchActivate && (
+              <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
+                <Kbd>⌘K</Kbd>
+              </span>
+            )}
           </div>
           <TooltipProvider>
             <Tooltip>

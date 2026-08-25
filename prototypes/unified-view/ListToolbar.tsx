@@ -104,10 +104,10 @@ function IconTool({
           size="icon-sm"
           aria-label={label}
           onClick={onClick}
-          // Same chip treatment as the badges: the card surface rather than
-          // `--accent`, which at #cad1db sits far too heavy on white for a
-          // 32px control. Dark is unchanged — both tokens are #2a2f37 there.
-          className={cn(active && "bg-fp-card-1 text-foreground")}
+          // Same fill as the chips: `--chip`, not `--accent`. At #cad1db the
+          // control-emphasis token sits far too heavy on white inside a 32px
+          // button. Dark is unchanged — `--chip` is #2a2f37 there.
+          className={cn(active && "bg-chip text-foreground")}
         >
           {children}
         </Button>

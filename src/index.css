@@ -160,6 +160,7 @@
   --color-fp-surface-1a: var(--fp-surface-1a);
   --color-fp-surface-1b: var(--fp-surface-1b);
   --color-fp-card-1: var(--fp-card-1);
+  --color-chip: var(--chip);
   --color-fp-lane: var(--fp-lane);
   --color-fp-row-hover: var(--fp-row-hover);
   --color-fp-row-selected: var(--fp-row-selected);
@@ -320,6 +321,16 @@
   --fp-surface-1a: #ffffff;
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
+  /* Chip fill — the surface behind small read-only tokens (LOS tags, +N overflow
+     badges, palette segment badges) and the active state of small icon tools.
+     Its own token rather than borrowing a surface one, because the value it
+     wants in light is NOT the value any surface token carries in dark: #efefeb
+     is --background in light, and --background is #080808 in dark, which would
+     render chips near-black.
+     Light is deliberately WARM (239,239,235) against the cool greys around it —
+     chosen for weight over hue after seeing the scale. Δ off the white content
+     layer is [16,16,20], lighter than the --fp-card-1 it replaces ([22,19,14]). */
+  --chip: #efefeb;
   --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
   /* Table row interaction states. Their own tokens because rows previously
      borrowed --accent, which is a CONTROL-emphasis value and reads far too
@@ -426,6 +437,8 @@
   --fp-surface-1a: #11161d;
   --fp-surface-1b: #1b2028;
   --fp-card-1: #2a2f37; /* FP/Card 1 */
+  /* Chip fill, dark — the value chips already render, so dark is untouched. */
+  --chip: #2a2f37;
   --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
   /* Row states, dark. Chosen to preserve exactly what shipped: selected is
      --fp-card-1 (unchanged), and hover is the midpoint of the

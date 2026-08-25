@@ -110,8 +110,19 @@ export function FuelOrdersFilters() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {/* `asChild` slots onto exactly ONE child, so this note sits outside the
+          trigger — as raw text inside it, React counted it as a second child and
+          Radix threw "failed to slot onto its children".
+          `bg-transparent` makes the button outline-only, like the search field
+          beside it: the DS `outline` variant fills with `bg-background` (#efefeb
+          light), the APP background, which is right when the button sits on it
+          and wrong here on the white content layer, where it read as a filled
+          grey block next to a transparent input. The stroke moves to
+          `--input` so it matches the field beside it: the `outline` variant uses
+          `--border` in light but ALREADY uses `--input` in dark, so light was the
+          odd one out and the button read a shade lighter than the input. */}
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="border-input bg-transparent">
           <ListFilter />
           Filters
           {checked.size > 0 && (

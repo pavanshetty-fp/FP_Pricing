@@ -57,8 +57,16 @@ export function GroupByMenu({ compact = false }: { compact?: boolean }) {
           <TooltipContent>{active ? `Group by: ${active}` : "Group by"}</TooltipContent>
         </Tooltip>
       ) : (
+        /* A plain JS comment, not `{/* … *\/}`: this is a ternary branch, an
+           EXPRESSION slot, so a JSX comment plus an element would be two things
+           where one is allowed. `bg-transparent` makes the button outline-only —
+           the `outline` variant fills with `bg-background`, the APP background,
+           which is right when the control sits on it and wrong on the white
+           content layer where every toolbar puts this menu. The stroke moves to
+           `--input` to match the search field beside it — the variant already
+           uses `--input` in dark, so light was the odd one out. */
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-input bg-transparent">
             <Group />
             {active ? `Group by: ${active}` : "Group By"}
           </Button>

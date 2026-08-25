@@ -2,7 +2,6 @@ import * as React from "react";
 import {
   Columns3,
   KanbanSquare,
-  Plus,
   Search,
   Table2,
   TextSearch,
@@ -42,7 +41,7 @@ import type { FuelOrderColumnKey } from "./types";
  * settled on a different split, and this now follows it exactly:
  *
  *   LEFT   320px search input (leading glyph, trailing clear ×) · Filters · Group By
- *   RIGHT  [date] │ view switch │ search-by-column · show/hide columns │ Create
+ *   RIGHT  [date] │ view switch │ search-by-column · show/hide columns
  *
  * Both dividers, the `gap-1` right cluster, the `gap-3` left cluster, the 32px
  * control height, the ghost `icon-sm` tools with tooltips, and the `bg-accent`
@@ -51,11 +50,13 @@ import type { FuelOrderColumnKey } from "./types";
  * ONE ADDITION, which is the point of keeping it: the DELIVERY-DATE STEPPER
  * LEADS the right cluster. The DS unit has no such control because its demo
  * table is not date-scoped; this screen's every row is, and the value has to
- * stay readable without opening a panel. It sits ahead of the icon tools rather
- * than between them and the CTA, so the cluster reads outward from what scopes
- * the data (the date) through how it is presented (view, columns) to the action
- * that adds to it (Create) — and the date no longer splits the icon tools from
- * the button they have nothing to do with.
+ * stay readable without opening a panel. It leads the cluster, so the row reads
+ * outward from what scopes the data (the date) to how it is presented (view,
+ * columns).
+ *
+ * The primary CTA is NOT here. `Create Order` was moved up to the preset-view
+ * row (see FuelOrdersViewBar), which is also where the DS unit's `Create Form`
+ * no longer applies — that one ends its right cluster with the CTA.
  *
  * TWO SUBSTITUTIONS, both because the DS parts are welded to the DS's own demo
  * data rather than because this screen wants something different:
@@ -123,7 +124,6 @@ export interface FuelOrdersToolbarProps {
   onViewChange: (v: FuelOrdersView) => void;
   date: Date;
   onDateChange: (d: Date) => void;
-  onCreateOrder?: () => void;
 }
 
 export function FuelOrdersToolbar({
@@ -142,7 +142,6 @@ export function FuelOrdersToolbar({
   onViewChange,
   date,
   onDateChange,
-  onCreateOrder,
 }: FuelOrdersToolbarProps) {
   const colLabel =
     FUEL_ORDER_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "column";
@@ -320,12 +319,6 @@ export function FuelOrdersToolbar({
           </PopoverContent>
         </Popover>
 
-        <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-
-        <Button size="sm" onClick={onCreateOrder}>
-          <Plus />
-          Create Order
-        </Button>
       </div>
     </div>
   );

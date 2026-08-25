@@ -87,6 +87,8 @@ export interface FuelOrdersViewBarProps {
   onRename: (id: string, name: string) => void;
   onUpdate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Primary CTA — rendered at the right end of this row. */
+  onCreateOrder?: () => void;
 }
 
 const tabCls = (isActive: boolean) =>
@@ -117,6 +119,7 @@ export function FuelOrdersViewBar({
   onRename,
   onUpdate,
   onDelete,
+  onCreateOrder,
 }: FuelOrdersViewBarProps) {
   const [dialog, setDialog] = React.useState<{
     mode: "new" | "rename";
@@ -209,6 +212,20 @@ export function FuelOrdersViewBar({
         >
           <Plus className="size-4" /> View
         </button>
+
+        {/*
+          Primary CTA, moved up here from the toolbar's right cluster so it sits
+          on the preset-view row.
+
+          `mr-1` is load-bearing: this row cancels the content layer's 16px inset
+          with -mx-4 and re-pads at px-3 (12px) so its hairline spans the whole
+          panel, which would leave the button 4px further right than the toolbar
+          controls below it. The extra 4px puts both right edges on the same line.
+        */}
+        <Button size="sm" className="mr-1 ml-auto" onClick={onCreateOrder}>
+          <Plus />
+          Create Order
+        </Button>
       </div>
 
       <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>

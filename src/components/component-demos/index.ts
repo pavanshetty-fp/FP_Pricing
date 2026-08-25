@@ -3,6 +3,7 @@ export { BadgeDemo } from "./BadgeDemo";
 export { ButtonDemo } from "./ButtonDemo";
 export { BannersDemo } from "./BannersDemo";
 export { StatusChipDemo } from "./StatusChipDemo";
+export { BulkEditDemo } from "./BulkEditDemo";
 export { EmptyDemo } from "./EmptyDemo";
 export { HoverCardDemo } from "./HoverCardDemo";
 export { InformationCardDemo } from "./InformationCardDemo";

@@ -4,12 +4,16 @@ import { createRoot } from "react-dom/client";
 // and spacing value this prototype uses. Imported, never forked.
 import "@/index.css";
 import { PreferencesProvider } from "@/components/preferences";
+import { Toaster } from "@/components/ui/sonner";
 import { UnifiedView } from "./UnifiedView";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <PreferencesProvider>
       <UnifiedView />
+      {/* §4b "Apply -> toast": the bulk-edit dialog fires a confirmation on
+          commit, which needs a Toaster mounted to land anywhere. */}
+      <Toaster position="bottom-right" />
     </PreferencesProvider>
   </StrictMode>
 );

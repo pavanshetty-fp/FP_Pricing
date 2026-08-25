@@ -97,6 +97,7 @@ import {
   ButtonDemo,
   BannersDemo,
   StatusChipDemo,
+  BulkEditDemo,
   EmptyDemo,
   HoverCardDemo,
   InformationCardDemo,
@@ -318,6 +319,7 @@ const CUSTOM_COMPONENT_PAGES: {
 }[] = [
   { key: "banners", label: "Banners", icon: <Megaphone />, content: <BannersDemo /> },
   { key: "status-chip", label: "Status chip", icon: <CircleDot />, content: <StatusChipDemo /> },
+  { key: "bulk-edit", label: "Bulk edit", icon: <SquareStack />, content: <BulkEditDemo /> },
 ];
 
 const CUSTOM_COMPONENTS_NAV: NavGroup = {

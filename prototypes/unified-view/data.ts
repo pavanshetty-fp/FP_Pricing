@@ -74,7 +74,7 @@ function addDays(d: Date, n: number): Date {
 }
 
 /** "Today" / "Yesterday" / "Tomorrow", else the weekday name. */
-function relativeLabel(offset: number, d: Date): string {
+export function relativeLabel(offset: number, d: Date): string {
   if (offset === 0) return "Today";
   if (offset === -1) return "Yesterday";
   if (offset === 1) return "Tomorrow";

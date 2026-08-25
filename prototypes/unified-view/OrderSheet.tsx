@@ -104,11 +104,43 @@ function draftFrom(order: FuelOrder): OrderDraft {
   };
 }
 
+/**
+ * A blank order. `Create Order` opens the SAME sheet as editing — same sections,
+ * same order, same spacing — with nothing filled in, so there is one layout to
+ * learn instead of a separate create form that drifts from the edit one.
+ *
+ * `products: []` is deliberate: ProductTable carries its own "Add" chip, so the
+ * operator adds the first line rather than being handed a placeholder line to
+ * correct. `urgent: false` is the only non-empty value, because a switch has no
+ * empty state.
+ */
+function emptyDraft(): OrderDraft {
+  return {
+    typeCode: "D",
+    customer: "",
+    shipTo: "",
+    products: [],
+    plannedDate: null,
+    plannedTime: "",
+    driver: null,
+    tags: [],
+    urgent: false,
+    site: "",
+    poc: "",
+    note: "",
+  };
+}
+
 export interface OrderSheetProps {
+  /** The order being edited. `null` in create mode. */
   order: FuelOrder | null;
+  /** `create` opens the sheet blank; `edit` seeds it from `order`. */
+  mode?: "edit" | "create";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (order: FuelOrder, draft: OrderDraft) => void;
+  /** Called instead of `onSave` in create mode — there is no order to fold into. */
+  onCreate?: (draft: OrderDraft) => void;
   /** Option lists derived from the dataset, so pickers can't drift from rows. */
   customers: string[];
   shipTos: string[];
@@ -117,21 +149,26 @@ export interface OrderSheetProps {
 
 export function OrderSheet({
   order,
+  mode = "edit",
   open,
   onOpenChange,
   onSave,
+  onCreate,
   customers,
   shipTos,
   productNames,
 }: OrderSheetProps) {
   const [draft, setDraft] = React.useState<OrderDraft | null>(null);
+  const creating = mode === "create";
 
-  // Re-seed whenever a different order opens, so edits never leak between rows.
+  // Re-seed on every open, so edits never leak between rows — and so a
+  // half-filled create draft is gone the next time Create Order is clicked.
   React.useEffect(() => {
-    setDraft(order ? draftFrom(order) : null);
-  }, [order]);
+    if (!open) return;
+    setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
+  }, [open, creating, order]);
 
-  if (!order || !draft) return null;
+  if (!draft || (!creating && !order)) return null;
 
   const set = <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
@@ -146,13 +183,16 @@ export function OrderSheet({
         showCloseButton={false}
         className="w-[560px] gap-0 p-0 sm:max-w-[560px]"
       >
-        {/* Header — order number plus the DERIVED status. Status is no longer a
-            field: an order is Assigned exactly when it has a driver, so offering
-            a separate control only created a way for the two to disagree. */}
+        {/* Header — the order number when editing, "Create Order" when there is
+            no order yet. The status chip rides along in both: it is DERIVED (an
+            order is Assigned exactly when it has a driver, so a separate control
+            would only be a way for the two to disagree), which means on a blank
+            draft it correctly reads Unassigned and flips the moment a driver is
+            picked. */}
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex items-center gap-2.5">
             <SheetTitle className="text-base">
-              Order #: {order.orderNo}
+              {creating ? "Create Order" : `Order #: ${order!.orderNo}`}
             </SheetTitle>
             <StatusChip tone={STATUS_TONE[status]} variant="soft">
               {status}
@@ -201,7 +241,12 @@ export function OrderSheet({
                   onValueChange={(v) => set("customer", v)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    {/* Placeholders matter only in create mode — on an existing
+                        order these always carry a value. Without them the two
+                        triggers render completely blank while every other
+                        control shows an empty state ("Not planned",
+                        "— Unassigned", "Add tags"), so they read as broken. */}
+                    <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((c) => (
@@ -219,7 +264,7 @@ export function OrderSheet({
                   onValueChange={(v) => set("shipTo", v)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Select ship-to" />
                   </SelectTrigger>
                   <SelectContent>
                     {shipTos.map((s) => (
@@ -378,11 +423,12 @@ export function OrderSheet({
           </Button>
           <Button
             onClick={() => {
-              onSave(order, draft);
+              if (creating) onCreate?.(draft);
+              else onSave(order!, draft);
               onOpenChange(false);
             }}
           >
-            Save Changes
+            {creating ? "Create Order" : "Save Changes"}
           </Button>
         </div>
       </SheetContent>

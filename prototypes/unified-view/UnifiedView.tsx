@@ -46,6 +46,7 @@ import {
   formatFullDate,
   matchesFuelOrder,
   matchesFuelOrderIn,
+  relativeLabel,
   splitGallons,
   sortFuelOrders,
   startOfDay,
@@ -111,6 +112,9 @@ function FuelOrdersScreen() {
     []
   );
   const [openOrderId, setOpenOrderId] = React.useState<string | null>(null);
+  // Create Order reuses the order sheet, opened blank. Separate from
+  // openOrderId because there is no row to point at yet.
+  const [creating, setCreating] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortState | null>(null);
@@ -312,6 +316,70 @@ function FuelOrdersScreen() {
     },
   };
 
+  /**
+   * Commit a blank-sheet draft as a new row.
+   *
+   * Two values the sheet cannot supply, both DERIVED from what is already on
+   * screen rather than invented:
+   *   • the order number continues the existing sequence — the seeds run in
+   *     steps of 2 down from the newest, so a new one is the highest + 2;
+   *   • the delivery date is the date the toolbar is currently scoped to, which
+   *     is the only date whose rows are visible, so the new order appears
+   *     instead of landing on a day the operator is not looking at.
+   * Status stays derived from the driver, as everywhere else.
+   */
+  const createOrder = (draft: OrderDraft) => {
+    const nextNo =
+      Math.max(...rows.map((r) => Number(r.orderNo))) + 2;
+    const newRow: FuelOrder = {
+      id: `fo-new-${nextNo}`,
+      orderNo: String(nextNo),
+      type: {
+        code: draft.typeCode,
+        label: draft.typeCode === "D" ? "Delivery" : "Extraction",
+      },
+      customer: { title: draft.customer, description: draft.shipTo },
+      products: draft.products,
+      qtyGal: draft.products.reduce((n, p) => n + p.gal, 0),
+      // Same relative labelling the seeds use, so a new order on a day other
+      // than today does not claim to be "Today".
+      date: {
+        // DATE_FMT, not formatFullDate: the seeds render "Aug 25, 2026" while
+        // formatFullDate prepends the weekday ("Tue, Aug 25, 2026"), which made
+        // a created row the only one in the column formatted differently.
+        title: DATE_FMT.format(date),
+        description: relativeLabel(
+          Math.round(
+            (date.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
+          ),
+          date
+        ),
+      },
+      dateKey: dateKeyOf(date),
+      planned: draft.plannedDate
+        ? {
+            date: DATE_FMT.format(draft.plannedDate),
+            time: draft.plannedTime || "12:00 PM",
+          }
+        : null,
+      tags: draft.tags,
+      status: draft.driver ? "Assigned" : "Unassigned",
+      driver: draft.driver
+        ? {
+            name: draft.driver,
+            initials: draft.driver
+              .split(" ")
+              .map((w) => w[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase(),
+          }
+        : null,
+    };
+    setRows((prev) => [newRow, ...prev]);
+    setPage(1);
+  };
+
   /** Fold a sheet draft back onto its row. */
   const saveOrder = (order: FuelOrder, draft: OrderDraft) => {
     const plannedDate = draft.plannedDate;
@@ -386,6 +454,7 @@ function FuelOrdersScreen() {
         onRename={renameView}
         onUpdate={updateView}
         onDelete={deleteView}
+        onCreateOrder={() => setCreating(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -541,9 +610,15 @@ function FuelOrdersScreen() {
 
       <OrderSheet
         order={rows.find((r) => r.id === openOrderId) ?? null}
-        open={openOrderId !== null}
-        onOpenChange={(o) => !o && setOpenOrderId(null)}
+        mode={creating ? "create" : "edit"}
+        open={creating || openOrderId !== null}
+        onOpenChange={(o) => {
+          if (o) return;
+          setCreating(false);
+          setOpenOrderId(null);
+        }}
         onSave={saveOrder}
+        onCreate={createOrder}
         customers={customers}
         shipTos={shipTos}
         productNames={productNames}

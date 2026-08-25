@@ -26,9 +26,9 @@ export function CommandDemo() {
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Settings">
-              <CommandItem><User />Profile<CommandShortcut>⌘P</CommandShortcut></CommandItem>
-              <CommandItem><CreditCard />Billing<CommandShortcut>⌘B</CommandShortcut></CommandItem>
-              <CommandItem><Settings />Settings<CommandShortcut>⌘S</CommandShortcut></CommandItem>
+              <CommandItem><User />Profile<CommandShortcut variant="keycap">⌘P</CommandShortcut></CommandItem>
+              <CommandItem><CreditCard />Billing<CommandShortcut variant="keycap">⌘B</CommandShortcut></CommandItem>
+              <CommandItem><Settings />Settings<CommandShortcut variant="keycap">⌘S</CommandShortcut></CommandItem>
             </CommandGroup>
           </CommandList>
         </Command>

@@ -508,14 +508,10 @@ export function FuelOrdersBulkBar({
                         </AvatarFallback>
                       </Avatar>
                     }
-                    // `tracking-normal` undoes CommandShortcut's tracking-widest,
-                    // which is sized for keycaps ("⌘K") not a phrase.
                     shortcut={
-                      <span className="tracking-normal">
-                        {n === 0
-                          ? "No orders assigned"
-                          : `${n} ${n === 1 ? "order" : "orders"} assigned`}
-                      </span>
+                      n === 0
+                        ? "No orders assigned"
+                        : `${n} ${n === 1 ? "order" : "orders"} assigned`
                     }
                   >
                     {d}

@@ -109,6 +109,21 @@ function CommandSeparator({
  * The Default/Hover/Disabled "State" variant is left to cmdk (it drives
  * `data-[selected]`/`data-[disabled]`), so it isn't a manual prop. Passing only
  * `children` keeps the plain shadcn behaviour — every existing call still works.
+ *
+ * ⚠️ DO NOT hand-roll this row layout. Setting ANY of `icon` / `selected` /
+ * `shortcut` switches the item into structured mode, which wraps `children` in a
+ * single `flex-1 truncate` span. Flex children you pass inside `children` then
+ * collapse onto one truncated line, silently — no error, just a broken row that
+ * costs real debugging time. Use the slots:
+ *
+ * ```tsx
+ * <CommandItem icon={<Truck />} shortcut="12 orders">Carrier name</CommandItem>
+ * ```
+ *
+ * `selected` renders a trailing ✓, which marks *the* chosen row — correct for
+ * SINGLE-select. For multi-select use `MultiSelectList` (checkbox rows): a ✓ on
+ * a multi-select list reads as "this is the current value", and with nothing yet
+ * chosen the list is indistinguishable from a single-select one.
  */
 function CommandItem({
   className,
@@ -152,12 +167,27 @@ function CommandItem({
   );
 }
 
-function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) {
+/**
+ * Right-aligned meta slot in a `CommandItem`.
+ *
+ * `variant` exists because this slot has two jobs. `keycap` is the wide-tracked
+ * treatment that suits `⌘K`; `meta` is plain, for the counts, dates and hints
+ * that are just as natural on the right of a row and that wide tracking makes
+ * look broken. `meta` is the default — wide tracking is the special case, so it
+ * should be the one you opt into.
+ */
+function CommandShortcut({
+  className,
+  variant = "meta",
+  ...props
+}: React.ComponentProps<"span"> & { variant?: "meta" | "keycap" }) {
   return (
     <span
       data-slot="command-shortcut"
+      data-variant={variant}
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
+        "ml-auto text-xs text-muted-foreground",
+        variant === "keycap" && "tracking-widest",
         className
       )}
       {...props}

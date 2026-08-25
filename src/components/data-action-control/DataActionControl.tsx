@@ -242,10 +242,16 @@ export function DataActionControl({
           </button>
 
           {/* Right end of the preset row: scope, then the primary CTA, then
-              Export. `self-end mb-2.5` opts the actions out of the row's
-              `items-center` and measures from the bottom instead — 10px margin
-              plus the row's own 2px bottom padding lands them exactly 12px above
-              the hairline.
+              Export.
+
+              ONE alignment context for all three. `self-end mb-2.5` sits on this
+              CONTAINER, not on the individual items: the row is `items-center`,
+              so items carrying their own `self-end` while a sibling inherited
+              centring produced three different vertical centres (measured 6px of
+              centre spread, 8px of baseline spread across a 28px control and two
+              24px ones). Bottom-aligning the container and centring inside it
+              collapses that to zero. The 12px above the hairline is unchanged:
+              10px margin plus the row's own 2px bottom padding.
 
               `mr-1` on the LAST item is a 4px inset correction, not decoration:
               this row cancels the content layer's 16px inset with `-mx-4` and
@@ -253,17 +259,13 @@ export function DataActionControl({
               Without it the trailing item sits 4px proud of every toolbar
               control below. IF YOU REORDER THESE, THE `mr-1` MOVES TO WHICHEVER
               IS LAST. */}
-          <div className="ml-auto flex items-center gap-1 pl-3">
+          <div className="ml-auto mb-2.5 flex items-center gap-4 self-end pl-3">
             <ScopeSelector value={scope} counts={counts} onChange={onScopeChange} />
-            <Button
-              size="xs"
-              className="self-end mb-2.5 rounded-sm"
-              onClick={() => goTo("form-layout")}
-            >
+            <Button size="xs" className="rounded-sm" onClick={() => goTo("form-layout")}>
               <Plus /> Create Form
             </Button>
             {exportAction && (
-              <div className="self-end mb-2.5 mr-1">{exportAction}</div>
+              <div className="mr-1 flex items-center">{exportAction}</div>
             )}
           </div>
         </div>

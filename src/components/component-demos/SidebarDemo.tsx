@@ -75,7 +75,7 @@ function MailExample() {
             key={r.label}
             aria-label={r.label}
             className={
-              "flex size-8 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent " +
+              "flex size-8 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent-hover " +
               (r.active ? "bg-sidebar-accent" : "")
             }
           >
@@ -107,7 +107,7 @@ function MailExample() {
               {MAILS.map((m) => (
                 <button
                   key={m.name}
-                  className="flex w-full flex-col items-start gap-1 border-b border-sidebar-border p-3 text-left text-sm leading-tight transition-colors hover:bg-sidebar-accent"
+                  className="flex w-full flex-col items-start gap-1 border-b border-sidebar-border p-3 text-left text-sm leading-tight transition-colors hover:bg-sidebar-accent-hover"
                 >
                   <div className="flex w-full items-center justify-between">
                     <span className="font-medium">{m.name}</span>

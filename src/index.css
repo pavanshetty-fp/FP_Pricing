@@ -146,6 +146,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-hover: var(--sidebar-accent-hover);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -282,7 +283,18 @@
   --sidebar-foreground: #030405;
   --sidebar-primary: #090c0f;
   --sidebar-primary-foreground: #f0f2f5;
-  --sidebar-accent: #cad1db;
+  /* Navigation selection and hover are two states, so they are two tokens.
+     They used to share `--sidebar-accent`, which meant a hovered item and a
+     selected one were the same pixel and hover gave no feedback on the item you
+     were already on.
+
+     Light values are given, not derived: #ededed selected, #e1e1e1 hover. Hover
+     is DARKER than selected on purpose — hover is transient feedback and has to
+     register on top of a selected row, so hovering the current item deepens it
+     rather than doing nothing. Deltas: selected sits [13,14,11] off the drawer
+     (#fafbf8), hover a further [12,12,12] under selected. */
+  --sidebar-accent: #ededed;
+  --sidebar-accent-hover: #e1e1e1;
   --sidebar-accent-foreground: #090c0f;
   --sidebar-border: #cdd4de;
   --sidebar-ring: #727d8f;
@@ -425,6 +437,11 @@
   --sidebar-primary: #1d4ed8; /* base/sidebar-primary */
   --sidebar-primary-foreground: #f0f2f5; /* base/sidebar-primary-foreground */
   --sidebar-accent: #363c45; /* base/sidebar-accent */
+  /* Dark keeps ONE value for both states, which is what it already rendered —
+     #ededed / #e1e1e1 are light-mode values and would be near-white blocks on
+     the #11161d drawer. DS FOLLOW-UP: dark deserves its own two-step pair the
+     way light now has one; until it is measured, this preserves dark exactly. */
+  --sidebar-accent-hover: #363c45;
   --sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
   --sidebar-border: #ffffff1a; /* base/sidebar-border */
   --sidebar-ring: #575757;

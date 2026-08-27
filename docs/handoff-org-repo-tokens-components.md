@@ -161,21 +161,29 @@ composited to over the content layer. **Dark renders identically to before; only
 
 ### 1e. Changed values — `:root` only
 
+> **⚠ PARTLY SUPERSEDED — 2026-08-27.** Four of the light values below were
+> changed again by the Figma light sync (`main` @ `e527a63`). **Apply
+> `docs/handoff-light-mode-tokens.md` instead of this table** for
+> `--secondary`, `--muted`, `--accent` and `--sidebar-accent`. What is still
+> current here: the two `--status-*` rows, `--fp-outline-2`, and both warnings at
+> the end of the section. Superseded values are struck through below.
+
 | Token | Was | Now | As text on `#ffffff` |
 |---|---|---|---|
 | `--status-success` | `#16a34a` green-600 | `#15803d` green-700 | 3.30 **FAIL** → 5.02 pass |
 | `--status-processing` | `#d97706` amber-600 | `#b45309` amber-700 | 3.19 **FAIL** → 5.02 pass |
-| `--secondary` | `#cad1db` | `#ededed` | the light selection grey — see below |
-| `--muted` | `#cad1db` | `#ededed` | ” |
-| `--accent` | `#cad1db` | `#ededed` | ” |
-| `--sidebar-accent` | `#cad1db` | `#ededed` | ” |
+| `--secondary` | `#cad1db` | ~~`#ededed`~~ → **`#f4f4f5`** | superseded by the light sync (zinc/100) |
+| `--muted` | `#cad1db` | ~~`#ededed`~~ → **`#f4f4f5`** | ” (zinc/100) |
+| `--accent` | `#cad1db` | ~~`#ededed`~~ → **`#e5e7eb`** | ” (gray/200) |
+| `--sidebar-accent` | `#cad1db` | ~~`#ededed`~~ → **`#e5e7eb`** | ” (gray/200) |
 | `--fp-outline-2` | `#cad1db` | `#ededed` | ” — **but this one is a rim, see the warning** |
 
 Both are painted as *text* by `StatusChip variant="text"` and `variant="soft"`, not only as a
 dot, so the 4.5:1 threshold applies rather than the 3.0 graphics one. `--status-failed`
 (4.83), `--status-pink` (4.60) and `--verified` (5.17) already cleared it and are unchanged —
-which also keeps `--status-failed` aligned with `--destructive`. **No dark values changed**
-(7.18 / 7.62, untouched).
+which USED TO keep `--status-failed` aligned with `--destructive` — the 2026-08-27 light sync
+broke that alignment deliberately, moving `--destructive` to red/500 (`#ef4444`, 3.76) while
+`--status-failed` stayed at 4.83. **No dark values changed** (7.18 / 7.62, untouched).
 
 **`#cad1db` is gone from the light theme.** Five tokens carried that one hex —
 `--secondary`, `--muted`, `--accent`, `--sidebar-accent` and `--fp-outline-2` — so changing one
@@ -184,6 +192,13 @@ left the others behind and the selection grey appeared in two shades at once. Al
 border; 55 paint the new one. **Dark is untouched** — those five hold four different values
 there (`#2a2f37`, `#1b2028`, `#2a2f37`, `#363c45`, `#575757`) and none of them was the shared
 light hex.
+
+> **Update, 2026-08-27.** `#cad1db` is still gone, but the five no longer share one value.
+> The light sync split them: `--accent`/`--sidebar-accent` went to `#e5e7eb` and
+> `--secondary`/`--muted` to `#f4f4f5`, while `--fp-outline-2` alone kept `#ededed`. The
+> consolidation this paragraph describes therefore held only between those two dates — the
+> sync put the emphasis family back on two values, because that is what the Figma source
+> specifies.
 
 > **⚠ One of the five is a border, not a fill.** `--fp-outline-2` has 18 call sites and every
 > one is `border-fp-outline-2` — the pagination active-page outline, Kanban lane rules, the
@@ -195,9 +210,12 @@ light hex.
 > **⚠ `--accent` drives hover as well as selection.** 48 call sites are `hover:bg-accent`
 > against 37 selection fills, so hover and selection are now the same pixel — the exact
 > condition that made nav hover useless before `--sidebar-accent-hover` split them. The
-> matching fix is an `--accent-hover: #e1e1e1` pair mirroring §1d's sidebar split. **Not done
+> matching fix is an `--accent-hover` pair mirroring §1d's sidebar split. **Not done
 > here** — it is a 48-site sweep and several of those hovers carry `/50` alphas that dark
-> depends on, so it needs its own pass.
+> depends on, so it needs its own pass. **Note as of 2026-08-27:** the `#e1e1e1` originally
+> proposed here is now a poor choice — with `--accent` at `#e5e7eb` the gap would be only
+> `[-4,-6,-10]`, and it would sit *darker* than selection. Whatever value this pass picks
+> should be measured against the new emphasis greys, not inherited from this line.
 
 **`--sidebar-accent` is a specified value, not a derived one.** Navigation selection is
 `#ededed` and hover is `#e1e1e1`, both given. Hover is **darker** than selected on purpose:

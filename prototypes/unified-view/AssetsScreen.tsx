@@ -359,9 +359,6 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
 
       <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
         <TablePagination
-          // h-9 = the 36px controls, no more. The 72px default would add 18px of
-          // its own air above and below and fight the 16px gaps set here.
-          className="h-9"
           page={page}
           pageSize={pageSize}
           total={sorted.length}

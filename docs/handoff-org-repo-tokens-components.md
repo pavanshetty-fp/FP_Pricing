@@ -27,12 +27,64 @@ back into the prototype. **§7 lists where that loop is currently open.**
 | DS rules amended | 1 — **locked decision 8** |
 | Proven but not yet promoted | 1 — see §7 |
 | Default behaviour changed | 2 — `Button` outline fill (§2e), `TablePagination` band (§3a) |
+| Token layer restructured | yes — two layers, see §1a |
 
 ---
 
 ## 1 — Token changes (`src/index.css`)
 
-### 1a. New aliases — `@theme inline` block
+### 1a. The token layer is now two layers
+
+**Apply this before the value changes below — it changes where a value lives, not what it is.**
+
+`src/index.css` used to declare a colour literal for every semantic token, in both blocks. That
+flattening had a measurable cost: the light selection grey was spelled out **five separate
+times** (`--secondary`, `--muted`, `--accent`, `--sidebar-accent`, `--fp-outline-2`), so
+changing it in one place left four behind and the same colour rendered in two shades at once.
+Figma has always had the structure the CSS was missing — `FP/Card 1`, `FP/Surface 1b`,
+`FP/Outline 1-2`, `base/muted` aliasing `FP/Card 2` — and the mapping survived only in comments.
+
+**Layer 1 — primitives.** The only place a literal is written. 16 families, each with a light
+value on `:root` and a dark value on `.dark`:
+
+```
+--fp-ink-1 / -2 / -3 / -inverse        text roles
+--fp-surface-base / -1a / -1b          app ground, inner panel, content layer
+--fp-card-1 / -2                       raised card, quieter card step
+--fp-emphasis / --fp-emphasis-hover    SELECTION and its hover
+--fp-outline-1 / -2                    quiet rim, stronger rim
+--fp-stroke-hairline / --fp-stroke-field
+--fp-danger
+```
+
+**Layer 2 — semantics.** No literals; every token aliases a primitive. Where the primitive is
+the same in both themes the token is declared **once** on `:root` and never appears in `.dark`
+at all — `var()` resolves at use time, so redefining the primitive under `.dark` re-resolves it
+automatically:
+
+```css
+:root { --fp-emphasis: #ededed; --accent: var(--fp-emphasis); }
+.dark { --fp-emphasis: #2a2f37; }            /* --accent follows, unstated */
+```
+
+A handful of tokens map to a *different* primitive per theme (`--muted` → emphasis in light,
+card-2 in dark; `--sidebar-accent` → emphasis / outline-1; `--fp-lane` → card-2 / card-1) and
+are declared in both blocks. Tokens with no family (charts, banners, statuses, `--chip`,
+`--drawer`, `--ring`) keep their literals.
+
+**This refactor is pixel-neutral.** All 67 tokens were resolved in both themes and diffed
+against their pre-refactor values: **134/134 identical**. Literals dropped from 67 to 50 on
+`:root` and 58 to 43 on `.dark`. Verified in the browser too — setting only `--fp-emphasis`
+moves `--accent`, `--secondary`, `--muted` and `--sidebar-accent` together.
+
+> `--fp-outline-2`'s light value currently equals `--fp-emphasis`, but they are deliberately
+> separate families: that one is only ever a border (all 18 call sites are
+> `border-fp-outline-2`) and it carries its own dark value. Retinting the emphasis grey does
+> **not** move it. Tie them if that is what you want.
+
+
+
+### 1b. New aliases — `@theme inline` block
 
 Place with the other FleetPanda-only aliases, after `--color-fp-card-1`:
 
@@ -56,7 +108,7 @@ And at the end of the same block, the overlay elevation tier — the FP DS 2026 
     0 20px 25px -5px rgb(0 0 0 / 0.1);
 ```
 
-### 1b. New values — `:root` (light)
+### 1c. New values — `:root` (light)
 
 ```css
   /* Pastel accents. Declared on :root and deliberately NOT overridden in .dark —
@@ -93,7 +145,7 @@ And at the end of the same block, the overlay elevation tier — the FP DS 2026 
   --fp-row-selected: #e9ecf1;
 ```
 
-### 1c. New values — `.dark` (FP)
+### 1d. New values — `.dark` (FP)
 
 Pastels are **not** repeated here; they inherit from `:root`.
 
@@ -107,7 +159,7 @@ Pastels are **not** repeated here; they inherit from `:root`.
 `#22272f` is the midpoint of the `surface-1b → card-1` step — precisely what `accent/50`
 composited to over the content layer. **Dark renders identically to before; only light changes.**
 
-### 1d. Changed values — `:root` only
+### 1e. Changed values — `:root` only
 
 | Token | Was | Now | As text on `#ffffff` |
 |---|---|---|---|
@@ -164,7 +216,7 @@ Reaching AA means the tint stops being a straight alpha and gets **its own token
 fixed tint plus a foreground measured against it, the way the pastel pairs are built.
 `dot` and `text` are both safe. Not yet done in the base.
 
-### 1e. Build config — required, not cosmetic
+### 1f. Build config — required, not cosmetic
 
 Add immediately after the `@import` lines (adjust paths to your CSS entry):
 
@@ -575,10 +627,14 @@ HMR and StrictMode double-invokes reads as a bug and no screenshot matches twice
    `bg-muted-foreground` (a text colour, unaffected), the `FoundationsReference` swatch page,
    and `ModalsDemo` — dialog content fills with `bg-background` (`#080808` dark), against which
    `bg-muted` is genuinely visible. **Do not sweep those.**
-9. **Build** — confirm `bg-rail`, `bg-fp-surface-1b` and `bg-brand` survive into the generated
+9. **Token resolution** — after applying §1a, resolve every token in both themes and diff
+   against the pre-refactor values. It must be 134/134 identical; the refactor moves where a
+   value lives, never what it is. Then confirm the payoff: setting only `--fp-emphasis` must
+   move `--accent`, `--secondary`, `--muted` and `--sidebar-accent` together.
+10. **Build** — confirm `bg-rail`, `bg-fp-surface-1b` and `bg-brand` survive into the generated
    CSS for every entry point. Generated CSS collapsing to ~20 kB means §1e was dropped.
-10. **Typecheck and lint** — `npx tsc -b --noEmit` and `npx eslint .` must pass.
-11. **When measuring across themes, wait ~2s for `transition-colors` to settle before reading.**
+11. **Typecheck and lint** — `npx tsc -b --noEmit` and `npx eslint .` must pass.
+12. **When measuring across themes, wait ~2s for `transition-colors` to settle before reading.**
    Reading immediately returns mid-transition values — this produced four false readings during
    this work, two of which looked like real contrast failures.
 
@@ -606,7 +662,15 @@ npm run build:unified  && cp dist-unified/index.html ../FP-DS-2026-unified-view.
 
 `FP-DS-2026-preview.html` is the DS gallery (~144 kB inlined CSS);
 `FP-DS-2026-unified-view.html` is the Unified View prototype (~139 kB). If either collapses to
-~20 kB the `@source` lines in §1e were dropped.
+~20 kB the `@source` lines in §1f were dropped.
+
+### The structural fix for all of it
+
+§1a is the answer to the whole class. Five of the six bugs below are "a value written in more
+than one place, or written where a semantic name belonged". A primitive layer makes the first
+impossible and names the second. The lint rule is still worth building for what remains —
+a fill resolving to the same value as its computed backdrop — but the duplication half is now
+structural rather than a matter of vigilance.
 
 ### A pattern worth a lint rule
 

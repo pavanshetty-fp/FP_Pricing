@@ -16,7 +16,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
  * apart across themes — the outline variant swaps `border`/`bg` between light
  * and dark, and all three inherit that swap together. It is `pointer-events-none`
  * because it is a readout, not a button.
+ *
+ * The boxes render transparent on the content layer (#ffffff in light) because
+ * the `outline` variant itself is transparent — see `ui/button.tsx`. This file
+ * used to carry a call-site correction for that; it no longer needs one.
  */
+
 export function ScopeStepper({
   label,
   onPrev,

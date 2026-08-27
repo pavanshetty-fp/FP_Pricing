@@ -12,8 +12,23 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+        // `bg-transparent`, NOT `bg-background`. `--background` is the APP
+        // background (#efefeb light), which is right only when the button sits
+        // ON it — and wrong on the white content layer, where every toolbar and
+        // every table row puts outline buttons. Measured on one gallery route
+        // before this change: 51 controls filled #efefeb on a #ffffff layer.
+        //
+        // Transparent is neutral-or-better everywhere, which is why this belongs
+        // in the variant rather than at call sites: on the app background it
+        // composites to the identical colour, on the content layer it renders
+        // #ffffff, and on a card it inherits the card instead of fighting it.
+        //
+        // The stroke is `--input` in BOTH themes now. The variant already used
+        // `--input` in dark; light was the odd one out at `--border` (#cdd4de vs
+        // the field's #abb3c2), so an outline button read a shade lighter than
+        // the input beside it in every toolbar.
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:

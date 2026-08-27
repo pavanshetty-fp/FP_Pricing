@@ -66,7 +66,7 @@ export function GroupByMenu({ compact = false }: { compact?: boolean }) {
            `--input` to match the search field beside it — the variant already
            uses `--input` in dark, so light was the odd one out. */
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="border-input bg-transparent">
+          <Button variant="outline" size="sm">
             <Group />
             {active ? `Group by: ${active}` : "Group By"}
           </Button>

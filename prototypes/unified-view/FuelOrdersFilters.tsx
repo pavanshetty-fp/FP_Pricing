@@ -122,7 +122,7 @@ export function FuelOrdersFilters() {
           `--border` in light but ALREADY uses `--input` in dark, so light was the
           odd one out and the button read a shade lighter than the input. */}
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="border-input bg-transparent">
+        <Button variant="outline" size="sm">
           <ListFilter />
           Filters
           {checked.size > 0 && (

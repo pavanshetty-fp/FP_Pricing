@@ -18,7 +18,7 @@ back into the prototype. **§7 lists where that loop is currently open.**
 | | |
 |---|---|
 | New colour tokens | 8 (+1 shadow token) |
-| Changed token values | 3 — light only |
+| Changed token values | 6 — light only |
 | Tokens removed or renamed | none |
 | Components with colour changes | 18 |
 | Components with layout/spacing changes | 7 |
@@ -71,11 +71,19 @@ And at the end of the same block, the overlay elevation tier — the FP DS 2026 
      render chips near-black. */
   --chip: #efefeb;
 
-  /* Navigation selection and hover are two states, so they are two tokens.
-     They used to share --sidebar-accent, which meant a hovered item and a
-     selected one were the same pixel and hover gave no feedback on the item you
-     were already on. */
-  --sidebar-accent: #ededed;        /* was #cad1db */
+  /* THE LIGHT SELECTION GREY. Five tokens held one hex and all move together,
+     so the segmented tabs, the active view-switch tool, menu emphasis, secondary
+     buttons and nav selection stay one family. */
+  --secondary: #ededed;
+  --muted: #ededed;
+  --accent: #ededed;
+  --sidebar-accent: #ededed;
+  --fp-outline-2: #ededed;
+
+  /* Navigation selection and hover are two states, so they are two tokens. They
+     used to share --sidebar-accent, which meant a hovered item and a selected
+     one were the same pixel and hover gave no feedback on the item you were
+     already on. */
   --sidebar-accent-hover: #e1e1e1;  /* new */
 
   /* Table row states. Rows previously borrowed --accent, a CONTROL-emphasis value
@@ -105,13 +113,39 @@ composited to over the content layer. **Dark renders identically to before; only
 |---|---|---|---|
 | `--status-success` | `#16a34a` green-600 | `#15803d` green-700 | 3.30 **FAIL** → 5.02 pass |
 | `--status-processing` | `#d97706` amber-600 | `#b45309` amber-700 | 3.19 **FAIL** → 5.02 pass |
-| `--sidebar-accent` | `#cad1db` | `#ededed` | navigation selection — see below |
+| `--secondary` | `#cad1db` | `#ededed` | the light selection grey — see below |
+| `--muted` | `#cad1db` | `#ededed` | ” |
+| `--accent` | `#cad1db` | `#ededed` | ” |
+| `--sidebar-accent` | `#cad1db` | `#ededed` | ” |
+| `--fp-outline-2` | `#cad1db` | `#ededed` | ” — **but this one is a rim, see the warning** |
 
 Both are painted as *text* by `StatusChip variant="text"` and `variant="soft"`, not only as a
 dot, so the 4.5:1 threshold applies rather than the 3.0 graphics one. `--status-failed`
 (4.83), `--status-pink` (4.60) and `--verified` (5.17) already cleared it and are unchanged —
 which also keeps `--status-failed` aligned with `--destructive`. **No dark values changed**
 (7.18 / 7.62, untouched).
+
+**`#cad1db` is gone from the light theme.** Five tokens carried that one hex —
+`--secondary`, `--muted`, `--accent`, `--sidebar-accent` and `--fp-outline-2` — so changing one
+left the others behind and the selection grey appeared in two shades at once. All five are now
+`#ededed`. Verified by sweeping the rendered DOM: **0 elements** paint the old hex as fill or
+border; 55 paint the new one. **Dark is untouched** — those five hold four different values
+there (`#2a2f37`, `#1b2028`, `#2a2f37`, `#363c45`, `#575757`) and none of them was the shared
+light hex.
+
+> **⚠ One of the five is a border, not a fill.** `--fp-outline-2` has 18 call sites and every
+> one is `border-fp-outline-2` — the pagination active-page outline, Kanban lane rules, the
+> sheet rules, the bulk bar's dark rim. Off the white content layer it now separates
+> `[18,18,18]` where it separated `[53,46,36]`, so those hairlines are markedly quieter. It was
+> carried along so no `#cad1db` is left anywhere; **reverting just that one to `#cad1db` is a
+> single line** if the rims read too faint.
+
+> **⚠ `--accent` drives hover as well as selection.** 48 call sites are `hover:bg-accent`
+> against 37 selection fills, so hover and selection are now the same pixel — the exact
+> condition that made nav hover useless before `--sidebar-accent-hover` split them. The
+> matching fix is an `--accent-hover: #e1e1e1` pair mirroring §1d's sidebar split. **Not done
+> here** — it is a 48-site sweep and several of those hovers carry `/50` alphas that dark
+> depends on, so it needs its own pass.
 
 **`--sidebar-accent` is a specified value, not a derived one.** Navigation selection is
 `#ededed` and hover is `#e1e1e1`, both given. Hover is **darker** than selected on purpose:
@@ -524,20 +558,27 @@ HMR and StrictMode double-invokes reads as a bug and no screenshot matches twice
 5. **Table footer rhythm** — the band must measure **36px** with a **16px** gap above it and
    **16px** below, and no divider between table and footer. Then narrow the viewport to ~768px
    and confirm the `Showing …` label stays on one line (20px) and the band does not overflow.
-6. **Navigation states** — in light, a selected nav item must measure `rgb(237, 237, 237)` and
+6. **No `#cad1db` anywhere in light.** Sweep the rendered DOM — this must return `0`:
+   ```js
+   [...document.querySelectorAll('*')].filter(el => { const cs = getComputedStyle(el);
+     return cs.backgroundColor === 'rgb(202, 209, 219)' || cs.borderColor === 'rgb(202, 209, 219)'; }).length
+   ```
+   Spot-check the segmented view tabs, the active view-switch tool and the selected nav item —
+   all three must be `rgb(237, 237, 237)`.
+7. **Navigation states** — in light, a selected nav item must measure `rgb(237, 237, 237)` and
    a hovered one `rgb(225, 225, 225)`; hovering the *selected* item must deepen it to the hover
    value. Dark must stay `rgb(54, 60, 69)` for both. Also confirm the utility actually
    generated — Tailwind v4 nests utilities in `@layer`, so a naive `styleSheets` scan reports a
    false negative; recurse into `cssRules`, or just grep the built CSS for
    `hover\:bg-sidebar-accent-hover`.
-7. **Both modes** — `grep -rn "bg-muted" src/components` should return only
+8. **Both modes** — `grep -rn "bg-muted" src/components` should return only
    `bg-muted-foreground` (a text colour, unaffected), the `FoundationsReference` swatch page,
    and `ModalsDemo` — dialog content fills with `bg-background` (`#080808` dark), against which
    `bg-muted` is genuinely visible. **Do not sweep those.**
-8. **Build** — confirm `bg-rail`, `bg-fp-surface-1b` and `bg-brand` survive into the generated
+9. **Build** — confirm `bg-rail`, `bg-fp-surface-1b` and `bg-brand` survive into the generated
    CSS for every entry point. Generated CSS collapsing to ~20 kB means §1e was dropped.
-9. **Typecheck and lint** — `npx tsc -b --noEmit` and `npx eslint .` must pass.
-10. **When measuring across themes, wait ~2s for `transition-colors` to settle before reading.**
+10. **Typecheck and lint** — `npx tsc -b --noEmit` and `npx eslint .` must pass.
+11. **When measuring across themes, wait ~2s for `transition-colors` to settle before reading.**
    Reading immediately returns mid-transition values — this produced four false readings during
    this work, two of which looked like real contrast failures.
 

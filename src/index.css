@@ -261,11 +261,15 @@
   --popover-foreground: #030405;
   --primary: #090c0f;
   --primary-foreground: #f0f2f5;
-  --secondary: #cad1db;
+  /* The light theme's selection / emphasis grey. --secondary, --muted and
+     --accent all held one hex and all move together, so the segmented tabs, the
+     active view-switch tool, menu emphasis and secondary buttons stay one
+     family rather than drifting apart. */
+  --secondary: #ededed;
   --secondary-foreground: #090c0f;
-  --muted: #cad1db;
+  --muted: #ededed;
   --muted-foreground: #596475;
-  --accent: #cad1db;
+  --accent: #ededed;
   --accent-foreground: #090c0f;
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
@@ -329,7 +333,13 @@
   --drawer: #fafbf8; /* Navigation Drawer Expanded (light) — 28679:1109 */
   --rail: #efefeb; /* Navigation Menu Default / icon rail (light) — 28679:1109 */
   --fp-outline-1: #e2e5ea;
-  --fp-outline-2: #cad1db;
+  /* Carried along with the fills above so the old hex is gone from the theme.
+     NOTE this is the one of the four that is a RIM, never a fill: all 18 call
+     sites are `border-fp-outline-2`. Off the white content layer it now
+     separates [18,18,18] where it separated [53,46,36], so those hairlines are
+     markedly quieter — one line to put back if the pagination outline, the
+     Kanban lanes or the sheet rules read too faint. */
+  --fp-outline-2: #ededed;
   --fp-surface-1a: #ffffff;
   --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
   --fp-card-1: #e9ecf1;
@@ -415,7 +425,7 @@
      (file PxzKUl6emRr8QQ5Nb0vlwT). Re-pointing --muted needs that decided in
      Figma first; until then, fills that need to read on those surfaces use
      --accent (#2a2f37). Light mode is unaffected either way: there --muted and
-     --accent are both #cad1db, so muted→accent is a pixel no-op. */
+     --accent are both #ededed, so muted→accent is a pixel no-op. */
   --muted: #1b2028; /* FP column → FP/Card 2 (= #1b2028) */
   --muted-foreground: #9ca3af; /* base/muted-foreground */
   --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */

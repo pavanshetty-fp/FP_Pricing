@@ -17,19 +17,25 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 
 A fill is only a fill if it differs from what is behind it. Several DS tokens are
 **byte-identical to a surface token in at least one theme**, so a fill that looks
-fine in Light can composite to a literal `[0,0,0]` in FP-dark:
+fine in one theme can composite to a literal `[0,0,0]` in the other — it runs in
+both directions, and since the 2026-08-27 light sync the largest such family is
+in Light, not FP-dark:
 
 | Token | Collides with | Where |
 |---|---|---|
 | `--muted` | `--fp-surface-1b`, `--popover` | FP-dark, both `#1b2028` |
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
-| `--fp-outline-2` | `--accent` | Light, both `#cad1db` |
+| `--background` | `--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b` | Light, all `#ffffff` — added by the 2026-08-27 Figma sync |
+| ~~`--fp-outline-2`~~ | ~~`--accent`~~ | Light — **resolved** 2026-08-27, `--accent` moved to `#e5e7eb` |
 
-This family has now caught five token pairs. Note that the colliding pair
-differs BY THEME — `--accent`/`--fp-card-1` collide only in dark,
-`--fp-outline-2`/`--accent` only in light — so a single token chosen for one
-theme can silently fail in the other. Before shipping a fill:
+This family has now caught nine token pairs, eight of them live: the same sync
+that resolved `--fp-outline-2`/`--accent` opened four new ones by moving
+`--background` onto white. Note that the colliding pair differs BY THEME —
+`--accent`/`--fp-card-1` collide only in dark, the `--background` white family
+only in light — so a single token chosen for one theme can silently fail in the
+other. In light this now means a card separates from the app ground by border and
+shadow alone; if you need the old tinted ground, name `--fp-surface-base`. Before shipping a fill:
 
 1. Identify the **actual** surface behind the element — not the one you assume.
    For an overlay, that is whatever it floats over (for the bulk bar, selected

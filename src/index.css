@@ -275,8 +275,25 @@
   --fp-surface-1b: #ffffff; /* content layer */
   --fp-card-1: #e9ecf1; /* raised card / inset block */
   --fp-card-2: #f4f5f8; /* the quieter card step (Figma FP/Card 2) */
-  --fp-emphasis: #ededed; /* SELECTION / control emphasis */
-  --fp-emphasis-hover: #e1e1e1; /* hover, one step under selection */
+  /* SELECTION / control emphasis. Light value owned by the Figma sync on main
+     (base/accent, base/sidebar-accent -> gray/200). That sync also split this
+     family in two: it puts --accent/--sidebar-accent on gray/200 but
+     --secondary/--muted on zinc/100, which one primitive cannot hold, hence
+     --fp-emphasis-quiet below. In dark both still resolve here. */
+  --fp-emphasis: #e5e7eb;
+  /* The quieter half of the emphasis split — base/secondary and base/muted,
+     zinc/100. Exists only because light needs two values where dark needs one;
+     in dark --secondary re-aliases --fp-emphasis and --muted --fp-card-2. */
+  --fp-emphasis-quiet: #f4f4f5;
+  /* Hover, one step under selection. NOT retuned by the Figma sync — nothing in
+     the Figma collection covers it — but the sync moved --fp-emphasis to
+     gray/200, which narrowed the gap between the two from [-12,-12,-12] to
+     [-4,-6,-10]. Two things to note if this pair gets revisited: the step is now
+     small enough to be easy to miss, and hover is DARKER than selection here,
+     the opposite way round from --fp-row-hover/--fp-row-selected, which go
+     [11,9,7] lighter. Both predate this merge; left as-is rather than inventing
+     a value. */
+  --fp-emphasis-hover: #e1e1e1;
   --fp-outline-1: #e2e5ea; /* quiet rim */
   /* Stronger rim. Its light value currently EQUALS --fp-emphasis, but the two
      are separate families on purpose: this one is only ever a border (all 18
@@ -284,9 +301,13 @@
      Retint the emphasis grey and this does NOT follow — tie them deliberately
      if that is what you want. */
   --fp-outline-2: #ededed;
-  --fp-stroke-hairline: #cdd4de; /* global hairline */
-  --fp-stroke-field: #abb3c2; /* field border */
-  --fp-danger: #dc2626; /* destructive / failed */
+  --fp-stroke-hairline: #a1a1aa; /* global hairline — base/border, zinc/400 */
+  --fp-stroke-field: #a1a1aa; /* field border — base/input, zinc/400 */
+  /* Destructive / failed. Light stays red-600 because --status-failed carries
+     body-sized status text and measures 4.83 here. --destructive no longer
+     aliases this in light: the Figma sync moved it to red/500 (#ef4444, 3.76),
+     so the two are independent in light and rejoin in dark. */
+  --fp-danger: #dc2626;
 
   /* ------------------------------------------------------------------
      LAYER 2 — SEMANTICS. No literals. Tokens whose primitive is the same in
@@ -294,19 +315,18 @@
      redefining the primitive under `.dark` re-resolves them automatically and
      they never appear in the dark block at all.
      ------------------------------------------------------------------ */
-  --background: var(--fp-surface-base);
+
   --foreground: var(--fp-ink-1);
   --card: var(--fp-surface-1a);
   --card-foreground: var(--fp-ink-1);
   --popover: var(--fp-surface-1b);
   --popover-foreground: var(--fp-ink-1);
   --primary-foreground: var(--fp-ink-inverse);
-  --secondary: var(--fp-emphasis);
   --secondary-foreground: var(--fp-ink-2);
   --muted-foreground: var(--fp-ink-3);
   --accent: var(--fp-emphasis);
   --accent-foreground: var(--fp-ink-2);
-  --destructive: var(--fp-danger);
+
   --border: var(--fp-stroke-hairline);
   --input: var(--fp-stroke-field);
   --sidebar-foreground: var(--fp-ink-1);
@@ -317,11 +337,25 @@
   --status-failed: var(--fp-danger);
 
   /* Light-only aliases — these map to a DIFFERENT primitive in dark. */
-  --muted: var(--fp-emphasis);
+  --muted: var(--fp-emphasis-quiet);
+  --secondary: var(--fp-emphasis-quiet);
   --sidebar-accent: var(--fp-emphasis);
   --fp-lane: var(--fp-card-2);
   --fp-row-hover: var(--fp-card-2);
-  --sidebar-border: var(--fp-stroke-hairline);
+  /* The app ground. base/background is #ffffff now, identical to --card,
+     --popover and both content surfaces, so light has no ground/card fill step
+     at all: a card separates by border and shadow only, and `bg-background` on
+     a card is a zero-pixel change. --fp-surface-base keeps #efefeb and is the
+     only remaining name for the old tinted ground (--rail still uses it). */
+  --background: var(--fp-surface-1b);
+  /* base/destructive -> red/500. 3.76:1 as text on white, under the 4.5 AA
+     body threshold; accepted as a design decision. Not --fp-danger, which
+     --status-failed keeps at 4.83. */
+  --destructive: #ef4444;
+  /* base/sidebar-border. No primitive holds this value any more — it is what
+     --fp-stroke-field used to be, before base/input took it to zinc/400. Dark
+     literals this token too. */
+  --sidebar-border: #abb3c2;
 
   /* No family — one consumer, or a pair no primitive describes. */
   --primary: #090c0f;
@@ -332,10 +366,10 @@
   --chart-3: #164e63;
   --chart-4: #fbbf24;
   --chart-5: #f59e0b;
-  --sidebar: #fafbf8;
+  --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
   --sidebar-primary: #090c0f;
   --sidebar-primary-foreground: #f0f2f5;
-  --sidebar-ring: #727d8f;
+  --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
   --pastel-blue: #a8c9ef;
@@ -381,6 +415,11 @@
   --fp-outline-2: #575757; /* stronger rim */
   --fp-stroke-hairline: #363c45; /* global hairline */
   --fp-stroke-field: #363c45; /* field border */
+  /* Nothing consumes the quiet half in dark — --secondary re-aliases
+     --fp-emphasis and --muted --fp-card-2 — but LAYER 1 requires every
+     primitive to carry a dark value, so it tracks the family it split from
+     rather than leaving a light literal visible in this scope. */
+  --fp-emphasis-quiet: var(--fp-emphasis);
   --fp-danger: #f87171; /* destructive / failed */
 
   /* LAYER 2 — only the tokens whose primitive DIFFERS from light.
@@ -388,6 +427,14 @@
   --muted: var(--fp-card-2);
   --sidebar-accent: var(--fp-outline-1);
   --fp-lane: var(--fp-card-1);
+  /* Re-joined here. Light had to break these three out of the shared block —
+     --background because base/background went white, --secondary because the
+     emphasis family split, --destructive because it left --fp-danger — but dark
+     keeps every one of them on its original primitive, so dark is unchanged by
+     the sync. Verified: zero drift across the FP column. */
+  --background: var(--fp-surface-base);
+  --secondary: var(--fp-emphasis);
+  --destructive: var(--fp-danger);
 
   /* No family. */
   --primary: #f8fafc;

@@ -87,8 +87,11 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  * STILL SHORT for `soft` on light. A 10% tint of the label's own hue lifts the
  * background much faster than it darkens the text, so the pill lands at ~4.4
  * rather than 4.5 — fine for large text, short of AA for body. `soft/failed` is
- * unchanged at 4.13 because `--status-failed` stays aligned with `--destructive`,
- * and the `destructive` Badge variant ships the same recipe. If `soft` needs to
+ * unchanged at 4.13. It used to be described as tracking `--destructive`; the
+ * 2026-08-27 Figma light sync moved that token to red/500 (#ef4444, 3.76 as text
+ * on white) while `--status-failed` deliberately stayed at red-600, so the two
+ * are now independent and the `destructive` Badge variant no longer shares this
+ * chip's recipe in light. If `soft` needs to
  * carry body text on light surfaces, the tint has to stop being a straight alpha
  * of the label colour — it needs its own token pair (a fixed tint plus a
  * foreground measured against it), the way the pastel pairs are built. Until

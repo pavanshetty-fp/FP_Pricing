@@ -34,6 +34,8 @@ import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
+import { ProfileScreen } from "./ProfileScreen";
+import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
@@ -55,7 +57,12 @@ import {
   sortFuelOrders,
   startOfDay,
 } from "./data";
-import type { FuelOrder, FuelOrderColumnKey, SortState } from "./types";
+import type {
+  AccountUser,
+  FuelOrder,
+  FuelOrderColumnKey,
+  SortState,
+} from "./types";
 
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
@@ -90,6 +97,17 @@ const NAV_ITEMS = [
   { key: "customers", label: "Customers", icon: <Users /> },
   { key: "assets", label: "Assets", icon: <Database /> },
 ];
+
+/**
+ * Account destinations — full pages, reached only from the top bar's account
+ * menu. Kept out of NAV_ITEMS so the rail never renders them: Profile is not a
+ * workspace destination, and while one is open no rail item is current, which
+ * is the honest state (`activeKey` simply matches nothing).
+ */
+const ACCOUNT_PAGES: Record<string, string> = {
+  profile: "Profile",
+  settings: "Settings",
+};
 
 /** Columns the column-visibility menu can toggle (everything with a label). */
 const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
@@ -676,6 +694,13 @@ function NotBuiltYet({ label }: { label: string }) {
 export function UnifiedView() {
   const [navKey, setNavKey] = React.useState("fuel-orders");
   const [searchOpen, setSearchOpen] = React.useState(false);
+  /* The signed-in account lives here, above both the top bar and the Profile
+     page, so editing it on Profile updates the chrome without a round trip. */
+  const [user, setUser] = React.useState<AccountUser>({
+    name: "Pavan Shetty",
+    email: "pavanshetty@fleetpanda.com",
+    fallback: "PS",
+  });
   /**
    * The record a global-search hit asked for. Passed to the destination screen
    * as `focusId`, which opens that record's sheet on arrival. Keyed by an
@@ -683,24 +708,23 @@ export function UnifiedView() {
    * without it the prop would not change and nothing would happen.
    */
   const [focus, setFocus] = React.useState<{ id: string; n: number } | null>(null);
+  const accountTitle = ACCOUNT_PAGES[navKey];
   const active = NAV_ITEMS.find((i) => i.key === navKey) ?? NAV_ITEMS[0];
 
   return (
     <TooltipProvider>
       <AppShell
-        title={active.label}
+        title={accountTitle ?? active.label}
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
         topBar={
           <TopBar
-            user={{
-              name: "Pavan Shetty",
-              email: "pavanshetty@fleetpanda.com",
-              fallback: "PS",
-            }}
+            user={user}
             unread={3}
             searchPlaceholder="Search everything"
             onSearchActivate={() => setSearchOpen(true)}
+            onProfile={() => setNavKey("profile")}
+            onSettings={() => setNavKey("settings")}
           />
         }
         rail={
@@ -715,7 +739,11 @@ export function UnifiedView() {
            page header carries only the theme toggle. */
         headerAction={<ThemeToggle />}
       >
-        {navKey === "fuel-orders" ? (
+        {navKey === "profile" ? (
+          <ProfileScreen user={user} onSave={setUser} />
+        ) : navKey === "settings" ? (
+          <SettingsScreen />
+        ) : navKey === "fuel-orders" ? (
           <FuelOrdersScreen focus={focus} />
         ) : navKey === "asset-orders" ? (
           <AssetOrdersScreen focus={focus} />

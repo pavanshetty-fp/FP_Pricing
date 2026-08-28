@@ -2,7 +2,7 @@ import { ListToolbar, ColumnSearchChip as GenericChip } from "./ListToolbar";
 import { FuelOrdersFilters } from "./FuelOrdersFilters";
 import { FUEL_ORDER_SEARCH_FIELDS } from "./data";
 import type { FuelOrderColumnKey } from "./types";
-import type { ListView } from "./ListToolbar";
+import type { ListToolbarProps, ListView } from "./ListToolbar";
 
 /**
  * Fuel Orders action bar — a thin adapter over the generic `ListToolbar`.
@@ -31,6 +31,8 @@ export interface FuelOrdersToolbarProps {
   onViewChange: (v: FuelOrdersView) => void;
   date: Date;
   onDateChange: (d: Date) => void;
+  /** Groupable dimensions for this list, plus the active ordered stack. */
+  groupBy: ListToolbarProps<FuelOrderColumnKey>["groupBy"];
 }
 
 export function FuelOrdersToolbar({

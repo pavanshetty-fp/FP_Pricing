@@ -38,6 +38,8 @@ import type {
   SortState,
   TwoLine as TwoLineData,
 } from "./types";
+import { groupSelectionState, type GroupNode } from "./grouping";
+import { GroupHeaderRow } from "./GroupHeaderRow";
 
 const QTY_FMT = new Intl.NumberFormat("en-US");
 
@@ -354,11 +356,20 @@ export interface FuelOrdersTableProps {
   selectedIds: Set<string>;
   onToggleRow: (id: string) => void;
   onToggleAll: (checked: boolean) => void;
+  /** Select or clear a whole group at once, collapsed rows included. */
+  onToggleGroup?: (rowIds: string[], checked: boolean) => void;
   sort: SortState | null;
   onSort: (key: FuelOrderColumnKey) => void;
   hidden?: Set<FuelOrderColumnKey>;
   /** Open the order's side sheet — the chevron in the sticky last column. */
   onOpenOrder?: (row: FuelOrder) => void;
+  /**
+   * Grouped render list from `groupRows`. Omitted, the table renders `rows`
+   * flat — which is what every ungrouped list does.
+   */
+  nodes?: GroupNode<FuelOrder>[];
+  collapsedGroups?: ReadonlySet<string>;
+  onToggleGroupCollapse?: (id: string) => void;
 }
 
 /**
@@ -372,10 +383,14 @@ export function FuelOrdersTable({
   selectedIds,
   onToggleRow,
   onToggleAll,
+  onToggleGroup,
   sort,
   onSort,
   hidden,
   onOpenOrder,
+  nodes,
+  collapsedGroups,
+  onToggleGroupCollapse,
 }: FuelOrdersTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
@@ -450,16 +465,45 @@ export function FuelOrdersTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
-            <Row
-              key={row.id}
-              row={row}
-              columns={visibleColumns}
-              selected={selectedIds.has(row.id)}
-              onToggle={() => onToggleRow(row.id)}
-              onOpenOrder={onOpenOrder}
-            />
-          ))}
+          {(nodes ??
+            rows.map((row) => ({
+              kind: "row" as const,
+              id: row.id,
+              depth: 0,
+              row,
+            }))
+          ).map((node) =>
+            node.kind === "group" ? (
+              <GroupHeaderRow
+                key={node.id}
+                colSpan={visibleColumns.length}
+                depth={node.depth}
+                label={node.label}
+                dimLabel={node.dimLabel}
+                count={node.count}
+                measure={node.measure}
+                unit="gal"
+                noun="order"
+                collapsed={Boolean(collapsedGroups?.has(node.id))}
+                onToggle={() => onToggleGroupCollapse?.(node.id)}
+                selection={
+                  onToggleGroup && {
+                    state: groupSelectionState(node.rowIds, selectedIds),
+                    onChange: (checked) => onToggleGroup(node.rowIds, checked),
+                  }
+                }
+              />
+            ) : (
+              <Row
+                key={node.id}
+                row={node.row}
+                columns={visibleColumns}
+                selected={selectedIds.has(node.row.id)}
+                onToggle={() => onToggleRow(node.row.id)}
+                onOpenOrder={onOpenOrder}
+              />
+            )
+          )}
         </TableBody>
       </Table>
     </div>

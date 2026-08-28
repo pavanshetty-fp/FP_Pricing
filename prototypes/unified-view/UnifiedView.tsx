@@ -63,7 +63,7 @@ import type {
   FuelOrderColumnKey,
   SortState,
 } from "./types";
-import { columnsHiddenByGrouping, groupRows } from "./grouping";
+import { useGrouping } from "./useGrouping";
 import { FUEL_ORDER_GROUP_DIMS } from "./groupDims";
 import { GroupedListFooter } from "./GroupedListFooter";
 
@@ -153,26 +153,9 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<FuelOrdersView>("table");
-  // Grouping. Ordered and capped at two by the menu; the outer dimension is
-  // first, because the order is what decides whether a customer total survives.
-  const [groupBy, setGroupBy] = React.useState<string[]>([]);
-  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
   const [views, setViews] = React.useState<SavedView[]>([]);
   const [activeViewId, setActiveViewId] = React.useState<string | null>(null);
   const viewSeq = React.useRef(0);
-
-  // A view captures the state a user would otherwise have to rebuild by hand.
-  const current: ViewState = {
-    search,
-    sortKey: sort?.key ?? null,
-    sortDir: sort?.dir ?? null,
-    hidden: [...hiddenColumns],
-    pageSize,
-    dateKey: dateKeyOf(date),
-    colScope,
-    colQuery,
-    groupBy,
-  };
 
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -190,10 +173,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   );
 
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
-  const dirty =
-    viewStateKey(current) !==
-    viewStateKey(activeView ? activeView.state : defaultState);
-
   const applyState = (st: ViewState) => {
     setSearch(st.search);
     setSort(
@@ -207,8 +186,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     setDate(new Date(y, m - 1, d));
     setColScope(st.colScope);
     setColQuery(st.colQuery);
-    setGroupBy(st.groupBy ?? []);
-    setCollapsed(new Set());
+    g.setGrouping(st.groupBy ?? []);
     setPage(1);
   };
 
@@ -275,55 +253,39 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   );
   const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
 
-  const dims = React.useMemo(
-    () =>
-      groupBy
-        .map((k) => FUEL_ORDER_GROUP_DIMS.find((d) => d.key === k))
-        .filter((d): d is (typeof FUEL_ORDER_GROUP_DIMS)[number] => Boolean(d)),
-    [groupBy]
-  );
-  const grouped = dims.length > 0;
+  /* Grouping — the same hook the other three lists use, so all four behave
+     identically. It suspends pagination while grouped, because a group that
+     straddles a page boundary cannot have an honest header. */
+  const g = useGrouping<FuelOrder, FuelOrderColumnKey>({
+    dimensions: FUEL_ORDER_GROUP_DIMS,
+    rows: sorted,
+    rowId: React.useCallback((r: FuelOrder) => r.id, []),
+    // Qty (Gal) is the only column on this list that sums to something true.
+    measureOf: React.useCallback((r: FuelOrder) => r.qtyGal, []),
+    hiddenColumns,
+    page,
+    pageSize,
+  });
+  const pageRows = g.visibleRows;
 
-  /*
-    Pagination and grouping cannot both be true. At 25 rows a page the first
-    page cuts through the middle of a customer's orders, and page two opens
-    with a header claiming a count and a total for orders that are not on
-    screen. So while grouped the list scrolls whole, with the depth-0 headers
-    sticky, and the pagination footer is replaced by a group summary.
-  */
-  const pageRows = React.useMemo(
-    () => (grouped ? sorted : sorted.slice((page - 1) * pageSize, page * pageSize)),
-    [sorted, page, pageSize, grouped]
-  );
+  /* A view captures the state a user would otherwise have to rebuild by
+     hand. Declared after the grouping hook because it reads from it. */
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hiddenColumns],
+    pageSize,
+    dateKey: dateKeyOf(date),
+    colScope,
+    colQuery,
+    groupBy: g.groupBy,
+  };
 
-  const groups = React.useMemo(
-    () =>
-      groupRows(pageRows, dims, {
-        rowId: (r) => r.id,
-        // Qty (Gal) is the only column on this list that sums to something true.
-        measureOf: (r) => r.qtyGal,
-        collapsed,
-      }),
-    [pageRows, dims, collapsed]
-  );
+  const dirty =
+    viewStateKey(current) !==
+    viewStateKey(activeView ? activeView.state : defaultState);
 
-  /* A column that repeats its own group header on every row is dead width. */
-  const effectiveHidden = React.useMemo(() => {
-    if (!grouped) return hiddenColumns;
-    const next = new Set(hiddenColumns);
-    for (const key of columnsHiddenByGrouping(dims)) {
-      next.add(key as FuelOrderColumnKey);
-    }
-    return next;
-  }, [hiddenColumns, dims, grouped]);
-
-  const toggleGroupCollapse = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
   const onSort = (key: FuelOrderColumnKey) => {
@@ -587,15 +549,10 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
             setPage(1);
           }}
           groupBy={{
-            dimensions: FUEL_ORDER_GROUP_DIMS.map((d) => ({
-              key: d.key,
-              label: d.label,
-              multi: d.multi,
-            })),
-            value: groupBy,
+            dimensions: g.menuDimensions,
+            value: g.groupBy,
             onChange: (next) => {
-              setGroupBy(next);
-              setCollapsed(new Set());
+              g.setGrouping(next);
               setPage(1);
             },
           }}
@@ -685,16 +642,16 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           ) : (
             <FuelOrdersTable
               rows={pageRows}
-              nodes={grouped ? groups.nodes : undefined}
-              collapsedGroups={collapsed}
-              onToggleGroupCollapse={toggleGroupCollapse}
+              nodes={g.grouped ? g.groups.nodes : undefined}
+              collapsedGroups={g.collapsed}
+              onToggleGroupCollapse={g.toggleGroupCollapse}
               onToggleGroup={toggleGroup}
               selectedIds={selectedIds}
               onToggleRow={toggleRow}
               onToggleAll={toggleAll}
               sort={sort}
               onSort={onSort}
-              hidden={effectiveHidden}
+              hidden={g.effectiveHidden}
               onOpenOrder={(row) => setOpenOrderId(row.id)}
             />
           )}
@@ -745,20 +702,17 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       {/* No top hairline: the table's own last-row rule already closes the list,
           so a second line here read as a stray divider. */}
       <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
-        {grouped ? (
+        {g.grouped ? (
           <GroupedListFooter
-            groupCount={groups.groupCount}
-            rowCount={groups.rowCount}
+            groupCount={g.groups.groupCount}
+            rowCount={g.groups.rowCount}
             noun="order"
-            total={sorted.reduce((n, r) => n + r.qtyGal, 0)}
+            total={g.total}
             unit="gal"
-            overCounts={groups.overCounts}
-            allCollapsed={
-              groups.groupIds.length > 0 &&
-              groups.groupIds.every((id) => collapsed.has(id))
-            }
-            onExpandAll={() => setCollapsed(new Set())}
-            onCollapseAll={() => setCollapsed(new Set(groups.groupIds))}
+            overCounts={g.groups.overCounts}
+            allCollapsed={g.allCollapsed}
+            onExpandAll={g.expandAll}
+            onCollapseAll={g.collapseAll}
           />
         ) : (
           <TablePagination

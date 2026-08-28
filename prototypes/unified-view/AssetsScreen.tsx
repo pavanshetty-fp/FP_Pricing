@@ -17,6 +17,9 @@ import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
 import { ListFilters } from "./ListFilters";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
+import { useGrouping } from "./useGrouping";
+import { ASSET_GROUP_DIMS } from "./groupDims";
+import { GroupedListFooter } from "./GroupedListFooter";
 import { AssetSheet, type AssetDraft } from "./AssetSheet";
 import { useSavedViews } from "./useSavedViews";
 import { DATE_FMT, dateKeyOf, startOfDay } from "./data";
@@ -140,10 +143,18 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     [rows, q, cq, colScope]
   );
   const sorted = React.useMemo(() => sortAssets(filtered, sort), [filtered, sort]);
-  const pageRows = React.useMemo(
-    () => sorted.slice((page - 1) * pageSize, page * pageSize),
-    [sorted, page, pageSize]
-  );
+  /* Grouping. The hook owns the dimension stack and the collapsed set, and
+     suspends pagination while grouped — a group cannot straddle a page
+     boundary and still have an honest header. */
+  const g = useGrouping<(typeof sorted)[number], AssetColumnKey>({
+    dimensions: ASSET_GROUP_DIMS,
+    rows: sorted,
+    rowId: React.useCallback((r) => r.id, []),
+    measureOf: React.useCallback((r) => r.capacityGal, []),
+    hiddenColumns: hidden,
+    page,
+    pageSize,
+  });
 
   const onSort = (key: AssetColumnKey) => {
     setSort((prev) => {
@@ -259,6 +270,14 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
               ]}
             />
           }
+          groupBy={{
+            dimensions: g.menuDimensions,
+            value: g.groupBy,
+            onChange: (next) => {
+              g.setGrouping(next);
+              setPage(1);
+            },
+          }}
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hidden}
           onToggleColumn={(k) =>
@@ -329,9 +348,14 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
             </Empty>
           ) : (
             <ListTable
-              rows={pageRows}
+              rows={g.visibleRows}
+              nodes={g.grouped ? g.groups.nodes : undefined}
+              collapsedGroups={g.collapsed}
+              onToggleGroupCollapse={g.toggleGroupCollapse}
+              groupNoun="asset"
+              groupUnit="gal"
               columns={ASSET_COLUMNS}
-              hidden={hidden}
+              hidden={g.effectiveHidden}
               sort={sort}
               onSort={onSort}
               rowId={(a) => a.id}
@@ -358,16 +382,30 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       />
 
       <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
-        <TablePagination
-          page={page}
-          pageSize={pageSize}
-          total={sorted.length}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
+        {g.grouped ? (
+          <GroupedListFooter
+            groupCount={g.groups.groupCount}
+            rowCount={g.groups.rowCount}
+            noun="asset"
+            total={g.total}
+            unit="gal"
+            overCounts={g.groups.overCounts}
+            allCollapsed={g.allCollapsed}
+            onExpandAll={g.expandAll}
+            onCollapseAll={g.collapseAll}
+          />
+        ) : (
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
+        )}
       </div>
     </div>
   );

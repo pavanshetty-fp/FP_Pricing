@@ -197,11 +197,6 @@
   --color-fp-lane-red: #f43f5e;
   /* Chart palette (449:6176) — categorical series colors, theme-independent.
      chart-1 = brand. Used by Recharts cards on the Dashboard. */
-  --color-chart-1: #fa6400;
-  --color-chart-2: #3b82f6;
-  --color-chart-3: #22c55e;
-  --color-chart-4: #eab308;
-  --color-chart-5: #8b5cf6;
   /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
      off the app background with a soft drop shadow (black 15%). */
   --shadow-fp-surface: 0 4px 4px 0 rgb(0 0 0 / 0.15);
@@ -281,16 +276,29 @@
      verbatim as a design decision; --status-failed below deliberately does NOT
      follow it, so the two no longer hold the same value. */
   --destructive: #ef4444;
-  --destructive-foreground: #fef2f2;
+  /* White, not the #fef2f2 Figma carries. This token had no consumer because
+     `button`'s destructive variant hardcoded `text-white`; pointing that variant
+     at the token only made sense if the token held white, since on the red-500
+     fill white measures 3.76 and #fef2f2 only 3.44. Same rule as
+     --status-foreground and --verified-foreground: white in BOTH themes. */
+  --destructive-foreground: #ffffff;
   --border: #a1a1aa; /* base/border → tailwind zinc/400 */
   --input: #a1a1aa; /* base/input → tailwind zinc/400 */
   --ring: #727d8f;
 
-  --chart-1: #ea580c;
-  --chart-2: #0d9488;
-  --chart-3: #164e63;
-  --chart-4: #fbbf24;
-  --chart-5: #f59e0b;
+  /* Categorical chart palette. Declared ONCE and deliberately NOT overridden in
+     `.dark`, the same rule the pastel pairs follow: a categorical series colour
+     has to stay the same colour in both themes or the same series changes
+     identity when you flip, which is exactly what a categorical scale must not
+     do. These five hexes are the ones that were already rendering — they used to
+     be a SECOND `--color-chart-*` block in `@theme inline` that shadowed these
+     tokens, so the per-theme values below were dead and charts ignored the theme
+     entirely. The override is gone; these are now the single source. */
+  --chart-1: #fa6400;
+  --chart-2: #3b82f6;
+  --chart-3: #22c55e;
+  --chart-4: #eab308;
+  --chart-5: #8b5cf6;
 
   --sidebar: #fafafa; /* base/sidebar → tailwind zinc/50 */
   --sidebar-foreground: #030405;
@@ -427,16 +435,11 @@
   --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */
   --accent-foreground: #f0f2f5; /* base/accent-foreground */
   --destructive: #f87171; /* base/destructive */
-  --destructive-foreground: #f0f2f5;
+  --destructive-foreground: #ffffff;
   --border: #363c45; /* FP column → FP/Outline 1 (updated) */
   --input: #363c45; /* FP column → FP/Outline 1 (updated) */
   --ring: #9ca3af;
 
-  --chart-1: #fa6400;
-  --chart-2: #abb3c2;
-  --chart-3: #1d4ed8;
-  --chart-4: #22c55e;
-  --chart-5: #f87171;
 
   --sidebar: #11161d; /* base/sidebar */
   --sidebar-foreground: #f0f2f5; /* base/sidebar-foreground */

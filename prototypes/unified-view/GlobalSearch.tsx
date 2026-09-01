@@ -5,6 +5,7 @@ import {
   Fuel,
   LayoutGrid,
   Search,
+  Truck,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ const KIND_ICON: Record<SearchKind, React.ReactNode> = {
   page: <LayoutGrid />,
   "fuel-order": <Fuel />,
   "asset-order": <ClipboardList />,
+  "broker-order": <Truck />,
   customer: <Users />,
   asset: <Database />,
 };
@@ -64,8 +66,13 @@ const RECENT_IDS = ["page-fuel-orders", "cu-cu-2"];
 export interface GlobalSearchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Go to a result: switch rail destination, then open the record if there is one. */
-  onNavigate: (navKey: string, recordId: string | null) => void;
+  /**
+   * Go to a result: switch MODULE and rail destination, then open the record if
+   * there is one. The module is part of the address — without it a 3PL hit found
+   * while the Sales module is active would set a rail key that module does not
+   * have.
+   */
+  onNavigate: (moduleKey: string, navKey: string, recordId: string | null) => void;
 }
 
 export function GlobalSearch({ open, onOpenChange, onNavigate }: GlobalSearchProps) {
@@ -97,7 +104,7 @@ export function GlobalSearch({ open, onOpenChange, onNavigate }: GlobalSearchPro
   );
 
   const go = (e: SearchEntry) => {
-    onNavigate(e.navKey, e.recordId);
+    onNavigate(e.moduleKey, e.navKey, e.recordId);
     onOpenChange(false);
   };
 

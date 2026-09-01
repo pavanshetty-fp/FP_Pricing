@@ -7,8 +7,13 @@ import {
   SearchX,
   CalendarOff,
   Construction,
+  Truck,
+  Building2,
+  Container,
+  LayoutGrid,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import type { NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { NavRail } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
@@ -34,6 +39,7 @@ import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
+import { BrokerOrdersScreen } from "./threepl";
 import { GlobalSearch } from "./GlobalSearch";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
@@ -84,12 +90,62 @@ const TAG_OPTIONS = [
   "After Hours",
 ];
 
-const NAV_ITEMS = [
+/*
+  MODULE-SCOPED NAVIGATION.
+
+  The module switcher used to be decorative: picking 3PL relabelled the tile at
+  the top of the rail and changed nothing else. It is real now — a module owns a
+  DESTINATION LIST, and switching module swaps the whole list along with the
+  screen underneath.
+
+  DESTINATION KEYS ARE GLOBALLY UNIQUE, deliberately: `3pl-customers` rather than
+  a second `customers`. Both modules have a Customers destination, and with a
+  shared key a stale `navKey` surviving a module switch would resolve to the
+  other module's screen — the rail showing 3PL while the content layer showed
+  Sales. Unique keys make that state unrepresentable rather than merely unlikely.
+*/
+const SALES_NAV: NavItem[] = [
   { key: "fuel-orders", label: "Fuel Orders", icon: <Fuel /> },
   { key: "asset-orders", label: "Asset Orders", icon: <ClipboardList /> },
   { key: "customers", label: "Customers", icon: <Users /> },
   { key: "assets", label: "Assets", icon: <Database /> },
 ];
+
+/**
+ * 3PL destinations. Orders is built; the other three are the spec's Settings
+ * pages (§6 Vendors / Customers / Assets) and show the honest not-built state —
+ * the same way the Sales rail carried three unbuilt destinations before those
+ * screens landed.
+ */
+const THREE_PL_NAV: NavItem[] = [
+  { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
+  { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
+  { key: "3pl-customers", label: "Customers", icon: <Building2 /> },
+  { key: "3pl-assets", label: "Assets", icon: <Container /> },
+];
+
+/**
+ * Lease and Pricing get NO destinations rather than invented ones. The module
+ * switcher offers four modules because the DS component does; two of them have
+ * had no information architecture specified, and guessing their rail would put
+ * fake navigation on screen — the same rule that kept the reference's module
+ * taxonomy out of global search. An empty list renders the module-level empty
+ * state below.
+ */
+const MODULE_NAV: Record<string, NavItem[]> = {
+  sales: SALES_NAV,
+  "3pl": THREE_PL_NAV,
+  lease: [],
+  pricing: [],
+};
+
+const MODULE_LABEL: Record<string, string> = {
+  sales: "Sales",
+  "3pl": "3PL",
+  lease: "Lease",
+  pricing: "Pricing",
+};
+
 
 /** Columns the column-visibility menu can toggle (everything with a label). */
 const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
@@ -659,8 +715,13 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   );
 }
 
-/** Placeholder for the rail destinations this pass hasn't built. */
-function NotBuiltYet({ label }: { label: string }) {
+/**
+ * Placeholder for destinations and modules this pass hasn't built.
+ *
+ * It names WHAT is built instead, because "not built yet" on its own leaves a
+ * reader unable to tell an unfinished screen from a broken one.
+ */
+function NotBuiltYet({ label, detail }: { label: string; detail: string }) {
   return (
     <Empty className="h-full">
       <EmptyHeader>
@@ -668,8 +729,25 @@ function NotBuiltYet({ label }: { label: string }) {
           <Construction />
         </EmptyMedia>
         <EmptyTitle>{label}</EmptyTitle>
+        <EmptyDescription>{detail}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
+/** A module with no destinations at all — no rail, so no screen either. */
+function ModuleNotBuilt({ label }: { label: string }) {
+  return (
+    <Empty className="h-full">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <LayoutGrid />
+        </EmptyMedia>
+        <EmptyTitle>{label}</EmptyTitle>
         <EmptyDescription>
-          Not built yet — Fuel Orders is the screen in this pass.
+          This module has no screens yet. Its navigation hasn't been specified, and
+          guessing at it would put destinations here that don't exist. Switch to
+          Sales or 3PL from the module switcher at the top of the rail.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -677,21 +755,85 @@ function NotBuiltYet({ label }: { label: string }) {
 }
 
 export function UnifiedView() {
+  const [moduleKey, setModuleKey] = React.useState("sales");
   const [navKey, setNavKey] = React.useState("fuel-orders");
   const [searchOpen, setSearchOpen] = React.useState(false);
   /**
    * The record a global-search hit asked for. Passed to the destination screen
-   * as `focusId`, which opens that record's sheet on arrival. Keyed by an
+   * as `focus`, which opens that record's sheet on arrival. Keyed by an
    * incrementing nonce so choosing the SAME record twice still re-opens it —
    * without it the prop would not change and nothing would happen.
    */
   const [focus, setFocus] = React.useState<{ id: string; n: number } | null>(null);
-  const active = NAV_ITEMS.find((i) => i.key === navKey) ?? NAV_ITEMS[0];
+
+  const navItems = MODULE_NAV[moduleKey] ?? [];
+  const active = navItems.find((i) => i.key === navKey) ?? navItems[0] ?? null;
+
+  /**
+   * Switching module lands on that module's FIRST destination. Keeping the old
+   * `navKey` would leave the rail with nothing selected, because destination keys
+   * are unique per module — there is no equivalent destination to carry over.
+   */
+  const switchModule = (key: string) => {
+    setModuleKey(key);
+    setNavKey(MODULE_NAV[key]?.[0]?.key ?? "");
+    // A record focused in the module being left must not re-open in the one
+    // being entered.
+    setFocus(null);
+  };
+
+  /** A search hit is a (module, destination, record) address. */
+  const goTo = (m: string, nav: string, recordId: string | null) => {
+    setModuleKey(m);
+    setNavKey(nav);
+    setFocus(recordId ? { id: recordId, n: Date.now() } : null);
+  };
+
+  const screen = (() => {
+    if (navItems.length === 0) {
+      return <ModuleNotBuilt label={`${MODULE_LABEL[moduleKey] ?? moduleKey} module`} />;
+    }
+    switch (active?.key) {
+      case "fuel-orders":
+        return <FuelOrdersScreen focus={focus} />;
+      case "asset-orders":
+        return <AssetOrdersScreen focus={focus} />;
+      case "customers":
+        return <CustomersScreen focus={focus} />;
+      case "assets":
+        return <AssetsScreen focus={focus} />;
+      case "3pl-orders":
+        return <BrokerOrdersScreen focus={focus} />;
+      case "3pl-vendors":
+        return (
+          <NotBuiltYet
+            label="Vendors"
+            detail="Not built yet. The vendor list, invitations and the per-vendor email toggle are specified but unbuilt — Orders is the screen in this pass. Delivery partners are pickable inside an order's sheet."
+          />
+        );
+      case "3pl-customers":
+        return (
+          <NotBuiltYet
+            label="Customers"
+            detail="Not built yet. 3PL customers sync from Dispatch, so this list would show the same accounts as the Sales module's Customers screen, plus the credit fields the credit-hold rule reads."
+          />
+        );
+      case "3pl-assets":
+        return (
+          <NotBuiltYet
+            label="Assets"
+            detail="Not built yet. The organisation's assets, as listed under the 3PL Settings — Orders is the screen in this pass."
+          />
+        );
+      default:
+        return <NotBuiltYet label={active?.label ?? "Screen"} detail="Not built yet." />;
+    }
+  })();
 
   return (
     <TooltipProvider>
       <AppShell
-        title={active.label}
+        title={active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
         topBar={
@@ -708,9 +850,11 @@ export function UnifiedView() {
         }
         rail={
           <NavRail
-            groups={[{ items: NAV_ITEMS }]}
-            activeKey={navKey}
+            groups={[{ items: navItems }]}
+            activeKey={active?.key}
             onNavigate={setNavKey}
+            activeModule={moduleKey}
+            onModuleChange={switchModule}
           />
         }
         /* No Tier-2 sidebar — the content layer takes the full width. */
@@ -718,26 +862,11 @@ export function UnifiedView() {
            page header carries only the theme toggle. */
         headerAction={<ThemeToggle />}
       >
-        {navKey === "fuel-orders" ? (
-          <FuelOrdersScreen focus={focus} />
-        ) : navKey === "asset-orders" ? (
-          <AssetOrdersScreen focus={focus} />
-        ) : navKey === "customers" ? (
-          <CustomersScreen focus={focus} />
-        ) : navKey === "assets" ? (
-          <AssetsScreen focus={focus} />
-        ) : (
-          <NotBuiltYet label={active.label} />
-        )}
+        {screen}
         <GlobalSearch
           open={searchOpen}
           onOpenChange={setSearchOpen}
-          onNavigate={(key: string, recordId: string | null) => {
-            setNavKey(key);
-            setFocus(
-              recordId ? { id: recordId, n: Date.now() } : null
-            );
-          }}
+          onNavigate={goTo}
         />
       </AppShell>
     </TooltipProvider>

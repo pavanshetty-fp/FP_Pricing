@@ -2,6 +2,8 @@ import { FUEL_ORDERS } from "./data";
 import { ASSET_ORDERS } from "./assetOrders";
 import { CUSTOMERS } from "./customers";
 import { ASSETS } from "./assets";
+import { BROKER_ORDERS } from "./threepl/orders";
+import { vendorName } from "./threepl/vendors";
 
 /*
   Global search index.
@@ -12,17 +14,24 @@ import { ASSETS } from "./assets";
   result both switch screens and open that record's sheet.
 
   STRUCTURE ONLY from the reference: scope tabs, grouped results, a result count,
-  a recent/pages empty state and keyboard hints. The reference's own scope
-  taxonomy (3PL / Lease / Sales / Pricing / Shared) is NOT reused — those are
-  modules this prototype does not have, and inventing them would put fake
-  navigation on screen. The scopes here are the four segments that actually
-  exist, which is the same idea applied to real ground.
+  a recent/pages empty state and keyboard hints.
+
+  SCOPES ARE SEGMENTS, NOT MODULES. The reference's scope tabs are its MODULE
+  list (3PL / Lease / Sales / Pricing / Shared). When only Sales existed that
+  taxonomy was refused outright, because three of those five were modules this
+  prototype did not have and putting them on screen would have been fake
+  navigation. Two of them now exist — but the tabs still scope by SEGMENT
+  (Fuel Orders, 3PL Orders, Customers …) rather than by module, because a
+  segment is what a person searching has in mind; "which module owns it" is the
+  app's concern, and the entry carries it as `moduleKey` so a hit can switch
+  module silently on the way to the record.
 */
 
 export type SearchKind =
   | "page"
   | "fuel-order"
   | "asset-order"
+  | "broker-order"
   | "customer"
   | "asset";
 
@@ -31,6 +40,12 @@ export interface SearchEntry {
   kind: SearchKind;
   title: string;
   subtitle: string;
+  /**
+   * Which MODULE the destination belongs to. A hit in another module has to
+   * switch the module switcher too, or the rail would show one module's
+   * destinations while the content layer showed another's.
+   */
+  moduleKey: string;
   /** Rail destination this result lives on. */
   navKey: string;
   /** The record to open once there. `null` for a page result. */
@@ -51,6 +66,7 @@ export const KIND_LABEL: Record<SearchKind, string> = {
   page: "Pages",
   "fuel-order": "Fuel Orders",
   "asset-order": "Asset Orders",
+  "broker-order": "3PL Orders",
   customer: "Customers",
   asset: "Assets",
 };
@@ -60,6 +76,7 @@ export const SEARCH_SCOPES: { key: SearchKind | "all"; label: string }[] = [
   { key: "all", label: "Everything" },
   { key: "fuel-order", label: "Fuel Orders" },
   { key: "asset-order", label: "Asset Orders" },
+  { key: "broker-order", label: "3PL Orders" },
   { key: "customer", label: "Customers" },
   { key: "asset", label: "Assets" },
 ];
@@ -70,6 +87,7 @@ const PAGES: Omit<SearchEntry, "haystack">[] = [
     kind: "page",
     title: "Fuel Orders",
     subtitle: "Delivery and extraction orders · list",
+    moduleKey: "sales",
     navKey: "fuel-orders",
     recordId: null,
   },
@@ -78,6 +96,7 @@ const PAGES: Omit<SearchEntry, "haystack">[] = [
     kind: "page",
     title: "Asset Orders",
     subtitle: "Tank, pump and meter orders · list",
+    moduleKey: "sales",
     navKey: "asset-orders",
     recordId: null,
   },
@@ -86,6 +105,7 @@ const PAGES: Omit<SearchEntry, "haystack">[] = [
     kind: "page",
     title: "Customers",
     subtitle: "Accounts, ship-tos and lines of service",
+    moduleKey: "sales",
     navKey: "customers",
     recordId: null,
   },
@@ -94,7 +114,17 @@ const PAGES: Omit<SearchEntry, "haystack">[] = [
     kind: "page",
     title: "Assets",
     subtitle: "Tanks, pumps and monitored equipment",
+    moduleKey: "sales",
     navKey: "assets",
+    recordId: null,
+  },
+  {
+    id: "page-3pl-orders",
+    kind: "page",
+    title: "3PL Orders",
+    subtitle: "Brokered orders and delivery partners · board",
+    moduleKey: "3pl",
+    navKey: "3pl-orders",
     recordId: null,
   },
 ];
@@ -124,6 +154,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
         o.tags.join(" "),
         o.customer.description,
       ].join(" "),
+      moduleKey: "sales",
       navKey: "fuel-orders",
       recordId: o.id,
     })
@@ -136,6 +167,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
       title: `#${o.orderNo} · ${o.customer.title}`,
       subtitle: [o.assetType, `Qty ${o.quantity}`, o.salesRep, o.status].join(" · "),
       keywords: [o.serialNo, o.poNumber, o.shipTo, o.customer.description].join(" "),
+      moduleKey: "sales",
       navKey: "asset-orders",
       recordId: o.id,
     })
@@ -153,6 +185,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
         c.status,
       ].join(" · "),
       keywords: [c.shipTos.join(" "), c.contactName, c.billingTerms].join(" "),
+      moduleKey: "sales",
       navKey: "customers",
       recordId: c.id,
     })
@@ -175,8 +208,35 @@ export const SEARCH_INDEX: SearchEntry[] = [
         a.erpId,
         a.tankMonitor ? `monitor ${a.tankMonitorId}` : "no monitor",
       ].join(" "),
+      moduleKey: "sales",
       navKey: "assets",
       recordId: a.id,
+    })
+  ),
+
+  ...BROKER_ORDERS.map((o) =>
+    withHaystack({
+      id: `bo-${o.id}`,
+      kind: "broker-order",
+      title: `${o.orderNo} · ${o.customer.title}`,
+      subtitle: [
+        o.kind,
+        o.shipTo,
+        `${o.window.start}–${o.window.end}`,
+        o.status,
+        o.vendorId ? vendorName(o.vendorId) : "No partner",
+      ].join(" · "),
+      keywords: [
+        o.lines.map((l) => `${l.asset} ${l.product}`).join(" "),
+        o.poNumber,
+        o.hub,
+        o.primaryPoc,
+        o.salesperson,
+        o.customer.description,
+      ].join(" "),
+      moduleKey: "3pl",
+      navKey: "3pl-orders",
+      recordId: o.id,
     })
   ),
 ];
@@ -205,6 +265,7 @@ export function groupByKind(
     "page",
     "fuel-order",
     "asset-order",
+    "broker-order",
     "customer",
     "asset",
   ];

@@ -7,6 +7,14 @@ export interface NavRailProps {
   groups: NavGroup[];
   activeKey?: string;
   onNavigate?: (key: string) => void;
+  /**
+   * Active module, forwarded to the `ModuleSwitcher`. Supply this together with
+   * `onModuleChange` when the module drives which `groups` the rail is given —
+   * i.e. when switching module swaps the whole destination list rather than just
+   * relabelling the tile.
+   */
+  activeModule?: string;
+  onModuleChange?: (key: string) => void;
 }
 
 /**
@@ -22,6 +30,8 @@ export function NavRail({
   groups,
   activeKey,
   onNavigate,
+  activeModule,
+  onModuleChange,
 }: NavRailProps) {
   const [moduleOpen, setModuleOpen] = React.useState(false);
   return (
@@ -38,7 +48,11 @@ export function NavRail({
         )}
       >
         {/* Module switcher — top: the selected module. Opening it pins the rail open. */}
-        <ModuleSwitcher onOpenChange={setModuleOpen} />
+        <ModuleSwitcher
+          onOpenChange={setModuleOpen}
+          activeModule={activeModule}
+          onModuleChange={onModuleChange}
+        />
 
         {/* Divider — clear separation between the module and its menus */}
         <div className="mx-2 my-3 h-px shrink-0 bg-sidebar-border" aria-hidden />

@@ -1,9 +1,14 @@
+import type * as React from "react";
 import {
   LayoutDashboard,
   Table2,
   FileText,
   Fuel,
   SlidersHorizontal,
+  Handshake,
+  Truck,
+  FileSignature,
+  DollarSign,
 } from "lucide-react";
 import type { NavGroup } from "./types";
 
@@ -35,3 +40,26 @@ export const PRICING_NAV: NavGroup = {
     },
   ],
 };
+
+/* ── Modules ─────────────────────────────────────────────────────────────────
+   The four FleetPanda workspaces the rail's module switcher offers.
+
+   These live HERE rather than in `ModuleSwitcher.tsx` because a consumer that
+   routes on the active module has to name the keys it routes on, and exporting a
+   constant alongside a component breaks Fast Refresh for that whole file (the
+   `react-refresh/only-export-components` rule). Icons come from Lucide per the
+   locked icon rule.
+   ────────────────────────────────────────────────────────────────────────── */
+
+export interface Module {
+  key: string;
+  name: string;
+  icon: React.ReactNode;
+}
+
+export const MODULES: Module[] = [
+  { key: "sales", name: "Sales", icon: <Handshake /> },
+  { key: "3pl", name: "3PL", icon: <Truck /> },
+  { key: "lease", name: "Lease", icon: <FileSignature /> },
+  { key: "pricing", name: "Pricing", icon: <DollarSign /> },
+];

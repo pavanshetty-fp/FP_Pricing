@@ -1,31 +1,12 @@
 import * as React from "react";
-import {
-  Check,
-  CircleCheck,
-  Handshake,
-  Truck,
-  FileSignature,
-  DollarSign,
-} from "lucide-react";
+import { Check, CircleCheck } from "lucide-react";
+import { MODULES } from "./data";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-
-interface Module {
-  key: string;
-  name: string;
-  icon: React.ReactNode;
-}
-
-const MODULES: Module[] = [
-  { key: "sales", name: "Sales", icon: <Handshake /> },
-  { key: "3pl", name: "3PL", icon: <Truck /> },
-  { key: "lease", name: "Lease", icon: <FileSignature /> },
-  { key: "pricing", name: "Pricing", icon: <DollarSign /> },
-];
 
 /** Completion celebration — a white check-circle that pops in. Linear/clean per the DS. */
 function CompletionBurst() {
@@ -37,21 +18,45 @@ function CompletionBurst() {
   );
 }
 
+export interface ModuleSwitcherProps {
+  /** Pins the rail open while the menu is up. */
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * CONTROLLED mode — the active module key. Omit for the uncontrolled
+   * behaviour (the switcher remembers its own selection, which is all the DS
+   * gallery needs).
+   */
+  activeModule?: string;
+  /**
+   * Fires once the switch actually commits — i.e. AFTER the progress bar, at the
+   * same moment the tick appears, not on click. An app that swaps its whole
+   * navigation on this must not do it under the user's cursor mid-animation.
+   */
+  onModuleChange?: (key: string) => void;
+}
+
 /**
  * Tier-1 rail module switcher (top of the rail). Shows the active module —
  * icon-only when the rail is collapsed, icon + name when expanded. Opening it
  * pins the rail open (via `onOpenChange`) and drops a menu below the trigger, so
  * the switch happens inside the open rail.
+ *
+ * Controlled or uncontrolled. Pass `activeModule` + `onModuleChange` when the
+ * module drives real routing (the Unified View prototype does); pass neither and
+ * it keeps its own state, which is the gallery's case. The switch animation is
+ * identical either way — only where the resulting selection is stored moves.
  */
 export function ModuleSwitcher({
   onOpenChange,
-}: {
-  onOpenChange?: (open: boolean) => void;
-}) {
+  activeModule,
+  onModuleChange,
+}: ModuleSwitcherProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeKey, setActiveKey] = React.useState("sales");
+  const [ownKey, setOwnKey] = React.useState("sales");
   const [switchingKey, setSwitchingKey] = React.useState<string | null>(null);
   const [completedKey, setCompletedKey] = React.useState<string | null>(null);
+  // Controlled when `activeModule` is supplied; otherwise the local key wins.
+  const activeKey = activeModule ?? ownKey;
   const active = MODULES.find((m) => m.key === activeKey) ?? MODULES[0];
 
   const setMenuOpen = (o: boolean) => {
@@ -66,7 +71,8 @@ export function ModuleSwitcher({
     if (switchingKey || completedKey) return;
     setSwitchingKey(key);
     window.setTimeout(() => {
-      setActiveKey(key);
+      setOwnKey(key);
+      onModuleChange?.(key);
       setSwitchingKey(null);
       setCompletedKey(key);
       window.setTimeout(() => {

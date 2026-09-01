@@ -1,0 +1,658 @@
+import * as React from "react";
+import { CalendarOff, SearchX } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { StatusChip } from "@/components/ui/status-chip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TablePagination } from "@/components/tables-layout/TablePagination";
+import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { ListToolbar, ColumnSearchChip, type ListView } from "../ListToolbar";
+import { ListFilters } from "../ListFilters";
+import { ListTable, TwoLineCell } from "../ListTable";
+import { useSavedViews } from "../useSavedViews";
+import {
+  DATE_FMT,
+  dateKeyOf,
+  formatFullDate,
+  relativeLabel,
+  startOfDay,
+} from "../data";
+import { BrokerBoard, type BoardLane } from "./BrokerBoard";
+import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
+import { BUSINESS_LINES, VENDORS, vendorName } from "./vendors";
+import {
+  BROKER_COLUMNS,
+  BROKER_LANE_COLOR,
+  BROKER_ORDERS,
+  BROKER_SEARCH_FIELDS,
+  BROKER_STATUSES,
+  BROKER_STATUS_TONE,
+  HUBS,
+  ORDER_KINDS,
+  isAllTopOff,
+  matchesBrokerOrder,
+  matchesBrokerOrderIn,
+  sortBrokerOrders,
+  timeToMinutes,
+  totalGal,
+  type BrokerColumnKey,
+  type BrokerOrder,
+  type BrokerSortState,
+  type OrderKind,
+} from "./orders";
+
+/**
+ * 3PL Order Dashboard — the broker's main screen.
+ *
+ * Same skeleton as the three Sales lists (preset-view row, action bar, body,
+ * pagination) so the two modules read as one product, with three differences
+ * that are the spec's, not preferences:
+ *
+ *  1. THE BOARD IS THE DEFAULT VIEW. §5.2 calls the dashboard "a Kanban-style
+ *     board", with List as the alternate and the preferred default settable. Every
+ *     Sales list opens as a table; this one opens as a board, because the thing a
+ *     broker does all day is watch orders move between stages. The table is the
+ *     alternate, not an afterthought — it has the full column set and pagination.
+ *  2. THE ORDER-KIND TABS. All / Regular / Recurring / Movement (§5.2), present
+ *     in both views. They sit BELOW the action bar per the content-layer law in
+ *     `docs/content-layer.md` §4 ("accordions sit below the action bar and the
+ *     tabs"), which fixes the vertical order as header -> action bar -> tabs.
+ *  3. LANES ARE THE LIFECYCLE, and sorting by Status sorts by lifecycle position
+ *     rather than A-Z — see `sortValue` in `orders.ts`.
+ *
+ * NOT BUILT, named rather than faked: the Create dropdown that splits into
+ * Delivery Order / Asset Delivery / Asset Pickup (§5.20) — the CTA creates a
+ * delivery order only, because a movement order's asset is fixed at creation and
+ * that picker is a flow of its own; drag-and-drop between lanes (the DS Kanban
+ * has none and a status change here is a workflow action with side effects, not
+ * a drag); and the map view of nearby vendors (§5.5).
+ */
+
+/** Board cards show six fields — §5.2 says the set is user-customisable; this is
+ *  the default. Six fills the DS card's 2-column grid exactly. */
+function laneCardFields(r: BrokerOrder) {
+  return [
+    { label: "Customer", value: r.customer.title },
+    { label: "Ship To", value: r.shipTo },
+    { label: "Window", value: `${r.window.start} – ${r.window.end}` },
+    {
+      label: "Qty",
+      value: isAllTopOff(r.lines) ? "Top-off" : `${totalGal(r.lines).toLocaleString()} gal`,
+    },
+    { label: "Delivery Partner", value: r.vendorId ? vendorName(r.vendorId) : "—" },
+    { label: "Order Type", value: r.orderType },
+  ];
+}
+
+/**
+ * A card's footer alert, or nothing.
+ *
+ * Only stages with something OUTSTANDING get one. An alert on every card is not
+ * an alert, it is a border — so Draft, Accepted, Completed and Synced carry none.
+ */
+function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
+  if (r.status === "Blocked") {
+    return {
+      status: "warning",
+      text: r.blockedReason ?? "Credit hold",
+      actionLabel: "Review",
+    };
+  }
+  if (r.status === "Assigned") {
+    const n = r.invitedVendorIds.length;
+    return {
+      status: "caution",
+      text: r.quoteRequested
+        ? `Awaiting pricing — ${n} invited`
+        : `Awaiting acknowledgement — ${n} invited`,
+    };
+  }
+  if (r.status === "Accounting Sync Ready") {
+    return { status: "default", text: "Ready to export" };
+  }
+  return undefined;
+}
+
+const TOGGLE_COLUMNS = BROKER_COLUMNS.filter((c) => c.label).map((c) => ({
+  key: c.key,
+  label: c.label,
+}));
+
+/** What a saved view captures. `kind` is here because the tab IS part of the
+ *  view a broker builds — a view that forgot it was the Movement tab would
+ *  restore the wrong list. */
+interface ViewState {
+  search: string;
+  sortKey: string | null;
+  sortDir: "asc" | "desc" | null;
+  hidden: string[];
+  pageSize: number;
+  dateKey: string;
+  colScope: string;
+  colQuery: string;
+  kind: OrderKind | "All";
+}
+
+const keyOf = (s: ViewState) =>
+  JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
+
+export function BrokerOrdersScreen({
+  focus,
+}: { focus?: { id: string; n: number } | null } = {}) {
+  const [rows, setRows] = React.useState<BrokerOrder[]>(BROKER_ORDERS);
+  const [openId, setOpenId] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [sort, setSort] = React.useState<BrokerSortState | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const [hidden, setHidden] = React.useState<Set<BrokerColumnKey>>(new Set());
+  const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  const [colScope, setColScope] = React.useState("customer");
+  const [colQuery, setColQuery] = React.useState("");
+  // Board-first, per §5.2. This is the one list in the prototype that does not
+  // open as a table.
+  const [view, setView] = React.useState<ListView>("board");
+  const [kind, setKind] = React.useState<OrderKind | "All">("All");
+  const [laneSort, setLaneSort] = React.useState<
+    Record<string, "asc" | "desc" | undefined>
+  >({});
+
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hidden],
+    pageSize,
+    dateKey: dateKeyOf(date),
+    colScope,
+    colQuery,
+    kind,
+  };
+  const defaultState: ViewState = React.useMemo(
+    () => ({
+      search: "",
+      sortKey: null,
+      sortDir: null,
+      hidden: [],
+      pageSize: 25,
+      dateKey: dateKeyOf(startOfDay(new Date())),
+      colScope: "customer",
+      colQuery: "",
+      kind: "All",
+    }),
+    []
+  );
+
+  const applyState = (s: ViewState) => {
+    setSearch(s.search);
+    setSort(
+      s.sortKey && s.sortDir
+        ? { key: s.sortKey as BrokerColumnKey, dir: s.sortDir }
+        : null
+    );
+    setHidden(new Set(s.hidden as BrokerColumnKey[]));
+    setPageSize(s.pageSize);
+    const [y, m, d] = s.dateKey.split("-").map(Number);
+    setDate(new Date(y, m - 1, d));
+    setColScope(s.colScope);
+    setColQuery(s.colQuery);
+    setKind(s.kind);
+    setPage(1);
+  };
+
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+
+  // A global-search hit lands here: open that order's sheet on arrival.
+  React.useEffect(() => {
+    if (!focus) return;
+    setCreating(false);
+    setOpenId(focus.id);
+  }, [focus]);
+
+  const q = search.trim().toLowerCase();
+  const cq = colQuery.trim().toLowerCase();
+
+  const onDate = React.useMemo(
+    () => rows.filter((r) => r.dateKey === dateKeyOf(date)),
+    [rows, date]
+  );
+  /** Tab counts are computed BEFORE the kind filter, so each tab can show how
+   *  many rows it holds rather than only the active one being non-zero. */
+  const searched = React.useMemo(
+    () =>
+      onDate.filter(
+        (r) =>
+          (!q || matchesBrokerOrder(r, q)) &&
+          (!cq || matchesBrokerOrderIn(r, cq, colScope))
+      ),
+    [onDate, q, cq, colScope]
+  );
+  const kindCounts = React.useMemo(() => {
+    const out: Record<string, number> = { All: searched.length };
+    for (const k of ORDER_KINDS) out[k] = searched.filter((r) => r.kind === k).length;
+    return out;
+  }, [searched]);
+
+  const filtered = React.useMemo(
+    () => (kind === "All" ? searched : searched.filter((r) => r.kind === kind)),
+    [searched, kind]
+  );
+  const sorted = React.useMemo(() => sortBrokerOrders(filtered, sort), [filtered, sort]);
+  const pageRows = React.useMemo(
+    () => sorted.slice((page - 1) * pageSize, page * pageSize),
+    [sorted, page, pageSize]
+  );
+
+  /** Lanes, in lifecycle order. Lane sort is by window start, which is the only
+   *  ordering a dispatcher asks a lane for. */
+  const lanes: BoardLane[] = React.useMemo(
+    () =>
+      BROKER_STATUSES.map((status) => {
+        const dir = laneSort[status];
+        let cards = filtered.filter((r) => r.status === status);
+        if (dir) {
+          cards = [...cards].sort((a, b) => {
+            const d = timeToMinutes(a.window.start) - timeToMinutes(b.window.start);
+            return dir === "asc" ? d : -d;
+          });
+        }
+        return {
+          key: status,
+          title: status,
+          color: BROKER_LANE_COLOR[status],
+          emptyLabel: `No orders in ${status.toLowerCase()}`,
+          cards: cards.map((r) => ({
+            id: r.id,
+            title: r.orderNo,
+            aside: r.urgent ? (
+              <Badge variant="destructive" className="shrink-0">
+                Urgent
+              </Badge>
+            ) : r.kind !== "Regular" ? (
+              <Badge variant="secondary" className="shrink-0">
+                {r.kind}
+              </Badge>
+            ) : undefined,
+            fields: laneCardFields(r),
+            alert: laneCardAlert(r),
+          })),
+        };
+      }),
+    [filtered, laneSort]
+  );
+
+  const onSort = (key: BrokerColumnKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+    setPage(1);
+  };
+
+  const toggleLaneSort = (laneKey: string) =>
+    setLaneSort((prev) => ({
+      ...prev,
+      // asc -> desc -> off, the same three-step cycle the table headers use.
+      [laneKey]:
+        prev[laneKey] === "asc" ? "desc" : prev[laneKey] === "desc" ? undefined : "asc",
+    }));
+
+  const customers = React.useMemo(
+    () => Array.from(new Set(BROKER_ORDERS.map((r) => r.customer.title))),
+    []
+  );
+  const shipTos = React.useMemo(
+    () => Array.from(new Set(BROKER_ORDERS.map((r) => r.shipTo))),
+    []
+  );
+
+  const saveOrder = (order: BrokerOrder, draft: BrokerOrderDraft) =>
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id !== order.id
+          ? r
+          : {
+              ...r,
+              customer: { title: draft.customer, description: draft.erpId },
+              shipTo: draft.shipTo,
+              window: { start: draft.windowStart, end: draft.windowEnd },
+              poNumber: draft.poNumber,
+              orderType: draft.orderType,
+              hub: draft.hub,
+              urgent: draft.urgent,
+              signatureOnDelivery: draft.signatureOnDelivery,
+              lines: draft.lines,
+              status: draft.status,
+              vendorId: draft.vendorId,
+              invitedVendorIds: draft.invitedVendorIds,
+              quoteRequested: draft.quoteRequested,
+              primaryPoc: draft.primaryPoc,
+              salesperson: draft.salesperson,
+              instructions: draft.instructions,
+              // Leaving Blocked clears the reason, so the two can never disagree
+              // — the same invariant `assertConsistent` checks on the seeds.
+              blockedReason: draft.status === "Blocked" ? r.blockedReason : null,
+              ...(draft.plannedDate
+                ? {
+                    date: {
+                      title: DATE_FMT.format(draft.plannedDate),
+                      description: relativeLabel(
+                        Math.round(
+                          (draft.plannedDate.getTime() -
+                            startOfDay(new Date()).getTime()) /
+                            86_400_000
+                        ),
+                        draft.plannedDate
+                      ),
+                    },
+                    dateKey: dateKeyOf(draft.plannedDate),
+                  }
+                : {}),
+            }
+      )
+    );
+
+  /** New orders continue the D- series in steps of 7, as the seeds do. */
+  const createOrder = (draft: BrokerOrderDraft) => {
+    const when = draft.plannedDate ?? date;
+    const nextNo =
+      Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
+    const offset = Math.round(
+      (when.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
+    );
+    setRows((prev) => [
+      {
+        id: `bo-new-${nextNo}`,
+        orderNo: `D-${nextNo}`,
+        kind: "Regular",
+        orderType: draft.orderType === "Asset Movement" ? "Core" : draft.orderType,
+        customer: { title: draft.customer, description: draft.erpId },
+        shipTo: draft.shipTo,
+        date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
+        dateKey: dateKeyOf(when),
+        window: { start: draft.windowStart, end: draft.windowEnd },
+        lines: draft.lines,
+        status: draft.status,
+        vendorId: draft.vendorId,
+        invitedVendorIds: draft.invitedVendorIds,
+        quoteRequested: draft.quoteRequested,
+        quotes: [],
+        urgent: draft.urgent,
+        signatureOnDelivery: draft.signatureOnDelivery,
+        poNumber: draft.poNumber,
+        hub: draft.hub,
+        primaryPoc: draft.primaryPoc,
+        salesperson: draft.salesperson,
+        instructions: draft.instructions,
+        blockedReason: null,
+        movement: null,
+      },
+      ...prev,
+    ]);
+    setPage(1);
+  };
+
+  const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
+    switch (key) {
+      case "order":
+        return (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm tabular-nums text-foreground">
+              {row.orderNo}
+            </span>
+            {row.urgent && (
+              <Badge variant="destructive" className="shrink-0">
+                !
+              </Badge>
+            )}
+          </div>
+        );
+      case "customer":
+        return <TwoLineCell {...row.customer} />;
+      case "shipTo":
+        return <span className="truncate text-sm text-foreground">{row.shipTo}</span>;
+      case "date":
+        return <TwoLineCell {...row.date} />;
+      case "window":
+        return (
+          <span className="truncate text-sm text-foreground">
+            {row.window.start} – {row.window.end}
+          </span>
+        );
+      case "qty":
+        return (
+          <span className="text-sm tabular-nums text-foreground">
+            {isAllTopOff(row.lines) ? "Top-off" : totalGal(row.lines).toLocaleString()}
+          </span>
+        );
+      case "vendor":
+        // Three genuinely different states, and collapsing them would hide the
+        // one a broker acts on: nobody invited, invited but unaccepted, accepted.
+        return row.vendorId ? (
+          <span className="truncate text-sm text-foreground">
+            {vendorName(row.vendorId)}
+          </span>
+        ) : row.invitedVendorIds.length > 0 ? (
+          <span className="truncate text-sm text-muted-foreground">
+            {row.invitedVendorIds.length} invited
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      case "status":
+        return (
+          <StatusChip tone={BROKER_STATUS_TONE[row.status]} variant="text">
+            {row.status}
+          </StatusChip>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const emptyBody = (
+    <Empty className="h-full">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">{q ? <SearchX /> : <CalendarOff />}</EmptyMedia>
+        <EmptyTitle>{q ? "No matching orders" : "Nothing planned"}</EmptyTitle>
+        <EmptyDescription>
+          {q
+            ? `No 3PL orders on ${formatFullDate(date)} match “${search.trim()}”.`
+            : `No 3PL orders are planned for ${formatFullDate(date)}.`}
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (q) setSearch("");
+            else setDate(startOfDay(new Date()));
+            setPage(1);
+          }}
+        >
+          {q ? "Clear search" : "Go to today"}
+        </Button>
+      </EmptyContent>
+    </Empty>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <FuelOrdersViewBar
+        {...savedViews}
+        ctaLabel="Create Order"
+        onCreateOrder={() => setCreating(true)}
+      />
+
+      <div className="mt-4 shrink-0">
+        <ListToolbar
+          searchValue={search}
+          onSearchChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          searchPlaceholder="Search orders, customers, partners…"
+          filters={
+            <ListFilters
+              facets={[
+                { key: "status", label: "Status", options: [...BROKER_STATUSES] },
+                {
+                  key: "vendor",
+                  label: "Delivery Partner",
+                  options: VENDORS.map((v) => v.name),
+                  searchable: true,
+                },
+                {
+                  key: "businessLine",
+                  label: "Business Line",
+                  options: [...BUSINESS_LINES],
+                },
+                {
+                  key: "customer",
+                  label: "Customer",
+                  options: customers,
+                  searchable: true,
+                },
+                { key: "hub", label: "Hub", options: HUBS },
+              ]}
+            />
+          }
+          columns={TOGGLE_COLUMNS}
+          hiddenColumns={hidden}
+          onToggleColumn={(k) =>
+            setHidden((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k);
+              else next.add(k);
+              return next;
+            })
+          }
+          onShowAllColumns={() => setHidden(new Set())}
+          onHideAllColumns={() => setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))}
+          searchFields={BROKER_SEARCH_FIELDS}
+          colScope={colScope}
+          onColScopeChange={(v) => {
+            setColScope(v);
+            setPage(1);
+          }}
+          colQuery={colQuery}
+          onColQueryChange={(v) => {
+            setColQuery(v);
+            setPage(1);
+          }}
+          view={view}
+          onViewChange={setView}
+          dateScope={{
+            date,
+            onDateChange: (d) => {
+              setDate(d);
+              setPage(1);
+            },
+          }}
+        />
+        <ColumnSearchChip
+          searchFields={BROKER_SEARCH_FIELDS}
+          colScope={colScope}
+          colQuery={colQuery}
+          onClear={() => {
+            setColQuery("");
+            setPage(1);
+          }}
+        />
+      </div>
+
+      {/* Order-kind tabs — below the action bar, per the content-layer law. */}
+      <div className="mt-4 shrink-0">
+        <Tabs
+          value={kind}
+          onValueChange={(v) => {
+            setKind(v as OrderKind | "All");
+            setPage(1);
+          }}
+        >
+          <TabsList variant="line">
+            {(["All", ...ORDER_KINDS] as const).map((k) => (
+              <TabsTrigger key={k} value={k}>
+                {k}
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {kindCounts[k] ?? 0}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="relative mt-4 min-h-0 flex-1">
+        <div className="h-full min-h-0">
+          {sorted.length === 0 ? (
+            emptyBody
+          ) : view === "board" ? (
+            <BrokerBoard
+              lanes={lanes}
+              onOpenCard={setOpenId}
+              laneSort={laneSort}
+              onToggleLaneSort={toggleLaneSort}
+            />
+          ) : (
+            <ListTable
+              rows={pageRows}
+              columns={BROKER_COLUMNS}
+              hidden={hidden}
+              sort={sort}
+              onSort={onSort}
+              rowId={(r) => r.id}
+              renderCell={renderCell}
+              actionsKey="actions"
+              openLabel={(r) => `Open order ${r.orderNo}`}
+              onOpenRow={(r) => setOpenId(r.id)}
+            />
+          )}
+        </div>
+      </div>
+
+      <BrokerOrderSheet
+        order={rows.find((r) => r.id === openId) ?? null}
+        mode={creating ? "create" : "edit"}
+        open={creating || openId !== null}
+        onOpenChange={(o) => {
+          if (o) return;
+          setCreating(false);
+          setOpenId(null);
+        }}
+        onSave={saveOrder}
+        onCreate={createOrder}
+        customers={customers}
+        shipTos={shipTos}
+      />
+
+      {/* The board is not a paged list, so a "Showing 1–25 of 54" footer under it
+          would be describing something that isn't on screen. */}
+      <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
+        <TablePagination
+          className="h-9"
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      </div>
+    </div>
+  );
+}

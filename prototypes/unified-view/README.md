@@ -1,6 +1,22 @@
 # Unified View
 
-A **standalone prototype** of the FleetPanda Sales Console, recreated on FP-DS.
+A **standalone prototype** of the FleetPanda console, recreated on FP-DS.
+
+**Two modules are built**, switched from the module switcher at the top of the
+rail — which drives real routing, not just its own label:
+
+| Module | Destinations | State |
+|---|---|---|
+| **Sales** | Fuel Orders · Asset Orders · Customers · Assets | all four built |
+| **3PL** (brokerage) | Orders · Vendors · Customers · Assets | Orders built; see [`threepl/README.md`](threepl/README.md) |
+| Lease, Pricing | — | no destinations; their IA has not been specified, and guessing it would put fake navigation on screen |
+
+A module owns a destination list, and switching module swaps the list along with
+the screen under it. Destination keys are globally unique (`3pl-customers`, not a
+second `customers`) so a stale key surviving a switch cannot resolve into the
+other module's screen. Global search spans both modules and carries the module in
+each hit, so a 3PL result found from Sales switches module on the way to the
+record.
 
 It is deliberately **not** part of the FP DS 2026 gallery. The gallery showcases
 the design system; this is an application built *with* it. Keeping them apart
@@ -11,10 +27,17 @@ get mistaken for design-system rules.
 
 | Comes from the DS | Owned by this prototype |
 |---|---|
-| `@/index.css` — every colour, radius, spacing token | the Fuel Orders screen + its columns |
+| `@/index.css` — every colour, radius, spacing token | the screens and their columns |
 | `@/components/ui/*` — button, badge, table, popover, calendar… | the toolbar and filter composition |
-| `@/components/app-shell`, `top-bar`, `navigation-drawer` | sample order data |
-| `@/components/tables-layout` — pagination, bulk bar, Group By | |
+| `@/components/app-shell`, `top-bar`, `navigation-drawer` | sample data, and which module owns which destination |
+| `@/components/tables-layout` — pagination, bulk bar, Group By | the lifecycle each record type has |
+| `@/components/kanban-board` — lane/card anatomy and colour taxonomy | |
+
+**Five components are forked** from the DS, each because the DS version cannot be
+pointed at another dataset, and each carrying a `DS FOLLOW-UP` header naming
+exactly what to parameterise: `TokenMultiSelect`, `ProductTable`,
+`FuelOrdersBulkBar`, `BreakdownCard`, and `threepl/BrokerBoard`. Delete a fork
+when the DS version lands; do not maintain it in parallel.
 
 No hex is written here — colours resolve through DS tokens. Two order-type
 pastels (`--order-delivery`, `--order-extraction`) live in the DS token layer

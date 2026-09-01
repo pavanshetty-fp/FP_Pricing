@@ -11,7 +11,7 @@ Design System repo (`git@github.com:pavanshetty-fp/FP-DS-2026.git`).
 ## First, get it on screen
 
 ```bash
-git branch --show-current      # expect: feat/unified-view-prototype
+git branch --show-current      # expect: feat/3pl-module (or main once merged)
 npm run dev:unified            # serves the prototype at the ORIGIN of :4300
 ```
 
@@ -69,24 +69,42 @@ npm run preview:unified        # serves it at http://localhost:4173/
 
 ## What this is
 
-A standalone recreation of the FleetPanda **Sales Console** Fuel Orders screen,
-built entirely from design-system components. It is deliberately **not** a
-section of the FP DS 2026 gallery — it has its own entry point and ships as its
-own HTML. `src/App.tsx` is untouched. Read
-`prototypes/unified-view/README.md` for the boundary.
+A standalone recreation of the FleetPanda console, built entirely from
+design-system components. It is deliberately **not** a section of the FP DS 2026
+gallery — it has its own entry point and ships as its own HTML. `src/App.tsx` is
+untouched. Read `prototypes/unified-view/README.md` for the boundary.
 
 **Shell:** Tier-0 top bar (Profile lives in the account menu) · Tier-1 52px rail
-with the module switcher + Fuel Orders / Asset Orders / Customers / Assets · **no
-Tier-2 sidebar**, so the content layer takes the full width.
+with the module switcher + that module's destinations · **no Tier-2 sidebar**, so
+the content layer takes the full width.
 
-**Built:** the Fuel Orders list and its order sheet.
-`prototypes/unified-view/` — `UnifiedView` (screen + state), `FuelOrdersTable`,
-`FuelOrdersToolbar`, `FuelOrdersFilters`, `FuelOrdersViewBar`, `DateFilter`,
-`FuelOrdersBulkBar`, `OrderSheet`, `ProductTable`, `TokenMultiSelect`,
-`BreakdownCard`, `data.ts`, `types.ts`.
+**TWO MODULES ARE BUILT**, and the module switcher does real routing — a module
+owns a destination list, and switching swaps the list along with the screen under
+it. Destination keys are globally unique (`3pl-customers`, not a second
+`customers`) so a stale key cannot resolve into the other module's screen.
 
-**Not built:** the Asset Orders / Customers / Assets screens (the rail shows an
-honest "not built yet" empty state), and the Create Order flow — including the
+| Module | Destinations | State |
+|---|---|---|
+| **Sales** | Fuel Orders · Asset Orders · Customers · Assets | all four built |
+| **3PL** (brokerage) | Orders · Vendors · Customers · Assets | Orders built |
+| Lease, Pricing | — | no destinations; their IA has not been specified |
+
+**Sales, built:** all four screens and their sheets. `prototypes/unified-view/` —
+`UnifiedView` (shell + module routing), `FuelOrdersTable`, `FuelOrdersToolbar`,
+`FuelOrdersFilters`, `FuelOrdersViewBar`, `DateFilter`, `FuelOrdersBulkBar`,
+`OrderSheet`, `ProductTable`, `TokenMultiSelect`, `BreakdownCard`,
+`AssetOrdersScreen`, `CustomersScreen`, `AssetsScreen`, the generic `ListTable` /
+`ListToolbar` / `ListFilters` / `RecordSheet` / `useSavedViews`, `GlobalSearch`,
+`data.ts`, `types.ts`.
+
+**3PL, built:** the Order Dashboard. `prototypes/unified-view/threepl/` —
+`BrokerOrdersScreen`, `BrokerBoard`, `BrokerOrderSheet`, `orders.ts`,
+`vendors.ts`. **Read `threepl/README.md` before touching it** — it is the only
+part of the prototype whose model is transcribed from a written spec rather than
+screenshots, and it carries its own open questions.
+
+**Not built:** the 3PL Vendors / Customers / Assets screens (honest "not built
+yet" states), the Lease and Pricing modules entirely, and the Sales Create Order
 **Extraction** tab, which was never captured.
 
 ### Behaviour worth knowing before you change things
@@ -125,7 +143,7 @@ honest "not built yet" empty state), and the Create Order flow — including the
   `react-refresh` warning in `FuelOrdersViewBar` is expected.
 - Commit per logical change, and state in the message what was measured.
 
-## Four components are FORKED from the DS — do not let them drift
+## Five components are FORKED from the DS — do not let them drift
 
 Each exists only because the DS version cannot be pointed at another dataset.
 All four carry a `DS FOLLOW-UP` comment naming exactly what to parameterise; when
@@ -137,6 +155,7 @@ the DS is fixed, the fork should be deleted, not maintained.
 | `ProductTable` | `form-layout/EditableTable` (27593:15012 / 27592:33634) | hardcoded columns/options/rows, not in the barrel |
 | `FuelOrdersBulkBar` | `tables-layout/BulkActionBar` (27631:11151) | hardcoded verb set; also fills with `bg-popover` |
 | `BreakdownCard` | anatomy of `info-cards/InvoiceCard` (27599:62303) | the DS has no small breakdown card |
+| `threepl/BrokerBoard` | `kanban-board/KanbanBoard` (27631:11154) | takes **no props at all** — lanes, colours, card fields and even the card title are module constants. Its header also documents **two measured DS bugs** the DS demo cannot show: cards collapse instead of the lane scrolling (34.4px box around 188px of content at 8 cards), and the lane count pill's `text-white` fails AA on five of ten lane colours (yellow 1.92) |
 
 `CodeDisc` and `StatusChip` were the same story and the DS chat generalised them,
 after which the local copies were deleted — that is the pattern to repeat. There
@@ -161,11 +180,11 @@ is a ready-made brief for the DS side at `docs/handoff-ds-adoption.md`.
    total. It does not rewrite quantities. Confirm that is the wanted semantic.
 6. **Date of Delivery is not editable in the sheet** — it was removed on request,
    so only the planned date/time can be changed there.
-7. **`StatusChip variant="text"` fails AA on light surfaces** for the success and
-   processing tones (3.30 / 3.19) because the light `--status-*` values are too
-   pale for text on white. It passes in FP-dark (7.18 / 7.62), which is this
-   screen's default. Documented on the DS component; needs darker light-mode
-   status values decided in Figma.
+7. ~~**`StatusChip variant="text"` fails AA on light surfaces**~~ — **RESOLVED.**
+   The light `--status-*` step-down landed (green-600 -> green-700, amber-600 ->
+   amber-700). Re-measured on the 3PL table: light **4.83–5.99**, dark
+   **5.91–7.62** across all seven stages. `text` now measures 5.02 in light where
+   it used to be 3.19.
 8. **The order sheet overrides the DS sheet rhythm** — 20px between fields and
    40px between groups, versus the DS's 12/28 — because this sheet carries far
    more fields than the DS reference. Flagged in the file header. If more screens
@@ -184,9 +203,18 @@ driverless per open question 1. The **Category** filter facet renders an explici
 
 ## Branch state
 
-`feat/unified-view-prototype`, **19 commits ahead of `origin/main`, not pushed.**
-It already contains a merge of `origin/feat/ds-foundations-sweep` (the DS
-CodeDisc / StatusChip / pastel tokens / `bg-muted` sweep). `origin/main` itself
-does not yet have that sweep. Ask before pushing or merging to main — the user
-works main-based per `START-HERE.md`, so this branch is a deviation they should
-decide about.
+The Sales work and the DS sweeps are **on `main`**. The 3PL module is on
+`feat/3pl-module`, **not pushed** — ask before pushing or merging. The user works
+main-based per `START-HERE.md`, so a branch is a deviation they should decide
+about; it exists because this pass changes a DS component (`ModuleSwitcher`) as
+well as the prototype.
+
+### The DS-side change in that branch
+
+`ModuleSwitcher` is now **controlled or uncontrolled**. Pass `activeModule` +
+`onModuleChange` when the module drives real routing (the prototype does); pass
+neither and it keeps its own state, which is all the gallery needs. `NavRail`
+forwards both. `MODULES` moved from `ModuleSwitcher.tsx` to `data.tsx` — a
+consumer routing on the module has to be able to name the keys, and exporting a
+constant beside a component breaks Fast Refresh for that whole file. That keeps
+the lint output at exactly one expected `react-refresh` warning.

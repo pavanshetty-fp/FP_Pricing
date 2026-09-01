@@ -365,7 +365,8 @@ export function DataActionControlOpt2({ rows = SAMPLE_ROWS }: { rows?: TableRow[
         </div>
 
         {view === "table" && !isEmpty && (
-          <div className="shrink-0 border-t border-border">
+          /* `mt-4`, no `border-t` — matches DataActionControl 4d. */
+          <div className="mt-4 shrink-0">
             <TablePagination page={page} pageSize={pageSize} total={sorted.length} onPageChange={setPage} onPageSizeChange={onPageSizeChange} />
           </div>
         )}

@@ -8,6 +8,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import type { GroupNode } from "./grouping";
+import { GroupHeaderRow } from "./GroupHeaderRow";
 import {
   Table,
   TableBody,
@@ -67,6 +69,17 @@ export interface ListTableProps<Row, K extends string> {
   openLabel: (row: Row) => string;
   /** Which column key holds the pinned chevron. */
   actionsKey: K;
+  /**
+   * Grouped render list from `groupRows`. Omitted, the table renders `rows`
+   * flat — which is what every ungrouped list does.
+   */
+  nodes?: GroupNode<Row>[];
+  collapsedGroups?: ReadonlySet<string>;
+  onToggleGroupCollapse?: (id: string) => void;
+  /** What one record is called in a group header — "asset", "account". */
+  groupNoun?: string;
+  /** Unit for the summed measure the headers carry, e.g. `gal`. */
+  groupUnit?: string;
 }
 
 export function ListTable<Row, K extends string>({
@@ -80,6 +93,11 @@ export function ListTable<Row, K extends string>({
   onOpenRow,
   openLabel,
   actionsKey,
+  nodes,
+  collapsedGroups,
+  onToggleGroupCollapse,
+  groupNoun = "record",
+  groupUnit = "",
 }: ListTableProps<Row, K>) {
   const visible = columns.filter((c) => !hidden?.has(c.key));
 
@@ -143,8 +161,30 @@ export function ListTable<Row, K extends string>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
-            <TableRow key={rowId(row)} className="group/row h-14">
+          {(nodes ??
+            rows.map((row) => ({
+              kind: "row" as const,
+              id: rowId(row),
+              depth: 0,
+              row,
+            }))
+          ).map((node) =>
+            node.kind === "group" ? (
+              <GroupHeaderRow
+                key={node.id}
+                colSpan={visible.length}
+                depth={node.depth}
+                label={node.label}
+                dimLabel={node.dimLabel}
+                count={node.count}
+                measure={node.measure}
+                unit={groupUnit}
+                noun={groupNoun}
+                collapsed={Boolean(collapsedGroups?.has(node.id))}
+                onToggle={() => onToggleGroupCollapse?.(node.id)}
+              />
+            ) : (
+            <TableRow key={node.id} className="group/row h-14">
               {visible.map((col) => (
                 <TableCell
                   key={col.key}
@@ -161,20 +201,21 @@ export function ListTable<Row, K extends string>({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={openLabel(row)}
-                          onClick={() => onOpenRow?.(row)}
+                          aria-label={openLabel(node.row)}
+                          onClick={() => onOpenRow?.(node.row)}
                         >
                           <ChevronRight />
                         </Button>
                       </div>
                     ) : (
-                      renderCell(row, col.key)
+                      renderCell(node.row, col.key)
                     )}
                   </span>
                 </TableCell>
               ))}
             </TableRow>
-          ))}
+            )
+          )}
         </TableBody>
       </Table>
     </div>

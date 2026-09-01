@@ -101,3 +101,17 @@ export interface SortState {
   key: FuelOrderColumnKey;
   dir: SortDir;
 }
+
+/**
+ * The signed-in account. One shape for the top bar's avatar/menu and the
+ * Profile page, so an edit on Profile is visible in the chrome immediately.
+ * Structurally the DS's `TopBarUser`, restated here because the prototype owns
+ * the state and the DS type is a prop contract, not a model.
+ */
+export interface AccountUser {
+  name: string;
+  email: string;
+  /** Avatar fallback initials, e.g. "PS". */
+  fallback: string;
+  avatarSrc?: string;
+}

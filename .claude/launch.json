@@ -8,7 +8,7 @@
         "run",
         "dev:unified"
       ],
-      "port": 4300
+      "autoPort": true
     },
     {
       "name": "fp-ds",
@@ -17,7 +17,7 @@
         "run",
         "dev"
       ],
-      "port": 5173
+      "autoPort": true
     },
     {
       "name": "unified-view-built",
@@ -26,7 +26,7 @@
         "run",
         "preview:unified"
       ],
-      "port": 4173
+      "autoPort": true
     }
   ]
 }

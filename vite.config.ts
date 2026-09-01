@@ -35,8 +35,20 @@ export default defineConfig({
         // another: 4300 = Unified View source, 4173 = the built artifact.
         // `strictPort` fails loudly on a clash rather than sliding to a free
         // port and leaving you looking at whatever owns the one you expected.
-        server: { port: 4300, strictPort: true },
-        preview: { port: 4173, strictPort: true },
+        //
+        // An explicitly assigned PORT overrides both, and relaxes strictPort
+        // with it: when a harness hands us a port it has ALREADY decided which
+        // server this is, so the clash-detection the fixed port exists for is
+        // redundant — and failing there just stops a second session previewing
+        // at all. Run by hand with no PORT and the fixed-port guarantee stands.
+        server: {
+          port: process.env.PORT ? Number(process.env.PORT) : 4300,
+          strictPort: !process.env.PORT,
+        },
+        preview: {
+          port: process.env.PORT ? Number(process.env.PORT) : 4173,
+          strictPort: !process.env.PORT,
+        },
       }
     : {
         // Honour a PORT assigned by the environment (e.g. running two dev

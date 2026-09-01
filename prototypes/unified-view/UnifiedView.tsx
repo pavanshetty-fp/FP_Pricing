@@ -40,6 +40,8 @@ import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
 import { BrokerOrdersScreen } from "./threepl";
+import { ProfileScreen } from "./ProfileScreen";
+import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
@@ -61,7 +63,15 @@ import {
   sortFuelOrders,
   startOfDay,
 } from "./data";
-import type { FuelOrder, FuelOrderColumnKey, SortState } from "./types";
+import type {
+  AccountUser,
+  FuelOrder,
+  FuelOrderColumnKey,
+  SortState,
+} from "./types";
+import { useGrouping } from "./useGrouping";
+import { FUEL_ORDER_GROUP_DIMS } from "./groupDims";
+import { GroupedListFooter } from "./GroupedListFooter";
 
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
@@ -146,6 +156,16 @@ const MODULE_LABEL: Record<string, string> = {
   pricing: "Pricing",
 };
 
+/**
+ * Account destinations — full pages, reached only from the top bar's account
+ * menu. Kept out of NAV_ITEMS so the rail never renders them: Profile is not a
+ * workspace destination, and while one is open no rail item is current, which
+ * is the honest state (`activeKey` simply matches nothing).
+ */
+const ACCOUNT_PAGES: Record<string, string> = {
+  profile: "Profile",
+  settings: "Settings",
+};
 
 /** Columns the column-visibility menu can toggle (everything with a label). */
 const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
@@ -192,18 +212,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   const [activeViewId, setActiveViewId] = React.useState<string | null>(null);
   const viewSeq = React.useRef(0);
 
-  // A view captures the state a user would otherwise have to rebuild by hand.
-  const current: ViewState = {
-    search,
-    sortKey: sort?.key ?? null,
-    sortDir: sort?.dir ?? null,
-    hidden: [...hiddenColumns],
-    pageSize,
-    dateKey: dateKeyOf(date),
-    colScope,
-    colQuery,
-  };
-
   const defaultState: ViewState = React.useMemo(
     () => ({
       search: "",
@@ -214,15 +222,12 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       dateKey: dateKeyOf(startOfDay(new Date())),
       colScope: "customer",
       colQuery: "",
+      groupBy: [],
     }),
     []
   );
 
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
-  const dirty =
-    viewStateKey(current) !==
-    viewStateKey(activeView ? activeView.state : defaultState);
-
   const applyState = (st: ViewState) => {
     setSearch(st.search);
     setSort(
@@ -236,6 +241,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     setDate(new Date(y, m - 1, d));
     setColScope(st.colScope);
     setColQuery(st.colQuery);
+    g.setGrouping(st.groupBy ?? []);
     setPage(1);
   };
 
@@ -301,10 +307,40 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     [onDate, query, cq, colScope]
   );
   const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
-  const pageRows = React.useMemo(
-    () => sorted.slice((page - 1) * pageSize, page * pageSize),
-    [sorted, page, pageSize]
-  );
+
+  /* Grouping — the same hook the other three lists use, so all four behave
+     identically. It suspends pagination while grouped, because a group that
+     straddles a page boundary cannot have an honest header. */
+  const g = useGrouping<FuelOrder, FuelOrderColumnKey>({
+    dimensions: FUEL_ORDER_GROUP_DIMS,
+    rows: sorted,
+    rowId: React.useCallback((r: FuelOrder) => r.id, []),
+    // Qty (Gal) is the only column on this list that sums to something true.
+    measureOf: React.useCallback((r: FuelOrder) => r.qtyGal, []),
+    hiddenColumns,
+    page,
+    pageSize,
+  });
+  const pageRows = g.visibleRows;
+
+  /* A view captures the state a user would otherwise have to rebuild by
+     hand. Declared after the grouping hook because it reads from it. */
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hiddenColumns],
+    pageSize,
+    dateKey: dateKeyOf(date),
+    colScope,
+    colQuery,
+    groupBy: g.groupBy,
+  };
+
+  const dirty =
+    viewStateKey(current) !==
+    viewStateKey(activeView ? activeView.state : defaultState);
+
 
   // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
   const onSort = (key: FuelOrderColumnKey) => {
@@ -509,6 +545,18 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       return next;
     });
 
+  /* A group's checkbox owns the group's WHOLE membership, collapsed rows
+     included — otherwise it would quietly mean "the rows you can see". */
+  const toggleGroup = (rowIds: string[], checked: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of rowIds) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
@@ -554,6 +602,14 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           onDateChange={(d) => {
             setDate(d);
             setPage(1);
+          }}
+          groupBy={{
+            dimensions: g.menuDimensions,
+            value: g.groupBy,
+            onChange: (next) => {
+              g.setGrouping(next);
+              setPage(1);
+            },
           }}
         />
         <ColumnSearchChip
@@ -641,12 +697,16 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           ) : (
             <FuelOrdersTable
               rows={pageRows}
+              nodes={g.grouped ? g.groups.nodes : undefined}
+              collapsedGroups={g.collapsed}
+              onToggleGroupCollapse={g.toggleGroupCollapse}
+              onToggleGroup={toggleGroup}
               selectedIds={selectedIds}
               onToggleRow={toggleRow}
               onToggleAll={toggleAll}
               sort={sort}
               onSort={onSort}
-              hidden={hiddenColumns}
+              hidden={g.effectiveHidden}
               onOpenOrder={(row) => setOpenOrderId(row.id)}
             />
           )}
@@ -697,19 +757,30 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       {/* No top hairline: the table's own last-row rule already closes the list,
           so a second line here read as a stray divider. */}
       <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
-        <TablePagination
-          // h-9 = the 36px controls, no more. The 72px default would add 18px of
-          // its own air above and below and fight the 16px gaps set here.
-          className="h-9"
-          page={page}
-          pageSize={pageSize}
-          total={sorted.length}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
+        {g.grouped ? (
+          <GroupedListFooter
+            groupCount={g.groups.groupCount}
+            rowCount={g.groups.rowCount}
+            noun="order"
+            total={g.total}
+            unit="gal"
+            overCounts={g.groups.overCounts}
+            allCollapsed={g.allCollapsed}
+            onExpandAll={g.expandAll}
+            onCollapseAll={g.collapseAll}
+          />
+        ) : (
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -758,6 +829,13 @@ export function UnifiedView() {
   const [moduleKey, setModuleKey] = React.useState("sales");
   const [navKey, setNavKey] = React.useState("fuel-orders");
   const [searchOpen, setSearchOpen] = React.useState(false);
+  /* The signed-in account lives here, above both the top bar and the Profile
+     page, so editing it on Profile updates the chrome without a round trip. */
+  const [user, setUser] = React.useState<AccountUser>({
+    name: "Pavan Shetty",
+    email: "pavanshetty@fleetpanda.com",
+    fallback: "PS",
+  });
   /**
    * The record a global-search hit asked for. Passed to the destination screen
    * as `focus`, which opens that record's sheet on arrival. Keyed by an
@@ -766,6 +844,9 @@ export function UnifiedView() {
    */
   const [focus, setFocus] = React.useState<{ id: string; n: number } | null>(null);
 
+  /* Account pages are module-independent: they answer before the module
+     nav is consulted, and while one is open no rail item is current. */
+  const accountTitle = ACCOUNT_PAGES[navKey];
   const navItems = MODULE_NAV[moduleKey] ?? [];
   const active = navItems.find((i) => i.key === navKey) ?? navItems[0] ?? null;
 
@@ -790,6 +871,8 @@ export function UnifiedView() {
   };
 
   const screen = (() => {
+    if (navKey === "profile") return <ProfileScreen user={user} onSave={setUser} />;
+    if (navKey === "settings") return <SettingsScreen />;
     if (navItems.length === 0) {
       return <ModuleNotBuilt label={`${MODULE_LABEL[moduleKey] ?? moduleKey} module`} />;
     }
@@ -833,19 +916,17 @@ export function UnifiedView() {
   return (
     <TooltipProvider>
       <AppShell
-        title={active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
+        title={accountTitle ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
         topBar={
           <TopBar
-            user={{
-              name: "Pavan Shetty",
-              email: "pavanshetty@fleetpanda.com",
-              fallback: "PS",
-            }}
+            user={user}
             unread={3}
             searchPlaceholder="Search everything"
             onSearchActivate={() => setSearchOpen(true)}
+            onProfile={() => setNavKey("profile")}
+            onSettings={() => setNavKey("settings")}
           />
         }
         rail={

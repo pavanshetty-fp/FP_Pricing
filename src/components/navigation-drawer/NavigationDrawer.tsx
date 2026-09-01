@@ -153,7 +153,7 @@ function Item({
         aria-expanded={hasChildren ? open : undefined}
         onClick={() => (hasChildren ? setOpen((v) => !v) : onNavigate?.(item.key))}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-4 py-1 text-sm font-medium outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
+          "flex w-full items-center gap-3 rounded-lg px-4 py-1 text-sm font-medium outline-none transition-colors hover:bg-sidebar-accent-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
           active
             ? "bg-sidebar-accent text-sidebar-foreground"
             : "text-muted-foreground hover:text-sidebar-foreground"
@@ -179,7 +179,7 @@ function Item({
                   aria-current={subActive ? "page" : undefined}
                   onClick={() => onNavigate?.(sub.key)}
                   className={cn(
-                    "flex w-full items-center rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50",
+                    "flex w-full items-center rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-sidebar-accent-hover focus-visible:ring-2 focus-visible:ring-ring/50",
                     subActive
                       ? "bg-sidebar-accent text-sidebar-foreground"
                       : "text-muted-foreground hover:text-sidebar-foreground"

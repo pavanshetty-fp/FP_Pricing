@@ -206,7 +206,10 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border">
+      {/* `mt-4`, no `border-t`: the table's own row rules already close the list,
+          so a full-strength divider on top of them reads as a stray line. The
+          16px below comes from the content layer's own padding. */}
+      <div className="mt-4 shrink-0">
         <TablePagination
           page={page}
           pageSize={pageSize}

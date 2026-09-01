@@ -95,11 +95,13 @@ export interface TablePaginationProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   /**
-   * Override the footer band. The default `h-[72px]` is the Figma spec, which
-   * centres the 36px controls with 18px of air each side. Screens that own their
-   * own vertical rhythm — where the gap above the footer and the gap below it are
-   * set by the page, not by the band — pass `h-9` so the band is exactly its
-   * content and the page's own padding does the spacing.
+   * Override the footer band. The default is `h-9` — exactly the 36px controls,
+   * so the PAGE owns the rhythm: the gap above the footer and the gap below it
+   * are set by the page's own padding, not baked into the band.
+   *
+   * Pass `h-[72px]` for the original Figma band, which centres the controls with
+   * 18px of its own air each side. Nothing in the DS wants that any more — see
+   * the note on the root element.
    */
   className?: string;
 }
@@ -130,14 +132,38 @@ export function TablePagination({
     if (p >= 1 && p <= totalPages && p !== page) onPageChange(p);
   };
 
+  /*
+    `h-9`, not the Figma frame's `h-[72px]`.
+
+    The controls inside are 36px, so a 72px band adds 18px of its own air above
+    and below them. On a screen whose vertical rhythm is set by the page, that
+    fights the page: measured, the footer sat 34px off the panel bottom (18 from
+    the band + 16 from the content layer's padding) while pressed FLUSH against
+    the table — a 0px gap above and a doubled one below.
+
+    The band is now exactly its content and the page does the spacing: callers
+    wrap it in `mt-4`, and the content layer's own padding gives the 16px below.
+    Measured across the DS screens and the four prototype list screens, before ->
+    after: band 72 -> 36, table 589 -> 609, table->footer 0 -> 16, footer->panel
+    16 -> 16.
+
+    The 72px frame almost certainly had the page padding baked into it, which is
+    why the default was backwards. `className="h-[72px]"` restores it if a screen
+    genuinely wants the band to own the rhythm.
+  */
   return (
     <div
       className={cn(
-        "flex h-[72px] items-center justify-between text-sm text-muted-foreground",
+        "flex h-9 items-center justify-between text-sm text-muted-foreground",
         className
       )}
     >
-      <span>
+      {/* `whitespace-nowrap`: one short phrase that must never break mid-sentence.
+          The old 72px band hid this — at a narrow viewport the label wrapped to
+          three lines (60px) and simply had room. In a band that is exactly its
+          content it overflowed by 24px instead. `shrink-0` keeps flex from
+          squeezing it into a wrap in the first place. */}
+      <span className="shrink-0 whitespace-nowrap">
         Showing {from.toLocaleString()}-{to.toLocaleString()} of{" "}
         {total.toLocaleString()}
       </span>

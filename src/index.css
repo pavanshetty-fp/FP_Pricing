@@ -146,6 +146,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-hover: var(--sidebar-accent-hover);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -160,6 +161,7 @@
   --color-fp-surface-1a: var(--fp-surface-1a);
   --color-fp-surface-1b: var(--fp-surface-1b);
   --color-fp-card-1: var(--fp-card-1);
+  --color-chip: var(--chip);
   --color-fp-lane: var(--fp-lane);
   --color-fp-row-hover: var(--fp-row-hover);
   --color-fp-row-selected: var(--fp-row-selected);
@@ -245,149 +247,147 @@
 :root {
   --radius: 0.625rem;
 
-  /* Light — shadcn token set, synced from Figma PxzKUl6emRr8QQ5Nb0vlwT,
-     collection "3. Mode", Light mode, 2026-08-27. Where a value below names a
-     `base/*` variable, Figma is the authority for it and it was taken verbatim;
-     the aliases it resolves through are recorded so the next sync can diff
-     without opening the file. FP-only tokens further down are NOT in that
-     collection and remain decided here. */
-  /* base/background → colors/background-light. The app ground is now the same
-     white as --card / --popover / --fp-surface-1a / --fp-surface-1b, so in light
-     a card no longer separates from the ground by fill (measured 1.00:1) and
-     `bg-background` on a card is a zero-pixel change. Light hierarchy therefore
-     rests on the border and on shadow, not on a ground/card step — see the
-     CONSTRAINT note below. */
-  --background: #ffffff;
-  --foreground: #030405;
-  --card: #ffffff;
-  --card-foreground: #030405;
-  --popover: #ffffff;
-  --popover-foreground: #030405;
-  --primary: #090c0f;
-  --primary-foreground: #f0f2f5;
-  --secondary: #f4f4f5; /* base/secondary → tailwind zinc/100 */
-  --secondary-foreground: #090c0f;
-  --muted: #f4f4f5; /* base/muted → tailwind zinc/100 */
-  --muted-foreground: #596475;
-  --accent: #e5e7eb; /* base/accent → tailwind gray/200 */
-  --accent-foreground: #090c0f;
-  /* base/destructive → tailwind red/500. Measures 3.76:1 as text on white,
-     below the 4.5 AA body threshold (the previous #dc2626 measured 4.83). Taken
-     verbatim as a design decision; --status-failed below deliberately does NOT
-     follow it, so the two no longer hold the same value. */
-  --destructive: #ef4444;
-  /* White, not the #fef2f2 Figma carries. This token had no consumer because
-     `button`'s destructive variant hardcoded `text-white`; pointing that variant
-     at the token only made sense if the token held white, since on the red-500
-     fill white measures 3.76 and #fef2f2 only 3.44. Same rule as
-     --status-foreground and --verified-foreground: white in BOTH themes. */
-  --destructive-foreground: #ffffff;
-  --border: #a1a1aa; /* base/border → tailwind zinc/400 */
-  --input: #a1a1aa; /* base/input → tailwind zinc/400 */
-  --ring: #727d8f;
+  /* ------------------------------------------------------------------
+     LAYER 1 — PRIMITIVES. The only place a colour literal is written.
+     One family per role, each with a light value here and a dark value in
+     `.dark`. Change a colour HERE and every semantic token that aliases it
+     moves with it, in both themes.
 
+     This layer exists because it did not, and the cost was measurable: the
+     light selection grey was spelled out five separate times, so changing it
+     in one place left four behind and the same colour rendered in two shades
+     at once. Figma has always had this structure (FP/Card 1, FP/Surface 1b,
+     FP/Outline 1-2, and base/muted aliasing FP/Card 2) — the CSS had
+     flattened it into a literal per semantic token and kept the mapping only
+     in comments.
+     ------------------------------------------------------------------ */
+  --fp-ink-1: #030405; /* body text */
+  --fp-ink-2: #090c0f; /* text on an emphasis fill */
+  --fp-ink-3: #596475; /* secondary text */
+  --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
+  --fp-surface-base: #efefeb; /* the app ground */
+  --fp-surface-1a: #ffffff; /* inner panel */
+  --fp-surface-1b: #ffffff; /* content layer */
+  --fp-card-1: #e9ecf1; /* raised card / inset block */
+  --fp-card-2: #f4f5f8; /* the quieter card step (Figma FP/Card 2) */
+  /* SELECTION / control emphasis. Light value owned by the Figma sync on main
+     (base/accent, base/sidebar-accent -> gray/200). That sync also split this
+     family in two: it puts --accent/--sidebar-accent on gray/200 but
+     --secondary/--muted on zinc/100, which one primitive cannot hold, hence
+     --fp-emphasis-quiet below. In dark both still resolve here. */
+  --fp-emphasis: #e5e7eb;
+  /* The quieter half of the emphasis split — base/secondary and base/muted,
+     zinc/100. Exists only because light needs two values where dark needs one;
+     in dark --secondary re-aliases --fp-emphasis and --muted --fp-card-2. */
+  --fp-emphasis-quiet: #f4f4f5;
+  /* Hover, one step under selection. NOT retuned by the Figma sync — nothing in
+     the Figma collection covers it — but the sync moved --fp-emphasis to
+     gray/200, which narrowed the gap between the two from [-12,-12,-12] to
+     [-4,-6,-10]. Two things to note if this pair gets revisited: the step is now
+     small enough to be easy to miss, and hover is DARKER than selection here,
+     the opposite way round from --fp-row-hover/--fp-row-selected, which go
+     [11,9,7] lighter. Both predate this merge; left as-is rather than inventing
+     a value. */
+  --fp-emphasis-hover: #e1e1e1;
+  --fp-outline-1: #e2e5ea; /* quiet rim */
+  /* Stronger rim. Its light value currently EQUALS --fp-emphasis, but the two
+     are separate families on purpose: this one is only ever a border (all 18
+     call sites are `border-fp-outline-2`) and it carries its own dark value.
+     Retint the emphasis grey and this does NOT follow — tie them deliberately
+     if that is what you want. */
+  --fp-outline-2: #ededed;
+  --fp-stroke-hairline: #a1a1aa; /* global hairline — base/border, zinc/400 */
+  --fp-stroke-field: #a1a1aa; /* field border — base/input, zinc/400 */
+  /* Destructive / failed. Light stays red-600 because --status-failed carries
+     body-sized status text and measures 4.83 here. --destructive no longer
+     aliases this in light: the Figma sync moved it to red/500 (#ef4444, 3.76),
+     so the two are independent in light and rejoin in dark. */
+  --fp-danger: #dc2626;
+
+  /* ------------------------------------------------------------------
+     LAYER 2 — SEMANTICS. No literals. Tokens whose primitive is the same in
+     both themes are declared ONCE, here: `var()` resolves at use time, so
+     redefining the primitive under `.dark` re-resolves them automatically and
+     they never appear in the dark block at all.
+     ------------------------------------------------------------------ */
+
+  --foreground: var(--fp-ink-1);
+  --card: var(--fp-surface-1a);
+  --card-foreground: var(--fp-ink-1);
+  --popover: var(--fp-surface-1b);
+  --popover-foreground: var(--fp-ink-1);
+  --primary-foreground: var(--fp-ink-inverse);
+  --secondary-foreground: var(--fp-ink-2);
+  --muted-foreground: var(--fp-ink-3);
+  --accent: var(--fp-emphasis);
+  --accent-foreground: var(--fp-ink-2);
+
+  --border: var(--fp-stroke-hairline);
+  --input: var(--fp-stroke-field);
+  --sidebar-foreground: var(--fp-ink-1);
+  --sidebar-accent-foreground: var(--fp-ink-2);
+  --sidebar-accent-hover: var(--fp-emphasis-hover);
+  --rail: var(--fp-surface-base);
+  --fp-row-selected: var(--fp-card-1);
+  --status-failed: var(--fp-danger);
+
+  /* Light-only aliases — these map to a DIFFERENT primitive in dark. */
+  --muted: var(--fp-emphasis-quiet);
+  --secondary: var(--fp-emphasis-quiet);
+  --sidebar-accent: var(--fp-emphasis);
+  --fp-lane: var(--fp-card-2);
+  --fp-row-hover: var(--fp-card-2);
+  /* The app ground. base/background is #ffffff now, identical to --card,
+     --popover and both content surfaces, so light has no ground/card fill step
+     at all: a card separates by border and shadow only, and `bg-background` on
+     a card is a zero-pixel change. --fp-surface-base keeps #efefeb and is the
+     only remaining name for the old tinted ground (--rail still uses it). */
+  --background: var(--fp-surface-1b);
+  /* base/destructive -> red/500. 3.76:1 as text on white, under the 4.5 AA
+     body threshold; accepted as a design decision. Not --fp-danger, which
+     --status-failed keeps at 4.83. */
+  --destructive: #ef4444;
+  /* base/sidebar-border. No primitive holds this value any more — it is what
+     --fp-stroke-field used to be, before base/input took it to zinc/400. Dark
+     literals this token too. */
+  --sidebar-border: #abb3c2;
+
+  /* No family — one consumer, or a pair no primitive describes. */
+  --primary: #090c0f;
+  --destructive-foreground: #ffffff; /* white in BOTH themes — the button's
+     destructive variant points at this token, and on the red fill white
+     measures 3.76 against #fef2f2's 3.44. Same rule as --status-foreground. */
+  --ring: #727d8f;
   /* Categorical chart palette. Declared ONCE and deliberately NOT overridden in
      `.dark`, the same rule the pastel pairs follow: a categorical series colour
      has to stay the same colour in both themes or the same series changes
      identity when you flip, which is exactly what a categorical scale must not
-     do. These five hexes are the ones that were already rendering — they used to
-     be a SECOND `--color-chart-*` block in `@theme inline` that shadowed these
-     tokens, so the per-theme values below were dead and charts ignored the theme
-     entirely. The override is gone; these are now the single source. */
+     do. Values are the 3PL branch's (2026-08-29), which postdates the token
+     split and is the set actually rendering. */
   --chart-1: #fa6400;
   --chart-2: #3b82f6;
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
-
-  --sidebar: #fafafa; /* base/sidebar → tailwind zinc/50 */
-  --sidebar-foreground: #030405;
+  --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
   --sidebar-primary: #090c0f;
   --sidebar-primary-foreground: #f0f2f5;
-  --sidebar-accent: #e5e7eb; /* base/sidebar-accent → tailwind gray/200 */
-  --sidebar-accent-foreground: #090c0f;
-  --sidebar-border: #abb3c2; /* base/sidebar-border → colors/sidebar-border-light */
-  --sidebar-ring: #6b7280; /* base/sidebar-ring → tailwind gray/500 */
-
-  /* FleetPanda-only — constants (theme-independent) */
-  --brand: #fa6400; /* Primary (FP orange) */
+  --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
+  --brand: #fa6400;
   --brand-foreground: #ffffff;
-
-  /* Pastel accents — the soft badge / code-disc palette. Each pair is a fill +
-     a foreground dark enough to stay legible on it.
-
-     Declared once here on :root and deliberately NOT overridden in .dark: a
-     pastel should read as a pastel in both themes, so both modes share one pair.
-
-     These two pairs came from the unified-view prototype, where a designer
-     picked them, and are carried verbatim. Extending the set (green, rose, …)
-     is a one-line change per pair: match how these were built — a light tint
-     with a foreground dark enough to clear AA on it — and measure the pair
-     before adding it, rather than eyeballing a hex. */
   --pastel-blue: #a8c9ef;
   --pastel-blue-foreground: #16324f;
   --pastel-amber: #f0c9a4;
   --pastel-amber-foreground: #5a3313;
-  /* Paired foregrounds for the saturated fills. White in BOTH themes per the DS
-     (badge 23:995 "Verified", banners 28149:1712 Type 1 solid fills, status
-     fills) — declared as tokens so no component reaches for `text-white`. */
   --verified-foreground: #ffffff;
   --fp-banner-foreground: #ffffff;
   --status-foreground: #ffffff;
-
-  /* FleetPanda-only — LIGHT surface/chrome/status (derived to pair with above) */
-  --drawer: #fafbf8; /* Navigation Drawer Expanded (light) — 28679:1109 */
-  --rail: #efefeb; /* Navigation Menu Default / icon rail (light) — 28679:1109 */
-  --fp-outline-1: #e2e5ea;
-  --fp-outline-2: #cad1db;
-  --fp-surface-1a: #ffffff;
-  --fp-surface-1b: #ffffff; /* Content Layer (light) — pure white, 28679:1109 */
-  --fp-card-1: #e9ecf1;
-  --fp-lane: #f4f5f8; /* Kanban lane track (light) — subtle tint, lighter than card-1 so white cards read on top */
-  /* Table row interaction states. Their own tokens because rows previously
-     borrowed --accent, which is a CONTROL-emphasis value and reads far too
-     heavy as a row wash on a white content layer: selected measured a
-     [53,46,36] step off #ffffff and hover (accent/50) [26,23,18]. A row state
-     is a whole-width wash behind content, so it has to stay far quieter than
-     a control fill. Both values already existed in this palette — hover is
-     the subtle tint --fp-lane carries, selected is --fp-card-1 — so nothing
-     is invented; they are just named for the job now.
-     Progression off white: hover [11,10,7] -> selected [22,19,14]. */
-  --fp-row-hover: #f4f5f8;
-  --fp-row-selected: #e9ecf1;
-  /* Surface Base (light) — 28681:807. NOTE: no longer equal to --background,
-     which the 2026-08-27 Figma sync moved to #ffffff. Anything that wants the
-     old tinted ground must name this token explicitly. */
-  --fp-surface-base: #efefeb;
-  /* Status values, LIGHT. The palette is the Tailwind ramp — dark uses the 500
-     step, light the 600. The rule here is not "always 600" but "the lightest
-     step that clears AA (4.5:1) as TEXT on the white content layer", because
-     `StatusChip variant="text"` and `variant="soft"` both paint the label in
-     this colour. Green and amber are far lighter than red/pink/blue at the same
-     step, so only those two need 700; the rest already clear it at 600.
-     Measured on #ffffff, before -> after:
-       success     3.30 FAIL  -> 5.02 PASS   (green-600 -> green-700)
-       processing  3.19 FAIL  -> 5.02 PASS   (amber-600 -> amber-700)
-       failed      4.83 PASS  (unchanged; NO LONGER equal to --destructive,
-                                which the 2026-08-27 Figma sync moved to
-                                red/500 #ef4444 at 3.76. --status-failed stays
-                                at red-600 because it is an FP-only token and
-                                carries body-sized status text.)
-       pink        4.60 PASS  (unchanged)
-       verified    5.17 PASS  (unchanged)
-     The soft pill improves with them — the label on a 10% tint of its own hue
-     over white goes 2.96 -> 4.38 (success) and 2.86 -> 4.39 (processing) — and
-     the solid dot, which needs only the 3.0 graphics threshold, goes
-     3.30/3.19 -> 5.02.
-     Chosen here rather than read from Figma: the ramp the palette already sits
-     on gave the next step, so no new value was invented. */
+  --drawer: #fafbf8;
+  --chip: #efefeb;
   --status-success: #15803d;
   --status-processing: #b45309;
-  --status-failed: #dc2626;
   --status-pink: #db2777;
   --verified: #2563eb;
-  /* Banners (28149:1712) — Type 1 solid fills (white text) keep the saturated
-     design hexes; Type 2 accents darkened so they read on a light card. */
   --fp-banner-info: #3730a3;
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;
@@ -402,79 +402,59 @@
   collection). Applied when `<html>` carries `.dark`. Source variable per token.
 */
 .dark {
-  --background: #080808; /* base/background, FP/Surface Base */
-  --foreground: #f0f2f5; /* base/foreground */
-  --card: #11161d; /* FP/Surface 1a */
-  --card-foreground: #f0f2f5;
-  --popover: #1b2028; /* FP column → FP/Surface 1b */
-  --popover-foreground: #f0f2f5; /* base/popover-foreground */
-  --primary: #f8fafc; /* FP column → slate/50 (brand orange is --brand) */
-  --primary-foreground: #090c0f; /* base/primary-foreground */
-  --secondary: #2a2f37; /* FP column → FP/Card 1 */
-  --secondary-foreground: #f0f2f5;
-  /* CONSTRAINT — do not let --muted equal --fp-surface-1b.
-     In FP dark this value is byte-identical to --fp-surface-1b (#1b2028), and
-     --popover aliases to that same primitive. So ANY `bg-muted` fill sitting on
-     the content layer, or inside a popover / dropdown / side sheet, composites
-     to a zero pixel change and is invisible. Verified in Figma: the duplication
-     starts in the library — `FP/Card 2` and `FP/Surface 1b` BOTH hold #1b2028,
-     and base/muted aliases Card 2 while base/popover aliases Surface 1b
-     (file PxzKUl6emRr8QQ5Nb0vlwT). Re-pointing --muted needs that decided in
-     Figma first; until then, fills that need to read on those surfaces use
-     --accent (#2a2f37). In light the two now differ — --muted is zinc/100
-     (#f4f4f5) and --accent gray/200 (#e5e7eb) — so muted→accent is a small but
-     real darkening there, no longer the pixel no-op it used to be.
+  /* LAYER 1 — the same primitives, dark values. */
+  --fp-ink-1: #f0f2f5; /* body text */
+  --fp-ink-2: #f0f2f5; /* text on an emphasis fill */
+  --fp-ink-3: #9ca3af; /* secondary text */
+  --fp-ink-inverse: #090c0f; /* text on the primary fill */
+  --fp-surface-base: #080808; /* the app ground */
+  --fp-surface-1a: #11161d; /* inner panel */
+  --fp-surface-1b: #1b2028; /* content layer */
+  --fp-card-1: #2a2f37; /* raised card / inset block */
+  --fp-card-2: #1b2028; /* the quieter card step (Figma FP/Card 2) */
+  --fp-emphasis: #2a2f37; /* SELECTION / control emphasis */
+  --fp-emphasis-hover: #363c45; /* hover, one step under selection */
+  --fp-outline-1: #363c45; /* quiet rim */
+  --fp-outline-2: #575757; /* stronger rim */
+  --fp-stroke-hairline: #363c45; /* global hairline */
+  --fp-stroke-field: #363c45; /* field border */
+  /* Nothing consumes the quiet half in dark — --secondary re-aliases
+     --fp-emphasis and --muted --fp-card-2 — but LAYER 1 requires every
+     primitive to carry a dark value, so it tracks the family it split from
+     rather than leaving a light literal visible in this scope. */
+  --fp-emphasis-quiet: var(--fp-emphasis);
+  --fp-danger: #f87171; /* destructive / failed */
 
-     LIGHT COLLISION, added by the 2026-08-27 Figma sync: --background is now
-     #ffffff, identical to --card, --popover, --fp-surface-1a and
-     --fp-surface-1b. Any `bg-background` fill on a card, popover or the content
-     layer is invisible in light. Reach for --muted or --accent when a fill has
-     to read on white. */
-  --muted: #1b2028; /* FP column → FP/Card 2 (= #1b2028) */
-  --muted-foreground: #9ca3af; /* base/muted-foreground */
-  --accent: #2a2f37; /* FP column → FP/Card 1 (28679 variables) */
-  --accent-foreground: #f0f2f5; /* base/accent-foreground */
-  --destructive: #f87171; /* base/destructive */
+  /* LAYER 2 — only the tokens whose primitive DIFFERS from light.
+     Everything else inherits its alias from `:root` and re-resolves here. */
+  --muted: var(--fp-card-2);
+  --sidebar-accent: var(--fp-outline-1);
+  --fp-lane: var(--fp-card-1);
+  /* Re-joined here. Light had to break these three out of the shared block —
+     --background because base/background went white, --secondary because the
+     emphasis family split, --destructive because it left --fp-danger — but dark
+     keeps every one of them on its original primitive, so dark is unchanged by
+     the sync. Verified: zero drift across the FP column. */
+  --background: var(--fp-surface-base);
+  --secondary: var(--fp-emphasis);
+  --destructive: var(--fp-danger);
+
+  /* No family. */
+  --primary: #f8fafc;
   --destructive-foreground: #ffffff;
-  --border: #363c45; /* FP column → FP/Outline 1 (updated) */
-  --input: #363c45; /* FP column → FP/Outline 1 (updated) */
   --ring: #9ca3af;
-
-
-  --sidebar: #11161d; /* base/sidebar */
-  --sidebar-foreground: #f0f2f5; /* base/sidebar-foreground */
-  --sidebar-primary: #1d4ed8; /* base/sidebar-primary */
-  --sidebar-primary-foreground: #f0f2f5; /* base/sidebar-primary-foreground */
-  --sidebar-accent: #363c45; /* base/sidebar-accent */
-  --sidebar-accent-foreground: #f0f2f5; /* base/sidebar-accent-foreground */
-  --sidebar-border: #ffffff1a; /* base/sidebar-border */
+  --sidebar: #11161d;
+  --sidebar-primary: #1d4ed8;
+  --sidebar-primary-foreground: #f0f2f5;
+  --sidebar-border: #ffffff1a;
   --sidebar-ring: #575757;
-
-  /* FleetPanda-only — dark surface/chrome/status */
-  --drawer: #292929; /* FP/Drawer (updated) */
-  --rail: #080808; /* icon rail = Surface Base — distinct from --sidebar (R6) */
-  --fp-outline-1: #363c45; /* FP/Outline 1 */
-  --fp-outline-2: #575757; /* FP/Outline 2 */
-  --fp-surface-1a: #11161d;
-  --fp-surface-1b: #1b2028;
-  --fp-card-1: #2a2f37; /* FP/Card 1 */
-  --fp-lane: #2a2f37; /* Kanban lane track (FP) — unchanged from card-1 */
-  /* Row states, dark. Chosen to preserve exactly what shipped: selected is
-     --fp-card-1 (unchanged), and hover is the midpoint of the
-     surface-1b -> card-1 step, which is precisely what `accent/50`
-     composited to over the content layer. So dark renders identically and
-     only light changes.
-     Progression off the content layer: hover [7,7,7] -> selected [15,15,15]. */
+  --drawer: #292929;
+  --chip: #2a2f37;
   --fp-row-hover: #22272f;
-  --fp-row-selected: #2a2f37;
-  --fp-surface-base: #080808;
-  --status-success: #22c55e; /* confirmed via REST */
-  --status-processing: #f59e0b; /* ASSUMPTION — not in Figma tokens */
-  --status-failed: #f87171; /* = destructive */
-  --status-pink: #ff8080; /* Status/Pink */
-  --verified: #3b82f6; /* Badge "Verified" blue (DS 23:995) */
-  /* Banners (28149:1712) — exact design values. Type 1 = solid fills (white
-     text); Type 2 = light accents for icon+text on the Card-1 surface. */
+  --status-success: #22c55e;
+  --status-processing: #f59e0b;
+  --status-pink: #ff8080;
+  --verified: #3b82f6;
   --fp-banner-info: #3730a3;
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;

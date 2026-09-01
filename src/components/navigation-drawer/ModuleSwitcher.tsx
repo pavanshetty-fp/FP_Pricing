@@ -88,7 +88,7 @@ export function ModuleSwitcher({
         <button
           type="button"
           aria-label={`Module: ${active.name}. Click to switch module`}
-          className="flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent/60"
+          className="flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1 text-left outline-none transition-colors hover:bg-sidebar-accent-hover focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent/60"
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-foreground [&_svg]:size-5">
             {active.icon}

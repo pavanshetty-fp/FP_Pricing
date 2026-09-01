@@ -5,6 +5,11 @@ export { ActionBar, type ActionBarProps } from "./ActionBar";
 export { DataTable, type DataTableProps } from "./DataTable";
 export { BulkActionBar, type BulkActionBarProps } from "./BulkActionBar";
 export {
+  GroupByMenu,
+  type GroupByMenuProps,
+  type GroupByDimension,
+} from "./GroupByMenu";
+export {
   TablePagination,
   type TablePaginationProps,
 } from "./TablePagination";

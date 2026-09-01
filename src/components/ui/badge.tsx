@@ -11,15 +11,14 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        // Chip fill is the CARD surface, not `--secondary`. In light `--secondary`
-        // is #cad1db — a mid grey that reads as a heavy block on the white
-        // content layer, far heavier than a chip should. `--fp-card-1` is
-        // #e9ecf1 light and #2a2f37 dark, which is byte-identical to
-        // `--secondary` in dark, so this lightens light mode and changes dark
-        // not at all. `--secondary` itself is left alone because it also fills
-        // secondary BUTTONS, which do need the weight.
+        // Chip fill is `--chip`, its own token: #efefeb light, #2a2f37 dark.
+        // NOT `--secondary` (#cad1db light), which reads as a heavy block on the
+        // white content layer, and not a borrowed surface token either — the
+        // value light wants is `--background`, which is #080808 in dark and would
+        // render chips near-black. `--secondary` stays as it is because it also
+        // fills secondary BUTTONS, which need the weight.
         secondary:
-          "bg-fp-card-1 text-secondary-foreground hover:bg-fp-card-1/80",
+          "bg-chip text-secondary-foreground hover:bg-chip/80",
         outline:
           "border-border text-foreground hover:bg-accent hover:text-accent-foreground",
         ghost: "text-foreground hover:bg-accent hover:text-accent-foreground",
@@ -83,7 +82,7 @@ const badgeNumberVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground",
-        secondary: "bg-fp-card-1 text-secondary-foreground",
+        secondary: "bg-chip text-secondary-foreground",
         outline: "border border-border text-foreground",
         ghost: "text-foreground",
         destructive: "bg-destructive/10 text-destructive",

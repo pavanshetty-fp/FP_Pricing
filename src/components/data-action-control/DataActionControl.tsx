@@ -436,7 +436,7 @@ export function DataActionControl({
         {view === "table" && !isEmpty && (
           // 4d — no `border-t` here: the table's own rules already close the
           // list, so a full-strength divider on top of them read as a stray.
-          <div className="shrink-0">
+          <div className="mt-4 shrink-0">
             <TablePagination page={page} pageSize={pageSize} total={sorted.length} onPageChange={setPage} onPageSizeChange={onPageSizeChange} />
           </div>
         )}

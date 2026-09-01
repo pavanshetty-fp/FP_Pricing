@@ -58,6 +58,12 @@ export interface ViewState {
   colScope: string;
   /** Its query. Captured so a saved view restores the narrowing it was built with. */
   colQuery: string;
+  /**
+   * Active grouping dimensions, outermost first. ORDER IS SIGNIFICANT and is
+   * compared as given — Status › Customer and Customer › Status are different
+   * views, not the same one.
+   */
+  groupBy: string[];
 }
 
 export interface SavedView {
@@ -77,6 +83,8 @@ export function viewStateKey(s: ViewState): string {
     dateKey: s.dateKey,
     colScope: s.colScope,
     colQuery: s.colQuery,
+    // Not sorted: the order of the dimensions is part of the state.
+    groupBy: s.groupBy ?? [],
   });
 }
 

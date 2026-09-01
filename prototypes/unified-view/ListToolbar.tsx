@@ -25,7 +25,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GroupByMenu } from "@/components/tables-layout/GroupByMenu";
+import {
+  GroupByMenu,
+  type GroupByDimension,
+} from "@/components/tables-layout/GroupByMenu";
 import { DateFilter } from "./DateFilter";
 
 /**
@@ -82,6 +85,15 @@ export interface ListToolbarProps<K extends string> {
   onViewChange: (v: ListView) => void;
   /** Omit entirely on lists that are not date-scoped. */
   dateScope?: { date: Date; onDateChange: (d: Date) => void };
+  /**
+   * Grouping. `dimensions` are a property of the list's DATA, so each screen
+   * supplies its own; the menu is ordered and capped at two levels.
+   */
+  groupBy?: {
+    dimensions: GroupByDimension[];
+    value: string[];
+    onChange: (next: string[]) => void;
+  };
 }
 
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
@@ -104,10 +116,10 @@ function IconTool({
           size="icon-sm"
           aria-label={label}
           onClick={onClick}
-          // Same chip treatment as the badges: the card surface rather than
-          // `--accent`, which at #cad1db sits far too heavy on white for a
-          // 32px control. Dark is unchanged — both tokens are #2a2f37 there.
-          className={cn(active && "bg-fp-card-1 text-foreground")}
+          // Same fill as the chips: `--chip`, not `--accent`. At #cad1db the
+          // control-emphasis token sits far too heavy on white inside a 32px
+          // button. Dark is unchanged — `--chip` is #2a2f37 there.
+          className={cn(active && "bg-chip text-foreground")}
         >
           {children}
         </Button>
@@ -135,6 +147,7 @@ export function ListToolbar<K extends string>({
   view,
   onViewChange,
   dateScope,
+  groupBy,
 }: ListToolbarProps<K>) {
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
@@ -166,7 +179,15 @@ export function ListToolbar<K extends string>({
           )}
         </div>
         {filters}
-        <GroupByMenu />
+        {groupBy ? (
+          <GroupByMenu
+            dimensions={groupBy.dimensions}
+            value={groupBy.value}
+            onChange={groupBy.onChange}
+          />
+        ) : (
+          <GroupByMenu />
+        )}
       </div>
 
       {/* RIGHT — [date] │ view switch │ column tools */}

@@ -68,14 +68,15 @@ import type { FuelOrder } from "./types";
  *
  * THREE DELIBERATE DIFFERENCES FROM THE DS BAR:
  *
- * 1. FILL. The DS bar uses `bg-popover`, and in BOTH themes `--popover` is the
- *    same value as `--fp-surface-1b` (#1b2028 dark, #ffffff light) — the content
- *    layer this bar floats over. So the fill was byte-identical to the surface
- *    behind it and only the hairline and shadow separated them, which is why it
- *    read as low contrast. This uses `bg-fp-card-1` (#2a2f37 dark, #e9ecf1
- *    light): the DS's card surface, i.e. one step of elevation above the content
- *    layer, in both themes. Same collision as the row-hover bug — worth fixing
- *    on the DS bar too, since it is not specific to this screen.
+ * 1. FILL — no longer a difference. The DS bar has since been fixed the same way
+ *    and this fork now copies it verbatim: `bg-fp-surface-1a` (white) in light,
+ *    `dark:bg-fp-card-1` (#2a2f37) in dark. Both themes had the same original
+ *    problem for opposite reasons: `bg-popover` is byte-identical to
+ *    `--fp-surface-1b` in BOTH (#ffffff light, #1b2028 dark), so the fill matched
+ *    the content layer it floats over. Note white-on-white means LIGHT still has
+ *    no fill contrast against the content layer — the outline and
+ *    `shadow-fp-overlay` carry the separation there, which is why the border is
+ *    explicit rather than inherited.
  *
  * 2. ACTION SET. The DS bar's verbs (Assign / Unassign / Unblock / Verify /
  *    Unverify) plus Copy and a ··· More menu are not this screen's actions, and
@@ -246,7 +247,12 @@ export function FuelOrdersBulkBar({
 
   return (
     <>
-      <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-border bg-fp-card-1 p-1.5 shadow-fp-overlay">
+      {/* Fill and border are copied VERBATIM from the DS bar
+          (`tables-layout/BulkActionBar`) so the fork cannot drift from it again:
+          white in light, the card surface in dark, with the outline stepping up a
+          shade in dark. This fork had been left on `bg-fp-card-1` when the DS bar
+          was moved to white, so the fix never reached this screen. */}
+      <div className="bulk-bar-in flex items-center gap-1 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-1.5 shadow-fp-overlay dark:border-fp-outline-2 dark:bg-fp-card-1">
         {/* Count chip — primary filled, with a clear ×. */}
         <span className="flex items-center gap-2 rounded-md bg-primary py-1 pr-1.5 pl-2.5 text-sm font-medium text-primary-foreground">
           {count} Selected

@@ -42,6 +42,14 @@ export interface TopBarProps {
   onSearchActivate?: () => void;
   /** Placeholder for the search field. */
   searchPlaceholder?: string;
+  /**
+   * Account-menu destinations. The menu items render regardless; supplying a
+   * handler is what makes one navigate. Left out, the item stays inert — which
+   * is what every caller before these props got, so behaviour is unchanged.
+   */
+  onProfile?: () => void;
+  onSettings?: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -54,6 +62,9 @@ export function TopBar({
   unread = 0,
   onSearchActivate,
   searchPlaceholder = "Search",
+  onProfile,
+  onSettings,
+  onLogout,
 }: TopBarProps) {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
 
@@ -157,10 +168,10 @@ export function TopBar({
               <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem><UserRound /> Profile</DropdownMenuItem>
-            <DropdownMenuItem><Settings /> Settings</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onProfile}><UserRound /> Profile</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSettings}><Settings /> Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive"><LogOut /> Log out</DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={onLogout}><LogOut /> Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

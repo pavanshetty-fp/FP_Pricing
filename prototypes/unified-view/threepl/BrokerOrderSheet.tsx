@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -36,6 +44,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
 } from "@/components/ui/empty";
 import {
   Table,
@@ -59,15 +68,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { FileUpload } from "@/components/form-layout/FileUpload";
-import {
-  TableCellInput,
-  TableCellSelect,
-  TableRequiredLabel,
-} from "@/components/form-layout";
+import { TableCellInput } from "@/components/form-layout";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { VENDORS, vendorById } from "./vendors";
 import {
+  ALL_ASSET_NAMES,
   BROKER_STATUS_TONE,
   HUBS,
   LISTING_TYPES,
@@ -164,6 +170,97 @@ function FlagRow({
   );
 }
 
+/**
+ * Add Asset — type a name OR pick a known one, in the same control.
+ *
+ * A plain "Custom asset 3" row named nothing real; a pure dropdown could not
+ * reach an asset the site's list has not caught up with. So it is a combobox:
+ * the list filters as you type, and whatever you typed stays available as its
+ * own option, so a genuinely new name is one Enter away and never a
+ * second-class path.
+ */
+function AddAssetPopover({
+  known,
+  onAdd,
+}: {
+  known: string[];
+  onAdd: (name: string, product: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [product, setProduct] = React.useState(PRODUCTS[0]);
+
+  const add = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onAdd(trimmed, product);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const typedIsNew =
+    query.trim().length > 0 &&
+    !known.some((k) => k.toLowerCase() === query.trim().toLowerCase());
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <Plus /> Add Asset
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Type or pick an asset name…"
+          />
+          <CommandList>
+            {typedIsNew && (
+              <CommandGroup heading="New asset">
+                <CommandItem value={query} onSelect={() => add(query)}>
+                  <Plus />
+                  Use “{query.trim()}”
+                </CommandItem>
+              </CommandGroup>
+            )}
+            <CommandGroup heading="Known assets">
+              {known
+                .filter((k) =>
+                  k.toLowerCase().includes(query.trim().toLowerCase())
+                )
+                .map((k) => (
+                  <CommandItem key={k} value={k} onSelect={() => add(k)}>
+                    <Truck />
+                    {k}
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+            <CommandEmpty>Type a name to add it.</CommandEmpty>
+          </CommandList>
+        </Command>
+        {/* The product is part of the line, so it is chosen here rather than
+            left for someone to fix in the row afterwards. */}
+        <div className="border-t border-border p-2">
+          <Select value={product} onValueChange={setProduct}>
+            <SelectTrigger className="w-full" aria-label="Product">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCTS.map((x) => (
+                <SelectItem key={x} value={x}>
+                  {x}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** A line and an asset are the same thing when name and product match. */
 const assetKey = (x: { asset?: string; name?: string; product: string }) =>
   `${x.asset ?? x.name}|${x.product}`;
@@ -191,6 +288,10 @@ export interface BrokerOrderDraft {
   recurring: boolean;
   recurrenceFrom: Date | null;
   recurrenceFrequency: string;
+  /** ONE load order for the whole order — see the Load Order section. */
+  loadTerminal?: string;
+  loadSupplier?: string;
+  loadAccount?: string;
 }
 
 function draftFrom(o: BrokerOrder): BrokerOrderDraft {
@@ -224,6 +325,9 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
         })()
       : null,
     recurrenceFrequency: o.recurrence?.frequency ?? RECURRENCE_FREQUENCIES[0],
+    loadTerminal: o.loadOrder?.terminal,
+    loadSupplier: o.loadOrder?.supplier,
+    loadAccount: o.loadOrder?.loadingAccount,
   };
 }
 
@@ -346,6 +450,11 @@ export function BrokerOrderSheet({
     return [...listed, ...extra];
   })();
 
+  /* One account serves the whole order, so the options are narrowed by every
+     product on it at once. */
+  const orderProducts = [...new Set(draft.lines.map((l) => l.product))];
+  const load = loadOptions(orderProducts, draft.loadTerminal, draft.loadSupplier);
+
   const pickedCount = draft.lines.length;
   const allPicked = siteAssets.length > 0 && pickedCount === siteAssets.length;
   const somePicked = pickedCount > 0 && !allPicked;
@@ -402,22 +511,14 @@ export function BrokerOrderSheet({
         : d
     );
 
-  /* An asset the site's list does not carry yet. Named rather than blank, so a
-     row can never be an anonymous empty line. */
-  const addCustomAsset = () =>
+  /* An asset the site's list does not carry yet — named, never blank, because
+     an anonymous row is a row nobody can act on. */
+  const addAsset = (name: string, product: string) =>
     setDraft((d) =>
-      d
+      d && !d.lines.some((l) => assetKey(l) === `${name}|${product}`)
         ? {
             ...d,
-            lines: [
-              ...d.lines,
-              {
-                asset: `Custom asset ${d.lines.length + 1}`,
-                product: PRODUCTS[0],
-                gal: null,
-                topOff: false,
-              },
-            ],
+            lines: [...d.lines, { asset: name, product, gal: null, topOff: false }],
           }
         : d
     );
@@ -441,12 +542,6 @@ export function BrokerOrderSheet({
         : d
     );
 
-  const setLine = (i: number, patch: Partial<OrderLine>) =>
-    setDraft((d) =>
-      d
-        ? { ...d, lines: d.lines.map((l, k) => (k === i ? { ...l, ...patch } : l)) }
-        : d
-    );
 
   const isMovement = order?.kind === "Movement";
   const gal = totalGal(draft.lines);
@@ -815,9 +910,7 @@ export function BrokerOrderSheet({
           title="Delivery Order"
           action={
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={addCustomAsset}>
-                <Plus /> Add Asset
-              </Button>
+              <AddAssetPopover known={ALL_ASSET_NAMES} onAdd={addAsset} />
               {/* Icon only — the label is a tooltip and an aria-label, so the
                   action keeps its name for a screen reader and for anyone who
                   hovers, without a second word-pair competing with Add Asset. */}
@@ -998,10 +1091,10 @@ export function BrokerOrderSheet({
         </SheetSection>
       )}
 
-      {/* Load Order — where each ordered line is DRAWN FROM. Rows are derived
-          from the Delivery Order above rather than added separately: a loading
-          account for a line nobody ordered answers no question, and two lists
-          that can disagree about what is on the order is the bug this avoids. */}
+      {/* Load Order — where the WHOLE order is drawn from. ONE account, not one
+          per line: a truck loads once, so a line-by-line account described a
+          dispatch that does not happen. The product/quantity list is not
+          repeated here either; the Delivery Order above already is it. */}
       {!isMovement && (
         <SheetSection className="gap-5" title="Load Order">
           {draft.lines.length === 0 ? (
@@ -1015,108 +1108,92 @@ export function BrokerOrderSheet({
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
+          ) : load.impossible ? (
+            /* Not a dead set of empty dropdowns — say WHY there is nothing to
+               pick, and name the products that cannot share an account. */
+            <Empty className="rounded-md border border-fp-outline-1 py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <CircleAlert />
+                </EmptyMedia>
+                <EmptyTitle>No account covers this order</EmptyTitle>
+                <EmptyDescription>
+                  One account loads the whole order, and none carries all of{" "}
+                  {orderProducts.join(", ")}. Split the order, or drop a product.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
-            /* A plain JS comment, not `{/* … *\/}`: this is a ternary branch,
-               an EXPRESSION slot, where a JSX comment plus an element would be
-               two things where one is allowed.
-
-               DS editable-table idiom (form-layout/table-cells): fixed layout,
-               Surface-1a header, and cells that carry their own states instead
-               of nesting a bordered control inside a bordered cell.
-               `relative p-0` on every td is what lets a cell fill. */
-            <div className="overflow-hidden rounded-md border border-border">
-              <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                  <col className="w-[28%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[19%]" />
-                  <col className="w-[19%]" />
-                  <col className="w-[20%]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border bg-fp-surface-1a">
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Product</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Quantity (gal)</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Terminal</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Supplier</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Loading Account</TableRequiredLabel>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {draft.lines.map((line, i) => {
-                    /* Options are narrowed by the line's PRODUCT first — an
-                       account that cannot carry this product is never offered —
-                       then by whatever is already chosen above. */
-                    const opts = loadOptions(
-                      line.product,
-                      line.terminal,
-                      line.supplier
-                    );
-                    return (
-                      <tr
-                        key={assetKey(line)}
-                        className="h-11 border-b border-border last:border-b-0"
-                      >
-                        <td className="truncate px-3 text-sm text-foreground">
-                          {line.asset} – {line.product}
-                        </td>
-                        <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                          {line.topOff ? "Top-off" : (line.gal ?? "—")}
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={line.terminal ?? ""}
-                            options={opts.terminals}
-                            placeholder="Terminal"
-                            aria-label={`Terminal for ${line.asset}`}
-                            /* Changing a level clears the levels BELOW it: a
-                               supplier the new terminal does not serve, left
-                               sitting there, is a combination that cannot be
-                               loaded. */
-                            onChange={(v) =>
-                              setLine(i, {
-                                terminal: v,
-                                supplier: undefined,
-                                loadingAccount: undefined,
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={line.supplier ?? ""}
-                            options={opts.suppliers}
-                            placeholder="Supplier"
-                            aria-label={`Supplier for ${line.asset}`}
-                            onChange={(v) =>
-                              setLine(i, { supplier: v, loadingAccount: undefined })
-                            }
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={line.loadingAccount ?? ""}
-                            options={opts.accounts}
-                            placeholder="Account"
-                            aria-label={`Loading account for ${line.asset}`}
-                            onChange={(v) => setLine(i, { loadingAccount: v })}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-3 gap-4">
+              <SheetField label="Terminal" required>
+                <Select
+                  value={draft.loadTerminal ?? ""}
+                  onValueChange={(v) =>
+                    setDraft((d) =>
+                      d
+                        ? {
+                            ...d,
+                            loadTerminal: v,
+                            /* Clears what sits below it: a supplier the new
+                               terminal does not serve is a combination that
+                               cannot be loaded. */
+                            loadSupplier: undefined,
+                            loadAccount: undefined,
+                          }
+                        : d
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Terminal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {load.terminals.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SheetField>
+              <SheetField label="Supplier" required>
+                <Select
+                  value={draft.loadSupplier ?? ""}
+                  onValueChange={(v) =>
+                    setDraft((d) =>
+                      d ? { ...d, loadSupplier: v, loadAccount: undefined } : d
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {load.suppliers.map((x) => (
+                      <SelectItem key={x} value={x}>
+                        {x}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SheetField>
+              <SheetField label="Loading Account" required>
+                <Select
+                  value={draft.loadAccount ?? ""}
+                  onValueChange={(v) => set("loadAccount", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {load.accounts.map((x) => (
+                      <SelectItem key={x} value={x}>
+                        {x}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SheetField>
             </div>
           )}
         </SheetSection>

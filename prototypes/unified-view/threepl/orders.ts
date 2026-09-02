@@ -100,11 +100,6 @@ export interface OrderLine {
   topOff: boolean;
   /** The asset belongs to the broker, not the customer — badged on the row. */
   rental?: boolean;
-  /* Load Order — where the fuel is drawn FROM. Blank until the line is ordered,
-     because a terminal for a line nobody ordered is an answer to no question. */
-  terminal?: string;
-  supplier?: string;
-  loadingAccount?: string;
 }
 
 /**
@@ -167,28 +162,37 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
 const uniqueSorted = (xs: string[]) => [...new Set(xs)].sort();
 
 /**
- * The three selects, each narrowed by what sits above it AND by the line's own
- * product. Passing `undefined` for a level means "not chosen yet", so the level
- * below offers everything still reachable rather than nothing.
+ * The three selects, narrowed by EVERY product on the order at once.
+ *
+ * One account serves the whole order, so it must be able to carry all of them —
+ * an account that covers two of three products would leave the third with
+ * nowhere to load. When no account covers the set, every list comes back empty,
+ * which is the honest answer: this combination cannot be loaded from one place.
  */
 export const loadOptions = (
-  product: string,
+  products: string[],
   terminal?: string,
   supplier?: string
 ) => {
-  const forProduct = LOADING_ACCOUNTS.filter((a) => a.products.includes(product));
+  const needed = [...new Set(products)];
+  const covering = LOADING_ACCOUNTS.filter((a) =>
+    needed.every((p) => a.products.includes(p))
+  );
   const forTerminal = terminal
-    ? forProduct.filter((a) => a.terminal === terminal)
-    : forProduct;
+    ? covering.filter((a) => a.terminal === terminal)
+    : covering;
   const forSupplier = supplier
     ? forTerminal.filter((a) => a.supplier === supplier)
     : forTerminal;
   return {
-    terminals: uniqueSorted(forProduct.map((a) => a.terminal)),
+    terminals: uniqueSorted(covering.map((a) => a.terminal)),
     suppliers: uniqueSorted(forTerminal.map((a) => a.supplier)),
     accounts: uniqueSorted(forSupplier.map((a) => a.name)),
+    /** No single account covers this product set. */
+    impossible: needed.length > 0 && covering.length === 0,
   };
 };
+
 
 /** A vendor's submitted quote (§5.9 / §5.20). Shape follows the order's kind. */
 export interface VendorQuote {
@@ -235,6 +239,12 @@ export interface BrokerOrder {
   tags: string[];
   /** Set only on a recurring order. `null` on every other kind. */
   recurrence: { fromDateKey: string; frequency: string } | null;
+  /**
+   * Where the WHOLE order is loaded. One account per order, not per line — a
+   * truck loads once, so a line-by-line account described a dispatch that does
+   * not happen. `null` until it is chosen.
+   */
+  loadOrder: { terminal: string; supplier: string; loadingAccount: string } | null;
   hub: string;
   primaryPoc: string;
   salesperson: string;
@@ -487,6 +497,11 @@ export const SHIP_TO_SITES = [
     assets: [{ name: "Depot Bulk", product: "Clear Diesel #2", rental: false }, { name: "Depot Lube", product: "Hydraulic Oil AW-46", rental: true }, { name: "Depot 87", product: "Unleaded 87", rental: false }],
   },
 ];
+
+/** Every asset name known across sites — what the Add Asset combobox offers. */
+export const ALL_ASSET_NAMES = [
+  ...new Set(SHIP_TO_SITES.flatMap((s) => s.assets.map((a) => a.name))),
+].sort();
 
 /** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site. */
 export const siteAddress = (s: (typeof SHIP_TO_SITES)[number]) =>
@@ -741,6 +756,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
           ? "System — Recurring"
           : CREATED_BY[i % (CREATED_BY.length - 1)],
       tags: pick() < 0.45 ? [ORDER_TAGS[i % ORDER_TAGS.length]] : [],
+      loadOrder: null,
       recurrence:
         kind === "Recurring"
           ? {

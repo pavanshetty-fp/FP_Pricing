@@ -445,6 +445,14 @@ export function BrokerOrdersScreen({
         state: chosenSite?.state ?? SHIP_TO_SITES[0].state,
         createdBy: "Dana Whitfield",
         tags: [],
+        loadOrder:
+          draft.loadTerminal && draft.loadSupplier && draft.loadAccount
+            ? {
+                terminal: draft.loadTerminal,
+                supplier: draft.loadSupplier,
+                loadingAccount: draft.loadAccount,
+              }
+            : null,
         recurrence: draft.recurring
           ? {
               fromDateKey: dateKeyOf(draft.recurrenceFrom ?? when),

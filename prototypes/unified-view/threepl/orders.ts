@@ -107,27 +107,88 @@ export interface OrderLine {
   loadingAccount?: string;
 }
 
-/** Where fuel is loaded. One vocabulary, three linked selects on the load order. */
-export const TERMINALS = [
-  "Greensbro KM2",
-  "Liberty P56",
-  "Lib Washington 124",
-  "Kern River T4",
+/**
+ * Loading accounts — the ONE table the Load Order's three selects read.
+ *
+ * A loading account is the real entity: it belongs to a terminal AND a
+ * supplier, and it carries the products that can be drawn on it. Terminal and
+ * Supplier are therefore not independent lists — they are the distinct values
+ * of this table, narrowed by what has already been chosen. Three free-standing
+ * vocabularies would let someone pick a terminal, a supplier and an account
+ * that have nothing to do with each other.
+ */
+export interface LoadingAccount {
+  name: string;
+  terminal: string;
+  supplier: string;
+  /** What can be loaded on this account. A line's product must be in here. */
+  products: string[];
+}
+
+export const LOADING_ACCOUNTS: LoadingAccount[] = [
+  {
+    name: "Greensbro Premium",
+    terminal: "Greensbro KM2",
+    supplier: "Liberty P56",
+    products: ["Dyed Diesel", "Clear Diesel #2"],
+  },
+  {
+    name: "Greensbro Bulk",
+    terminal: "Greensbro KM2",
+    supplier: "Pioneer Distributing",
+    products: ["Unleaded 87", "Unleaded 91"],
+  },
+  {
+    name: "Liberty Standard",
+    terminal: "Liberty P56",
+    supplier: "Liberty P56",
+    products: ["Clear Diesel #2", "DEF Bulk"],
+  },
+  {
+    name: "Washington Contract",
+    terminal: "Lib Washington 124",
+    supplier: "Sunrise Energy",
+    products: ["Dyed Diesel", "Unleaded 87", "DEF Bulk"],
+  },
+  {
+    name: "Kern Premium",
+    terminal: "Kern River T4",
+    supplier: "Pioneer Distributing",
+    products: ["Hydraulic Oil AW-46", "Clear Diesel #2"],
+  },
+  {
+    name: "Kern Retail",
+    terminal: "Kern River T4",
+    supplier: "Sunrise Energy",
+    products: ["Unleaded 87", "Unleaded 91", "Dyed Diesel"],
+  },
 ];
 
-export const SUPPLIERS = [
-  "Liberty P56",
-  "Pioneer Distributing",
-  "Sunrise Energy",
-  "Greensbro Fuel Supply",
-];
+const uniqueSorted = (xs: string[]) => [...new Set(xs)].sort();
 
-export const LOADING_ACCOUNTS = [
-  "Greensbro Premium",
-  "Liberty Standard",
-  "Pioneer Bulk",
-  "Sunrise Contract",
-];
+/**
+ * The three selects, each narrowed by what sits above it AND by the line's own
+ * product. Passing `undefined` for a level means "not chosen yet", so the level
+ * below offers everything still reachable rather than nothing.
+ */
+export const loadOptions = (
+  product: string,
+  terminal?: string,
+  supplier?: string
+) => {
+  const forProduct = LOADING_ACCOUNTS.filter((a) => a.products.includes(product));
+  const forTerminal = terminal
+    ? forProduct.filter((a) => a.terminal === terminal)
+    : forProduct;
+  const forSupplier = supplier
+    ? forTerminal.filter((a) => a.supplier === supplier)
+    : forTerminal;
+  return {
+    terminals: uniqueSorted(forProduct.map((a) => a.terminal)),
+    suppliers: uniqueSorted(forTerminal.map((a) => a.supplier)),
+    accounts: uniqueSorted(forSupplier.map((a) => a.name)),
+  };
+};
 
 /** A vendor's submitted quote (§5.9 / §5.20). Shape follows the order's kind. */
 export interface VendorQuote {

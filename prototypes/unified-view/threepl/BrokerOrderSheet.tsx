@@ -17,6 +17,17 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -58,9 +69,7 @@ import {
   SALESPEOPLE,
   SALES_CONTACTS,
   SHIP_TO_SITES,
-  SUPPLIERS,
-  TERMINALS,
-  LOADING_ACCOUNTS,
+  loadOptions,
   WINDOWS,
   formatWindow,
   isAllTopOff,
@@ -426,8 +435,13 @@ export function BrokerOrderSheet({
         : d
     );
 
-  /* Drops anything not on the site's list — the honest meaning of "refresh"
-     against a source of truth this prototype reads synchronously. */
+  /* Refresh drops any line the site's list no longer carries — which means it
+     DELETES WORK. It asks first, and only when there is something to lose:
+     confirming a no-op teaches people to dismiss the dialog without reading. */
+  const strayLines = draft.lines.filter(
+    (l) => !(site?.assets ?? []).some((a) => assetKey(a) === assetKey(l))
+  );
+
   const refreshAssets = () =>
     setDraft((d) =>
       d
@@ -826,9 +840,42 @@ export function BrokerOrderSheet({
               <Button variant="ghost" size="sm" onClick={addCustomAsset}>
                 <Plus /> Add Asset
               </Button>
-              <Button variant="ghost" size="sm" onClick={refreshAssets}>
-                <RefreshCw /> Refresh Assets
-              </Button>
+              {strayLines.length === 0 ? (
+                <Button variant="ghost" size="sm" onClick={refreshAssets}>
+                  <RefreshCw /> Refresh Assets
+                </Button>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <RefreshCw /> Refresh Assets
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove {strayLines.length}{" "}
+                        {strayLines.length === 1 ? "line" : "lines"} from this
+                        order?
+                      </AlertDialogTitle>
+                      {/* Names them. "Some lines will be removed" makes the
+                          reader guess which, and guessing is how people lose
+                          the one they cared about. */}
+                      <AlertDialogDescription>
+                        Refreshing re-reads the assets at {draft.shipTo}. These
+                        are not on its list and will be dropped:{" "}
+                        {strayLines.map((l) => l.asset).join(", ")}.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={refreshAssets}>
+                        Refresh anyway
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           }
         >
@@ -989,7 +1036,16 @@ export function BrokerOrderSheet({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {draft.lines.map((line, i) => (
+                  {draft.lines.map((line, i) => {
+                    /* Options are narrowed by the line's PRODUCT first — an
+                       account that cannot carry this product is never offered —
+                       then by whatever is already chosen above. */
+                    const opts = loadOptions(
+                      line.product,
+                      line.terminal,
+                      line.supplier
+                    );
+                    return (
                     <TableRow key={assetKey(line)} className="h-12 hover:bg-transparent">
                       <TableCell className="px-3">
                         <span className="truncate text-sm text-foreground">
@@ -1002,29 +1058,42 @@ export function BrokerOrderSheet({
                       <TableCell className="px-3">
                         <LoadSelect
                           value={line.terminal}
-                          options={TERMINALS}
+                          options={opts.terminals}
                           placeholder="Terminal"
-                          onChange={(v) => setLine(i, { terminal: v })}
+                          /* Changing a level clears the levels BELOW it: a
+                             supplier that the new terminal does not serve, left
+                             sitting there, is a combination that cannot be
+                             loaded. */
+                          onChange={(v) =>
+                            setLine(i, {
+                              terminal: v,
+                              supplier: undefined,
+                              loadingAccount: undefined,
+                            })
+                          }
                         />
                       </TableCell>
                       <TableCell className="px-3">
                         <LoadSelect
                           value={line.supplier}
-                          options={SUPPLIERS}
+                          options={opts.suppliers}
                           placeholder="Supplier"
-                          onChange={(v) => setLine(i, { supplier: v })}
+                          onChange={(v) =>
+                            setLine(i, { supplier: v, loadingAccount: undefined })
+                          }
                         />
                       </TableCell>
                       <TableCell className="px-3">
                         <LoadSelect
                           value={line.loadingAccount}
-                          options={LOADING_ACCOUNTS}
+                          options={opts.accounts}
                           placeholder="Account"
                           onChange={(v) => setLine(i, { loadingAccount: v })}
                         />
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

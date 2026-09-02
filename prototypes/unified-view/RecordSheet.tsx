@@ -30,10 +30,15 @@ import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/she
 export interface RecordSheetProps {
   /**
    * `narrow` is the DS's 560px side sheet — right for a form of stacked fields.
-   * `wide` fills the viewport but for a 60px strip, which a sheet carrying
-   * TABLES needs: at 560 the Load Order's five columns had to be scrolled
-   * sideways to be read at all, and a table you scroll to read is a table you
+   * `wide` is for a sheet carrying TABLES — at 560 their columns had to be
+   * scrolled sideways to be read, and a table you scroll to read is a table you
    * cannot compare rows in.
+   *
+   * It is CAPPED at 1040px rather than filling the viewport. 60px-from-the-edge
+   * is the most a sheet may take, not the width it should be: on a wide monitor
+   * that leaves a two-column form with a metre between a label and its control,
+   * and the tables here are three and four columns, not ten. 1040 fits both
+   * comfortably; the viewport clamp only bites on a narrow screen.
    */
   size?: "narrow" | "wide";
   open: boolean;
@@ -78,7 +83,7 @@ export function RecordSheet({
         className={cn(
           "gap-0 p-0",
           size === "wide"
-            ? "w-[calc(100vw-60px)] sm:max-w-[calc(100vw-60px)]"
+            ? "w-[min(1040px,calc(100vw-60px))] sm:max-w-[min(1040px,calc(100vw-60px))]"
             : "w-[560px] sm:max-w-[560px]"
         )}
       >

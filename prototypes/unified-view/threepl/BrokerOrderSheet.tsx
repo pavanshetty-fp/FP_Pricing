@@ -494,7 +494,10 @@ export function BrokerOrderSheet({
       d
         ? {
             ...d,
-            lines: d.lines.map((l) => ({ ...l, topOff: on, gal: on ? null : l.gal })),
+            /* Switching top-off OFF restores whatever number the row had, so
+               turning it on to check something and off again is not a way to
+               lose the quantities. */
+            lines: d.lines.map((l) => ({ ...l, topOff: on })),
           }
         : d
     );
@@ -793,45 +796,9 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
-        <FlagRow
-          flags={[
-            {
-              id: "urgent",
-              label: "Mark as an Urgent Order",
-              checked: draft.urgent,
-              onChange: (v) => set("urgent", v),
-            },
-            {
-              id: "signature",
-              label: "Get signature on Delivery",
-              checked: draft.signatureOnDelivery,
-              onChange: (v) => set("signatureOnDelivery", v),
-            },
-            {
-              id: "recurring",
-              label: "Mark as Recurring Order",
-              checked: draft.recurring,
-              onChange: (v) =>
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        recurring: v,
-                        // Seed the cadence from the delivery date, which is the
-                        // answer in almost every case; clear it when switched
-                        // off so a stale schedule cannot survive.
-                        recurrenceFrom: v
-                          ? (d.recurrenceFrom ?? d.plannedDate)
-                          : null,
-                      }
-                    : d
-                ),
-            },
-          ]}
-        />
-
-        {/* Revealed by the checkbox, because a cadence with nothing recurring is
-            a question about nothing. */}
+        {/* Revealed by the flag below, because a cadence with nothing recurring
+            is a question about nothing. The flags close the section rather than
+            splitting the schedule fields apart. */}
         {draft.recurring && (
           <div className="grid grid-cols-2 gap-4">
             <SheetField label="Recurrence from Date" required>
@@ -875,6 +842,43 @@ export function BrokerOrderSheet({
             </SheetField>
           </div>
         )}
+
+        <FlagRow
+          flags={[
+            {
+              id: "urgent",
+              label: "Mark as an Urgent Order",
+              checked: draft.urgent,
+              onChange: (v) => set("urgent", v),
+            },
+            {
+              id: "signature",
+              label: "Get signature on Delivery",
+              checked: draft.signatureOnDelivery,
+              onChange: (v) => set("signatureOnDelivery", v),
+            },
+            {
+              id: "recurring",
+              label: "Mark as Recurring Order",
+              checked: draft.recurring,
+              onChange: (v) =>
+                setDraft((d) =>
+                  d
+                    ? {
+                        ...d,
+                        recurring: v,
+                        // Seed the cadence from the delivery date, which is the
+                        // answer in almost every case; clear it when switched
+                        // off so a stale schedule cannot survive.
+                        recurrenceFrom: v
+                          ? (d.recurrenceFrom ?? d.plannedDate)
+                          : null,
+                      }
+                    : d
+                ),
+            },
+          ]}
+        />
 
       </SheetSection>
 
@@ -998,22 +1002,7 @@ export function BrokerOrderSheet({
                         aria-label="Select all assets"
                       />
                     </TableHead>
-                    {/* One toggle for the whole order, not one per row: "fill
-                        every tank" is a single decision a dispatcher makes, and
-                        it only applies to the lines actually ordered. */}
-                    <TableHead className="px-0">
-                      <label
-                        htmlFor="topoff-all"
-                        className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground"
-                      >
-                        Top Off
-                        <Switch
-                          id="topoff-all"
-                          checked={allTopOff}
-                          onCheckedChange={setAllTopOff}
-                        />
-                      </label>
-                    </TableHead>
+                    <TableHead className="px-0" />
                     <TableHead className="px-3 text-right text-xs font-medium text-muted-foreground">
                       Order
                     </TableHead>
@@ -1078,13 +1067,32 @@ export function BrokerOrderSheet({
             </div>
           )}
 
-          {/* Qty is never an input — it is the sum of the ordered lines. Same
-              rule the Fuel Orders sheet holds to. */}
+          {/* Top off is not an asset, so it is not a row in the asset table —
+              it is an instruction about the quantities, and it belongs on the
+              line that reports them.
+
+              "Top off selected": every CHECKED asset is filled rather than
+              given a number. Switch it off and each row takes a quantity
+              again, which is why the entered numbers are kept rather than
+              zeroed. Qty itself is never an input — it is the sum. */}
           {draft.lines.length > 0 && (
-            <div className="flex items-center justify-end gap-2 text-sm">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-medium tabular-nums text-foreground">
-                {isAllTopOff(draft.lines) ? "Top-off" : `${gal.toLocaleString()} gal`}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <label
+                htmlFor="topoff-selected"
+                className="flex cursor-pointer items-center gap-2.5"
+              >
+                <Switch
+                  id="topoff-selected"
+                  checked={allTopOff}
+                  onCheckedChange={setAllTopOff}
+                />
+                <span className="text-sm text-foreground">Top off selected</span>
+              </label>
+              <span className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-medium tabular-nums text-foreground">
+                  {isAllTopOff(draft.lines) ? "Top-off" : `${gal.toLocaleString()} gal`}
+                </span>
               </span>
             </div>
           )}

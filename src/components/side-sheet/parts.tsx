@@ -41,7 +41,12 @@ export function SheetField({
   children,
   className,
 }: {
-  label?: string;
+  /**
+   * A node, not just a string: a field's label row sometimes carries a control
+   * that acts on the whole field — an "Invite" beside a picker — and that
+   * control belongs on the label row rather than trailing the field's body.
+   */
+  label?: React.ReactNode;
   description?: string;
   /** Marks the label with the destructive asterisk the DS forms already use. */
   required?: boolean;
@@ -51,7 +56,7 @@ export function SheetField({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
-        <label className="text-sm font-medium text-foreground">
+        <label className="block text-sm font-medium text-foreground">
           {label}
           {required && <span className="text-destructive"> *</span>}
         </label>

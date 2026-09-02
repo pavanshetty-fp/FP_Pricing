@@ -16,6 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -118,32 +123,41 @@ import {
  */
 
 /**
- * The three order flags, as one unit.
+ * The three order flags, in one horizontal row.
  *
- * No box and no rules between them. They are already one group by proximity —
- * a border would be a second, redundant signal, and hairlines between three
- * short rows chop a small list into three smaller ones. Label left, control
- * hard right; the eye gets a column of labels and a column of controls from
- * alignment alone.
+ * CHECKBOXES, not switches, and side by side rather than stacked. Stacked
+ * toggles put the control at the far right of a WIDE sheet — a label and its
+ * control most of a metre apart, which is a row you have to track across with
+ * a finger. A checkbox sits against its own label, so the pair reads as one
+ * thing at any sheet width.
  *
- * Switches, not checkboxes: each is a setting that takes effect on the order,
- * and the whole row is the target.
+ * Three independent properties of one order, so three checkboxes rather than a
+ * radio group.
  */
-function ToggleRows({
-  rows,
+function FlagRow({
+  flags,
 }: {
-  rows: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }[];
+  flags: {
+    id: string;
+    label: string;
+    checked: boolean;
+    onChange: (v: boolean) => void;
+  }[];
 }) {
   return (
-    <div className="flex flex-col">
-      {rows.map((r) => (
+    <div className="flex flex-wrap items-center gap-x-10 gap-y-3">
+      {flags.map((f) => (
         <label
-          key={r.id}
-          htmlFor={r.id}
-          className="flex cursor-pointer items-center justify-between gap-4 py-2"
+          key={f.id}
+          htmlFor={f.id}
+          className="flex cursor-pointer items-center gap-2.5"
         >
-          <span className="text-sm text-foreground">{r.label}</span>
-          <Switch id={r.id} checked={r.checked} onCheckedChange={r.onChange} />
+          <Checkbox
+            id={f.id}
+            checked={f.checked}
+            onCheckedChange={(v) => f.onChange(v === true)}
+          />
+          <span className="text-sm text-foreground">{f.label}</span>
         </label>
       ))}
     </div>
@@ -546,21 +560,10 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
-        {/* A brokerage rule, not decoration: the vendor is shown the site, never
-            the account. It sits under the customer field because that is the
-            field it constrains. `--status-processing` is the DS's caution tone —
-            there is no `--status-warning`; processing IS amber in both themes. */}
-        <p className="text-xs text-status-processing">
-          Note: the customer name will not be visible to the vendor.
-        </p>
-
         <div className="grid grid-cols-2 gap-4">
           {/* Derived from the ship-to, so it is READ-ONLY. An editable copy of a
               site's coordinates is a second source of truth for the same fact. */}
-          <SheetField
-            label="Latitude / Longitude"
-            description="From the selected ShipTo."
-          >
+          <SheetField label="Latitude / Longitude">
             <Input value={site?.latLng ?? "NA"} readOnly />
           </SheetField>
           <SheetField label="PO number">
@@ -695,8 +698,8 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
-        <ToggleRows
-          rows={[
+        <FlagRow
+          flags={[
             {
               id: "urgent",
               label: "Mark as an Urgent Order",
@@ -815,17 +818,39 @@ export function BrokerOrderSheet({
               <Button variant="ghost" size="sm" onClick={addCustomAsset}>
                 <Plus /> Add Asset
               </Button>
+              {/* Icon only — the label is a tooltip and an aria-label, so the
+                  action keeps its name for a screen reader and for anyone who
+                  hovers, without a second word-pair competing with Add Asset. */}
               {strayLines.length === 0 ? (
-                <Button variant="ghost" size="sm" onClick={refreshAssets}>
-                  <RefreshCw /> Refresh Assets
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Refresh assets"
+                      onClick={refreshAssets}
+                    >
+                      <RefreshCw />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh assets</TooltipContent>
+                </Tooltip>
               ) : (
                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <RefreshCw /> Refresh Assets
-                    </Button>
-                  </AlertDialogTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Refresh assets"
+                        >
+                          <RefreshCw />
+                        </Button>
+                      </AlertDialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh assets</TooltipContent>
+                  </Tooltip>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
@@ -1120,8 +1145,29 @@ export function BrokerOrderSheet({
               />
             </div>
 
+            {/* The action sits ON the label row, not under the list: it acts on
+                the whole picker, so it belongs to the picker's heading rather
+                than trailing 300px of scrollable list. Ghost, because the
+                sheet's one filled button is Save. */}
             <SheetField
-              label="Invite partners"
+              label={
+                <span className="flex items-center justify-between gap-4">
+                  Invite partners
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    // A blocked order cannot be dispatched at all (§5, Credit
+                    // Limit Management), so the action is unavailable rather
+                    // than failing after the click.
+                    disabled={picked.size === 0 || draft.status === "Blocked"}
+                    onClick={invite}
+                  >
+                    <Mail />
+                    Invite
+                    {picked.size > 1 && ` ${picked.size}`}
+                  </Button>
+                </span>
+              }
               description={`Showing partners that run ${requiredLine}. All invited partners are notified at the same time; whichever accepts first is assigned the order, and the rest are told it is no longer available.`}
             >
               <div className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-md border border-fp-outline-1 p-1">
@@ -1148,18 +1194,6 @@ export function BrokerOrderSheet({
               </div>
             </SheetField>
 
-            <Button
-              // A blocked order cannot be dispatched at all (§5, Credit Limit
-              // Management), so the action is unavailable rather than failing
-              // after the click.
-              disabled={picked.size === 0 || draft.status === "Blocked"}
-              onClick={invite}
-            >
-              <Mail />
-              {picked.size > 1
-                ? `Invite ${picked.size} partners`
-                : "Invite partner"}
-            </Button>
           </>
         )}
 

@@ -100,6 +100,13 @@ export interface OrderLine {
   topOff: boolean;
   /** The asset belongs to the broker, not the customer — badged on the row. */
   rental?: boolean;
+  /**
+   * Ticked in the Delivery Order table. SELECTION, not top-off: while the
+   * "Top off selected" switch is on, the selected lines are the ones filled,
+   * and the rest still take a typed quantity. Selecting and topping off are
+   * two decisions, so they are two controls.
+   */
+  selected?: boolean;
 }
 
 /**

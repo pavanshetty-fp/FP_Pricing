@@ -186,7 +186,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     urgent: o.urgent,
     signatureOnDelivery: o.signatureOnDelivery,
     // Copied, not shared — editing a line must not mutate the row behind the sheet.
-    lines: o.lines.map((l) => ({ ...l })),
+    lines: o.lines.map((l) => ({ ...l, selected: l.topOff })),
     status: o.status,
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
@@ -294,12 +294,22 @@ export function BrokerOrderSheet({
   const [draft, setDraft] = React.useState<BrokerOrderDraft | null>(null);
   /** Vendors ticked in the picker but not yet invited. */
   const [picked, setPicked] = React.useState<Set<string>>(new Set());
+  /**
+   * "Top off selected" is a MODE, not a bulk action. While it is on, the
+   * selected lines are filled and the rest still take a typed quantity — so
+   * turning it on must not tick every box, and ticking a box while it is on
+   * must take effect immediately.
+   */
+  const [topOffMode, setTopOffMode] = React.useState(false);
   const creating = mode === "create";
 
   React.useEffect(() => {
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
     setPicked(new Set());
+    // An order that already carries top-off lines opens in the mode, with those
+    // lines selected — otherwise the switch would read "off" over filled rows.
+    setTopOffMode(Boolean(order?.lines.some((l) => l.topOff)));
   }, [open, creating, order]);
 
   if (!draft || (!creating && !order)) return null;
@@ -333,7 +343,10 @@ export function BrokerOrderSheet({
      order all key off lines that actually name one. */
   const namedLines = draft.lines.filter((l) => l.asset);
   const hasAssets = namedLines.length > 0;
-  const allTopOff = hasAssets && namedLines.every((l) => l.topOff);
+
+  /** `topOff` is DERIVED: the mode, and this line selected. */
+  const withTopOff = (lines: OrderLine[], mode: boolean) =>
+    lines.map((l) => ({ ...l, topOff: mode && Boolean(l.selected) }));
 
   const setLine = (i: number, patch: Partial<OrderLine>) =>
     setDraft((d) =>
@@ -352,7 +365,7 @@ export function BrokerOrderSheet({
             ...d,
             lines: [
               ...d.lines,
-              { asset: "", product: PRODUCTS[0], gal: null, topOff: false },
+              { asset: "", product: PRODUCTS[0], gal: null, topOff: false, selected: false },
             ],
           }
         : d
@@ -363,13 +376,23 @@ export function BrokerOrderSheet({
       d ? { ...d, lines: d.lines.filter((_, k) => k !== i) } : d
     );
 
-  /* Top off applies to the NAMED lines — a blank row has nothing to fill. */
-  const setAllTopOff = (on: boolean) =>
+  /* The switch changes the MODE. It re-derives every line from what is already
+     selected; it does not select anything on the reader's behalf. */
+  const setTopOffModeAndLines = (on: boolean) => {
+    setTopOffMode(on);
+    setDraft((d) => (d ? { ...d, lines: withTopOff(d.lines, on) } : d));
+  };
+
+  /* Ticking a row changes the SELECTION, and — while the mode is on — that
+     line's top-off with it, so the row reacts to its own checkbox. */
+  const setSelected = (i: number, on: boolean) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            lines: d.lines.map((l) => (l.asset ? { ...l, topOff: on } : l)),
+            lines: d.lines.map((l, k) =>
+              k === i ? { ...l, selected: on, topOff: topOffMode && on } : l
+            ),
           }
         : d
     );
@@ -759,9 +782,9 @@ export function BrokerOrderSheet({
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Top off</TableRequiredLabel>
-                    </th>
+                    {/* No label: it is a selection column, and what the
+                        selection is FOR is stated by the switch below. */}
+                    <th aria-hidden />
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Asset</TableRequiredLabel>
                     </th>
@@ -784,13 +807,15 @@ export function BrokerOrderSheet({
                       >
                         {/* Checked = fill it. Unchecked = type a number. One
                             control, so a row cannot claim both at once. */}
+                        {/* SELECTION. What it does depends on the switch below
+                            the table: while "Top off selected" is on, the
+                            selected lines are filled and the rest keep taking a
+                            number. */}
                         <td className="px-3">
                           <Checkbox
-                            checked={line.topOff}
-                            onCheckedChange={(c) =>
-                              setLine(i, { topOff: c === true })
-                            }
-                            aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                            checked={Boolean(line.selected)}
+                            onCheckedChange={(c) => setSelected(i, c === true)}
+                            aria-label={`Select ${line.asset || `line ${i + 1}`}`}
                           />
                         </td>
                         <td className="relative p-0">
@@ -888,8 +913,8 @@ export function BrokerOrderSheet({
               >
                 <Switch
                   id="topoff-selected"
-                  checked={allTopOff}
-                  onCheckedChange={setAllTopOff}
+                  checked={topOffMode}
+                  onCheckedChange={setTopOffModeAndLines}
                 />
                 <span className="text-sm text-foreground">Top off selected</span>
               </label>

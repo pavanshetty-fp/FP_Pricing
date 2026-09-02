@@ -8,16 +8,26 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 /** Section = muted group heading + fields. */
 export function SheetSection({
   title,
+  action,
   children,
   className,
 }: {
   title: string;
+  /**
+   * Controls that act on the SECTION rather than on one field — "Add asset",
+   * "Refresh". They sit on the heading row, right-aligned, because a control
+   * that owns a whole section has no field to belong to.
+   */
+  action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <section className={cn("flex flex-col gap-3", className)}>
-      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+      <div className="flex min-h-7 items-center justify-between gap-4">
+        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        {action}
+      </div>
       {children}
     </section>
   );

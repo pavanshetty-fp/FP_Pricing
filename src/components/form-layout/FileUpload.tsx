@@ -59,8 +59,31 @@ function CircularProgress({ value }: { value: number }) {
   );
 }
 
-export function FileUpload() {
-  const [files, setFiles] = React.useState<UploadedFile[]>(INITIAL_FILES);
+export interface FileUploadProps {
+  /**
+   * `showcase` renders all three states at once — empty dropzone, an
+   * in-progress example, and seeded chips — which is what the gallery needs and
+   * what every existing caller gets by default.
+   *
+   * `field` renders the control a real form needs: dropzone, note, and only the
+   * files actually added. No seeded files, no fake progress.
+   */
+  variant?: "showcase" | "field";
+  /** Dropzone label. */
+  label?: string;
+  /** The format/size note under the dropzone. */
+  note?: string;
+}
+
+export function FileUpload({
+  variant = "showcase",
+  label = "Upload Documents",
+  note = NOTE,
+}: FileUploadProps = {}) {
+  const showcase = variant === "showcase";
+  const [files, setFiles] = React.useState<UploadedFile[]>(
+    showcase ? INITIAL_FILES : []
+  );
   const idRef = React.useRef(INITIAL_FILES.length);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -108,7 +131,7 @@ export function FileUpload() {
         )}
       >
         <UploadCloud className="size-5 text-muted-foreground" />
-        <span className="font-medium">Upload Documents</span>
+        <span className="font-medium">{label}</span>
         <input
           ref={inputRef}
           type="file"
@@ -117,14 +140,19 @@ export function FileUpload() {
           onChange={(e) => addFiles(e.target.files)}
         />
       </button>
-      <p className="text-xs text-muted-foreground">{NOTE}</p>
+      <p className="text-xs text-muted-foreground">{note}</p>
 
-      {/* In-progress upload */}
-      <div className="flex h-24 w-full items-center justify-center gap-3 rounded-md border border-border bg-fp-surface-1a">
-        <CircularProgress value={75} />
-        <span className="text-sm">Uploading 2 of 3</span>
-      </div>
-      <p className="text-xs text-muted-foreground">{NOTE}</p>
+      {/* The in-progress state is a STATE, not a permanent block — it belongs in
+          the showcase, never on a form where nothing is uploading. */}
+      {showcase && (
+        <>
+          <div className="flex h-24 w-full items-center justify-center gap-3 rounded-md border border-border bg-fp-surface-1a">
+            <CircularProgress value={75} />
+            <span className="text-sm">Uploading 2 of 3</span>
+          </div>
+          <p className="text-xs text-muted-foreground">{note}</p>
+        </>
+      )}
 
       {/* Uploaded chips */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

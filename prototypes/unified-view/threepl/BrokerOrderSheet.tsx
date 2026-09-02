@@ -3,18 +3,33 @@ import {
   Calendar as CalendarIcon,
   Check,
   CircleAlert,
+  Layers,
+  RefreshCw,
   Mail,
   Plus,
   Shield,
   ThumbsDown,
   Truck,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -28,6 +43,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { FileUpload } from "@/components/form-layout/FileUpload";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { VENDORS, vendorById } from "./vendors";
@@ -42,6 +58,9 @@ import {
   SALESPEOPLE,
   SALES_CONTACTS,
   SHIP_TO_SITES,
+  SUPPLIERS,
+  TERMINALS,
+  LOADING_ACCOUNTS,
   WINDOWS,
   formatWindow,
   isAllTopOff,
@@ -120,6 +139,38 @@ function ToggleRows({
     </div>
   );
 }
+
+/** One compact select in a Load Order cell. Three per row, same shape. */
+function LoadSelect({
+  value,
+  options,
+  placeholder,
+  onChange,
+}: {
+  value: string | undefined;
+  options: string[];
+  placeholder: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Select value={value ?? ""} onValueChange={onChange}>
+      <SelectTrigger className="h-8 w-full" aria-label={placeholder}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o} value={o}>
+            {o}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** A line and an asset are the same thing when name and product match. */
+const assetKey = (x: { asset?: string; name?: string; product: string }) =>
+  `${x.asset ?? x.name}|${x.product}`;
 
 export interface BrokerOrderDraft {
   customer: string;
@@ -285,6 +336,109 @@ export function BrokerOrderSheet({
     key: K,
     value: BrokerOrderDraft[K]
   ) => setDraft((d) => (d ? { ...d, [key]: value } : d));
+
+  /* The assets this site has, plus anything added by hand on this order — a
+     custom line is still an asset, it just is not on the site's list yet. */
+  /* Plain computation, NOT useMemo: this sits after the sheet's early return,
+     where a hook would be called conditionally. The lists are a handful of
+     items, so memoising would buy nothing even if it were legal here. */
+  const siteAssets = (() => {
+    const listed = site?.assets ?? [];
+    const extra = draft.lines
+      .filter((l) => !listed.some((a) => assetKey(a) === assetKey(l)))
+      .map((l) => ({ name: l.asset, product: l.product, rental: l.rental ?? false }));
+    return [...listed, ...extra];
+  })();
+
+  const pickedCount = draft.lines.length;
+  const allPicked = siteAssets.length > 0 && pickedCount === siteAssets.length;
+  const somePicked = pickedCount > 0 && !allPicked;
+  const allTopOff = pickedCount > 0 && draft.lines.every((l) => l.topOff);
+
+  const lineFor = (a: { name: string; product: string; rental: boolean }): OrderLine => ({
+    asset: a.name,
+    product: a.product,
+    gal: null,
+    topOff: allTopOff,
+    rental: a.rental,
+  });
+
+  const pickAsset = (
+    a: { name: string; product: string; rental: boolean },
+    on: boolean
+  ) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: on
+              ? [...d.lines, lineFor(a)]
+              : d.lines.filter((l) => assetKey(l) !== assetKey(a)),
+          }
+        : d
+    );
+
+  const pickAll = (on: boolean) =>
+    setDraft((d) => (d ? { ...d, lines: on ? siteAssets.map(lineFor) : [] } : d));
+
+  /* Top Off applies to the ORDERED lines only — it is a property of what is
+     being delivered, not of the site's inventory. Turning it on clears the
+     quantities it would contradict. */
+  const setAllTopOff = (on: boolean) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: d.lines.map((l) => ({ ...l, topOff: on, gal: on ? null : l.gal })),
+          }
+        : d
+    );
+
+  const setGal = (a: { name: string; product: string }, gal: number | null) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: d.lines.map((l) =>
+              assetKey(l) === assetKey(a) ? { ...l, gal } : l
+            ),
+          }
+        : d
+    );
+
+  /* An asset the site's list does not carry yet. Named rather than blank, so a
+     row can never be an anonymous empty line. */
+  const addCustomAsset = () =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: [
+              ...d.lines,
+              {
+                asset: `Custom asset ${d.lines.length + 1}`,
+                product: PRODUCTS[0],
+                gal: null,
+                topOff: false,
+              },
+            ],
+          }
+        : d
+    );
+
+  /* Drops anything not on the site's list — the honest meaning of "refresh"
+     against a source of truth this prototype reads synchronously. */
+  const refreshAssets = () =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: d.lines.filter((l) =>
+              (site?.assets ?? []).some((a) => assetKey(a) === assetKey(l))
+            ),
+          }
+        : d
+    );
 
   const setLine = (i: number, patch: Partial<OrderLine>) =>
     setDraft((d) =>
@@ -664,107 +818,217 @@ export function BrokerOrderSheet({
       )}
 
       {!isMovement && (
-        <SheetSection className="gap-5" title="Delivery Order">
-          <div className="flex flex-col gap-3">
-            {draft.lines.map((line, i) => (
-              <div
-                key={i}
-                className="flex flex-col gap-3 rounded-md border border-fp-outline-1 p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={line.asset}
-                    placeholder="Asset, e.g. Tank 104"
-                    aria-label={`Asset for line ${i + 1}`}
-                    onChange={(e) => setLine(i, { asset: e.target.value })}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Remove line ${i + 1}`}
-                    disabled={draft.lines.length === 1}
-                    onClick={() =>
-                      set(
-                        "lines",
-                        draft.lines.filter((_, k) => k !== i)
-                      )
-                    }
-                  >
-                    <X />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    value={line.product}
-                    onValueChange={(v) => setLine(i, { product: v })}
-                  >
-                    <SelectTrigger className="w-full" aria-label={`Product for line ${i + 1}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRODUCTS.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    inputMode="numeric"
-                    // A top-off line carries no requested volume — the field is
-                    // not merely empty, it is inapplicable, so it is disabled and
-                    // the value forced to null rather than left as a stale number.
-                    disabled={line.topOff}
-                    value={line.gal !== null ? String(line.gal) : ""}
-                    placeholder={line.topOff ? "Top-off" : "Gallons"}
-                    aria-label={`Gallons for line ${i + 1}`}
-                    onChange={(e) =>
-                      setLine(i, {
-                        gal: Number(e.target.value.replace(/[^0-9]/g, "")) || null,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <label
-                    htmlFor={`topoff-${i}`}
-                    className="text-sm text-muted-foreground"
-                  >
-                    Top off
-                  </label>
-                  <Switch
-                    id={`topoff-${i}`}
-                    checked={line.topOff}
-                    onCheckedChange={(v) =>
-                      setLine(i, { topOff: v, gal: v ? null : (line.gal ?? 0) })
-                    }
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                set("lines", [
-                  ...draft.lines,
-                  { asset: "", product: PRODUCTS[0], gal: null, topOff: false },
-                ])
-              }
-            >
-              <Plus /> Add asset
-            </Button>
-            {/* Qty is never an input — it is the sum of the lines. Same rule the
-                Fuel Orders sheet holds to. */}
-            <span className="text-sm tabular-nums text-muted-foreground">
-              Total{" "}
-              <span className="font-medium text-foreground">
+        <SheetSection
+          className="gap-5"
+          title="Delivery Order"
+          action={
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={addCustomAsset}>
+                <Plus /> Add Asset
+              </Button>
+              <Button variant="ghost" size="sm" onClick={refreshAssets}>
+                <RefreshCw /> Refresh Assets
+              </Button>
+            </div>
+          }
+        >
+          {/* The assets are the SITE'S. Without a site there is nothing to
+              list, and asking someone to type an asset name — which is what
+              this section used to do — invents inventory that does not exist. */}
+          {!draft.shipTo ? (
+            <Empty className="rounded-md border border-fp-outline-1 py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Truck />
+                </EmptyMedia>
+                <EmptyDescription>
+                  Please select a customer and ShipTo to view available assets.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div className="overflow-hidden rounded-md border border-fp-outline-1">
+              <Table>
+                <TableHeader>
+                  <TableRow className="h-10 hover:bg-transparent">
+                    <TableHead className="w-10 px-3">
+                      <Checkbox
+                        checked={allPicked ? true : somePicked ? "indeterminate" : false}
+                        onCheckedChange={(c) => pickAll(c === true)}
+                        aria-label="Select all assets"
+                      />
+                    </TableHead>
+                    {/* One toggle for the whole order, not one per row: "fill
+                        every tank" is a single decision a dispatcher makes, and
+                        it only applies to the lines actually ordered. */}
+                    <TableHead className="px-0">
+                      <label
+                        htmlFor="topoff-all"
+                        className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground"
+                      >
+                        Top Off
+                        <Switch
+                          id="topoff-all"
+                          checked={allTopOff}
+                          onCheckedChange={setAllTopOff}
+                        />
+                      </label>
+                    </TableHead>
+                    <TableHead className="px-3 text-right text-xs font-medium text-muted-foreground">
+                      Order
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {siteAssets.map((a) => {
+                    const key = assetKey(a);
+                    const line = draft.lines.find((l) => assetKey(l) === key);
+                    const on = Boolean(line);
+                    return (
+                      <TableRow key={key} className="h-12 hover:bg-transparent">
+                        <TableCell className="px-3">
+                          <Checkbox
+                            checked={on}
+                            onCheckedChange={(c) => pickAsset(a, c === true)}
+                            aria-label={`${a.name} – ${a.product}`}
+                          />
+                        </TableCell>
+                        <TableCell className="px-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Truck className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-sm text-foreground">
+                              {a.name} – {a.product}
+                            </span>
+                            {/* Neutral, per the DS's colour governance: nothing
+                                binds a meaning to a hue here yet. */}
+                            {a.rental && (
+                              <Badge variant="secondary" className="shrink-0">
+                                Rental Asset
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-3">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Input
+                              value={
+                                line?.topOff ? "" : line?.gal != null ? String(line.gal) : ""
+                              }
+                              placeholder={line?.topOff ? "Top-off" : ""}
+                              disabled={!on || Boolean(line?.topOff)}
+                              aria-label={`Gallons for ${a.name}`}
+                              className="h-8 w-24 text-right tabular-nums"
+                              onChange={(e) =>
+                                setGal(
+                                  a,
+                                  Number(e.target.value.replace(/[^0-9]/g, "")) || null
+                                )
+                              }
+                            />
+                            <span className="w-6 text-xs text-muted-foreground">gal</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Qty is never an input — it is the sum of the ordered lines. Same
+              rule the Fuel Orders sheet holds to. */}
+          {draft.lines.length > 0 && (
+            <div className="flex items-center justify-end gap-2 text-sm">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-medium tabular-nums text-foreground">
                 {isAllTopOff(draft.lines) ? "Top-off" : `${gal.toLocaleString()} gal`}
               </span>
-            </span>
-          </div>
+            </div>
+          )}
+        </SheetSection>
+      )}
+
+      {/* Load Order — where each ordered line is DRAWN FROM. Rows are derived
+          from the Delivery Order above rather than added separately: a loading
+          account for a line nobody ordered answers no question, and two lists
+          that can disagree about what is on the order is the bug this avoids. */}
+      {!isMovement && (
+        <SheetSection className="gap-5" title="Load Order">
+          {draft.lines.length === 0 ? (
+            <Empty className="rounded-md border border-fp-outline-1 py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Layers />
+                </EmptyMedia>
+                <EmptyDescription>
+                  Please fill delivery requirements to add load order details.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-fp-outline-1">
+              <Table className="min-w-[560px]">
+                <TableHeader>
+                  <TableRow className="h-10 hover:bg-transparent">
+                    <TableHead className="px-3 text-xs font-medium text-muted-foreground">
+                      Product
+                    </TableHead>
+                    <TableHead className="w-28 px-3 text-right text-xs font-medium text-muted-foreground">
+                      Quantity (gal)
+                    </TableHead>
+                    <TableHead className="w-44 px-3 text-xs font-medium text-muted-foreground">
+                      Terminal
+                    </TableHead>
+                    <TableHead className="w-44 px-3 text-xs font-medium text-muted-foreground">
+                      Supplier
+                    </TableHead>
+                    <TableHead className="w-48 px-3 text-xs font-medium text-muted-foreground">
+                      Loading Account
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {draft.lines.map((line, i) => (
+                    <TableRow key={assetKey(line)} className="h-12 hover:bg-transparent">
+                      <TableCell className="px-3">
+                        <span className="truncate text-sm text-foreground">
+                          {line.asset} – {line.product}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                        {line.topOff ? "Top-off" : (line.gal ?? "—")}
+                      </TableCell>
+                      <TableCell className="px-3">
+                        <LoadSelect
+                          value={line.terminal}
+                          options={TERMINALS}
+                          placeholder="Terminal"
+                          onChange={(v) => setLine(i, { terminal: v })}
+                        />
+                      </TableCell>
+                      <TableCell className="px-3">
+                        <LoadSelect
+                          value={line.supplier}
+                          options={SUPPLIERS}
+                          placeholder="Supplier"
+                          onChange={(v) => setLine(i, { supplier: v })}
+                        />
+                      </TableCell>
+                      <TableCell className="px-3">
+                        <LoadSelect
+                          value={line.loadingAccount}
+                          options={LOADING_ACCOUNTS}
+                          placeholder="Account"
+                          onChange={(v) => setLine(i, { loadingAccount: v })}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </SheetSection>
       )}
 
@@ -954,52 +1218,22 @@ export function BrokerOrderSheet({
         )}
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Point of Contact">
-        <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Primary POC">
-            <Select
-              value={draft.primaryPoc}
-              onValueChange={(v) => set("primaryPoc", v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select POC" />
-              </SelectTrigger>
-              <SelectContent>
-                {POCS.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SheetField>
-          <SheetField label="Salesperson">
-            <Select
-              value={draft.salesperson}
-              onValueChange={(v) => set("salesperson", v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select salesperson" />
-              </SelectTrigger>
-              <SelectContent>
-                {SALESPEOPLE.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SheetField>
-        </div>
-      </SheetSection>
-
       <SheetSection className="gap-5" title="Additional Details">
+        <SheetField label="Upload Supporting Image">
+          {/* The DS control in its `field` variant — dropzone, note, and only
+              the files actually added. The showcase variant's seeded chips and
+              permanent "Uploading 2 of 3" block belong to the gallery. */}
+          <FileUpload
+            variant="field"
+            label="Choose a file to upload"
+            note="Note: for best results, use .JPG, .GIF, or .PNG images."
+          />
+        </SheetField>
         <SheetField label="Delivery Instructions">
           <Textarea
             value={draft.instructions}
-            placeholder="Gate codes, access notes, what the vendor needs to know…"
+            placeholder="Enter any delivery instructions here"
             onChange={(e) => set("instructions", e.target.value)}
-            className={cn("min-h-24")}
           />
         </SheetField>
       </SheetSection>

@@ -596,18 +596,28 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     when.setDate(when.getDate() + offset);
 
     const isMovement = kind === "Movement";
-    const nLines = isMovement ? 1 : 1 + Math.floor(pick() * 3);
+    /* An order's lines are the SITE'S assets, picked from its list — never
+       invented tank names. That is what the sheet does, so the seed has to do
+       it too or an existing order shows rows the site does not have and the
+       Rental badge never appears on one. */
+    const nLines = isMovement
+      ? 1
+      : Math.min(site.assets.length, 1 + Math.floor(pick() * 3));
     const lines: OrderLine[] = Array.from({ length: nLines }, (_, k) => {
       // Top-off lines exist on ~1 in 6 fuel lines and never on movement orders,
       // which carry an asset rather than a requested volume.
       const topOff = !isMovement && pick() < 0.17;
+      const asset = site.assets[(i + k) % site.assets.length];
       return {
         asset: isMovement
           ? `${TANK_TYPES[i % TANK_TYPES.length]} · ${["A", "B", "C"][k % 3]}`
-          : `Tank ${String(101 + ((i * 3 + k) % 40))}`,
-        product: PRODUCTS[(i + k) % PRODUCTS.length],
+          : asset.name,
+        product: isMovement
+          ? PRODUCTS[(i + k) % PRODUCTS.length]
+          : asset.product,
         gal: topOff ? null : 150 + Math.floor(pick() * 34) * 50,
         topOff,
+        rental: isMovement ? false : asset.rental,
       };
     });
 

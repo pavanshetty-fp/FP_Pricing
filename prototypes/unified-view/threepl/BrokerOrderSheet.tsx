@@ -11,7 +11,6 @@ import {
   ThumbsDown,
   Truck,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -55,6 +54,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { FileUpload } from "@/components/form-layout/FileUpload";
+import {
+  TableCellInput,
+  TableCellSelect,
+  TableRequiredLabel,
+} from "@/components/form-layout";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { VENDORS, vendorById } from "./vendors";
@@ -116,14 +120,14 @@ import {
 /**
  * The three order flags, as one unit.
  *
- * They are three answers to one question — how this delivery is handled — so
- * they share a container instead of standing as three separate bordered
- * fields. Label left, control hard right, hairline between rows: the eye reads
- * one column of labels and one column of controls, which three boxed
- * checkboxes could not give.
+ * No box and no rules between them. They are already one group by proximity —
+ * a border would be a second, redundant signal, and hairlines between three
+ * short rows chop a small list into three smaller ones. Label left, control
+ * hard right; the eye gets a column of labels and a column of controls from
+ * alignment alone.
  *
- * Switches, not checkboxes: each one is a setting that takes effect on the
- * order, and the whole row is the target.
+ * Switches, not checkboxes: each is a setting that takes effect on the order,
+ * and the whole row is the target.
  */
 function ToggleRows({
   rows,
@@ -131,49 +135,18 @@ function ToggleRows({
   rows: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }[];
 }) {
   return (
-    <div className="flex flex-col rounded-md border border-fp-outline-1">
-      {rows.map((r, i) => (
+    <div className="flex flex-col">
+      {rows.map((r) => (
         <label
           key={r.id}
           htmlFor={r.id}
-          className={cn(
-            "flex cursor-pointer items-center justify-between gap-4 px-3 py-2.5",
-            i > 0 && "border-t border-fp-outline-1"
-          )}
+          className="flex cursor-pointer items-center justify-between gap-4 py-2"
         >
           <span className="text-sm text-foreground">{r.label}</span>
           <Switch id={r.id} checked={r.checked} onCheckedChange={r.onChange} />
         </label>
       ))}
     </div>
-  );
-}
-
-/** One compact select in a Load Order cell. Three per row, same shape. */
-function LoadSelect({
-  value,
-  options,
-  placeholder,
-  onChange,
-}: {
-  value: string | undefined;
-  options: string[];
-  placeholder: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <Select value={value ?? ""} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-full" aria-label={placeholder}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o} value={o}>
-            {o}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
@@ -501,6 +474,8 @@ export function BrokerOrderSheet({
 
   return (
     <RecordSheet
+      /* Two tables live in this sheet; 560px cannot hold five columns. */
+      size="wide"
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -955,25 +930,27 @@ export function BrokerOrderSheet({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Input
-                              value={
-                                line?.topOff ? "" : line?.gal != null ? String(line.gal) : ""
-                              }
-                              placeholder={line?.topOff ? "Top-off" : ""}
-                              disabled={!on || Boolean(line?.topOff)}
-                              aria-label={`Gallons for ${a.name}`}
-                              className="h-8 w-24 text-right tabular-nums"
-                              onChange={(e) =>
-                                setGal(
-                                  a,
-                                  Number(e.target.value.replace(/[^0-9]/g, "")) || null
-                                )
-                              }
-                            />
-                            <span className="w-6 text-xs text-muted-foreground">gal</span>
-                          </div>
+                        {/* Same borderless cell as the Load Order's selects:
+                            the table draws the grid, so a bordered input inside
+                            a bordered cell is the second border. */}
+                        <TableCell className="relative w-40 p-0">
+                          <TableCellInput
+                            value={
+                              line?.topOff
+                                ? ""
+                                : line?.gal != null
+                                  ? String(line.gal)
+                                  : ""
+                            }
+                            placeholder={line?.topOff ? "Top-off" : "0"}
+                            disabled={!on || Boolean(line?.topOff)}
+                            numeric
+                            suffix="gal"
+                            aria-label={`Gallons for ${a.name}`}
+                            onChange={(v) =>
+                              setGal(a, Number(v.replace(/[^0-9]/g, "")) || null)
+                            }
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -1014,28 +991,43 @@ export function BrokerOrderSheet({
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-fp-outline-1">
-              <Table className="min-w-[560px]">
-                <TableHeader>
-                  <TableRow className="h-10 hover:bg-transparent">
-                    <TableHead className="px-3 text-xs font-medium text-muted-foreground">
-                      Product
-                    </TableHead>
-                    <TableHead className="w-28 px-3 text-right text-xs font-medium text-muted-foreground">
-                      Quantity (gal)
-                    </TableHead>
-                    <TableHead className="w-44 px-3 text-xs font-medium text-muted-foreground">
-                      Terminal
-                    </TableHead>
-                    <TableHead className="w-44 px-3 text-xs font-medium text-muted-foreground">
-                      Supplier
-                    </TableHead>
-                    <TableHead className="w-48 px-3 text-xs font-medium text-muted-foreground">
-                      Loading Account
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            /* A plain JS comment, not `{/* … *\/}`: this is a ternary branch,
+               an EXPRESSION slot, where a JSX comment plus an element would be
+               two things where one is allowed.
+
+               DS editable-table idiom (form-layout/table-cells): fixed layout,
+               Surface-1a header, and cells that carry their own states instead
+               of nesting a bordered control inside a bordered cell.
+               `relative p-0` on every td is what lets a cell fill. */
+            <div className="overflow-hidden rounded-md border border-border">
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[28%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[19%]" />
+                  <col className="w-[19%]" />
+                  <col className="w-[20%]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border bg-fp-surface-1a">
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Product</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-right">
+                      <TableRequiredLabel>Quantity (gal)</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Terminal</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Supplier</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Loading Account</TableRequiredLabel>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {draft.lines.map((line, i) => {
                     /* Options are narrowed by the line's PRODUCT first — an
                        account that cannot carry this product is never offered —
@@ -1046,56 +1038,60 @@ export function BrokerOrderSheet({
                       line.supplier
                     );
                     return (
-                    <TableRow key={assetKey(line)} className="h-12 hover:bg-transparent">
-                      <TableCell className="px-3">
-                        <span className="truncate text-sm text-foreground">
+                      <tr
+                        key={assetKey(line)}
+                        className="h-11 border-b border-border last:border-b-0"
+                      >
+                        <td className="truncate px-3 text-sm text-foreground">
                           {line.asset} – {line.product}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                        {line.topOff ? "Top-off" : (line.gal ?? "—")}
-                      </TableCell>
-                      <TableCell className="px-3">
-                        <LoadSelect
-                          value={line.terminal}
-                          options={opts.terminals}
-                          placeholder="Terminal"
-                          /* Changing a level clears the levels BELOW it: a
-                             supplier that the new terminal does not serve, left
-                             sitting there, is a combination that cannot be
-                             loaded. */
-                          onChange={(v) =>
-                            setLine(i, {
-                              terminal: v,
-                              supplier: undefined,
-                              loadingAccount: undefined,
-                            })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="px-3">
-                        <LoadSelect
-                          value={line.supplier}
-                          options={opts.suppliers}
-                          placeholder="Supplier"
-                          onChange={(v) =>
-                            setLine(i, { supplier: v, loadingAccount: undefined })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="px-3">
-                        <LoadSelect
-                          value={line.loadingAccount}
-                          options={opts.accounts}
-                          placeholder="Account"
-                          onChange={(v) => setLine(i, { loadingAccount: v })}
-                        />
-                      </TableCell>
-                    </TableRow>
+                        </td>
+                        <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                          {line.topOff ? "Top-off" : (line.gal ?? "—")}
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={line.terminal ?? ""}
+                            options={opts.terminals}
+                            placeholder="Terminal"
+                            aria-label={`Terminal for ${line.asset}`}
+                            /* Changing a level clears the levels BELOW it: a
+                               supplier the new terminal does not serve, left
+                               sitting there, is a combination that cannot be
+                               loaded. */
+                            onChange={(v) =>
+                              setLine(i, {
+                                terminal: v,
+                                supplier: undefined,
+                                loadingAccount: undefined,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={line.supplier ?? ""}
+                            options={opts.suppliers}
+                            placeholder="Supplier"
+                            aria-label={`Supplier for ${line.asset}`}
+                            onChange={(v) =>
+                              setLine(i, { supplier: v, loadingAccount: undefined })
+                            }
+                          />
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={line.loadingAccount ?? ""}
+                            options={opts.accounts}
+                            placeholder="Account"
+                            aria-label={`Loading account for ${line.asset}`}
+                            onChange={(v) => setLine(i, { loadingAccount: v })}
+                          />
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           )}
         </SheetSection>

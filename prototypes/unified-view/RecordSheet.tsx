@@ -1,5 +1,6 @@
 import * as React from "react";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -27,6 +28,14 @@ import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/she
  * `side-sheet/` in the DS, with the order sheet moved onto it too.
  */
 export interface RecordSheetProps {
+  /**
+   * `narrow` is the DS's 560px side sheet — right for a form of stacked fields.
+   * `wide` fills the viewport but for a 60px strip, which a sheet carrying
+   * TABLES needs: at 560 the Load Order's five columns had to be scrolled
+   * sideways to be read at all, and a table you scroll to read is a table you
+   * cannot compare rows in.
+   */
+  size?: "narrow" | "wide";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -47,6 +56,7 @@ export interface RecordSheetProps {
 }
 
 export function RecordSheet({
+  size = "narrow",
   open,
   onOpenChange,
   mode,
@@ -65,7 +75,12 @@ export function RecordSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-[560px] gap-0 p-0 sm:max-w-[560px]"
+        className={cn(
+          "gap-0 p-0",
+          size === "wide"
+            ? "w-[calc(100vw-60px)] sm:max-w-[calc(100vw-60px)]"
+            : "w-[560px] sm:max-w-[560px]"
+        )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex items-center gap-2.5">

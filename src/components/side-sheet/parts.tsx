@@ -27,18 +27,24 @@ export function SheetSection({
 export function SheetField({
   label,
   description,
+  required,
   children,
   className,
 }: {
   label?: string;
   description?: string;
+  /** Marks the label with the destructive asterisk the DS forms already use. */
+  required?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        <label className="text-sm font-medium text-foreground">
+          {label}
+          {required && <span className="text-destructive"> *</span>}
+        </label>
       )}
       {children}
       {description && (

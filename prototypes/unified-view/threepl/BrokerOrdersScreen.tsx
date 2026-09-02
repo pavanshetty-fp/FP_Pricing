@@ -278,7 +278,7 @@ export function BrokerOrdersScreen({
         ]),
         pass("status", [r.status === "Draft" ? "Created / Draft" : r.status]),
         pass("customer", [r.customer.title]),
-        pass("shipToAddress", [r.shipToName, r.zip, r.state]),
+        pass("shipToAddress", [r.shipTo, r.zip, r.state]),
         pass("product", r.lines.map((l) => l.product)),
         pass("vendor", [
           ...(r.vendorId ? [vendorName(r.vendorId)] : []),
@@ -355,10 +355,9 @@ export function BrokerOrdersScreen({
     () => Array.from(new Set(BROKER_ORDERS.map((r) => r.customer.title))),
     []
   );
-  const shipTos = React.useMemo(
-    () => Array.from(new Set(BROKER_ORDERS.map((r) => r.shipTo))),
-    []
-  );
+  /* Every site, not only the ones an order already uses — a new order must be
+     able to reach a site nobody has ordered to yet. */
+  const shipTos = React.useMemo(() => SHIP_TO_SITES.map((x) => x.name), []);
 
   const saveOrder = (order: BrokerOrder, draft: BrokerOrderDraft) =>
     setRows((prev) =>
@@ -409,6 +408,7 @@ export function BrokerOrdersScreen({
   /** New orders continue the D- series in steps of 7, as the seeds do. */
   const createOrder = (draft: BrokerOrderDraft) => {
     const when = draft.plannedDate ?? date;
+    const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
     const nextNo =
       Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
     const offset = Math.round(
@@ -417,8 +417,11 @@ export function BrokerOrdersScreen({
     setRows((prev) => [
       {
         id: `bo-new-${nextNo}`,
+        /* The prefix follows the KIND, and the kind now follows the sheet's
+           recurring checkbox — a recurring order created here has to read as
+           one everywhere, or the badge and the filter disagree. */
         orderNo: `D-${nextNo}`,
-        kind: "Regular",
+        kind: draft.recurring ? "Recurring" : "Regular",
         orderType: draft.orderType === "Asset Movement" ? "Core" : draft.orderType,
         customer: { title: draft.customer, description: draft.erpId },
         shipTo: draft.shipTo,
@@ -436,11 +439,18 @@ export function BrokerOrdersScreen({
         poNumber: draft.poNumber,
         /* The create sheet has no geography fields, so a new order takes the
            first site rather than leaving the ship-to facets blank for it. */
-        shipToName: draft.shipTo,
-        zip: SHIP_TO_SITES[0].zip,
-        state: SHIP_TO_SITES[0].state,
+        /* The site carries its own geography, so a new order reads it from the
+           chosen ship-to rather than being handed a default that disagrees. */
+        zip: chosenSite?.zip ?? SHIP_TO_SITES[0].zip,
+        state: chosenSite?.state ?? SHIP_TO_SITES[0].state,
         createdBy: "Dana Whitfield",
         tags: [],
+        recurrence: draft.recurring
+          ? {
+              fromDateKey: dateKeyOf(draft.recurrenceFrom ?? when),
+              frequency: draft.recurrenceFrequency,
+            }
+          : null,
         hub: draft.hub,
         primaryPoc: draft.primaryPoc,
         salesperson: draft.salesperson,

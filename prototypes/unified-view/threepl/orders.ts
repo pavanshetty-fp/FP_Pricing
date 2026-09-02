@@ -119,6 +119,7 @@ export interface BrokerOrder {
   orderType: BrokerOrderType;
   /** Customer name over its ERP id — the same two-line cell the Sales lists use. */
   customer: TwoLine;
+  /** The delivery site. Always a `SHIP_TO_SITES` name — see the note there. */
   shipTo: string;
   /** Planned date, formatted, over its relative label. */
   date: TwoLine;
@@ -138,12 +139,12 @@ export interface BrokerOrder {
   urgent: boolean;
   signatureOnDelivery: boolean;
   poNumber: string;
-  /** Ship-to site name, distinct from the address line in `shipTo`. */
-  shipToName: string;
   zip: string;
   state: string;
   createdBy: string;
   tags: string[];
+  /** Set only on a recurring order. `null` on every other kind. */
+  recurrence: { fromDateKey: string; frequency: string } | null;
   hub: string;
   primaryPoc: string;
   salesperson: string;
@@ -220,6 +221,45 @@ export const POCS = [
   "Colleen Marsh",
 ];
 
+/**
+ * POC directory. The sheet picks a NAME and shows that person's phone and email
+ * beside it — they are attributes of the person, never typed per order, so they
+ * render read-only rather than as a second and third input to keep in sync.
+ */
+export const POC_DIRECTORY: Record<string, { phone: string; email: string }> = {
+  "Marisol Vega": { phone: "+1-415-555-0142", email: "marisol.vega@example.com" },
+  "Dwight Feeney": { phone: "+1-661-555-0188", email: "dwight.feeney@example.com" },
+  "Anita Kaur": { phone: "+1-916-555-0119", email: "anita.kaur@example.com" },
+  "Ray Obuya": { phone: "+1-713-555-0164", email: "ray.obuya@example.com" },
+  "Colleen Marsh": { phone: "+1-918-555-0173", email: "colleen.marsh@example.com" },
+};
+
+/** Same rule as the POC directory — a salesperson's number follows the person. */
+export const SALES_CONTACTS: Record<string, string> = {
+  "Dana Whitfield": "+1-415-555-0210",
+  "Marcus Reed": "+1-661-555-0233",
+  "Priya Raman": "+1-916-555-0247",
+  "Tom Alvarez": "+1-713-555-0269",
+};
+
+/**
+ * Listing Type — the reference calls this field Listing Type on the order sheet
+ * and shows "Core" in it, which is the same vocabulary the Order Type field
+ * carries. Treated as ONE field under the reference's label rather than
+ * duplicated, since two required selects offering the same values would be a
+ * bug waiting to be reported.
+ */
+export const LISTING_TYPES: BrokerOrderType[] = [
+  "Core",
+  "Emergency",
+  "Delivery",
+  "Extraction",
+  "Asset Movement",
+];
+
+/** Recurrence cadence. Only Daily is shown in the reference; the rest follow it. */
+export const RECURRENCE_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly"];
+
 export const SALESPEOPLE = [
   "Dana Whitfield",
   "Marcus Reed",
@@ -255,15 +295,27 @@ export const BROKER_STATUS_FILTERS = [
 /* Ship-to geography. INVENTED — real addresses were never captured, so these
    are plausible sites across several US states, which is what the ship-to
    facets need to be judged on at all. */
+/** `8:00 AM – 12:00 PM` — the single value the Delivery Window select shows. */
+export const formatWindow = (w: { start: string; end: string }) =>
+  `${w.start} – ${w.end}`;
+
+/**
+ * The delivery sites. THE single source for a ship-to on a broker order: the
+ * name the order stores, the address the filter and the sheet show, and the
+ * coordinates the sheet displays all come from one row here.
+ *
+ * INVENTED — real sites were never captured. Spread across six states so the
+ * ship-to facets have something to be judged on.
+ */
 export const SHIP_TO_SITES = [
-  { name: "Bray North Yard", street: "4820 N Golden State Blvd", city: "Fresno", state: "California", zip: "93706" },
-  { name: "Bray Depot 2", street: "1177 Weedpatch Hwy", city: "Bakersfield", state: "California", zip: "93307" },
-  { name: "Morris Yard 4", street: "930 Richards Blvd", city: "Sacramento", state: "California", zip: "95815" },
-  { name: "GPM Southside", street: "12600 Federal Rd", city: "Houston", state: "Texas", zip: "77029" },
-  { name: "Halvorsen Main", street: "6215 S Union Ave", city: "Tulsa", state: "Oklahoma", zip: "74107" },
-  { name: "Cardinal Hub A", street: "2401 Front St", city: "Toledo", state: "Ohio", zip: "43605" },
-  { name: "Westbrook Farm 1", street: "3810 40th St S", city: "Fargo", state: "North Dakota", zip: "58102" },
-  { name: "Ironline Depot", street: "1720 Dean Forest Rd", city: "Savannah", state: "Georgia", zip: "31408" },
+  { name: "Bray North Yard", street: "4820 N Golden State Blvd", city: "Fresno", state: "California", zip: "93706", latLng: "36.81120, -119.83450" },
+  { name: "Bray Depot 2", street: "1177 Weedpatch Hwy", city: "Bakersfield", state: "California", zip: "93307", latLng: "35.34210, -118.94860" },
+  { name: "Morris Yard 4", street: "930 Richards Blvd", city: "Sacramento", state: "California", zip: "95815", latLng: "38.60130, -121.48210" },
+  { name: "GPM Southside", street: "12600 Federal Rd", city: "Houston", state: "Texas", zip: "77029", latLng: "29.78440, -95.23110" },
+  { name: "Halvorsen Main", street: "6215 S Union Ave", city: "Tulsa", state: "Oklahoma", zip: "74107", latLng: "36.08320, -96.00410" },
+  { name: "Cardinal Hub A", street: "2401 Front St", city: "Toledo", state: "Ohio", zip: "43605", latLng: "41.64470, -83.51190" },
+  { name: "Westbrook Farm 1", street: "3810 40th St S", city: "Fargo", state: "North Dakota", zip: "58102", latLng: "46.83190, -96.85640" },
+  { name: "Ironline Depot", street: "1720 Dean Forest Rd", city: "Savannah", state: "Georgia", zip: "31408", latLng: "32.10650, -81.19980" },
 ];
 
 /** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site. */
@@ -328,7 +380,7 @@ export const PRODUCTS = [
   "Hydraulic Oil AW-46",
 ];
 
-const WINDOWS: { start: string; end: string }[] = [
+export const WINDOWS: { start: string; end: string }[] = [
   { start: "6:00 AM", end: "10:00 AM" },
   { start: "8:00 AM", end: "12:00 PM" },
   { start: "10:00 AM", end: "2:00 PM" },
@@ -424,8 +476,12 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     const kind: OrderKind =
       i % 11 === 0 ? "Movement" : i % 4 === 0 ? "Recurring" : "Regular";
     const cust = CUSTOMERS[i % CUSTOMERS.length];
-    const shipTo = cust.shipTos[i % cust.shipTos.length] ?? cust.name;
+    /* ONE ship-to concept. `SHIP_TO_SITES` is the list — the site carries the
+       name, the street, the city/state/ZIP and the coordinates together, so a
+       ship-to can never be a name in one place and an address in another. The
+       customer's own `shipTos` array is not used here for that reason. */
     const site = SHIP_TO_SITES[i % SHIP_TO_SITES.length];
+    const shipTo = site.name;
     const offset = OFFSETS[i % OFFSETS.length];
     const when = new Date(today);
     when.setDate(when.getDate() + offset);
@@ -498,7 +554,6 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",
-      shipToName: site.name,
       zip: site.zip,
       state: site.state,
       createdBy:
@@ -506,6 +561,14 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
           ? "System — Recurring"
           : CREATED_BY[i % (CREATED_BY.length - 1)],
       tags: pick() < 0.45 ? [ORDER_TAGS[i % ORDER_TAGS.length]] : [],
+      recurrence:
+        kind === "Recurring"
+          ? {
+              fromDateKey: dateKeyOf(when),
+              frequency:
+                RECURRENCE_FREQUENCIES[i % RECURRENCE_FREQUENCIES.length],
+            }
+          : null,
       hub: HUBS[i % HUBS.length],
       primaryPoc: POCS[i % POCS.length],
       salesperson: SALESPEOPLE[i % SALESPEOPLE.length],

@@ -1,6 +1,6 @@
 import * as React from "react";
 import {
-  CalendarDays,
+  Calendar as CalendarIcon,
   Check,
   CircleAlert,
   Mail,
@@ -29,15 +29,21 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { RecordSheet } from "../RecordSheet";
-import { formatFullDate } from "../data";
+import { DATE_FMT } from "../data";
 import { VENDORS, vendorById } from "./vendors";
 import {
   BROKER_STATUS_TONE,
   HUBS,
+  LISTING_TYPES,
   POCS,
+  POC_DIRECTORY,
   PRODUCTS,
+  RECURRENCE_FREQUENCIES,
   SALESPEOPLE,
-  TIME_OPTIONS,
+  SALES_CONTACTS,
+  SHIP_TO_SITES,
+  WINDOWS,
+  formatWindow,
   isAllTopOff,
   quoteTotal,
   totalGal,
@@ -79,7 +85,39 @@ import {
  * TABLE view of the picker, which the same section offers, is what is built.
  */
 
-const ORDER_TYPES: BrokerOrderType[] = ["Core", "Emergency", "Asset Movement"];
+/**
+ * A labelled checkbox in a bordered row.
+ *
+ * Three of these sit side by side in Schedule Details. They are CHECKBOXES, not
+ * switches: each states a property of this one order, and a switch reads as
+ * turning a mode on. The row is clickable end to end because a 16px target
+ * beside a long label is the wrong hit area.
+ */
+function CheckRow({
+  id,
+  label,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-center gap-3 rounded-md border border-fp-outline-1 px-3 py-2.5"
+    >
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(v) => onChange(v === true)}
+      />
+      <span className="text-sm text-foreground">{label}</span>
+    </label>
+  );
+}
 
 export interface BrokerOrderDraft {
   customer: string;
@@ -101,6 +139,9 @@ export interface BrokerOrderDraft {
   primaryPoc: string;
   salesperson: string;
   instructions: string;
+  recurring: boolean;
+  recurrenceFrom: Date | null;
+  recurrenceFrequency: string;
 }
 
 function draftFrom(o: BrokerOrder): BrokerOrderDraft {
@@ -126,6 +167,14 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     primaryPoc: o.primaryPoc,
     salesperson: o.salesperson,
     instructions: o.instructions,
+    recurring: o.kind === "Recurring",
+    recurrenceFrom: o.recurrence
+      ? (() => {
+          const [ry, rm, rd] = o.recurrence.fromDateKey.split("-").map(Number);
+          return new Date(ry, rm - 1, rd);
+        })()
+      : null,
+    recurrenceFrequency: o.recurrence?.frequency ?? RECURRENCE_FREQUENCIES[0],
   };
 }
 
@@ -140,6 +189,9 @@ function emptyDraft(): BrokerOrderDraft {
     windowEnd: "12:00 PM",
     poNumber: "",
     orderType: "Core",
+    recurring: false,
+    recurrenceFrom: null,
+    recurrenceFrequency: RECURRENCE_FREQUENCIES[0],
     hub: HUBS[0],
     urgent: false,
     signatureOnDelivery: false,
@@ -221,6 +273,11 @@ export function BrokerOrderSheet({
   }, [open, creating, order]);
 
   if (!draft || (!creating && !order)) return null;
+
+  /* Read-only companions to the two people/place selects. Derived, never
+     stored on the draft — a copy would be a second source of truth. */
+  const site = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
+  const poc = POC_DIRECTORY[draft.primaryPoc];
 
   const set = <K extends keyof BrokerOrderDraft>(
     key: K,
@@ -312,9 +369,9 @@ export function BrokerOrderSheet({
         </div>
       )}
 
-      <SheetSection className="gap-5" title="Customer">
+      <SheetSection className="gap-5" title="Customer Details">
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Customer">
+          <SheetField label="Customer" required>
             <Select value={draft.customer} onValueChange={(v) => set("customer", v)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select customer" />
@@ -328,73 +385,132 @@ export function BrokerOrderSheet({
               </SelectContent>
             </Select>
           </SheetField>
-          <SheetField label="Ship To">
+          <SheetField label="ShipTo" required>
             <Select value={draft.shipTo} onValueChange={(v) => set("shipTo", v)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select ship-to" />
+                <SelectValue placeholder="Select ShipTo" />
               </SelectTrigger>
               <SelectContent>
-                {shipTos.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
+                {shipTos.map((x) => (
+                  <SelectItem key={x} value={x}>
+                    {x}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </SheetField>
+        </div>
+
+        {/* A brokerage rule, not decoration: the vendor is shown the site, never
+            the account. It sits under the customer field because that is the
+            field it constrains. `--status-processing` is the DS's caution tone —
+            there is no `--status-warning`; processing IS amber in both themes. */}
+        <p className="text-xs text-status-processing">
+          Note: the customer name will not be visible to the vendor.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Derived from the ship-to, so it is READ-ONLY. An editable copy of a
+              site's coordinates is a second source of truth for the same fact. */}
+          <SheetField
+            label="Latitude / Longitude"
+            description="From the selected ShipTo."
+          >
+            <Input value={site?.latLng ?? "NA"} readOnly />
+          </SheetField>
+          <SheetField label="POC Name" required>
+            <Select
+              value={draft.primaryPoc}
+              onValueChange={(v) => set("primaryPoc", v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select POC Name" />
+              </SelectTrigger>
+              <SelectContent>
+                {POCS.map((x) => (
+                  <SelectItem key={x} value={x}>
+                    {x}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SheetField>
+          {/* Both follow the person, so they are read-only for the same reason
+              the coordinates are. */}
+          <SheetField label="POC Contact">
+            <Input value={poc?.phone ?? "—"} readOnly />
+          </SheetField>
+          <SheetField label="POC Email">
+            <Input value={poc?.email ?? "—"} readOnly />
+          </SheetField>
+          <SheetField label="Sales Person" required>
+            <Select
+              value={draft.salesperson}
+              onValueChange={(v) => set("salesperson", v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Sales Person" />
+              </SelectTrigger>
+              <SelectContent>
+                {SALESPEOPLE.map((x) => (
+                  <SelectItem key={x} value={x}>
+                    {x}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SheetField>
+          <SheetField label="Sales Contact">
+            <Input value={SALES_CONTACTS[draft.salesperson] ?? "—"} readOnly />
           </SheetField>
         </div>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Order Details">
-        <SheetField label="Planned Date">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start">
-                <CalendarDays />
-                {draft.plannedDate ? formatFullDate(draft.plannedDate) : "Not scheduled"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={draft.plannedDate ?? undefined}
-                onSelect={(d) => set("plannedDate", d ?? null)}
-                autoFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </SheetField>
-
-        {/* §5.3 — a WINDOW, not a single planned time. This is the field that
-            most distinguishes a brokered order from a first-party one: the
-            broker commits a range and the vendor picks its moment inside it. */}
+      <SheetSection className="gap-5" title="Schedule Details">
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Window Start">
+          <SheetField label="Planned Delivery Date" required>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start font-normal"
+                >
+                  <CalendarIcon />
+                  {draft.plannedDate
+                    ? DATE_FMT.format(draft.plannedDate)
+                    : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={draft.plannedDate ?? undefined}
+                  onSelect={(d) => set("plannedDate", d ?? null)}
+                />
+              </PopoverContent>
+            </Popover>
+          </SheetField>
+
+          {/* ONE control, not a start and an end. The window is picked from the
+              set the operation actually runs, so a start without a matching end
+              — or a backwards pair — is unrepresentable rather than merely
+              discouraged. The stored shape stays {start, end}. */}
+          <SheetField label="Delivery Window" required>
             <Select
-              value={draft.windowStart}
-              onValueChange={(v) => set("windowStart", v)}
+              value={`${draft.windowStart}|${draft.windowEnd}`}
+              onValueChange={(v) => {
+                const [start, end] = v.split("|");
+                set("windowStart", start);
+                set("windowEnd", end);
+              }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue placeholder="Select Delivery Window" />
               </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {TIME_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SheetField>
-          <SheetField label="Window End">
-            <Select value={draft.windowEnd} onValueChange={(v) => set("windowEnd", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {TIME_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
+              <SelectContent>
+                {WINDOWS.map((w) => (
+                  <SelectItem key={`${w.start}|${w.end}`} value={`${w.start}|${w.end}`}>
+                    {formatWindow(w)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -402,72 +518,117 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
+        {/* Three independent flags on one order, so three checkboxes — a switch
+            reads as "turn a mode on", and these are properties of this order,
+            not settings. */}
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Order Type">
-            <Select
-              value={draft.orderType}
-              onValueChange={(v) => set("orderType", v as BrokerOrderType)}
-            >
-              {/* §5.20 — a movement order's type is auto-set to Asset Movement
-                  and is the only type it can take, so the control is locked
-                  rather than offering a change that isn't allowed. */}
-              <SelectTrigger className="w-full" disabled={isMovement}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDER_TYPES.filter((t) =>
-                  isMovement ? t === "Asset Movement" : t !== "Asset Movement"
-                ).map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SheetField>
-          <SheetField label="PO Number">
+          <CheckRow
+            id="urgent"
+            label="Mark as an Urgent Order"
+            checked={draft.urgent}
+            onChange={(v) => set("urgent", v)}
+          />
+          <CheckRow
+            id="signature"
+            label="Get signature on Delivery"
+            checked={draft.signatureOnDelivery}
+            onChange={(v) => set("signatureOnDelivery", v)}
+          />
+          <CheckRow
+            id="recurring"
+            label="Mark as Recurring Order"
+            checked={draft.recurring}
+            onChange={(v) =>
+              setDraft((d) =>
+                d
+                  ? {
+                      ...d,
+                      recurring: v,
+                      // Seed the cadence from the delivery date, which is the
+                      // answer in almost every case; clear it when switched off
+                      // so a stale schedule cannot survive.
+                      recurrenceFrom: v ? (d.recurrenceFrom ?? d.plannedDate) : null,
+                    }
+                  : d
+              )
+            }
+          />
+        </div>
+
+        {/* Revealed by the checkbox, because a cadence with nothing recurring is
+            a question about nothing. */}
+        {draft.recurring && (
+          <div className="grid grid-cols-2 gap-4">
+            <SheetField label="Recurrence from Date" required>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start font-normal"
+                  >
+                    <CalendarIcon />
+                    {draft.recurrenceFrom
+                      ? DATE_FMT.format(draft.recurrenceFrom)
+                      : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={draft.recurrenceFrom ?? undefined}
+                    onSelect={(d) => set("recurrenceFrom", d ?? null)}
+                  />
+                </PopoverContent>
+              </Popover>
+            </SheetField>
+            <SheetField label="Frequency" required>
+              <Select
+                value={draft.recurrenceFrequency}
+                onValueChange={(v) => set("recurrenceFrequency", v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RECURRENCE_FREQUENCIES.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SheetField>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <SheetField label="PO number">
             <Input
               value={draft.poNumber}
-              placeholder="e.g. PO-70213"
+              placeholder="Enter PO Number"
               onChange={(e) => set("poNumber", e.target.value)}
             />
           </SheetField>
-        </div>
-
-        <SheetField label="Hub">
-          <Select value={draft.hub} onValueChange={(v) => set("hub", v)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {HUBS.map((h) => (
-                <SelectItem key={h} value={h}>
-                  {h}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SheetField>
-
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor="urgent" className="text-sm font-medium text-foreground">
-            Mark as urgent
-          </label>
-          <Switch
-            id="urgent"
-            checked={draft.urgent}
-            onCheckedChange={(v) => set("urgent", v)}
-          />
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor="signature" className="text-sm font-medium text-foreground">
-            Get signature on delivery
-          </label>
-          <Switch
-            id="signature"
-            checked={draft.signatureOnDelivery}
-            onCheckedChange={(v) => set("signatureOnDelivery", v)}
-          />
+          {/* The reference's name for the order-type field. One field, one
+              label — not a second select offering the same values. */}
+          <SheetField label="Listing Type" required>
+            <Select
+              value={draft.orderType}
+              onValueChange={(v) => set("orderType", v as BrokerOrderType)}
+              disabled={isMovement}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Listing Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {LISTING_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SheetField>
         </div>
       </SheetSection>
 

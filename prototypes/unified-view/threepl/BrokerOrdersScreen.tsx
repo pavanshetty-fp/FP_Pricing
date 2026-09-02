@@ -12,7 +12,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { StatusChip } from "@/components/ui/status-chip";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, type ListView } from "../ListToolbar";
@@ -28,16 +27,21 @@ import {
 } from "../data";
 import { BrokerBoard, type BoardLane } from "./BrokerBoard";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
-import { BUSINESS_LINES, VENDORS, vendorName } from "./vendors";
+import { VENDORS, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
   BROKER_LANE_COLOR,
   BROKER_ORDERS,
   BROKER_SEARCH_FIELDS,
   BROKER_STATUSES,
+  BROKER_STATUS_FILTERS,
   BROKER_STATUS_TONE,
-  HUBS,
+  CREATED_BY,
   ORDER_KINDS,
+  ORDER_TAGS,
+  PRODUCTS,
+  SALESPEOPLE,
+  SHIP_TO_SITES,
   isAllTopOff,
   matchesBrokerOrder,
   matchesBrokerOrderIn,
@@ -47,7 +51,6 @@ import {
   type BrokerColumnKey,
   type BrokerOrder,
   type BrokerSortState,
-  type OrderKind,
 } from "./orders";
 
 /**
@@ -139,7 +142,10 @@ interface ViewState {
   dateKey: string;
   colScope: string;
   colQuery: string;
-  kind: OrderKind | "All";
+  /** Selected filter facets, as `facetKey:option`. Was `kind` when the order
+   *  kinds were a tab row; a view still captures the same narrowing, plus every
+   *  other facet it now sits beside. */
+  facets: string[];
 }
 
 const keyOf = (s: ViewState) =>
@@ -162,7 +168,10 @@ export function BrokerOrdersScreen({
   // Board-first, per §5.2. This is the one list in the prototype that does not
   // open as a table.
   const [view, setView] = React.useState<ListView>("board");
-  const [kind, setKind] = React.useState<OrderKind | "All">("All");
+  /* The filter panel's selection, as `facetKey:option` ids. This is what the
+     order-kind tab row turned into — plus every other facet, which used to be
+     decorative. */
+  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
   const [laneSort, setLaneSort] = React.useState<
     Record<string, "asc" | "desc" | undefined>
   >({});
@@ -176,7 +185,7 @@ export function BrokerOrdersScreen({
     dateKey: dateKeyOf(date),
     colScope,
     colQuery,
-    kind,
+    facets: [...facetSel].sort(),
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -188,7 +197,7 @@ export function BrokerOrdersScreen({
       dateKey: dateKeyOf(startOfDay(new Date())),
       colScope: "customer",
       colQuery: "",
-      kind: "All",
+      facets: [],
     }),
     []
   );
@@ -206,7 +215,7 @@ export function BrokerOrdersScreen({
     setDate(new Date(y, m - 1, d));
     setColScope(s.colScope);
     setColQuery(s.colQuery);
-    setKind(s.kind);
+    setFacetSel(new Set(s.facets ?? []));
     setPage(1);
   };
 
@@ -237,16 +246,42 @@ export function BrokerOrdersScreen({
       ),
     [onDate, q, cq, colScope]
   );
-  const kindCounts = React.useMemo(() => {
-    const out: Record<string, number> = { All: searched.length };
-    for (const k of ORDER_KINDS) out[k] = searched.filter((r) => r.kind === k).length;
-    return out;
-  }, [searched]);
 
-  const filtered = React.useMemo(
-    () => (kind === "All" ? searched : searched.filter((r) => r.kind === kind)),
-    [searched, kind]
-  );
+  /*
+    Facet application. Every facet is AND-ed with the others and OR-ed within
+    itself, which is what a checkbox list means.
+
+    Three Status options — Overdue, Cancelled, Partial Accounting Synced — are
+    filterable states the seed data has no rows for, so selecting one correctly
+    empties the list rather than being quietly ignored. "Created / Draft" is the
+    filter's label for the `Draft` lane.
+  */
+  const filtered = React.useMemo(() => {
+    if (facetSel.size === 0) return searched;
+    const on = (facet: string, value: string) => facetSel.has(`${facet}:${value}`);
+    const picked = (facet: string) =>
+      [...facetSel].some((id) => id.startsWith(`${facet}:`));
+    const pass = (facet: string, values: string[]) =>
+      !picked(facet) || values.some((v) => on(facet, v));
+
+    return searched.filter((r) =>
+      [
+        pass("orderTypes", [r.kind]),
+        pass("status", [r.status === "Draft" ? "Created / Draft" : r.status]),
+        pass("customer", [r.customer.title]),
+        pass("shipToAddress", [r.shipToName, r.zip, r.state]),
+        pass("orderType", [r.orderType]),
+        pass("product", r.lines.map((l) => l.product)),
+        pass("vendor", [
+          ...(r.vendorId ? [vendorName(r.vendorId)] : []),
+          ...r.invitedVendorIds.map(vendorName),
+        ]),
+        pass("salesperson", [r.salesperson]),
+        pass("createdBy", [r.createdBy]),
+        pass("tags", r.tags),
+      ].every(Boolean)
+    );
+  }, [searched, facetSel]);
   const sorted = React.useMemo(() => sortBrokerOrders(filtered, sort), [filtered, sort]);
   const pageRows = React.useMemo(
     () => sorted.slice((page - 1) * pageSize, page * pageSize),
@@ -391,6 +426,13 @@ export function BrokerOrdersScreen({
         urgent: draft.urgent,
         signatureOnDelivery: draft.signatureOnDelivery,
         poNumber: draft.poNumber,
+        /* The create sheet has no geography fields, so a new order takes the
+           first site rather than leaving the ship-to facets blank for it. */
+        shipToName: draft.shipTo,
+        zip: SHIP_TO_SITES[0].zip,
+        state: SHIP_TO_SITES[0].state,
+        createdBy: "Dana Whitfield",
+        tags: [],
         hub: draft.hub,
         primaryPoc: draft.primaryPoc,
         salesperson: draft.salesperson,
@@ -506,18 +548,24 @@ export function BrokerOrdersScreen({
           searchPlaceholder="Search orders, customers, partners…"
           filters={
             <ListFilters
+              onApply={(sel) => {
+                setFacetSel(sel);
+                setPage(1);
+              }}
+              /* Order Types is FIRST because it absorbed the tab row that used
+                 to sit under this toolbar — same three splits, one control. */
               facets={[
-                { key: "status", label: "Status", options: [...BROKER_STATUSES] },
                 {
-                  key: "vendor",
-                  label: "Delivery Partner",
-                  options: VENDORS.map((v) => v.name),
-                  searchable: true,
+                  key: "orderTypes",
+                  label: "Order Types",
+                  options: [...ORDER_KINDS],
                 },
                 {
-                  key: "businessLine",
-                  label: "Business Line",
-                  options: [...BUSINESS_LINES],
+                  key: "status",
+                  label: "Status",
+                  // The filter's status list is longer than the board's lanes —
+                  // see BROKER_STATUS_FILTERS for why the two are kept apart.
+                  options: [...BROKER_STATUS_FILTERS],
                 },
                 {
                   key: "customer",
@@ -525,7 +573,52 @@ export function BrokerOrdersScreen({
                   options: customers,
                   searchable: true,
                 },
-                { key: "hub", label: "Hub", options: HUBS },
+                {
+                  key: "shipToAddress",
+                  label: "Ship-To Address",
+                  /* One facet, three questions. Ship-to name, ZIP and state are
+                     the same address asked at three grains, so they share a
+                     pane instead of eating three rows of the facet menu. */
+                  sections: [
+                    {
+                      title: "Ship-To Name",
+                      options: SHIP_TO_SITES.map((x) => x.name),
+                    },
+                    {
+                      title: "Zip Code",
+                      options: [...new Set(SHIP_TO_SITES.map((x) => x.zip))],
+                    },
+                    {
+                      title: "State",
+                      options: [...new Set(SHIP_TO_SITES.map((x) => x.state))],
+                    },
+                  ],
+                  searchable: true,
+                },
+                {
+                  key: "orderType",
+                  label: "Order Type",
+                  options: ["Core", "Emergency", "Asset Movement"],
+                },
+                {
+                  key: "product",
+                  label: "Product",
+                  options: [...PRODUCTS],
+                  searchable: true,
+                },
+                {
+                  key: "vendor",
+                  label: "Vendors / Common Carriers",
+                  options: VENDORS.map((v) => v.name),
+                  searchable: true,
+                },
+                {
+                  key: "salesperson",
+                  label: "Sales Person",
+                  options: [...SALESPEOPLE],
+                },
+                { key: "createdBy", label: "Created By", options: [...CREATED_BY] },
+                { key: "tags", label: "Tags", options: [...ORDER_TAGS] },
               ]}
             />
           }
@@ -573,27 +666,11 @@ export function BrokerOrdersScreen({
         />
       </div>
 
-      {/* Order-kind tabs — below the action bar, per the content-layer law. */}
-      <div className="mt-4 shrink-0">
-        <Tabs
-          value={kind}
-          onValueChange={(v) => {
-            setKind(v as OrderKind | "All");
-            setPage(1);
-          }}
-        >
-          <TabsList variant="line">
-            {(["All", ...ORDER_KINDS] as const).map((k) => (
-              <TabsTrigger key={k} value={k}>
-                {k}
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {kindCounts[k] ?? 0}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* The order-kind tab row used to sit here. It is gone: All / Regular /
+          Recurring / Movement is one question about the data, which is what a
+          FILTER FACET is — and the same three values now live under "Order
+          Types" in the filter panel. Keeping both would have been two controls
+          answering one question, in two places, that could disagree. */}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

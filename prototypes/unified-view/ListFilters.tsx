@@ -27,15 +27,46 @@ import {
  * `docs/handoff-ds-adoption-2.md` Task 5 asks for. When the DS version takes
  * facets as props, this file deletes itself.
  */
+export interface ListFacetSection {
+  title: string;
+  options: string[];
+}
+
 export interface ListFacet {
   key: string;
   label: string;
-  options: string[];
+  /** Flat option list. Omit when the facet uses `sections`. */
+  options?: string[];
+  /**
+   * A facet that asks the SAME question at several grains — ship-to name, ZIP,
+   * state are all "which address" — puts them in one pane under sub-headings
+   * rather than eating three rows of the facet menu. Selections across sections
+   * are independent, and the facet's count is their total.
+   */
+  sections?: ListFacetSection[];
   /** Give the options pane a search field. Off for lists you can take in whole. */
   searchable?: boolean;
 }
 
-export function ListFilters({ facets }: { facets: ListFacet[] }) {
+/** Every option a facet holds, flat — for counting and for search. */
+const facetOptions = (f: ListFacet): string[] =>
+  f.options ?? f.sections?.flatMap((sec) => sec.options) ?? [];
+
+export function ListFilters({
+  facets,
+  onApply,
+}: {
+  facets: ListFacet[];
+  /**
+   * Fires on Apply and on Clear All with the selected `facetKey:option` ids.
+   *
+   * Left out, the panel is a composition demo — it shows the interaction and
+   * narrows nothing, which is what every screen got before Order Types moved
+   * in here from a tab row. A facet that REPLACES working behaviour has to be
+   * wired, so the caller passes this and applies what it can.
+   */
+  onApply?: (selected: ReadonlySet<string>) => void;
+}) {
   const [open, setOpen] = React.useState(false);
   const [facetKey, setFacetKey] = React.useState(facets[0]?.key ?? "");
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
@@ -51,9 +82,15 @@ export function ListFilters({ facets }: { facets: ListFacet[] }) {
       return next;
     });
 
-  const options = (facet?.options ?? []).filter((o) =>
-    o.toLowerCase().includes(query.toLowerCase())
-  );
+  const q = query.toLowerCase();
+  const match = (o: string) => o.toLowerCase().includes(q);
+  /** One shape for both facet kinds: an unlabelled section is a flat list. */
+  const sections: ListFacetSection[] = facet
+    ? (facet.sections ?? [{ title: "", options: facet.options ?? [] }]).map(
+        (sec) => ({ ...sec, options: sec.options.filter(match) })
+      )
+    : [];
+  const hits = sections.reduce((n, sec) => n + sec.options.length, 0);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -83,7 +120,9 @@ export function ListFilters({ facets }: { facets: ListFacet[] }) {
         <div className="flex h-[264px]">
           <div className="flex w-[200px] shrink-0 flex-col gap-1 overflow-auto border-r border-border p-2">
             {facets.map((f) => {
-              const n = f.options.filter((o) => checked.has(`${f.key}:${o}`)).length;
+              const n = facetOptions(f).filter((o) =>
+                checked.has(`${f.key}:${o}`)
+              ).length;
               return (
                 <button
                   key={f.key}
@@ -130,20 +169,34 @@ export function ListFilters({ facets }: { facets: ListFacet[] }) {
                 !facet?.searchable && "pt-2"
               )}
             >
-              {options.map((opt) => {
-                const id = `${facet.key}:${opt}`;
-                return (
-                  <div key={id} className="flex min-h-8 items-center gap-2 py-1">
-                    <Checkbox
-                      checked={checked.has(id)}
-                      onCheckedChange={() => toggle(id)}
-                      aria-label={opt}
-                    />
-                    <span className="flex-1 text-sm">{opt}</span>
+              {sections.map((sec) =>
+                sec.options.length === 0 ? null : (
+                  <div key={sec.title || "flat"} className="flex flex-col">
+                    {sec.title && (
+                      <p className="px-0.5 pt-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                        {sec.title}
+                      </p>
+                    )}
+                    {sec.options.map((opt) => {
+                      const id = `${facet.key}:${opt}`;
+                      return (
+                        <div
+                          key={id}
+                          className="flex min-h-8 items-center gap-2 py-1"
+                        >
+                          <Checkbox
+                            checked={checked.has(id)}
+                            onCheckedChange={() => toggle(id)}
+                            aria-label={opt}
+                          />
+                          <span className="flex-1 text-sm">{opt}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-              {options.length === 0 && (
+                )
+              )}
+              {hits === 0 && (
                 <p className="px-2 py-1 text-sm text-muted-foreground">
                   No matches.
                 </p>
@@ -153,10 +206,24 @@ export function ListFilters({ facets }: { facets: ListFacet[] }) {
         </div>
 
         <div className="flex h-16 items-center justify-between border-t border-border px-4">
-          <Button variant="ghost" size="sm" onClick={() => setChecked(new Set())}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const empty = new Set<string>();
+              setChecked(empty);
+              onApply?.(empty);
+            }}
+          >
             Clear All
           </Button>
-          <Button size="sm" onClick={() => setOpen(false)}>
+          <Button
+            size="sm"
+            onClick={() => {
+              onApply?.(checked);
+              setOpen(false);
+            }}
+          >
             Apply Filters
           </Button>
         </div>

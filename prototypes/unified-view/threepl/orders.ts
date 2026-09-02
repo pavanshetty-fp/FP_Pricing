@@ -133,6 +133,12 @@ export interface BrokerOrder {
   urgent: boolean;
   signatureOnDelivery: boolean;
   poNumber: string;
+  /** Ship-to site name, distinct from the address line in `shipTo`. */
+  shipToName: string;
+  zip: string;
+  state: string;
+  createdBy: string;
+  tags: string[];
   hub: string;
   primaryPoc: string;
   salesperson: string;
@@ -217,6 +223,60 @@ export const SALESPEOPLE = [
 ];
 
 export const YARDS = ["Fresno Yard", "Turlock Yard", "Kern Yard"];
+
+/**
+ * Statuses the FILTER offers, which is a longer list than the board's lanes.
+ *
+ * `BROKER_STATUSES` above is the LIFECYCLE — the lanes the board renders, in
+ * order. Overdue, Cancelled and Partial Accounting Synced are filterable states
+ * that are not lanes: Overdue is a derived condition rather than a stage,
+ * Cancelled is a terminal exit, and Partial Accounting Synced sits between two
+ * lanes. Keeping the two lists apart means adding a filter option never
+ * silently adds a board lane.
+ */
+export const BROKER_STATUS_FILTERS = [
+  "Overdue",
+  "Created / Draft",
+  "Assigned",
+  "Accepted",
+  "Completed",
+  "Accounting Sync Ready",
+  "Partial Accounting Synced",
+  "Accounting Synced",
+  "Cancelled",
+  "Blocked",
+];
+
+/* Ship-to geography. INVENTED — real addresses were never captured, so these
+   are plausible sites across several US states, which is what the ship-to
+   facets need to be judged on at all. */
+export const SHIP_TO_SITES = [
+  { name: "Bray North Yard", zip: "93706", state: "California" },
+  { name: "Bray Depot 2", zip: "93307", state: "California" },
+  { name: "Morris Yard 4", zip: "95815", state: "California" },
+  { name: "GPM Southside", zip: "77029", state: "Texas" },
+  { name: "Halvorsen Main", zip: "74107", state: "Oklahoma" },
+  { name: "Cardinal Hub A", zip: "43605", state: "Ohio" },
+  { name: "Westbrook Farm 1", zip: "58102", state: "North Dakota" },
+  { name: "Ironline Depot", zip: "31408", state: "Georgia" },
+];
+
+export const CREATED_BY = [
+  "Dana Whitfield",
+  "Marcus Reed",
+  "Alicia Bray",
+  "System — Recurring",
+];
+
+export const ORDER_TAGS = [
+  "Keep Full",
+  "Rush",
+  "Night",
+  "Weekend",
+  "Split Load",
+  "Hazmat",
+  "After Hours",
+];
 
 export const TANK_TYPES = [
   "Single-wall skid tank",
@@ -331,6 +391,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       i % 11 === 0 ? "Movement" : i % 4 === 0 ? "Recurring" : "Regular";
     const cust = CUSTOMERS[i % CUSTOMERS.length];
     const shipTo = cust.shipTos[i % cust.shipTos.length] ?? cust.name;
+    const site = SHIP_TO_SITES[i % SHIP_TO_SITES.length];
     const offset = OFFSETS[i % OFFSETS.length];
     const when = new Date(today);
     when.setDate(when.getDate() + offset);
@@ -399,6 +460,14 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",
+      shipToName: site.name,
+      zip: site.zip,
+      state: site.state,
+      createdBy:
+        kind === "Recurring"
+          ? "System — Recurring"
+          : CREATED_BY[i % (CREATED_BY.length - 1)],
+      tags: pick() < 0.45 ? [ORDER_TAGS[i % ORDER_TAGS.length]] : [],
       hub: HUBS[i % HUBS.length],
       primaryPoc: POCS[i % POCS.length],
       salesperson: SALESPEOPLE[i % SALESPEOPLE.length],

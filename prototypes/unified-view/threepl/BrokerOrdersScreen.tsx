@@ -37,11 +37,12 @@ import {
   BROKER_STATUS_FILTERS,
   BROKER_STATUS_TONE,
   CREATED_BY,
-  ORDER_KINDS,
   ORDER_TAGS,
   PRODUCTS,
   SALESPEOPLE,
   SHIP_TO_SITES,
+  ORDER_TYPE_FILTERS,
+  siteAddress,
   isAllTopOff,
   matchesBrokerOrder,
   matchesBrokerOrderIn,
@@ -266,11 +267,18 @@ export function BrokerOrdersScreen({
 
     return searched.filter((r) =>
       [
-        pass("orderTypes", [r.kind]),
+        /* Order Types is a MIXED facet, matching the reference: Urgent is a
+           flag, Movement is the order kind, the rest are the Order Type field.
+           A row therefore matches on every one of those it satisfies, and an
+           Asset Movement order answers to "Movement" rather than to a type
+           nobody picked from the list. */
+        pass("orderTypes", [
+          ...(r.urgent ? ["Urgent Orders"] : []),
+          r.orderType === "Asset Movement" ? "Movement" : r.orderType,
+        ]),
         pass("status", [r.status === "Draft" ? "Created / Draft" : r.status]),
         pass("customer", [r.customer.title]),
         pass("shipToAddress", [r.shipToName, r.zip, r.state]),
-        pass("orderType", [r.orderType]),
         pass("product", r.lines.map((l) => l.product)),
         pass("vendor", [
           ...(r.vendorId ? [vendorName(r.vendorId)] : []),
@@ -552,14 +560,11 @@ export function BrokerOrdersScreen({
                 setFacetSel(sel);
                 setPage(1);
               }}
-              /* Order Types is FIRST because it absorbed the tab row that used
-                 to sit under this toolbar — same three splits, one control. */
+              /* Status first — it is the question asked most, and the old
+                 order-kind facet that used to sit here is gone: its three
+                 values were not order types. "Order Types" below now carries
+                 the real ones. */
               facets={[
-                {
-                  key: "orderTypes",
-                  label: "Order Types",
-                  options: [...ORDER_KINDS],
-                },
                 {
                   key: "status",
                   label: "Status",
@@ -578,11 +583,16 @@ export function BrokerOrdersScreen({
                   label: "Ship-To Address",
                   /* One facet, three questions. Ship-to name, ZIP and state are
                      the same address asked at three grains, so they share a
-                     pane instead of eating three rows of the facet menu. */
+                     pane instead of eating three rows of the facet menu. Each
+                     site carries its full address, because two sites can share
+                     a name and only the street tells them apart. */
                   sections: [
                     {
                       title: "Ship-To Name",
-                      options: SHIP_TO_SITES.map((x) => x.name),
+                      options: SHIP_TO_SITES.map((x) => ({
+                        value: x.name,
+                        description: siteAddress(x),
+                      })),
                     },
                     {
                       title: "Zip Code",
@@ -596,9 +606,9 @@ export function BrokerOrdersScreen({
                   searchable: true,
                 },
                 {
-                  key: "orderType",
-                  label: "Order Type",
-                  options: ["Core", "Emergency", "Asset Movement"],
+                  key: "orderTypes",
+                  label: "Order Types",
+                  options: [...ORDER_TYPE_FILTERS],
                 },
                 {
                   key: "product",

@@ -77,7 +77,12 @@ export const ORDER_KINDS: OrderKind[] = ["Regular", "Recurring", "Movement"];
  * Emergency, Core)"). Movement orders are auto-set to "Asset Movement" and it is
  * the only type they can take (§5.20), which `assertConsistent` enforces.
  */
-export type BrokerOrderType = "Core" | "Emergency" | "Asset Movement";
+export type BrokerOrderType =
+  | "Core"
+  | "Emergency"
+  | "Asset Movement"
+  | "Delivery"
+  | "Extraction";
 
 /** §5.20 — a movement order runs in one of two directions. */
 export type MovementDirection = "Asset Delivery" | "Asset Pickup";
@@ -251,14 +256,43 @@ export const BROKER_STATUS_FILTERS = [
    are plausible sites across several US states, which is what the ship-to
    facets need to be judged on at all. */
 export const SHIP_TO_SITES = [
-  { name: "Bray North Yard", zip: "93706", state: "California" },
-  { name: "Bray Depot 2", zip: "93307", state: "California" },
-  { name: "Morris Yard 4", zip: "95815", state: "California" },
-  { name: "GPM Southside", zip: "77029", state: "Texas" },
-  { name: "Halvorsen Main", zip: "74107", state: "Oklahoma" },
-  { name: "Cardinal Hub A", zip: "43605", state: "Ohio" },
-  { name: "Westbrook Farm 1", zip: "58102", state: "North Dakota" },
-  { name: "Ironline Depot", zip: "31408", state: "Georgia" },
+  { name: "Bray North Yard", street: "4820 N Golden State Blvd", city: "Fresno", state: "California", zip: "93706" },
+  { name: "Bray Depot 2", street: "1177 Weedpatch Hwy", city: "Bakersfield", state: "California", zip: "93307" },
+  { name: "Morris Yard 4", street: "930 Richards Blvd", city: "Sacramento", state: "California", zip: "95815" },
+  { name: "GPM Southside", street: "12600 Federal Rd", city: "Houston", state: "Texas", zip: "77029" },
+  { name: "Halvorsen Main", street: "6215 S Union Ave", city: "Tulsa", state: "Oklahoma", zip: "74107" },
+  { name: "Cardinal Hub A", street: "2401 Front St", city: "Toledo", state: "Ohio", zip: "43605" },
+  { name: "Westbrook Farm 1", street: "3810 40th St S", city: "Fargo", state: "North Dakota", zip: "58102" },
+  { name: "Ironline Depot", street: "1720 Dean Forest Rd", city: "Savannah", state: "Georgia", zip: "31408" },
+];
+
+/** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site. */
+export const siteAddress = (s: (typeof SHIP_TO_SITES)[number]) =>
+  `${s.street}, ${s.city}, ${STATE_ABBR[s.state] ?? s.state} ${s.zip}`;
+
+const STATE_ABBR: Record<string, string> = {
+  California: "CA",
+  Texas: "TX",
+  Oklahoma: "OK",
+  Ohio: "OH",
+  "North Dakota": "ND",
+  Georgia: "GA",
+};
+
+/**
+ * What the "Order Types" facet offers. It is deliberately a MIXED predicate,
+ * because the reference panel is: Urgent is a flag, Movement is the order kind,
+ * and the other four are the Order Type field. One question a broker asks
+ * ("what kind of work is this?"), so one facet — rather than three facets that
+ * each answer a third of it.
+ */
+export const ORDER_TYPE_FILTERS = [
+  "Urgent Orders",
+  "Movement",
+  "Core",
+  "Delivery",
+  "Emergency",
+  "Extraction",
 ];
 
 export const CREATED_BY = [
@@ -443,9 +477,13 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       kind,
       orderType: isMovement
         ? "Asset Movement"
-        : pick() < 0.18
+        : pick() < 0.14
           ? "Emergency"
-          : "Core",
+          : pick() < 0.3
+            ? "Delivery"
+            : pick() < 0.42
+              ? "Extraction"
+              : "Core",
       customer: { title: cust.name, description: cust.erpId },
       shipTo,
       date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },

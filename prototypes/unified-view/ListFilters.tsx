@@ -27,16 +27,27 @@ import {
  * `docs/handoff-ds-adoption-2.md` Task 5 asks for. When the DS version takes
  * facets as props, this file deletes itself.
  */
+/**
+ * An option is either a bare value, or a value with a second line under it —
+ * a ship-to needs its address to be told apart from a similarly-named site, and
+ * the checkbox label alone cannot carry that.
+ */
+export type ListOption = string | { value: string; description: string };
+
+const optionValue = (o: ListOption) => (typeof o === "string" ? o : o.value);
+const optionDescription = (o: ListOption) =>
+  typeof o === "string" ? undefined : o.description;
+
 export interface ListFacetSection {
   title: string;
-  options: string[];
+  options: ListOption[];
 }
 
 export interface ListFacet {
   key: string;
   label: string;
   /** Flat option list. Omit when the facet uses `sections`. */
-  options?: string[];
+  options?: ListOption[];
   /**
    * A facet that asks the SAME question at several grains — ship-to name, ZIP,
    * state are all "which address" — puts them in one pane under sub-headings
@@ -50,7 +61,7 @@ export interface ListFacet {
 
 /** Every option a facet holds, flat — for counting and for search. */
 const facetOptions = (f: ListFacet): string[] =>
-  f.options ?? f.sections?.flatMap((sec) => sec.options) ?? [];
+  (f.options ?? f.sections?.flatMap((sec) => sec.options) ?? []).map(optionValue);
 
 export function ListFilters({
   facets,
@@ -83,7 +94,11 @@ export function ListFilters({
     });
 
   const q = query.toLowerCase();
-  const match = (o: string) => o.toLowerCase().includes(q);
+  /* Search matches the description as well as the value: on a ship-to facet the
+     address IS what people search by — a city or a state, not the site name. */
+  const match = (o: ListOption) =>
+    optionValue(o).toLowerCase().includes(q) ||
+    (optionDescription(o) ?? "").toLowerCase().includes(q);
   /** One shape for both facet kinds: an unlabelled section is a flat list. */
   const sections: ListFacetSection[] = facet
     ? (facet.sections ?? [{ title: "", options: facet.options ?? [] }]).map(
@@ -178,19 +193,31 @@ export function ListFilters({
                       </p>
                     )}
                     {sec.options.map((opt) => {
-                      const id = `${facet.key}:${opt}`;
+                      const value = optionValue(opt);
+                      const description = optionDescription(opt);
+                      const id = `${facet.key}:${value}`;
                       return (
-                        <div
+                        <label
                           key={id}
-                          className="flex min-h-8 items-center gap-2 py-1"
+                          className="flex min-h-8 cursor-pointer items-start gap-2 py-1"
                         >
                           <Checkbox
                             checked={checked.has(id)}
                             onCheckedChange={() => toggle(id)}
-                            aria-label={opt}
+                            aria-label={value}
+                            /* Nudged down so it centres on the FIRST line, not
+                               on the two-line block. */
+                            className="mt-0.5"
                           />
-                          <span className="flex-1 text-sm">{opt}</span>
-                        </div>
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-sm">{value}</span>
+                            {description && (
+                              <span className="text-xs text-muted-foreground">
+                                {description}
+                              </span>
+                            )}
+                          </span>
+                        </label>
                       );
                     })}
                   </div>

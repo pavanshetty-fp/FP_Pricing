@@ -797,8 +797,12 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
   One item per top-level screen. **Navigation only** — the brand logo lives in the
   top bar; a **module switcher** sits at the top of the rail.
-- **Tier-2 drawer (optional):** contextual sub-nav, a `rounded-lg bg-sidebar
-  shadow-fp-surface` panel (256px).
+- **Tier-2 drawer (optional):** contextual sub-nav for the active rail item, a
+  `rounded-lg bg-sidebar shadow-fp-surface` panel (256px). It is where **section
+  headings** and **collapsible sub-categories** live — `NavigationDrawer`
+  renders a group's `label` as a heading and an item's `children` as a
+  dropdown. Present it only when the active rail item genuinely has a second
+  level; where it does not, omit it and let the content layer take the width.
 - **Content layer:** fills the rest — `rounded-md bg-fp-surface-1b shadow-fp-surface`,
   **no outer border**. A compact header (L2), then a scrolling body.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
@@ -921,6 +925,28 @@ full width above everything. Rail = tier-1 main nav (one item per screen); drawe
 tier-2 contextual sub-nav for the active screen. Content title = the breadcrumb path
 (compact header). Tabs are **not** navigation (see L5).
 
+**N1 — One level per tier. The rail is flat.** The Tier-1 rail carries one item
+per top-level screen and nothing else: **no section headings, no nesting, no
+sub-categories.** The moment a module needs a second level, that level goes in
+the **Tier-2 drawer** — it does not become groups inside the rail. Two levels of
+hierarchy in a 52px rail is the failure this rule exists to prevent, and it is
+easy to reach for because the hover-expanded rail is also 256px wide and so
+*looks* like somewhere headings could live. It isn't: the rail is `bg-rail`
+(near-black, square, flush); the drawer is `bg-sidebar` (rounded, shadowed,
+inset). If a design shows grouped items under a heading, it is describing the
+drawer.
+
+**N2 — A module's nav shape is re-derived, never inherited.** "This workspace
+has no second nav level, so no drawer" is a statement about the destinations a
+module has *today*. Adding a module, or sub-categories to an existing one,
+invalidates it. Re-test the tier question whenever the destination list changes
+rather than carrying the previous answer forward.
+
+**N3 — Check the DS before extending a nav component.** `NavigationDrawer`
+already does headings, collapsible children, and both the 52px and 256px states.
+Adding one of those to `NavRail` duplicates a capability that exists and breaks
+N1 at the same time.
+
 ## Archived rules *(superseded — kept for reference, not enforced)*
 Superseded **2026-08-18**, when the Tier-0 global top bar and the compact content
 header became canonical. Retained for context, not enforced.
@@ -1028,10 +1054,15 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Filters left, one primary action right** in the toolbar. (L3)
 - **Compose in levels** (Page → Region → Group → Compound-row → Atom); step elevation once. (H1/H2)
 - **Build dense rows as fixed ordered slots.** (H4)
+- **Keep the Tier-1 rail flat** — one item per top-level screen. (N1)
+- **Put sub-categories in the Tier-2 drawer**, as group labels or collapsible children. (N1)
+- **Re-derive whether a module needs a drawer** whenever its destinations change. (N2)
 
 ## Don't
 - **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)
 - **Don't use tabs to navigate** between different pages/objects — that's the rail's job. (L5)
+- **Don't put section headings or nested groups in the rail** — the rail is one level; the drawer is the second. (N1)
+- **Don't extend a nav component before checking the DS** — `NavigationDrawer` already does headings and dropdowns. (N3)
 - **Don't render a lone tab, a one-level breadcrumb, or a dead-control toolbar** — no placeholder units. (L5)
 - **Don't reorder the header stack.** (L2/L4)
 - **Don't emphasize more than one group/action.** (H3)
@@ -1052,6 +1083,12 @@ renders these as visual pairs.)
 - **Breadcrumb (L5)** — ❌ a one-item crumb on a top-level screen, or crumbs that don't navigate · ✅ show only ≥2 levels deep, every crumb navigable, last crumb static.
 - **Tabs (L5)** — ❌ tabs used to jump between different pages, or a lone single tab · ✅ tabs = facets of one dataset; one facet → no tab row.
 - **Toolbar (L5)** — ❌ search + filters + group-by on a trivial list, or two filled CTAs · ✅ only supported controls, filters left, one neutral primary right.
+
+## Navigation
+- **Rail depth (N1)** — ❌ section headings or grouped sub-categories inside the 52px Tier-1 rail · ✅ the rail stays flat, one item per top-level screen; groups and dropdowns go in the Tier-2 drawer.
+- **Stale tier decision (N2)** — ❌ "this app has no drawer" carried forward after a module gained sub-categories · ✅ re-derive the tier question every time the destination list changes.
+- **Duplicated nav capability (N3)** — ❌ teaching `NavRail` to render group labels · ✅ use `NavigationDrawer`, which already renders labels and collapsible children.
+- **Reading a mock by width (N1)** — ❌ assuming a 256px grouped panel is the expanded rail · ✅ check the surface: rail = `bg-rail`, square, flush; drawer = `bg-sidebar`, rounded, shadowed.
 
 ## Hierarchy
 - **Elevation (H2)** — ❌ same-weight fill nested on the same fill · ✅ step up one surface (`surface-1b → card → fp-card-1`).

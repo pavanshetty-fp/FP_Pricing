@@ -10,6 +10,7 @@ import {
   Truck,
   LayoutGrid,
   ListChecks,
+  BookUser,
   Repeat,
   Contact,
   Droplet,
@@ -18,7 +19,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
-import { NavRail } from "@/components/navigation-drawer";
+import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
@@ -125,29 +126,54 @@ const SALES_NAV: NavItem[] = [
 ];
 
 /**
- * 3PL destinations. Orders is built; the other three are the spec's Settings
- * pages (§6 Vendors / Customers / Assets) and show the honest not-built state —
- * the same way the Sales rail carried three unbuilt destinations before those
- * screens landed.
+ * 3PL — TIER 1. The rail carries the module's top-level areas and nothing else:
+ * one item per top-level screen, per the shell rule. Sub-categories are NOT
+ * sections in the rail — they belong to the Tier-2 drawer below.
  */
-const THREE_PL_NAV: NavGroup[] = [
-  {
-    label: "Order Types",
-    items: [
-      { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
-      { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
-    ],
-  },
-  {
-    label: "Directory",
-    items: [
-      { key: "3pl-customers", label: "Customers", icon: <Contact /> },
-      { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
-      { key: "3pl-products", label: "Products", icon: <Droplet /> },
-      { key: "3pl-rental-assets", label: "Rental Assets", icon: <Caravan /> },
-    ],
-  },
+const THREE_PL_NAV: NavItem[] = [
+  { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
+  { key: "3pl-directory", label: "Directory", icon: <BookUser /> },
 ];
+
+/**
+ * TIER 2 — the contextual sub-nav for the active rail item, keyed by that
+ * item. Only areas with a second nav level appear here; a rail item with no
+ * entry is a destination in its own right and the content layer takes the full
+ * width (Sales works exactly that way).
+ *
+ * The drawer renders the group label as its heading, and `children` on any item
+ * becomes a collapsible dropdown — both already in the DS component, which is
+ * why nothing here needed a new one.
+ */
+const SUB_NAV: Record<string, NavGroup[]> = {
+  "3pl-orders": [
+    {
+      label: "Order Types",
+      items: [
+        { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
+        { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
+      ],
+    },
+  ],
+  "3pl-directory": [
+    {
+      /* No group label: the drawer's own header already says Directory, and a
+         heading repeating it is the same dead-width problem a grouped column
+         has. Orders keeps its label because "Order Types" says something the
+         header does not. */
+      items: [
+        { key: "3pl-customers", label: "Customers", icon: <Contact /> },
+        { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
+        { key: "3pl-products", label: "Products", icon: <Droplet /> },
+        { key: "3pl-rental-assets", label: "Rental Assets", icon: <Caravan /> },
+      ],
+    },
+  ],
+};
+
+/** First destination inside an area's drawer, for landing on arrival. */
+const firstSubKey = (areaKey: string): string | null =>
+  SUB_NAV[areaKey]?.flatMap((g) => g.items)[0]?.key ?? null;
 
 /**
  * Lease and Pricing get NO destinations rather than invented ones. The module
@@ -157,20 +183,12 @@ const THREE_PL_NAV: NavGroup[] = [
  * taxonomy out of global search. An empty list renders the module-level empty
  * state below.
  */
-/* A module's rail is a list of SECTIONS now, not a flat list. Sales has one
-   unlabelled section, so it renders exactly as before; 3PL has two labelled
-   ones, because its six destinations split cleanly into the order types you
-   work in and the directory you look things up in. */
-const MODULE_NAV: Record<string, NavGroup[]> = {
-  sales: [{ items: SALES_NAV }],
+const MODULE_NAV: Record<string, NavItem[]> = {
+  sales: SALES_NAV,
   "3pl": THREE_PL_NAV,
   lease: [],
   pricing: [],
 };
-
-/** Every destination in a module, flattened — for lookup and for landing. */
-const navItemsOf = (groups: NavGroup[]): NavItem[] =>
-  groups.flatMap((g) => g.items);
 
 /**
  * Where a fresh visit lands.
@@ -884,9 +902,22 @@ function ModuleNotBuilt({ label }: { label: string }) {
 
 export function UnifiedView() {
   const [moduleKey, setModuleKey] = React.useState(readStoredModule);
+  /* Two nav levels, two pieces of state. `navKey` is the RAIL selection
+     (Tier-1); `subKey` is the DRAWER selection (Tier-2) and is null for a rail
+     item that has no second level — which is every Sales destination. The
+     screen on show is `subKey ?? navKey`. */
   const [navKey, setNavKey] = React.useState(
-    () => navItemsOf(MODULE_NAV[readStoredModule()] ?? [])[0]?.key ?? ""
+    () => MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
   );
+  const [subKey, setSubKey] = React.useState<string | null>(() =>
+    firstSubKey(MODULE_NAV[readStoredModule()]?.[0]?.key ?? "")
+  );
+
+  /** Selecting a rail item lands on the first destination inside its drawer. */
+  const goToArea = (key: string) => {
+    setNavKey(key);
+    setSubKey(firstSubKey(key));
+  };
   const [searchOpen, setSearchOpen] = React.useState(false);
   /* The signed-in account lives here, above both the top bar and the Profile
      page, so editing it on Profile updates the chrome without a round trip. */
@@ -906,9 +937,15 @@ export function UnifiedView() {
   /* Account pages are module-independent: they answer before the module
      nav is consulted, and while one is open no rail item is current. */
   const accountTitle = ACCOUNT_PAGES[navKey];
-  const navGroups = MODULE_NAV[moduleKey] ?? [];
-  const navItems = navItemsOf(navGroups);
+  const navItems = MODULE_NAV[moduleKey] ?? [];
   const active = navItems.find((i) => i.key === navKey) ?? navItems[0] ?? null;
+  /* Tier-2 exists only where the active area declares one. Where it does not,
+     no drawer is rendered and the content layer takes the full width. */
+  const subGroups = accountTitle ? undefined : SUB_NAV[navKey];
+  const subItems = subGroups?.flatMap((g) => g.items) ?? [];
+  const activeSub = subItems.find((i) => i.key === subKey) ?? null;
+  /** The screen is the drawer's selection when there is one, else the rail's. */
+  const screenKey = subKey ?? navKey;
 
   /**
    * Switching module lands on that module's FIRST destination. Keeping the old
@@ -917,7 +954,7 @@ export function UnifiedView() {
    */
   const switchModule = (key: string) => {
     setModuleKey(key);
-    setNavKey(navItemsOf(MODULE_NAV[key] ?? [])[0]?.key ?? "");
+    goToArea(MODULE_NAV[key]?.[0]?.key ?? "");
     try {
       localStorage.setItem(MODULE_STORAGE_KEY, key);
     } catch {
@@ -932,7 +969,17 @@ export function UnifiedView() {
   /** A search hit is a (module, destination, record) address. */
   const goTo = (m: string, nav: string, recordId: string | null) => {
     setModuleKey(m);
-    setNavKey(nav);
+    /* A search hit names a DESTINATION, which may live one level down. Resolve
+       it to its rail item so the rail and the drawer agree about where we are. */
+    const owner = Object.keys(SUB_NAV).find((areaKey) =>
+      SUB_NAV[areaKey].some((g) => g.items.some((i) => i.key === nav))
+    );
+    if (owner) {
+      setNavKey(owner);
+      setSubKey(nav);
+    } else {
+      goToArea(nav);
+    }
     try {
       localStorage.setItem(MODULE_STORAGE_KEY, m);
     } catch {
@@ -947,7 +994,7 @@ export function UnifiedView() {
     if (navItems.length === 0) {
       return <ModuleNotBuilt label={`${MODULE_LABEL[moduleKey] ?? moduleKey} module`} />;
     }
-    switch (active?.key) {
+    switch (screenKey) {
       case "fuel-orders":
         return <FuelOrdersScreen focus={focus} />;
       case "asset-orders":
@@ -1001,7 +1048,7 @@ export function UnifiedView() {
   return (
     <TooltipProvider>
       <AppShell
-        title={accountTitle ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
+        title={accountTitle ?? activeSub?.label ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
         topBar={
@@ -1016,14 +1063,32 @@ export function UnifiedView() {
         }
         rail={
           <NavRail
-            groups={navGroups}
+            groups={[{ items: navItems }]}
             activeKey={active?.key}
-            onNavigate={setNavKey}
+            onNavigate={goToArea}
             activeModule={moduleKey}
             onModuleChange={switchModule}
           />
         }
-        /* No Tier-2 sidebar — the content layer takes the full width. */
+        /* TIER 2 — rendered only where the active rail item declares a second
+           nav level. Sales has none, so its content layer still takes the full
+           width; 3PL's areas each have one. The panel classes are the shell
+           rule's, verbatim, and are the same ones the DS gallery uses. */
+        sidebar={
+          subGroups && active ? (
+            <NavigationDrawer
+              className="rounded-lg bg-sidebar shadow-fp-surface"
+              brand={{
+                name: active.label,
+                icon: active.icon,
+                iconClassName: "bg-sidebar-primary",
+              }}
+              groups={subGroups}
+              activeKey={subKey ?? undefined}
+              onNavigate={setSubKey}
+            />
+          ) : undefined
+        }
         /* Export moved onto the preset-view row next to Create Order, so the
            page header carries only the theme toggle. */
         headerAction={<ThemeToggle />}

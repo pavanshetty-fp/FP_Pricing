@@ -75,8 +75,21 @@ gallery — it has its own entry point and ships as its own HTML. `src/App.tsx` 
 untouched. Read `prototypes/unified-view/README.md` for the boundary.
 
 **Shell:** Tier-0 top bar (Profile lives in the account menu) · Tier-1 52px rail
-with the module switcher + that module's destinations · **no Tier-2 sidebar**, so
-the content layer takes the full width.
+with the module switcher + that module's top-level areas · **Tier-2 drawer where
+an area has a second nav level**, otherwise none and the content layer takes the
+full width.
+
+The drawer is **per rail item, not per module**. Sales' four destinations have no
+second level, so Sales still renders with no drawer. 3PL's two areas — Orders and
+Directory — each declare one in `SUB_NAV`, so selecting either brings up the
+256px `NavigationDrawer` beside the rail.
+
+**Do not put sub-categories in the rail.** That was tried on 2026-09-02 and is
+wrong: the rail is one level per the shell rule (UX N1), and `NavigationDrawer`
+already renders group headings and collapsible children. The mistake was easy to
+make because the hover-expanded rail is also 256px wide — tell them apart by
+surface, not width: rail = `bg-rail`, square, flush; drawer = `bg-sidebar`,
+rounded, shadowed.
 
 **TWO MODULES ARE BUILT**, and the module switcher does real routing — a module
 owns a destination list, and switching swaps the list along with the screen under

@@ -12,8 +12,12 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
   One item per top-level screen. **Navigation only** — the brand logo lives in the
   top bar; a **module switcher** sits at the top of the rail.
-- **Tier-2 drawer (optional):** contextual sub-nav, a `rounded-lg bg-sidebar
-  shadow-fp-surface` panel (256px).
+- **Tier-2 drawer (optional):** contextual sub-nav for the active rail item, a
+  `rounded-lg bg-sidebar shadow-fp-surface` panel (256px). It is where **section
+  headings** and **collapsible sub-categories** live — `NavigationDrawer`
+  renders a group's `label` as a heading and an item's `children` as a
+  dropdown. Present it only when the active rail item genuinely has a second
+  level; where it does not, omit it and let the content layer take the width.
 - **Content layer:** fills the rest — `rounded-md bg-fp-surface-1b shadow-fp-surface`,
   **no outer border**. A compact header (L2), then a scrolling body.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
@@ -135,6 +139,28 @@ Tier-0 **global top bar** = app chrome (brand · global search · account), span
 full width above everything. Rail = tier-1 main nav (one item per screen); drawer =
 tier-2 contextual sub-nav for the active screen. Content title = the breadcrumb path
 (compact header). Tabs are **not** navigation (see L5).
+
+**N1 — One level per tier. The rail is flat.** The Tier-1 rail carries one item
+per top-level screen and nothing else: **no section headings, no nesting, no
+sub-categories.** The moment a module needs a second level, that level goes in
+the **Tier-2 drawer** — it does not become groups inside the rail. Two levels of
+hierarchy in a 52px rail is the failure this rule exists to prevent, and it is
+easy to reach for because the hover-expanded rail is also 256px wide and so
+*looks* like somewhere headings could live. It isn't: the rail is `bg-rail`
+(near-black, square, flush); the drawer is `bg-sidebar` (rounded, shadowed,
+inset). If a design shows grouped items under a heading, it is describing the
+drawer.
+
+**N2 — A module's nav shape is re-derived, never inherited.** "This workspace
+has no second nav level, so no drawer" is a statement about the destinations a
+module has *today*. Adding a module, or sub-categories to an existing one,
+invalidates it. Re-test the tier question whenever the destination list changes
+rather than carrying the previous answer forward.
+
+**N3 — Check the DS before extending a nav component.** `NavigationDrawer`
+already does headings, collapsible children, and both the 52px and 256px states.
+Adding one of those to `NavRail` duplicates a capability that exists and breaks
+N1 at the same time.
 
 ## Archived rules *(superseded — kept for reference, not enforced)*
 Superseded **2026-08-18**, when the Tier-0 global top bar and the compact content

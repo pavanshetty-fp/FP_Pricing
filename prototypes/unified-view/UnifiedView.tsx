@@ -8,12 +8,15 @@ import {
   CalendarOff,
   Construction,
   Truck,
-  Building2,
-  Container,
   LayoutGrid,
+  ListChecks,
+  Repeat,
+  Contact,
+  Droplet,
+  Caravan,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import type { NavItem } from "@/components/navigation-drawer";
+import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { NavRail } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
@@ -127,11 +130,23 @@ const SALES_NAV: NavItem[] = [
  * the same way the Sales rail carried three unbuilt destinations before those
  * screens landed.
  */
-const THREE_PL_NAV: NavItem[] = [
-  { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
-  { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
-  { key: "3pl-customers", label: "Customers", icon: <Building2 /> },
-  { key: "3pl-assets", label: "Assets", icon: <Container /> },
+const THREE_PL_NAV: NavGroup[] = [
+  {
+    label: "Order Types",
+    items: [
+      { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
+      { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
+    ],
+  },
+  {
+    label: "Directory",
+    items: [
+      { key: "3pl-customers", label: "Customers", icon: <Contact /> },
+      { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
+      { key: "3pl-products", label: "Products", icon: <Droplet /> },
+      { key: "3pl-rental-assets", label: "Rental Assets", icon: <Caravan /> },
+    ],
+  },
 ];
 
 /**
@@ -142,12 +157,20 @@ const THREE_PL_NAV: NavItem[] = [
  * taxonomy out of global search. An empty list renders the module-level empty
  * state below.
  */
-const MODULE_NAV: Record<string, NavItem[]> = {
-  sales: SALES_NAV,
+/* A module's rail is a list of SECTIONS now, not a flat list. Sales has one
+   unlabelled section, so it renders exactly as before; 3PL has two labelled
+   ones, because its six destinations split cleanly into the order types you
+   work in and the directory you look things up in. */
+const MODULE_NAV: Record<string, NavGroup[]> = {
+  sales: [{ items: SALES_NAV }],
   "3pl": THREE_PL_NAV,
   lease: [],
   pricing: [],
 };
+
+/** Every destination in a module, flattened — for lookup and for landing. */
+const navItemsOf = (groups: NavGroup[]): NavItem[] =>
+  groups.flatMap((g) => g.items);
 
 /**
  * Where a fresh visit lands.
@@ -862,7 +885,7 @@ function ModuleNotBuilt({ label }: { label: string }) {
 export function UnifiedView() {
   const [moduleKey, setModuleKey] = React.useState(readStoredModule);
   const [navKey, setNavKey] = React.useState(
-    () => MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
+    () => navItemsOf(MODULE_NAV[readStoredModule()] ?? [])[0]?.key ?? ""
   );
   const [searchOpen, setSearchOpen] = React.useState(false);
   /* The signed-in account lives here, above both the top bar and the Profile
@@ -883,7 +906,8 @@ export function UnifiedView() {
   /* Account pages are module-independent: they answer before the module
      nav is consulted, and while one is open no rail item is current. */
   const accountTitle = ACCOUNT_PAGES[navKey];
-  const navItems = MODULE_NAV[moduleKey] ?? [];
+  const navGroups = MODULE_NAV[moduleKey] ?? [];
+  const navItems = navItemsOf(navGroups);
   const active = navItems.find((i) => i.key === navKey) ?? navItems[0] ?? null;
 
   /**
@@ -893,7 +917,7 @@ export function UnifiedView() {
    */
   const switchModule = (key: string) => {
     setModuleKey(key);
-    setNavKey(MODULE_NAV[key]?.[0]?.key ?? "");
+    setNavKey(navItemsOf(MODULE_NAV[key] ?? [])[0]?.key ?? "");
     try {
       localStorage.setItem(MODULE_STORAGE_KEY, key);
     } catch {
@@ -932,7 +956,7 @@ export function UnifiedView() {
         return <CustomersScreen focus={focus} />;
       case "assets":
         return <AssetsScreen focus={focus} />;
-      case "3pl-orders":
+      case "3pl-delivery-orders":
         return <BrokerOrdersScreen focus={focus} />;
       case "3pl-vendors":
         return (
@@ -948,11 +972,25 @@ export function UnifiedView() {
             detail="Not built yet. 3PL customers sync from Dispatch, so this list would show the same accounts as the Sales module's Customers screen, plus the credit fields the credit-hold rule reads."
           />
         );
-      case "3pl-assets":
+      case "3pl-recurring-orders":
         return (
           <NotBuiltYet
-            label="Assets"
-            detail="Not built yet. The organisation's assets, as listed under the 3PL Settings — Orders is the screen in this pass."
+            label="Recurring Orders"
+            detail="Not built yet. Recurring orders are currently a TAB on Delivery Orders rather than a destination — see the open question in the 3PL README before building this as a separate list."
+          />
+        );
+      case "3pl-products":
+        return (
+          <NotBuiltYet
+            label="Products"
+            detail="Not built yet. The fuel and lubricant products an order's lines are drawn from — the Sales module already carries the product names, so this list would be their record view."
+          />
+        );
+      case "3pl-rental-assets":
+        return (
+          <NotBuiltYet
+            label="Rental Assets"
+            detail="Not built yet. The organisation's rentable assets, as listed under the 3PL Settings — Delivery Orders is the screen in this pass."
           />
         );
       default:
@@ -978,7 +1016,7 @@ export function UnifiedView() {
         }
         rail={
           <NavRail
-            groups={[{ items: navItems }]}
+            groups={navGroups}
             activeKey={active?.key}
             onNavigate={setNavKey}
             activeModule={moduleKey}

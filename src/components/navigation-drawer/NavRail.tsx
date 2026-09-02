@@ -60,7 +60,21 @@ export function NavRail({
         {/* Nav groups — the menus for the selected module (nested children belong to tier-2) */}
         <div className="flex flex-1 flex-col gap-4">
           {groups.map((group, i) => (
-            <ul key={group.label ?? i} className="flex flex-col gap-1">
+            <div key={group.label ?? i} className="flex flex-col">
+              {/* Section heading. It only exists at 256px — at 52px there is no
+                  room for a word, so the collapsed rail keeps the grouping as
+                  the gap between lists and nothing else. The heading holds its
+                  height in both states so the items below never shift when the
+                  rail opens. */}
+              {group.label && (
+                <span
+                  aria-hidden
+                  className="flex h-7 shrink-0 items-center truncate px-4 text-[11px] font-medium tracking-wider text-sidebar-foreground/45 uppercase opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-data-[expanded=true]:opacity-100"
+                >
+                  {group.label}
+                </span>
+              )}
+            <ul className="flex flex-col gap-1">
               {group.items.map((item) => {
                 const active = item.key === activeKey;
                 return (
@@ -88,6 +102,7 @@ export function NavRail({
                 );
               })}
             </ul>
+            </div>
           ))}
         </div>
       </nav>

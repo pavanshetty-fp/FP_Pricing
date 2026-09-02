@@ -149,6 +149,40 @@ const MODULE_NAV: Record<string, NavItem[]> = {
   pricing: [],
 };
 
+/**
+ * Where a fresh visit lands.
+ *
+ * This is NOT arbitrary and it is NOT "sales because sales was first". The
+ * prototype ships as a single self-contained HTML that people open by
+ * double-clicking, and the module switcher is a 32px tile inside a 52px
+ * collapsed rail whose menu you have to know to open. Landing on Sales meant a
+ * freshly shared build was pixel-identical to the previous one, so the new
+ * module read as "you sent me the wrong file" — which is exactly what happened.
+ *
+ * So: land on the NEWEST BUILT MODULE, and update this when the next one lands.
+ * It is a named constant with this comment attached rather than an inline
+ * string, so the next pass changes it deliberately instead of inheriting it.
+ */
+const LANDING_MODULE = "3pl";
+
+/** Persisted so a reader who switches away is not sent back on every reload.
+ *  Same `fp-` convention as `fp-theme` and `fp-breadcrumb`. */
+const MODULE_STORAGE_KEY = "fp-module";
+
+function readStoredModule(): string {
+  // Guarded like the rest of the app's persistence: a file:// open with storage
+  // blocked must fall through to the default rather than throw on first render.
+  try {
+    if (typeof localStorage === "undefined") return LANDING_MODULE;
+    const saved = localStorage.getItem(MODULE_STORAGE_KEY);
+    // A stored key from a build where that module existed must not strand the
+    // rail with no destinations.
+    return saved && MODULE_NAV[saved] ? saved : LANDING_MODULE;
+  } catch {
+    return LANDING_MODULE;
+  }
+}
+
 const MODULE_LABEL: Record<string, string> = {
   sales: "Sales",
   "3pl": "3PL",
@@ -826,8 +860,10 @@ function ModuleNotBuilt({ label }: { label: string }) {
 }
 
 export function UnifiedView() {
-  const [moduleKey, setModuleKey] = React.useState("sales");
-  const [navKey, setNavKey] = React.useState("fuel-orders");
+  const [moduleKey, setModuleKey] = React.useState(readStoredModule);
+  const [navKey, setNavKey] = React.useState(
+    () => MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
+  );
   const [searchOpen, setSearchOpen] = React.useState(false);
   /* The signed-in account lives here, above both the top bar and the Profile
      page, so editing it on Profile updates the chrome without a round trip. */
@@ -858,6 +894,12 @@ export function UnifiedView() {
   const switchModule = (key: string) => {
     setModuleKey(key);
     setNavKey(MODULE_NAV[key]?.[0]?.key ?? "");
+    try {
+      localStorage.setItem(MODULE_STORAGE_KEY, key);
+    } catch {
+      // Storage blocked (private window, file:// in some browsers). The switch
+      // still works for this session; only the memory of it is lost.
+    }
     // A record focused in the module being left must not re-open in the one
     // being entered.
     setFocus(null);
@@ -867,6 +909,11 @@ export function UnifiedView() {
   const goTo = (m: string, nav: string, recordId: string | null) => {
     setModuleKey(m);
     setNavKey(nav);
+    try {
+      localStorage.setItem(MODULE_STORAGE_KEY, m);
+    } catch {
+      /* see switchModule */
+    }
     setFocus(recordId ? { id: recordId, n: Date.now() } : null);
   };
 

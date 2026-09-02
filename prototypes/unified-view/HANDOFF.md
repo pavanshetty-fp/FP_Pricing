@@ -203,11 +203,30 @@ driverless per open question 1. The **Category** filter facet renders an explici
 
 ## Branch state
 
-The Sales work and the DS sweeps are **on `main`**. The 3PL module is on
-`feat/3pl-module`, **not pushed** — ask before pushing or merging. The user works
-main-based per `START-HERE.md`, so a branch is a deviation they should decide
-about; it exists because this pass changes a DS component (`ModuleSwitcher`) as
-well as the prototype.
+`feat/3pl-module`, **22 commits ahead of `main`, not pushed.** Ask before pushing
+or merging. The user works main-based per `START-HERE.md`, so a branch is a
+deviation they should decide about; it exists because this pass changes a DS
+component (`ModuleSwitcher`) as well as the prototype.
+
+Three branches are in play, so be precise about which has what:
+
+| Branch | Holds |
+|---|---|
+| `main` | the DS, and the Sales screens as of the last merge to it |
+| `feat/unified-view-prototype` | further prototype commits that never reached `main` |
+| `feat/3pl-module` | `main` + the 3PL module + a merge of the branch above |
+
+**`main` is NOT a superset of `feat/unified-view-prototype`** — verify with
+`git merge-base --is-ancestor feat/unified-view-prototype main`, which currently
+returns false. `feat/3pl-module` is the only branch that has everything; treat it
+as the tip and merge from it, not from either input.
+
+**The shareable artifact is `../FP-DS-2026-unified-view.html`** — one level ABOVE
+the repo, outside version control. `npm run build:unified` writes
+`dist-unified/index.html`; that file then has to be copied up by hand. Send or
+open the parent one, not `dist-unified/index.html`, or you will hand someone a
+build from before the last merge. Confirm they match with
+`cmp ../FP-DS-2026-unified-view.html dist-unified/index.html`.
 
 ### The DS-side change in that branch
 

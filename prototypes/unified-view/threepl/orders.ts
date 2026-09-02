@@ -98,7 +98,36 @@ export interface OrderLine {
   /** Requested gallons, or `null` when the line is a top-off. */
   gal: number | null;
   topOff: boolean;
+  /** The asset belongs to the broker, not the customer — badged on the row. */
+  rental?: boolean;
+  /* Load Order — where the fuel is drawn FROM. Blank until the line is ordered,
+     because a terminal for a line nobody ordered is an answer to no question. */
+  terminal?: string;
+  supplier?: string;
+  loadingAccount?: string;
 }
+
+/** Where fuel is loaded. One vocabulary, three linked selects on the load order. */
+export const TERMINALS = [
+  "Greensbro KM2",
+  "Liberty P56",
+  "Lib Washington 124",
+  "Kern River T4",
+];
+
+export const SUPPLIERS = [
+  "Liberty P56",
+  "Pioneer Distributing",
+  "Sunrise Energy",
+  "Greensbro Fuel Supply",
+];
+
+export const LOADING_ACCOUNTS = [
+  "Greensbro Premium",
+  "Liberty Standard",
+  "Pioneer Bulk",
+  "Sunrise Contract",
+];
 
 /** A vendor's submitted quote (§5.9 / §5.20). Shape follows the order's kind. */
 export interface VendorQuote {
@@ -308,14 +337,94 @@ export const formatWindow = (w: { start: string; end: string }) =>
  * ship-to facets have something to be judged on.
  */
 export const SHIP_TO_SITES = [
-  { name: "Bray North Yard", street: "4820 N Golden State Blvd", city: "Fresno", state: "California", zip: "93706", latLng: "36.81120, -119.83450" },
-  { name: "Bray Depot 2", street: "1177 Weedpatch Hwy", city: "Bakersfield", state: "California", zip: "93307", latLng: "35.34210, -118.94860" },
-  { name: "Morris Yard 4", street: "930 Richards Blvd", city: "Sacramento", state: "California", zip: "95815", latLng: "38.60130, -121.48210" },
-  { name: "GPM Southside", street: "12600 Federal Rd", city: "Houston", state: "Texas", zip: "77029", latLng: "29.78440, -95.23110" },
-  { name: "Halvorsen Main", street: "6215 S Union Ave", city: "Tulsa", state: "Oklahoma", zip: "74107", latLng: "36.08320, -96.00410" },
-  { name: "Cardinal Hub A", street: "2401 Front St", city: "Toledo", state: "Ohio", zip: "43605", latLng: "41.64470, -83.51190" },
-  { name: "Westbrook Farm 1", street: "3810 40th St S", city: "Fargo", state: "North Dakota", zip: "58102", latLng: "46.83190, -96.85640" },
-  { name: "Ironline Depot", street: "1720 Dean Forest Rd", city: "Savannah", state: "Georgia", zip: "31408", latLng: "32.10650, -81.19980" },
+  {
+    name: "Bray North Yard",
+    street: "4820 N Golden State Blvd",
+    city: "Fresno",
+    state: "California",
+    zip: "93706",
+    latLng: "36.81120, -119.83450",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "180 asset", product: "Dyed Diesel", rental: true }, { name: "180 asset", product: "Clear Diesel #2", rental: false }, { name: "Asset 1", product: "Unleaded 87", rental: true }, { name: "VEND TANK", product: "Dyed Diesel", rental: false }],
+  },
+  {
+    name: "Bray Depot 2",
+    street: "1177 Weedpatch Hwy",
+    city: "Bakersfield",
+    state: "California",
+    zip: "93307",
+    latLng: "35.34210, -118.94860",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Asset 1", product: "Clear Diesel #2", rental: true }, { name: "Asset 2", product: "Unleaded 91", rental: false }, { name: "Yard Tank 4", product: "DEF Bulk", rental: false }],
+  },
+  {
+    name: "Morris Yard 4",
+    street: "930 Richards Blvd",
+    city: "Sacramento",
+    state: "California",
+    zip: "95815",
+    latLng: "38.60130, -121.48210",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Tank 104", product: "Dyed Diesel", rental: false }, { name: "Tank 105", product: "Clear Diesel #2", rental: false }, { name: "Lube Skid", product: "Hydraulic Oil AW-46", rental: true }],
+  },
+  {
+    name: "GPM Southside",
+    street: "12600 Federal Rd",
+    city: "Houston",
+    state: "Texas",
+    zip: "77029",
+    latLng: "29.78440, -95.23110",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Southside A", product: "Unleaded 87", rental: false }, { name: "Southside B", product: "Unleaded 91", rental: false }, { name: "DEF Tote 2", product: "DEF Bulk", rental: true }],
+  },
+  {
+    name: "Halvorsen Main",
+    street: "6215 S Union Ave",
+    city: "Tulsa",
+    state: "Oklahoma",
+    zip: "74107",
+    latLng: "36.08320, -96.00410",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Main Bulk", product: "Clear Diesel #2", rental: false }, { name: "Main Skid", product: "Dyed Diesel", rental: true }],
+  },
+  {
+    name: "Cardinal Hub A",
+    street: "2401 Front St",
+    city: "Toledo",
+    state: "Ohio",
+    zip: "43605",
+    latLng: "41.64470, -83.51190",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Hub Tank 1", product: "Dyed Diesel", rental: false }, { name: "Hub Tank 2", product: "Unleaded 87", rental: false }, { name: "Rental Skid 9", product: "Clear Diesel #2", rental: true }],
+  },
+  {
+    name: "Westbrook Farm 1",
+    street: "3810 40th St S",
+    city: "Fargo",
+    state: "North Dakota",
+    zip: "58102",
+    latLng: "46.83190, -96.85640",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Farm Tank", product: "Dyed Diesel", rental: false }, { name: "Farm DEF", product: "DEF Bulk", rental: false }],
+  },
+  {
+    name: "Ironline Depot",
+    street: "1720 Dean Forest Rd",
+    city: "Savannah",
+    state: "Georgia",
+    zip: "31408",
+    latLng: "32.10650, -81.19980",
+    /* The assets standing AT this site. The order sheet lists these to be
+       ticked; it never asks anyone to type an asset name. */
+    assets: [{ name: "Depot Bulk", product: "Clear Diesel #2", rental: false }, { name: "Depot Lube", product: "Hydraulic Oil AW-46", rental: true }, { name: "Depot 87", product: "Unleaded 87", rental: false }],
+  },
 ];
 
 /** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site. */

@@ -86,36 +86,38 @@ import {
  */
 
 /**
- * A labelled checkbox in a bordered row.
+ * The three order flags, as one unit.
  *
- * Three of these sit side by side in Schedule Details. They are CHECKBOXES, not
- * switches: each states a property of this one order, and a switch reads as
- * turning a mode on. The row is clickable end to end because a 16px target
- * beside a long label is the wrong hit area.
+ * They are three answers to one question — how this delivery is handled — so
+ * they share a container instead of standing as three separate bordered
+ * fields. Label left, control hard right, hairline between rows: the eye reads
+ * one column of labels and one column of controls, which three boxed
+ * checkboxes could not give.
+ *
+ * Switches, not checkboxes: each one is a setting that takes effect on the
+ * order, and the whole row is the target.
  */
-function CheckRow({
-  id,
-  label,
-  checked,
-  onChange,
+function ToggleRows({
+  rows,
 }: {
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+  rows: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }[];
 }) {
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-center gap-3 rounded-md border border-fp-outline-1 px-3 py-2.5"
-    >
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={(v) => onChange(v === true)}
-      />
-      <span className="text-sm text-foreground">{label}</span>
-    </label>
+    <div className="flex flex-col rounded-md border border-fp-outline-1">
+      {rows.map((r, i) => (
+        <label
+          key={r.id}
+          htmlFor={r.id}
+          className={cn(
+            "flex cursor-pointer items-center justify-between gap-4 px-3 py-2.5",
+            i > 0 && "border-t border-fp-outline-1"
+          )}
+        >
+          <span className="text-sm text-foreground">{r.label}</span>
+          <Switch id={r.id} checked={r.checked} onCheckedChange={r.onChange} />
+        </label>
+      ))}
+    </div>
   );
 }
 
@@ -369,7 +371,7 @@ export function BrokerOrderSheet({
         </div>
       )}
 
-      <SheetSection className="gap-5" title="Customer Details">
+      <SheetSection className="gap-5" title="Basic Details">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer" required>
             <Select value={draft.customer} onValueChange={(v) => set("customer", v)}>
@@ -418,6 +420,40 @@ export function BrokerOrderSheet({
           >
             <Input value={site?.latLng ?? "NA"} readOnly />
           </SheetField>
+          <SheetField label="PO number">
+            <Input
+              value={draft.poNumber}
+              placeholder="Enter PO Number"
+              onChange={(e) => set("poNumber", e.target.value)}
+            />
+          </SheetField>
+          {/* The reference's name for the order-type field. One field, one
+              label — not a second select offering the same values. */}
+          <SheetField label="Listing Type" required>
+            <Select
+              value={draft.orderType}
+              onValueChange={(v) => set("orderType", v as BrokerOrderType)}
+              disabled={isMovement}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Listing Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {LISTING_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SheetField>
+        </div>
+      </SheetSection>
+
+      {/* The people on the order, together. POC and salesperson were split
+          across two places; they answer the same question — who to call. */}
+      <SheetSection className="gap-5" title="POC Details">
+        <div className="grid grid-cols-2 gap-4">
           <SheetField label="POC Name" required>
             <Select
               value={draft.primaryPoc}
@@ -435,8 +471,6 @@ export function BrokerOrderSheet({
               </SelectContent>
             </Select>
           </SheetField>
-          {/* Both follow the person, so they are read-only for the same reason
-              the coordinates are. */}
           <SheetField label="POC Contact">
             <Input value={poc?.phone ?? "—"} readOnly />
           </SheetField>
@@ -518,42 +552,42 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
-        {/* Three independent flags on one order, so three checkboxes — a switch
-            reads as "turn a mode on", and these are properties of this order,
-            not settings. */}
-        <div className="grid grid-cols-2 gap-4">
-          <CheckRow
-            id="urgent"
-            label="Mark as an Urgent Order"
-            checked={draft.urgent}
-            onChange={(v) => set("urgent", v)}
-          />
-          <CheckRow
-            id="signature"
-            label="Get signature on Delivery"
-            checked={draft.signatureOnDelivery}
-            onChange={(v) => set("signatureOnDelivery", v)}
-          />
-          <CheckRow
-            id="recurring"
-            label="Mark as Recurring Order"
-            checked={draft.recurring}
-            onChange={(v) =>
-              setDraft((d) =>
-                d
-                  ? {
-                      ...d,
-                      recurring: v,
-                      // Seed the cadence from the delivery date, which is the
-                      // answer in almost every case; clear it when switched off
-                      // so a stale schedule cannot survive.
-                      recurrenceFrom: v ? (d.recurrenceFrom ?? d.plannedDate) : null,
-                    }
-                  : d
-              )
-            }
-          />
-        </div>
+        <ToggleRows
+          rows={[
+            {
+              id: "urgent",
+              label: "Mark as an Urgent Order",
+              checked: draft.urgent,
+              onChange: (v) => set("urgent", v),
+            },
+            {
+              id: "signature",
+              label: "Get signature on Delivery",
+              checked: draft.signatureOnDelivery,
+              onChange: (v) => set("signatureOnDelivery", v),
+            },
+            {
+              id: "recurring",
+              label: "Mark as Recurring Order",
+              checked: draft.recurring,
+              onChange: (v) =>
+                setDraft((d) =>
+                  d
+                    ? {
+                        ...d,
+                        recurring: v,
+                        // Seed the cadence from the delivery date, which is the
+                        // answer in almost every case; clear it when switched
+                        // off so a stale schedule cannot survive.
+                        recurrenceFrom: v
+                          ? (d.recurrenceFrom ?? d.plannedDate)
+                          : null,
+                      }
+                    : d
+                ),
+            },
+          ]}
+        />
 
         {/* Revealed by the checkbox, because a cadence with nothing recurring is
             a question about nothing. */}
@@ -601,35 +635,6 @@ export function BrokerOrderSheet({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <SheetField label="PO number">
-            <Input
-              value={draft.poNumber}
-              placeholder="Enter PO Number"
-              onChange={(e) => set("poNumber", e.target.value)}
-            />
-          </SheetField>
-          {/* The reference's name for the order-type field. One field, one
-              label — not a second select offering the same values. */}
-          <SheetField label="Listing Type" required>
-            <Select
-              value={draft.orderType}
-              onValueChange={(v) => set("orderType", v as BrokerOrderType)}
-              disabled={isMovement}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Listing Type" />
-              </SelectTrigger>
-              <SelectContent>
-                {LISTING_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SheetField>
-        </div>
       </SheetSection>
 
       {/* §5.20 — movement orders show Asset instead of the product sections, and

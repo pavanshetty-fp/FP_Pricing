@@ -4,9 +4,9 @@ import {
   Check,
   CircleAlert,
   Layers,
-  RefreshCw,
   Mail,
   Plus,
+  Trash2,
   Shield,
   ThumbsDown,
   Truck,
@@ -16,44 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -68,12 +36,16 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { FileUpload } from "@/components/form-layout/FileUpload";
-import { TableCellInput } from "@/components/form-layout";
+import {
+  TableCellCombobox,
+  TableCellInput,
+  TableCellSelect,
+  TableRequiredLabel,
+} from "@/components/form-layout";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { VENDORS, vendorById } from "./vendors";
 import {
-  ALL_ASSET_NAMES,
   BROKER_STATUS_TONE,
   HUBS,
   LISTING_TYPES,
@@ -169,101 +141,6 @@ function FlagRow({
     </div>
   );
 }
-
-/**
- * Add Asset — type a name OR pick a known one, in the same control.
- *
- * A plain "Custom asset 3" row named nothing real; a pure dropdown could not
- * reach an asset the site's list has not caught up with. So it is a combobox:
- * the list filters as you type, and whatever you typed stays available as its
- * own option, so a genuinely new name is one Enter away and never a
- * second-class path.
- */
-function AddAssetPopover({
-  known,
-  onAdd,
-}: {
-  known: string[];
-  onAdd: (name: string, product: string) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
-  const [product, setProduct] = React.useState(PRODUCTS[0]);
-
-  const add = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onAdd(trimmed, product);
-    setQuery("");
-    setOpen(false);
-  };
-
-  const typedIsNew =
-    query.trim().length > 0 &&
-    !known.some((k) => k.toLowerCase() === query.trim().toLowerCase());
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Plus /> Add Asset
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
-        <Command shouldFilter={false}>
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Type or pick an asset name…"
-          />
-          <CommandList>
-            {typedIsNew && (
-              <CommandGroup heading="New asset">
-                <CommandItem value={query} onSelect={() => add(query)}>
-                  <Plus />
-                  Use “{query.trim()}”
-                </CommandItem>
-              </CommandGroup>
-            )}
-            <CommandGroup heading="Known assets">
-              {known
-                .filter((k) =>
-                  k.toLowerCase().includes(query.trim().toLowerCase())
-                )
-                .map((k) => (
-                  <CommandItem key={k} value={k} onSelect={() => add(k)}>
-                    <Truck />
-                    {k}
-                  </CommandItem>
-                ))}
-            </CommandGroup>
-            <CommandEmpty>Type a name to add it.</CommandEmpty>
-          </CommandList>
-        </Command>
-        {/* The product is part of the line, so it is chosen here rather than
-            left for someone to fix in the row afterwards. */}
-        <div className="border-t border-border p-2">
-          <Select value={product} onValueChange={setProduct}>
-            <SelectTrigger className="w-full" aria-label="Product">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCTS.map((x) => (
-                <SelectItem key={x} value={x}>
-                  {x}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** A line and an asset are the same thing when name and product match. */
-const assetKey = (x: { asset?: string; name?: string; product: string }) =>
-  `${x.asset ?? x.name}|${x.product}`;
 
 export interface BrokerOrderDraft {
   customer: string;
@@ -437,110 +314,62 @@ export function BrokerOrderSheet({
     value: BrokerOrderDraft[K]
   ) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
-  /* The assets this site has, plus anything added by hand on this order — a
-     custom line is still an asset, it just is not on the site's list yet. */
-  /* Plain computation, NOT useMemo: this sits after the sheet's early return,
-     where a hook would be called conditionally. The lists are a handful of
-     items, so memoising would buy nothing even if it were legal here. */
+  /* The assets this site has, plus anything already on the order that its list
+     does not carry — a line added by hand is still an asset to offer. */
+  /* One account serves the whole order, so the options are narrowed by every
+     NAMED line's product at once. */
+  const orderProducts = [...new Set(draft.lines.filter((l) => l.asset).map((l) => l.product))];
+  const load = loadOptions(orderProducts, draft.loadTerminal, draft.loadSupplier);
+
   const siteAssets = (() => {
     const listed = site?.assets ?? [];
     const extra = draft.lines
-      .filter((l) => !listed.some((a) => assetKey(a) === assetKey(l)))
+      .filter((l) => l.asset && !listed.some((a) => a.name === l.asset))
       .map((l) => ({ name: l.asset, product: l.product, rental: l.rental ?? false }));
     return [...listed, ...extra];
   })();
 
-  /* One account serves the whole order, so the options are narrowed by every
-     product on it at once. */
-  const orderProducts = [...new Set(draft.lines.map((l) => l.product))];
-  const load = loadOptions(orderProducts, draft.loadTerminal, draft.loadSupplier);
+  /* A blank row is not an asset. The total, the top-off switch and the load
+     order all key off lines that actually name one. */
+  const namedLines = draft.lines.filter((l) => l.asset);
+  const hasAssets = namedLines.length > 0;
+  const allTopOff = hasAssets && namedLines.every((l) => l.topOff);
 
-  const pickedCount = draft.lines.length;
-  const allPicked = siteAssets.length > 0 && pickedCount === siteAssets.length;
-  const somePicked = pickedCount > 0 && !allPicked;
-  const allTopOff = pickedCount > 0 && draft.lines.every((l) => l.topOff);
-
-  const lineFor = (a: { name: string; product: string; rental: boolean }): OrderLine => ({
-    asset: a.name,
-    product: a.product,
-    gal: null,
-    topOff: allTopOff,
-    rental: a.rental,
-  });
-
-  const pickAsset = (
-    a: { name: string; product: string; rental: boolean },
-    on: boolean
-  ) =>
+  const setLine = (i: number, patch: Partial<OrderLine>) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            lines: on
-              ? [...d.lines, lineFor(a)]
-              : d.lines.filter((l) => assetKey(l) !== assetKey(a)),
+            lines: d.lines.map((l, k) => (k === i ? { ...l, ...patch } : l)),
           }
         : d
     );
 
-  const pickAll = (on: boolean) =>
-    setDraft((d) => (d ? { ...d, lines: on ? siteAssets.map(lineFor) : [] } : d));
+  const addBlankLine = () =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: [
+              ...d.lines,
+              { asset: "", product: PRODUCTS[0], gal: null, topOff: false },
+            ],
+          }
+        : d
+    );
 
-  /* Top Off applies to the ORDERED lines only — it is a property of what is
-     being delivered, not of the site's inventory. Turning it on clears the
-     quantities it would contradict. */
+  const removeLine = (i: number) =>
+    setDraft((d) =>
+      d ? { ...d, lines: d.lines.filter((_, k) => k !== i) } : d
+    );
+
+  /* Top off applies to the NAMED lines — a blank row has nothing to fill. */
   const setAllTopOff = (on: boolean) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            /* Switching top-off OFF restores whatever number the row had, so
-               turning it on to check something and off again is not a way to
-               lose the quantities. */
-            lines: d.lines.map((l) => ({ ...l, topOff: on })),
-          }
-        : d
-    );
-
-  const setGal = (a: { name: string; product: string }, gal: number | null) =>
-    setDraft((d) =>
-      d
-        ? {
-            ...d,
-            lines: d.lines.map((l) =>
-              assetKey(l) === assetKey(a) ? { ...l, gal } : l
-            ),
-          }
-        : d
-    );
-
-  /* An asset the site's list does not carry yet — named, never blank, because
-     an anonymous row is a row nobody can act on. */
-  const addAsset = (name: string, product: string) =>
-    setDraft((d) =>
-      d && !d.lines.some((l) => assetKey(l) === `${name}|${product}`)
-        ? {
-            ...d,
-            lines: [...d.lines, { asset: name, product, gal: null, topOff: false }],
-          }
-        : d
-    );
-
-  /* Refresh drops any line the site's list no longer carries — which means it
-     DELETES WORK. It asks first, and only when there is something to lose:
-     confirming a no-op teaches people to dismiss the dialog without reading. */
-  const strayLines = draft.lines.filter(
-    (l) => !(site?.assets ?? []).some((a) => assetKey(a) === assetKey(l))
-  );
-
-  const refreshAssets = () =>
-    setDraft((d) =>
-      d
-        ? {
-            ...d,
-            lines: d.lines.filter((l) =>
-              (site?.assets ?? []).some((a) => assetKey(a) === assetKey(l))
-            ),
+            lines: d.lines.map((l) => (l.asset ? { ...l, topOff: on } : l)),
           }
         : d
     );
@@ -909,173 +738,149 @@ export function BrokerOrderSheet({
       )}
 
       {!isMovement && (
-        <SheetSection
-          className="gap-5"
-          title="Delivery Order"
-          action={
-            <div className="flex items-center gap-1">
-              <AddAssetPopover known={ALL_ASSET_NAMES} onAdd={addAsset} />
-              {/* Icon only — the label is a tooltip and an aria-label, so the
-                  action keeps its name for a screen reader and for anyone who
-                  hovers, without a second word-pair competing with Add Asset. */}
-              {strayLines.length === 0 ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Refresh assets"
-                      onClick={refreshAssets}
-                    >
-                      <RefreshCw />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refresh assets</TooltipContent>
-                </Tooltip>
-              ) : (
-                <AlertDialog>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Refresh assets"
-                        >
-                          <RefreshCw />
-                        </Button>
-                      </AlertDialogTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>Refresh assets</TooltipContent>
-                  </Tooltip>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Remove {strayLines.length}{" "}
-                        {strayLines.length === 1 ? "line" : "lines"} from this
-                        order?
-                      </AlertDialogTitle>
-                      {/* Names them. "Some lines will be removed" makes the
-                          reader guess which, and guessing is how people lose
-                          the one they cared about. */}
-                      <AlertDialogDescription>
-                        Refreshing re-reads the assets at {draft.shipTo}. These
-                        are not on its list and will be dropped:{" "}
-                        {strayLines.map((l) => l.asset).join(", ")}.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={refreshAssets}>
-                        Refresh anyway
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
-          }
-        >
-          {/* The assets are the SITE'S. Without a site there is nothing to
-              list, and asking someone to type an asset name — which is what
-              this section used to do — invents inventory that does not exist. */}
-          {!draft.shipTo ? (
-            <Empty className="rounded-md border border-fp-outline-1 py-8">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Truck />
-                </EmptyMedia>
-                <EmptyDescription>
-                  Please select a customer and ShipTo to view available assets.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <div className="overflow-hidden rounded-md border border-fp-outline-1">
-              <Table>
-                <TableHeader>
-                  <TableRow className="h-10 hover:bg-transparent">
-                    <TableHead className="w-10 px-3">
-                      <Checkbox
-                        checked={allPicked ? true : somePicked ? "indeterminate" : false}
-                        onCheckedChange={(c) => pickAll(c === true)}
-                        aria-label="Select all assets"
-                      />
-                    </TableHead>
-                    <TableHead className="px-0" />
-                    <TableHead className="px-3 text-right text-xs font-medium text-muted-foreground">
-                      Order
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {siteAssets.map((a) => {
-                    const key = assetKey(a);
-                    const line = draft.lines.find((l) => assetKey(l) === key);
-                    const on = Boolean(line);
+        <SheetSection className="gap-5" title="Delivery Order">
+          {/* ALWAYS A TABLE, never an empty-state panel standing in for one. An
+              empty table with its columns showing tells you what an order line
+              is made of and is ready to be typed into; a panel saying "select a
+              customer first" tells you only what you cannot do yet.
+
+              DS editable-table idiom (form-layout/table-cells): fixed layout,
+              Surface-1a header, cells with no chrome of their own, and the Add
+              chip attached to the squared bottom-left corner. */}
+          <div>
+            <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[86px]" />
+                  <col className="w-[34%]" />
+                  <col className="w-[30%]" />
+                  <col />
+                  <col className="w-[52px]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border bg-fp-surface-1a">
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Top off</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Asset</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Product</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-right">
+                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+                    </th>
+                    <th aria-hidden />
+                  </tr>
+                </thead>
+                <tbody>
+                  {draft.lines.map((line, i) => {
+                    const asset = siteAssets.find((a) => a.name === line.asset);
                     return (
-                      <TableRow key={key} className="h-12 hover:bg-transparent">
-                        <TableCell className="px-3">
+                      <tr
+                        key={i}
+                        className="group/row h-11 border-b border-border last:border-b-0"
+                      >
+                        {/* Checked = fill it. Unchecked = type a number. One
+                            control, so a row cannot claim both at once. */}
+                        <td className="px-3">
                           <Checkbox
-                            checked={on}
-                            onCheckedChange={(c) => pickAsset(a, c === true)}
-                            aria-label={`${a.name} – ${a.product}`}
+                            checked={line.topOff}
+                            onCheckedChange={(c) =>
+                              setLine(i, { topOff: c === true })
+                            }
+                            aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
                           />
-                        </TableCell>
-                        <TableCell className="px-0">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Truck className="size-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-sm text-foreground">
-                              {a.name} – {a.product}
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellCombobox
+                            value={line.asset}
+                            options={siteAssets.map((a) => a.name)}
+                            placeholder={
+                              draft.shipTo ? "Select asset" : "Select a ShipTo first"
+                            }
+                            disabled={!draft.shipTo}
+                            creatable
+                            aria-label={`Asset for line ${i + 1}`}
+                            /* Picking a known asset fills its product and its
+                               rental flag — they are facts about the asset, not
+                               a second thing to type. */
+                            onChange={(name) => {
+                              const known = siteAssets.find((a) => a.name === name);
+                              setLine(i, {
+                                asset: name,
+                                product: known?.product ?? line.product,
+                                rental: known?.rental ?? false,
+                              });
+                            }}
+                          />
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={line.product}
+                            options={[...PRODUCTS]}
+                            placeholder="Select product"
+                            aria-label={`Product for line ${i + 1}`}
+                            onChange={(v) => setLine(i, { product: v })}
+                          />
+                          {asset?.rental && (
+                            <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2">
+                              <Badge variant="secondary">Rental</Badge>
                             </span>
-                            {/* Neutral, per the DS's colour governance: nothing
-                                binds a meaning to a hue here yet. */}
-                            {a.rental && (
-                              <Badge variant="secondary" className="shrink-0">
-                                Rental Asset
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        {/* Same borderless cell as the Load Order's selects:
-                            the table draws the grid, so a bordered input inside
-                            a bordered cell is the second border. */}
-                        <TableCell className="relative w-40 p-0">
+                          )}
+                        </td>
+                        <td className="relative p-0">
                           <TableCellInput
                             value={
-                              line?.topOff
-                                ? ""
-                                : line?.gal != null
-                                  ? String(line.gal)
-                                  : ""
+                              line.topOff ? "" : line.gal != null ? String(line.gal) : ""
                             }
-                            placeholder={line?.topOff ? "Top-off" : "0"}
-                            disabled={!on || Boolean(line?.topOff)}
+                            placeholder={line.topOff ? "Top-off" : "0"}
+                            disabled={line.topOff}
                             numeric
                             suffix="gal"
-                            aria-label={`Gallons for ${a.name}`}
+                            aria-label={`Gallons for line ${i + 1}`}
                             onChange={(v) =>
-                              setGal(a, Number(v.replace(/[^0-9]/g, "")) || null)
+                              setLine(i, {
+                                gal: Number(v.replace(/[^0-9]/g, "")) || null,
+                              })
                             }
                           />
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td className="p-0 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Remove line ${i + 1}`}
+                            disabled={draft.lines.length === 1}
+                            className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
+                            onClick={() => removeLine(i)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
-          )}
+            {/* Attached to the table's squared corner — the DS "+ Add more"
+                affordance. It belongs at the END of the rows, because that is
+                where the next row goes. */}
+            <button
+              type="button"
+              onClick={addBlankLine}
+              className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Plus className="size-4" /> Add asset
+            </button>
+          </div>
 
-          {/* Top off is not an asset, so it is not a row in the asset table —
-              it is an instruction about the quantities, and it belongs on the
-              line that reports them.
-
-              "Top off selected": every CHECKED asset is filled rather than
-              given a number. Switch it off and each row takes a quantity
-              again, which is why the entered numbers are kept rather than
-              zeroed. Qty itself is never an input — it is the sum. */}
-          {draft.lines.length > 0 && (
+          {/* Only once a line has an asset on it: a switch that acts on nothing
+              is a control asking to be clicked to no effect. Qty itself is
+              never an input — it is the sum. */}
+          {hasAssets && (
             <div className="flex flex-wrap items-center justify-between gap-4">
               <label
                 htmlFor="topoff-selected"
@@ -1105,7 +910,7 @@ export function BrokerOrderSheet({
           repeated here either; the Delivery Order above already is it. */}
       {!isMovement && (
         <SheetSection className="gap-5" title="Load Order">
-          {draft.lines.length === 0 ? (
+          {!hasAssets ? (
             <Empty className="rounded-md border border-fp-outline-1 py-8">
               <EmptyHeader>
                 <EmptyMedia variant="icon">

@@ -7,6 +7,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 /*
   Editable table cells — Figma "Input / Dropdown Tables Layout"
@@ -157,5 +170,107 @@ export function TableCellInput({
         <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span>
       )}
     </label>
+  );
+}
+
+export interface TableCellComboboxProps {
+  value: string;
+  options: string[];
+  placeholder?: string;
+  disabled?: boolean;
+  /** Allow a value that is not in `options`, offered as its own item. */
+  creatable?: boolean;
+  onChange: (v: string) => void;
+  "aria-label"?: string;
+}
+
+/**
+ * A cell you can TYPE INTO or PICK FROM — same borderless idiom as the others.
+ *
+ * A plain select cannot reach a value the list has not caught up with; a plain
+ * input cannot attach to a real record. `creatable` keeps whatever was typed
+ * available as its own option, so a new name is one Enter away rather than a
+ * second-class path.
+ */
+export function TableCellCombobox({
+  value,
+  options,
+  placeholder = "Select",
+  disabled,
+  creatable,
+  onChange,
+  "aria-label": ariaLabel,
+}: TableCellComboboxProps) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+
+  const matches = options.filter((o) =>
+    o.toLowerCase().includes(query.trim().toLowerCase())
+  );
+  const typedIsNew =
+    Boolean(creatable) &&
+    query.trim().length > 0 &&
+    !options.some((o) => o.toLowerCase() === query.trim().toLowerCase());
+
+  const choose = (v: string) => {
+    onChange(v);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={cn(
+            "absolute inset-0 flex items-center justify-between gap-2 px-3 text-left transition-colors outline-none",
+            "hover:bg-accent focus-visible:bg-fp-surface-1a focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+            disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
+          )}
+        >
+          <span
+            className={cn(
+              "truncate text-sm",
+              value ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            {value || placeholder}
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder={creatable ? "Type or pick…" : "Search…"}
+          />
+          <CommandList>
+            {typedIsNew && (
+              <CommandGroup heading="New">
+                <CommandItem value={query} onSelect={() => choose(query.trim())}>
+                  Use “{query.trim()}”
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {matches.length > 0 && (
+              <CommandGroup>
+                {matches.map((o) => (
+                  <CommandItem key={o} value={o} onSelect={() => choose(o)}>
+                    {o}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            <CommandEmpty>
+              {creatable ? "Type a name to add it." : "No matches."}
+            </CommandEmpty>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

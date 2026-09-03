@@ -397,7 +397,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     urgent: o.urgent,
     signatureOnDelivery: o.signatureOnDelivery,
     // Copied, not shared — editing a line must not mutate the row behind the sheet.
-    lines: o.lines.map((l) => ({ ...l, selected: l.topOff })),
+    lines: o.lines.map((l) => ({ ...l })),
     status: o.status,
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
@@ -504,22 +504,12 @@ export function BrokerOrderSheet({
   shipTos,
 }: BrokerOrderSheetProps) {
   const [draft, setDraft] = React.useState<BrokerOrderDraft | null>(null);
-  /**
-   * "Top off selected" is a MODE, not a bulk action. While it is on, the
-   * selected lines are filled and the rest still take a typed quantity — so
-   * turning it on must not tick every box, and ticking a box while it is on
-   * must take effect immediately.
-   */
-  const [topOffMode, setTopOffMode] = React.useState(false);
   const [customOpen, setCustomOpen] = React.useState(false);
   const creating = mode === "create";
 
   React.useEffect(() => {
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
-    // An order that already carries top-off lines opens in the mode, with those
-    // lines selected — otherwise the switch would read "off" over filled rows.
-    setTopOffMode(Boolean(order?.lines.some((l) => l.topOff)));
   }, [open, creating, order]);
 
   if (!draft || (!creating && !order)) return null;
@@ -572,14 +562,10 @@ export function BrokerOrderSheet({
     return [...listed, ...extra];
   })();
 
-  /* A blank row is not an asset. The total, the top-off switch and the load
-     order all key off lines that actually name one. */
+  /* A blank row is not an asset. The total and the load order both key off
+     lines that actually name one. */
   const namedLines = draft.lines.filter((l) => l.asset);
   const hasAssets = namedLines.length > 0;
-
-  /** `topOff` is DERIVED: the mode, and this line selected. */
-  const withTopOff = (lines: OrderLine[], mode: boolean) =>
-    lines.map((l) => ({ ...l, topOff: mode && Boolean(l.selected) }));
 
   const setLine = (i: number, patch: Partial<OrderLine>) =>
     setDraft((d) =>
@@ -598,7 +584,7 @@ export function BrokerOrderSheet({
             ...d,
             lines: [
               ...d.lines,
-              { asset: "", product: PRODUCTS[0], gal: null, topOff: false, selected: false },
+              { asset: "", product: PRODUCTS[0], gal: null, topOff: false },
             ],
           }
         : d
@@ -609,23 +595,20 @@ export function BrokerOrderSheet({
       d ? { ...d, lines: d.lines.filter((_, k) => k !== i) } : d
     );
 
-  /* The switch changes the MODE. It re-derives every line from what is already
-     selected; it does not select anything on the reader's behalf. */
-  const setTopOffModeAndLines = (on: boolean) => {
-    setTopOffMode(on);
-    setDraft((d) => (d ? { ...d, lines: withTopOff(d.lines, on) } : d));
-  };
-
-  /* Ticking a row changes the SELECTION, and — while the mode is on — that
-     line's top-off with it, so the row reacts to its own checkbox. */
-  const setSelected = (i: number, on: boolean) =>
+  /* TOP OFF IS THE CHECKBOX, not a mode over a selection. A switch above the
+     table meant the same tick could mean two different things depending on
+     something else's state; as a column it means one thing, always: fill this
+     asset, so its quantity is not a number anyone types. */
+  const setTopOff = (i: number, on: boolean) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            lines: d.lines.map((l, k) =>
-              k === i ? { ...l, selected: on, topOff: topOffMode && on } : l
-            ),
+            /* The typed number is KEPT while the box is ticked, so unticking
+               hands it back rather than making someone retype what a misclick
+               threw away. `totalGal` ignores it, so it cannot leak into the
+               sum. */
+            lines: d.lines.map((l, k) => (k === i ? { ...l, topOff: on } : l)),
           }
         : d
     );
@@ -1121,7 +1104,7 @@ export function BrokerOrderSheet({
             <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col className="w-[86px]" />
+                  <col className="w-[92px]" />
                   <col className="w-[34%]" />
                   <col className="w-[30%]" />
                   <col />
@@ -1129,9 +1112,13 @@ export function BrokerOrderSheet({
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">
-                    {/* No label: it is a selection column, and what the
-                        selection is FOR is stated by the switch below. */}
-                    <th aria-hidden />
+                    {/* THE COLUMN IS NAMED, so the tick means one thing on its
+                        own. Unlabelled, it needed a switch below the table to
+                        say what it was for, and the same tick then meant
+                        different things depending on that switch. */}
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Top off</TableRequiredLabel>
+                    </th>
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Asset</TableRequiredLabel>
                     </th>
@@ -1154,15 +1141,11 @@ export function BrokerOrderSheet({
                       >
                         {/* Checked = fill it. Unchecked = type a number. One
                             control, so a row cannot claim both at once. */}
-                        {/* SELECTION. What it does depends on the switch below
-                            the table: while "Top off selected" is on, the
-                            selected lines are filled and the rest keep taking a
-                            number. */}
                         <td className="px-3">
                           <Checkbox
-                            checked={Boolean(line.selected)}
-                            onCheckedChange={(c) => setSelected(i, c === true)}
-                            aria-label={`Select ${line.asset || `line ${i + 1}`}`}
+                            checked={Boolean(line.topOff)}
+                            onCheckedChange={(c) => setTopOff(i, c === true)}
+                            aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
                           />
                         </td>
                         <td className="relative p-0">
@@ -1238,6 +1221,33 @@ export function BrokerOrderSheet({
                     );
                   })}
                 </tbody>
+                {/* THE TOTAL IS A ROW OF THE TABLE, not a caption under it. A
+                    sum lives in the column it sums, on the same grid as the
+                    numbers above it — outside the table it had to be aligned by
+                    hand and still read as a note about the whole thing.
+
+                    Only once a line names an asset: a total over nothing is a
+                    row that says "0 gal" about an order that has not started.
+                    "Top-off" when every line is filled, because there is no
+                    number to add up. */}
+                {hasAssets && (
+                  <tfoot>
+                    <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                      <td
+                        colSpan={3}
+                        className="px-3 text-right text-sm text-muted-foreground"
+                      >
+                        Total
+                      </td>
+                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                        {isAllTopOff(draft.lines)
+                          ? "Top-off"
+                          : `${gal.toLocaleString()} gal`}
+                      </td>
+                      <td aria-hidden />
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
             {/* Attached to the table's squared corner — the DS "+ Add more"
@@ -1252,43 +1262,6 @@ export function BrokerOrderSheet({
             </button>
           </div>
 
-          {/* Only once a line has an asset on it: a switch that acts on nothing
-              is a control asking to be clicked to no effect. Qty itself is
-              never an input — it is the sum. */}
-          {/* THE TOTAL SITS IN THE QTY COLUMN, on the table's own grid rather
-              than pushed to the far right of the section. A sum belongs under
-              the numbers it sums; floating past the column's edge it read as a
-              caption about the whole table instead of the bottom of that one
-              column. Same template as the colgroup above, so the two stay in
-              step. */}
-          {hasAssets && (
-            <div
-              className="grid items-center gap-4"
-              style={{ gridTemplateColumns: "86px 34% 30% 1fr 52px" }}
-            >
-              <label
-                htmlFor="topoff-selected"
-                className="col-span-3 flex cursor-pointer items-center gap-2.5"
-              >
-                <Switch
-                  id="topoff-selected"
-                  checked={topOffMode}
-                  onCheckedChange={setTopOffModeAndLines}
-                />
-                <span className="text-sm text-foreground">Top off selected</span>
-              </label>
-              {/* `justify-self-end` + nowrap: the RIGHT edge stays locked to the
-                  column's numbers, and on a narrow sheet the label spills left
-                  out of the track rather than wrapping "600" away from "gal". */}
-              <span className="flex items-baseline gap-2 justify-self-end px-3 text-sm whitespace-nowrap">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-medium tabular-nums text-foreground">
-                  {isAllTopOff(draft.lines) ? "Top-off" : `${gal.toLocaleString()} gal`}
-                </span>
-              </span>
-              <span aria-hidden />
-            </div>
-          )}
         </SheetSection>
       )}
 

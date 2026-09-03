@@ -99,16 +99,14 @@ export interface OrderLine {
   product: string;
   /** Requested gallons, or `null` when the line is a top-off. */
   gal: number | null;
+  /**
+   * Fill this asset rather than deliver a stated quantity — the "Top off"
+   * column in the Delivery Order table. It is the checkbox itself, not a mode
+   * over a selection: one tick, one meaning, whatever else is on screen.
+   */
   topOff: boolean;
   /** The asset belongs to the broker, not the customer — badged on the row. */
   rental?: boolean;
-  /**
-   * Ticked in the Delivery Order table. SELECTION, not top-off: while the
-   * "Top off selected" switch is on, the selected lines are the ones filled,
-   * and the rest still take a typed quantity. Selecting and topping off are
-   * two decisions, so they are two controls.
-   */
-  selected?: boolean;
 }
 
 /**
@@ -284,7 +282,11 @@ export interface BrokerOrder {
 /** Sum of the requested gallons. Top-off lines contribute nothing — they have no
  *  requested volume, and counting them as 0 is the honest arithmetic. */
 export function totalGal(lines: OrderLine[]): number {
-  return lines.reduce((sum, l) => sum + (l.gal ?? 0), 0);
+  /* A topped-off line contributes NO stated gallons — how much goes in is
+     decided at the tank. It may still carry the number someone typed before
+     ticking the box, which is kept so unticking hands it back; summing that
+     would put gallons into a total nobody promised. */
+  return lines.reduce((sum, l) => sum + (l.topOff ? 0 : (l.gal ?? 0)), 0);
 }
 
 /** True when every line is a top-off, so the Qty cell reads "Top-off", not "0". */

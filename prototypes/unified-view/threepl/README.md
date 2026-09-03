@@ -225,10 +225,20 @@ another.
    order does not care which day it was planned for. A stage-scoped board that
    spans days may be the truer reading. Flagging rather than changing, because it
    would make 3PL the one list that behaves differently.
-3. **Create is a plain button, not the three-way dropdown** (§5.20: Delivery
-   Order / Asset Delivery / Asset Pickup). The CTA creates a delivery order only.
-   A movement order's asset is fixed at creation, so its create flow is a form of
-   its own rather than a variant of this one.
+3. ~~**Create is a plain button, not the three-way dropdown**~~ **Built.** The CTA
+   is a menu — Delivery Order / Asset Delivery / Asset Pickup (§5.20) — because
+   the three take DIFFERENT forms, so the choice comes before the form rather
+   than as a Type field inside it. Each option carries a detail line: "Asset
+   Delivery" and "Asset Pickup" are one word apart and opposite.
+
+   `AssetMovementSheet` is ONE sheet with a `direction`, not two files. The
+   direction derives three things rather than each being written twice: which
+   location section comes first (a route is read from where it starts), where
+   the assets come from (a delivery sends what is in the yard, a pickup collects
+   what is on rent at the ship-to), and what the gate says. It is not the
+   Delivery Order sheet because a movement carries exactly ONE asset and no
+   quantity — the lines table, the Load Order and the Delivery Partner section
+   would all be empty on every one.
 4. **No drag-and-drop between lanes.** The DS Kanban has none, and a stage change
    here is a workflow action with side effects (emails to vendors, an accounting
    push) rather than a reorder. Dragging a card from Assigned to Accepted would

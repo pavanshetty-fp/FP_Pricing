@@ -27,6 +27,10 @@ import {
 } from "../data";
 import { BrokerBoard, type BoardLane } from "./BrokerBoard";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
+import {
+  AssetMovementSheet,
+  type AssetMovementDraft,
+} from "./AssetMovementSheet";
 import { VENDORS, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
@@ -41,6 +45,7 @@ import {
   PRODUCTS,
   SALESPEOPLE,
   SHIP_TO_SITES,
+  HUBS,
   ORDER_TYPE_FILTERS,
   siteAddress,
   isAllTopOff,
@@ -52,7 +57,9 @@ import {
   type BrokerColumnKey,
   type BrokerOrder,
   type BrokerSortState,
+  type MovementDirection,
 } from "./orders";
+import { RENTAL_ASSETS } from "./directory";
 
 /**
  * 3PL Order Dashboard — the broker's main screen.
@@ -158,6 +165,10 @@ export function BrokerOrdersScreen({
   const [rows, setRows] = React.useState<BrokerOrder[]>(BROKER_ORDERS);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+  /* §5.20 — Create means three DIFFERENT records, so the choice is made before
+     a form opens rather than by a Type field inside one. `null` is "no movement
+     sheet open"; the value is which direction it runs. */
+  const [movement, setMovement] = React.useState<MovementDirection | null>(null);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<BrokerSortState | null>(null);
   const [page, setPage] = React.useState(1);
@@ -474,6 +485,70 @@ export function BrokerOrdersScreen({
     setPage(1);
   };
 
+  /* A MOVEMENT ORDER IS A DIFFERENT RECORD, not a delivery with a flag: it
+     carries exactly one asset, no quantity, and an M prefix that `orders.ts`
+     asserts on. `assertConsistent` fails the build if any of that drifts. */
+  const createMovement = (draft: AssetMovementDraft) => {
+    const when = draft.plannedDate ?? date;
+    const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
+    const nextNo = Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
+    const offset = Math.round(
+      (when.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
+    );
+    const asset = RENTAL_ASSETS.find((a) => a.id === draft.assetId);
+    setRows((prev) => [
+      {
+        id: `bo-mv-${nextNo}`,
+        orderNo: `M-${nextNo}`,
+        kind: "Movement",
+        orderType: "Asset Movement",
+        customer: { title: draft.customer, description: "" },
+        shipTo: draft.shipTo,
+        date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
+        dateKey: dateKeyOf(when),
+        window: { start: "8:00 AM", end: "12:00 PM" },
+        /* Exactly one line, no gallons — there is nothing to deliver, only
+           something to move. */
+        lines: [
+          {
+            asset: asset?.name ?? "",
+            product: draft.product || (asset ? "—" : ""),
+            gal: null,
+            topOff: false,
+            rental: true,
+          },
+        ],
+        status: "Draft",
+        vendorId: null,
+        invitedVendorIds: [],
+        quoteRequested: false,
+        quotes: [],
+        urgent: draft.urgent,
+        signatureOnDelivery: draft.signature,
+        poNumber: draft.poNumber,
+        zip: chosenSite?.zip ?? SHIP_TO_SITES[0].zip,
+        state: chosenSite?.state ?? SHIP_TO_SITES[0].state,
+        createdBy: "Dana Whitfield",
+        tags: draft.tags,
+        loadOrder: null,
+        recurrence: null,
+        hub: HUBS[0],
+        primaryPoc: draft.primaryPoc,
+        salesperson: draft.salesperson,
+        instructions: draft.instructions,
+        blockedReason: null,
+        movement: {
+          direction: draft.direction,
+          yard: draft.yard,
+          tankType: asset?.type ?? draft.tankType,
+          capacityGal: asset?.capacityGal ?? (Number(draft.capacity) || 0),
+        },
+      },
+      ...prev,
+    ]);
+    setPage(1);
+  };
+
   const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
     switch (key) {
       case "order":
@@ -564,7 +639,32 @@ export function BrokerOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create Order"
-        onCreateOrder={() => setCreating(true)}
+        /* The three take DIFFERENT forms — a delivery has lines and a partner,
+           a movement has one asset and a yard — so the choice comes before the
+           form, not as a Type field inside it. Each carries a detail line:
+           "Asset Delivery" and "Asset Pickup" are one word apart and opposite. */
+        createMenu={[
+          {
+            key: "delivery-order",
+            label: "Delivery Order",
+            detail: "Standard fuel delivery to a customer site",
+          },
+          {
+            key: "asset-delivery",
+            label: "Asset Delivery",
+            detail: "Move a tank or asset to a customer site",
+          },
+          {
+            key: "asset-pickup",
+            label: "Asset Pickup",
+            detail: "Retrieve a tank or asset from a customer site",
+          },
+        ]}
+        onCreateSelect={(key) => {
+          if (key === "delivery-order") setCreating(true);
+          else if (key === "asset-delivery") setMovement("Asset Delivery");
+          else setMovement("Asset Pickup");
+        }}
       />
 
       <div className="mt-4 shrink-0">
@@ -745,6 +845,21 @@ export function BrokerOrdersScreen({
         customers={customers}
         shipTos={shipTos}
       />
+
+      {/* ONE SHEET, TWO DIRECTIONS — see `AssetMovementSheet`. Mounted only
+          while open so it starts from a clean draft each time. */}
+      {movement && (
+        <AssetMovementSheet
+          direction={movement}
+          open
+          onOpenChange={(o) => !o && setMovement(null)}
+          onCreate={(draft) => {
+            createMovement(draft);
+            setMovement(null);
+          }}
+          customers={customers}
+        />
+      )}
 
       {/* The board is not a paged list, so a "Showing 1–25 of 54" footer under it
           would be describing something that isn't on screen. */}

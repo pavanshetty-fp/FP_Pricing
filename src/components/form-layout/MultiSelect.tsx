@@ -26,12 +26,23 @@ function InitialBadge({ label }: { label: string }) {
 
 /*
   Token multi-select / combobox — "Dropdown … Add Margins" (Figma 27593:15012).
-  Empty state shows a "+ Add Margins" affordance; chosen options render as
-  removable token chips (leading initial badge + label + ×). Re-opening the
-  popover toggles membership.
+  Empty state shows an add affordance; chosen options render as removable token
+  chips (leading initial badge + label + ×). Re-opening the popover toggles
+  membership.
+
+  TWO MODES, so one component serves the showcase and a real form:
+
+  • UNCONTROLLED (no `value`) — the original demo: its own state over its own
+    six options. Every existing caller lands here unchanged.
+  • CONTROLLED (`value` + `onChange`) — the caller owns the selection and
+    supplies the options, because WHAT can be chosen is a property of the data,
+    not of the control. Same split the Group By menu and the bulk bar make.
+
+  The labels follow: `addLabel` and `searchPlaceholder` said "Margins" because
+  the demo was about margins. A form picking POCs should not.
 */
 
-const OPTIONS = [
+const DEMO_OPTIONS = [
   "Text 1",
   "Text 2",
   "Text 3",
@@ -40,21 +51,44 @@ const OPTIONS = [
   "Margin C",
 ];
 
+export interface MultiSelectProps {
+  /** Uncontrolled starting selection. Ignored when `value` is supplied. */
+  defaultSelected?: string[];
+  /** Choosable options. Defaults to the showcase's own list. */
+  options?: readonly string[];
+  /** Supply with `onChange` to control the selection. */
+  value?: string[];
+  onChange?: (next: string[]) => void;
+  /** The add affordance's label, shown when nothing is chosen. */
+  addLabel?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+}
+
 export function MultiSelect({
   defaultSelected = [],
-}: {
-  defaultSelected?: string[];
-}) {
+  options = DEMO_OPTIONS,
+  value,
+  onChange,
+  addLabel = "Add Margins",
+  searchPlaceholder = "Search margins...",
+  emptyText = "No options found.",
+}: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState<string[]>(defaultSelected);
+  const [own, setOwn] = React.useState<string[]>(defaultSelected);
+  const controlled = value !== undefined;
+  const selected = controlled ? value : own;
+  const commit = (next: string[]) => {
+    if (!controlled) setOwn(next);
+    onChange?.(next);
+  };
 
   const toggle = (opt: string) =>
-    setSelected((prev) =>
-      prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
+    commit(
+      selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]
     );
 
-  const remove = (opt: string) =>
-    setSelected((prev) => prev.filter((o) => o !== opt));
+  const remove = (opt: string) => commit(selected.filter((o) => o !== opt));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -91,7 +125,7 @@ export function MultiSelect({
           ))}
           <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
             <Plus className="size-4" />
-            Add Margins
+            {addLabel}
           </span>
         </button>
       </PopoverTrigger>
@@ -100,11 +134,11 @@ export function MultiSelect({
         className="w-(--radix-popover-trigger-width) p-0"
       >
         <Command>
-          <CommandInput placeholder="Search margins..." />
+          <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>No options found.</CommandEmpty>
+            <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {OPTIONS.map((opt) => (
+              {options.map((opt) => (
                 <CommandItem
                   key={opt}
                   value={opt}

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, MoreHorizontal, Plus, Upload } from "lucide-react";
+import { Check, ChevronDown, MoreHorizontal, Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,6 +107,17 @@ export interface FuelOrdersViewBarProps {
   onDelete: (id: string) => void;
   /** Primary CTA — rendered at the right end of this row. */
   onCreateOrder?: () => void;
+  /**
+   * Turns the CTA into a menu. A list whose Create means several DIFFERENT
+   * records — a delivery, an asset out, an asset back — cannot express that in
+   * one button: the three take different forms, so the choice has to be made
+   * before the form opens rather than by a Type field inside it.
+   *
+   * Each option carries a `detail` because the names alone do not separate
+   * them: "Asset Delivery" and "Asset Pickup" are one word apart and opposite.
+   */
+  createMenu?: { key: string; label: string; detail: string }[];
+  onCreateSelect?: (key: string) => void;
   /** CTA label. Defaults to Fuel Orders' own verb. */
   ctaLabel?: string;
   /** Export — sits immediately left of the CTA. */
@@ -142,6 +153,8 @@ export function FuelOrdersViewBar({
   onUpdate,
   onDelete,
   onCreateOrder,
+  createMenu,
+  onCreateSelect,
   onExport,
   ctaLabel = "Create Order",
 }: FuelOrdersViewBarProps) {
@@ -266,15 +279,39 @@ export function FuelOrdersViewBar({
             table — should not carry a CTA that does nothing when pressed. The
             `ml-auto` moves to the Export button below so the right cluster
             still sits right. */}
-        {onCreateOrder && (
-          <Button
-            size="xs"
-            className="mb-2.5 ml-auto self-end rounded-[4px]"
-            onClick={onCreateOrder}
-          >
-            <Plus />
-            {ctaLabel}
-          </Button>
+        {createMenu && createMenu.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="xs" className="mb-2.5 ml-auto self-end rounded-[4px]">
+                <Plus />
+                {ctaLabel}
+                <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              {createMenu.map((o) => (
+                <DropdownMenuItem
+                  key={o.key}
+                  className="flex-col items-start gap-0.5 py-2"
+                  onSelect={() => onCreateSelect?.(o.key)}
+                >
+                  <span className="text-sm font-medium text-foreground">{o.label}</span>
+                  <span className="text-xs text-muted-foreground">{o.detail}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          onCreateOrder && (
+            <Button
+              size="xs"
+              className="mb-2.5 ml-auto self-end rounded-[4px]"
+              onClick={onCreateOrder}
+            >
+              <Plus />
+              {ctaLabel}
+            </Button>
+          )
         )}
 
         {/*
@@ -297,7 +334,7 @@ export function FuelOrdersViewBar({
               className={cn(
                 "mr-1 mb-2.5 self-end",
                 // Takes over pushing the right cluster right when there is no CTA.
-                onCreateOrder ? "ml-1.5" : "ml-auto"
+                onCreateOrder || createMenu ? "ml-1.5" : "ml-auto"
               )}
             >
               <Upload />

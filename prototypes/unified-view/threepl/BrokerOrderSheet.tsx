@@ -39,13 +39,7 @@ import {
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -174,18 +168,13 @@ function CustomRecurrenceDialog({
                 className="w-24 tabular-nums"
                 onChange={(e) => setEvery(Math.max(1, Number(e.target.value) || 1))}
               />
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger className="flex-1" aria-label="Repeat unit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {REPEAT_UNITS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                className="flex-1"
+                value={unit}
+                onValueChange={setUnit}
+                options={[...REPEAT_UNITS]}
+                aria-label="Repeat unit"
+              />
             </div>
           </SheetField>
 
@@ -805,32 +794,28 @@ export function BrokerOrderSheet({
         <div className="flex flex-col gap-1">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer" required>
-            <Select value={draft.customer} onValueChange={(v) => set("customer", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              className="w-full"
+              value={draft.customer}
+              onValueChange={(v) => set("customer", v)}
+              options={customers}
+              placeholder="Select customer"
+              searchPlaceholder="Search customers…"
+              emptyText="No customer found."
+            />
           </SheetField>
           <SheetField label="ShipTo" required>
-            <Select value={draft.shipTo} onValueChange={(v) => set("shipTo", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select ShipTo" />
-              </SelectTrigger>
-              <SelectContent>
-                {shipTos.map((x) => (
-                  <SelectItem key={x} value={x}>
-                    {x}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* A customer can have anywhere from ten to a hundred ship-tos, so
+                this is the field that most needs typing rather than scrolling. */}
+            <Combobox
+              className="w-full"
+              value={draft.shipTo}
+              onValueChange={(v) => set("shipTo", v)}
+              options={shipTos}
+              placeholder="Select ShipTo"
+              searchPlaceholder="Search ship-tos…"
+              emptyText="No ship-to found."
+            />
           </SheetField>
         </div>
 
@@ -874,22 +859,15 @@ export function BrokerOrderSheet({
           {/* Admin-configured in the product — the values below are the ones
               the reference shows; the final list is still to come. */}
           <SheetField label="Listing Type" required>
-            <Select
+            <Combobox
+              className="w-full"
               value={draft.orderType}
               onValueChange={(v) => set("orderType", v as BrokerOrderType)}
               disabled={isMovement}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Listing Type" />
-              </SelectTrigger>
-              <SelectContent>
-                {LISTING_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={[...LISTING_TYPES]}
+              placeholder="Select Listing Type"
+              searchPlaceholder="Search types…"
+            />
           </SheetField>
         </div>
       </SheetSection>
@@ -902,21 +880,15 @@ export function BrokerOrderSheet({
             rows with the contact detached from whose it is. */}
         <div className="grid grid-cols-3 gap-4">
           <SheetField label="POC Name" required>
-            <Select
+            <Combobox
+              className="w-full"
               value={draft.primaryPoc}
               onValueChange={(v) => set("primaryPoc", v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select POC Name" />
-              </SelectTrigger>
-              <SelectContent>
-                {POCS.map((x) => (
-                  <SelectItem key={x} value={x}>
-                    {x}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={[...POCS]}
+              placeholder="Select POC Name"
+              searchPlaceholder="Search contacts…"
+              emptyText="No contact found."
+            />
           </SheetField>
           <SheetField label="POC Contact">
             <Input value={poc?.phone ?? "—"} readOnly />
@@ -929,21 +901,15 @@ export function BrokerOrderSheet({
         <div className="grid grid-cols-2 gap-4">
           {/* Optional: an order can be raised before anyone owns it. */}
           <SheetField label="Sales Person">
-            <Select
+            <Combobox
+              className="w-full"
               value={draft.salesperson}
               onValueChange={(v) => set("salesperson", v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Sales Person" />
-              </SelectTrigger>
-              <SelectContent>
-                {SALESPEOPLE.map((x) => (
-                  <SelectItem key={x} value={x}>
-                    {x}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={[...SALESPEOPLE]}
+              placeholder="Select Sales Person"
+              searchPlaceholder="Search people…"
+              emptyText="No one found."
+            />
           </SheetField>
           <SheetField label="Sales Contact">
             <Input value={SALES_CONTACTS[draft.salesperson] ?? "—"} readOnly />
@@ -981,25 +947,21 @@ export function BrokerOrderSheet({
               — or a backwards pair — is unrepresentable rather than merely
               discouraged. The stored shape stays {start, end}. */}
           <SheetField label="Delivery Window" required>
-            <Select
+            <Combobox
               value={`${draft.windowStart}|${draft.windowEnd}`}
               onValueChange={(v) => {
                 const [start, end] = v.split("|");
                 set("windowStart", start);
                 set("windowEnd", end);
               }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Delivery Window" />
-              </SelectTrigger>
-              <SelectContent>
-                {WINDOWS.map((w) => (
-                  <SelectItem key={`${w.start}|${w.end}`} value={`${w.start}|${w.end}`}>
-                    {formatWindow(w)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              className="w-full"
+              options={WINDOWS.map((w) => ({
+                value: `${w.start}|${w.end}`,
+                label: formatWindow(w),
+              }))}
+              placeholder="Select Delivery Window"
+              searchPlaceholder="Search windows…"
+            />
           </SheetField>
         </div>
 
@@ -1009,24 +971,17 @@ export function BrokerOrderSheet({
         {draft.recurring && (
           <div className="grid grid-cols-2 gap-4">
             <SheetField label="Frequency" required>
-              <Select
+              <Combobox
+                className="w-full"
                 value={draft.recurrenceFrequency}
                 onValueChange={(v) => {
                   set("recurrenceFrequency", v);
                   if (v === "Custom") setCustomOpen(true);
                 }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RECURRENCE_FREQUENCIES.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[...RECURRENCE_FREQUENCIES]}
+                placeholder="Select frequency"
+                searchPlaceholder="Search cadences…"
+              />
             </SheetField>
             {draft.recurrenceFrequency === "Custom" && draft.customRecurrence && (
               <SheetField label="Custom rule">

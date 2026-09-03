@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { MultiSelectList } from "@/components/ui/multi-select-list";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
@@ -255,21 +249,13 @@ export function CustomerSheet({
 
       <SheetSection className="gap-5" title="Billing & Contact">
         <SheetField label="Billing Terms">
-          <Select
+          <Combobox
+            className="w-full"
             value={draft.billingTerms}
             onValueChange={(v) => set("billingTerms", v)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select terms" />
-            </SelectTrigger>
-            <SelectContent>
-              {BILLING_TERMS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={BILLING_TERMS}
+            placeholder="Select terms"
+          />
         </SheetField>
 
         <SheetField label="Contact Name">

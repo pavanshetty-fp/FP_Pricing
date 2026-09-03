@@ -2,13 +2,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { MultiSelectList } from "@/components/ui/multi-select-list";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
@@ -181,51 +175,33 @@ export function AssetSheet({
       <SheetSection className="gap-5" title="Placement">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Hub">
-            <Select value={draft.hub} onValueChange={(v) => set("hub", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select hub" />
-              </SelectTrigger>
-              <SelectContent>
-                {HUBS.map((h) => (
-                  <SelectItem key={h} value={h}>
-                    {h}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              className="w-full"
+              value={draft.hub}
+              onValueChange={(v) => set("hub", v)}
+              options={HUBS}
+              placeholder="Select hub"
+            />
           </SheetField>
           <SheetField label="LOS">
-            <Select value={draft.los} onValueChange={(v) => set("los", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select line of service" />
-              </SelectTrigger>
-              <SelectContent>
-                {ASSET_LOS.map((l) => (
-                  <SelectItem key={l} value={l}>
-                    {l}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              className="w-full"
+              value={draft.los}
+              onValueChange={(v) => set("los", v)}
+              options={ASSET_LOS}
+              placeholder="Select line of service"
+            />
           </SheetField>
         </div>
 
         <SheetField label="Status">
-          <Select
+          <Combobox
+            className="w-full"
             value={draft.status}
             onValueChange={(v) => set("status", v as AssetStatus)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {ASSET_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={ASSET_STATUSES}
+            placeholder="Select status"
+          />
         </SheetField>
       </SheetSection>
 

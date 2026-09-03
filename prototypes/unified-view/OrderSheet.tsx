@@ -13,13 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { ProductTable } from "./ProductTable";
@@ -236,44 +230,30 @@ export function OrderSheet({
             {/* Customer and Ship-To sit side by side. */}
             <div className="grid grid-cols-2 gap-4">
               <SheetField label="Customer">
-                <Select
+                {/* Placeholders matter only in create mode — on an existing
+                    order these always carry a value. Without them the two
+                    triggers render completely blank while every other control
+                    shows an empty state ("Not planned", "— Unassigned", "Add
+                    tags"), so they read as broken. */}
+                <Combobox
+                  className="w-full"
                   value={draft.customer}
                   onValueChange={(v) => set("customer", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    {/* Placeholders matter only in create mode — on an existing
-                        order these always carry a value. Without them the two
-                        triggers render completely blank while every other
-                        control shows an empty state ("Not planned",
-                        "— Unassigned", "Add tags"), so they read as broken. */}
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={customers}
+                  placeholder="Select customer"
+                  searchPlaceholder="Search customers…"
+                  emptyText="No customer found."
+                />
               </SheetField>
 
               <SheetField label="Ship To">
-                <Select
+                <Combobox
+                  className="w-full"
                   value={draft.shipTo}
                   onValueChange={(v) => set("shipTo", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select ship-to" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shipTos.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={shipTos}
+                  placeholder="Select ship-to"
+                />
               </SheetField>
             </div>
 
@@ -281,22 +261,19 @@ export function OrderSheet({
               label="Driver Selection"
               description="Clearing the driver leaves the order unassigned."
             >
-              <Select
+              <Combobox
+                className="w-full"
                 value={draft.driver ?? "none"}
                 onValueChange={(v) => set("driver", v === "none" ? null : v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Unassigned</SelectItem>
-                  {DRIVERS.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                /* "Unassigned" is a real choice, not the absence of one, so it
+                   is an option in the list rather than an empty field. */
+                options={[
+                  { value: "none", label: "— Unassigned" },
+                  ...DRIVERS,
+                ]}
+                searchPlaceholder="Search drivers…"
+                emptyText="No driver found."
+              />
             </SheetField>
 
           </SheetSection>
@@ -372,37 +349,25 @@ export function OrderSheet({
 
           <SheetSection className="gap-5" title="Delivery Details">
             <SheetField label="Site">
-              <Select value={draft.site} onValueChange={(v) => set("site", v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select site" />
-                </SelectTrigger>
-                <SelectContent>
-                  {shipTos.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                className="w-full"
+                value={draft.site}
+                onValueChange={(v) => set("site", v)}
+                options={shipTos}
+                placeholder="Select site"
+              />
             </SheetField>
 
             <SheetField label="PoC at Delivery">
-              <Select
+              <Combobox
+                className="w-full"
                 value={draft.poc || "none"}
                 onValueChange={(v) => set("poc", v === "none" ? "" : v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select PoC" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Not set</SelectItem>
-                  {POC_OPTIONS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[{ value: "none", label: "Not set" }, ...POC_OPTIONS]}
+                placeholder="Select PoC"
+                searchPlaceholder="Search contacts…"
+                emptyText="No contact found."
+              />
             </SheetField>
 
             <SheetField label="Note">

@@ -2,12 +2,6 @@ import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -63,23 +57,37 @@ export interface TableCellSelectProps {
   description?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** Option count at or above which the search field appears. */
+  searchThreshold?: number;
   onChange: (v: string) => void;
   "aria-label"?: string;
 }
 
-/** A cell that opens a list and writes the choice back. No visible control. */
+/**
+ * A cell that opens a list and writes the choice back. No visible control.
+ *
+ * The list SEARCHES once it is long enough to need it (`searchThreshold`, 8) —
+ * a terminal or a partner column reaches that immediately, and scrolling a
+ * table cell's popover for a name you already know is the slowest way to
+ * answer. Below the threshold the search field is chrome standing between the
+ * click and the answer, so it is not drawn.
+ */
 export function TableCellSelect({
   value,
   options,
   description,
   placeholder = "Select",
   disabled,
+  searchThreshold = 8,
   onChange,
   "aria-label": ariaLabel,
 }: TableCellSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const showSearch = options.length >= searchThreshold;
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild disabled={disabled}>
         <button
           type="button"
           aria-label={ariaLabel}
@@ -106,19 +114,30 @@ export function TableCellSelect({
           </span>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52">
-        {options.length === 0 ? (
-          <DropdownMenuItem disabled>No options</DropdownMenuItem>
-        ) : (
-          options.map((opt) => (
-            <DropdownMenuItem key={opt} onSelect={() => onChange(opt)}>
-              {opt}
-            </DropdownMenuItem>
-          ))
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-0">
+        <Command>
+          {showSearch && <CommandInput placeholder="Search…" />}
+          <CommandList>
+            <CommandEmpty>No options.</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  onSelect={() => {
+                    onChange(opt);
+                    setOpen(false);
+                  }}
+                >
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 

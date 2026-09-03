@@ -213,7 +213,10 @@ export {
   SelectLabel,
   SelectItem,
   SelectSeparator,
+  selectTriggerClasses,
 } from "./select";
+export { Combobox } from "./combobox";
+export type { ComboboxOption, ComboboxProps } from "./combobox";
 export {
   Popover,
   PopoverTrigger,

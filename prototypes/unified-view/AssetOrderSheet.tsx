@@ -9,13 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { RecordSheet } from "./RecordSheet";
@@ -153,92 +147,58 @@ export function AssetOrderSheet({
       <SheetSection className="gap-5" title="Order Details">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer">
-            <Select
+            <Combobox
+              className="w-full"
               value={draft.customer}
               onValueChange={(v) => set("customer", v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={customers}
+              placeholder="Select customer"
+            />
           </SheetField>
           <SheetField label="Ship To">
-            <Select value={draft.shipTo} onValueChange={(v) => set("shipTo", v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select ship-to" />
-              </SelectTrigger>
-              <SelectContent>
-                {shipTos.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              className="w-full"
+              value={draft.shipTo}
+              onValueChange={(v) => set("shipTo", v)}
+              options={shipTos}
+              placeholder="Select ship-to"
+            />
           </SheetField>
         </div>
 
         <SheetField label="Sales Rep">
-          <Select value={draft.salesRep} onValueChange={(v) => set("salesRep", v)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select sales rep" />
-            </SelectTrigger>
-            <SelectContent>
-              {SALES_REPS.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Combobox
+            className="w-full"
+            value={draft.salesRep}
+            onValueChange={(v) => set("salesRep", v)}
+            options={SALES_REPS}
+            placeholder="Select sales rep"
+          />
         </SheetField>
 
         <SheetField
           label="Status"
           description="An asset order's status is its own lifecycle — nothing else on the record implies it."
         >
-          <Select
+          <Combobox
+            className="w-full"
             value={draft.status}
             onValueChange={(v) => set("status", v as AssetOrderStatus)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {ASSET_ORDER_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={ASSET_ORDER_STATUSES}
+            placeholder="Select status"
+          />
         </SheetField>
       </SheetSection>
 
       <SheetSection className="gap-5" title="Asset">
         <SheetField label="Asset Type">
-          <Select
+          <Combobox
+            className="w-full"
             value={draft.assetType}
             onValueChange={(v) => set("assetType", v)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select asset type" />
-            </SelectTrigger>
-            <SelectContent>
-              {ASSET_TYPES.map((a) => (
-                <SelectItem key={a} value={a}>
-                  {a}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={ASSET_TYPES}
+            placeholder="Select asset type"
+          />
         </SheetField>
 
         <div className="grid grid-cols-2 gap-4">

@@ -13,13 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Tooltip,
   TooltipContent,
@@ -240,18 +234,19 @@ export function ListToolbar<K extends string>({
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <TextSearch className="size-3.5" /> Search by column
             </div>
-            <Select value={colScope} onValueChange={onColScopeChange}>
-              <SelectTrigger size="sm" className="w-full">
-                <SelectValue placeholder="Choose a column" />
-              </SelectTrigger>
-              <SelectContent>
-                {searchFields.map((f) => (
-                  <SelectItem key={f.key} value={f.key}>
-                    {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              size="sm"
+              className="w-full"
+              value={colScope}
+              onValueChange={onColScopeChange}
+              options={searchFields.map((f) => ({
+                value: f.key,
+                label: f.label,
+              }))}
+              placeholder="Choose a column"
+              searchPlaceholder="Search columns…"
+              emptyText="No column found."
+            />
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

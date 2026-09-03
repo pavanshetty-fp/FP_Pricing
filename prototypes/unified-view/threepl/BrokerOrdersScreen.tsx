@@ -445,14 +445,17 @@ export function BrokerOrdersScreen({
         state: chosenSite?.state ?? SHIP_TO_SITES[0].state,
         createdBy: "Dana Whitfield",
         tags: [],
+        /* Only rows that were actually completed survive — a half-filled load
+           row would read as a loading plan that does not exist. */
         loadOrder:
-          draft.loadTerminal && draft.loadSupplier && draft.loadAccount
-            ? {
-                terminal: draft.loadTerminal,
-                supplier: draft.loadSupplier,
-                loadingAccount: draft.loadAccount,
-              }
-            : null,
+          draft.loadRows
+            ?.filter((r) => r.terminal && r.supplier && r.loadingAccount)
+            .map((r) => ({
+              product: r.product,
+              terminal: r.terminal!,
+              supplier: r.supplier!,
+              loadingAccount: r.loadingAccount!,
+            })) ?? null,
         recurrence: draft.recurring
           ? {
               fromDateKey: dateKeyOf(draft.recurrenceFrom ?? when),

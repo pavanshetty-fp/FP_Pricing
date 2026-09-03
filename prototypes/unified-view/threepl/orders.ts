@@ -82,7 +82,9 @@ export type BrokerOrderType =
   | "Emergency"
   | "Asset Movement"
   | "Delivery"
-  | "Extraction";
+  | "Extraction"
+  | "Pump Out"
+  | "Transport";
 
 /** §5.20 — a movement order runs in one of two directions. */
 export type MovementDirection = "Asset Delivery" | "Asset Pickup";
@@ -247,11 +249,16 @@ export interface BrokerOrder {
   /** Set only on a recurring order. `null` on every other kind. */
   recurrence: { fromDateKey: string; frequency: string } | null;
   /**
-   * Where the WHOLE order is loaded. One account per order, not per line — a
-   * truck loads once, so a line-by-line account described a dispatch that does
-   * not happen. `null` until it is chosen.
+   * Where each PRODUCT on the order is drawn from. One row per distinct
+   * product, because a product is what a terminal and an account are chosen
+   * for — two assets carrying the same product load once, together.
+   *
+   * `null` while the load order has not been created: it is optional, and an
+   * empty array would be indistinguishable from "created but not filled".
    */
-  loadOrder: { terminal: string; supplier: string; loadingAccount: string } | null;
+  loadOrder:
+    | { product: string; terminal: string; supplier: string; loadingAccount: string }[]
+    | null;
   hub: string;
   primaryPoc: string;
   salesperson: string;
@@ -360,12 +367,25 @@ export const LISTING_TYPES: BrokerOrderType[] = [
   "Core",
   "Emergency",
   "Delivery",
+  "Pump Out",
+  "Transport",
   "Extraction",
   "Asset Movement",
 ];
 
-/** Recurrence cadence. Only Daily is shown in the reference; the rest follow it. */
-export const RECURRENCE_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly"];
+/**
+ * Recurrence cadences. The first five are phrased against the order's own date
+ * — "Monthly On First Thursday" says what will happen, where a bare "Monthly"
+ * leaves the reader to work out which day. "Custom" opens the rule builder.
+ */
+export const RECURRENCE_FREQUENCIES = [
+  "Daily",
+  "Weekly On Thursday",
+  "Monthly On First Thursday",
+  "Annually On September 3",
+  "Every Weekday (Monday To Friday)",
+  "Custom",
+];
 
 export const SALESPEOPLE = [
   "Dana Whitfield",

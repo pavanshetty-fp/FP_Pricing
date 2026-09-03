@@ -56,6 +56,12 @@ export interface RecordSheetProps {
   headerAside?: React.ReactNode;
   /** Disable submit while the draft is incomplete. */
   canSubmit?: boolean;
+  /**
+   * Controls that ride in the footer, left of Cancel/Submit. For decisions
+   * taken at the moment of committing rather than while filling the form —
+   * they stay in view no matter how far the body has scrolled.
+   */
+  footerAside?: React.ReactNode;
   onSubmit: () => void;
   children: React.ReactNode;
 }
@@ -71,6 +77,7 @@ export function RecordSheet({
   createAction,
   headerAside,
   canSubmit = true,
+  footerAside,
   onSubmit,
   children,
 }: RecordSheetProps) {
@@ -104,7 +111,11 @@ export function RecordSheet({
           {children}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-4">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            {footerAside}
+          </div>
+          <div className="flex items-center gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -117,6 +128,7 @@ export function RecordSheet({
           >
             {creating ? createAction : editAction}
           </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

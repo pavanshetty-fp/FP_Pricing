@@ -5,8 +5,10 @@ import {
   CircleAlert,
   Layers,
   Mail,
+  Pencil,
   Plus,
   Trash2,
+  X,
   Shield,
   ThumbsDown,
   Truck,
@@ -15,12 +17,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
-  EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -100,6 +110,185 @@ import {
  * TABLE view of the picker, which the same section offers, is what is built.
  */
 
+const REPEAT_UNITS = ["Days", "Weeks", "Months", "Years"];
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+/**
+ * Custom Recurrence — the rule builder behind the "Custom" frequency.
+ *
+ * It is a DIALOG rather than five more fields in the sheet: every common
+ * cadence is one pick from the list, and only the uncommon one needs an
+ * interval, a set of days and an end condition. Putting those in the form
+ * would tax every order with the rarest case.
+ *
+ * It returns a SENTENCE, not a structure — the sheet shows the rule back in
+ * words, which is the only form anyone checks a schedule in.
+ */
+function CustomRecurrenceDialog({
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSave: (summary: string) => void;
+}) {
+  const [every, setEvery] = React.useState(1);
+  const [unit, setUnit] = React.useState(REPEAT_UNITS[2]);
+  const [days, setDays] = React.useState<Set<string>>(new Set(["Th"]));
+  const [ends, setEnds] = React.useState<"never" | "on" | "after">("never");
+  const [endsOn, setEndsOn] = React.useState<Date | null>(null);
+  const [occurrences, setOccurrences] = React.useState(5);
+
+  const summary = () => {
+    const dayPart = days.size > 0 ? ` on ${[...days].join(", ")}` : "";
+    const endPart =
+      ends === "on" && endsOn
+        ? `, until ${DATE_FMT.format(endsOn)}`
+        : ends === "after"
+          ? `, ${occurrences} times`
+          : "";
+    return `Every ${every} ${unit.toLowerCase()}${dayPart}${endPart}`;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Custom recurrence</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-5">
+          <SheetField label="Repeat every" required>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min={1}
+                value={every}
+                aria-label="Repeat interval"
+                className="w-24 tabular-nums"
+                onChange={(e) => setEvery(Math.max(1, Number(e.target.value) || 1))}
+              />
+              <Select value={unit} onValueChange={setUnit}>
+                <SelectTrigger className="flex-1" aria-label="Repeat unit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPEAT_UNITS.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </SheetField>
+
+          {/* Seven toggles, not a multi-select: the whole week fits on one row,
+              so the options are cheaper to show than to hide behind a list. */}
+          <SheetField label="Repeat on" description="Click a day to select or deselect it.">
+            <div className="flex gap-1.5">
+              {WEEKDAYS.map((d) => {
+                const on = days.has(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setDays((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(d)) next.delete(d);
+                        else next.add(d);
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "size-9 rounded-full text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      on
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </SheetField>
+
+          <SheetField label="Ends" required>
+            <RadioGroup
+              value={ends}
+              onValueChange={(v) => setEnds(v as typeof ends)}
+              className="gap-3"
+            >
+              <label htmlFor="ends-never" className="flex cursor-pointer items-center gap-2.5">
+                <RadioGroupItem id="ends-never" value="never" />
+                <span className="text-sm">Never</span>
+              </label>
+              <label htmlFor="ends-on" className="flex cursor-pointer items-center gap-2.5">
+                <RadioGroupItem id="ends-on" value="on" />
+                <span className="text-sm">On</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={ends !== "on"}
+                      className="ml-1 font-normal"
+                    >
+                      <CalendarIcon />
+                      {endsOn ? DATE_FMT.format(endsOn) : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endsOn ?? undefined}
+                      onSelect={(d) => setEndsOn(d ?? null)}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </label>
+              <label htmlFor="ends-after" className="flex cursor-pointer items-center gap-2.5">
+                <RadioGroupItem id="ends-after" value="after" />
+                <span className="text-sm">After</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={occurrences}
+                  disabled={ends !== "after"}
+                  aria-label="Occurrences"
+                  className="ml-1 h-8 w-24 tabular-nums"
+                  onChange={(e) =>
+                    setOccurrences(Math.max(1, Number(e.target.value) || 1))
+                  }
+                />
+                <span className="text-sm text-muted-foreground">occurrences</span>
+              </label>
+            </RadioGroup>
+          </SheetField>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              onSave(summary());
+              onOpenChange(false);
+            }}
+          >
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * The three order flags, in one horizontal row.
  *
@@ -159,16 +348,27 @@ export interface BrokerOrderDraft {
   vendorId: string | null;
   invitedVendorIds: string[];
   quoteRequested: boolean;
+  /**
+   * Which INVITED partners are being asked for a price. Selection, not the
+   * mode — `quoteRequested` is the mode. Every partner is added here when
+   * invited, so the common case ("price from everyone") needs no clicks.
+   */
+  quoteVendorIds: string[];
   primaryPoc: string;
   salesperson: string;
   instructions: string;
   recurring: boolean;
   recurrenceFrom: Date | null;
   recurrenceFrequency: string;
-  /** ONE load order for the whole order — see the Load Order section. */
-  loadTerminal?: string;
-  loadSupplier?: string;
-  loadAccount?: string;
+  /** A human summary of the custom rule, e.g. "Every 3 months on Thu, ends after 5". */
+  customRecurrence?: string;
+  /**
+   * The load order, once created. `null` means "not created" — it is optional,
+   * so its absence has to be distinguishable from an empty one.
+   */
+  loadRows:
+    | { product: string; terminal?: string; supplier?: string; loadingAccount?: string }[]
+    | null;
 }
 
 function draftFrom(o: BrokerOrder): BrokerOrderDraft {
@@ -191,6 +391,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
     quoteRequested: o.quoteRequested,
+    quoteVendorIds: [...o.invitedVendorIds],
     primaryPoc: o.primaryPoc,
     salesperson: o.salesperson,
     instructions: o.instructions,
@@ -202,9 +403,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
         })()
       : null,
     recurrenceFrequency: o.recurrence?.frequency ?? RECURRENCE_FREQUENCIES[0],
-    loadTerminal: o.loadOrder?.terminal,
-    loadSupplier: o.loadOrder?.supplier,
-    loadAccount: o.loadOrder?.loadingAccount,
+    loadRows: o.loadOrder ? o.loadOrder.map((r) => ({ ...r })) : null,
   };
 }
 
@@ -222,6 +421,7 @@ function emptyDraft(): BrokerOrderDraft {
     recurring: false,
     recurrenceFrom: null,
     recurrenceFrequency: RECURRENCE_FREQUENCIES[0],
+    loadRows: null,
     hub: HUBS[0],
     urgent: false,
     signatureOnDelivery: false,
@@ -230,6 +430,7 @@ function emptyDraft(): BrokerOrderDraft {
     vendorId: null,
     invitedVendorIds: [],
     quoteRequested: false,
+    quoteVendorIds: [],
     primaryPoc: "",
     salesperson: "",
     instructions: "",
@@ -301,6 +502,8 @@ export function BrokerOrderSheet({
    * must take effect immediately.
    */
   const [topOffMode, setTopOffMode] = React.useState(false);
+  const [customOpen, setCustomOpen] = React.useState(false);
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const creating = mode === "create";
 
   React.useEffect(() => {
@@ -326,10 +529,33 @@ export function BrokerOrderSheet({
 
   /* The assets this site has, plus anything already on the order that its list
      does not carry — a line added by hand is still an asset to offer. */
-  /* One account serves the whole order, so the options are narrowed by every
-     NAMED line's product at once. */
+  /* One row per distinct product actually on the order. Two assets carrying
+     the same product load once, together. */
   const orderProducts = [...new Set(draft.lines.filter((l) => l.asset).map((l) => l.product))];
-  const load = loadOptions(orderProducts, draft.loadTerminal, draft.loadSupplier);
+
+  /* Rows follow the products: created rows for products still on the order,
+     plus a blank row for any product added since. A product dropped from the
+     delivery order takes its load row with it — a loading account for a
+     product nobody ordered answers no question. */
+  const loadRows = draft.loadRows
+    ? orderProducts.map(
+        (pr) =>
+          draft.loadRows?.find((r) => r.product === pr) ?? { product: pr }
+      )
+    : null;
+
+  const setLoadRow = (product: string, patch: Partial<NonNullable<typeof loadRows>[number]>) =>
+    setDraft((d) =>
+      d && d.loadRows
+        ? {
+            ...d,
+            loadRows: (d.loadRows.some((r) => r.product === product)
+              ? d.loadRows
+              : [...d.loadRows, { product }]
+            ).map((r) => (r.product === product ? { ...r, ...patch } : r)),
+          }
+        : d
+    );
 
   const siteAssets = (() => {
     const listed = site?.assets ?? [];
@@ -412,13 +638,52 @@ export function BrokerOrderSheet({
   const eligible = VENDORS.filter((v) =>
     v.businessLines.some((b) => b === requiredLine)
   );
+  /** Only what can still be added — an invited partner is not an option. */
+  const uninvited = eligible.filter(
+    (v) => !draft.invitedVendorIds.includes(v.id)
+  );
 
   /* ── Workflow transitions. Each one moves the status AND the vendor fields
         together, so the pair cannot end up contradicting itself. ─────────── */
-  const invite = () =>
+  /* MERGES. Inviting again adds to the list rather than replacing it, so a
+     partner can be added after the first round went out — which is the whole
+     point of being able to invite more later. New invitees are asked for a
+     price by default. */
+  const invite = (ids: string[]) =>
     setDraft((d) =>
       d
-        ? { ...d, status: "Assigned", invitedVendorIds: [...picked], vendorId: null }
+        ? {
+            ...d,
+            status: "Assigned",
+            invitedVendorIds: [...new Set([...d.invitedVendorIds, ...ids])],
+            quoteVendorIds: [...new Set([...d.quoteVendorIds, ...ids])],
+            vendorId: null,
+          }
+        : d
+    );
+
+  /** Withdrawing one invitation, not the whole round. */
+  const uninvite = (id: string) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            invitedVendorIds: d.invitedVendorIds.filter((x) => x !== id),
+            quoteVendorIds: d.quoteVendorIds.filter((x) => x !== id),
+            status: d.invitedVendorIds.length <= 1 ? "Draft" : d.status,
+          }
+        : d
+    );
+
+  const setQuoteFor = (id: string, on: boolean) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            quoteVendorIds: on
+              ? [...new Set([...d.quoteVendorIds, id])]
+              : d.quoteVendorIds.filter((x) => x !== id),
+          }
         : d
     );
   const cancelInvites = () =>
@@ -430,7 +695,9 @@ export function BrokerOrderSheet({
   const advance = (status: BrokerStatus) =>
     setDraft((d) => (d ? { ...d, status } : d));
 
-  const preVendor = draft.status === "Draft" || draft.status === "Blocked";
+  /* Inviting stays available until somebody has ACCEPTED — that is the point
+     at which the order has a partner and more invitations mean nothing. */
+  const accepted = Boolean(draft.vendorId);
   const canSubmit =
     draft.customer.trim() !== "" &&
     draft.shipTo.trim() !== "" &&
@@ -447,6 +714,26 @@ export function BrokerOrderSheet({
       createTitle="Create Delivery Order"
       createAction="Create Order"
       canSubmit={canSubmit}
+      /* Decisions about the delivery itself, taken at the moment of committing
+         — so they stay in view however far the body has scrolled. */
+      footerAside={
+        <FlagRow
+          flags={[
+            {
+              id: "urgent",
+              label: "Mark as an Urgent Order",
+              checked: draft.urgent,
+              onChange: (v) => set("urgent", v),
+            },
+            {
+              id: "signature",
+              label: "Get signature on Delivery",
+              checked: draft.signatureOnDelivery,
+              onChange: (v) => set("signatureOnDelivery", v),
+            },
+          ]}
+        />
+      }
       headerAside={
         <div className="flex items-center gap-2">
           <StatusChip tone={BROKER_STATUS_TONE[draft.status]} variant="soft">
@@ -510,12 +797,32 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
+        {/* The ship-to's own facts, as a READ-OUT rather than fields. They are
+            the consequence of the two selects above — never typed, never
+            editable — so they are shown, not offered. One card keeps the
+            coordinates and the address together, which is how anyone reads a
+            location: three lines at most. */}
+        <div className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-3">
+          {site ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm tabular-nums text-foreground">
+                {site.latLng}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {site.street}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {site.city}, {site.state} {site.zip}
+              </span>
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              Select a ShipTo to see its coordinates and address.
+            </span>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
-          {/* Derived from the ship-to, so it is READ-ONLY. An editable copy of a
-              site's coordinates is a second source of truth for the same fact. */}
-          <SheetField label="Latitude / Longitude">
-            <Input value={site?.latLng ?? "NA"} readOnly />
-          </SheetField>
           <SheetField label="PO number">
             <Input
               value={draft.poNumber}
@@ -523,8 +830,8 @@ export function BrokerOrderSheet({
               onChange={(e) => set("poNumber", e.target.value)}
             />
           </SheetField>
-          {/* The reference's name for the order-type field. One field, one
-              label — not a second select offering the same values. */}
+          {/* Admin-configured in the product — the values below are the ones
+              the reference shows; the final list is still to come. */}
           <SheetField label="Listing Type" required>
             <Select
               value={draft.orderType}
@@ -549,7 +856,10 @@ export function BrokerOrderSheet({
       {/* The people on the order, together. POC and salesperson were split
           across two places; they answer the same question — who to call. */}
       <SheetSection className="gap-5" title="POC Details">
-        <div className="grid grid-cols-2 gap-4">
+        {/* One person per row: name and the two ways to reach them read as a
+            single fact, so they sit side by side rather than wrapping over two
+            rows with the contact detached from whose it is. */}
+        <div className="grid grid-cols-3 gap-4">
           <SheetField label="POC Name" required>
             <Select
               value={draft.primaryPoc}
@@ -573,7 +883,11 @@ export function BrokerOrderSheet({
           <SheetField label="POC Email">
             <Input value={poc?.email ?? "—"} readOnly />
           </SheetField>
-          <SheetField label="Sales Person" required>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Optional: an order can be raised before anyone owns it. */}
+          <SheetField label="Sales Person">
             <Select
               value={draft.salesperson}
               onValueChange={(v) => set("salesperson", v)}
@@ -648,40 +962,21 @@ export function BrokerOrderSheet({
           </SheetField>
         </div>
 
-        {/* Revealed by the flag below, because a cadence with nothing recurring
-            is a question about nothing. The flags close the section rather than
-            splitting the schedule fields apart. */}
+        {/* Revealed by the flag above: a cadence with nothing recurring is a
+            question about nothing. "Custom" opens its own dialog rather than
+            growing five more fields nobody uses on the common cadences. */}
         {draft.recurring && (
           <div className="grid grid-cols-2 gap-4">
-            <SheetField label="Recurrence from Date" required>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start font-normal"
-                  >
-                    <CalendarIcon />
-                    {draft.recurrenceFrom
-                      ? DATE_FMT.format(draft.recurrenceFrom)
-                      : "Select date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={draft.recurrenceFrom ?? undefined}
-                    onSelect={(d) => set("recurrenceFrom", d ?? null)}
-                  />
-                </PopoverContent>
-              </Popover>
-            </SheetField>
             <SheetField label="Frequency" required>
               <Select
                 value={draft.recurrenceFrequency}
-                onValueChange={(v) => set("recurrenceFrequency", v)}
+                onValueChange={(v) => {
+                  set("recurrenceFrequency", v);
+                  if (v === "Custom") setCustomOpen(true);
+                }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
                   {RECURRENCE_FREQUENCIES.map((f) => (
@@ -692,23 +987,27 @@ export function BrokerOrderSheet({
                 </SelectContent>
               </Select>
             </SheetField>
+            {draft.recurrenceFrequency === "Custom" && draft.customRecurrence && (
+              <SheetField label="Custom rule">
+                <Button
+                  variant="outline"
+                  className="w-full justify-between font-normal"
+                  onClick={() => setCustomOpen(true)}
+                >
+                  {draft.customRecurrence}
+                  <Pencil className="size-4 text-muted-foreground" />
+                </Button>
+              </SheetField>
+            )}
           </div>
         )}
 
+        {/* Only the flag that CHANGES THIS SECTION stays here — recurring
+            reveals the cadence below it. Urgent and signature-on-delivery are
+            decisions about the delivery itself and ride in the footer, in view
+            at the moment of committing. */}
         <FlagRow
           flags={[
-            {
-              id: "urgent",
-              label: "Mark as an Urgent Order",
-              checked: draft.urgent,
-              onChange: (v) => set("urgent", v),
-            },
-            {
-              id: "signature",
-              label: "Get signature on Delivery",
-              checked: draft.signatureOnDelivery,
-              onChange: (v) => set("signatureOnDelivery", v),
-            },
             {
               id: "recurring",
               label: "Mark as Recurring Order",
@@ -719,12 +1018,9 @@ export function BrokerOrderSheet({
                     ? {
                         ...d,
                         recurring: v,
-                        // Seed the cadence from the delivery date, which is the
-                        // answer in almost every case; clear it when switched
-                        // off so a stale schedule cannot survive.
-                        recurrenceFrom: v
-                          ? (d.recurrenceFrom ?? d.plannedDate)
-                          : null,
+                        recurrenceFrequency: v
+                          ? (d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0])
+                          : d.recurrenceFrequency,
                       }
                     : d
                 ),
@@ -929,12 +1225,26 @@ export function BrokerOrderSheet({
         </SheetSection>
       )}
 
-      {/* Load Order — where the WHOLE order is drawn from. ONE account, not one
-          per line: a truck loads once, so a line-by-line account described a
-          dispatch that does not happen. The product/quantity list is not
-          repeated here either; the Delivery Order above already is it. */}
+      {/* Load Order is OPTIONAL, so it is not on screen until it is asked for.
+          An empty required-looking table on every order is a section people
+          learn to scroll past; a CTA states that the step exists and is a
+          choice. Same table idiom as the Delivery Order above it. */}
       {!isMovement && (
-        <SheetSection className="gap-5" title="Load Order">
+        <SheetSection
+          className="gap-5"
+          title="Load Order"
+          action={
+            loadRows && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => set("loadRows", null)}
+              >
+                <Trash2 /> Remove
+              </Button>
+            )
+          }
+        >
           {!hasAssets ? (
             <Empty className="rounded-md border border-fp-outline-1 py-8">
               <EmptyHeader>
@@ -942,96 +1252,112 @@ export function BrokerOrderSheet({
                   <Layers />
                 </EmptyMedia>
                 <EmptyDescription>
-                  Please fill delivery requirements to add load order details.
+                  Add an asset to the delivery order first — a load order is
+                  drawn up per product.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : load.impossible ? (
-            /* Not a dead set of empty dropdowns — say WHY there is nothing to
-               pick, and name the products that cannot share an account. */
-            <Empty className="rounded-md border border-fp-outline-1 py-8">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <CircleAlert />
-                </EmptyMedia>
-                <EmptyTitle>No account covers this order</EmptyTitle>
-                <EmptyDescription>
-                  One account loads the whole order, and none carries all of{" "}
-                  {orderProducts.join(", ")}. Split the order, or drop a product.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+          ) : !loadRows ? (
+            <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+              <span className="text-sm text-muted-foreground">
+                Not required. Create one to record where each product is loaded.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  set("loadRows", orderProducts.map((pr) => ({ product: pr })))
+                }
+              >
+                <Plus /> Create
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
-              <SheetField label="Terminal" required>
-                <Select
-                  value={draft.loadTerminal ?? ""}
-                  onValueChange={(v) =>
-                    setDraft((d) =>
-                      d
-                        ? {
-                            ...d,
-                            loadTerminal: v,
-                            /* Clears what sits below it: a supplier the new
-                               terminal does not serve is a combination that
-                               cannot be loaded. */
-                            loadSupplier: undefined,
-                            loadAccount: undefined,
-                          }
-                        : d
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Terminal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {load.terminals.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SheetField>
-              <SheetField label="Supplier" required>
-                <Select
-                  value={draft.loadSupplier ?? ""}
-                  onValueChange={(v) =>
-                    setDraft((d) =>
-                      d ? { ...d, loadSupplier: v, loadAccount: undefined } : d
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Supplier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {load.suppliers.map((x) => (
-                      <SelectItem key={x} value={x}>
-                        {x}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SheetField>
-              <SheetField label="Loading Account" required>
-                <Select
-                  value={draft.loadAccount ?? ""}
-                  onValueChange={(v) => set("loadAccount", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {load.accounts.map((x) => (
-                      <SelectItem key={x} value={x}>
-                        {x}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SheetField>
+            <div className="overflow-hidden rounded-md border border-border">
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[28%]" />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border bg-fp-surface-1a">
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Product</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Terminal</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Supplier</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Loading Account</TableRequiredLabel>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadRows.map((row) => {
+                    /* Narrowed by THIS product, then by what is chosen above. */
+                    const opts = loadOptions(
+                      [row.product],
+                      row.terminal,
+                      row.supplier
+                    );
+                    return (
+                      <tr
+                        key={row.product}
+                        className="h-11 border-b border-border last:border-b-0"
+                      >
+                        <td className="truncate px-3 text-sm text-foreground">
+                          {row.product}
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={row.terminal ?? ""}
+                            options={opts.terminals}
+                            placeholder="Terminal"
+                            aria-label={`Terminal for ${row.product}`}
+                            onChange={(v) =>
+                              setLoadRow(row.product, {
+                                terminal: v,
+                                supplier: undefined,
+                                loadingAccount: undefined,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={row.supplier ?? ""}
+                            options={opts.suppliers}
+                            placeholder="Supplier"
+                            aria-label={`Supplier for ${row.product}`}
+                            onChange={(v) =>
+                              setLoadRow(row.product, {
+                                supplier: v,
+                                loadingAccount: undefined,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellSelect
+                            value={row.loadingAccount ?? ""}
+                            options={opts.accounts}
+                            placeholder="Account"
+                            aria-label={`Loading account for ${row.product}`}
+                            onChange={(v) =>
+                              setLoadRow(row.product, { loadingAccount: v })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </SheetSection>
@@ -1040,75 +1366,140 @@ export function BrokerOrderSheet({
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection className="gap-5" title="Delivery Partner">
-        {preVendor && (
+        {!accepted && (
           <>
-            <div className="flex items-center justify-between gap-4">
-              <label
-                htmlFor="quote"
-                className="flex flex-col gap-0.5 text-sm font-medium text-foreground"
-              >
-                Request a quote
-                <span className="text-xs font-normal text-muted-foreground">
-                  Invited partners submit pricing instead of a plain
-                  acknowledgement.
-                </span>
-              </label>
-              <Switch
-                id="quote"
-                checked={draft.quoteRequested}
-                onCheckedChange={(v) => set("quoteRequested", v)}
-              />
-            </div>
-
-            {/* The action sits ON the label row, not under the list: it acts on
-                the whole picker, so it belongs to the picker's heading rather
-                than trailing 300px of scrollable list. Ghost, because the
-                sheet's one filled button is Save. */}
+            {/* The DS "add more" pattern: what has been chosen sits inline as
+                removable chips, and the same control adds another. Inviting is
+                not a one-shot round — a partner can be added after the first
+                went out, which the old "pick then Invite" flow made impossible
+                once the order left Draft. */}
             <SheetField
-              label={
-                <span className="flex items-center justify-between gap-4">
-                  Invite partners
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    // A blocked order cannot be dispatched at all (§5, Credit
-                    // Limit Management), so the action is unavailable rather
-                    // than failing after the click.
-                    disabled={picked.size === 0 || draft.status === "Blocked"}
-                    onClick={invite}
-                  >
-                    <Mail />
-                    Invite
-                    {picked.size > 1 && ` ${picked.size}`}
-                  </Button>
-                </span>
-              }
+              label="Invite partners"
               description={`Showing partners that run ${requiredLine}. All invited partners are notified at the same time; whichever accepts first is assigned the order, and the rest are told it is no longer available.`}
             >
-              <div className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-md border border-fp-outline-1 p-1">
-                {eligible.map((v) => (
-                  <label
-                    key={v.id}
-                    className="flex cursor-pointer items-start gap-2.5 rounded-sm p-2 transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-fp-outline-1 p-2">
+                {draft.invitedVendorIds.map((id) => (
+                  <span
+                    key={id}
+                    className="flex items-center gap-1.5 rounded-md bg-muted py-1 pr-1 pl-2.5 text-sm text-foreground"
                   >
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={picked.has(v.id)}
-                      onCheckedChange={() =>
-                        setPicked((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(v.id)) next.delete(v.id);
-                          else next.add(v.id);
-                          return next;
-                        })
-                      }
-                    />
-                    <VendorRow id={v.id} />
-                  </label>
+                    <Truck className="size-3.5 text-muted-foreground" />
+                    {vendorById(id)?.name ?? id}
+                    <button
+                      type="button"
+                      aria-label={`Cancel invitation to ${vendorById(id)?.name ?? id}`}
+                      onClick={() => uninvite(id)}
+                      className="rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </span>
                 ))}
+
+                <Popover open={inviteOpen} onOpenChange={setInviteOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      // A blocked order cannot be dispatched at all (§5, Credit
+                      // Limit Management), so the action is unavailable rather
+                      // than failing after the click.
+                      disabled={draft.status === "Blocked"}
+                      className={cn(draft.invitedVendorIds.length === 0 && "w-full")}
+                    >
+                      <Plus /> Invite partners
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-96 p-0">
+                    <div className="flex max-h-72 flex-col gap-1 overflow-y-auto p-1">
+                      {uninvited.length === 0 ? (
+                        <p className="p-3 text-sm text-muted-foreground">
+                          Every eligible partner is already invited.
+                        </p>
+                      ) : (
+                        uninvited.map((v) => (
+                          <label
+                            key={v.id}
+                            className="flex cursor-pointer items-start gap-2.5 rounded-sm p-2 transition-colors hover:bg-accent"
+                          >
+                            <Checkbox
+                              className="mt-0.5"
+                              checked={picked.has(v.id)}
+                              onCheckedChange={() =>
+                                setPicked((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(v.id)) next.delete(v.id);
+                                  else next.add(v.id);
+                                  return next;
+                                })
+                              }
+                            />
+                            <VendorRow id={v.id} />
+                          </label>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex items-center justify-end gap-2 border-t border-border p-2">
+                      <Button
+                        size="sm"
+                        disabled={picked.size === 0}
+                        onClick={() => {
+                          invite([...picked]);
+                          setPicked(new Set());
+                          setInviteOpen(false);
+                        }}
+                      >
+                        <Mail />
+                        Invite{picked.size > 0 && ` ${picked.size}`}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </SheetField>
 
+            {/* Same shape as "Top off selected": a MODE over a selection that
+                defaults to everyone. Asking every invited partner for a price
+                is the common case, so it costs no clicks; excluding one is a
+                single uncheck. */}
+            {draft.invitedVendorIds.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-1">
+                  {draft.invitedVendorIds.map((id) => (
+                    <label
+                      key={id}
+                      className="flex cursor-pointer items-start gap-2.5 rounded-sm p-2 transition-colors hover:bg-accent"
+                    >
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={draft.quoteVendorIds.includes(id)}
+                        onCheckedChange={(c) => setQuoteFor(id, c === true)}
+                        aria-label={`Request a quote from ${vendorById(id)?.name ?? id}`}
+                      />
+                      <VendorRow id={id} />
+                    </label>
+                  ))}
+                </div>
+
+                <label
+                  htmlFor="quote"
+                  className="flex cursor-pointer items-center justify-between gap-4"
+                >
+                  <span className="flex flex-col gap-0.5 text-sm font-medium text-foreground">
+                    Request a quote
+                    <span className="text-xs font-normal text-muted-foreground">
+                      The selected partners submit pricing instead of a plain
+                      acknowledgement.
+                    </span>
+                  </span>
+                  <Switch
+                    id="quote"
+                    checked={draft.quoteRequested}
+                    onCheckedChange={(v) => set("quoteRequested", v)}
+                  />
+                </label>
+              </div>
+            )}
           </>
         )}
 
@@ -1183,7 +1574,7 @@ export function BrokerOrderSheet({
           </>
         )}
 
-        {!preVendor && draft.status !== "Assigned" && draft.vendorId && (
+        {draft.vendorId && draft.status !== "Assigned" && (
           <>
             <div className="flex items-start gap-2 rounded-md border border-fp-outline-1 p-3">
               <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
@@ -1231,6 +1622,19 @@ export function BrokerOrderSheet({
           </>
         )}
       </SheetSection>
+
+      <CustomRecurrenceDialog
+        open={customOpen}
+        onOpenChange={(o) => {
+          setCustomOpen(o);
+          // Backing out of the builder must not leave "Custom" selected with no
+          // rule behind it — fall back to the first plain cadence.
+          if (!o && !draft.customRecurrence) {
+            set("recurrenceFrequency", RECURRENCE_FREQUENCIES[0]);
+          }
+        }}
+        onSave={(summary) => set("customRecurrence", summary)}
+      />
 
       <SheetSection className="gap-5" title="Additional Details">
         <SheetField label="Upload Supporting Image">

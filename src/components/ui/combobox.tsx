@@ -33,10 +33,11 @@ import {
   its own type-ahead, so a text input cannot live in its list. The two are
   siblings, not a component and its variant.
 
-  SEARCH APPEARS ONLY WHEN THERE IS SOMETHING TO SEARCH (`searchThreshold`, 8).
-  Below that the whole list is visible at once and a search field is a row of
-  chrome standing between the click and the answer. Above it, scanning stops
-  being possible and typing is the only fast path.
+  EVERY LIST SEARCHES. A field that behaves one way at five options and another
+  at nine is a field you have to look at before you know how to use it, and the
+  cost of guessing wrong — reaching for the keyboard and having it do nothing —
+  is worse than a search box on a short list. `searchThreshold` remains for the
+  rare list where the box genuinely costs more than it gives.
 */
 
 export interface ComboboxOption {
@@ -57,7 +58,7 @@ export interface ComboboxProps {
   emptyText?: string;
   disabled?: boolean;
   size?: "sm" | "default";
-  /** Option count at or above which the search field appears. */
+  /** Option count at or above which the search field appears. Default: always. */
   searchThreshold?: number;
   /** Trigger classes — width lives here, as it does on `SelectTrigger`. */
   className?: string;
@@ -79,7 +80,7 @@ export function Combobox({
   emptyText = "No matches.",
   disabled,
   size = "default",
-  searchThreshold = 8,
+  searchThreshold = 1,
   className,
   contentClassName,
   align = "start",

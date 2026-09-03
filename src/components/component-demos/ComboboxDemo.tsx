@@ -25,13 +25,15 @@ export function ComboboxDemo() {
       <p className="text-sm text-muted-foreground">
         Combobox — a <code className="text-foreground">Select</code> you can type
         into. Same trigger, so it reads as the same control; the search field
-        lives inside the list, which is where the difference is.
+        lives inside the list, which is where the difference is. Every list
+        searches, short ones included: a field that takes typing at nine options
+        and ignores it at five is one you have to test before you can trust.
       </p>
       <Stack space="title">
-        <SectionHeading as="h3" title="Short list — no search" />
+        <SectionHeading as="h3" title="Short list" />
         <p className="text-sm text-muted-foreground">
-          Under the threshold the whole list is visible at once, so a search
-          field would be a row of chrome between the click and the answer.
+          Five options still get a search field. Consistency is worth more than
+          the row it costs — reaching for the keyboard always works.
         </p>
         <Combobox
           className="w-64"
@@ -42,10 +44,10 @@ export function ComboboxDemo() {
         />
       </Stack>
       <Stack space="title">
-        <SectionHeading as="h3" title="Long list — search appears" />
+        <SectionHeading as="h3" title="Long list" />
         <p className="text-sm text-muted-foreground">
-          At eight options or more, scanning stops working and typing is the
-          only fast path.
+          Past a screenful, scanning stops working and typing is the only fast
+          path — which is what the short list is being consistent with.
         </p>
         <Combobox
           className="w-64"

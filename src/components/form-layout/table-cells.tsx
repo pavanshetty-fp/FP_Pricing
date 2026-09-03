@@ -57,7 +57,7 @@ export interface TableCellSelectProps {
   description?: string;
   placeholder?: string;
   disabled?: boolean;
-  /** Option count at or above which the search field appears. */
+  /** Option count at or above which the search field appears. Default: always. */
   searchThreshold?: number;
   onChange: (v: string) => void;
   "aria-label"?: string;
@@ -66,11 +66,10 @@ export interface TableCellSelectProps {
 /**
  * A cell that opens a list and writes the choice back. No visible control.
  *
- * The list SEARCHES once it is long enough to need it (`searchThreshold`, 8) —
- * a terminal or a partner column reaches that immediately, and scrolling a
- * table cell's popover for a name you already know is the slowest way to
- * answer. Below the threshold the search field is chrome standing between the
- * click and the answer, so it is not drawn.
+ * The list SEARCHES, like every other list in this system. Scrolling a cell's
+ * popover for a name you already know is the slowest way to answer it, and a
+ * cell that sometimes takes typing and sometimes does not is one you have to
+ * open before you know which. `searchThreshold` can still suppress it.
  */
 export function TableCellSelect({
   value,
@@ -78,7 +77,7 @@ export function TableCellSelect({
   description,
   placeholder = "Select",
   disabled,
-  searchThreshold = 8,
+  searchThreshold = 1,
   onChange,
   "aria-label": ariaLabel,
 }: TableCellSelectProps) {

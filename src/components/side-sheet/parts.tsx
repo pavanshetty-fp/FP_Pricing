@@ -1,7 +1,12 @@
 import * as React from "react";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 /* Shared building blocks for the Side Sheet variants (Figma 27610:58293). */
 
@@ -9,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 export function SheetSection({
   title,
   action,
+  note,
   children,
   className,
 }: {
@@ -19,13 +25,21 @@ export function SheetSection({
    * that owns a whole section has no field to belong to.
    */
   action?: React.ReactNode;
+  /** An explainer beside the heading — typically `SheetSectionNote`. */
+  note?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <section className={cn("flex flex-col gap-3", className)}>
       <div className="flex min-h-7 items-center justify-between gap-4">
-        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+          {/* Sits WITH the heading, not after the content: an explanation of
+              how a section works belongs where the section is named, and on
+              demand rather than as a paragraph everyone reads once. */}
+          {note}
+        </div>
         {action}
       </div>
       {children}
@@ -77,5 +91,44 @@ export function InfoAlert() {
       <AlertTitle>Alert Title</AlertTitle>
       <AlertDescription>This is an alert description.</AlertDescription>
     </Alert>
+  );
+}
+
+/**
+ * The "why does this section behave this way" explainer, on demand.
+ *
+ * A paragraph under a section is read once and then permanently in the way; the
+ * rule it states is needed at the moment someone WONDERS, which is rarely the
+ * moment they first arrive. On CLICK rather than hover, because hover cannot be
+ * reached by touch and a tooltip that appears while you are aiming at something
+ * else is worse than no tooltip.
+ *
+ * Deliberately NARROW. Explanations set to the full width of a sheet become one
+ * long line that has to be tracked back across; a few short lines are read at a
+ * glance.
+ */
+export function SheetSectionNote({
+  label = "About this section",
+  children,
+}: {
+  /** Names the button for assistive tech. */
+  label?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className="flex size-5 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground"
+        >
+          <Info className="size-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 text-xs leading-relaxed">
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 }

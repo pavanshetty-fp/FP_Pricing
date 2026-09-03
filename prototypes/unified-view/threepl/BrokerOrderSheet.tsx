@@ -44,7 +44,12 @@ import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import {
+  SheetField,
+  SheetSection,
+  SheetSectionNote,
+} from "@/components/side-sheet/parts";
+import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
   TableCellCombobox,
@@ -927,7 +932,7 @@ export function BrokerOrderSheet({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {/* Optional: an order can be raised before anyone owns it. */}
           <SheetField label="Sales Person">
             <Combobox
@@ -940,8 +945,11 @@ export function BrokerOrderSheet({
               emptyText="No one found."
             />
           </SheetField>
-          {/* Same shape, one value. */}
-          <div className="flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          {/* Same shape, and the SAME GRID as the POC row above — a field that
+              asks for the same kind of thing should be the same size, and two
+              read-out cards side by side that differ in width read as two
+              different kinds of card. */}
+          <div className="col-span-2 flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <CopyValue
                 value={SALES_CONTACTS[draft.salesperson]}
@@ -1247,11 +1255,20 @@ export function BrokerOrderSheet({
           {/* Only once a line has an asset on it: a switch that acts on nothing
               is a control asking to be clicked to no effect. Qty itself is
               never an input — it is the sum. */}
+          {/* THE TOTAL SITS IN THE QTY COLUMN, on the table's own grid rather
+              than pushed to the far right of the section. A sum belongs under
+              the numbers it sums; floating past the column's edge it read as a
+              caption about the whole table instead of the bottom of that one
+              column. Same template as the colgroup above, so the two stay in
+              step. */}
           {hasAssets && (
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div
+              className="grid items-center gap-4"
+              style={{ gridTemplateColumns: "86px 34% 30% 1fr 52px" }}
+            >
               <label
                 htmlFor="topoff-selected"
-                className="flex cursor-pointer items-center gap-2.5"
+                className="col-span-3 flex cursor-pointer items-center gap-2.5"
               >
                 <Switch
                   id="topoff-selected"
@@ -1260,12 +1277,16 @@ export function BrokerOrderSheet({
                 />
                 <span className="text-sm text-foreground">Top off selected</span>
               </label>
-              <span className="flex items-center gap-2 text-sm">
+              {/* `justify-self-end` + nowrap: the RIGHT edge stays locked to the
+                  column's numbers, and on a narrow sheet the label spills left
+                  out of the track rather than wrapping "600" away from "gal". */}
+              <span className="flex items-baseline gap-2 justify-self-end px-3 text-sm whitespace-nowrap">
                 <span className="text-muted-foreground">Total</span>
                 <span className="font-medium tabular-nums text-foreground">
                   {isAllTopOff(draft.lines) ? "Top-off" : `${gal.toLocaleString()} gal`}
                 </span>
               </span>
+              <span aria-hidden />
             </div>
           )}
         </SheetSection>
@@ -1445,7 +1466,24 @@ export function BrokerOrderSheet({
 
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
-      <SheetSection className="gap-5" title="Delivery Partner">
+      <SheetSection
+        className="gap-5"
+        title="Delivery Partner"
+        note={
+          <SheetSectionNote label="How inviting partners works">
+            <p className="text-foreground">
+              Showing partners that run {requiredLine}.
+            </p>
+            <p className="mt-1.5 text-muted-foreground">
+              Everyone invited is notified at the same time.
+            </p>
+            <p className="mt-1.5 text-muted-foreground">
+              Whoever accepts first takes the order; the rest are told it has
+              gone.
+            </p>
+          </SheetSectionNote>
+        }
+      >
         {!accepted && (
           <>
             {/* A TABLE, not a list of cards. A delivery partner is compared
@@ -1638,48 +1676,46 @@ export function BrokerOrderSheet({
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Showing partners that run {requiredLine}. All invited partners are
-              notified at the same time; whichever accepts first is assigned the
-              order, and the rest are told it is no longer available.
-            </p>
-
             {/* BULK. The same checked rows the quote switch reads — one
                 selection, not a second one that can disagree with it. Only one
                 partner can take the order, so acknowledging is a one-row
                 action; cancelling is not. */}
-            {selectedRows.length > 0 && (
-              <div className="flex items-center gap-3 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2">
-                <span className="text-sm text-foreground tabular-nums">
-                  {selectedRows.length} selected
-                </span>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={selectedRows.length !== 1}
-                    title={
+            {/* THE DS BAR, not a second one. What can be done to a selection is
+                a property of the records, so the verbs are passed in; the count
+                chip, the spacing, the hairlines and confirm-on-destructive all
+                come from the design system, which is what makes a selection in
+                this sheet feel like a selection anywhere else. The Copy /
+                Delete / More zone is off: this list's actions are fixed. */}
+            <div className="flex justify-center">
+              <BulkActionBar
+                count={selectedRows.length}
+                noun="partner"
+                onClear={() => selectAllPartners(false)}
+                actions={[
+                  {
+                    key: "ack",
+                    label: "Acknowledge for them",
+                    icon: <Check />,
+                    disabled: selectedRows.length !== 1,
+                    title:
                       selectedRows.length !== 1
                         ? "Only one partner can take the order."
-                        : undefined
-                    }
-                    onClick={() => {
+                        : undefined,
+                    onSelect: () => {
                       const id = partnerRows[selectedRows[0]];
                       if (id) acceptFor(id);
-                    }}
-                  >
-                    <Check /> Acknowledge for them
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => removePartnerRows(selectedRows)}
-                  >
-                    <ThumbsDown /> Cancel invitation
-                  </Button>
-                </div>
-              </div>
-            )}
+                    },
+                  },
+                  {
+                    key: "cancel",
+                    label: "Cancel invitation",
+                    icon: <ThumbsDown />,
+                    destructive: true,
+                    onSelect: () => removePartnerRows(selectedRows),
+                  },
+                ]}
+              />
+            </div>
 
             {/* Same shape as "Top off selected": a MODE over the selection,
                 which starts as everyone. Asking every invited partner for a

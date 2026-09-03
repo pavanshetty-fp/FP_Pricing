@@ -3,7 +3,11 @@ export { SideNav, type SideNavProps } from "./SideNav";
 export { PageHeader, type PageHeaderProps } from "./PageHeader";
 export { ActionBar, type ActionBarProps } from "./ActionBar";
 export { DataTable, type DataTableProps } from "./DataTable";
-export { BulkActionBar, type BulkActionBarProps } from "./BulkActionBar";
+export {
+  BulkActionBar,
+  type BulkActionBarProps,
+  type BulkAction,
+} from "./BulkActionBar";
 /* GROUPING — the menu, the engine, the hook, and the two pieces of chrome that
    a grouped list grows. One module, because a list that adopts one of these
    without the others gets a control with nothing behind it, or headers that

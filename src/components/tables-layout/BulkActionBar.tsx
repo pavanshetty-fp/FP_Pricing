@@ -47,9 +47,35 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+/** One verb in the bar. Supplied when a list's actions are its own. */
+export interface BulkAction {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  /** Greyed with `title` as the reason. */
+  disabled?: boolean;
+  /** Why it is unavailable — a dead control with no explanation is worse. */
+  title?: string;
+  /** Destructive verbs CONFIRM, the same way Delete does. */
+  destructive?: boolean;
+  onSelect: () => void;
+}
+
 export interface BulkActionBarProps {
   count: number;
   onClear?: () => void;
+  /**
+   * This list's own verbs, replacing the demo set. Supplied because what can be
+   * done to a selection is a property of the RECORDS, not of the bar — the same
+   * split the Group By menu makes for dimensions. The chrome (count chip,
+   * spacing, hairlines, confirm-on-destructive) stays identical, which is the
+   * whole point of not forking a second bar.
+   */
+  actions?: BulkAction[];
+  /** The trailing Copy / Delete / ··· More zone. Off for a fixed action set. */
+  tools?: boolean;
+  /** What one selected thing is called, for the confirm copy. */
+  noun?: string;
   onAssign?: () => void;
   onUnassign?: () => void;
   onUnblock?: () => void;
@@ -80,7 +106,11 @@ const FIELD_GROUPS: {
     items: [
       { key: "planned-date", label: "Planned Date", icon: <Calendar /> },
       { key: "planned-time", label: "Planned Time", icon: <Clock /> },
-      { key: "extend-planned-time", label: "Extend Planned Time", icon: <Timer /> },
+      {
+        key: "extend-planned-time",
+        label: "Extend Planned Time",
+        icon: <Timer />,
+      },
       { key: "completed-at", label: "Completed At", icon: <CalendarCheck /> },
     ],
   },
@@ -117,7 +147,17 @@ const VERBS: {
  * confirms via AlertDialog; ··· More opens a grouped, searchable Command menu.
  */
 export function BulkActionBar(props: BulkActionBarProps) {
-  const { count, onClear, onCopy, onDelete, onField } = props;
+  const {
+    count,
+    onClear,
+    onCopy,
+    onDelete,
+    onField,
+    actions,
+    tools = !actions,
+    noun = "record",
+  } = props;
+  const things = `${count} ${noun}${count === 1 ? "" : "s"}`;
   if (count <= 0) return null;
 
   return (
@@ -158,92 +198,155 @@ export function BulkActionBar(props: BulkActionBarProps) {
       </span>
 
       {/* Quick-action verbs */}
-      {VERBS.map((v) => (
-        <Button key={v.key} variant="ghost" size="sm" onClick={props[v.key]}>
-          {v.icon}
-          {v.label}
-        </Button>
-      ))}
+      {actions
+        ? actions.map((a) =>
+            a.destructive ? (
+              <AlertDialog key={a.key}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={a.disabled}
+                    title={a.title}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    {a.icon}
+                    {a.label}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {a.label} for {things}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will affect {things} and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={a.onSelect}
+                    >
+                      {a.label}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button
+                key={a.key}
+                variant="ghost"
+                size="sm"
+                disabled={a.disabled}
+                title={a.title}
+                onClick={a.onSelect}
+              >
+                {a.icon}
+                {a.label}
+              </Button>
+            ),
+          )
+        : VERBS.map((v) => (
+            <Button
+              key={v.key}
+              variant="ghost"
+              size="sm"
+              onClick={props[v.key]}
+            >
+              {v.icon}
+              {v.label}
+            </Button>
+          ))}
 
-      <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+      {tools && (
+        <>
+          <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-      {/* Icon-only zone: Copy + Delete */}
-      <Button variant="ghost" size="icon-sm" aria-label="Copy" onClick={onCopy}>
-        <Copy />
-      </Button>
-
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
+          {/* Icon-only zone: Copy + Delete */}
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Delete"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Copy"
+            onClick={onCopy}
           >
-            <Trash2 />
+            <Copy />
           </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {count} records?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will affect {count} {count === 1 ? "record" : "records"} and
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onDelete}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
-      <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Delete"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {things}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will affect {things} and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={onDelete}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
-      {/* ··· More — always last */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal />
-            More
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          side="top"
-          sideOffset={8}
-          className="w-[420px] p-0"
-        >
-          <Command>
-            <CommandInput placeholder="Search fields..." />
-            <CommandList className="max-h-[360px]">
-              <CommandEmpty>No fields found.</CommandEmpty>
-              {FIELD_GROUPS.map((group, gi) => (
-                <React.Fragment key={group.heading}>
-                  {gi > 0 && <CommandSeparator />}
-                  <CommandGroup
-                    heading={group.heading}
-                    className="[&_[cmdk-group-items]]:grid [&_[cmdk-group-items]]:grid-cols-2 [&_[cmdk-group-items]]:gap-1"
-                  >
-                    {group.items.map((item) => (
-                      <CommandItem
-                        key={item.key}
-                        value={item.label}
-                        icon={item.icon}
-                        onSelect={() => onField?.(item.key)}
+          <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+
+          {/* ··· More — always last */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal />
+                More
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="top"
+              sideOffset={8}
+              className="w-[420px] p-0"
+            >
+              <Command>
+                <CommandInput placeholder="Search fields..." />
+                <CommandList className="max-h-[360px]">
+                  <CommandEmpty>No fields found.</CommandEmpty>
+                  {FIELD_GROUPS.map((group, gi) => (
+                    <React.Fragment key={group.heading}>
+                      {gi > 0 && <CommandSeparator />}
+                      <CommandGroup
+                        heading={group.heading}
+                        className="[&_[cmdk-group-items]]:grid [&_[cmdk-group-items]]:grid-cols-2 [&_[cmdk-group-items]]:gap-1"
                       >
-                        {item.label}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </React.Fragment>
-              ))}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+                        {group.items.map((item) => (
+                          <CommandItem
+                            key={item.key}
+                            value={item.label}
+                            icon={item.icon}
+                            onSelect={() => onField?.(item.key)}
+                          >
+                            {item.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </React.Fragment>
+                  ))}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </>
+      )}
     </div>
   );
 }

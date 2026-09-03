@@ -4,14 +4,12 @@ import {
   Check,
   CircleAlert,
   Layers,
-  Mail,
+  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
-  X,
   Shield,
   ThumbsDown,
-  Truck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
@@ -493,8 +498,6 @@ export function BrokerOrderSheet({
   shipTos,
 }: BrokerOrderSheetProps) {
   const [draft, setDraft] = React.useState<BrokerOrderDraft | null>(null);
-  /** Vendors ticked in the picker but not yet invited. */
-  const [picked, setPicked] = React.useState<Set<string>>(new Set());
   /**
    * "Top off selected" is a MODE, not a bulk action. While it is on, the
    * selected lines are filled and the rest still take a typed quantity — so
@@ -503,13 +506,11 @@ export function BrokerOrderSheet({
    */
   const [topOffMode, setTopOffMode] = React.useState(false);
   const [customOpen, setCustomOpen] = React.useState(false);
-  const [inviteOpen, setInviteOpen] = React.useState(false);
   const creating = mode === "create";
 
   React.useEffect(() => {
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
-    setPicked(new Set());
     // An order that already carries top-off lines opens in the mode, with those
     // lines selected — otherwise the switch would read "off" over filled rows.
     setTopOffMode(Boolean(order?.lines.some((l) => l.topOff)));
@@ -638,42 +639,59 @@ export function BrokerOrderSheet({
   const eligible = VENDORS.filter((v) =>
     v.businessLines.some((b) => b === requiredLine)
   );
+  /* THE PARTNER TABLE'S ROWS. `invitedVendorIds` doubles as the row list, with
+     `""` standing for a row that exists but has not been filled in yet — the
+     same shape the Delivery Order uses for a blank asset line. It keeps "what
+     is on the table" and "who is invited" as one list rather than two that can
+     disagree. */
+  const partnerRows = draft.invitedVendorIds;
+  const invitedIds = partnerRows.filter(Boolean);
   /** Only what can still be added — an invited partner is not an option. */
-  const uninvited = eligible.filter(
-    (v) => !draft.invitedVendorIds.includes(v.id)
-  );
+  const uninvited = eligible.filter((v) => !invitedIds.includes(v.id));
 
   /* ── Workflow transitions. Each one moves the status AND the vendor fields
         together, so the pair cannot end up contradicting itself. ─────────── */
-  /* MERGES. Inviting again adds to the list rather than replacing it, so a
-     partner can be added after the first round went out — which is the whole
-     point of being able to invite more later. New invitees are asked for a
-     price by default. */
-  const invite = (ids: string[]) =>
+  /** A blank row, ready for its first cell to be filled. */
+  const addPartnerRow = () =>
     setDraft((d) =>
-      d
-        ? {
-            ...d,
-            status: "Assigned",
-            invitedVendorIds: [...new Set([...d.invitedVendorIds, ...ids])],
-            quoteVendorIds: [...new Set([...d.quoteVendorIds, ...ids])],
-            vendorId: null,
-          }
-        : d
+      d ? { ...d, invitedVendorIds: [...d.invitedVendorIds, ""] } : d
     );
 
-  /** Withdrawing one invitation, not the whole round. */
-  const uninvite = (id: string) =>
-    setDraft((d) =>
-      d
-        ? {
-            ...d,
-            invitedVendorIds: d.invitedVendorIds.filter((x) => x !== id),
-            quoteVendorIds: d.quoteVendorIds.filter((x) => x !== id),
-            status: d.invitedVendorIds.length <= 1 ? "Draft" : d.status,
-          }
-        : d
-    );
+  /* Naming the partner in a row is the whole of adding it: every other column
+     is that partner's own record, so it follows rather than being typed. */
+  const setPartnerAt = (i: number, id: string) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const prev = d.invitedVendorIds[i];
+      const next = [...d.invitedVendorIds];
+      next[i] = id;
+      return {
+        ...d,
+        invitedVendorIds: next,
+        // Selected by default — the common case is asking everyone.
+        quoteVendorIds: [
+          ...new Set([...d.quoteVendorIds.filter((x) => x !== prev), id]),
+        ],
+        status: next.some(Boolean) ? "Assigned" : "Draft",
+        vendorId: null,
+      };
+    });
+
+  /** Withdrawing invitations, by row, not the whole round. */
+  const removePartnerRows = (rows: number[]) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const drop = new Set(rows);
+      const gone = new Set(rows.map((i) => d.invitedVendorIds[i]));
+      const next = d.invitedVendorIds.filter((_, i) => !drop.has(i));
+      return {
+        ...d,
+        invitedVendorIds: next,
+        quoteVendorIds: d.quoteVendorIds.filter((x) => !gone.has(x)),
+        status: next.some(Boolean) ? d.status : "Draft",
+        vendorId: gone.has(d.vendorId ?? "") ? null : d.vendorId,
+      };
+    });
 
   const setQuoteFor = (id: string, on: boolean) =>
     setDraft((d) =>
@@ -686,14 +704,28 @@ export function BrokerOrderSheet({
           }
         : d
     );
-  const cancelInvites = () =>
-    setDraft((d) =>
-      d ? { ...d, status: "Draft", invitedVendorIds: [], vendorId: null } : d
-    );
   const acceptFor = (vendorId: string) =>
     setDraft((d) => (d ? { ...d, status: "Accepted", vendorId } : d));
   const advance = (status: BrokerStatus) =>
     setDraft((d) => (d ? { ...d, status } : d));
+
+  /* THE TABLE'S SELECTION. One set, read by two things: the quote switch (a
+     mode over it, exactly like "Top off selected") and the bulk actions. A
+     second, transient selection alongside it would let the two disagree about
+     what "these partners" means. */
+  const selectedRows = partnerRows
+    .map((id, i) => (id && draft.quoteVendorIds.includes(id) ? i : -1))
+    .filter((i) => i !== -1);
+  const headerChecked: boolean | "indeterminate" =
+    invitedIds.length > 0 && selectedRows.length === invitedIds.length
+      ? true
+      : selectedRows.length > 0
+        ? "indeterminate"
+        : false;
+  const selectAllPartners = (on: boolean) =>
+    setDraft((d) => (d ? { ...d, quoteVendorIds: on ? [...invitedIds] : [] } : d));
+  /** Pricing only exists once it has been asked for and sent out. */
+  const showQuoteCol = draft.quoteRequested && draft.status === "Assigned";
 
   /* Inviting stays available until somebody has ACCEPTED — that is the point
      at which the order has a partner and more invitations mean nothing. */
@@ -766,6 +798,11 @@ export function BrokerOrderSheet({
       )}
 
       <SheetSection className="gap-5" title="Basic Details">
+        {/* The selects and the facts they produce are ONE unit, so they sit
+            4px apart while the section's own rhythm stays 20px. A full field
+            gap between them would read as the next question rather than the
+            answer to the last one. */}
+        <div className="flex flex-col gap-1">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer" required>
             <Select value={draft.customer} onValueChange={(v) => set("customer", v)}>
@@ -799,27 +836,31 @@ export function BrokerOrderSheet({
 
         {/* The ship-to's own facts, as a READ-OUT rather than fields. They are
             the consequence of the two selects above — never typed, never
-            editable — so they are shown, not offered. One card keeps the
-            coordinates and the address together, which is how anyone reads a
-            location: three lines at most. */}
-        <div className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-3">
+            editable — so they are shown, not offered.
+
+            ONE LINE, because the sheet is wide enough to hold it and a location
+            is read as a single string. Stacked, the three fragments looked like
+            three separate values; inline, with the coordinates set off by a
+            divider, it reads as one place. It wraps rather than truncates on a
+            narrow sheet — an address with its tail cut off is worse than an
+            address on two lines. */}
+        <div className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5">
           {site ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm tabular-nums text-foreground">
-                {site.latLng}
+            <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
+              <span className="tabular-nums text-foreground">{site.latLng}</span>
+              <span aria-hidden className="text-fp-outline-1">
+                |
               </span>
-              <span className="text-sm text-muted-foreground">
-                {site.street}
+              <span className="text-muted-foreground">
+                {site.street}, {site.city}, {site.state} {site.zip}
               </span>
-              <span className="text-sm text-muted-foreground">
-                {site.city}, {site.state} {site.zip}
-              </span>
-            </div>
+            </p>
           ) : (
             <span className="text-sm text-muted-foreground">
               Select a ShipTo to see its coordinates and address.
             </span>
           )}
+        </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -1368,209 +1409,262 @@ export function BrokerOrderSheet({
       <SheetSection className="gap-5" title="Delivery Partner">
         {!accepted && (
           <>
-            {/* The DS "add more" pattern: what has been chosen sits inline as
-                removable chips, and the same control adds another. Inviting is
-                not a one-shot round — a partner can be added after the first
-                went out, which the old "pick then Invite" flow made impossible
-                once the order left Draft. */}
-            <SheetField
-              label="Invite partners"
-              description={`Showing partners that run ${requiredLine}. All invited partners are notified at the same time; whichever accepts first is assigned the order, and the rest are told it is no longer available.`}
-            >
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-fp-outline-1 p-2">
-                {draft.invitedVendorIds.map((id) => (
-                  <span
-                    key={id}
-                    className="flex items-center gap-1.5 rounded-md bg-muted py-1 pr-1 pl-2.5 text-sm text-foreground"
-                  >
-                    <Truck className="size-3.5 text-muted-foreground" />
-                    {vendorById(id)?.name ?? id}
-                    <button
-                      type="button"
-                      aria-label={`Cancel invitation to ${vendorById(id)?.name ?? id}`}
-                      onClick={() => uninvite(id)}
-                      className="rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </span>
-                ))}
+            {/* A TABLE, not a list of cards. A delivery partner is compared
+                against the others on the same handful of attributes — where
+                they are, how safe, how far, what they run — and comparing is
+                what a table is for. Cards made every attribute a different
+                shape on every row.
 
-                <Popover open={inviteOpen} onOpenChange={setInviteOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      // A blocked order cannot be dispatched at all (§5, Credit
-                      // Limit Management), so the action is unavailable rather
-                      // than failing after the click.
-                      disabled={draft.status === "Blocked"}
-                      className={cn(draft.invitedVendorIds.length === 0 && "w-full")}
-                    >
-                      <Plus /> Invite partners
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-96 p-0">
-                    <div className="flex max-h-72 flex-col gap-1 overflow-y-auto p-1">
-                      {uninvited.length === 0 ? (
-                        <p className="p-3 text-sm text-muted-foreground">
-                          Every eligible partner is already invited.
-                        </p>
-                      ) : (
-                        uninvited.map((v) => (
-                          <label
-                            key={v.id}
-                            className="flex cursor-pointer items-start gap-2.5 rounded-sm p-2 transition-colors hover:bg-accent"
-                          >
-                            <Checkbox
-                              className="mt-0.5"
-                              checked={picked.has(v.id)}
-                              onCheckedChange={() =>
-                                setPicked((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(v.id)) next.delete(v.id);
-                                  else next.add(v.id);
-                                  return next;
-                                })
-                              }
-                            />
-                            <VendorRow id={v.id} />
-                          </label>
-                        ))
+                Same DS editable-table idiom as the two tables above: the FIRST
+                cell is the only one anyone fills; the rest are that partner's
+                own record and arrive with them. */}
+            <div>
+              <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+                <table className="w-full table-fixed border-collapse">
+                  <colgroup>
+                    <col className="w-[44px]" />
+                    <col className="w-[25%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[148px]" />
+                    <col />
+                    {showQuoteCol && <col className="w-[124px]" />}
+                    <col className="w-[52px]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-border bg-fp-surface-1a">
+                      <th className="px-3 py-2.5">
+                        <Checkbox
+                          checked={headerChecked}
+                          onCheckedChange={(c) => selectAllPartners(c === true)}
+                          aria-label="Select all delivery partners"
+                        />
+                      </th>
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Delivery Partner</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Address</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Safety · Distance</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Products</TableRequiredLabel>
+                      </th>
+                      {showQuoteCol && (
+                        <th className="px-3 py-2.5 text-right">
+                          <TableRequiredLabel>Quote</TableRequiredLabel>
+                        </th>
                       )}
-                    </div>
-                    <div className="flex items-center justify-end gap-2 border-t border-border p-2">
-                      <Button
-                        size="sm"
-                        disabled={picked.size === 0}
-                        onClick={() => {
-                          invite([...picked]);
-                          setPicked(new Set());
-                          setInviteOpen(false);
-                        }}
-                      >
-                        <Mail />
-                        Invite{picked.size > 0 && ` ${picked.size}`}
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                      <th aria-hidden />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partnerRows.length === 0 ? (
+                      <tr className="h-11">
+                        <td
+                          colSpan={showQuoteCol ? 7 : 6}
+                          className="px-3 text-sm text-muted-foreground"
+                        >
+                          No delivery partner yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      partnerRows.map((id, i) => {
+                        const v = id ? vendorById(id) : undefined;
+                        const quote = quotes.find((q) => q.vendorId === id);
+                        return (
+                          <tr
+                            key={`${id}-${i}`}
+                            className="group/row h-11 border-b border-border last:border-b-0"
+                          >
+                            <td className="px-3">
+                              <Checkbox
+                                checked={Boolean(id) && draft.quoteVendorIds.includes(id)}
+                                disabled={!id}
+                                onCheckedChange={(c) => setQuoteFor(id, c === true)}
+                                aria-label={`Select ${v?.name ?? `row ${i + 1}`}`}
+                              />
+                            </td>
+                            <td className="relative p-0">
+                              <TableCellSelect
+                                value={v?.name ?? ""}
+                                /* The row's own partner stays in its list, so
+                                   the cell can show what it holds. */
+                                options={[
+                                  ...(v ? [v.name] : []),
+                                  ...uninvited.map((x) => x.name),
+                                ]}
+                                placeholder="Add partner"
+                                disabled={draft.status === "Blocked"}
+                                aria-label={`Delivery partner for row ${i + 1}`}
+                                onChange={(name) => {
+                                  const picked = eligible.find((x) => x.name === name);
+                                  if (picked) setPartnerAt(i, picked.id);
+                                }}
+                              />
+                              {v && (!v.emailsEnabled || !v.hasAccount) && (
+                                <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2">
+                                  {/* §6 Email Management: a partner with emails
+                                      off will never see the invitation, which is
+                                      the one thing worth knowing at the moment of
+                                      inviting them. */}
+                                  <Badge
+                                    variant={v.emailsEnabled ? "secondary" : "destructive"}
+                                  >
+                                    {v.emailsEnabled ? "Link only" : "Emails off"}
+                                  </Badge>
+                                </span>
+                              )}
+                            </td>
+                            <td className="truncate px-3 text-sm text-muted-foreground">
+                              {v?.base ?? "—"}
+                            </td>
+                            <td className="px-3 text-sm text-muted-foreground">
+                              {v ? (
+                                <span className="flex items-center gap-1.5 tabular-nums">
+                                  <Shield className="size-3.5 shrink-0" />
+                                  {v.safetyScore}
+                                  <span className="text-fp-outline-1">·</span>
+                                  {v.distanceMi} mi
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td className="truncate px-3 text-sm text-muted-foreground">
+                              {v ? v.businessLines.join(" · ") : "—"}
+                            </td>
+                            {showQuoteCol && (
+                              <td className="px-3 text-right text-sm tabular-nums">
+                                {quote ? (
+                                  <span className="text-foreground">
+                                    ${quoteTotal(quote, gal).toLocaleString(undefined, {
+                                      maximumFractionDigits: 2,
+                                    })}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">Pending</span>
+                                )}
+                              </td>
+                            )}
+                            <td className="p-0 text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild disabled={!id}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={`Actions for ${v?.name ?? `row ${i + 1}`}`}
+                                    className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                                  >
+                                    <MoreHorizontal />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-60">
+                                  <DropdownMenuItem
+                                    disabled={draft.quoteRequested && !quote}
+                                    onSelect={() => acceptFor(id)}
+                                  >
+                                    <Check />
+                                    {draft.quoteRequested
+                                      ? "Accept quote"
+                                      : "Acknowledge for them"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onSelect={() => removePartnerRows([i])}
+                                  >
+                                    <ThumbsDown />
+                                    Cancel invitation
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
-            </SheetField>
+              {/* Attached to the squared corner, where the next row goes. */}
+              <button
+                type="button"
+                disabled={draft.status === "Blocked" || uninvited.length === 0}
+                onClick={addPartnerRow}
+                className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Plus className="size-4" /> Add partner
+              </button>
+            </div>
 
-            {/* Same shape as "Top off selected": a MODE over a selection that
-                defaults to everyone. Asking every invited partner for a price
-                is the common case, so it costs no clicks; excluding one is a
-                single uncheck. */}
-            {draft.invitedVendorIds.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-1">
-                  {draft.invitedVendorIds.map((id) => (
-                    <label
-                      key={id}
-                      className="flex cursor-pointer items-start gap-2.5 rounded-sm p-2 transition-colors hover:bg-accent"
-                    >
-                      <Checkbox
-                        className="mt-0.5"
-                        checked={draft.quoteVendorIds.includes(id)}
-                        onCheckedChange={(c) => setQuoteFor(id, c === true)}
-                        aria-label={`Request a quote from ${vendorById(id)?.name ?? id}`}
-                      />
-                      <VendorRow id={id} />
-                    </label>
-                  ))}
+            <p className="text-xs text-muted-foreground">
+              Showing partners that run {requiredLine}. All invited partners are
+              notified at the same time; whichever accepts first is assigned the
+              order, and the rest are told it is no longer available.
+            </p>
+
+            {/* BULK. The same checked rows the quote switch reads — one
+                selection, not a second one that can disagree with it. Only one
+                partner can take the order, so acknowledging is a one-row
+                action; cancelling is not. */}
+            {selectedRows.length > 0 && (
+              <div className="flex items-center gap-3 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2">
+                <span className="text-sm text-foreground tabular-nums">
+                  {selectedRows.length} selected
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={selectedRows.length !== 1}
+                    title={
+                      selectedRows.length !== 1
+                        ? "Only one partner can take the order."
+                        : undefined
+                    }
+                    onClick={() => {
+                      const id = partnerRows[selectedRows[0]];
+                      if (id) acceptFor(id);
+                    }}
+                  >
+                    <Check /> Acknowledge for them
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => removePartnerRows(selectedRows)}
+                  >
+                    <ThumbsDown /> Cancel invitation
+                  </Button>
                 </div>
-
-                <label
-                  htmlFor="quote"
-                  className="flex cursor-pointer items-center justify-between gap-4"
-                >
-                  <span className="flex flex-col gap-0.5 text-sm font-medium text-foreground">
-                    Request a quote
-                    <span className="text-xs font-normal text-muted-foreground">
-                      The selected partners submit pricing instead of a plain
-                      acknowledgement.
-                    </span>
-                  </span>
-                  <Switch
-                    id="quote"
-                    checked={draft.quoteRequested}
-                    onCheckedChange={(v) => set("quoteRequested", v)}
-                  />
-                </label>
               </div>
             )}
-          </>
-        )}
 
-        {draft.status === "Assigned" && (
-          <>
-            <p className="text-xs text-muted-foreground">
-              Out for acknowledgement. Nobody has accepted yet.
-            </p>
-            <div className="flex flex-col gap-2">
-              {draft.invitedVendorIds.map((id) => {
-                const quote = quotes.find((q) => q.vendorId === id);
-                return (
-                  <div
-                    key={id}
-                    className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3"
-                  >
-                    <div className="flex items-start gap-2">
-                      <Truck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                      <VendorRow id={id} />
-                    </div>
-                    {draft.quoteRequested && (
-                      <div className="flex items-center justify-between gap-3 border-t border-fp-outline-1 pt-2">
-                        {quote ? (
-                          <span className="text-xs tabular-nums text-foreground">
-                            {quote.fee !== undefined ? (
-                              <>
-                                Fee ${quote.fee} + tax ${quote.tax} ={" "}
-                                <span className="font-medium">
-                                  ${quoteTotal(quote, gal).toLocaleString()}
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                ${quote.ratePerGal}/gal + ${quote.serviceCharge} ={" "}
-                                <span className="font-medium">
-                                  $
-                                  {quoteTotal(quote, gal).toLocaleString(undefined, {
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </span>
-                              </>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            No pricing submitted yet
-                          </span>
-                        )}
-                        <Button
-                          size="xs"
-                          disabled={!quote}
-                          onClick={() => acceptFor(id)}
-                        >
-                          <Check /> Accept quote
-                        </Button>
-                      </div>
-                    )}
-                    {!draft.quoteRequested && (
-                      <div className="flex items-center justify-end gap-2 border-t border-fp-outline-1 pt-2">
-                        <Button variant="outline" size="xs" onClick={() => acceptFor(id)}>
-                          <Check /> Acknowledge for them
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <Button variant="outline" onClick={cancelInvites}>
-              <ThumbsDown /> Cancel invitation
-            </Button>
+            {/* Same shape as "Top off selected": a MODE over the selection,
+                which starts as everyone. Asking every invited partner for a
+                price is the common case, so it costs no clicks; excluding one
+                is a single uncheck. */}
+            {invitedIds.length > 0 && (
+              <label
+                htmlFor="quote"
+                className="flex cursor-pointer items-center justify-between gap-4"
+              >
+                <span className="flex flex-col gap-0.5 text-sm font-medium text-foreground">
+                  Request a quote
+                  <span className="text-xs font-normal text-muted-foreground">
+                    The selected partners submit pricing instead of a plain
+                    acknowledgement.
+                  </span>
+                </span>
+                <Switch
+                  id="quote"
+                  checked={draft.quoteRequested}
+                  onCheckedChange={(v) => set("quoteRequested", v)}
+                />
+              </label>
+            )}
           </>
         )}
 

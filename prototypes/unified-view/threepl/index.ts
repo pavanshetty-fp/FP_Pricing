@@ -1,5 +1,10 @@
 export { BrokerOrdersScreen } from "./BrokerOrdersScreen";
-export { BrokerVendorsScreen } from "./BrokerVendorsScreen";
+export {
+  BrokerVendorsScreen,
+  BrokerCustomersScreen,
+  BrokerProductsScreen,
+  BrokerRentalAssetsScreen,
+} from "./DirectoryScreens";
 export { BrokerBoard, type BoardLane, type BoardCard } from "./BrokerBoard";
 export { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 export {

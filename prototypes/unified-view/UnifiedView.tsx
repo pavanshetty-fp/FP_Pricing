@@ -43,7 +43,13 @@ import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
-import { BrokerOrdersScreen, BrokerVendorsScreen } from "./threepl";
+import {
+  BrokerOrdersScreen,
+  BrokerVendorsScreen,
+  BrokerCustomersScreen,
+  BrokerProductsScreen,
+  BrokerRentalAssetsScreen,
+} from "./threepl";
 import { ProfileScreen } from "./ProfileScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
@@ -1007,12 +1013,7 @@ export function UnifiedView() {
       case "3pl-vendors":
         return <BrokerVendorsScreen />;
       case "3pl-customers":
-        return (
-          <NotBuiltYet
-            label="Customers"
-            detail="Not built yet. 3PL customers sync from Dispatch, so this list would show the same accounts as the Sales module's Customers screen, plus the credit fields the credit-hold rule reads."
-          />
-        );
+        return <BrokerCustomersScreen />;
       case "3pl-recurring-orders":
         return (
           <NotBuiltYet
@@ -1021,19 +1022,9 @@ export function UnifiedView() {
           />
         );
       case "3pl-products":
-        return (
-          <NotBuiltYet
-            label="Products"
-            detail="Not built yet. The fuel and lubricant products an order's lines are drawn from — the Sales module already carries the product names, so this list would be their record view."
-          />
-        );
+        return <BrokerProductsScreen />;
       case "3pl-rental-assets":
-        return (
-          <NotBuiltYet
-            label="Rental Assets"
-            detail="Not built yet. The organisation's rentable assets, as listed under the 3PL Settings — Delivery Orders is the screen in this pass."
-          />
-        );
+        return <BrokerRentalAssetsScreen />;
       default:
         return <NotBuiltYet label={active?.label ?? "Screen"} detail="Not built yet." />;
     }

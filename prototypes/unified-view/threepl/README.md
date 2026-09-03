@@ -154,34 +154,61 @@ Card alert accents: **light 5.02–20.52**, **dark 8.62–14.58**.
 | Screen | State |
 | --- | --- |
 | Delivery Orders | Built — list, board, and the order sheet |
-| **Vendors / Common Carriers** | **Built** — see below |
+| Vendors / Common Carriers | Built |
+| Customers | Built |
+| Products | Built |
+| Rental Assets | Built |
 | Recurring Orders | Not built (open question 5: tab or destination) |
-| Customers | Not built (syncs from Dispatch) |
-| Products | Not built |
-| Rental Assets | Not built |
 
-### Vendors / Common Carriers
-The delivery partners an order can be sent to — the same records the order
-sheet's partner table picks from, so a vendor means one thing in both places.
+### The Directory — one list, four screens
+Vendors, Customers, Products and Rental Assets share a shape exactly: a record
+list with **no date scope**, **no create CTA**, **no bulk bar**, a facet panel,
+grouping, and a footer that counts. `DirectoryList` is that shape; each screen
+supplies only what is genuinely its own — its records, its columns and how their
+cells render, what it can be grouped and filtered by, and whether anything about
+it SUMS.
 
-Three things make it its own list rather than a copy of Customers:
+Four copies would have drifted within a release, and the drift would have been
+in the parts nobody looks at twice — like which of them suspends pagination
+while grouped.
 
-- **Nothing sums.** Safety score and distance belong to one vendor; a summed
-  distance is meaningless and an average would be a different statistic sitting
-  where a total goes. The screen passes no `measureOf`, and the DS's grouping now
-  supports that — headers carry a count alone instead of printing a `0` that
-  reads as "none". Footer: `4 groups · 8 vendors`, no total.
-- **Emails are edited in the row.** §6 makes the per-vendor email toggle the
-  screen's one real action, and it is a single boolean — opening a sheet to flip
-  one switch is a round trip for nothing.
-- **The filters are the picker's filters** (§5.5): business lines, safety score
-  RANGE, distance RANGE. Ranges because nobody asks for "safety exactly 88", and
-  the same bands back the grouping so filtering and grouping speak one vocabulary.
+**No date scope** is deliberate: a carrier, an account, a product and a tank
+carry no date, so the toolbar's date stepper is omitted rather than shown with
+nothing to scope. **No create CTA** because a Directory record is onboarded
+elsewhere — a carrier through a contract, an account from Dispatch, a product
+from the price book — so `FuelOrdersViewBar` now renders its button only when a
+handler is passed.
 
-**No create CTA.** A carrier is onboarded through a contract, not typed into a
-list, and the spec gives no create flow — so `FuelOrdersViewBar` now renders its
-CTA only when a handler is passed, rather than showing a button that does
-nothing.
+#### What sums, and what does not
+The measure is the sharpest question each list asks, and three of the four
+answer "nothing":
+
+| List | Measure | Why |
+| --- | --- | --- |
+| Customers | Outstanding balance | Dollars owed add up. A summed credit *limit* would not — limits are not a pool. |
+| Rental Assets | Monthly revenue, **on-rent only** | Capacity is the obvious pick and is wrong: a group's tanks do not pool into one tank. What a group is worth is what its rented assets bill. |
+| Vendors | none | A summed distance is meaningless; an averaged safety score is a different statistic sitting where a total goes. |
+| Products | none | A reference price is per gallon. Adding seven of them produces a number with no referent. |
+
+This is what made the DS's `measureOf` optional: it had been required, so a list
+with nothing to add up had to pass a fake one, and every group header printed a
+`0` that reads as "none" rather than "not applicable".
+
+#### Where the data comes from
+Names are **not invented**: customers and ship-tos are the ones the Sales module
+and `orders.ts` already carry, and products are exactly the `PRODUCTS` list an
+order's lines are drawn from — `assertProductsCoverOrders()` fails the build if
+that drifts. Inventing a second set would have made "Morris Group" mean two
+different accounts depending on the screen.
+
+What IS invented is the per-record detail no existing file carried: credit
+limits and balances, product grades and hazmat classes, asset serials and rental
+rates. Two of those are load-bearing — the seed data's two **Blocked** orders
+resolve against real states here: Morris Group is $21,250 over its limit, and
+Halvorsen Fuel Co. was never credit-approved. The four assets flagged
+`rental: true` in `SHIP_TO_SITES` are on rent to the same accounts at the same
+sites, so an asset cannot be out at a customer on one screen and in the yard on
+another.
 
 ## Open questions — do not silently decide these
 

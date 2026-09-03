@@ -1,11 +1,6 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 /*
   A read-only value with its own copy button.
@@ -119,27 +114,27 @@ export function CopyValue({
       >
         {value}
       </span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={copy}
-            aria-label={`Copy ${label}`}
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground",
-              "opacity-0 transition-[opacity,color] outline-none",
-              "group-hover/copy:opacity-100 focus-visible:opacity-100",
-              "hover:bg-accent hover:text-foreground",
-              "focus-visible:ring-2 focus-visible:ring-ring/50",
-              // Stays visible while it is confirming, or the receipt is missed.
-              copied && "opacity-100 text-status-success"
-            )}
-          >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{copied ? "Copied" : `Copy ${label}`}</TooltipContent>
-      </Tooltip>
+      {/* NO TOOLTIP. A copy glyph appearing on hover beside a value is already
+          the whole message, and a floating label repeating it covers the value
+          next to it — which on this card is the second thing you might have
+          wanted to copy. The aria-label still names it for anyone who cannot
+          see the icon. */}
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={`Copy ${label}`}
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground",
+          "opacity-0 transition-[opacity,color] outline-none",
+          "group-hover/copy:opacity-100 focus-visible:opacity-100",
+          "hover:bg-accent hover:text-foreground",
+          "focus-visible:ring-2 focus-visible:ring-ring/50",
+          // Stays visible while it is confirming, or the receipt is missed.
+          copied && "opacity-100 text-status-success"
+        )}
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
     </span>
   );
 }

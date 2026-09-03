@@ -257,7 +257,14 @@ export interface BrokerOrder {
    * empty array would be indistinguishable from "created but not filled".
    */
   loadOrder:
-    | { product: string; terminal: string; supplier: string; loadingAccount: string }[]
+    | {
+        product: string;
+        terminal: string;
+        supplier: string;
+        loadingAccount: string;
+        /** Set aside on the order without being deleted from it. */
+        excluded?: boolean;
+      }[]
     | null;
   hub: string;
   primaryPoc: string;

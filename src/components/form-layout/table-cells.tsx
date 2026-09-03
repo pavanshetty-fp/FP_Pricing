@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -198,6 +198,14 @@ export interface TableCellComboboxProps {
   disabled?: boolean;
   /** Allow a value that is not in `options`, offered as its own item. */
   creatable?: boolean;
+  /**
+   * Values already used by OTHER rows of the same table. Shown ticked and
+   * unselectable rather than hidden: removing them would make the list change
+   * length as you fill the table, and someone looking for an asset they already
+   * added would conclude it does not exist. Ticked says "here, and already on
+   * the order".
+   */
+  taken?: readonly string[];
   onChange: (v: string) => void;
   "aria-label"?: string;
 }
@@ -216,6 +224,7 @@ export function TableCellCombobox({
   placeholder = "Select",
   disabled,
   creatable,
+  taken,
   onChange,
   "aria-label": ariaLabel,
 }: TableCellComboboxProps) {
@@ -276,11 +285,22 @@ export function TableCellCombobox({
             )}
             {matches.length > 0 && (
               <CommandGroup>
-                {matches.map((o) => (
-                  <CommandItem key={o} value={o} onSelect={() => choose(o)}>
-                    {o}
-                  </CommandItem>
-                ))}
+                {matches.map((o) => {
+                  const used = o !== value && Boolean(taken?.includes(o));
+                  return (
+                    <CommandItem
+                      key={o}
+                      value={o}
+                      disabled={used}
+                      onSelect={() => !used && choose(o)}
+                    >
+                      <span className="flex-1 truncate">{o}</span>
+                      {(used || o === value) && (
+                        <Check className="size-4 shrink-0" />
+                      )}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             )}
             <CommandEmpty>

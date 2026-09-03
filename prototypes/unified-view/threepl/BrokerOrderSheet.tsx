@@ -362,7 +362,18 @@ export interface BrokerOrderDraft {
    * so its absence has to be distinguishable from an empty one.
    */
   loadRows:
-    | { product: string; terminal?: string; supplier?: string; loadingAccount?: string }[]
+    | {
+        product: string;
+        terminal?: string;
+        supplier?: string;
+        loadingAccount?: string;
+        /**
+         * Set aside, not deleted. The row's product is still on the order, so
+         * deleting it would only make it reappear blank on the next render;
+         * excluded keeps what was already chosen and leaves the way back open.
+         */
+        excluded?: boolean;
+      }[]
     | null;
 }
 
@@ -947,7 +958,7 @@ export function BrokerOrderSheet({
       </SheetSection>
 
       <SheetSection className="gap-5" title="Schedule Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <SheetField label="Planned Delivery Date" required>
             <Popover>
               <PopoverTrigger asChild>
@@ -992,9 +1003,42 @@ export function BrokerOrderSheet({
               searchPlaceholder="Search windows…"
             />
           </SheetField>
+
+          {/* A FIELD, not a checkbox. Recurring is a property of the order that
+              belongs in the row that describes its schedule, and it gates the
+              cadence below — a checkbox floating under the row read as an
+              afterthought and gave the reveal nothing to hang off. Answering
+              "No" is a real answer, which is why it is an option rather than an
+              unticked box: an empty checkbox and a deliberate "not recurring"
+              look identical and are not the same thing. */}
+          <SheetField label="Recurring Order" required>
+            <Combobox
+              className="w-full"
+              value={draft.recurring ? "Yes" : "No"}
+              onValueChange={(v) => {
+                const on = v === "Yes";
+                setDraft((d) =>
+                  d
+                    ? {
+                        ...d,
+                        recurring: on,
+                        recurrenceFrequency: on
+                          ? d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0]
+                          : d.recurrenceFrequency,
+                      }
+                    : d
+                );
+              }}
+              options={["No", "Yes"]}
+              /* The one place the search box is suppressed: a binary is not a
+                 list to be searched, and "Search…" over "No / Yes" is a control
+                 asking you to narrow two things down to one. */
+              searchThreshold={3}
+            />
+          </SheetField>
         </div>
 
-        {/* Revealed by the flag above: a cadence with nothing recurring is a
+        {/* Revealed by the field above: a cadence with nothing recurring is a
             question about nothing. "Custom" opens its own dialog rather than
             growing five more fields nobody uses on the common cadences. */}
         {draft.recurring && (
@@ -1026,32 +1070,6 @@ export function BrokerOrderSheet({
             )}
           </div>
         )}
-
-        {/* Only the flag that CHANGES THIS SECTION stays here — recurring
-            reveals the cadence below it. Urgent and signature-on-delivery are
-            decisions about the delivery itself and ride in the footer, in view
-            at the moment of committing. */}
-        <FlagRow
-          flags={[
-            {
-              id: "recurring",
-              label: "Mark as Recurring Order",
-              checked: draft.recurring,
-              onChange: (v) =>
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        recurring: v,
-                        recurrenceFrequency: v
-                          ? (d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0])
-                          : d.recurrenceFrequency,
-                      }
-                    : d
-                ),
-            },
-          ]}
-        />
 
       </SheetSection>
 
@@ -1143,6 +1161,9 @@ export function BrokerOrderSheet({
                           <TableCellCombobox
                             value={line.asset}
                             options={siteAssets.map((a) => a.name)}
+                            /* An asset already on another line cannot be added
+                               twice — one asset, one quantity. */
+                            taken={draft.lines.map((l) => l.asset)}
                             placeholder={
                               draft.shipTo ? "Select asset" : "Select a ShipTo first"
                             }
@@ -1258,15 +1279,24 @@ export function BrokerOrderSheet({
         <SheetSection
           className="gap-5"
           title="Load Order"
+          /* QUIET UNTIL REACHED FOR. Removing the whole load order is a
+             destructive action on a section that is optional in the first
+             place, so it does not compete with the table for attention: a
+             muted icon that comes up to full contrast and slides its label out
+             on hover. The label is what makes it safe — "Remove" alone, beside
+             a table of rows, reads as though it might remove a row. */
           action={
             loadRows && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => set("loadRows", null)}
+                className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                <Trash2 /> Remove
-              </Button>
+                <Trash2 className="size-4 shrink-0" />
+                <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
+                  Remove Load Order
+                </span>
+              </button>
             )
           }
         >
@@ -1284,9 +1314,7 @@ export function BrokerOrderSheet({
             </Empty>
           ) : !loadRows ? (
             <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
-              <span className="text-sm text-muted-foreground">
-                Not required. Create one to record where each product is loaded.
-              </span>
+              <span className="text-sm text-foreground">Add Load Order</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -1294,20 +1322,24 @@ export function BrokerOrderSheet({
                   set("loadRows", orderProducts.map((pr) => ({ product: pr })))
                 }
               >
-                <Plus /> Create
+                <Plus /> Add
               </Button>
             </div>
           ) : (
             <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col className="w-[28%]" />
+                  <col className="w-[44px]" />
+                  <col className="w-[26%]" />
                   <col />
                   <col />
                   <col />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">
+                    {/* No label: what the tick means is stated by the rows it
+                        dims, and a header for it would name the exception. */}
+                    <th aria-hidden />
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Product</TableRequiredLabel>
                     </th>
@@ -1330,12 +1362,32 @@ export function BrokerOrderSheet({
                       row.terminal,
                       row.supplier
                     );
+                    const on = !row.excluded;
                     return (
                       <tr
                         key={row.product}
                         className="h-11 border-b border-border last:border-b-0"
                       >
-                        <td className="truncate px-3 text-sm text-foreground">
+                        {/* SET ASIDE, NOT DELETED. The product is still on the
+                            delivery order, so a deleted row would come back
+                            blank on the next render. Unticking dims the row and
+                            disables its cells, keeping whatever was already
+                            chosen for the moment someone ticks it again. */}
+                        <td className="px-3">
+                          <Checkbox
+                            checked={on}
+                            onCheckedChange={(c) =>
+                              setLoadRow(row.product, { excluded: c !== true })
+                            }
+                            aria-label={`Include ${row.product} in the load order`}
+                          />
+                        </td>
+                        <td
+                          className={cn(
+                            "truncate px-3 text-sm",
+                            on ? "text-foreground" : "text-muted-foreground line-through"
+                          )}
+                        >
                           {row.product}
                         </td>
                         <td className="relative p-0">
@@ -1343,6 +1395,7 @@ export function BrokerOrderSheet({
                             value={row.terminal ?? ""}
                             options={opts.terminals}
                             placeholder="Terminal"
+                            disabled={!on}
                             aria-label={`Terminal for ${row.product}`}
                             onChange={(v) =>
                               setLoadRow(row.product, {
@@ -1358,6 +1411,7 @@ export function BrokerOrderSheet({
                             value={row.supplier ?? ""}
                             options={opts.suppliers}
                             placeholder="Supplier"
+                            disabled={!on}
                             aria-label={`Supplier for ${row.product}`}
                             onChange={(v) =>
                               setLoadRow(row.product, {
@@ -1372,6 +1426,7 @@ export function BrokerOrderSheet({
                             value={row.loadingAccount ?? ""}
                             options={opts.accounts}
                             placeholder="Account"
+                            disabled={!on}
                             aria-label={`Loading account for ${row.product}`}
                             onChange={(v) =>
                               setLoadRow(row.product, { loadingAccount: v })

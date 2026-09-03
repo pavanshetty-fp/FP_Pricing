@@ -87,6 +87,13 @@ code that implements it.*
 - **Type/mode toggle** (radio-card group) may **swap the form body**: e.g.
   scalar input ↔ tiered/ranged editable table.
 
+### 2b. Helper text
+**Helper text sits 4px under the control it describes** — input, select,
+dropzone, table, anything. It is part of that control, not the next thing down
+the form: at a field gap it floats between two controls and gets read as a label
+for the one below. Label→control keeps the field's own rhythm; control→helper is
+4px, always.
+
 ## 3. Disclosure & feedback
 
 - **Progressive disclosure**: start minimal (a selector or CTA); reveal detail on
@@ -133,6 +140,37 @@ code that implements it.*
   multi-select with tristate parent checkboxes**.
 - **Empty-state rows**: NA cells + a per-row CTA (e.g. "Setup Pricing").
 - **Pagination** footer.
+
+### 4a. Totals and the add row — an editable table's two ends
+
+**T1 — A total is a ROW of the table, never a caption under it.** Render it as a
+`<tfoot>` row on the same grid as the body: the label right-aligned in the cells
+before the measure, the sum in the measure's own column, action columns empty. A
+total placed outside the table has to be aligned to that column by hand, drifts
+the moment a column width changes, and reads as a note about the whole table
+rather than the bottom of one column.
+
+**T2 — The total appears only once a row carries real content.** A total over an
+empty table says "0" about something that has not started. Where every row is
+qualitative rather than numeric (all "top-off", all "TBD"), the total says that
+word instead of a number, because there is nothing to add up.
+
+**T3 — The measure excludes rows that state no value.** A row flagged as
+"decided later" contributes nothing, even if it still carries a number typed
+before the flag was set — that number is kept so unsetting the flag hands it
+back, and must not leak into a sum nobody promised.
+
+**T4 — "+ Add" stays ATTACHED TO THE TABLE'S SQUARED BOTTOM-LEFT CORNER, below
+the total.** `rounded-b-md border border-t-0`, h-8, muted label, on the table's
+own bottom edge. It is chrome hanging off the table, not a row of it: a row
+would sit inside the total's grid and be counted by the eye as data. The order
+down the table is therefore *rows → total → add*, and the total keeps its place
+as the table's last line whatever gets added next.
+
+**T5 — A column of checkboxes is NAMED.** If the tick does something specific
+("Top off", "Include"), the header says so and the tick means that one thing.
+An unlabelled selection column needs a control elsewhere to explain it, and then
+the same tick means different things depending on that control's state.
 
 ## 4b. Bulk operations
 

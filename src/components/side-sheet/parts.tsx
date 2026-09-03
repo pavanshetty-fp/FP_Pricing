@@ -75,10 +75,16 @@ export function SheetField({
           {required && <span className="text-destructive"> *</span>}
         </label>
       )}
-      {children}
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
+      {/* HELPER TEXT IS PART OF THE CONTROL, 4px under it — not the next thing
+          down the form. At the field gap it floats between two controls and gets
+          read as a label for the one below. Label→control keeps the field's own
+          rhythm; control→helper is always 4px. */}
+      <div className="flex flex-col gap-1">
+        {children}
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+      </div>
     </div>
   );
 }

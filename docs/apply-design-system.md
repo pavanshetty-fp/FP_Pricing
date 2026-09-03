@@ -1312,6 +1312,13 @@ code that implements it.*
 - **Type/mode toggle** (radio-card group) may **swap the form body**: e.g.
   scalar input ↔ tiered/ranged editable table.
 
+### 2b. Helper text
+**Helper text sits 4px under the control it describes** — input, select,
+dropzone, table, anything. It is part of that control, not the next thing down
+the form: at a field gap it floats between two controls and gets read as a label
+for the one below. Label→control keeps the field's own rhythm; control→helper is
+4px, always.
+
 ## 3. Disclosure & feedback
 
 - **Progressive disclosure**: start minimal (a selector or CTA); reveal detail on
@@ -1358,6 +1365,37 @@ code that implements it.*
   multi-select with tristate parent checkboxes**.
 - **Empty-state rows**: NA cells + a per-row CTA (e.g. "Setup Pricing").
 - **Pagination** footer.
+
+### 4a. Totals and the add row — an editable table's two ends
+
+**T1 — A total is a ROW of the table, never a caption under it.** Render it as a
+`<tfoot>` row on the same grid as the body: the label right-aligned in the cells
+before the measure, the sum in the measure's own column, action columns empty. A
+total placed outside the table has to be aligned to that column by hand, drifts
+the moment a column width changes, and reads as a note about the whole table
+rather than the bottom of one column.
+
+**T2 — The total appears only once a row carries real content.** A total over an
+empty table says "0" about something that has not started. Where every row is
+qualitative rather than numeric (all "top-off", all "TBD"), the total says that
+word instead of a number, because there is nothing to add up.
+
+**T3 — The measure excludes rows that state no value.** A row flagged as
+"decided later" contributes nothing, even if it still carries a number typed
+before the flag was set — that number is kept so unsetting the flag hands it
+back, and must not leak into a sum nobody promised.
+
+**T4 — "+ Add" stays ATTACHED TO THE TABLE'S SQUARED BOTTOM-LEFT CORNER, below
+the total.** `rounded-b-md border border-t-0`, h-8, muted label, on the table's
+own bottom edge. It is chrome hanging off the table, not a row of it: a row
+would sit inside the total's grid and be counted by the eye as data. The order
+down the table is therefore *rows → total → add*, and the total keeps its place
+as the table's last line whatever gets added next.
+
+**T5 — A column of checkboxes is NAMED.** If the tick does something specific
+("Top off", "Include"), the header says so and the tick means that one thing.
+An unlabelled selection column needs a control elsewhere to explain it, and then
+the same tick means different things depending on that control's state.
 
 ## 4b. Bulk operations
 
@@ -1531,6 +1569,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Give icon-only buttons an `aria-label`.**
 - **Design every state** — resting / hover / focus / active / disabled / loading / empty.
 - **Disable chart mount animation** and resolve tokens to hex for Recharts.
+- **Put a table's total in a `<tfoot>` row**, in the column it sums (T1).
+- **Keep "+ Add" attached to the table's squared bottom-left corner**, below the
+  total — rows → total → add (T4).
+- **Name a checkbox column** when the tick does one specific thing (T5).
+- **Set helper text 4px under its control** (§2b).
 
 ## Don't
 - **Don't fire a destructive action on one unguarded click.**
@@ -1539,6 +1582,14 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't pass `var(--token)` to a Recharts `stroke`/`fill`** — it won't resolve.
 - **Don't let a loading skeleton change the loaded shape** (layout jump).
 - **Don't animate non-essential motion** without honoring `prefers-reduced-motion`.
+- **Don't float a total outside the table** and align it to a column by hand (T1).
+- **Don't show a total over an empty table** — "0" about work not started (T2).
+- **Don't sum a row that states no value** just because a stale number sits behind
+  its flag (T3).
+- **Don't leave a checkbox column unlabelled** and explain it with a switch
+  somewhere else (T5).
+- **Don't set helper text at the field gap** — it reads as a label for the control
+  below (§2b).
 
 
 ---
@@ -1554,6 +1605,12 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Chart mount** — ❌ default animation (stalls headless, shows a sliver) · ✅ `isAnimationActive={false}`.
 - **Skeleton** — ❌ a loading shape that differs from the loaded shape (layout jumps) · ✅ a skeleton that holds the loaded group's shape.
 - **Icon buttons** — ❌ an icon-only button with no label · ✅ `aria-label`.
+- **Table total** — ❌ a total floated under the table and aligned to its column by hand (drifts the moment a width changes; reads as a caption) · ✅ a `<tfoot>` row on the table's own grid (T1).
+- **Empty total** — ❌ "Total 0 gal" above an order with no lines · ✅ the total appears once a row carries real content (T2).
+- **Stale measure** — ❌ summing the number still stored behind a "decided later" flag · ✅ the flag excludes the row; the number is kept only so unflagging hands it back (T3).
+- **Add placement** — ❌ "+ Add" as a table row, sitting inside the total's grid and read as data · ✅ chrome attached to the squared bottom-left corner, below the total (T4).
+- **Unlabelled checkbox column** — ❌ a tick whose meaning depends on a switch above the table · ✅ a named column, one tick one meaning (T5).
+- **Helper text** — ❌ helper text a field-gap away, read as a label for the next control · ✅ 4px under the control it describes (§2b).
 
 
 ---

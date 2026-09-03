@@ -1,5 +1,5 @@
 import * as React from "react";
-import { FileText, Eye, Trash2, UploadCloud } from "lucide-react";
+import { FileText, Trash2, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
@@ -41,7 +41,14 @@ function CircularProgress({ value }: { value: number }) {
   return (
     <span className="relative inline-flex size-11 items-center justify-center">
       <svg className="size-11 -rotate-90" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r={r} fill="none" strokeWidth="3" className="stroke-muted" />
+        <circle
+          cx="22"
+          cy="22"
+          r={r}
+          fill="none"
+          strokeWidth="3"
+          className="stroke-muted"
+        />
         <circle
           cx="22"
           cy="22"
@@ -54,7 +61,9 @@ function CircularProgress({ value }: { value: number }) {
           strokeDashoffset={c * (1 - value / 100)}
         />
       </svg>
-      <span className="absolute text-[11px] font-medium tabular-nums">{value}%</span>
+      <span className="absolute text-[11px] font-medium tabular-nums">
+        {value}%
+      </span>
     </span>
   );
 }
@@ -82,7 +91,7 @@ export function FileUpload({
 }: FileUploadProps = {}) {
   const showcase = variant === "showcase";
   const [files, setFiles] = React.useState<UploadedFile[]>(
-    showcase ? INITIAL_FILES : []
+    showcase ? INITIAL_FILES : [],
   );
   const idRef = React.useRef(INITIAL_FILES.length);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -108,63 +117,70 @@ export function FileUpload({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Dropzone */}
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          addFiles(e.dataTransfer.files);
-        }}
-        className={cn(
-          "flex h-24 w-full items-center justify-center gap-2 rounded-md border bg-fp-surface-1a text-sm outline-none transition-colors",
-          dragOver
-            ? "border-ring bg-fp-surface-1b"
-            : "border-border hover:border-fp-outline-2",
-          "focus-visible:ring-2 focus-visible:ring-ring/50"
-        )}
-      >
-        <UploadCloud className="size-5 text-muted-foreground" />
-        <span className="font-medium">{label}</span>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => addFiles(e.target.files)}
-        />
-      </button>
-      <p className="text-xs text-muted-foreground">{note}</p>
+      {/* Dropzone + its note are ONE unit, 4px apart — the note describes the
+          control above it, not the list below. */}
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            addFiles(e.dataTransfer.files);
+          }}
+          className={cn(
+            "flex h-24 w-full items-center justify-center gap-2 rounded-md border bg-fp-surface-1a text-sm outline-none transition-colors",
+            dragOver
+              ? "border-ring bg-fp-surface-1b"
+              : "border-border hover:border-fp-outline-2",
+            "focus-visible:ring-2 focus-visible:ring-ring/50",
+          )}
+        >
+          <UploadCloud className="size-5 text-muted-foreground" />
+          <span className="font-medium">{label}</span>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => addFiles(e.target.files)}
+          />
+        </button>
+        <p className="text-xs text-muted-foreground">{note}</p>
+      </div>
 
       {/* The in-progress state is a STATE, not a permanent block — it belongs in
           the showcase, never on a form where nothing is uploading. */}
       {showcase && (
-        <>
+        <div className="flex flex-col gap-1">
           <div className="flex h-24 w-full items-center justify-center gap-3 rounded-md border border-border bg-fp-surface-1a">
             <CircularProgress value={75} />
             <span className="text-sm">Uploading 2 of 3</span>
           </div>
           <p className="text-xs text-muted-foreground">{note}</p>
-        </>
+        </div>
       )}
 
-      {/* Uploaded chips */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Uploaded chips. A CHIP IS SIZED BY ITS CONTENT, not by the container:
+          a filename and a file size need about 240px, and a three-column grid
+          across a wide sheet stretched each one to twice that for no reader's
+          benefit. They wrap, so more files fill the row rather than the row
+          growing to fit. */}
+      <div className="flex flex-wrap gap-3">
         {files.map((file) => (
           <div
             key={file.id}
-            className="flex items-center gap-3 rounded-md border border-border bg-fp-surface-1a px-3 py-2.5"
+            className="flex w-60 items-center gap-3 rounded-md border border-border bg-fp-surface-1a px-3 py-2.5"
           >
             <span
               className={cn(
                 "flex size-9 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold",
-                KIND_STYLE[file.kind]
+                KIND_STYLE[file.kind],
               )}
             >
               <FileText className="size-4" />
@@ -175,15 +191,10 @@ export function FileUpload({
             </span>
             <button
               type="button"
-              aria-label={`Preview ${file.name}`}
-              className="flex size-7 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Eye className="size-4" />
-            </button>
-            <button
-              type="button"
               aria-label={`Delete ${file.name}`}
-              onClick={() => setFiles((prev) => prev.filter((f) => f.id !== file.id))}
+              onClick={() =>
+                setFiles((prev) => prev.filter((f) => f.id !== file.id))
+              }
               className="flex size-7 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <Trash2 className="size-4" />

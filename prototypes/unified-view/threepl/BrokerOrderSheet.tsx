@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
+import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -890,17 +891,29 @@ export function BrokerOrderSheet({
               emptyText="No contact found."
             />
           </SheetField>
-          {/* DERIVED, so DISABLED rather than read-only. A read-only input still
-              takes focus and shows a caret, which promises an edit that will
-              never land — these carry the contact's own record forward from the
-              name chosen beside them, and the way to change them is to change
-              that name. Same for Sales Contact below. */}
-          <SheetField label="POC Contact">
-            <Input value={poc?.phone ?? "—"} disabled />
-          </SheetField>
-          <SheetField label="POC Email">
-            <Input value={poc?.email ?? "—"} disabled />
-          </SheetField>
+          {/* NOT FIELDS. The contact and the email are the chosen person's own
+              record arriving with them — the same relationship the ship-to card
+              above has to Customer and ShipTo, so it gets the same treatment: a
+              read-out card, not two disabled inputs pretending to be editable.
+              It sits BESIDE the name rather than under it, because it is that
+              name's answer, and each value carries its own copy button — a
+              number goes to a dialler, an address goes to a mail client, and one
+              control over the pair would hand over both. */}
+          <div className="col-span-2 flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+            {poc ? (
+              <>
+                <CopyValue value={poc.phone} label="POC contact" tabular />
+                <span aria-hidden className="text-fp-outline-1">
+                  |
+                </span>
+                <CopyValue value={poc.email} label="POC email" />
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Select a POC to see their contact and email.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -916,9 +929,20 @@ export function BrokerOrderSheet({
               emptyText="No one found."
             />
           </SheetField>
-          <SheetField label="Sales Contact">
-            <Input value={SALES_CONTACTS[draft.salesperson] ?? "—"} disabled />
-          </SheetField>
+          {/* Same shape, one value. */}
+          <div className="flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+            {SALES_CONTACTS[draft.salesperson] ? (
+              <CopyValue
+                value={SALES_CONTACTS[draft.salesperson]}
+                label="sales contact"
+                tabular
+              />
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Select a sales person to see their contact.
+              </span>
+            )}
+          </div>
         </div>
       </SheetSection>
 

@@ -216,6 +216,7 @@ export {
   selectTriggerClasses,
 } from "./select";
 export { Combobox } from "./combobox";
+export { CopyValue, type CopyValueProps } from "./copy-value";
 export type { ComboboxOption, ComboboxProps } from "./combobox";
 export {
   Popover,

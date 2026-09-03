@@ -353,7 +353,7 @@ export interface BrokerOrderDraft {
    * mode — `quoteRequested` is the mode. Every partner is added here when
    * invited, so the common case ("price from everyone") needs no clicks.
    */
-  quoteVendorIds: string[];
+
   primaryPoc: string;
   salesperson: string;
   instructions: string;
@@ -402,7 +402,6 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
     quoteRequested: o.quoteRequested,
-    quoteVendorIds: [...o.invitedVendorIds],
     primaryPoc: o.primaryPoc,
     salesperson: o.salesperson,
     instructions: o.instructions,
@@ -441,7 +440,6 @@ function emptyDraft(): BrokerOrderDraft {
     vendorId: null,
     invitedVendorIds: [],
     quoteRequested: false,
-    quoteVendorIds: [],
     primaryPoc: "",
     salesperson: "",
     instructions: "",
@@ -504,12 +502,15 @@ export function BrokerOrderSheet({
   shipTos,
 }: BrokerOrderSheetProps) {
   const [draft, setDraft] = React.useState<BrokerOrderDraft | null>(null);
+  /** Ticked partner rows. UI state, not the order's — see `selectedRows`. */
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [customOpen, setCustomOpen] = React.useState(false);
   const creating = mode === "create";
 
   React.useEffect(() => {
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
+    setSelected(new Set());
   }, [open, creating, order]);
 
   if (!draft || (!creating && !order)) return null;
@@ -651,23 +652,19 @@ export function BrokerOrderSheet({
   const setPartnerAt = (i: number, id: string) =>
     setDraft((d) => {
       if (!d) return d;
-      const prev = d.invitedVendorIds[i];
       const next = [...d.invitedVendorIds];
       next[i] = id;
       return {
         ...d,
         invitedVendorIds: next,
-        // Selected by default — the common case is asking everyone.
-        quoteVendorIds: [
-          ...new Set([...d.quoteVendorIds.filter((x) => x !== prev), id]),
-        ],
         status: next.some(Boolean) ? "Assigned" : "Draft",
         vendorId: null,
       };
     });
 
   /** Withdrawing invitations, by row, not the whole round. */
-  const removePartnerRows = (rows: number[]) =>
+  const removePartnerRows = (rows: number[]) => {
+    setSelected(new Set());
     setDraft((d) => {
       if (!d) return d;
       const drop = new Set(rows);
@@ -676,34 +673,27 @@ export function BrokerOrderSheet({
       return {
         ...d,
         invitedVendorIds: next,
-        quoteVendorIds: d.quoteVendorIds.filter((x) => !gone.has(x)),
         status: next.some(Boolean) ? d.status : "Draft",
         vendorId: gone.has(d.vendorId ?? "") ? null : d.vendorId,
       };
     });
+  };
 
-  const setQuoteFor = (id: string, on: boolean) =>
-    setDraft((d) =>
-      d
-        ? {
-            ...d,
-            quoteVendorIds: on
-              ? [...new Set([...d.quoteVendorIds, id])]
-              : d.quoteVendorIds.filter((x) => x !== id),
-          }
-        : d
-    );
   const acceptFor = (vendorId: string) =>
     setDraft((d) => (d ? { ...d, status: "Accepted", vendorId } : d));
   const advance = (status: BrokerStatus) =>
     setDraft((d) => (d ? { ...d, status } : d));
 
-  /* THE TABLE'S SELECTION. One set, read by two things: the quote switch (a
-     mode over it, exactly like "Top off selected") and the bulk actions. A
-     second, transient selection alongside it would let the two disagree about
-     what "these partners" means. */
+  /* THE TABLE'S SELECTION IS TRANSIENT, and starts empty. Adding a partner is
+     not choosing one to act on: the tick is how you say "do something to these
+     now", and a row that arrives already ticked has answered a question nobody
+     asked — and puts a bulk bar on screen before there is anything to bulk.
+
+     It is no longer the same set as the quote. Asking for pricing is a property
+     of the whole round (see the switch below), so binding it to a selection
+     made two unrelated decisions share one control. */
   const selectedRows = partnerRows
-    .map((id, i) => (id && draft.quoteVendorIds.includes(id) ? i : -1))
+    .map((id, i) => (id && selected.has(id) ? i : -1))
     .filter((i) => i !== -1);
   const headerChecked: boolean | "indeterminate" =
     invitedIds.length > 0 && selectedRows.length === invitedIds.length
@@ -712,7 +702,7 @@ export function BrokerOrderSheet({
         ? "indeterminate"
         : false;
   const selectAllPartners = (on: boolean) =>
-    setDraft((d) => (d ? { ...d, quoteVendorIds: on ? [...invitedIds] : [] } : d));
+    setSelected(on ? new Set(invitedIds) : new Set());
   /** Pricing only exists once it has been asked for and sent out. */
   const showQuoteCol = draft.quoteRequested && draft.status === "Assigned";
 
@@ -1530,9 +1520,16 @@ export function BrokerOrderSheet({
                           >
                             <td className="px-3">
                               <Checkbox
-                                checked={Boolean(id) && draft.quoteVendorIds.includes(id)}
+                                checked={Boolean(id) && selected.has(id)}
                                 disabled={!id}
-                                onCheckedChange={(c) => setQuoteFor(id, c === true)}
+                                onCheckedChange={(c) =>
+                                  setSelected((prev) => {
+                                    const next = new Set(prev);
+                                    if (c === true) next.add(id);
+                                    else next.delete(id);
+                                    return next;
+                                  })
+                                }
                                 aria-label={`Select ${v?.name ?? `row ${i + 1}`}`}
                               />
                             </td>
@@ -1653,7 +1650,36 @@ export function BrokerOrderSheet({
                 selection, not a second one that can disagree with it. Only one
                 partner can take the order, so acknowledging is a one-row
                 action; cancelling is not. */}
-            {/* THE DS BAR, not a second one. What can be done to a selection is
+            {/* A PROPERTY OF THE ROUND, not of a selection. Everyone invited is
+                asked, or nobody is — binding it to the ticked rows made two
+                unrelated decisions share one control, and left the switch
+                describing a selection that now starts empty. It sits directly
+                under the table it applies to, above anything that acts on a
+                selection. */}
+            {invitedIds.length > 0 && (
+              <label
+                htmlFor="quote"
+                className="flex cursor-pointer items-center justify-between gap-4"
+              >
+                <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
+                  Request a quote
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Every invited partner submits pricing instead of a plain
+                    acknowledgement.
+                  </span>
+                </span>
+                <Switch
+                  id="quote"
+                  checked={draft.quoteRequested}
+                  onCheckedChange={(v) => set("quoteRequested", v)}
+                />
+              </label>
+            )}
+
+            {/* THE DS BAR, not a second one. It comes LAST in the section
+                because it is about the rows someone has just ticked — it
+                appears and disappears, and anything below it would jump. Above
+                it sit the things that are always true of the round. What can be done to a selection is
                 a property of the records, so the verbs are passed in; the count
                 chip, the spacing, the hairlines and confirm-on-destructive all
                 come from the design system, which is what makes a selection in
@@ -1690,29 +1716,6 @@ export function BrokerOrderSheet({
               />
             </div>
 
-            {/* Same shape as "Top off selected": a MODE over the selection,
-                which starts as everyone. Asking every invited partner for a
-                price is the common case, so it costs no clicks; excluding one
-                is a single uncheck. */}
-            {invitedIds.length > 0 && (
-              <label
-                htmlFor="quote"
-                className="flex cursor-pointer items-center justify-between gap-4"
-              >
-                <span className="flex flex-col gap-0.5 text-sm font-medium text-foreground">
-                  Request a quote
-                  <span className="text-xs font-normal text-muted-foreground">
-                    The selected partners submit pricing instead of a plain
-                    acknowledgement.
-                  </span>
-                </span>
-                <Switch
-                  id="quote"
-                  checked={draft.quoteRequested}
-                  onCheckedChange={(v) => set("quoteRequested", v)}
-                />
-              </label>
-            )}
           </>
         )}
 

@@ -20,9 +20,10 @@ export interface GroupedListFooterProps {
   rowCount: number;
   /** What one record is called — "order", "asset", "account". */
   noun: string;
-  /** Total across the list, in the same measure the group headers carry. */
-  total: number;
-  unit: string;
+  /** Total across the list, in the same measure the headers carry. Omit when
+   *  the list has nothing that sums. */
+  total?: number;
+  unit?: string;
   /**
    * A multi-value dimension is active, so the group counts add up to more than
    * `rowCount`. Said out loud rather than left for someone to discover.
@@ -50,8 +51,8 @@ export function GroupedListFooter({
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
       <div className="flex items-center gap-2">
         <span className="tabular-nums">
-          {plural(groupCount, "group")} · {plural(rowCount, noun)} ·{" "}
-          {formatMeasure(total, unit)}
+          {plural(groupCount, "group")} · {plural(rowCount, noun)}
+          {total !== undefined && ` · ${formatMeasure(total, unit ?? "")}`}
         </span>
         {overCounts && (
           <span className="flex items-center gap-1.5 text-xs">

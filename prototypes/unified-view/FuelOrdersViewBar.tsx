@@ -261,14 +261,21 @@ export function FuelOrdersViewBar({
           bottom instead; 10px of margin plus the row's own 2px of bottom padding
           puts exactly 12px between the button's lower edge and the divider.
         */}
-        <Button
-          size="xs"
-          className="mb-2.5 ml-auto self-end rounded-[4px]"
-          onClick={onCreateOrder}
-        >
-          <Plus />
-          {ctaLabel}
-        </Button>
+        {/* NO HANDLER, NO BUTTON. A list without a create flow — Vendors, where
+            a carrier is onboarded through a contract rather than typed into a
+            table — should not carry a CTA that does nothing when pressed. The
+            `ml-auto` moves to the Export button below so the right cluster
+            still sits right. */}
+        {onCreateOrder && (
+          <Button
+            size="xs"
+            className="mb-2.5 ml-auto self-end rounded-[4px]"
+            onClick={onCreateOrder}
+          >
+            <Plus />
+            {ctaLabel}
+          </Button>
+        )}
 
         {/*
           Export, moved down from the page header so both actions for this list
@@ -287,7 +294,11 @@ export function FuelOrdersViewBar({
               size="icon-xs"
               aria-label="Export"
               onClick={onExport}
-              className="mr-1 mb-2.5 ml-1.5 self-end"
+              className={cn(
+                "mr-1 mb-2.5 self-end",
+                // Takes over pushing the right cluster right when there is no CTA.
+                onCreateOrder ? "ml-1.5" : "ml-auto"
+              )}
             >
               <Upload />
             </Button>

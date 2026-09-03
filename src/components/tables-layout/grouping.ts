@@ -62,8 +62,8 @@ export type GroupNode<Row> =
       dimLabel: string;
       /** Rows beneath, including those inside a collapsed child. */
       count: number;
-      /** Summed measure for those rows. */
-      measure: number;
+      /** Summed measure, or `undefined` on a list with nothing to sum. */
+      measure?: number;
       /**
        * The rows this header owns, collapsed or not — so the header checkbox
        * selects the whole group rather than the part that happens to be drawn.
@@ -152,8 +152,12 @@ export function groupRows<Row>(
   }
 ): GroupResult<Row> {
   const { rowId, measureOf, collapsed } = options;
+  /* NOT EVERY LIST HAS A MEASURE. Vendors, products, users — nothing on the row
+     sums to something true, and a header reading "0" next to a real count is
+     worse than a header that simply does not claim one. `undefined` is the
+     honest answer, and the header and footer both omit it. */
   const measure = (bucketRows: Row[]) =>
-    measureOf ? bucketRows.reduce((n, r) => n + measureOf(r), 0) : 0;
+    measureOf ? bucketRows.reduce((n, r) => n + measureOf(r), 0) : undefined;
 
   if (dims.length === 0) {
     return {

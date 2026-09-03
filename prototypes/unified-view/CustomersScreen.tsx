@@ -140,7 +140,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     dimensions: CUSTOMER_GROUP_DIMS,
     rows: sorted,
     rowId: React.useCallback((r) => r.id, []),
-    measureOf: React.useCallback((r) => r.shipTos.length, []),
+    measureOf: React.useCallback((r: (typeof sorted)[number]) => r.shipTos.length, []),
     hiddenColumns: hidden,
     page,
     pageSize,

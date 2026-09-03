@@ -39,10 +39,10 @@ export interface GroupHeaderRowProps {
   /** The dimension that produced the group — shown when nested, for context. */
   dimLabel: string;
   count: number;
-  /** Summed measure, already totalled by the engine. */
-  measure: number;
+  /** Summed measure, already totalled. Omit on a list with nothing to sum. */
+  measure?: number;
   /** Unit for that measure, e.g. `gal`. Empty renders the bare number. */
-  unit: string;
+  unit?: string;
   /** What one record is called here — "order", "asset", "account". */
   noun: string;
   collapsed: boolean;
@@ -121,10 +121,14 @@ export function GroupHeaderRow({
               {count}
             </span>
           </button>
-          {/* Sits beside the count, not at the far right — see above. */}
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-            {formatMeasure(measure, unit)}
-          </span>
+          {/* Sits beside the count, not at the far right — see above. Absent
+              entirely on a list with nothing to sum, rather than showing a
+              zero that means "no measure" and reads as "none". */}
+          {measure !== undefined && (
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {formatMeasure(measure, unit ?? "")}
+            </span>
+          )}
         </div>
       </TableCell>
     </TableRow>

@@ -43,7 +43,7 @@ import { FuelOrdersTable } from "./FuelOrdersTable";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
-import { BrokerOrdersScreen } from "./threepl";
+import { BrokerOrdersScreen, BrokerVendorsScreen } from "./threepl";
 import { ProfileScreen } from "./ProfileScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
@@ -1005,12 +1005,7 @@ export function UnifiedView() {
       case "3pl-delivery-orders":
         return <BrokerOrdersScreen focus={focus} />;
       case "3pl-vendors":
-        return (
-          <NotBuiltYet
-            label="Vendors"
-            detail="Not built yet. The vendor list, invitations and the per-vendor email toggle are specified but unbuilt — Orders is the screen in this pass. Delivery partners are pickable inside an order's sheet."
-          />
-        );
+        return <BrokerVendorsScreen />;
       case "3pl-customers":
         return (
           <NotBuiltYet

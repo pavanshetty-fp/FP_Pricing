@@ -149,6 +149,40 @@ Card alert accents: **light 5.02–20.52**, **dark 8.62–14.58**.
 
 ---
 
+## Screens
+
+| Screen | State |
+| --- | --- |
+| Delivery Orders | Built — list, board, and the order sheet |
+| **Vendors / Common Carriers** | **Built** — see below |
+| Recurring Orders | Not built (open question 5: tab or destination) |
+| Customers | Not built (syncs from Dispatch) |
+| Products | Not built |
+| Rental Assets | Not built |
+
+### Vendors / Common Carriers
+The delivery partners an order can be sent to — the same records the order
+sheet's partner table picks from, so a vendor means one thing in both places.
+
+Three things make it its own list rather than a copy of Customers:
+
+- **Nothing sums.** Safety score and distance belong to one vendor; a summed
+  distance is meaningless and an average would be a different statistic sitting
+  where a total goes. The screen passes no `measureOf`, and the DS's grouping now
+  supports that — headers carry a count alone instead of printing a `0` that
+  reads as "none". Footer: `4 groups · 8 vendors`, no total.
+- **Emails are edited in the row.** §6 makes the per-vendor email toggle the
+  screen's one real action, and it is a single boolean — opening a sheet to flip
+  one switch is a round trip for nothing.
+- **The filters are the picker's filters** (§5.5): business lines, safety score
+  RANGE, distance RANGE. Ranges because nobody asks for "safety exactly 88", and
+  the same bands back the grouping so filtering and grouping speak one vocabulary.
+
+**No create CTA.** A carrier is onboarded through a contract, not typed into a
+list, and the spec gives no create flow — so `FuelOrdersViewBar` now renders its
+CTA only when a handler is passed, rather than showing a button that does
+nothing.
+
 ## Open questions — do not silently decide these
 
 1. **Three stages share one chip colour.** The DS ships four `StatusTone`
@@ -173,18 +207,25 @@ Card alert accents: **light 5.02–20.52**, **dark 8.62–14.58**.
    push) rather than a reorder. Dragging a card from Assigned to Accepted would
    have to mean "acknowledge on the vendor's behalf" — a real decision, not a
    gesture. Left out deliberately.
-5. **Recurring orders have no recurrence UI.** `kind: "Recurring"` is a tab filter
-   and a card badge; the recurring *rule* (§5.16 — frequency, end date, the
-   default carrier for the whole recurrence) is not built.
+5. ~~**Recurring orders have no recurrence UI.**~~ **Built.** The order sheet
+   carries a Recurring Order field (Yes/No) beside the delivery window, revealing
+   a Frequency list whose "Custom" opens a rule builder — repeat every N units, a
+   row of weekday toggles, ends never/on/after N — that returns a SENTENCE, which
+   is the only form anyone checks a schedule in. Still open: the recurrence's
+   **default carrier** (§5.16), and whether Recurring Orders is a destination of
+   its own rather than a tab.
 6. **Not built and named in the sheet header:** the Activity Log (§5.4), the email
-   preview before an invitation is sent (§5.6), Internal Notes (§5.4), the linked
-   Load Order (§5.3 §6, feature-flagged), and the **map view** of nearby vendors
-   (§5.5) — a map is a component the DS does not have. The vendor **table** view
-   of the picker is what is built.
+   preview before an invitation is sent (§5.6), Internal Notes (§5.4), and the
+   **map view** of nearby vendors (§5.5) — a map is a component the DS does not
+   have. The vendor **table** view of the picker is what is built. *(The linked
+   Load Order IS now built: an optional per-product table behind an Add CTA, with
+   rows that can be set aside without being deleted.)*
 7. **Vendor rejection is not modelled.** The spec's rule is specific — a single
    invited vendor declining returns the order to Draft, one of several declining
-   leaves it Assigned — and `cancelInvites()` covers the broker-side half only.
-   There is no "this vendor declined" state on an invite.
+   leaves it Assigned — and withdrawing an invitation covers the broker-side half
+   only. There is no "this vendor declined" state on an invite. **This is the next
+   real gap in the order flow**, because it is the only path that changes status
+   without the broker acting.
 
 ---
 

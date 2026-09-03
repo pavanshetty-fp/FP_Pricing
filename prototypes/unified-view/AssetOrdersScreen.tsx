@@ -163,7 +163,7 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
     dimensions: ASSET_ORDER_GROUP_DIMS,
     rows: sorted,
     rowId: React.useCallback((r) => r.id, []),
-    measureOf: React.useCallback((r) => r.quantity, []),
+    measureOf: React.useCallback((r: (typeof sorted)[number]) => r.quantity, []),
     hiddenColumns: hidden,
     page,
     pageSize,

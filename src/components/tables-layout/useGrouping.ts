@@ -30,8 +30,12 @@ export interface UseGroupingOptions<Row, K extends string> {
   /** Filtered and sorted rows — the whole list, not a page. */
   rows: Row[];
   rowId: (row: Row) => string;
-  /** The one column that sums to something true for this list. */
-  measureOf: (row: Row) => number;
+  /**
+   * The one column that sums to something true. OMIT when none does — vendors,
+   * products and users have nothing that adds up, and a header claiming "0" is
+   * worse than one that claims nothing.
+   */
+  measureOf?: (row: Row) => number;
   /** Columns the user hid by hand. */
   hiddenColumns: Set<K>;
   page: number;
@@ -121,7 +125,7 @@ export function useGrouping<Row, K extends string>({
     effectiveHidden,
     menuDimensions,
     total: React.useMemo(
-      () => rows.reduce((n, r) => n + measureOf(r), 0),
+      () => (measureOf ? rows.reduce((n, r) => n + measureOf(r), 0) : undefined),
       [rows, measureOf]
     ),
   };

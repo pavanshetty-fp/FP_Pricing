@@ -776,7 +776,7 @@ export function BrokerOrderSheet({
         </div>
       )}
 
-      <SheetSection className="gap-5" title="Basic Details">
+      <SheetSection title="Basic Details">
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
@@ -864,7 +864,7 @@ export function BrokerOrderSheet({
 
       {/* The people on the order, together. POC and salesperson were split
           across two places; they answer the same question — who to call. */}
-      <SheetSection className="gap-5" title="POC Details">
+      <SheetSection title="POC Details">
         {/* One person per row: name and the two ways to reach them read as a
             single fact, so they sit side by side rather than wrapping over two
             rows with the contact detached from whose it is. */}
@@ -938,7 +938,7 @@ export function BrokerOrderSheet({
         </div>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Schedule Details">
+      <SheetSection title="Schedule Details">
         <div className="grid grid-cols-3 gap-4">
           <SheetField label="Planned Delivery Date" required>
             <Popover>
@@ -1058,7 +1058,7 @@ export function BrokerOrderSheet({
           the asset is FIXED once the order is created. Read-only is the honest
           rendering of a field that cannot be changed. */}
       {isMovement && order?.movement && (
-        <SheetSection className="gap-5" title="Asset">
+        <SheetSection title="Asset">
           <div className="grid grid-cols-2 gap-4">
             <SheetField label="Direction">
               <Input value={order.movement.direction} disabled />
@@ -1081,7 +1081,7 @@ export function BrokerOrderSheet({
       )}
 
       {!isMovement && (
-        <SheetSection className="gap-5" title="Delivery Order">
+        <SheetSection title="Delivery Order">
           {/* ALWAYS A TABLE, never an empty-state panel standing in for one. An
               empty table with its columns showing tells you what an order line
               is made of and is ready to be typed into; a panel saying "select a
@@ -1261,7 +1261,6 @@ export function BrokerOrderSheet({
           choice. Same table idiom as the Delivery Order above it. */}
       {!isMovement && (
         <SheetSection
-          className="gap-5"
           title="Load Order"
           /* QUIET UNTIL REACHED FOR. Removing the whole load order is a
              destructive action on a section that is optional in the first
@@ -1430,7 +1429,6 @@ export function BrokerOrderSheet({
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection
-        className="gap-5"
         title="Delivery Partner"
         note={
           <SheetSectionNote label="How inviting partners works">
@@ -1781,7 +1779,7 @@ export function BrokerOrderSheet({
         onSave={(summary) => set("customRecurrence", summary)}
       />
 
-      <SheetSection className="gap-5" title="Additional Details">
+      <SheetSection title="Additional Details">
         <SheetField label="Upload Supporting Image">
           {/* The DS control in its `field` variant — dropzone, note, and only
               the files actually added. The showcase variant's seeded chips and

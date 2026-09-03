@@ -200,7 +200,7 @@ export function OrderSheet({
 
         {/* Body — gap-7 between groups, per the DS sheet. */}
         <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
-          <SheetSection className="gap-5" title="Order Details">
+          <SheetSection title="Order Details">
             {/* 12px from the label to the options (the DS field default is 6px),
                 and the two options sit 24px apart instead of being stretched to
                 half-width each by a 2-col grid. `mb-2` keeps the extra air below
@@ -278,7 +278,7 @@ export function OrderSheet({
 
           </SheetSection>
 
-          <SheetSection className="gap-5" title="Schedule">
+          <SheetSection title="Schedule">
             {/* Plan Date and Plan Time side by side. */}
             <div className="grid grid-cols-2 gap-4">
               <SheetField label="Plan Date">
@@ -329,7 +329,7 @@ export function OrderSheet({
             </div>
           </SheetSection>
 
-          <SheetSection className="gap-5" title="Product Details">
+          <SheetSection title="Product Details">
             <ProductTable
               lines={draft.products}
               options={productNames}
@@ -337,7 +337,7 @@ export function OrderSheet({
             />
           </SheetSection>
 
-          <SheetSection className="gap-5" title="Tags">
+          <SheetSection title="Tags">
             <TokenMultiSelect
               options={TAG_OPTIONS}
               value={draft.tags}
@@ -347,7 +347,7 @@ export function OrderSheet({
             />
           </SheetSection>
 
-          <SheetSection className="gap-5" title="Delivery Details">
+          <SheetSection title="Delivery Details">
             <SheetField label="Site">
               <Combobox
                 className="w-full"

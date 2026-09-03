@@ -144,7 +144,7 @@ export function AssetOrderSheet({
         else if (order) onSave(order, draft);
       }}
     >
-      <SheetSection className="gap-5" title="Order Details">
+      <SheetSection title="Order Details">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer">
             <Combobox
@@ -190,7 +190,7 @@ export function AssetOrderSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Asset">
+      <SheetSection title="Asset">
         <SheetField label="Asset Type">
           <Combobox
             className="w-full"
@@ -222,7 +222,7 @@ export function AssetOrderSheet({
         </div>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Schedule">
+      <SheetSection title="Schedule">
         <SheetField label="Delivery Date">
           <Popover>
             <PopoverTrigger asChild>
@@ -245,7 +245,7 @@ export function AssetOrderSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Reference">
+      <SheetSection title="Reference">
         <SheetField label="PO Number">
           <Input
             value={draft.poNumber}

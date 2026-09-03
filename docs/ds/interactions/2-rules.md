@@ -87,6 +87,31 @@ code that implements it.*
 - **Type/mode toggle** (radio-card group) may **swap the form body**: e.g.
   scalar input ↔ tiered/ranged editable table.
 
+### 2a. Dropdowns
+- **Every list searches**, short ones included. A field that takes typing at nine
+  options and ignores it at five is one you have to OPEN AND LOOK AT before you
+  know how to use it, and the cost of guessing wrong — reaching for the keyboard
+  and having nothing happen — is worse than the row of chrome a search box costs.
+  `Combobox` (the DS's Popover + Command composition) is the control; a
+  `searchThreshold` exists for the rare list where the box gives nothing back, and
+  nothing sets it.
+- **A searchable select WEARS THE SELECT'S TRIGGER.** A field that is a select in
+  every way except that you can filter it must not announce itself as a different
+  control; the difference belongs inside the list, where the search box is. Both
+  read from one exported class string, so they cannot drift by a pixel.
+- **A list drops BELOW the field**, left-aligned, 4px off — never over it. Radix's
+  `item-aligned` default lays the list on top of the trigger and slides the
+  selected row onto it: the field disappears at the moment of choosing. Every menu
+  in this system opens below the control that opened it.
+- **An option that reads as an absence is still an option.** "— Unassigned",
+  "Not set", "No" are choices, and they live in the list rather than being
+  represented by an empty field — an unanswered field and a deliberate "none" look
+  identical and are not the same thing.
+- **A value already used elsewhere in the same table is shown TICKED AND
+  UNSELECTABLE, not hidden.** Removing it makes the list change length as the
+  table fills, and someone hunting for a row they already added concludes it does
+  not exist.
+
 ### 2b. Helper text
 **Helper text sits 4px under the control it describes** — input, select,
 dropzone, table, anything. It is part of that control, not the next thing down
@@ -172,8 +197,39 @@ as the table's last line whatever gets added next.
 An unlabelled selection column needs a control elsewhere to explain it, and then
 the same tick means different things depending on that control's state.
 
+### 3b. Explaining a section
+A rule about how a section behaves goes **beside its heading, on demand** — an
+info button opening a narrow popover — not as a paragraph under the section. A
+paragraph is read once and then permanently in the way; the rule is needed at the
+moment someone WONDERS, which is rarely the moment they first arrive. **On click,
+not hover**: hover cannot be reached by touch, and a tooltip that appears while
+you are aiming at something else is worse than no tooltip. Keep it to a few short
+lines — an explanation set to the full width of a sheet becomes one line the eye
+has to track back across.
+
+Where a hovered icon is already the whole message (a copy glyph beside a value),
+add **no tooltip at all**: a floating label repeating it covers the thing next to
+it, which is often the next thing someone wanted.
+
 ## 4b. Bulk operations
 
+- **ONE BAR, actions passed in.** What can be done to a selection is a property of
+  the RECORDS, not of the bar — the same split the Group By menu makes for
+  dimensions. `BulkActionBar` takes `actions` (and `noun`, so a confirm says "2
+  partners" rather than "2 records"); the count chip, spacing, hairlines and
+  confirm-on-destructive stay in the design system. A second bar built in place is
+  how a selection stops feeling like a selection everywhere else.
+- **A selection starts EMPTY and is transient.** Adding a row is not choosing one
+  to act on: the tick says "do something to these now", so a row that arrives
+  ticked has answered a question nobody asked and puts a bar on screen before
+  there is anything to bulk. The selection belongs to the visit, not the record —
+  it resets when the sheet or screen opens.
+- **Don't make a selection carry a second meaning.** If a switch also reads the
+  ticked rows ("ask these for a price"), two unrelated decisions share one control
+  and the default for one becomes wrong for the other. A property of the whole
+  round is a switch over the whole round.
+- **Order on the page:** things always true of the set sit ABOVE the bar; the bar
+  comes last because it appears and disappears, and anything below it jumps.
 - **Row multi-select → sticky bulk-edit bar**: "N Selected" + per-attribute edit
   actions. Each action opens the **same editor primitive** used for single edits
   (searchable-select for single-value attributes; chip picker for multi-value).

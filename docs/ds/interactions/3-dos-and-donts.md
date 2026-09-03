@@ -15,6 +15,13 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   total — rows → total → add (T4).
 - **Name a checkbox column** when the tick does one specific thing (T5).
 - **Set helper text 4px under its control** (§2b).
+- **Make every dropdown searchable**, short lists included (§2a).
+- **Drop a list below its field**, left-aligned (§2a).
+- **Keep "none" as a real option** — "— Unassigned", "Not set" (§2a).
+- **Show an already-used value ticked and unselectable**, not hidden (§2a).
+- **Explain a section beside its heading, on click** (§3b).
+- **Pass a list's own verbs into the DS bulk bar** (§4b).
+- **Start a selection empty** — the bar arrives when someone means it (§4b).
 
 ## Don't
 - **Don't fire a destructive action on one unguarded click.**
@@ -31,3 +38,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   somewhere else (T5).
 - **Don't set helper text at the field gap** — it reads as a label for the control
   below (§2b).
+- **Don't lay a select's list over its own trigger** (§2a).
+- **Don't gate search on a list's length** — the field then behaves differently
+  depending on data you cannot see (§2a).
+- **Don't build a second bulk bar** in place of passing actions to the DS one (§4b).
+- **Don't tick rows on creation** (§4b).
+- **Don't let one checkbox column mean two things** (§4b).
+- **Don't override a section's gap per instance** — that is how a sheet drifts
+  from the 40/16 rhythm (`ux/2-rules`).

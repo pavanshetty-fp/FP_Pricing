@@ -141,7 +141,7 @@ export function CustomerSheet({
         else if (customer) onSave(customer, draft);
       }}
     >
-      <SheetSection className="gap-5" title="Customer Details">
+      <SheetSection title="Customer Details">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer Name">
             <Input
@@ -176,7 +176,7 @@ export function CustomerSheet({
         </div>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Line of Service">
+      <SheetSection title="Line of Service">
         <SheetField
           label="LOS"
           description="A customer can carry more than one line of service."
@@ -190,7 +190,7 @@ export function CustomerSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Ship-Tos">
+      <SheetSection title="Ship-Tos">
         <SheetField
           label={`Ship-Tos (${draft.shipTos.length})`}
           description="The list column shows the first plus a +N for the rest."
@@ -247,7 +247,7 @@ export function CustomerSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Billing & Contact">
+      <SheetSection title="Billing & Contact">
         <SheetField label="Billing Terms">
           <Combobox
             className="w-full"

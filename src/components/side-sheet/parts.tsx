@@ -30,8 +30,14 @@ export function SheetSection({
   children: React.ReactNode;
   className?: string;
 }) {
+  /* SECTION RHYTHM — 40 / 16. The gap between sections is 40px (owned by the
+     sheet body); the gap between a section's title and its content is 16px. The
+     outer gap being 2.5x the inner is what makes a heading read as belonging to
+     the block beneath it rather than floating between two blocks. At 20 the
+     title sat almost equidistant from both; below 16 it welds to the first
+     field and the whole boundary rests on the 40. */
   return (
-    <section className={cn("flex flex-col gap-3", className)}>
+    <section className={cn("flex flex-col gap-4", className)}>
       <div className="flex min-h-7 items-center justify-between gap-4">
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>

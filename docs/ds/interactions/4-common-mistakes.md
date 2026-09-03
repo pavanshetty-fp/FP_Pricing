@@ -15,3 +15,14 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Add placement** — ❌ "+ Add" as a table row, sitting inside the total's grid and read as data · ✅ chrome attached to the squared bottom-left corner, below the total (T4).
 - **Unlabelled checkbox column** — ❌ a tick whose meaning depends on a switch above the table · ✅ a named column, one tick one meaning (T5).
 - **Helper text** — ❌ helper text a field-gap away, read as a label for the next control · ✅ 4px under the control it describes (§2b).
+- **Select position** — ❌ Radix `item-aligned`, which lays the list over the trigger and slides the selected row onto it (the field vanishes as you choose) · ✅ `popper`, `align="start"`, 4px off (§2a).
+- **Search threshold** — ❌ search appears only past N options, so the field behaves differently depending on data the reader cannot see · ✅ every list searches (§2a).
+- **Two triggers** — ❌ a searchable select styled as a button beside plain selects · ✅ one shared trigger class; the difference lives inside the list (§2a).
+- **"None" as emptiness** — ❌ an unset field standing in for a deliberate "no" · ✅ "— Unassigned" / "Not set" / "No" as real options (§2a).
+- **Hidden used values** — ❌ removing an already-picked option from other rows' lists, so the list changes length as the table fills · ✅ ticked and unselectable (§2a).
+- **Section paragraph** — ❌ a rule set as body copy under the section, read once then permanently in the way · ✅ an info button beside the heading, opening on click (§3b).
+- **Redundant tooltip** — ❌ a tooltip on a hover-revealed copy glyph, covering the value next to it · ✅ the icon plus an `aria-label` (§3b).
+- **Forked bulk bar** — ❌ a second bar built in the screen because its verbs differ · ✅ `BulkActionBar` with `actions` and `noun` (§4b).
+- **Pre-ticked rows** — ❌ adding a row ticks it, so a bulk bar appears before anything is chosen · ✅ selections start empty and transient (§4b).
+- **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
+- **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).

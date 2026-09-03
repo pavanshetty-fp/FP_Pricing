@@ -126,7 +126,7 @@ export function AssetSheet({
         else if (asset) onSave(asset, draft);
       }}
     >
-      <SheetSection className="gap-5" title="Identity">
+      <SheetSection title="Identity">
         <SheetField label="Display Name">
           <Input
             value={draft.displayName}
@@ -172,7 +172,7 @@ export function AssetSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Placement">
+      <SheetSection title="Placement">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Hub">
             <Combobox
@@ -205,7 +205,7 @@ export function AssetSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Capacity & Compatibility">
+      <SheetSection title="Capacity & Compatibility">
         <SheetField
           label="Size (Gal)"
           description="Total quantity capacity of the asset."
@@ -236,7 +236,7 @@ export function AssetSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Monitoring">
+      <SheetSection title="Monitoring">
         {/* §3's progressive disclosure: the ID appears only once there is a
             monitor to identify. */}
         <div className="flex items-start justify-between gap-4">
@@ -275,7 +275,7 @@ export function AssetSheet({
         )}
       </SheetSection>
 
-      <SheetSection className="gap-5" title="Notes">
+      <SheetSection title="Notes">
         <SheetField label="Note">
           <Textarea
             value={draft.note}

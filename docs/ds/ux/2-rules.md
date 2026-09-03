@@ -23,6 +23,35 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
   margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
 
+## Side-sheet anatomy
+- **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
+  of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
+  columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because
+  60px-from-the-edge is the **most** a sheet may take, not the width it should be —
+  a sheet that eats a wide monitor turns two-column pairs into a hunt across the
+  screen and leaves nothing of the list it came from.
+- **Section rhythm — 40 / 16.** Sections sit **40px** apart (the sheet body's own
+  gap); a section's title sits **16px** from its content (`SheetSection`'s default).
+  The outer gap being 2.5x the inner is what makes a heading read as belonging to
+  the block beneath it. Measured alternatives: at **20** the title sits almost
+  equidistant from the group above and below and stops binding to either; at **12**
+  and **8** it welds to the first field and the whole section boundary rests on the
+  40, leaving no room to tighten the outer gap later. Sections take the default —
+  a per-instance gap is how a sheet drifts from the system.
+- **Helper text is 4px from its control**, not at the field gap — see
+  `interactions/2-rules` §2b.
+- **Footer flags.** A decision about the RECORD (recurring, and the cadence it
+  reveals) stays in the section it changes. A decision about the ACT of submitting
+  (urgent, get a signature) rides in the sticky footer, in view at the moment of
+  committing however far the body has scrolled.
+- **Derived values are READ-OUTS, not disabled fields.** Facts that arrive with a
+  choice made above them — a ship-to's coordinates, a contact's phone and email —
+  render as a bordered card beside or beneath their source, never as an input.
+  A disabled input still looks like a field promising an edit, and its dimming
+  makes the value the hardest text in the section to read. Give each value its own
+  copy button where it is something people carry elsewhere (a number to a dialler,
+  an address to a mail client) — one control over a pair hands over both.
+
 ## Layout laws
 
 **L1 — Everything lives in the AppShell.** Every app screen is the global top bar

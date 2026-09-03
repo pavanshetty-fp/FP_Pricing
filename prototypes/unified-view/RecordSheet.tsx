@@ -34,7 +34,7 @@ export interface RecordSheetProps {
    * scrolled sideways to be read, and a table you scroll to read is a table you
    * cannot compare rows in.
    *
-   * It is CAPPED at 1040px rather than filling the viewport. 60px-from-the-edge
+   * It is CAPPED at 864px rather than filling the viewport. 60px-from-the-edge
    * is the most a sheet may take, not the width it should be: on a wide monitor
    * that leaves a two-column form with a metre between a label and its control,
    * and the tables here are three and four columns, not ten. 1040 fits both
@@ -90,7 +90,7 @@ export function RecordSheet({
         className={cn(
           "gap-0 p-0",
           size === "wide"
-            ? "w-[min(1040px,calc(100vw-60px))] sm:max-w-[min(1040px,calc(100vw-60px))]"
+            ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"
             : "w-[560px] sm:max-w-[560px]"
         )}
       >

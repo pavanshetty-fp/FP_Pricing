@@ -808,6 +808,35 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
 - **Spacing laws:** **8px** gaps between rail ↔ drawer ↔ content + an **8px** outer
   margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
 
+## Side-sheet anatomy
+- **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
+  of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
+  columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because
+  60px-from-the-edge is the **most** a sheet may take, not the width it should be —
+  a sheet that eats a wide monitor turns two-column pairs into a hunt across the
+  screen and leaves nothing of the list it came from.
+- **Section rhythm — 40 / 16.** Sections sit **40px** apart (the sheet body's own
+  gap); a section's title sits **16px** from its content (`SheetSection`'s default).
+  The outer gap being 2.5x the inner is what makes a heading read as belonging to
+  the block beneath it. Measured alternatives: at **20** the title sits almost
+  equidistant from the group above and below and stops binding to either; at **12**
+  and **8** it welds to the first field and the whole section boundary rests on the
+  40, leaving no room to tighten the outer gap later. Sections take the default —
+  a per-instance gap is how a sheet drifts from the system.
+- **Helper text is 4px from its control**, not at the field gap — see
+  `interactions/2-rules` §2b.
+- **Footer flags.** A decision about the RECORD (recurring, and the cadence it
+  reveals) stays in the section it changes. A decision about the ACT of submitting
+  (urgent, get a signature) rides in the sticky footer, in view at the moment of
+  committing however far the body has scrolled.
+- **Derived values are READ-OUTS, not disabled fields.** Facts that arrive with a
+  choice made above them — a ship-to's coordinates, a contact's phone and email —
+  render as a bordered card beside or beneath their source, never as an input.
+  A disabled input still looks like a field promising an edit, and its dimming
+  makes the value the hardest text in the section to read. Give each value its own
+  copy button where it is something people carry elsewhere (a number to a dialler,
+  an address to a mail client) — one control over a pair hands over both.
+
 ## Layout laws
 
 **L1 — Everything lives in the AppShell.** Every app screen is the global top bar
@@ -1312,6 +1341,31 @@ code that implements it.*
 - **Type/mode toggle** (radio-card group) may **swap the form body**: e.g.
   scalar input ↔ tiered/ranged editable table.
 
+### 2a. Dropdowns
+- **Every list searches**, short ones included. A field that takes typing at nine
+  options and ignores it at five is one you have to OPEN AND LOOK AT before you
+  know how to use it, and the cost of guessing wrong — reaching for the keyboard
+  and having nothing happen — is worse than the row of chrome a search box costs.
+  `Combobox` (the DS's Popover + Command composition) is the control; a
+  `searchThreshold` exists for the rare list where the box gives nothing back, and
+  nothing sets it.
+- **A searchable select WEARS THE SELECT'S TRIGGER.** A field that is a select in
+  every way except that you can filter it must not announce itself as a different
+  control; the difference belongs inside the list, where the search box is. Both
+  read from one exported class string, so they cannot drift by a pixel.
+- **A list drops BELOW the field**, left-aligned, 4px off — never over it. Radix's
+  `item-aligned` default lays the list on top of the trigger and slides the
+  selected row onto it: the field disappears at the moment of choosing. Every menu
+  in this system opens below the control that opened it.
+- **An option that reads as an absence is still an option.** "— Unassigned",
+  "Not set", "No" are choices, and they live in the list rather than being
+  represented by an empty field — an unanswered field and a deliberate "none" look
+  identical and are not the same thing.
+- **A value already used elsewhere in the same table is shown TICKED AND
+  UNSELECTABLE, not hidden.** Removing it makes the list change length as the
+  table fills, and someone hunting for a row they already added concludes it does
+  not exist.
+
 ### 2b. Helper text
 **Helper text sits 4px under the control it describes** — input, select,
 dropzone, table, anything. It is part of that control, not the next thing down
@@ -1397,8 +1451,39 @@ as the table's last line whatever gets added next.
 An unlabelled selection column needs a control elsewhere to explain it, and then
 the same tick means different things depending on that control's state.
 
+### 3b. Explaining a section
+A rule about how a section behaves goes **beside its heading, on demand** — an
+info button opening a narrow popover — not as a paragraph under the section. A
+paragraph is read once and then permanently in the way; the rule is needed at the
+moment someone WONDERS, which is rarely the moment they first arrive. **On click,
+not hover**: hover cannot be reached by touch, and a tooltip that appears while
+you are aiming at something else is worse than no tooltip. Keep it to a few short
+lines — an explanation set to the full width of a sheet becomes one line the eye
+has to track back across.
+
+Where a hovered icon is already the whole message (a copy glyph beside a value),
+add **no tooltip at all**: a floating label repeating it covers the thing next to
+it, which is often the next thing someone wanted.
+
 ## 4b. Bulk operations
 
+- **ONE BAR, actions passed in.** What can be done to a selection is a property of
+  the RECORDS, not of the bar — the same split the Group By menu makes for
+  dimensions. `BulkActionBar` takes `actions` (and `noun`, so a confirm says "2
+  partners" rather than "2 records"); the count chip, spacing, hairlines and
+  confirm-on-destructive stay in the design system. A second bar built in place is
+  how a selection stops feeling like a selection everywhere else.
+- **A selection starts EMPTY and is transient.** Adding a row is not choosing one
+  to act on: the tick says "do something to these now", so a row that arrives
+  ticked has answered a question nobody asked and puts a bar on screen before
+  there is anything to bulk. The selection belongs to the visit, not the record —
+  it resets when the sheet or screen opens.
+- **Don't make a selection carry a second meaning.** If a switch also reads the
+  ticked rows ("ask these for a price"), two unrelated decisions share one control
+  and the default for one becomes wrong for the other. A property of the whole
+  round is a switch over the whole round.
+- **Order on the page:** things always true of the set sit ABOVE the bar; the bar
+  comes last because it appears and disappears, and anything below it jumps.
 - **Row multi-select → sticky bulk-edit bar**: "N Selected" + per-attribute edit
   actions. Each action opens the **same editor primitive** used for single edits
   (searchable-select for single-value attributes; chip picker for multi-value).
@@ -1574,6 +1659,13 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   total — rows → total → add (T4).
 - **Name a checkbox column** when the tick does one specific thing (T5).
 - **Set helper text 4px under its control** (§2b).
+- **Make every dropdown searchable**, short lists included (§2a).
+- **Drop a list below its field**, left-aligned (§2a).
+- **Keep "none" as a real option** — "— Unassigned", "Not set" (§2a).
+- **Show an already-used value ticked and unselectable**, not hidden (§2a).
+- **Explain a section beside its heading, on click** (§3b).
+- **Pass a list's own verbs into the DS bulk bar** (§4b).
+- **Start a selection empty** — the bar arrives when someone means it (§4b).
 
 ## Don't
 - **Don't fire a destructive action on one unguarded click.**
@@ -1590,6 +1682,14 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   somewhere else (T5).
 - **Don't set helper text at the field gap** — it reads as a label for the control
   below (§2b).
+- **Don't lay a select's list over its own trigger** (§2a).
+- **Don't gate search on a list's length** — the field then behaves differently
+  depending on data you cannot see (§2a).
+- **Don't build a second bulk bar** in place of passing actions to the DS one (§4b).
+- **Don't tick rows on creation** (§4b).
+- **Don't let one checkbox column mean two things** (§4b).
+- **Don't override a section's gap per instance** — that is how a sheet drifts
+  from the 40/16 rhythm (`ux/2-rules`).
 
 
 ---
@@ -1611,6 +1711,17 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Add placement** — ❌ "+ Add" as a table row, sitting inside the total's grid and read as data · ✅ chrome attached to the squared bottom-left corner, below the total (T4).
 - **Unlabelled checkbox column** — ❌ a tick whose meaning depends on a switch above the table · ✅ a named column, one tick one meaning (T5).
 - **Helper text** — ❌ helper text a field-gap away, read as a label for the next control · ✅ 4px under the control it describes (§2b).
+- **Select position** — ❌ Radix `item-aligned`, which lays the list over the trigger and slides the selected row onto it (the field vanishes as you choose) · ✅ `popper`, `align="start"`, 4px off (§2a).
+- **Search threshold** — ❌ search appears only past N options, so the field behaves differently depending on data the reader cannot see · ✅ every list searches (§2a).
+- **Two triggers** — ❌ a searchable select styled as a button beside plain selects · ✅ one shared trigger class; the difference lives inside the list (§2a).
+- **"None" as emptiness** — ❌ an unset field standing in for a deliberate "no" · ✅ "— Unassigned" / "Not set" / "No" as real options (§2a).
+- **Hidden used values** — ❌ removing an already-picked option from other rows' lists, so the list changes length as the table fills · ✅ ticked and unselectable (§2a).
+- **Section paragraph** — ❌ a rule set as body copy under the section, read once then permanently in the way · ✅ an info button beside the heading, opening on click (§3b).
+- **Redundant tooltip** — ❌ a tooltip on a hover-revealed copy glyph, covering the value next to it · ✅ the icon plus an `aria-label` (§3b).
+- **Forked bulk bar** — ❌ a second bar built in the screen because its verbs differ · ✅ `BulkActionBar` with `actions` and `noun` (§4b).
+- **Pre-ticked rows** — ❌ adding a row ticks it, so a bulk bar appears before anything is chosen · ✅ selections start empty and transient (§4b).
+- **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
+- **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).
 
 
 ---

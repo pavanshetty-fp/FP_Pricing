@@ -890,11 +890,16 @@ export function BrokerOrderSheet({
               emptyText="No contact found."
             />
           </SheetField>
+          {/* DERIVED, so DISABLED rather than read-only. A read-only input still
+              takes focus and shows a caret, which promises an edit that will
+              never land — these carry the contact's own record forward from the
+              name chosen beside them, and the way to change them is to change
+              that name. Same for Sales Contact below. */}
           <SheetField label="POC Contact">
-            <Input value={poc?.phone ?? "—"} readOnly />
+            <Input value={poc?.phone ?? "—"} disabled />
           </SheetField>
           <SheetField label="POC Email">
-            <Input value={poc?.email ?? "—"} readOnly />
+            <Input value={poc?.email ?? "—"} disabled />
           </SheetField>
         </div>
 
@@ -912,7 +917,7 @@ export function BrokerOrderSheet({
             />
           </SheetField>
           <SheetField label="Sales Contact">
-            <Input value={SALES_CONTACTS[draft.salesperson] ?? "—"} readOnly />
+            <Input value={SALES_CONTACTS[draft.salesperson] ?? "—"} disabled />
           </SheetField>
         </div>
       </SheetSection>
@@ -1033,16 +1038,16 @@ export function BrokerOrderSheet({
         <SheetSection className="gap-5" title="Asset">
           <div className="grid grid-cols-2 gap-4">
             <SheetField label="Direction">
-              <Input value={order.movement.direction} readOnly />
+              <Input value={order.movement.direction} disabled />
             </SheetField>
             <SheetField label="Yard">
-              <Input value={order.movement.yard} readOnly />
+              <Input value={order.movement.yard} disabled />
             </SheetField>
             <SheetField label="Tank Type">
-              <Input value={order.movement.tankType} readOnly />
+              <Input value={order.movement.tankType} disabled />
             </SheetField>
             <SheetField label="Capacity">
-              <Input value={`${order.movement.capacityGal} gal`} readOnly />
+              <Input value={`${order.movement.capacityGal} gal`} disabled />
             </SheetField>
           </div>
           <p className="text-xs text-muted-foreground">

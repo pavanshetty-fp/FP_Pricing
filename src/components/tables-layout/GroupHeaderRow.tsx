@@ -5,13 +5,14 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { formatMeasure } from "./grouping";
 
 /*
-  One group header row, shared by both table shells so grouping looks identical
-  on all four lists.
+  One group header row, shared by every table shell so grouping looks identical
+  wherever it is turned on.
 
   It spans every column rather than sitting in one, because a group header is
   not a record — it belongs to the table, not to the columns. What it carries is
   fixed by the rule the engine encodes: label · count · the one summed measure
-  for this list. Nothing else on these tables adds up to something true.
+  for this list. A list picks that measure; nothing else on it adds up to
+  something true.
 
   The depth-0 header sticks under the column header while its rows scroll, so
   you never lose track of which group you are reading. Nested headers do not
@@ -78,8 +79,8 @@ export function GroupHeaderRow({
       )}
     >
       <TableCell colSpan={colSpan} className="bg-fp-lane p-0">
-        {/* The header spans every column, so on these tables it is ~1540px
-            wide while the content layer shows ~700. Pinning the content block
+        {/* The header spans every column, so on a wide table it is far wider
+            than the content layer on screen. Pinning the content block
             to the left edge of the horizontal scroll keeps the label, the count
             and the total on screen at any scroll position — right-aligning the
             total instead parked it off the right edge, visible only to someone

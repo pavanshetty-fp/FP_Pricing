@@ -6,6 +6,7 @@ import type {
   SortState,
   TableRow,
 } from "./types";
+import type { GroupDim } from "./grouping";
 
 /*
   Column order + widths taken verbatim from the Figma column frames:
@@ -166,3 +167,55 @@ export function paginationRange(
   }
   return [1, "ellipsis", ...range(left, right), "ellipsis", total];
 }
+
+/*
+  What the sample list can be grouped BY.
+
+  A property of the DATA, not of the Group By control — which is why the menu
+  and the engine both take these as a prop. Three dimensions, not thirteen: on
+  this dataset `badge`, `toggle`, `dropdown`, `descriptive` and `editable` are
+  the same string on all 1,000 rows, so offering them would hand you a control
+  that produces one group containing everything. A dimension with no VARIANCE
+  organises exactly as little as one with no backing field.
+
+  PROGRESS SHOWS THE OTHER SHAPE: `valuesOf` returns a DERIVED label, not a
+  stored one. Grouping by a raw 0–100 number would make a thousand groups of
+  one; the bands are what anyone actually wants to ask about, and `order` keeps
+  them in numeric sequence rather than alphabetical.
+
+  MEASURE: Amount. It is the one column on this list that sums to something
+  true, so it is what every group header totals.
+*/
+export const SAMPLE_GROUP_DIMS: GroupDim<TableRow>[] = [
+  {
+    key: "status",
+    label: "Static",
+    hides: "status",
+    // A real lifecycle, so the groups follow it rather than the alphabet.
+    order: ["Processing", "Success", "Failed"],
+    valuesOf: (r) => [r.status],
+  },
+  {
+    key: "switch",
+    label: "Switch",
+    hides: "switch",
+    // Two groups answering "what is off", which is the question worth asking.
+    order: ["Off", "On"],
+    valuesOf: (r) => [r.switchOn ? "On" : "Off"],
+  },
+  {
+    key: "progress",
+    label: "Progress",
+    hides: "progress",
+    order: ["0–24%", "25–49%", "50–74%", "75–100%"],
+    valuesOf: (r) => [
+      r.progress < 25
+        ? "0–24%"
+        : r.progress < 50
+          ? "25–49%"
+          : r.progress < 75
+            ? "50–74%"
+            : "75–100%",
+    ],
+  },
+];

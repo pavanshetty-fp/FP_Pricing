@@ -19,7 +19,7 @@
     Single-value dimensions do hide their column, because there every cell
     repeats its own group header.
 */
-import type { GroupDim } from "./grouping";
+import type { GroupDim } from "@/components/tables-layout";
 import type { FuelOrder } from "./types";
 import type { AssetOrder } from "./assetOrders";
 import { ASSET_ORDER_STATUSES } from "./assetOrders";

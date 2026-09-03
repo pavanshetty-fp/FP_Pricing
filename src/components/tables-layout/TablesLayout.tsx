@@ -5,6 +5,8 @@ import { ActionBar } from "./ActionBar";
 import { DataTable } from "./DataTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { TablePagination } from "./TablePagination";
+import { GroupedListFooter } from "./GroupedListFooter";
+import { useGrouping } from "./useGrouping";
 import { FormLayout } from "@/components/form-layout";
 import { SideSheet, type SideSheetVariant } from "@/components/side-sheet";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { COLUMNS, SAMPLE_ROWS, sortRows } from "./data";
+import { COLUMNS, SAMPLE_GROUP_DIMS, SAMPLE_ROWS, sortRows } from "./data";
 import type { ColumnKey, SortState, TableRow } from "./types";
 
 /** Columns the column-filters menu can toggle (everything with a header label). */
@@ -80,10 +82,23 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
     [rows, query]
   );
   const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort]);
-  const pageRows = React.useMemo(
-    () => sorted.slice((page - 1) * pageSize, page * pageSize),
-    [sorted, page, pageSize]
-  );
+
+  /* GROUPING. One hook owns the dimension stack, the collapse set, and the two
+     behaviours that are easy to get subtly wrong per screen: pagination is
+     suspended while grouped (a group straddling a page boundary would have its
+     header claim a total for rows that are not on screen), and the grouped
+     column is hidden (a column repeating its own group header on every row is
+     dead width). It hands back `visibleRows` already sliced or whole. */
+  const grouping = useGrouping<TableRow, ColumnKey>({
+    dimensions: SAMPLE_GROUP_DIMS,
+    rows: sorted,
+    rowId: (r) => r.id,
+    measureOf: (r) => r.amount,
+    hiddenColumns,
+    page,
+    pageSize,
+  });
+  const pageRows = grouping.visibleRows;
   const isEmpty = sorted.length === 0;
 
   // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
@@ -106,6 +121,19 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+
+  /* A group header selects its WHOLE group, including rows inside a collapsed
+     child — selecting only what happens to be drawn would be a different set
+     from the one the header's count describes. */
+  const toggleGroup = (ids: string[], checked: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
 
@@ -140,6 +168,12 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hiddenColumns}
           onToggleColumn={toggleColumn}
+          groupDimensions={grouping.menuDimensions}
+          groupBy={grouping.groupBy}
+          onGroupByChange={(next) => {
+            grouping.setGrouping(next);
+            setPage(1);
+          }}
           visible={actionBar}
         />
       </div>
@@ -187,8 +221,16 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
               onToggleAll={toggleAll}
               sort={sort}
               onSort={onSort}
+              onToggleGroup={toggleGroup}
               onRowAction={(variant) => setSheet(variant)}
-              hidden={hiddenColumns}
+              hidden={grouping.effectiveHidden}
+              nodes={grouping.grouped ? grouping.groups.nodes : undefined}
+              collapsedGroups={grouping.collapsed}
+              onToggleGroupCollapse={grouping.toggleGroupCollapse}
+              /* Amount is currency, so the header says so — a bare number
+                 beside a column of dollars is a lie of omission. */
+              groupUnit="USD"
+              groupNoun="record"
             />
           )}
         </div>
@@ -209,14 +251,32 @@ export function TablesLayout({ rows = SAMPLE_ROWS }: TablesLayoutProps) {
       {/* `mt-4`, no `border-t`: the table's own row rules already close the list,
           so a full-strength divider on top of them reads as a stray line. The
           16px below comes from the content layer's own padding. */}
+      {/* Grouped, the list scrolls whole, so a page position would be a lie.
+          The footer keeps the same left/controls skeleton as the pagination
+          unit, so the bottom of the screen does not jump when grouping is
+          turned on. */}
       <div className="mt-4 shrink-0">
-        <TablePagination
-          page={page}
-          pageSize={pageSize}
-          total={sorted.length}
-          onPageChange={setPage}
-          onPageSizeChange={onPageSizeChange}
-        />
+        {grouping.grouped ? (
+          <GroupedListFooter
+            groupCount={grouping.groups.groupCount}
+            rowCount={grouping.groups.rowCount}
+            noun="record"
+            total={grouping.total}
+            unit="USD"
+            overCounts={grouping.groups.overCounts}
+            allCollapsed={grouping.allCollapsed}
+            onExpandAll={grouping.expandAll}
+            onCollapseAll={grouping.collapseAll}
+          />
+        ) : (
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={onPageSizeChange}
+          />
+        )}
       </div>
 
       {sheet && (

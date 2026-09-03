@@ -8,8 +8,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { GroupNode } from "./grouping";
-import { GroupHeaderRow } from "./GroupHeaderRow";
+import { GroupHeaderRow, type GroupNode } from "@/components/tables-layout";
 import {
   Table,
   TableBody,

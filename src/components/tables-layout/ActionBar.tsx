@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { FilterPanel } from "./FilterPanel";
-import { GroupByMenu } from "./GroupByMenu";
+import { GroupByMenu, type GroupByDimension } from "./GroupByMenu";
 import { SavedViewsMenu } from "./SavedViewsMenu";
 
 /** Per-component visibility (Settings → Action bar). Undefined ⇒ shown. */
@@ -34,6 +34,12 @@ export interface ActionBarProps {
   hiddenColumns?: Set<string>;
   /** Toggle a column's visibility. */
   onToggleColumn?: (key: string) => void;
+  /** Groupable dimensions for this list. Omit for the menu's own demo list. */
+  groupDimensions?: GroupByDimension[];
+  /** Active grouping, outermost first. Supply with `onGroupByChange` to
+   *  control the menu; without it the menu keeps its own single-select state. */
+  groupBy?: string[];
+  onGroupByChange?: (next: string[]) => void;
   /** Which action-bar components to render (Settings → Action bar). */
   visible?: ActionBarVisible;
 }
@@ -46,6 +52,9 @@ export function ActionBar({
   columns = [],
   hiddenColumns,
   onToggleColumn,
+  groupDimensions,
+  groupBy,
+  onGroupByChange,
   visible = {},
 }: ActionBarProps) {
   const show = (k: keyof ActionBarVisible) => visible[k] !== false;
@@ -107,7 +116,13 @@ export function ActionBar({
         )}
 
         {show("filters") && <FilterPanel />}
-        {show("groupBy") && <GroupByMenu />}
+        {show("groupBy") && (
+          <GroupByMenu
+            dimensions={groupDimensions}
+            value={groupBy}
+            onChange={onGroupByChange}
+          />
+        )}
       </div>
 
       {/* Right cluster */}

@@ -1,11 +1,11 @@
 /*
   Grouping engine — screen-agnostic, and the single source of grouping
-  behaviour for all four lists.
+  behaviour for every list that offers it.
 
   It produces DATA, not markup: `groupRows` returns a flat render list of
-  group-header and row nodes with a depth on each, so the two table shells
-  (`ListTable` and `FuelOrdersTable`) can render grouping without either of them
-  owning the logic.
+  group-header and row nodes with a depth on each, so any table shell can render
+  grouping without owning the logic. Two shells that each implemented this would
+  drift within a release, and the drift would be in the totals.
 
   Three rules are enforced here rather than left to each screen:
 
@@ -15,9 +15,8 @@
 
   2. DEGENERATE LEVELS ARE SKIPPED. A second dimension that yields exactly one
      child covering its whole parent tells the reader nothing and costs a row
-     plus an indent. Fuel Orders grouped Customer › Ship To does this for every
-     customer in the seed data, because ship-to is 1:1 with customer there. The
-     header is dropped and the rows rise to the parent.
+     plus an indent — Customer › Ship To, wherever an account happens to have a
+     single site. The header is dropped and the rows rise to the parent.
 
   3. MULTI-VALUE DIMENSIONS DUPLICATE. A record with three products belongs to
      three product groups. `multi` marks those dimensions so the menu can flag

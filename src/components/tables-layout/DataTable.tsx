@@ -53,6 +53,8 @@ import { InvoiceCard } from "@/components/info-cards";
 import { usePreferences } from "@/components/preferences";
 import { StatusChip } from "@/components/ui/status-chip";
 import { COLUMNS, statusBadgeVariant, statusTone } from "./data";
+import { GroupHeaderRow } from "./GroupHeaderRow";
+import { groupSelectionState, type GroupNode } from "./grouping";
 import type {
   ColumnDef,
   ColumnKey,
@@ -332,6 +334,8 @@ export interface DataTableProps {
   selectedIds: Set<string>;
   onToggleRow: (id: string) => void;
   onToggleAll: (checked: boolean) => void;
+  /** Select or clear a whole group at once. Required once `nodes` is passed. */
+  onToggleGroup?: (ids: string[], checked: boolean) => void;
   /** Current sort (owned by the parent so it can sort the full dataset). */
   sort: SortState | null;
   /** Toggle sort for a column (parent cycles asc → desc → unsorted). */
@@ -343,6 +347,18 @@ export interface DataTableProps {
   /** Optional control rendered in the header's rightmost cell, revealed on
    *  header hover (e.g. the column tools popover). */
   headerAction?: React.ReactNode;
+  /* GROUPING. The table renders what the engine already computed and owns none
+     of it — pass `nodes` and it draws headers between the rows, omit them and
+     it is the flat table it has always been. A table that decided its own
+     grouping would be a second implementation of `groupRows` to keep in step
+     with the first. */
+  nodes?: GroupNode<TableRowData>[];
+  collapsedGroups?: ReadonlySet<string>;
+  onToggleGroupCollapse?: (id: string) => void;
+  /** Unit for the summed measure on each header, e.g. `gal`. */
+  groupUnit?: string;
+  /** What one record is called here — "order", "asset", "record". */
+  groupNoun?: string;
 }
 
 export function DataTable({
@@ -350,11 +366,17 @@ export function DataTable({
   selectedIds,
   onToggleRow,
   onToggleAll,
+  onToggleGroup,
   sort,
   onSort,
   onRowAction,
   hidden,
   headerAction,
+  nodes,
+  collapsedGroups,
+  onToggleGroupCollapse,
+  groupUnit = "",
+  groupNoun = "record",
 }: DataTableProps) {
   // Cell edits live here (keyed by row id) rather than inside Row: rows unmount
   // when the page changes, and an edit must outlive that.
@@ -455,24 +477,56 @@ export function DataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row, idx) => (
-            <Row
-              key={row.id}
-              row={row}
-              columns={visibleColumns}
-              selected={selectedIds.has(row.id)}
-              onToggle={() => onToggleRow(row.id)}
-              onRowAction={onRowAction}
-              // First row demonstrates an expandable nested sub-table.
-              expandable={idx === 0}
-              detailWidth={viewportWidth}
-              editableValue={edits[row.id] ?? row.editable}
-              onEditableChange={(next) =>
-                setEdits((prev) => ({ ...prev, [row.id]: next }))
-              }
-              editableIcons={editableIcons}
-            />
-          ))}
+          {(
+            nodes ??
+            rows.map((row) => ({
+              kind: "row" as const,
+              id: row.id,
+              depth: 0,
+              row,
+            }))
+          ).map((node, idx) =>
+            node.kind === "group" ? (
+              <GroupHeaderRow
+                key={node.id}
+                /* +1 for the selection column, which is not in `COLUMNS`. */
+                colSpan={visibleColumns.length + 1}
+                depth={node.depth}
+                label={node.label}
+                dimLabel={node.dimLabel}
+                count={node.count}
+                measure={node.measure}
+                unit={groupUnit}
+                noun={groupNoun}
+                collapsed={Boolean(collapsedGroups?.has(node.id))}
+                onToggle={() => onToggleGroupCollapse?.(node.id)}
+                /* Reads the group's WHOLE membership, so a collapsed group
+                   still reports honestly rather than describing the rows that
+                   happen to be drawn. */
+                selection={{
+                  state: groupSelectionState(node.rowIds, selectedIds),
+                  onChange: (checked) => onToggleGroup?.(node.rowIds, checked),
+                }}
+              />
+            ) : (
+              <Row
+                key={node.id}
+                row={node.row}
+                columns={visibleColumns}
+                selected={selectedIds.has(node.row.id)}
+                onToggle={() => onToggleRow(node.row.id)}
+                onRowAction={onRowAction}
+                // First row demonstrates an expandable nested sub-table.
+                expandable={!nodes && idx === 0}
+                detailWidth={viewportWidth}
+                editableValue={edits[node.row.id] ?? node.row.editable}
+                onEditableChange={(next) =>
+                  setEdits((prev) => ({ ...prev, [node.row.id]: next }))
+                }
+                editableIcons={editableIcons}
+              />
+            )
+          )}
         </TableBody>
       </Table>
     </div>

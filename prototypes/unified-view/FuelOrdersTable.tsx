@@ -38,8 +38,7 @@ import type {
   SortState,
   TwoLine as TwoLineData,
 } from "./types";
-import { groupSelectionState, type GroupNode } from "./grouping";
-import { GroupHeaderRow } from "./GroupHeaderRow";
+import { GroupHeaderRow, type GroupNode, groupSelectionState } from "@/components/tables-layout";
 
 const QTY_FMT = new Intl.NumberFormat("en-US");
 

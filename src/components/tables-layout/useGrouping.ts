@@ -6,14 +6,14 @@ import {
 } from "./grouping";
 
 /*
-  Everything a list screen needs to be groupable, in one hook — so all four
-  lists group identically instead of four near-copies drifting apart.
+  Everything a list screen needs to be groupable, in one hook — so every list
+  groups identically instead of near-copies drifting apart.
 
   It owns the two pieces of state (the ordered dimension stack and which groups
   are collapsed) and derives the rest, including the two behaviours that are
   easy to get subtly wrong per screen:
 
-  • PAGINATION IS SUSPENDED WHILE GROUPED. At 25 rows a page a group straddles
+  • PAGINATION IS SUSPENDED WHILE GROUPED. At a page of rows a group straddles
     the boundary and its header claims a count and a total for records that are
     not on screen. Grouped, the hook hands back every row and the screen swaps
     its pagination footer for `GroupedListFooter`.
@@ -59,6 +59,12 @@ export function useGrouping<Row, K extends string>({
   );
   const grouped = dims.length > 0;
 
+  /* A key with no dimension behind it holds a slot in the stack and shows in
+     the menu's count while producing no groups — which is what happens when a
+     list's dimensions change under a saved or restored grouping. `dims` already
+     drops it; this makes the value handed back agree. */
+  const activeKeys = React.useMemo(() => dims.map((d) => d.key), [dims]);
+
   const visibleRows = React.useMemo(
     () => (grouped ? rows : rows.slice((page - 1) * pageSize, page * pageSize)),
     [rows, page, pageSize, grouped]
@@ -102,7 +108,7 @@ export function useGrouping<Row, K extends string>({
     groups.groupIds.every((id) => collapsed.has(id));
 
   return {
-    groupBy,
+    groupBy: activeKeys,
     setGrouping,
     grouped,
     groups,

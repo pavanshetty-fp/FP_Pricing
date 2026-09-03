@@ -73,9 +73,8 @@ import type {
   FuelOrderColumnKey,
   SortState,
 } from "./types";
-import { useGrouping } from "./useGrouping";
+import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FUEL_ORDER_GROUP_DIMS } from "./groupDims";
-import { GroupedListFooter } from "./GroupedListFooter";
 
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.

@@ -17,9 +17,8 @@ import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
 import { ListFilters } from "./ListFilters";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
-import { useGrouping } from "./useGrouping";
+import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { CUSTOMER_GROUP_DIMS } from "./groupDims";
-import { GroupedListFooter } from "./GroupedListFooter";
 import { CustomerSheet, type CustomerDraft } from "./CustomerSheet";
 import { useSavedViews } from "./useSavedViews";
 import {

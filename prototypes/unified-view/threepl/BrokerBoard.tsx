@@ -3,6 +3,11 @@ import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * Kanban board, generic over its lanes and cards.
@@ -108,6 +113,13 @@ export interface BoardCardRow {
   qty?: string;
   /** For a quantity that is not a number — "Top-off" is a decision, not an amount. */
   qtySoft?: boolean;
+  /**
+   * More about THIS asset — its serial, the route it travels. Shown on hover
+   * rather than as a line of its own: it is what you check when you are already
+   * looking at that asset, not something every card should spend a row on.
+   * Marked by an icon so the row says it has more to give.
+   */
+  note?: string[];
 }
 
 /*
@@ -138,8 +150,6 @@ export type BoardCardUnit =
       rows: BoardCardRow[];
       /** Only when more than one row states a number — see `CardRows`. */
       total?: string;
-      /** A fine line under the rows: a serial, a route. */
-      note?: string;
     };
 
 export interface BoardCardBadge {
@@ -261,15 +271,7 @@ function CardInline({ parts }: { parts: string[] }) {
  * much is coming" — with one row the quantity IS the total, and with every row
  * a top-off there is nothing to add.
  */
-function CardRows({
-  rows,
-  total,
-  note,
-}: {
-  rows: BoardCardRow[];
-  total?: string;
-  note?: string;
-}) {
+function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {rows.map((r, i) => (
@@ -278,9 +280,38 @@ function CardRows({
           className="grid min-w-0 items-baseline gap-2.5"
           style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr) auto" }}
         >
-          <span className="truncate text-[13px] font-medium text-foreground" title={r.asset}>
-            {r.asset}
-          </span>
+          {r.note && r.note.length > 0 ? (
+            /* HOVER ON EITHER — the name and the icon are one trigger, because
+               someone reaching for "more about this asset" aims at the asset,
+               not at a 14px target beside it. `tabIndex={-1}` keeps the card a
+               single keyboard stop; the same text sits in an `sr-only` span so
+               nothing is lost to a reader that cannot hover. */
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={-1} className="flex min-w-0 items-center gap-1">
+                  <span
+                    className="truncate text-[13px] font-medium text-foreground"
+                    title={r.asset}
+                  >
+                    {r.asset}
+                  </span>
+                  <Info className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="sr-only">{r.note.join(". ")}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <span className="flex flex-col gap-0.5">
+                  {r.note.map((n) => (
+                    <span key={n}>{n}</span>
+                  ))}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="truncate text-[13px] font-medium text-foreground" title={r.asset}>
+              {r.asset}
+            </span>
+          )}
           <span className="truncate text-xs text-muted-foreground" title={r.product}>
             {r.product}
           </span>
@@ -294,11 +325,6 @@ function CardRows({
           </span>
         </div>
       ))}
-      {note && (
-        <span className="truncate text-xs text-muted-foreground" title={note}>
-          {note}
-        </span>
-      )}
       {total && (
         <div className="flex items-baseline justify-between gap-3 border-t border-dashed border-fp-outline-1 pt-1.5">
           <span className="text-xs text-muted-foreground">Total</span>
@@ -409,9 +435,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           <UnitHeading>{u.heading}</UnitHeading>
           {u.kind === "stack" && <CardStack lines={u.lines} />}
           {u.kind === "inline" && <CardInline parts={u.parts} />}
-          {u.kind === "rows" && (
-            <CardRows rows={u.rows} total={u.total} note={u.note} />
-          )}
+          {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
         </div>
       ))}
 

@@ -132,16 +132,17 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
               product: asset?.type ?? r.movement.tankType,
               qty: cap > 0 ? `${cap.toLocaleString()} gal` : "—",
               qtySoft: cap === 0,
+              /* Serial and route hang off the asset on hover. They are what you
+                 check once you are already looking at that tank — not a line
+                 every movement card should spend on them. */
+              note: [
+                asset?.serial ? `Serial ${asset.serial}` : null,
+                r.movement.direction === "Asset Delivery"
+                  ? `${r.movement.yard} → ${r.shipTo}`
+                  : `${r.shipTo} → ${r.movement.yard}`,
+              ].filter((x): x is string => Boolean(x)),
             },
           ],
-          note: [
-            asset?.serial,
-            r.movement.direction === "Asset Delivery"
-              ? `${r.movement.yard} → site`
-              : `site → ${r.movement.yard}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
         };
       })()
     : {

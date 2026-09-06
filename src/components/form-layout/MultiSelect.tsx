@@ -63,6 +63,13 @@ export interface MultiSelectProps {
   addLabel?: string;
   searchPlaceholder?: string;
   emptyText?: string;
+  /**
+   * Merged into the trigger, so the same control can serve as a full-width
+   * FIELD or as a section-heading ACTION. The base is the field: `w-full` and
+   * a 44px box. A heading action passes `w-auto` and a lighter frame — one
+   * control either way, because two would drift apart.
+   */
+  className?: string;
 }
 
 export function MultiSelect({
@@ -73,6 +80,7 @@ export function MultiSelect({
   addLabel = "Add Margins",
   searchPlaceholder = "Search margins...",
   emptyText = "No options found.",
+  className,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [own, setOwn] = React.useState<string[]>(defaultSelected);
@@ -99,7 +107,8 @@ export function MultiSelect({
             "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-2 py-2 text-left outline-none transition-colors",
             "hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50",
             "data-[state=open]:border-ring",
-            selected.length === 0 && "justify-center"
+            selected.length === 0 && "justify-center",
+            className
           )}
         >
           {selected.map((opt) => (

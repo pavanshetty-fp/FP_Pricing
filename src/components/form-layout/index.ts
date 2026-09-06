@@ -3,8 +3,10 @@ export {
   TableCellSelect,
   TableCellCombobox,
   TableCellInput,
+  TableCellMultiSelect,
   TableRequiredLabel,
   type TableCellSelectProps,
   type TableCellComboboxProps,
   type TableCellInputProps,
+  type TableCellMultiSelectProps,
 } from "./table-cells";

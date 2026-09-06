@@ -668,7 +668,16 @@ export function BrokerOrdersScreen({
         lines: [
           {
             asset: asset?.name ?? "",
-            product: draft.product || (asset ? "—" : ""),
+            /* The products are the tank's cargo list; the card's one product
+               column shows the single one, or says how many. */
+            product:
+              draft.products.length === 1
+                ? draft.products[0]
+                : draft.products.length > 1
+                  ? `${draft.products.length} products`
+                  : asset
+                    ? "—"
+                    : "",
             gal: null,
             topOff: false,
             rental: true,
@@ -696,8 +705,10 @@ export function BrokerOrdersScreen({
         movement: {
           direction: draft.direction,
           yard: draft.yard,
-          tankType: asset?.type ?? draft.tankType,
-          capacityGal: asset?.capacityGal ?? (Number(draft.capacity) || 0),
+          /* Both are the ASSET's facts now — the sheet no longer asks for
+             them, it shows the ones that arrived with the tank. */
+          tankType: asset?.type ?? "",
+          capacityGal: asset?.capacityGal ?? 0,
         },
       },
       ...prev,

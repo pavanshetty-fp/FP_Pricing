@@ -191,6 +191,99 @@ export function TableCellInput({
   );
 }
 
+export interface TableCellMultiSelectProps {
+  values: string[];
+  options: string[];
+  placeholder?: string;
+  disabled?: boolean;
+  /**
+   * Singular noun for the count summary — "product" prints "3 products". The
+   * count is what a narrow cell can hold; the names are in the list one click
+   * away, and on the `title` for a pointer that hovers.
+   */
+  unitLabel?: string;
+  onChange: (next: string[]) => void;
+  "aria-label"?: string;
+}
+
+/**
+ * A cell holding MORE THAN ONE choice — same borderless idiom as the others.
+ *
+ * It summarises rather than listing: one value prints itself, several print
+ * their count. A cell that grew a chip per choice would change the table's row
+ * height as it was filled, and a column whose rows are different heights stops
+ * being scannable, which is the only reason to put this in a table at all.
+ *
+ * The popover STAYS OPEN on pick, because choosing several things one dismissal
+ * at a time is the slowest possible way to choose several things.
+ */
+export function TableCellMultiSelect({
+  values,
+  options,
+  placeholder = "Select",
+  disabled,
+  unitLabel = "selected",
+  onChange,
+  "aria-label": ariaLabel,
+}: TableCellMultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const summary =
+    values.length === 0
+      ? placeholder
+      : values.length === 1
+        ? values[0]
+        : `${values.length} ${unitLabel}${unitLabel.endsWith("s") ? "" : "s"}`;
+
+  const toggle = (opt: string) =>
+    onChange(
+      values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt]
+    );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          title={values.join(", ") || undefined}
+          className={cn(
+            "absolute inset-0 flex items-center justify-between gap-2 px-3 text-left transition-colors outline-none",
+            "hover:bg-accent focus-visible:bg-fp-surface-1a focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+            disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
+          )}
+        >
+          <span
+            className={cn(
+              "truncate text-sm",
+              values.length > 0 ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            {summary}
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-0">
+        <Command>
+          <CommandInput placeholder="Search…" />
+          <CommandList>
+            <CommandEmpty>No options.</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem key={opt} value={opt} onSelect={() => toggle(opt)}>
+                  <span className="flex-1 truncate">{opt}</span>
+                  {values.includes(opt) && <Check className="size-4 shrink-0" />}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export interface TableCellComboboxProps {
   value: string;
   options: string[];

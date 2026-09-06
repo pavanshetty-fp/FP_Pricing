@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/form-layout/MultiSelect";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
+  TableCellCombobox,
   TableCellInput,
+  TableCellMultiSelect,
   TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout";
@@ -29,7 +31,6 @@ import {
   SALESPEOPLE,
   SALES_CONTACTS,
   SHIP_TO_SITES,
-  TANK_TYPES,
   YARDS,
   type MovementDirection,
 } from "./orders";
@@ -72,7 +73,29 @@ const PERIPHERALS = [
   "Meter",
   "Grounding reel",
   "Spill kit",
+  "Lockbox",
+  "Sight gauge",
 ];
+
+/** A peripheral is a rented thing in its own right, so it carries the same
+ *  facts an asset does: which one, its serial, what state it left in, and who
+ *  owns it. Those four are the columns. */
+const CONDITIONS = ["Fresh", "Old"];
+const OWNERSHIP = ["Leased", "Purchased"];
+
+export interface PeripheralRow {
+  name: string;
+  serial: string;
+  condition: string;
+  ownership: string;
+}
+
+const blankPeripheral = (): PeripheralRow => ({
+  name: "",
+  serial: "",
+  condition: "",
+  ownership: "",
+});
 
 const DOC_ACCESS = ["Internal only", "Visible to vendor", "Visible to customer"];
 
@@ -99,16 +122,13 @@ export interface AssetMovementDraft {
   notifyVendor: boolean;
   urgent: boolean;
   signature: boolean;
-  /* Filters, NOT the asset's own facts. They narrow a yard of tanks down to the
-     one being moved; the asset row below states what was actually picked. At a
-     yard with three tanks this is chrome, at one with three hundred it is the
-     only way in. */
-  tankType: string;
-  capacity: string;
-  product: string;
+  /* ONE ASSET, stated as a table row. Its type and capacity are the asset's own
+     facts and arrive with it; the products are what it is to carry, which is a
+     decision and so the only editable cell beside the asset itself. */
   assetId: string;
+  products: string[];
   peripheralsOn: boolean;
-  peripherals: string[];
+  peripherals: PeripheralRow[];
   customOn: boolean;
   customItems: CustomItem[];
   instructions: string;
@@ -132,12 +152,10 @@ function emptyDraft(direction: MovementDirection): AssetMovementDraft {
     notifyVendor: true,
     urgent: false,
     signature: false,
-    tankType: "",
-    capacity: "",
-    product: "",
     assetId: "",
+    products: [],
     peripheralsOn: false,
-    peripherals: [],
+    peripherals: [blankPeripheral()],
     customOn: false,
     customItems: [{ name: "", qty: null, unit: UNITS[0] }],
     instructions: "",
@@ -210,20 +228,18 @@ export function AssetMovementSheet({
       ? RENTAL_ASSETS.filter((a) => a.status === "Available")
       : RENTAL_ASSETS.filter((a) => a.shipTo === draft.shipTo);
 
-  /* The three filters above the picker, applied in order. Capacity is a typed
-     number, so it matches loosely — someone types "500", not "500 gal". */
-  const available = pool.filter(
-    (a) =>
-      (!draft.tankType || a.type === draft.tankType) &&
-      (!draft.capacity || String(a.capacityGal).startsWith(draft.capacity.trim())) &&
-      // A tank's product is what it last held; the yard's spares hold nothing.
-      (!draft.product || !a.customer || true)
-  );
+  const available = pool;
   const asset = RENTAL_ASSETS.find((a) => a.id === draft.assetId);
 
   const gate = isDelivery
     ? "Choose a yard first — the assets offered are the ones sitting in it."
     : "Choose a ship-to first — the assets offered are the ones on rent there.";
+
+  const setPeripheral = (i: number, patch: Partial<PeripheralRow>) =>
+    setDraft((d) => ({
+      ...d,
+      peripherals: d.peripherals.map((p, k) => (k === i ? { ...p, ...patch } : p)),
+    }));
 
   const setItem = (i: number, patch: Partial<CustomItem>) =>
     setDraft((d) => ({
@@ -356,8 +372,30 @@ export function AssetMovementSheet({
           section — the yard on a delivery, the customer on a pickup. */}
       {isDelivery ? [yardBlock, customerBlock] : [customerBlock, yardBlock]}
 
-      <SheetSection title="POC Details">
-        <div className="grid grid-cols-3 gap-4">
+      <SheetSection
+        title="POC Details"
+        /* ADDING A PERSON ACTS ON THE SECTION, not on a field, so it sits on
+           the heading row. As a field it also broke the row: the picker's empty
+           box is taller than a select, which stretched the row and left the
+           Sales Person read-out floating below the control it belongs to. Two
+           rows of the same 1 + 2 shape now, the same pair the Delivery Order
+           sheet uses. */
+        action={
+          <MultiSelect
+            options={POCS.filter((p) => p !== draft.primaryPoc)}
+            value={draft.secondaryPocs}
+            onChange={(v) => set("secondaryPocs", v)}
+            addLabel="Add POC"
+            searchPlaceholder="Search contacts…"
+            emptyText="No contact found."
+            /* Sized to its content and framed like the other heading actions —
+               a full-width bordered box in a heading row reads as a field that
+               has lost its label. */
+            className="min-h-8 w-auto justify-end border-transparent px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          />
+        }
+      >
+        <div className="grid grid-cols-3 items-end gap-4">
           <SheetField label="Primary POC">
             <Combobox
               className="w-full"
@@ -370,7 +408,7 @@ export function AssetMovementSheet({
           </SheetField>
           {/* Derived, so a read-out with its own copy buttons — not a pair of
               disabled fields pretending to be editable. */}
-          <div className="col-span-2 flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-2 flex h-9 items-center gap-3 overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
@@ -387,17 +425,7 @@ export function AssetMovementSheet({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <SheetField label="Secondary POCs">
-            <MultiSelect
-              options={POCS.filter((p) => p !== draft.primaryPoc)}
-              value={draft.secondaryPocs}
-              onChange={(v) => set("secondaryPocs", v)}
-              addLabel="Add POC"
-              searchPlaceholder="Search contacts…"
-              emptyText="No contact found."
-            />
-          </SheetField>
+        <div className="grid grid-cols-3 items-end gap-4">
           <SheetField label="Sales Person">
             <Combobox
               className="w-full"
@@ -408,7 +436,9 @@ export function AssetMovementSheet({
               searchPlaceholder="Search people…"
             />
           </SheetField>
-          <div className="flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          {/* SAME SHAPE AND SAME GRID as the POC row above — two read-out cards
+              that differ in width read as two different kinds of card. */}
+          <div className="col-span-2 flex h-9 items-center gap-3 overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <CopyValue
                 value={SALES_CONTACTS[draft.salesperson]}
@@ -468,17 +498,22 @@ export function AssetMovementSheet({
               onChange={(e) => set("bolNumber", e.target.value)}
             />
           </SheetField>
-          <SheetField label="Tags" className="col-span-2">
-            <MultiSelect
-              options={[...ORDER_TAGS]}
-              value={draft.tags}
-              onChange={(v) => set("tags", v)}
-              addLabel="Add tags"
-              searchPlaceholder="Search tags…"
-              emptyText="No tag found."
-            />
-          </SheetField>
         </div>
+
+        {/* TAGS GET THEIR OWN LINE. Every other control in this section is a
+            single value in a fixed box; tags are a growing list, so sharing a
+            row meant the row's height was decided by how many tags were on the
+            order and the field beside it moved every time one was added. */}
+        <SheetField label="Tags">
+          <MultiSelect
+            options={[...ORDER_TAGS]}
+            value={draft.tags}
+            onChange={(v) => set("tags", v)}
+            addLabel="Add tags"
+            searchPlaceholder="Search tags…"
+            emptyText="No tag found."
+          />
+        </SheetField>
 
         {/* §6's per-order kill switch. ON by default — suppressing every email
             is the deliberate act, so it is the one that costs a click. */}
@@ -500,87 +535,96 @@ export function AssetMovementSheet({
         </label>
       </SheetSection>
 
+      {/* THREE TABLES, NOT THREE SHAPES. The asset, its peripherals and any
+          custom items are all "things going on this order", and the Delivery
+          Order sheet already answers that with one idiom: fixed layout, a
+          Surface-1a header naming every column, cells with no chrome of their
+          own, and an Add chip on the squared bottom-left corner. Reading three
+          different layouts for three lists of things was the cost of not using
+          it here. */}
       <SheetSection title="Asset Details">
-        {/* FILTERS, not the asset's facts — they narrow a yard of tanks down to
-            the one being moved, and the row below states what was picked. */}
-        <div className="grid grid-cols-3 gap-4">
-          <SheetField label="Tank Type" description="Narrows the list below.">
-            <Combobox
-              className="w-full"
-              value={draft.tankType}
-              onValueChange={(v) => set("tankType", v)}
-              options={["", ...TANK_TYPES].filter(Boolean)}
-              placeholder="Any tank type"
-              searchPlaceholder="Search types…"
-            />
-          </SheetField>
-          <SheetField label="Tank Capacity">
-            <Input
-              value={draft.capacity}
-              placeholder="Any capacity"
-              onChange={(e) => set("capacity", e.target.value.replace(/[^0-9]/g, ""))}
-            />
-          </SheetField>
-          <SheetField label="Product">
-            <Combobox
-              className="w-full"
-              value={draft.product}
-              onValueChange={(v) => set("product", v)}
-              options={[...PRODUCTS]}
-              placeholder="Any product"
-              searchPlaceholder="Search products…"
-            />
-          </SheetField>
-        </div>
+        {/* ONE ROW, AND NO ADD CHIP. §5.20: a movement order carries exactly
+            one asset — `assertConsistent` enforces it — so the affordance that
+            would add a second is the one thing this table must not have.
 
-        <SheetField
-          label="Asset"
-          required
-          description={
-            sourceChosen
-              ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${
-                  isDelivery ? `in ${draft.yard}` : `on rent at ${draft.shipTo}`
-                }.`
-              : gate
-          }
-        >
-          <Combobox
-            className="w-full"
-            value={draft.assetId}
-            onValueChange={(v) => set("assetId", v)}
-            disabled={!sourceChosen}
-            options={available.map((a) => ({
-              value: a.id,
-              label: a.name,
-              /* The facts that tell two tanks apart, on the option itself —
-                 picking by name alone is picking by serial you cannot see. */
-              description: `${a.serial} · ${a.type}${
-                a.capacityGal > 0 ? ` · ${a.capacityGal.toLocaleString()} gal` : ""
-              }`,
-            }))}
-            placeholder={sourceChosen ? "Select an asset" : "Not available yet"}
-            searchPlaceholder="Search assets, serials…"
-            emptyText="No asset matches those filters."
-          />
-        </SheetField>
+            THE ASSET IS THE ONLY THING PICKED. Type and capacity are the
+            asset's own facts and arrive with it, the same way the Delivery
+            Order's product arrives with its tank; product is what the tank is
+            to carry, which is a decision, so it stays editable. */}
+        <div className="overflow-hidden rounded-md border border-border">
+          <table className="w-full table-fixed border-collapse">
+            <colgroup>
+              <col />
+              <col className="w-[26%]" />
+              <col className="w-[120px]" />
+              <col className="w-[24%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border bg-fp-surface-1a">
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel required>Asset</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Tank Type</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Capacity</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Product</TableRequiredLabel>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="h-11">
+                <td className="relative p-0">
+                  <TableCellCombobox
+                    value={asset?.name ?? ""}
+                    options={available.map((a) => a.name)}
+                    disabled={!sourceChosen}
+                    placeholder={sourceChosen ? "Select asset" : "Not available yet"}
+                    aria-label="Asset"
+                    onChange={(name) => {
+                      const picked = available.find((a) => a.name === name);
+                      set("assetId", picked?.id ?? "");
+                    }}
+                  />
+                </td>
+                {/* DERIVED, so text — a disabled control here would be a box
+                    inviting a click that does nothing. */}
+                <td className="px-3 text-sm text-muted-foreground">
+                  {asset ? asset.type : "—"}
+                </td>
+                <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                  {asset && asset.capacityGal > 0
+                    ? `${asset.capacityGal.toLocaleString()} gal`
+                    : "—"}
+                </td>
+                <td className="relative p-0">
+                  <TableCellMultiSelect
+                    values={draft.products}
+                    options={[...PRODUCTS]}
+                    unitLabel="product"
+                    placeholder="Select product"
+                    aria-label="Products for this asset"
+                    onChange={(v) => set("products", v)}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {sourceChosen
+            ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${
+                isDelivery ? `in ${draft.yard}` : `on rent at ${draft.shipTo}`
+              }. Search by name or serial.`
+            : gate}
+        </p>
 
         {asset && (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm">
             <span className="text-foreground">{asset.serial}</span>
-            <span aria-hidden className="text-fp-outline-1">
-              |
-            </span>
-            <span className="text-muted-foreground">{asset.type}</span>
-            {asset.capacityGal > 0 && (
-              <>
-                <span aria-hidden className="text-fp-outline-1">
-                  |
-                </span>
-                <span className="tabular-nums text-muted-foreground">
-                  {asset.capacityGal.toLocaleString()} gal
-                </span>
-              </>
-            )}
             <span aria-hidden className="text-fp-outline-1">
               |
             </span>
@@ -589,54 +633,151 @@ export function AssetMovementSheet({
             </span>
           </div>
         )}
+      </SheetSection>
 
-        {/* Two OPTIONAL manifests, each hidden until asked for — the same rule
-            the Load Order follows. A list nobody fills is a section people
-            learn to scroll past. */}
-        <label
-          htmlFor="mv-peripherals"
-          className="flex cursor-pointer items-center justify-between gap-4"
-        >
-          <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
-            Add Peripheral
-            <span className="text-xs font-normal text-muted-foreground">
-              List peripherals to include with the asset's movement order.
-            </span>
-          </span>
+      {/* Two OPTIONAL manifests, each hidden until asked for — the same rule
+          the Load Order follows. A list nobody fills is a section people learn
+          to scroll past. The switch rides the SECTION HEADING now that each is
+          a section of its own, which is also what stops it being mistaken for
+          a row of the table beneath it. */}
+      <SheetSection
+        title="Add Peripheral"
+        action={
           <Switch
             id="mv-peripherals"
+            aria-label="Add peripherals to this order"
             checked={draft.peripheralsOn}
             onCheckedChange={(v) => set("peripheralsOn", v)}
           />
-        </label>
-        {draft.peripheralsOn && (
-          <MultiSelect
-            options={PERIPHERALS}
-            value={draft.peripherals}
-            onChange={(v) => set("peripherals", v)}
-            addLabel="Add peripheral"
-            searchPlaceholder="Search peripherals…"
-            emptyText="No peripheral found."
-          />
+        }
+      >
+        {draft.peripheralsOn ? (
+          <div>
+            <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col />
+                  <col className="w-[26%]" />
+                  <col className="w-[20%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[52px]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border bg-fp-surface-1a">
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel required>Peripheral</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Serial no.</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Condition</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Ownership status</TableRequiredLabel>
+                    </th>
+                    <th aria-hidden />
+                  </tr>
+                </thead>
+                <tbody>
+                  {draft.peripherals.map((p, i) => (
+                    <tr
+                      key={i}
+                      className="group/row h-11 border-b border-border last:border-b-0"
+                    >
+                      <td className="relative p-0">
+                        <TableCellCombobox
+                          value={p.name}
+                          options={PERIPHERALS}
+                          /* One peripheral, one row — the same rule the
+                             Delivery Order's asset column follows. */
+                          taken={draft.peripherals.map((x) => x.name)}
+                          creatable
+                          placeholder="Select"
+                          aria-label={`Peripheral ${i + 1}`}
+                          onChange={(v) => setPeripheral(i, { name: v })}
+                        />
+                      </td>
+                      <td className="relative p-0">
+                        <TableCellInput
+                          value={p.serial}
+                          placeholder="Enter serial no."
+                          aria-label={`Serial number for peripheral ${i + 1}`}
+                          onChange={(v) => setPeripheral(i, { serial: v })}
+                        />
+                      </td>
+                      <td className="relative p-0">
+                        <TableCellSelect
+                          value={p.condition}
+                          options={CONDITIONS}
+                          placeholder="Select"
+                          aria-label={`Condition of peripheral ${i + 1}`}
+                          onChange={(v) => setPeripheral(i, { condition: v })}
+                        />
+                      </td>
+                      <td className="relative p-0">
+                        <TableCellSelect
+                          value={p.ownership}
+                          options={OWNERSHIP}
+                          placeholder="Select"
+                          aria-label={`Ownership status of peripheral ${i + 1}`}
+                          onChange={(v) => setPeripheral(i, { ownership: v })}
+                        />
+                      </td>
+                      <td className="p-0 text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Remove peripheral ${i + 1}`}
+                          disabled={draft.peripherals.length === 1}
+                          className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
+                          onClick={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              peripherals: d.peripherals.filter((_, k) => k !== i),
+                            }))
+                          }
+                        >
+                          <Trash2 />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft((d) => ({
+                  ...d,
+                  peripherals: [...d.peripherals, blankPeripheral()],
+                }))
+              }
+              className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Plus className="size-4" /> Add peripheral
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            List peripherals to include with the asset's movement order.
+          </p>
         )}
+      </SheetSection>
 
-        <label
-          htmlFor="mv-custom"
-          className="flex cursor-pointer items-center justify-between gap-4"
-        >
-          <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
-            Custom Items
-            <span className="text-xs font-normal text-muted-foreground">
-              Anything to include with the asset's Lease Equipment Order.
-            </span>
-          </span>
+      <SheetSection
+        title="Custom Items"
+        action={
           <Switch
             id="mv-custom"
+            aria-label="Add custom items to this order"
             checked={draft.customOn}
             onCheckedChange={(v) => set("customOn", v)}
           />
-        </label>
-        {draft.customOn && (
+        }
+      >
+        {draft.customOn ? (
           <div>
             <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
               <table className="w-full table-fixed border-collapse">
@@ -649,7 +790,7 @@ export function AssetMovementSheet({
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Item</TableRequiredLabel>
+                      <TableRequiredLabel required>Item</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
                       <TableRequiredLabel>Qty</TableRequiredLabel>
@@ -728,6 +869,10 @@ export function AssetMovementSheet({
               <Plus className="size-4" /> Add item
             </button>
           </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Anything to include with the asset's Lease Equipment Order.
+          </p>
         )}
       </SheetSection>
 

@@ -7,6 +7,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 /* Shared building blocks for the Side Sheet variants (Figma 27610:58293). */
 
@@ -84,19 +95,32 @@ export function SheetSection({
  * that comes to full contrast and slides its label out on hover or focus. The
  * label is what makes it safe — a bare glyph beside a table of rows reads as
  * though it might remove a row.
+ *
+ * IT ASKS ONLY WHEN THERE IS SOMETHING TO LOSE. `hasContent` is the caller's
+ * answer to "has anyone typed anything in here yet" — with rows filled the
+ * click opens a confirm, and on an untouched section it just closes it. A
+ * dialog over an empty table teaches people to dismiss dialogs without reading
+ * them, which is exactly the habit that makes the one that matters useless.
  */
 export function SheetSectionRemove({
   label,
+  hasContent,
   onClick,
 }: {
   /** Names what goes, e.g. "Remove peripherals". Shown on hover and to AT. */
   label: string;
+  /**
+   * True when the section holds something a person put there. Only then is
+   * removal worth confirming — the caller knows what "filled in" means for its
+   * own rows, so it decides rather than this component guessing.
+   */
+  hasContent?: boolean;
   onClick: () => void;
 }) {
-  return (
+  const trigger = (
     <button
       type="button"
-      onClick={onClick}
+      onClick={hasContent ? undefined : onClick}
       aria-label={label}
       className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
     >
@@ -105,6 +129,30 @@ export function SheetSectionRemove({
         {label}
       </span>
     </button>
+  );
+
+  if (!hasContent) return trigger;
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          {/* The button's own label, as a question — the dialog answers the
+              click that opened it rather than restating the section's name. */}
+          <AlertDialogTitle>{label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Everything added here will be erased. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onClick}>
+            Remove
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

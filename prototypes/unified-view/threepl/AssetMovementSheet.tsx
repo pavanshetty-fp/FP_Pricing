@@ -755,6 +755,12 @@ export function AssetMovementSheet({
           draft.peripheralsOn && (
             <SheetSectionRemove
               label="Remove peripherals"
+              /* A row counts as filled the moment ANY of its four cells has a
+                 value. The blank starter row the table opens with is not
+                 content — asking about it would be asking about nothing. */
+              hasContent={draft.peripherals.some(
+                (x) => x.name || x.serial || x.condition || x.ownership
+              )}
               onClick={() => {
                 set("peripheralsOn", false);
                 set("peripherals", [blankPeripheral()]);
@@ -901,6 +907,10 @@ export function AssetMovementSheet({
           draft.customOn && (
             <SheetSectionRemove
               label="Remove custom items"
+              /* The unit is prefilled with the first option, so it says nothing
+                 about whether anyone has been here — only a name or a quantity
+                 does. */
+              hasContent={draft.customItems.some((x) => x.name || x.qty != null)}
               onClick={() => {
                 set("customOn", false);
                 set("customItems", [{ name: "", qty: null, unit: UNITS[0] }]);

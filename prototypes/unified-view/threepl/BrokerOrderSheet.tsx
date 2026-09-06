@@ -1269,6 +1269,12 @@ export function BrokerOrderSheet({
             loadRows && (
               <SheetSectionRemove
                 label="Remove Load Order"
+                /* The rows arrive prefilled with the order's products, so the
+                   product alone is not evidence anyone has been here — a
+                   terminal, an account or a quantity is. */
+                hasContent={loadRows.some(
+                  (r) => r.terminal || r.supplier || r.loadingAccount || r.excluded
+                )}
                 onClick={() => set("loadRows", null)}
               />
             )

@@ -845,6 +845,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   reached for, coming to full contrast and sliding its label out on hover or
   focus — a bare glyph beside a table of rows reads as though it might remove a
   row, and the label is what makes it safe.
+- **Confirm only when there is something to lose.** `SheetSectionRemove` takes
+  `hasContent`: with rows filled in, the click opens an AlertDialog — *"Remove
+  peripherals? Everything added here will be erased. This cannot be undone."* —
+  and on an untouched section it simply closes it. A dialog over an empty table
+  teaches people to dismiss dialogs without reading them, which is the habit that
+  makes the one that matters useless. The CALLER answers `hasContent`, because
+  only it knows what "filled in" means for its own rows: a starter row of blanks
+  is not content, and neither is a prefilled default (the Load Order's product,
+  the custom item's unit) that nobody chose.
 - **Footer flags.** A decision about the RECORD (recurring, and the cadence it
   reveals) stays in the section it changes. A decision about the ACT of submitting
   (urgent, get a signature) rides in the sticky footer, in view at the moment of

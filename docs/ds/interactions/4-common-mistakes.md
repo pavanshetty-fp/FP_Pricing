@@ -26,5 +26,6 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Pre-ticked rows** — ❌ adding a row ticks it, so a bulk bar appears before anything is chosen · ✅ selections start empty and transient (§4b).
 - **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
 - **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).
+- **Confirming nothing** — ❌ "are you sure?" over a section whose table is still a row of blanks · ✅ `hasContent` decides whether the dialog appears (`ux/2-rules`).
 - **A bin on a section heading** — ❌ `<Trash2>` to turn an optional section off, next to the bins that delete table rows · ✅ `SheetSectionRemove`, a minus (`ux/2-rules`).
 - **A padded heading row** — ❌ a `min-h` on the section title so a 16px gap renders as 20, and 22 once the heading carries a button · ✅ the row is the title's own line and a taller action hangs off it (`ux/2-rules`).

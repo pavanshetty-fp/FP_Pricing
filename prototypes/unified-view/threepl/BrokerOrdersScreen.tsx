@@ -27,7 +27,7 @@ import {
 } from "../data";
 import {
   BrokerBoard,
-  type BoardCardZone,
+  type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -35,7 +35,7 @@ import {
   AssetMovementSheet,
   type AssetMovementDraft,
 } from "./AssetMovementSheet";
-import { VENDORS, vendorName } from "./vendors";
+import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
   BROKER_LANE_COLOR,
@@ -95,88 +95,110 @@ import { RENTAL_ASSETS } from "./directory";
 /** Board cards show six fields — §5.2 says the set is user-customisable; this is
  *  the default. Six fills the DS card's 2-column grid exactly. */
 /**
- * The card's zones, in reading order.
+ * The card's units, in reading order.
  *
- * WHAT THE ORDER'S KIND CHANGES is the GOODS zone and nothing else. A movement
- * has no gallons to sum and no products to name — it has one asset, and where
- * that asset is going. The old flat six-field grid rendered "Qty —" for a number
- * a movement can never have; a zone that swaps says the true thing in the same
- * space.
+ * NO FIELD LABELS INSIDE A UNIT. The heading names the unit and the levels do
+ * the rest: "Customer / Bray, Raymond and Marks" spends a whole line saying
+ * what the reader already knows from where it sits. Three lines at three
+ * weights carry account, site and address without one label between them.
+ *
+ * WHAT THE KIND CHANGES is the product unit and nothing else. A delivery lists
+ * the tanks and what goes in each; a movement lists the one asset, its type and
+ * its capacity — same three columns, so the eye lands in the same place.
  */
-function laneCardZones(r: BrokerOrder): BoardCardZone[] {
-  const asset = r.movement ? RENTAL_ASSETS.find((a) => a.name === r.lines[0]?.asset) : undefined;
+function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
+  const site = SHIP_TO_SITES.find((x) => x.name === r.shipTo);
+  const vendor = r.vendorId ? vendorById(r.vendorId) : undefined;
 
-  const goods: BoardCardZone = r.movement
-    ? {
-        kind: "goods",
-        key: "goods",
-        primary: r.lines[0]?.asset || "Asset not chosen",
-        lines: [
-          /* The ASSET's own facts where it is a known record, the order's
-             otherwise — a tank's type and capacity belong to the tank, and two
-             answers for one tank is one too many. */
-          [
+  /* THE TOTAL EARNS ITS ROW or is not drawn. With one line the quantity IS the
+     total; with every line a top-off there is nothing to add. It appears only
+     once the per-row figures have stopped answering "how much is coming". */
+  const numbered = r.lines.filter((l) => !l.topOff && l.gal != null);
+  const showTotal = !r.movement && r.lines.length > 1 && numbered.length > 1;
+
+  const productUnit: BoardCardUnit = r.movement
+    ? (() => {
+        const asset = RENTAL_ASSETS.find((a) => a.name === r.lines[0]?.asset);
+        const cap = asset?.capacityGal ?? r.movement.capacityGal;
+        return {
+          kind: "rows",
+          key: "product",
+          heading: "Delivery Product Details",
+          rows: [
+            {
+              asset: r.lines[0]?.asset || "Asset not chosen",
+              /* A tank in transit is EMPTY, so this column carries its type
+                 rather than a product it is not holding. */
+              product: asset?.type ?? r.movement.tankType,
+              qty: cap > 0 ? `${cap.toLocaleString()} gal` : "—",
+              qtySoft: cap === 0,
+            },
+          ],
+          note: [
             asset?.serial,
-            asset?.type ?? r.movement.tankType,
-            (asset?.capacityGal ?? r.movement.capacityGal) > 0
-              ? `${(asset?.capacityGal ?? r.movement.capacityGal).toLocaleString()} gal`
-              : null,
+            r.movement.direction === "Asset Delivery"
+              ? `${r.movement.yard} → site`
+              : `site → ${r.movement.yard}`,
           ]
             .filter(Boolean)
             .join(" · "),
-          /* The route, read the way it happens. "Asset Delivery" and "Asset
-             Pickup" name the FORM; from the card's side what matters is which
-             way the tank is travelling. */
-          r.movement.direction === "Asset Delivery"
-            ? `${r.movement.yard} → site`
-            : `site → ${r.movement.yard}`,
-        ].filter(Boolean),
-      }
+        };
+      })()
     : {
-        kind: "goods",
-        key: "goods",
-        primary: isAllTopOff(r.lines)
-          ? "Top-off"
-          : `${totalGal(r.lines).toLocaleString()} gal`,
-        lines: [[...new Set(r.lines.map((l) => l.product).filter(Boolean))].join(" · ")].filter(
-          Boolean
-        ),
+        kind: "rows",
+        key: "product",
+        heading: "Delivery Product Details",
+        rows: r.lines.map((l) => ({
+          asset: l.asset || "No asset",
+          product: l.product,
+          qty: l.topOff ? "Top-off" : `${(l.gal ?? 0).toLocaleString()} gal`,
+          qtySoft: l.topOff,
+        })),
+        total: showTotal ? `${totalGal(r.lines).toLocaleString()} gal` : undefined,
       };
 
   return [
     {
-      kind: "pairs",
-      key: "destination",
-      fields: [
-        { label: "Customer", value: r.customer.title },
-        { label: "Ship To", value: r.shipTo },
+      kind: "stack",
+      key: "customer",
+      heading: "Customer Details",
+      lines: [
+        { text: r.customer.title, level: 1 },
+        { text: r.shipTo, level: 2 },
+        ...(site ? [{ text: siteAddress(site), level: 3 as const }] : []),
       ],
     },
     {
-      kind: "pairs",
+      kind: "inline",
       key: "schedule",
-      fields: [
-        { label: "Window", value: `${r.window.start} – ${r.window.end}` },
+      heading: "Schedule",
+      parts: [
+        `${r.window.start} – ${r.window.end}`,
         /* A recurring order's cadence beats its date: the board is already
            scoped to one day, so the date says nothing the column has not. */
-        r.recurrence
-          ? { label: "Cadence", value: r.recurrence.frequency }
-          : { label: "Plan date", value: r.date.title },
+        r.recurrence ? r.recurrence.frequency : r.date.title,
       ],
     },
-    goods,
+    productUnit,
     {
-      kind: "pairs",
-      key: "fulfilment",
-      fields: [
-        r.vendorId
-          ? { label: "Delivery Partner", value: vendorName(r.vendorId) }
-          : {
-              label: "Delivery Partner",
-              value: r.invitedVendorIds.length > 0 ? "Out for acknowledgement" : "Not assigned",
-              muted: true,
+      kind: "stack",
+      key: "partner",
+      heading: "Delivery Partner",
+      lines: vendor
+        ? [
+            { text: vendor.name, level: 1 },
+            {
+              text: `${vendor.base} · Safety ${vendor.safetyScore} · ${vendor.distanceMi} mi`,
+              level: 3 as const,
             },
-      ],
+          ]
+        : [
+            {
+              text:
+                r.invitedVendorIds.length > 0 ? "Out for acknowledgement" : "Not assigned",
+              level: 3 as const,
+            },
+          ],
     },
   ];
 }
@@ -428,7 +450,7 @@ export function BrokerOrdersScreen({
             title: r.orderNo,
             badges: laneCardBadges(r),
             subtitle: laneCardSubtitle(r),
-            zones: laneCardZones(r),
+            units: laneCardUnits(r),
             alert: laneCardAlert(r),
             detailLabel: "View details",
           })),

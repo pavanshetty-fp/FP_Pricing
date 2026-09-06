@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -87,37 +88,59 @@ const ALERT_ACCENT: Record<AlertStatus, string> = {
   success: "text-fp-banner-accent-success",
 };
 
-export interface BoardCardField {
-  label: string;
-  value: string;
-  /** For a value that is an absence — "Not assigned" rather than a name. */
-  muted?: boolean;
+/**
+ * A LINE IN A STACK. Level is hierarchy, not size for its own sake: 1 is what
+ * the unit is about, 2 what qualifies it, 3 the fine print. Three levels is
+ * what lets a unit hold three facts without three labels — the customer block
+ * reads name / site / address off weight alone.
+ */
+export interface BoardCardLine {
+  text: string;
+  level?: 1 | 2 | 3;
+}
+
+/** One row of the delivery-product unit: the asset, what goes in it, how much. */
+export interface BoardCardRow {
+  /** The row's SUBJECT — the tank being filled, or the asset being moved. */
+  asset: string;
+  /** What is going in. A tank in transit is empty, so a movement puts its TYPE here. */
+  product?: string;
+  qty?: string;
+  /** For a quantity that is not a number — "Top-off" is a decision, not an amount. */
+  qtySoft?: boolean;
 }
 
 /*
-  A CARD IS ZONES, NOT A FLAT FIELD LIST.
+  A CARD IS RULED UNITS.
 
-  The old card was six label/value pairs in a fixed grid, which forced every
-  order into the same shape: a movement rendered an em-dash under "Qty" for
-  gallons it can never have, and one badge slot had to choose between Urgent and
-  Recurring. Zones fix both — the screen decides which zones an order gets, and
-  what goes in them.
+  Each unit is one heading and one shape, divided from the next by a rule. The
+  heading is the ONLY label left on the card: inside a unit, hierarchy is
+  carried by weight and size, because "Customer / Bray, Raymond and Marks" spends
+  a whole line saying what the reader already knows from where it sits.
 
-  Five zones, each answering ONE question, in the order someone reads a card:
+  Three shapes cover every unit:
 
-    identity     what kind of thing is this   title · badges · category
-    destination  where does it go             customer · ship-to
-    schedule     when does it land            window · cadence or date
-    goods        what is on it                THE ZONE THAT SWAPS BY KIND
-    fulfilment   who is carrying it           delivery partner
+    stack   lines at three levels        customer details · delivery partner
+    inline  short values, hairline-split schedule — window | cadence
+    rows    asset · product · quantity   delivery product details
 
-  `goods` is a block rather than pairs because its content changes shape, not
-  just its value: gallons and products on a delivery, an asset with its serial
-  and route on a movement.
+  `rows` is the one that swaps by kind. A delivery lists its tanks and what goes
+  in each; a movement lists the one asset, its type and its capacity. Same three
+  columns, so the eye lands in the same place either way.
 */
-export type BoardCardZone =
-  | { kind: "pairs"; key: string; fields: BoardCardField[] }
-  | { kind: "goods"; key: string; primary: string; lines: string[] };
+export type BoardCardUnit =
+  | { kind: "stack"; key: string; heading: string; lines: BoardCardLine[] }
+  | { kind: "inline"; key: string; heading: string; parts: string[] }
+  | {
+      kind: "rows";
+      key: string;
+      heading: string;
+      rows: BoardCardRow[];
+      /** Only when more than one row states a number — see `CardRows`. */
+      total?: string;
+      /** A fine line under the rows: a serial, a route. */
+      note?: string;
+    };
 
 export interface BoardCardBadge {
   label: string;
@@ -138,7 +161,7 @@ export interface BoardCard {
   badges?: BoardCardBadge[];
   /** Under the title. The order's category. */
   subtitle?: string;
-  zones: BoardCardZone[];
+  units: BoardCardUnit[];
   alert?: {
     status: AlertStatus;
     text: string;
@@ -171,48 +194,117 @@ export interface BrokerBoardProps {
   onToggleLaneSort?: (laneKey: string) => void;
 }
 
-/** The card's key/value detail rows — value (foreground) over label (muted). */
-function CardFields({ fields }: { fields: BoardCardField[] }) {
+/** The unit heading — the only label left on the card. */
+function UnitHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-      {fields.map((f) => (
-        <div
-          key={f.label}
-          className={cn("flex min-w-0 flex-col", fields.length === 1 && "col-span-2")}
-        >
-          <span
-            className={cn(
-              "truncate text-sm",
-              f.muted ? "text-muted-foreground" : "text-foreground"
-            )}
-            title={f.value}
-          >
-            {f.value}
-          </span>
-          <span className="truncate text-xs text-muted-foreground">{f.label}</span>
-        </div>
+    <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+      {children}
+    </span>
+  );
+}
+
+const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
+  1: "text-sm font-semibold text-foreground",
+  2: "text-[13px] font-medium text-muted-foreground",
+  3: "text-xs text-muted-foreground",
+};
+
+/** Lines at three levels. Hierarchy does the work a field label used to. */
+function CardStack({ lines }: { lines: BoardCardLine[] }) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      {lines.map((l) => (
+        <span key={l.text} className={cn("truncate", LEVEL_CLASS[l.level ?? 1])} title={l.text}>
+          {l.text}
+        </span>
       ))}
     </div>
   );
 }
 
 /**
- * What is on the order — the one zone whose CONTENT changes by kind.
+ * Short values on one line, split by a hairline.
  *
- * It gets its own surface because it is the answer to a different kind of
- * question from the pairs around it: those are attributes of the order, this is
- * the thing being moved. On a delivery it reads gallons over products; on a
- * movement, an asset over its serial and route.
+ * A rule rather than a middot because these are two DIFFERENT facts — a window
+ * and a cadence — not one list. The hairline reads as a boundary; a dot reads
+ * as punctuation inside a single value.
  */
-function CardGoods({ primary, lines }: { primary: string; lines: string[] }) {
+function CardInline({ parts }: { parts: string[] }) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2">
-      <span className="truncate text-sm font-semibold text-foreground">{primary}</span>
-      {lines.map((l) => (
-        <span key={l} className="truncate text-xs text-muted-foreground" title={l}>
-          {l}
-        </span>
+    <div className="flex min-w-0 items-center gap-2.5">
+      {parts.map((p, i) => (
+        <React.Fragment key={p}>
+          {i > 0 && <span aria-hidden className="h-3.5 w-px shrink-0 bg-fp-outline-2" />}
+          <span
+            className={cn(
+              "truncate",
+              i === 0
+                ? "text-[13px] font-medium whitespace-nowrap text-foreground"
+                : "text-[13px] text-muted-foreground"
+            )}
+            title={p}
+          >
+            {p}
+          </span>
+        </React.Fragment>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Asset · product · quantity, one row each. NO COLUMN HEADINGS — the weights
+ * separate them: the asset is the row's subject and takes the ink, the product
+ * sits back a step, the quantity is the figure and is set to line up.
+ *
+ * The total appears only when the per-row figures have stopped answering "how
+ * much is coming" — with one row the quantity IS the total, and with every row
+ * a top-off there is nothing to add.
+ */
+function CardRows({
+  rows,
+  total,
+  note,
+}: {
+  rows: BoardCardRow[];
+  total?: string;
+  note?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {rows.map((r, i) => (
+        <div
+          key={`${r.asset}-${i}`}
+          className="grid min-w-0 items-baseline gap-2.5"
+          style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr) auto" }}
+        >
+          <span className="truncate text-[13px] font-medium text-foreground" title={r.asset}>
+            {r.asset}
+          </span>
+          <span className="truncate text-xs text-muted-foreground" title={r.product}>
+            {r.product}
+          </span>
+          <span
+            className={cn(
+              "text-right text-[13px] tabular-nums whitespace-nowrap",
+              r.qtySoft ? "font-medium text-muted-foreground" : "font-semibold text-foreground"
+            )}
+          >
+            {r.qty}
+          </span>
+        </div>
+      ))}
+      {note && (
+        <span className="truncate text-xs text-muted-foreground" title={note}>
+          {note}
+        </span>
+      )}
+      {total && (
+        <div className="flex items-baseline justify-between gap-3 border-t border-dashed border-fp-outline-1 pt-1.5">
+          <span className="text-xs text-muted-foreground">Total</span>
+          <span className="text-[13px] font-semibold tabular-nums text-foreground">{total}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -281,44 +373,47 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         "active:border-fp-outline-2 active:bg-fp-card-1"
       )}
     >
-      {/* ZONES ARE SEPARATED BY SPACE, NOT RULES. At card scale a divider per
-          zone turns five groups into five boxes; 12px between zones against 12px
-          within one already reads as grouping, and the goods block carries its
-          own edge where a real boundary exists. */}
-      <div className="flex flex-col gap-3 p-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">
-              {card.title}
-            </h4>
-            {card.badges && card.badges.length > 0 && (
-              <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                {card.badges.map((b) => (
-                  <Badge
-                    key={b.label}
-                    variant={b.tone === "critical" ? "destructive" : "secondary"}
-                  >
-                    {b.label}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-          {card.subtitle && (
-            <span className="truncate text-xs text-muted-foreground" title={card.subtitle}>
-              {card.subtitle}
-            </span>
+      {/* UNITS ARE RULED. A rule per unit is affordable here because there are
+          five of them and each holds ONE shape — the rules are what let the
+          headings shrink to 10px and the field labels disappear entirely. */}
+      <div className="flex flex-col gap-1 p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="min-w-0 truncate font-mono text-sm font-semibold text-foreground">
+            {card.title}
+          </h4>
+          {card.badges && card.badges.length > 0 && (
+            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+              {card.badges.map((b) => (
+                <Badge
+                  key={b.label}
+                  variant={b.tone === "critical" ? "destructive" : "secondary"}
+                >
+                  {b.label}
+                </Badge>
+              ))}
+            </div>
           )}
         </div>
-
-        {card.zones.map((z) =>
-          z.kind === "goods" ? (
-            <CardGoods key={z.key} primary={z.primary} lines={z.lines} />
-          ) : (
-            <CardFields key={z.key} fields={z.fields} />
-          )
+        {card.subtitle && (
+          <span className="truncate text-xs text-muted-foreground" title={card.subtitle}>
+            {card.subtitle}
+          </span>
         )}
       </div>
+
+      {card.units.map((u) => (
+        <div
+          key={u.key}
+          className="flex flex-col gap-1.5 border-t border-fp-outline-1 p-3.5"
+        >
+          <UnitHeading>{u.heading}</UnitHeading>
+          {u.kind === "stack" && <CardStack lines={u.lines} />}
+          {u.kind === "inline" && <CardInline parts={u.parts} />}
+          {u.kind === "rows" && (
+            <CardRows rows={u.rows} total={u.total} note={u.note} />
+          )}
+        </div>
+      ))}
 
       {card.alert ? (
         <CardAlert {...card.alert} />
@@ -329,7 +424,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
              keyboard two stops for one action. */
           <div
             aria-hidden
-            className="flex items-center justify-center gap-1.5 border-t border-fp-outline-1 px-3 py-2 text-xs text-muted-foreground"
+            className="flex items-center justify-center gap-1.5 border-t border-fp-outline-1 px-3.5 py-2.5 text-[10px] tracking-[0.1em] text-muted-foreground uppercase"
           >
             {card.detailLabel}
             <ChevronRight className="size-3.5" />
@@ -353,7 +448,11 @@ function Lane({
 }) {
   const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowDownUp;
   return (
-    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-accent">
+    /* 400px, not the DS's 340. The card's product unit is three columns —
+       asset, product, quantity — and at 340 the first two truncated on any
+       real pair of names. The lane widened to fit the content rather than the
+       content being cut to fit the lane. */
+    <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden rounded-md bg-accent">
       <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} aria-hidden />
       <div className="flex shrink-0 items-center gap-2 px-4 py-3">
         <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">

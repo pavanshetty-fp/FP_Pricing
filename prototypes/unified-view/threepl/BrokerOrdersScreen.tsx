@@ -803,15 +803,16 @@ export function BrokerOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create Order"
-        /* TWO FORMS, SO TWO ITEMS. A delivery has lines and a partner; a
+        /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; a
            movement has one asset and a yard — different forms, so the choice
            comes before the form rather than as a Type field inside it.
 
-           A movement's DIRECTION is not a third form. Out and back are the same
-           fields in the opposite order, so it is a choice INSIDE the sheet:
-           picking the wrong one from a menu meant closing the sheet and
-           starting again, and "Asset Delivery" and "Asset Pickup" are one word
-           apart and opposite — the easiest pair in this product to misread. */
+           A MOVEMENT'S DIRECTION IS NOT A THIRD FORM, so it is not a third
+           sibling item. It is a radio UNDER Movement Order: the two read as
+           variants of one thing rather than as two more kinds of order, and the
+           selected one says which way you are about to go before you commit —
+           "Asset Delivery" and "Asset Pickup" are one word apart and opposite,
+           the easiest pair in this product to misread. */
         createMenu={[
           {
             key: "delivery-order",
@@ -822,11 +823,24 @@ export function BrokerOrdersScreen({
             key: "movement-order",
             label: "Movement Order",
             detail: "Move a tank or asset to or from a customer site",
+            defaultChoice: "Asset Delivery",
+            choices: [
+              {
+                key: "Asset Delivery",
+                label: "Asset Delivery",
+                detail: "Move a tank or asset to a customer site",
+              },
+              {
+                key: "Asset Pickup",
+                label: "Asset Pickup",
+                detail: "Retrieve a tank or asset from a customer site",
+              },
+            ],
           },
         ]}
         onCreateSelect={(key) => {
           if (key === "delivery-order") setCreating(true);
-          else setMovement("Asset Delivery");
+          else setMovement(key as MovementDirection);
         }}
       />
 
@@ -1010,11 +1024,11 @@ export function BrokerOrdersScreen({
       />
 
       {/* ONE SHEET, TWO DIRECTIONS — see `AssetMovementSheet`. Mounted only
-          while open so it starts from a clean draft each time. The state holds
-          the direction the sheet OPENS on; the sheet owns it from there. */}
+          while open so it starts from a clean draft each time. The direction is
+          settled in the menu, before the sheet exists. */}
       {movement && (
         <AssetMovementSheet
-          initialDirection={movement}
+          direction={movement}
           open
           onOpenChange={(o) => !o && setMovement(null)}
           onCreate={(draft) => {

@@ -14,6 +14,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -116,7 +120,25 @@ export interface FuelOrdersViewBarProps {
    * Each option carries a `detail` because the names alone do not separate
    * them: "Asset Delivery" and "Asset Pickup" are one word apart and opposite.
    */
-  createMenu?: { key: string; label: string; detail: string }[];
+  createMenu?: {
+    key: string;
+    label: string;
+    detail: string;
+    /**
+     * Turns the entry into a GROUP: its label and detail stop being a button
+     * and become the heading over a radio list. Use it where one kind of thing
+     * comes in two named variants — the variant is a property of the thing, not
+     * a third kind, and a flat menu of near-identical names is where a one-word
+     * difference gets misread.
+     *
+     * Choosing a radio SELECTS AND ACTS in one click: `onCreateSelect` gets the
+     * chosen key. The selection is remembered, so the menu reopens showing what
+     * was picked last.
+     */
+    choices?: { key: string; label: string; detail?: string }[];
+    /** Which choice is selected the first time the menu opens. */
+    defaultChoice?: string;
+  }[];
   onCreateSelect?: (key: string) => void;
   /** CTA label. Defaults to Fuel Orders' own verb. */
   ctaLabel?: string;
@@ -163,6 +185,16 @@ export function FuelOrdersViewBar({
     id?: string;
     name: string;
   } | null>(null);
+
+  /* The chosen variant per grouped entry, so reopening the menu shows what was
+     picked last rather than resetting to the default every time. */
+  const [choice, setChoice] = React.useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (createMenu ?? [])
+        .filter((o) => o.choices?.length)
+        .map((o) => [o.key, o.defaultChoice ?? o.choices![0].key])
+    )
+  );
 
   const submit = () => {
     if (!dialog) return;
@@ -289,16 +321,54 @@ export function FuelOrdersViewBar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              {createMenu.map((o) => (
-                <DropdownMenuItem
-                  key={o.key}
-                  className="flex-col items-start gap-0.5 py-2"
-                  onSelect={() => onCreateSelect?.(o.key)}
-                >
-                  <span className="text-sm font-medium text-foreground">{o.label}</span>
-                  <span className="text-xs text-muted-foreground">{o.detail}</span>
-                </DropdownMenuItem>
-              ))}
+              {createMenu.map((o, i) =>
+                o.choices?.length ? (
+                  <React.Fragment key={o.key}>
+                    {i > 0 && <DropdownMenuSeparator />}
+                    {/* The group's own name is a HEADING, not a button — the
+                        radios below it are the choice, and an entry that both
+                        names a group and acts on its own would leave two ways
+                        to start the same thing. */}
+                    <DropdownMenuLabel className="flex flex-col items-start gap-0.5 py-2 font-normal">
+                      <span className="text-sm font-medium text-foreground">
+                        {o.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{o.detail}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={choice[o.key]}
+                      onValueChange={(v) => {
+                        setChoice((c) => ({ ...c, [o.key]: v }));
+                        onCreateSelect?.(v);
+                      }}
+                    >
+                      {o.choices.map((c) => (
+                        <DropdownMenuRadioItem
+                          key={c.key}
+                          value={c.key}
+                          className="flex-col items-start gap-0.5 py-2"
+                        >
+                          <span className="text-sm text-foreground">{c.label}</span>
+                          {c.detail && (
+                            <span className="text-xs text-muted-foreground">
+                              {c.detail}
+                            </span>
+                          )}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </React.Fragment>
+                ) : (
+                  <DropdownMenuItem
+                    key={o.key}
+                    className="flex-col items-start gap-0.5 py-2"
+                    onSelect={() => onCreateSelect?.(o.key)}
+                  >
+                    <span className="text-sm font-medium text-foreground">{o.label}</span>
+                    <span className="text-xs text-muted-foreground">{o.detail}</span>
+                  </DropdownMenuItem>
+                )
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (

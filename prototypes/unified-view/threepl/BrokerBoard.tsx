@@ -452,7 +452,7 @@ function Lane({
        asset, product, quantity — and at 340 the first two truncated on any
        real pair of names. The lane widened to fit the content rather than the
        content being cut to fit the lane. */
-    <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden rounded-md bg-accent">
+    <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden rounded-md bg-fp-board-lane">
       <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} aria-hidden />
       <div className="flex shrink-0 items-center gap-2 px-4 py-3">
         <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">

@@ -3,11 +3,6 @@ import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 /**
  * Kanban board, generic over its lanes and cards.
@@ -114,12 +109,11 @@ export interface BoardCardRow {
   /** For a quantity that is not a number — "Top-off" is a decision, not an amount. */
   qtySoft?: boolean;
   /**
-   * More about THIS asset — its serial, the route it travels. Shown on hover
-   * rather than as a line of its own: it is what you check when you are already
-   * looking at that asset, not something every card should spend a row on.
-   * Marked by an icon so the row says it has more to give.
+   * The unit's own identifier, set under its name. NO "SERIAL" LABEL — a code
+   * shaped like `FP-TK-0207` under an asset name is not mistakable for anything
+   * else, and the word would cost as much width as the number it introduces.
    */
-  note?: string[];
+  assetId?: string;
 }
 
 /*
@@ -169,8 +163,12 @@ export interface BoardCard {
    * carries it (`D-` / `M-`), so spending a badge on it says nothing new.
    */
   badges?: BoardCardBadge[];
-  /** Under the title. The order's category. */
-  subtitle?: string;
+  /**
+   * Under the title. The order's category, and — where the card has one — the
+   * one fact that makes THIS order what it is. A movement puts its route here:
+   * where the asset is going is the whole order, not a detail of it.
+   */
+  subtitle?: string[];
   units: BoardCardUnit[];
   alert?: {
     status: AlertStatus;
@@ -280,38 +278,18 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
           className="grid min-w-0 items-baseline gap-2.5"
           style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr) auto" }}
         >
-          {r.note && r.note.length > 0 ? (
-            /* HOVER ON EITHER — the name and the icon are one trigger, because
-               someone reaching for "more about this asset" aims at the asset,
-               not at a 14px target beside it. `tabIndex={-1}` keeps the card a
-               single keyboard stop; the same text sits in an `sr-only` span so
-               nothing is lost to a reader that cannot hover. */
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={-1} className="flex min-w-0 items-center gap-1">
-                  <span
-                    className="truncate text-[13px] font-medium text-foreground"
-                    title={r.asset}
-                  >
-                    {r.asset}
-                  </span>
-                  <Info className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="sr-only">{r.note.join(". ")}</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" align="start">
-                <span className="flex flex-col gap-0.5">
-                  {r.note.map((n) => (
-                    <span key={n}>{n}</span>
-                  ))}
-                </span>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
+          {/* NAME OVER ID. The id is the thing you read second — when you are
+              already at the right row and need to know which unit it is. */}
+          <span className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-[13px] font-medium text-foreground" title={r.asset}>
               {r.asset}
             </span>
-          )}
+            {r.assetId && (
+              <span className="truncate font-mono text-[11px] text-muted-foreground">
+                {r.assetId}
+              </span>
+            )}
+          </span>
           <span className="truncate text-xs text-muted-foreground" title={r.product}>
             {r.product}
           </span>
@@ -420,11 +398,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             </div>
           )}
         </div>
-        {card.subtitle && (
-          <span className="truncate text-xs text-muted-foreground" title={card.subtitle}>
-            {card.subtitle}
+        {card.subtitle?.map((line) => (
+          <span key={line} className="truncate text-xs text-muted-foreground" title={line}>
+            {line}
           </span>
-        )}
+        ))}
       </div>
 
       {card.units.map((u) => (

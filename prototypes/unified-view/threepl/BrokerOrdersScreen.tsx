@@ -132,15 +132,9 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
               product: asset?.type ?? r.movement.tankType,
               qty: cap > 0 ? `${cap.toLocaleString()} gal` : "—",
               qtySoft: cap === 0,
-              /* Serial and route hang off the asset on hover. They are what you
-                 check once you are already looking at that tank — not a line
-                 every movement card should spend on them. */
-              note: [
-                asset?.serial ? `Serial ${asset.serial}` : null,
-                r.movement.direction === "Asset Delivery"
-                  ? `${r.movement.yard} → ${r.shipTo}`
-                  : `${r.shipTo} → ${r.movement.yard}`,
-              ].filter((x): x is string => Boolean(x)),
+              /* WHICH unit, under its name. The route left this row for the
+                 card header: it describes the ORDER, not the tank. */
+              assetId: asset?.serial,
             },
           ],
         };
@@ -209,20 +203,38 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
  * old single slot made them compete — an urgent recurring order lost one of
  * them. Delivery vs Movement takes no badge at all: the order number's prefix
  * already carries it.
+ *
+ * A movement's DIRECTION is a badge, though. It is a two-state fact with two
+ * fixed names, which is what a chip is for; as trailing words on the subtitle
+ * it competed with the route for the same line and lost.
  */
 function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "neutral" }[] {
   const out: { label: string; tone?: "critical" | "neutral" }[] = [];
   if (r.urgent) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
+  if (r.movement) {
+    out.push({
+      label: r.movement.direction === "Asset Delivery" ? "Out to site" : "Back to yard",
+    });
+  }
   return out;
 }
 
-/** Category, under the title. A movement adds which way it runs. */
-function laneCardSubtitle(r: BrokerOrder): string {
-  if (!r.movement) return r.orderType;
-  return `${r.orderType} · ${
-    r.movement.direction === "Asset Delivery" ? "Out to site" : "Back to yard"
-  }`;
+/**
+ * Category, under the title — and for a movement, the ROUTE under that.
+ *
+ * Where the asset is coming from and going to is not a detail of a movement
+ * order, it IS the order, so it sits in the header where the eye lands first
+ * rather than hanging off the asset row.
+ */
+function laneCardSubtitle(r: BrokerOrder): string[] {
+  if (!r.movement) return [r.orderType];
+  return [
+    r.orderType,
+    r.movement.direction === "Asset Delivery"
+      ? `${r.movement.yard} → ${r.shipTo}`
+      : `${r.shipTo} → ${r.movement.yard}`,
+  ];
 }
 
 /**

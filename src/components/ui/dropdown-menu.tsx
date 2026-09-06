@@ -133,9 +133,18 @@ function DropdownMenuRadioItem({
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+      {/* THE DIAL IS THE DS's RADIO, not a dot that appears when chosen.
+          Upstream draws nothing at all in the unchecked state, so a menu of
+          radio items looks like a menu of plain items until one is picked — and
+          the one that is picked looks like a bullet rather than a control.
+          Same 16px bordered circle and 8px `--primary` fill as `RadioGroup`, so
+          a radio in a menu and a radio in a form are the same object. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-2 flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-input shadow-xs dark:bg-input/30"
+      >
         <DropdownMenuPrimitive.ItemIndicator>
-          <CircleIcon className="size-2 fill-current" />
+          <CircleIcon className="size-2 fill-primary text-primary" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}

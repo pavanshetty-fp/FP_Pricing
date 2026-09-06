@@ -46,6 +46,8 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't let one checkbox column mean two things** (§4b).
 - **Don't override a section's gap per instance** — that is how a sheet drifts
   from the 40/16 rhythm (`ux/2-rules`).
+- **Don't put a bin on a section heading.** Turning an optional section off is a
+  minus — nothing is destroyed and one click brings it back (`ux/2-rules`).
 - **Don't give a section heading a minimum height.** The 16 is measured from the
   title's own line; a padded row renders it as 20, and 22 once the heading
   carries an action (`ux/2-rules`).

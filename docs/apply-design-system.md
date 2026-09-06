@@ -836,6 +836,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   section gains an action. **Measure from the text, and measure it on screen.**
 - **Helper text is 4px from its control**, not at the field gap — see
   `interactions/2-rules` §2b.
+- **Removing an optional section is a MINUS, never a bin** (`SheetSectionRemove`).
+  A bin says a record is about to be destroyed; turning an optional section off
+  destroys nothing — it collapses back to the "Add …" box it came from and is one
+  click to restore. The two glyphs look alike at 16px and mean opposite things
+  about whether the click can be taken back, so the bin stays where a row really
+  does go: the delete at the end of a table ROW. The control is muted until
+  reached for, coming to full contrast and sliding its label out on hover or
+  focus — a bare glyph beside a table of rows reads as though it might remove a
+  row, and the label is what makes it safe.
 - **Footer flags.** A decision about the RECORD (recurring, and the cadence it
   reveals) stays in the section it changes. A decision about the ACT of submitting
   (urgent, get a signature) rides in the sticky footer, in view at the moment of

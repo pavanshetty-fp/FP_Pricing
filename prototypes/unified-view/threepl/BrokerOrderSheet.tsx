@@ -48,6 +48,7 @@ import {
   SheetField,
   SheetSection,
   SheetSectionNote,
+  SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
@@ -1262,24 +1263,14 @@ export function BrokerOrderSheet({
       {!isMovement && (
         <SheetSection
           title="Load Order"
-          /* QUIET UNTIL REACHED FOR. Removing the whole load order is a
-             destructive action on a section that is optional in the first
-             place, so it does not compete with the table for attention: a
-             muted icon that comes up to full contrast and slides its label out
-             on hover. The label is what makes it safe — "Remove" alone, beside
-             a table of rows, reads as though it might remove a row. */
+          /* The DS control — see `SheetSectionRemove` for why it is a minus
+             and not a bin. */
           action={
             loadRows && (
-              <button
-                type="button"
+              <SheetSectionRemove
+                label="Remove Load Order"
                 onClick={() => set("loadRows", null)}
-                className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <Trash2 className="size-4 shrink-0" />
-                <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
-                  Remove Load Order
-                </span>
-              </button>
+              />
             )
           }
         >

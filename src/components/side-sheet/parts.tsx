@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CircleAlert, Info } from "lucide-react";
+import { CircleAlert, Info, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -65,6 +65,46 @@ export function SheetSection({
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * The remove control for an OPTIONAL section — the one that takes a section
+ * that has been turned on back to its "Add …" box.
+ *
+ * A MINUS, NOT A BIN. A bin says a record is about to be destroyed, and this
+ * destroys nothing: the section collapses to the CTA it came from and can be
+ * added again in one click. The two icons look alike at 16px and mean opposite
+ * things about whether the click can be taken back, so the optional-section
+ * control never wears the bin — that stays on the ROW delete inside a table,
+ * where a row really does go.
+ *
+ * QUIET UNTIL REACHED FOR. Emptying a section that was optional in the first
+ * place should not compete with the table for attention, so it is a muted icon
+ * that comes to full contrast and slides its label out on hover or focus. The
+ * label is what makes it safe — a bare glyph beside a table of rows reads as
+ * though it might remove a row.
+ */
+export function SheetSectionRemove({
+  label,
+  onClick,
+}: {
+  /** Names what goes, e.g. "Remove peripherals". Shown on hover and to AT. */
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <Minus className="size-4 shrink-0" />
+      <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
+        {label}
+      </span>
+    </button>
   );
 }
 

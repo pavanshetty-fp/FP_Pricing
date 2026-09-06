@@ -20,7 +20,11 @@ import {
   TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import {
+  SheetField,
+  SheetSection,
+  SheetSectionRemove,
+} from "@/components/side-sheet/parts";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, type RentalAsset } from "./directory";
@@ -360,7 +364,11 @@ export function AssetMovementSheet({
       key="customer"
       title={isDelivery ? "Drop-off Location" : "Pickup Location"}
     >
-      <div className="flex flex-col gap-1">
+      {/* THE CARD IS THE ROW'S THIRD UNIT, not a note under it. Customer, Ship
+          To and the address they resolve to are three parts of one answer, so
+          the gap below the selects is the same 16px as the gap between them —
+          at 4px the card welded to the row above and read as its helper text. */}
+      <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Customer" required>
             <Combobox
@@ -745,19 +753,13 @@ export function AssetMovementSheet({
            might remove a row. */
         action={
           draft.peripheralsOn && (
-            <button
-              type="button"
+            <SheetSectionRemove
+              label="Remove peripherals"
               onClick={() => {
                 set("peripheralsOn", false);
                 set("peripherals", [blankPeripheral()]);
               }}
-              className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Trash2 className="size-4 shrink-0" />
-              <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
-                Remove peripherals
-              </span>
-            </button>
+            />
           )
         }
       >
@@ -897,19 +899,13 @@ export function AssetMovementSheet({
         title="Custom Items"
         action={
           draft.customOn && (
-            <button
-              type="button"
+            <SheetSectionRemove
+              label="Remove custom items"
               onClick={() => {
                 set("customOn", false);
                 set("customItems", [{ name: "", qty: null, unit: UNITS[0] }]);
               }}
-              className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Trash2 className="size-4 shrink-0" />
-              <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
-                Remove custom items
-              </span>
-            </button>
+            />
           )
         }
       >

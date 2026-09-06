@@ -86,10 +86,7 @@ import { RENTAL_ASSETS } from "./directory";
  *  3. LANES ARE THE LIFECYCLE, and sorting by Status sorts by lifecycle position
  *     rather than A-Z — see `sortValue` in `orders.ts`.
  *
- * NOT BUILT, named rather than faked: the Create dropdown that splits into
- * Delivery Order / Asset Delivery / Asset Pickup (§5.20) — the CTA creates a
- * delivery order only, because a movement order's asset is fixed at creation and
- * that picker is a flow of its own; drag-and-drop between lanes (the DS Kanban
+ * NOT BUILT, named rather than faked: drag-and-drop between lanes (the DS Kanban
  * has none and a status change here is a workflow action with side effects, not
  * a drag); and the map view of nearby vendors (§5.5).
  */
@@ -806,10 +803,15 @@ export function BrokerOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create Order"
-        /* The three take DIFFERENT forms — a delivery has lines and a partner,
-           a movement has one asset and a yard — so the choice comes before the
-           form, not as a Type field inside it. Each carries a detail line:
-           "Asset Delivery" and "Asset Pickup" are one word apart and opposite. */
+        /* TWO FORMS, SO TWO ITEMS. A delivery has lines and a partner; a
+           movement has one asset and a yard — different forms, so the choice
+           comes before the form rather than as a Type field inside it.
+
+           A movement's DIRECTION is not a third form. Out and back are the same
+           fields in the opposite order, so it is a choice INSIDE the sheet:
+           picking the wrong one from a menu meant closing the sheet and
+           starting again, and "Asset Delivery" and "Asset Pickup" are one word
+           apart and opposite — the easiest pair in this product to misread. */
         createMenu={[
           {
             key: "delivery-order",
@@ -817,20 +819,14 @@ export function BrokerOrdersScreen({
             detail: "Standard fuel delivery to a customer site",
           },
           {
-            key: "asset-delivery",
-            label: "Asset Delivery",
-            detail: "Move a tank or asset to a customer site",
-          },
-          {
-            key: "asset-pickup",
-            label: "Asset Pickup",
-            detail: "Retrieve a tank or asset from a customer site",
+            key: "movement-order",
+            label: "Movement Order",
+            detail: "Move a tank or asset to or from a customer site",
           },
         ]}
         onCreateSelect={(key) => {
           if (key === "delivery-order") setCreating(true);
-          else if (key === "asset-delivery") setMovement("Asset Delivery");
-          else setMovement("Asset Pickup");
+          else setMovement("Asset Delivery");
         }}
       />
 
@@ -1014,10 +1010,11 @@ export function BrokerOrdersScreen({
       />
 
       {/* ONE SHEET, TWO DIRECTIONS — see `AssetMovementSheet`. Mounted only
-          while open so it starts from a clean draft each time. */}
+          while open so it starts from a clean draft each time. The state holds
+          the direction the sheet OPENS on; the sheet owns it from there. */}
       {movement && (
         <AssetMovementSheet
-          direction={movement}
+          initialDirection={movement}
           open
           onOpenChange={(o) => !o && setMovement(null)}
           onCreate={(draft) => {

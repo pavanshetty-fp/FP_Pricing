@@ -9,6 +9,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/form-layout/MultiSelect";
@@ -47,8 +48,14 @@ import {
  *
  * ONE SHEET, TWO DIRECTIONS. A delivery takes an asset from a yard to a
  * customer; a pickup brings one back. Everything else about them is identical,
- * so the difference is a `direction` prop and not a second file: two files would
- * have drifted, and the drift would be in the half nobody opens as often.
+ * so the difference is a field on the draft and not a second file: two files
+ * would have drifted, and the drift would be in the half nobody opens as often.
+ *
+ * AND IT IS A FIELD, not the thing that opened the sheet. Both used to be items
+ * on the Create menu, which made a one-word choice — "Delivery" or "Pickup" —
+ * cost a closed sheet and a restart when it was read wrong. One menu item,
+ * "Movement Order", opens the sheet on Asset Delivery, and the radio at the top
+ * flips it in one click.
  *
  * THE DIRECTION DECIDES THREE THINGS, all of them derived rather than written
  * twice:
@@ -241,7 +248,8 @@ function FlagRow({
 }
 
 export interface AssetMovementSheetProps {
-  direction: MovementDirection;
+  /** The direction the sheet OPENS on. It owns the choice from there. */
+  initialDirection: MovementDirection;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreate: (draft: AssetMovementDraft) => void;
@@ -249,19 +257,30 @@ export interface AssetMovementSheetProps {
 }
 
 export function AssetMovementSheet({
-  direction,
+  initialDirection,
   open,
   onOpenChange,
   onCreate,
   customers,
 }: AssetMovementSheetProps) {
   const [draft, setDraft] = React.useState<AssetMovementDraft>(() =>
-    emptyDraft(direction)
+    emptyDraft(initialDirection)
   );
 
   React.useEffect(() => {
-    if (open) setDraft(emptyDraft(direction));
-  }, [open, direction]);
+    if (open) setDraft(emptyDraft(initialDirection));
+  }, [open, initialDirection]);
+
+  const direction = draft.direction;
+
+  /* SWITCHING DIRECTION CLEARS THE ASSET, nothing else. Out and back ask for
+     the same yard, customer, ship-to and dates — those are the journey's ends
+     and they do not change when it is reversed. The ASSET does: a delivery
+     offers what is standing in the yard, a pickup what is on rent at the site,
+     and the two lists rarely overlap. Keeping a stale pick would leave the
+     sheet showing an asset the new direction cannot move. */
+  const setDirection = (next: MovementDirection) =>
+    setDraft((d) => (d.direction === next ? d : { ...d, direction: next, assetId: "" }));
 
   const set = <K extends keyof AssetMovementDraft>(
     key: K,
@@ -269,6 +288,18 @@ export function AssetMovementSheet({
   ) => setDraft((d) => ({ ...d, [key]: value }));
 
   const isDelivery = direction === "Asset Delivery";
+  const DIRECTIONS: { value: MovementDirection; label: string; detail: string }[] = [
+    {
+      value: "Asset Delivery",
+      label: "Asset Delivery",
+      detail: "Move a tank or asset to a customer site",
+    },
+    {
+      value: "Asset Pickup",
+      label: "Asset Pickup",
+      detail: "Retrieve a tank or asset from a customer site",
+    },
+  ];
   const site = SHIP_TO_SITES.find((s) => s.name === draft.shipTo);
   const yard = YARD_SITES.find((y) => y.name === draft.yard);
   const poc = POC_DIRECTORY[draft.primaryPoc];
@@ -425,10 +456,10 @@ export function AssetMovementSheet({
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
-      editTitle={direction}
-      createTitle={direction}
+      editTitle="Movement Order"
+      createTitle="Movement Order"
       createAction="Create Order"
-      /* THE TYPE IS SETTLED BEFORE THE SHEET OPENS — "Asset Delivery" was the
+      /* THE TYPE IS SETTLED BEFORE THE SHEET OPENS — "Movement Order" was the
          menu item that opened it. Stating it again as a read-only box in the
          middle of Order Details put a fact that cannot change where a field
          goes, and cost a third of that row. It rides beside the title instead,
@@ -459,6 +490,43 @@ export function AssetMovementSheet({
     >
       {/* A ROUTE IS READ FROM WHERE IT STARTS, so the origin is always the top
           section — the yard on a delivery, the customer on a pickup. */}
+      {/* THE DIRECTION IS THE FIRST QUESTION, because every section under it is
+          an answer that depends on it — which end comes first, which assets are
+          on offer, what the gate says. It is a RADIO, not a menu item: out and
+          back are the same fields in the opposite order, so it is a property of
+          this order, and picking the wrong one should cost a click rather than
+          closing the sheet and starting again. */}
+      <SheetSection title="Movement Type">
+        <RadioGroup
+          value={direction}
+          onValueChange={(v) => setDirection(v as MovementDirection)}
+          className="grid-cols-2 gap-4"
+        >
+          {DIRECTIONS.map((d) => (
+            <label
+              key={d.value}
+              htmlFor={`mv-dir-${d.value}`}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors",
+                direction === d.value
+                  ? "border-ring bg-fp-surface-1b"
+                  : "border-fp-outline-1 hover:border-fp-outline-2"
+              )}
+            >
+              <RadioGroupItem
+                value={d.value}
+                id={`mv-dir-${d.value}`}
+                className="mt-0.5"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">{d.label}</span>
+                <span className="text-xs text-muted-foreground">{d.detail}</span>
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
+      </SheetSection>
+
       <RouteStep key="from" step="from">
         {isDelivery ? yardBlock : customerBlock}
       </RouteStep>

@@ -35,10 +35,23 @@ export function SheetSection({
      outer gap being 2.5x the inner is what makes a heading read as belonging to
      the block beneath it rather than floating between two blocks. At 20 the
      title sat almost equidistant from both; below 16 it welds to the first
-     field and the whole boundary rests on the 40. */
+     field and the whole boundary rests on the 40.
+
+     THE 16 IS MEASURED FROM THE TITLE, and that is the whole reason the heading
+     row has no height of its own. It used to be `min-h-7` (28px) around a 20px
+     line, and `items-center` split the spare 8px evenly — so what anyone could
+     actually see between the words and the content was 20px, and 22px in a
+     section whose heading also carried a 32px action button. The rule said 16
+     and the screen said 20: the row was padding itself and calling it rhythm.
+
+     An ACTION taller than the title now hangs off the line instead of pushing
+     the content down: its wrapper is fixed at the title's own 20px and centres
+     a taller child, which overflows the box without growing it. That holds for
+     any control put there — a 32px button, a switch, a picker — so the 16
+     cannot drift again the next time a section gains an action. */
   return (
     <section className={cn("flex flex-col gap-4", className)}>
-      <div className="flex min-h-7 items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
           {/* Sits WITH the heading, not after the content: an explanation of
@@ -46,7 +59,9 @@ export function SheetSection({
               demand rather than as a paragraph everyone reads once. */}
           {note}
         </div>
-        {action}
+        {action && (
+          <div className="flex h-5 shrink-0 items-center justify-end">{action}</div>
+        )}
       </div>
       {children}
     </section>

@@ -38,6 +38,17 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   and **8** it welds to the first field and the whole section boundary rests on the
   40, leaving no room to tighten the outer gap later. Sections take the default —
   a per-instance gap is how a sheet drifts from the system.
+  **The 16 is measured from the TITLE'S OWN LINE, not from a padded row around
+  it** — which is why `SheetSection`'s heading row has no height of its own. It
+  once had `min-h-7` (28px) around a 20px line, and `items-center` split the
+  spare 8px evenly, so what anyone could see between the words and the content
+  was **20px** — **22px** in a section whose heading also carried a 32px action.
+  The rule said 16 and the screen said 20: the row was padding itself and calling
+  it rhythm. An ACTION taller than the title hangs off the line instead of
+  pushing the content down — its wrapper is fixed at the title's 20px and
+  centres a taller child, which overflows the box without growing it. That holds
+  for any control put there, so the 16 cannot drift again the next time a
+  section gains an action. **Measure from the text, and measure it on screen.**
 - **Helper text is 4px from its control**, not at the field gap — see
   `interactions/2-rules` §2b.
 - **Footer flags.** A decision about the RECORD (recurring, and the cadence it

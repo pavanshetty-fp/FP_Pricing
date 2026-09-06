@@ -403,7 +403,44 @@ export const SALESPEOPLE = [
   "Tom Alvarez",
 ];
 
-export const YARDS = ["Fresno Yard", "Turlock Yard", "Kern Yard"];
+/**
+ * The broker's own yards — where a movement order starts or ends.
+ *
+ * A ROW, NOT A NAME. The sheet shows a yard's address the moment one is chosen,
+ * the same way it shows a ship-to's, and a list of three strings could not
+ * answer that. `YARDS` is derived from this so the two can never disagree.
+ *
+ * INVENTED, like `SHIP_TO_SITES` — real yards were never captured. Each sits in
+ * the town it is named for, so a route reads as a route.
+ */
+export const YARD_SITES = [
+  {
+    name: "Fresno Yard",
+    street: "3140 S East Ave",
+    city: "Fresno",
+    state: "California",
+    zip: "93725",
+    latLng: "36.69540, -119.75620",
+  },
+  {
+    name: "Turlock Yard",
+    street: "901 N Golden State Blvd",
+    city: "Turlock",
+    state: "California",
+    zip: "95380",
+    latLng: "37.51380, -120.85410",
+  },
+  {
+    name: "Kern Yard",
+    street: "6215 Rosedale Hwy",
+    city: "Bakersfield",
+    state: "California",
+    zip: "93308",
+    latLng: "35.38210, -119.08760",
+  },
+];
+
+export const YARDS = YARD_SITES.map((y) => y.name);
 
 /**
  * Statuses the FILTER offers, which is a longer list than the board's lanes.
@@ -539,9 +576,14 @@ export const ALL_ASSET_NAMES = [
   ...new Set(SHIP_TO_SITES.flatMap((s) => s.assets.map((a) => a.name))),
 ].sort();
 
-/** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site. */
-export const siteAddress = (s: (typeof SHIP_TO_SITES)[number]) =>
-  `${s.street}, ${s.city}, ${STATE_ABBR[s.state] ?? s.state} ${s.zip}`;
+/** `4820 N Golden State Blvd, Fresno, CA 93706` — the line shown under a site.
+ *  Takes the address fields alone, so a yard and a ship-to print identically. */
+export const siteAddress = (s: {
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+}) => `${s.street}, ${s.city}, ${STATE_ABBR[s.state] ?? s.state} ${s.zip}`;
 
 const STATE_ABBR: Record<string, string> = {
   California: "CA",

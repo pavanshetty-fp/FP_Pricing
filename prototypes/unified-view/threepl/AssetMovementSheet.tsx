@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,8 @@ import {
   SALES_CONTACTS,
   SHIP_TO_SITES,
   YARDS,
+  YARD_SITES,
+  siteAddress,
   type MovementDirection,
 } from "./orders";
 
@@ -164,6 +166,54 @@ function emptyDraft(direction: MovementDirection): AssetMovementDraft {
   };
 }
 
+/**
+ * ONE ROUTE, DRAWN AS ONE. The two location sections are a from and a to, and
+ * as two headings 40px apart they read as two unrelated questions — which is
+ * how someone fills in a yard and a ship-to that make no journey.
+ *
+ * A dot on the first heading, a line down the margin, an arrowhead on the
+ * second. The sections indent by 28px to give the rail its own column rather
+ * than having it hang in the sheet's padding.
+ *
+ * THE LINE'S LENGTH IS STATIC, not measured: it starts on the first heading's
+ * line (10px into the section, half of the 20px line box) and has to reach the
+ * arrowhead on the second heading's line — its own section's remaining height,
+ * plus the body's 40px section gap, plus that same 10px, less the 6px the
+ * arrowhead occupies. `-bottom-[44px]` is that sum, and it holds because both
+ * numbers it depends on are DS rules rather than this sheet's choices.
+ */
+function RouteStep({
+  step,
+  children,
+}: {
+  step: "from" | "to";
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative pl-7">
+      {step === "from" ? (
+        <>
+          <span
+            aria-hidden
+            className="absolute top-1 left-0 size-3 rounded-full border-2 border-fp-outline-2"
+          />
+          <span
+            aria-hidden
+            className="absolute top-2.5 -bottom-[44px] left-[5.5px] w-px bg-fp-outline-2"
+          />
+        </>
+      ) : (
+        <ChevronDown
+          aria-hidden
+          className="absolute top-1 left-0 size-3 text-fp-outline-2"
+          strokeWidth={3}
+        />
+      )}
+      {children}
+    </div>
+  );
+}
+
 /** Flags that ride in the footer — decisions about the ACT of committing. */
 function FlagRow({
   flags,
@@ -216,6 +266,7 @@ export function AssetMovementSheet({
 
   const isDelivery = direction === "Asset Delivery";
   const site = SHIP_TO_SITES.find((s) => s.name === draft.shipTo);
+  const yard = YARD_SITES.find((y) => y.name === draft.yard);
   const poc = POC_DIRECTORY[draft.primaryPoc];
   const shipTos = SHIP_TO_SITES.map((s) => s.name);
 
@@ -262,7 +313,12 @@ export function AssetMovementSheet({
       key="yard"
       title={isDelivery ? "Pickup Location" : "Drop-off Location"}
     >
-      <div className="grid grid-cols-3 gap-4">
+      {/* THE SAME GRID AS THE CUSTOMER BLOCK. A yard and a customer are the two
+          ends of one journey and are asked for in the same way, so a select
+          that is a third as wide as the one it pairs with reads as a lesser
+          question. Its address sits BESIDE it rather than under, because there
+          is only one select on this row and the second column was empty. */}
+      <div className="grid grid-cols-2 items-end gap-4">
         <SheetField label="Yard" required>
           <Combobox
             className="w-full"
@@ -277,6 +333,24 @@ export function AssetMovementSheet({
             searchPlaceholder="Search yards…"
           />
         </SheetField>
+        {/* Derived from the select, so a read-out — the same card the ship-to
+            gets, because it answers the same question about the other end. */}
+        <div className="flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          {/* ADDRESS ONLY — no coordinates. The ship-to card carries them
+              because a customer site is somewhere a driver has to be told how
+              to find; a yard is the broker's own, and at half the width the
+              pair truncated the address, which is the half that answers
+              "where". */}
+          {yard ? (
+            <span className="truncate text-sm text-foreground">
+              {siteAddress(yard)}
+            </span>
+          ) : (
+            <span className="truncate text-sm text-muted-foreground">
+              Select a Yard to see its coordinates and address.
+            </span>
+          )}
+        </div>
       </div>
     </SheetSection>
   );
@@ -377,7 +451,12 @@ export function AssetMovementSheet({
     >
       {/* A ROUTE IS READ FROM WHERE IT STARTS, so the origin is always the top
           section — the yard on a delivery, the customer on a pickup. */}
-      {isDelivery ? [yardBlock, customerBlock] : [customerBlock, yardBlock]}
+      <RouteStep key="from" step="from">
+        {isDelivery ? yardBlock : customerBlock}
+      </RouteStep>
+      <RouteStep key="to" step="to">
+        {isDelivery ? customerBlock : yardBlock}
+      </RouteStep>
 
       <SheetSection
         title="POC Details"

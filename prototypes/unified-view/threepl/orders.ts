@@ -585,6 +585,23 @@ export const ORDER_TAGS = [
   "After Hours",
 ];
 
+/**
+ * The yard-side assets a movement order can carry.
+ *
+ * NAMES, not records — the records live in `directory.ts` (`RENTAL_ASSETS`),
+ * which reads this file and so cannot be read back from it. `assertMovementAssetsExist`
+ * over there fails the build if the two ever disagree, which is what keeps a
+ * movement order's asset the same object the Rental Assets screen lists rather
+ * than a string that merely looks like one.
+ */
+export const MOVEMENT_ASSET_NAMES = [
+  "Yard Tank 7",
+  "Yard Tank 8",
+  "DEF Tote 5",
+  "Pump Cart 3",
+  "Lube Skid 9",
+];
+
 export const TANK_TYPES = [
   "Single-wall skid tank",
   "Double-wall skid tank",
@@ -722,7 +739,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       const asset = site.assets[(i + k) % site.assets.length];
       return {
         asset: isMovement
-          ? `${TANK_TYPES[i % TANK_TYPES.length]} · ${["A", "B", "C"][k % 3]}`
+          ? MOVEMENT_ASSET_NAMES[(i + k) % MOVEMENT_ASSET_NAMES.length]
           : asset.name,
         product: isMovement
           ? PRODUCTS[(i + k) % PRODUCTS.length]
@@ -818,6 +835,19 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     });
     void gal;
   }
+
+  /* EVERY STATE THE UI DISTINGUISHES MUST EXIST IN THE FIXTURE, or nobody can
+     see whether it works. Urgent (14%) and Recurring (25%) are drawn
+     independently, so the both-at-once card — the one the card's stacked badges
+     exist for — was absent by chance. Every third recurring order is forced
+     urgent so the case lands on most days: the board is scoped to ONE date, so
+     a single forced row would only be visible on the day it happens to fall. */
+  rows
+    .filter((r) => r.kind === "Recurring")
+    .forEach((r, k) => {
+      if (k % 3 === 0) r.urgent = true;
+    });
+
   return rows;
 })();
 

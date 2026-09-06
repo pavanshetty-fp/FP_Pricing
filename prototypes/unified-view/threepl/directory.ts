@@ -17,7 +17,7 @@
   data resolve against these two accounts.
 */
 import { CUSTOMERS as SALES_CUSTOMERS } from "../customers";
-import { PRODUCTS, SHIP_TO_SITES } from "./orders";
+import { MOVEMENT_ASSET_NAMES, PRODUCTS, SHIP_TO_SITES } from "./orders";
 
 /* ───────────────────────────────────────────────────────────── customers ── */
 
@@ -374,4 +374,16 @@ export const RENTAL_ASSETS: RentalAsset[] = [
 /** Only an asset that is out earns anything — the list's one honest total. */
 export function monthlyRevenue(rows: RentalAsset[]): number {
   return rows.reduce((n, a) => n + (a.status === "On rent" ? a.monthlyRate : 0), 0);
+}
+
+/** Guards the split above: every asset a movement can carry is a real record. */
+export function assertMovementAssetsExist(): void {
+  const listed = new Set(RENTAL_ASSETS.map((a) => a.name));
+  for (const name of MOVEMENT_ASSET_NAMES) {
+    if (!listed.has(name)) {
+      throw new Error(
+        `Asset "${name}" can be moved but is missing from the Rental Assets list`
+      );
+    }
+  }
 }

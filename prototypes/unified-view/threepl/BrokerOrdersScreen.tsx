@@ -25,7 +25,11 @@ import {
   relativeLabel,
   startOfDay,
 } from "../data";
-import { BrokerBoard, type BoardLane } from "./BrokerBoard";
+import {
+  BrokerBoard,
+  type BoardCardZone,
+  type BoardLane,
+} from "./BrokerBoard";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
   AssetMovementSheet,
@@ -90,18 +94,112 @@ import { RENTAL_ASSETS } from "./directory";
 
 /** Board cards show six fields — §5.2 says the set is user-customisable; this is
  *  the default. Six fills the DS card's 2-column grid exactly. */
-function laneCardFields(r: BrokerOrder) {
+/**
+ * The card's zones, in reading order.
+ *
+ * WHAT THE ORDER'S KIND CHANGES is the GOODS zone and nothing else. A movement
+ * has no gallons to sum and no products to name — it has one asset, and where
+ * that asset is going. The old flat six-field grid rendered "Qty —" for a number
+ * a movement can never have; a zone that swaps says the true thing in the same
+ * space.
+ */
+function laneCardZones(r: BrokerOrder): BoardCardZone[] {
+  const asset = r.movement ? RENTAL_ASSETS.find((a) => a.name === r.lines[0]?.asset) : undefined;
+
+  const goods: BoardCardZone = r.movement
+    ? {
+        kind: "goods",
+        key: "goods",
+        primary: r.lines[0]?.asset || "Asset not chosen",
+        lines: [
+          /* The ASSET's own facts where it is a known record, the order's
+             otherwise — a tank's type and capacity belong to the tank, and two
+             answers for one tank is one too many. */
+          [
+            asset?.serial,
+            asset?.type ?? r.movement.tankType,
+            (asset?.capacityGal ?? r.movement.capacityGal) > 0
+              ? `${(asset?.capacityGal ?? r.movement.capacityGal).toLocaleString()} gal`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          /* The route, read the way it happens. "Asset Delivery" and "Asset
+             Pickup" name the FORM; from the card's side what matters is which
+             way the tank is travelling. */
+          r.movement.direction === "Asset Delivery"
+            ? `${r.movement.yard} → site`
+            : `site → ${r.movement.yard}`,
+        ].filter(Boolean),
+      }
+    : {
+        kind: "goods",
+        key: "goods",
+        primary: isAllTopOff(r.lines)
+          ? "Top-off"
+          : `${totalGal(r.lines).toLocaleString()} gal`,
+        lines: [[...new Set(r.lines.map((l) => l.product).filter(Boolean))].join(" · ")].filter(
+          Boolean
+        ),
+      };
+
   return [
-    { label: "Customer", value: r.customer.title },
-    { label: "Ship To", value: r.shipTo },
-    { label: "Window", value: `${r.window.start} – ${r.window.end}` },
     {
-      label: "Qty",
-      value: isAllTopOff(r.lines) ? "Top-off" : `${totalGal(r.lines).toLocaleString()} gal`,
+      kind: "pairs",
+      key: "destination",
+      fields: [
+        { label: "Customer", value: r.customer.title },
+        { label: "Ship To", value: r.shipTo },
+      ],
     },
-    { label: "Delivery Partner", value: r.vendorId ? vendorName(r.vendorId) : "—" },
-    { label: "Order Type", value: r.orderType },
+    {
+      kind: "pairs",
+      key: "schedule",
+      fields: [
+        { label: "Window", value: `${r.window.start} – ${r.window.end}` },
+        /* A recurring order's cadence beats its date: the board is already
+           scoped to one day, so the date says nothing the column has not. */
+        r.recurrence
+          ? { label: "Cadence", value: r.recurrence.frequency }
+          : { label: "Plan date", value: r.date.title },
+      ],
+    },
+    goods,
+    {
+      kind: "pairs",
+      key: "fulfilment",
+      fields: [
+        r.vendorId
+          ? { label: "Delivery Partner", value: vendorName(r.vendorId) }
+          : {
+              label: "Delivery Partner",
+              value: r.invitedVendorIds.length > 0 ? "Out for acknowledgement" : "Not assigned",
+              muted: true,
+            },
+      ],
+    },
   ];
+}
+
+/**
+ * The badges, STACKED. Priority and recurrence are independent facts, and the
+ * old single slot made them compete — an urgent recurring order lost one of
+ * them. Delivery vs Movement takes no badge at all: the order number's prefix
+ * already carries it.
+ */
+function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "neutral" }[] {
+  const out: { label: string; tone?: "critical" | "neutral" }[] = [];
+  if (r.urgent) out.push({ label: "Urgent", tone: "critical" });
+  if (r.kind === "Recurring") out.push({ label: "Recurring" });
+  return out;
+}
+
+/** Category, under the title. A movement adds which way it runs. */
+function laneCardSubtitle(r: BrokerOrder): string {
+  if (!r.movement) return r.orderType;
+  return `${r.orderType} · ${
+    r.movement.direction === "Asset Delivery" ? "Out to site" : "Back to yard"
+  }`;
 }
 
 /**
@@ -328,17 +426,11 @@ export function BrokerOrdersScreen({
           cards: cards.map((r) => ({
             id: r.id,
             title: r.orderNo,
-            aside: r.urgent ? (
-              <Badge variant="destructive" className="shrink-0">
-                Urgent
-              </Badge>
-            ) : r.kind !== "Regular" ? (
-              <Badge variant="secondary" className="shrink-0">
-                {r.kind}
-              </Badge>
-            ) : undefined,
-            fields: laneCardFields(r),
+            badges: laneCardBadges(r),
+            subtitle: laneCardSubtitle(r),
+            zones: laneCardZones(r),
             alert: laneCardAlert(r),
+            detailLabel: "View details",
           })),
         };
       }),

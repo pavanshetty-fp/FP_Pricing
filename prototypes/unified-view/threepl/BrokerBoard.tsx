@@ -1,6 +1,6 @@
-import * as React from "react";
-import { ArrowDownUp, ArrowDown, ArrowUp, Info } from "lucide-react";
+import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -90,14 +90,55 @@ const ALERT_ACCENT: Record<AlertStatus, string> = {
 export interface BoardCardField {
   label: string;
   value: string;
+  /** For a value that is an absence — "Not assigned" rather than a name. */
+  muted?: boolean;
+}
+
+/*
+  A CARD IS ZONES, NOT A FLAT FIELD LIST.
+
+  The old card was six label/value pairs in a fixed grid, which forced every
+  order into the same shape: a movement rendered an em-dash under "Qty" for
+  gallons it can never have, and one badge slot had to choose between Urgent and
+  Recurring. Zones fix both — the screen decides which zones an order gets, and
+  what goes in them.
+
+  Five zones, each answering ONE question, in the order someone reads a card:
+
+    identity     what kind of thing is this   title · badges · category
+    destination  where does it go             customer · ship-to
+    schedule     when does it land            window · cadence or date
+    goods        what is on it                THE ZONE THAT SWAPS BY KIND
+    fulfilment   who is carrying it           delivery partner
+
+  `goods` is a block rather than pairs because its content changes shape, not
+  just its value: gallons and products on a delivery, an asset with its serial
+  and route on a movement.
+*/
+export type BoardCardZone =
+  | { kind: "pairs"; key: string; fields: BoardCardField[] }
+  | { kind: "goods"; key: string; primary: string; lines: string[] };
+
+export interface BoardCardBadge {
+  label: string;
+  /** `critical` for a state that changes what someone does next. */
+  tone?: "critical" | "neutral";
 }
 
 export interface BoardCard {
   id: string;
   title: string;
-  /** Right of the title — a badge, a chip, whatever the screen needs. */
-  aside?: React.ReactNode;
-  fields: BoardCardField[];
+  /**
+   * Stacked, not one-of. Priority and recurrence are independent facts and a
+   * single slot made them compete — an urgent recurring order lost one.
+   *
+   * Delivery vs Movement is NOT a badge: the order number's prefix already
+   * carries it (`D-` / `M-`), so spending a badge on it says nothing new.
+   */
+  badges?: BoardCardBadge[];
+  /** Under the title. The order's category. */
+  subtitle?: string;
+  zones: BoardCardZone[];
   alert?: {
     status: AlertStatus;
     text: string;
@@ -105,6 +146,12 @@ export interface BoardCard {
     actionLabel?: string;
     onAction?: () => void;
   };
+  /**
+   * Footer affordance shown when there is NO alert — the card's own click
+   * target, given a visible name. A card that opens a record should say so;
+   * a stage with something outstanding says the more urgent thing instead.
+   */
+  detailLabel?: string;
 }
 
 export interface BoardLane {
@@ -129,12 +176,42 @@ function CardFields({ fields }: { fields: BoardCardField[] }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
       {fields.map((f) => (
-        <div key={f.label} className="flex min-w-0 flex-col">
-          <span className="truncate text-sm text-foreground" title={f.value}>
+        <div
+          key={f.label}
+          className={cn("flex min-w-0 flex-col", fields.length === 1 && "col-span-2")}
+        >
+          <span
+            className={cn(
+              "truncate text-sm",
+              f.muted ? "text-muted-foreground" : "text-foreground"
+            )}
+            title={f.value}
+          >
             {f.value}
           </span>
           <span className="truncate text-xs text-muted-foreground">{f.label}</span>
         </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * What is on the order — the one zone whose CONTENT changes by kind.
+ *
+ * It gets its own surface because it is the answer to a different kind of
+ * question from the pairs around it: those are attributes of the order, this is
+ * the thing being moved. On a delivery it reads gallons over products; on a
+ * movement, an asset over its serial and route.
+ */
+function CardGoods({ primary, lines }: { primary: string; lines: string[] }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2">
+      <span className="truncate text-sm font-semibold text-foreground">{primary}</span>
+      {lines.map((l) => (
+        <span key={l} className="truncate text-xs text-muted-foreground" title={l}>
+          {l}
+        </span>
       ))}
     </div>
   );
@@ -204,16 +281,61 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         "active:border-fp-outline-2 active:bg-fp-card-1"
       )}
     >
-      <div className="space-y-3 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">
-            {card.title}
-          </h4>
-          {card.aside}
+      {/* ZONES ARE SEPARATED BY SPACE, NOT RULES. At card scale a divider per
+          zone turns five groups into five boxes; 12px between zones against 12px
+          within one already reads as grouping, and the goods block carries its
+          own edge where a real boundary exists. */}
+      <div className="flex flex-col gap-3 p-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">
+              {card.title}
+            </h4>
+            {card.badges && card.badges.length > 0 && (
+              <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                {card.badges.map((b) => (
+                  <Badge
+                    key={b.label}
+                    variant={b.tone === "critical" ? "destructive" : "secondary"}
+                  >
+                    {b.label}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          {card.subtitle && (
+            <span className="truncate text-xs text-muted-foreground" title={card.subtitle}>
+              {card.subtitle}
+            </span>
+          )}
         </div>
-        <CardFields fields={card.fields} />
+
+        {card.zones.map((z) =>
+          z.kind === "goods" ? (
+            <CardGoods key={z.key} primary={z.primary} lines={z.lines} />
+          ) : (
+            <CardFields key={z.key} fields={z.fields} />
+          )
+        )}
       </div>
-      {card.alert && <CardAlert {...card.alert} />}
+
+      {card.alert ? (
+        <CardAlert {...card.alert} />
+      ) : (
+        card.detailLabel && (
+          /* Not a control — the CARD is the button, and this names what pressing
+             it does. A second focusable thing doing the same job would give the
+             keyboard two stops for one action. */
+          <div
+            aria-hidden
+            className="flex items-center justify-center gap-1.5 border-t border-fp-outline-1 px-3 py-2 text-xs text-muted-foreground"
+          >
+            {card.detailLabel}
+            <ChevronRight className="size-3.5" />
+          </div>
+        )
+      )}
     </div>
   );
 }

@@ -34,6 +34,16 @@ const badgeVariants = cva(
           "bg-pastel-blue text-pastel-blue-foreground hover:bg-pastel-blue/90",
         "pastel-amber":
           "bg-pastel-amber text-pastel-amber-foreground hover:bg-pastel-amber/90",
+        "pastel-violet":
+          "bg-pastel-violet text-pastel-violet-foreground hover:bg-pastel-violet/90",
+        "pastel-rose":
+          "bg-pastel-rose text-pastel-rose-foreground hover:bg-pastel-rose/90",
+        "pastel-slate":
+          "bg-pastel-slate text-pastel-slate-foreground hover:bg-pastel-slate/90",
+        "pastel-teal":
+          "bg-pastel-teal text-pastel-teal-foreground hover:bg-pastel-teal/90",
+        "pastel-green":
+          "bg-pastel-green text-pastel-green-foreground hover:bg-pastel-green/90",
       },
       /**
        * Geometry, independent of colour.

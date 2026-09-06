@@ -38,6 +38,11 @@ export function BadgeDemo() {
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant="pastel-blue">Pastel blue</Badge>
           <Badge variant="pastel-amber">Pastel amber</Badge>
+          <Badge variant="pastel-violet">Pastel violet</Badge>
+          <Badge variant="pastel-rose">Pastel rose</Badge>
+          <Badge variant="pastel-slate">Pastel slate</Badge>
+          <Badge variant="pastel-teal">Pastel teal</Badge>
+          <Badge variant="pastel-green">Pastel green</Badge>
         </div>
       </Stack>
 
@@ -50,6 +55,12 @@ export function BadgeDemo() {
         <div className="flex flex-wrap items-center gap-3">
           <CodeDisc code="D" label="Delivery" tone="pastel-blue" />
           <CodeDisc code="E" label="Extraction" tone="pastel-amber" />
+          <CodeDisc code="M" label="Asset Movement" tone="pastel-violet" />
+          {/* Two characters, for the type whose initial is already spoken for. */}
+          <CodeDisc code="EM" label="Emergency" tone="pastel-rose" />
+          <CodeDisc code="C" label="Core" tone="pastel-slate" />
+          <CodeDisc code="P" label="Pump Out" tone="pastel-teal" />
+          <CodeDisc code="T" label="Transport" tone="pastel-green" />
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             inline in a row:
             <CodeDisc code="D" label="Delivery" />

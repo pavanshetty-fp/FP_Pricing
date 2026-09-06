@@ -7,7 +7,14 @@ import {
 } from "@/components/ui/tooltip";
 
 /** Pastel hues a code disc can take. The DS ships hues; callers bind meaning. */
-export type CodeDiscTone = "pastel-blue" | "pastel-amber";
+export type CodeDiscTone =
+  | "pastel-blue"
+  | "pastel-amber"
+  | "pastel-violet"
+  | "pastel-rose"
+  | "pastel-slate"
+  | "pastel-teal"
+  | "pastel-green";
 
 export interface CodeDiscProps {
   /** One or two characters shown in the disc, e.g. "D". */

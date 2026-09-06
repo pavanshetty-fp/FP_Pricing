@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -156,6 +157,17 @@ export interface BoardCard {
   id: string;
   title: string;
   /**
+   * The order's TYPE, as a coloured initial beside its number — the DS's
+   * `CodeDisc`, the same one the Sales table uses, so D and E mean the same
+   * thing in both modules.
+   *
+   * It sits next to the number because that is where the association is made:
+   * `M-104620` and a violet M are one identity, read in one glance. As a line
+   * of its own under the title it was a second label for something the reader
+   * had already been told.
+   */
+  code?: { text: string; label: string; tone: CodeDiscTone };
+  /**
    * Stacked, not one-of. Priority and recurrence are independent facts and a
    * single slot made them compete — an urgent recurring order lost one.
    *
@@ -164,9 +176,9 @@ export interface BoardCard {
    */
   badges?: BoardCardBadge[];
   /**
-   * Under the title. The order's category, and — where the card has one — the
-   * one fact that makes THIS order what it is. A movement puts its route here:
-   * where the asset is going is the whole order, not a detail of it.
+   * Under the title: the one fact that makes THIS order what it is, where it
+   * has one. A movement puts its route here — where the asset is going IS the
+   * order. The category is not a subtitle; it is the code disc.
    */
   subtitle?: string[];
   units: BoardCardUnit[];
@@ -382,9 +394,19 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           headings shrink to 10px and the field labels disappear entirely. */}
       <div className="flex flex-col gap-1 p-3.5">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="min-w-0 truncate font-mono text-sm font-semibold text-foreground">
-            {card.title}
-          </h4>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h4 className="min-w-0 truncate font-mono text-sm font-semibold text-foreground">
+              {card.title}
+            </h4>
+            {card.code && (
+              <CodeDisc
+                code={card.code.text}
+                label={card.code.label}
+                tone={card.code.tone}
+                className="shrink-0"
+              />
+            )}
+          </div>
           {card.badges && card.badges.length > 0 && (
             <div className="flex shrink-0 flex-wrap justify-end gap-1">
               {card.badges.map((b) => (

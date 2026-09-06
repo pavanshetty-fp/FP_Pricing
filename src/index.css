@@ -186,6 +186,16 @@
   --color-pastel-blue-foreground: var(--pastel-blue-foreground);
   --color-pastel-amber: var(--pastel-amber);
   --color-pastel-amber-foreground: var(--pastel-amber-foreground);
+  --color-pastel-violet: var(--pastel-violet);
+  --color-pastel-violet-foreground: var(--pastel-violet-foreground);
+  --color-pastel-rose: var(--pastel-rose);
+  --color-pastel-rose-foreground: var(--pastel-rose-foreground);
+  --color-pastel-slate: var(--pastel-slate);
+  --color-pastel-slate-foreground: var(--pastel-slate-foreground);
+  --color-pastel-teal: var(--pastel-teal);
+  --color-pastel-teal-foreground: var(--pastel-teal-foreground);
+  --color-pastel-green: var(--pastel-green);
+  --color-pastel-green-foreground: var(--pastel-green-foreground);
   /* Kanban lane accents (27631:11154) — theme-independent palette used for the
      lane top-strip + count pill. Literal values (same in light/dark). */
   --color-fp-lane-grey: #64748b;
@@ -384,10 +394,28 @@
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
+  /* PASTEL PAIRS — a light fill with a dark same-hue foreground, declared once
+     and NOT overridden in `.dark`: a categorical hue that changed with the
+     theme would change identity, which is what a categorical scale must not do.
+     Every pair is measured against its own fill and lands in the same band as
+     the first two: blue 7.65, amber 7.09, violet 7.50, rose 7.21, slate 7.93,
+     teal 7.36, green 7.34. Five hues joined the two originals when a second
+     module needed more than two order types to tell apart; the DS ships the
+     hues and binds no meaning to them — that is the application's job. */
   --pastel-blue: #a8c9ef;
   --pastel-blue-foreground: #16324f;
   --pastel-amber: #f0c9a4;
   --pastel-amber-foreground: #5a3313;
+  --pastel-violet: #c6b8f0;
+  --pastel-violet-foreground: #33235c;
+  --pastel-rose: #f2b5b5;
+  --pastel-rose-foreground: #5c1f1f;
+  --pastel-slate: #c9cfd8;
+  --pastel-slate-foreground: #2b3542;
+  --pastel-teal: #a3d9d4;
+  --pastel-teal-foreground: #12403c;
+  --pastel-green: #b7dfae;
+  --pastel-green-foreground: #21451a;
   --verified-foreground: #ffffff;
   --fp-banner-foreground: #ffffff;
   --status-foreground: #ffffff;

@@ -30,6 +30,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
+import type { CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
   AssetMovementSheet,
@@ -60,6 +61,7 @@ import {
   totalGal,
   type BrokerColumnKey,
   type BrokerOrder,
+  type BrokerOrderType,
   type BrokerSortState,
   type MovementDirection,
 } from "./orders";
@@ -199,41 +201,67 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
 }
 
 /**
- * The badges, STACKED. Priority and recurrence are independent facts, and the
- * old single slot made them compete — an urgent recurring order lost one of
- * them. Delivery vs Movement takes no badge at all: the order number's prefix
- * already carries it.
+ * ORDER TYPE -> INITIAL AND HUE. The DS ships the disc and the hues and binds
+ * no meaning to them; declaring the meaning is the application's job — the same
+ * split `TYPE_TONE` in `FuelOrdersTable` makes. D and E keep the Sales module's
+ * hues on purpose, so a delivery disc means the same thing in both modules.
  *
- * A movement's DIRECTION is a badge, though. It is a two-state fact with two
- * fixed names, which is what a chip is for; as trailing words on the subtitle
- * it competed with the route for the same line and lost.
+ * Emergency is the one two-character code. Extraction has the E — it is the
+ * letter the Sales table already spends on it — and a second E would make the
+ * one thing the disc exists to do, telling two types apart, impossible.
+ */
+const TYPE_CODE: Record<
+  BrokerOrderType,
+  { text: string; tone: CodeDiscTone }
+> = {
+  Core: { text: "C", tone: "pastel-slate" },
+  Emergency: { text: "EM", tone: "pastel-rose" },
+  "Asset Movement": { text: "M", tone: "pastel-violet" },
+  Delivery: { text: "D", tone: "pastel-blue" },
+  Extraction: { text: "E", tone: "pastel-amber" },
+  "Pump Out": { text: "P", tone: "pastel-teal" },
+  Transport: { text: "T", tone: "pastel-green" },
+};
+
+function laneCardCode(r: BrokerOrder) {
+  const c = TYPE_CODE[r.orderType];
+  /* The full word is not optional — `CodeDisc` makes it the tooltip AND the
+     aria-label, so the letter is never the only thing carrying the meaning. */
+  return { text: c.text, label: r.orderType, tone: c.tone };
+}
+
+/**
+ * The badges, STACKED, and now only for facts that change what someone does:
+ * priority and recurrence. Type went to the code disc; a movement's direction
+ * went into the route, where it reads as a gloss on the route rather than as a
+ * third chip competing with Urgent for the same row.
  */
 function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "neutral" }[] {
   const out: { label: string; tone?: "critical" | "neutral" }[] = [];
   if (r.urgent) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
-  if (r.movement) {
-    out.push({
-      label: r.movement.direction === "Asset Delivery" ? "Out to site" : "Back to yard",
-    });
-  }
   return out;
 }
 
 /**
- * Category, under the title — and for a movement, the ROUTE under that.
+ * Under the title: the ROUTE, and only a movement has one.
  *
  * Where the asset is coming from and going to is not a detail of a movement
- * order, it IS the order, so it sits in the header where the eye lands first
- * rather than hanging off the asset row.
+ * order, it IS the order. The DIRECTION follows it in brackets — "Back to yard"
+ * says which end of that route is the yard, which is a gloss on the route and
+ * belongs beside it, not in the chip row.
+ *
+ * A delivery gets no subtitle at all. Its type is the disc and its site is the
+ * first thing in Customer Details; a category line under the number repeated
+ * one and pre-empted the other.
  */
-function laneCardSubtitle(r: BrokerOrder): string[] {
-  if (!r.movement) return [r.orderType];
+function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
+  if (!r.movement) return undefined;
+  const out = r.movement.direction === "Asset Delivery";
   return [
-    r.orderType,
-    r.movement.direction === "Asset Delivery"
-      ? `${r.movement.yard} → ${r.shipTo}`
-      : `${r.shipTo} → ${r.movement.yard}`,
+    `${out ? r.movement.yard : r.shipTo} → ${out ? r.shipTo : r.movement.yard} (${
+      out ? "Out to site" : "Back to yard"
+    })`,
   ];
 }
 
@@ -462,6 +490,7 @@ export function BrokerOrdersScreen({
             id: r.id,
             title: r.orderNo,
             badges: laneCardBadges(r),
+            code: laneCardCode(r),
             subtitle: laneCardSubtitle(r),
             units: laneCardUnits(r),
             alert: laneCardAlert(r),

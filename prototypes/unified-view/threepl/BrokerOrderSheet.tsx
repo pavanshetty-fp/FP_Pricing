@@ -888,11 +888,11 @@ export function BrokerOrderSheet({
               name's answer, and each value carries its own copy button — a
               number goes to a dialler, an address goes to a mail client, and one
               control over the pair would hand over both. */}
-          <div className="col-span-2 flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
-                <span aria-hidden className="text-fp-outline-1">
+                <span aria-hidden className="mr-6 text-fp-outline-1">
                   |
                 </span>
                 <CopyValue value={poc.email} label="POC email" />
@@ -922,7 +922,7 @@ export function BrokerOrderSheet({
               asks for the same kind of thing should be the same size, and two
               read-out cards side by side that differ in width read as two
               different kinds of card. */}
-          <div className="col-span-2 flex h-9 items-center gap-3 self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <CopyValue
                 value={SALES_CONTACTS[draft.salesperson]}

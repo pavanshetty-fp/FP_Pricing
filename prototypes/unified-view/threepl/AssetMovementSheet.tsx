@@ -2,6 +2,7 @@ import * as React from "react";
 import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Combobox } from "@/components/ui/combobox";
@@ -345,6 +346,12 @@ export function AssetMovementSheet({
       editTitle={direction}
       createTitle={direction}
       createAction="Create Order"
+      /* THE TYPE IS SETTLED BEFORE THE SHEET OPENS — "Asset Delivery" was the
+         menu item that opened it. Stating it again as a read-only box in the
+         middle of Order Details put a fact that cannot change where a field
+         goes, and cost a third of that row. It rides beside the title instead,
+         in the hue the board gives movement orders. */
+      headerAside={<Badge variant="pastel-violet">Asset Movement</Badge>}
       canSubmit={canSubmit}
       onSubmit={() => onCreate(draft)}
       /* Decisions about the ACT of committing ride in the footer, in view at
@@ -408,11 +415,11 @@ export function AssetMovementSheet({
           </SheetField>
           {/* Derived, so a read-out with its own copy buttons — not a pair of
               disabled fields pretending to be editable. */}
-          <div className="col-span-2 flex h-9 items-center gap-3 overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-2 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
-                <span aria-hidden className="text-fp-outline-1">
+                <span aria-hidden className="mr-6 text-fp-outline-1">
                   |
                 </span>
                 <CopyValue value={poc.email} label="POC email" />
@@ -438,7 +445,7 @@ export function AssetMovementSheet({
           </SheetField>
           {/* SAME SHAPE AND SAME GRID as the POC row above — two read-out cards
               that differ in width read as two different kinds of card. */}
-          <div className="col-span-2 flex h-9 items-center gap-3 overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-2 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <CopyValue
                 value={SALES_CONTACTS[draft.salesperson]}
@@ -455,6 +462,9 @@ export function AssetMovementSheet({
       </SheetSection>
 
       <SheetSection title="Order Details">
+        {/* THREE REFERENCE NUMBERS AND A DATE, one row. With the type gone to
+            the header there is room for BOL beside the PO it sits next to on
+            every paper version of this order. */}
         <div className="grid grid-cols-3 gap-4">
           <SheetField label="Planned Delivery Date" required>
             <Popover>
@@ -473,14 +483,6 @@ export function AssetMovementSheet({
               </PopoverContent>
             </Popover>
           </SheetField>
-          {/* FIXED, so shown rather than offered: §5.20 says a movement order
-              is a movement order. A one-option select is a decision that has
-              already been made wearing the costume of a choice. */}
-          <SheetField label="Order Type">
-            <div className="flex h-9 items-center rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 text-sm text-foreground">
-              Asset Movement
-            </div>
-          </SheetField>
           <SheetField label="Customer PO Number">
             <Input
               value={draft.poNumber}
@@ -488,9 +490,6 @@ export function AssetMovementSheet({
               onChange={(e) => set("poNumber", e.target.value)}
             />
           </SheetField>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
           <SheetField label="BOL Number">
             <Input
               value={draft.bolNumber}
@@ -517,9 +516,12 @@ export function AssetMovementSheet({
 
         {/* §6's per-order kill switch. ON by default — suppressing every email
             is the deliberate act, so it is the one that costs a click. */}
+        {/* EVEN ON BOTH SIDES. This is not a field, it is a decision about the
+            order as a whole, so it stands clear of the fields above it by the
+            same 40px the next section stands clear of it. */}
         <label
           htmlFor="mv-notify"
-          className="flex cursor-pointer items-center justify-between gap-4"
+          className="mt-6 flex cursor-pointer items-center justify-between gap-4"
         >
           <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
             Send email notifications to vendor
@@ -551,6 +553,11 @@ export function AssetMovementSheet({
             asset's own facts and arrive with it, the same way the Delivery
             Order's product arrives with its tank; product is what the tank is
             to carry, which is a decision, so it stays editable. */}
+        {/* HELPER TEXT IS PART OF THE CONTROL, 4px under it — the DS rule the
+            fields follow, applied to a table. At the section gap it floated
+            between the table and the next section and got read as a heading
+            for the wrong one. */}
+        <div className="flex flex-col gap-1">
         <div className="overflow-hidden rounded-md border border-border">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
@@ -614,13 +621,23 @@ export function AssetMovementSheet({
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-muted-foreground">
+        {/* RED ONLY WHEN IT BLOCKS. Until a yard is chosen this line is the
+            reason the row above cannot be filled, which is a different kind of
+            sentence from "3 assets in Fresno Yard" — and if both were red the
+            colour would stop meaning anything. */}
+        <p
+          className={cn(
+            "text-xs",
+            sourceChosen ? "text-muted-foreground" : "text-destructive"
+          )}
+        >
           {sourceChosen
             ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${
                 isDelivery ? `in ${draft.yard}` : `on rent at ${draft.shipTo}`
               }. Search by name or serial.`
             : gate}
         </p>
+        </div>
 
         {asset && (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm">
@@ -642,13 +659,27 @@ export function AssetMovementSheet({
           a row of the table beneath it. */}
       <SheetSection
         title="Add Peripheral"
+        /* QUIET UNTIL REACHED FOR — the same removal affordance the Load Order
+           carries, and for the same reason: emptying an optional list is
+           destructive, so it does not compete with the table, and it keeps its
+           label because "Remove" beside a table of rows reads as though it
+           might remove a row. */
         action={
-          <Switch
-            id="mv-peripherals"
-            aria-label="Add peripherals to this order"
-            checked={draft.peripheralsOn}
-            onCheckedChange={(v) => set("peripheralsOn", v)}
-          />
+          draft.peripheralsOn && (
+            <button
+              type="button"
+              onClick={() => {
+                set("peripheralsOn", false);
+                set("peripherals", [blankPeripheral()]);
+              }}
+              className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Trash2 className="size-4 shrink-0" />
+              <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
+                Remove peripherals
+              </span>
+            </button>
+          )
         }
       >
         {draft.peripheralsOn ? (
@@ -760,21 +791,47 @@ export function AssetMovementSheet({
             </button>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            List peripherals to include with the asset's movement order.
-          </p>
+          /* THE EMPTY STATE IS THE TABLE'S OWN BOX, dashed, with the CTA inside
+             it — the Load Order's shape. A switch floating on the heading said
+             the section could be turned on but not what turning it on would
+             give you; a box the size of the table, naming the thing it will
+             hold, does both. */
+          <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">Add Peripheral</span>
+              <span className="text-xs text-muted-foreground">
+                List peripherals to include with the asset's movement order.
+              </span>
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => set("peripheralsOn", true)}
+            >
+              <Plus /> Add
+            </Button>
+          </div>
         )}
       </SheetSection>
 
       <SheetSection
         title="Custom Items"
         action={
-          <Switch
-            id="mv-custom"
-            aria-label="Add custom items to this order"
-            checked={draft.customOn}
-            onCheckedChange={(v) => set("customOn", v)}
-          />
+          draft.customOn && (
+            <button
+              type="button"
+              onClick={() => {
+                set("customOn", false);
+                set("customItems", [{ name: "", qty: null, unit: UNITS[0] }]);
+              }}
+              className="group/rm flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Trash2 className="size-4 shrink-0" />
+              <span className="max-w-0 overflow-hidden text-sm whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-200 group-hover/rm:max-w-40 group-hover/rm:opacity-100 group-focus-visible/rm:max-w-40 group-focus-visible/rm:opacity-100">
+                Remove custom items
+              </span>
+            </button>
+          )
         }
       >
         {draft.customOn ? (
@@ -870,9 +927,17 @@ export function AssetMovementSheet({
             </button>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Anything to include with the asset's Lease Equipment Order.
-          </p>
+          <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">Add Custom Items</span>
+              <span className="text-xs text-muted-foreground">
+                Anything to include with the asset's Lease Equipment Order.
+              </span>
+            </span>
+            <Button variant="outline" size="sm" onClick={() => set("customOn", true)}>
+              <Plus /> Add
+            </Button>
+          </div>
         )}
       </SheetSection>
 

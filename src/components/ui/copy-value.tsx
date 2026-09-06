@@ -105,7 +105,12 @@ export function CopyValue({
   }
 
   return (
-    <span className={cn("group/copy flex min-w-0 items-center gap-1", className)}>
+    /* NO GAP. The copy button's own 24px box is the space after the value —
+       it is reserved whether or not the button is showing, so a gap on top of
+       it would make the run of values read as unevenly spaced: wide after a
+       copyable value, narrow after anything else. The button centres a 14px
+       glyph in that box, which is the breathing room it needs. */
+    <span className={cn("group/copy flex min-w-0 items-center", className)}>
       <span
         className={cn(
           "truncate text-sm text-foreground",

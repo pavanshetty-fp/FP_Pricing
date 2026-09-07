@@ -61,6 +61,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   section gains an action. **Measure from the text, and measure it on screen.**
 - **Helper text is 4px from its control**, not at the field gap — see
   `interactions/2-rules` §2b.
+- **A table header has its own ground** — `bg-fp-table-header`, never
+  `bg-fp-surface-1a`. In dark the inner panel already differs from the content
+  layer so the header read; in light both are `#ffffff` and the header row had
+  nothing but its hairline, and a header that is only a line stops being a header
+  the moment the first row has a line too. The token is the faintest step the DS
+  owns (`--fp-card-3`, #fafafa in light) and it sits ABOVE the row hover
+  (`--fp-card-2`, #f4f5f8), so hovering a row still darkens against the header
+  rather than matching it. Totals rows in a `tfoot` take the same fill: they are
+  the header's counterpart at the other end.
 - **Removing an optional section is a MINUS, never a bin** (`SheetSectionRemove`).
   A bin says a record is about to be destroyed; turning an optional section off
   destroys nothing — it collapses back to the "Add …" box it came from and is one

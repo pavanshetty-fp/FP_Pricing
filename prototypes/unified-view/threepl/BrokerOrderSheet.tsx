@@ -1262,7 +1262,7 @@ export function BrokerOrderSheet({
                   <col className="w-[52px]" />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-border bg-fp-surface-1a">
+                  <tr className="border-b border-border bg-fp-table-header">
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Unlabelled, it needed a switch below the table to
                         say what it was for, and the same tick then meant
@@ -1383,7 +1383,7 @@ export function BrokerOrderSheet({
                     number to add up. */}
                 {hasAssets && (
                   <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                    <tr className="h-11 border-t border-border bg-fp-table-header">
                       <td
                         colSpan={3}
                         className="px-3 text-right text-sm text-muted-foreground"
@@ -1476,7 +1476,7 @@ export function BrokerOrderSheet({
                   <col />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-border bg-fp-surface-1a">
+                  <tr className="border-b border-border bg-fp-table-header">
                     {/* No label: what the tick means is stated by the rows it
                         dims, and a header for it would name the exception. */}
                     <th aria-hidden />
@@ -1626,7 +1626,7 @@ export function BrokerOrderSheet({
                     <col className="w-[52px]" />
                   </colgroup>
                   <thead>
-                    <tr className="border-b border-border bg-fp-surface-1a">
+                    <tr className="border-b border-border bg-fp-table-header">
                       <th className="px-3 py-2.5">
                         <Checkbox
                           checked={headerChecked}
@@ -2059,7 +2059,7 @@ export function BrokerOrderSheet({
                     <col className="w-[140px]" />
                   </colgroup>
                   <thead>
-                    <tr className="border-b border-border bg-fp-surface-1a">
+                    <tr className="border-b border-border bg-fp-table-header">
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Asset name</TableRequiredLabel>
                       </th>
@@ -2152,7 +2152,7 @@ export function BrokerOrderSheet({
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                    <tr className="h-11 border-t border-border bg-fp-table-header">
                       <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
                         Products-level subtotal
                       </td>
@@ -2188,7 +2188,7 @@ export function BrokerOrderSheet({
                   <col className="w-[140px]" />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-border bg-fp-surface-1a">
+                  <tr className="border-b border-border bg-fp-table-header">
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Asset name</TableRequiredLabel>
                     </th>
@@ -2263,7 +2263,7 @@ export function BrokerOrderSheet({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                  <tr className="h-11 border-t border-border bg-fp-table-header">
                     <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
                       Products-level subtotal
                     </td>
@@ -2304,7 +2304,7 @@ export function BrokerOrderSheet({
                     <col className="w-[128px]" />
                   </colgroup>
                   <thead>
-                    <tr className="border-b border-border bg-fp-surface-1a">
+                    <tr className="border-b border-border bg-fp-table-header">
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Asset</TableRequiredLabel>
                       </th>
@@ -2367,7 +2367,7 @@ export function BrokerOrderSheet({
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                    <tr className="h-11 border-t border-border bg-fp-table-header">
                       <td colSpan={2} className="px-3 text-sm text-muted-foreground">
                         Total — {vendorById(shownVendorId)?.name ?? "partner"}
                       </td>

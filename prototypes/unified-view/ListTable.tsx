@@ -161,7 +161,7 @@ export function ListTable<Row, K extends string>({
                       : undefined
                   }
                   className={cn(
-                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
                     col.key === actionsKey && "sticky right-0 z-30"
                   )}

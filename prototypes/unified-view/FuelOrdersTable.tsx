@@ -464,7 +464,7 @@ export function FuelOrdersTable({
                       : undefined
                   }
                   className={cn(
-                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
                     // Pinned so the row-open control stays reachable while the
                     // grid scrolls sideways. z-30 clears the sticky thead (z-20).

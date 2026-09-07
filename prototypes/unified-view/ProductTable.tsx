@@ -172,7 +172,7 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
             <col className="w-[52px]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-border bg-fp-surface-1a">
+            <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
                 <RequiredLabel required>Product</RequiredLabel>
               </th>
@@ -247,7 +247,7 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
               stays aligned to the Quantity column. Derived from the rows above,
               so it can never disagree with them. */}
           <tfoot>
-            <tr className="border-t border-border bg-fp-surface-1a">
+            <tr className="border-t border-border bg-fp-table-header">
               <td className="px-3 py-2.5 text-sm font-medium text-foreground">
                 Total
               </td>

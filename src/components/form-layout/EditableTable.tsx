@@ -187,7 +187,7 @@ export function EditableTable() {
             <col className="w-[52px]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-border bg-fp-surface-1a">
+            <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
                 <RequiredLabel required>Peripheral</RequiredLabel>
               </th>

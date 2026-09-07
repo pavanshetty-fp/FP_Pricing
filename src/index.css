@@ -164,6 +164,7 @@
   --color-chip: var(--chip);
   --color-fp-lane: var(--fp-lane);
   --color-fp-board-lane: var(--fp-board-lane);
+  --color-fp-table-header: var(--fp-table-header);
   --color-fp-row-hover: var(--fp-row-hover);
   --color-fp-row-selected: var(--fp-row-selected);
   --color-fp-surface-base: var(--fp-surface-base);
@@ -355,6 +356,13 @@
      tokens — pointing the board at `--fp-lane` would have dragged every group
      band up with it. */
   --fp-board-lane: var(--fp-card-3);
+  /* A TABLE HEADER NEEDS ITS OWN GROUND. In dark the panel fill already differs
+     from the content layer, so the header reads; in light both are #ffffff and
+     the header row had nothing but its hairline — a header that is only a line
+     stops being a header the moment the first row has a line too. This is the
+     faintest step the DS owns, and it sits ABOVE the row hover (--fp-card-2), so
+     hovering a row still darkens against it rather than matching it. */
+  --fp-table-header: var(--fp-card-3);
   --fp-row-hover: var(--fp-card-2);
   /* The app ground. base/background is #ffffff now, identical to --card,
      --popover and both content surfaces, so light has no ground/card fill step
@@ -470,6 +478,9 @@
   /* Dark keeps the lane exactly where `--accent` had it — only LIGHT was too
      heavy, so only light moves. */
   --fp-board-lane: var(--fp-card-1);
+  /* Dark already had the differentiation — this is the fill the header has
+     always used, named. */
+  --fp-table-header: var(--fp-surface-1a);
   /* Re-joined here. Light had to break these three out of the shared block —
      --background because base/background went white, --secondary because the
      emphasis family split, --destructive because it left --fp-danger — but dark

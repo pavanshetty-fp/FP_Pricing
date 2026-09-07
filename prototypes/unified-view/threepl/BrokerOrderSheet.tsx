@@ -1976,135 +1976,50 @@ export function BrokerOrderSheet({
       ) : (
         <>
           {/* ── STEP 2 ────────────────────────────────────────────────────────
-              A partner has accepted and priced the order. Three things happen
-              here and they happen in this order, because each is the input to
-              the next: read what the partner charges, set what the customer
-              pays, then decide whether the difference is worth taking.  */}
-          <SheetSection
-            title="Partner Quotes"
-            note={
-              <SheetSectionNote label="About partner quotes">
-                Only partners that accepted the invitation can price the order.
-                The margin column is this order's customer total less that
-                partner's charge — it moves as you edit the pricing below.
-              </SheetSectionNote>
-            }
-          >
-            <div className="overflow-hidden rounded-md border border-border">
-              <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                  <col className="w-[40px]" />
-                  <col />
-                  <col className="w-[132px]" />
-                  <col className="w-[112px]" />
-                  <col className="w-[112px]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border bg-fp-surface-1a">
-                    <th aria-hidden />
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Partner</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Safety · Distance</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>They charge</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Your margin</TableRequiredLabel>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quotingPartners.map((vid) => {
-                    const v = vendorById(vid);
-                    const q = quoteOf(vid);
-                    const cost = costOf(vid);
-                    const margin = revenue - cost;
-                    const held = draft.vendorId === vid;
-                    return (
-                      <tr
-                        key={vid}
-                        className={cn(
-                          "h-12 cursor-pointer border-b border-border transition-colors last:border-b-0",
-                          shownVendorId === vid ? "bg-fp-surface-1a" : "hover:bg-accent"
-                        )}
-                        onClick={() => setShownQuote(vid)}
-                      >
-                        <td className="px-3">
-                          {/* WHICH PARTNER'S SHEET IS OPEN is a radio, because
-                              the table below can only show one at a time. */}
-                          <input
-                            type="radio"
-                            name="shown-quote"
-                            checked={shownVendorId === vid}
-                            onChange={() => setShownQuote(vid)}
-                            aria-label={`Show ${v?.name ?? "partner"}'s quote`}
-                            className="size-4 accent-primary"
-                          />
-                        </td>
-                        <td className="px-3">
-                          <span className="flex min-w-0 flex-col">
-                            <span className="truncate text-sm font-medium text-foreground">
-                              {v?.name ?? "—"}
-                            </span>
-                            {/* ON HOLD, NOT CANCELLED. Taking one partner's
-                                price does not un-ask the others: if the one
-                                holding it backs out, the fallbacks have to
-                                still be here, with their numbers. */}
-                            <span
-                              className={cn(
-                                "truncate text-xs",
-                                held
-                                  ? "text-status-success"
-                                  : "text-muted-foreground"
-                              )}
-                            >
-                              {held
-                                ? "Holds this order"
-                                : draft.vendorId
-                                  ? `On hold · ${v?.base}`
-                                  : v?.base}
-                            </span>
-                          </span>
-                        </td>
-                        <td className="px-3 text-sm tabular-nums text-muted-foreground">
-                          {v ? `${v.safetyScore} · ${v.distanceMi} mi` : "—"}
-                        </td>
-                        <td className="px-3 text-right text-sm tabular-nums text-foreground">
-                          {/* NOT PRICED IS NOT ZERO. A partner that has sent
-                              nothing shows so, rather than a $0.00 that would
-                              read as the cheapest quote on the table. */}
-                          {q ? (
-                            money(cost)
-                          ) : (
-                            <span className="text-muted-foreground">Not priced</span>
-                          )}
-                        </td>
-                        {/* THE NUMBER THE DECISION TURNS ON, and the only place
-                            in this sheet where a figure is allowed a colour: a
-                            margin that has gone negative is the one thing here
-                            that must not be read past. */}
-                        <td
-                          className={cn(
-                            "px-3 text-right text-sm font-medium tabular-nums",
-                            q && margin < 0 ? "text-destructive" : "text-foreground"
-                          )}
-                        >
-                          {q ? money(margin) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </SheetSection>
+              Three things, in the order each feeds the next: read what the
+              vendor charges, set what the customer pays, then decide whether
+              the difference is worth taking.
 
+              NO SUMMARY TABLE ON TOP. It listed the partners with their totals
+              and their margins — every figure of which the two tables below it
+              already carry, and the totals row of Final Calculations carries
+              again. WHICH vendor you are reading is the only thing it did that
+              nothing else does, and that is a choice, not a table: it sits on
+              the Vendor Pricing heading, which is the section it changes. */}
           {shownVendorId && (
             <SheetSection
               title="Vendor Pricing"
+              /* WHOSE PRICE THIS IS. One partner needs no control — a select of
+                 one is a question with an answer already in it — so it states
+                 the name and whether they hold the order. More than one and it
+                 becomes a picker, because the table below can only show one. */
+              action={
+                quotingPartners.length > 1 ? (
+                  <Combobox
+                    className="h-8 w-64"
+                    value={shownVendorId}
+                    onValueChange={setShownQuote}
+                    options={quotingPartners.map((vid) => ({
+                      value: vid,
+                      label: vendorById(vid)?.name ?? vid,
+                      description:
+                        draft.vendorId === vid
+                          ? "Holds this order"
+                          : draft.vendorId
+                            ? "On hold"
+                            : quoteOf(vid)
+                              ? "Priced"
+                              : "Not priced",
+                    }))}
+                    searchPlaceholder="Search partners…"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {vendorById(shownVendorId)?.name}
+                    {draft.vendorId === shownVendorId && " · holds this order"}
+                  </span>
+                )
+              }
               note={
                 <SheetSectionNote label="About vendor pricing">
                   What {vendorById(shownVendorId)?.name ?? "the partner"} charges

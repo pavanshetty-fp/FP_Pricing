@@ -46,6 +46,8 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't let one checkbox column mean two things** (§4b).
 - **Don't override a section's gap per instance** — that is how a sheet drifts
   from the 40/16 rhythm (`ux/2-rules`).
+- **Don't make hiding a column the only way to move one.** Headers drag, and
+  ⌘/Ctrl + ← → moves a focused one (`ux/2-rules`).
 - **Don't confirm an empty removal.** Ask before erasing filled rows; close an
   untouched section without a dialog (`ux/2-rules`).
 - **Don't put a bin on a section heading.** Turning an optional section off is a

@@ -304,6 +304,9 @@ interface ViewState {
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
   hidden: string[];
+  /** Column order as keys. Which two columns sit side by side IS the view for
+   *  anyone comparing them, so it is captured like the filters are. */
+  columnOrder: string[];
   pageSize: number;
   dateKey: string;
   colScope: string;
@@ -332,6 +335,9 @@ export function BrokerOrdersScreen({
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [hidden, setHidden] = React.useState<Set<BrokerColumnKey>>(new Set());
+  /* Empty = the table's declared order; the table fills in anything a saved
+     order does not mention, so a stale view never costs a column. */
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
   const [date, setDate] = React.useState(() => startOfDay(new Date()));
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
@@ -351,6 +357,7 @@ export function BrokerOrdersScreen({
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
     hidden: [...hidden],
+    columnOrder,
     pageSize,
     dateKey: dateKeyOf(date),
     colScope,
@@ -363,6 +370,7 @@ export function BrokerOrdersScreen({
       sortKey: null,
       sortDir: null,
       hidden: [],
+      columnOrder: [],
       pageSize: 25,
       dateKey: dateKeyOf(startOfDay(new Date())),
       colScope: "customer",
@@ -380,6 +388,7 @@ export function BrokerOrdersScreen({
         : null
     );
     setHidden(new Set(s.hidden as BrokerColumnKey[]));
+    setColumnOrder(s.columnOrder ?? []);
     setPageSize(s.pageSize);
     const [y, m, d] = s.dateKey.split("-").map(Number);
     setDate(new Date(y, m - 1, d));
@@ -1001,6 +1010,8 @@ export function BrokerOrdersScreen({
               rowId={(r) => r.id}
               renderCell={renderCell}
               actionsKey="actions"
+              columnOrder={columnOrder}
+              onReorderColumns={setColumnOrder}
               openLabel={(r) => `Open order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
             />

@@ -8,7 +8,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { GroupHeaderRow, type GroupNode } from "@/components/tables-layout";
+import {
+  GroupHeaderRow,
+  useColumnOrder,
+  type GroupNode,
+} from "@/components/tables-layout";
 import {
   Table,
   TableBody,
@@ -69,6 +73,13 @@ export interface ListTableProps<Row, K extends string> {
   /** Which column key holds the pinned chevron. */
   actionsKey: K;
   /**
+   * Column order, as keys. Supply with `onReorderColumns` to keep it in a saved
+   * view; leave both off and the table remembers it for the session only. The
+   * pinned chevron column never moves.
+   */
+  columnOrder?: string[];
+  onReorderColumns?: (next: string[]) => void;
+  /**
    * Grouped render list from `groupRows`. Omitted, the table renders `rows`
    * flat — which is what every ungrouped list does.
    */
@@ -97,8 +108,19 @@ export function ListTable<Row, K extends string>({
   onToggleGroupCollapse,
   groupNoun = "record",
   groupUnit = "",
+  columnOrder,
+  onReorderColumns,
 }: ListTableProps<Row, K>) {
-  const visible = columns.filter((c) => !hidden?.has(c.key));
+  /* THE PINNED CHEVRON IS THE FRAME, not a column: it is how a row is opened
+     and it is stuck to the right edge so it survives a sideways scroll. It
+     does not move, and nothing can be dropped past it. */
+  const cols = useColumnOrder({
+    keys: React.useMemo(() => columns.map((c) => c.key), [columns]),
+    fixed: React.useMemo(() => [actionsKey], [actionsKey]),
+    value: columnOrder,
+    onChange: onReorderColumns,
+  });
+  const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key)));
 
   return (
     <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
@@ -120,6 +142,7 @@ export function ListTable<Row, K extends string>({
               return (
                 <TableHead
                   key={col.key}
+                  {...cols.headerProps(col.key)}
                   aria-sort={
                     active
                       ? sort.dir === "asc"
@@ -128,9 +151,17 @@ export function ListTable<Row, K extends string>({
                       : undefined
                   }
                   className={cn(
-                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "relative border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
-                    col.key === actionsKey && "sticky right-0 z-30"
+                    col.key === actionsKey && "sticky right-0 z-30",
+                    /* The dragged header fades; the one it will land against
+                       draws a rule on the side it will land on. */
+                    "data-[dragging]:opacity-40",
+                    "before:pointer-events-none before:absolute before:inset-y-0 before:w-0.5 before:bg-transparent",
+                    "data-[drop=before]:before:left-0 data-[drop=before]:before:bg-ring",
+                    "data-[drop=after]:before:right-0 data-[drop=after]:before:bg-ring",
+                    col.key !== actionsKey && "cursor-grab",
+                    "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
                   {col.label && col.sortable ? (

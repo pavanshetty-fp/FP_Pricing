@@ -38,7 +38,15 @@ import type {
   SortState,
   TwoLine as TwoLineData,
 } from "./types";
-import { GroupHeaderRow, type GroupNode, groupSelectionState } from "@/components/tables-layout";
+import {
+  GroupHeaderRow,
+  useColumnOrder,
+  type GroupNode,
+  groupSelectionState,
+} from "@/components/tables-layout";
+
+/** Structure, not content — see `useColumnOrder` in the table below. */
+const FIXED_COLUMNS = ["select", "actions"];
 
 const QTY_FMT = new Intl.NumberFormat("en-US");
 
@@ -369,6 +377,12 @@ export interface FuelOrdersTableProps {
   nodes?: GroupNode<FuelOrder>[];
   collapsedGroups?: ReadonlySet<string>;
   onToggleGroupCollapse?: (id: string) => void;
+  /**
+   * Column order, as keys. Supply with `onReorderColumns` to keep it in a saved
+   * view; leave both off and the table remembers it for the session only.
+   */
+  columnOrder?: string[];
+  onReorderColumns?: (next: string[]) => void;
 }
 
 /**
@@ -390,11 +404,26 @@ export function FuelOrdersTable({
   nodes,
   collapsedGroups,
   onToggleGroupCollapse,
+  columnOrder,
+  onReorderColumns,
 }: FuelOrdersTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
-  const visibleColumns = FUEL_ORDER_COLUMNS.filter((c) => !hidden?.has(c.key));
+
+  /* THE SELECT BOX AND THE ROW-OPEN CHEVRON ARE THE FRAME, not columns: one is
+     how you pick rows and the other is how you open one, and the chevron is
+     pinned to the right edge so it survives a sideways scroll. Neither moves,
+     and nothing can be dropped outside them. */
+  const cols = useColumnOrder({
+    keys: React.useMemo(() => FUEL_ORDER_COLUMNS.map((c) => c.key), []),
+    fixed: FIXED_COLUMNS,
+    value: columnOrder,
+    onChange: onReorderColumns,
+  });
+  const visibleColumns = cols.arrange(
+    FUEL_ORDER_COLUMNS.filter((c) => !hidden?.has(c.key))
+  );
 
   return (
     <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
@@ -416,6 +445,7 @@ export function FuelOrdersTable({
               return (
                 <TableHead
                   key={col.key}
+                  {...cols.headerProps(col.key)}
                   aria-sort={
                     active
                       ? sort.dir === "asc"
@@ -424,11 +454,21 @@ export function FuelOrdersTable({
                       : undefined
                   }
                   className={cn(
-                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "relative border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
                     // Pinned so the row-open control stays reachable while the
                     // grid scrolls sideways. z-30 clears the sticky thead (z-20).
-                    col.key === "actions" && "sticky right-0 z-30"
+                    col.key === "actions" && "sticky right-0 z-30",
+                    /* THE COLUMN BEING DRAGGED FADES; the one it will land
+                        against draws a 2px rule on the side it will land on, so
+                        the indicator says where the drop goes rather than only
+                        which header is under the pointer. */
+                    "data-[dragging]:opacity-40",
+                    "before:pointer-events-none before:absolute before:inset-y-0 before:w-0.5 before:bg-transparent",
+                    "data-[drop=before]:before:left-0 data-[drop=before]:before:bg-ring",
+                    "data-[drop=after]:before:right-0 data-[drop=after]:before:bg-ring",
+                    !FIXED_COLUMNS.includes(col.key) && "cursor-grab",
+                    "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
                   {col.key === "select" ? (

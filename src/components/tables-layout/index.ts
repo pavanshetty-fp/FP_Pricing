@@ -49,3 +49,9 @@ export type {
   ColumnKey,
   TwoLineText,
 } from "./types";
+export {
+  useColumnOrder,
+  type UseColumnOrderOptions,
+  type UseColumnOrderResult,
+  type ColumnHeaderDragProps,
+} from "./useColumnOrder";

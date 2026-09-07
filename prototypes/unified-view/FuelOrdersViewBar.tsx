@@ -55,6 +55,13 @@ export interface ViewState {
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
   hidden: string[];
+  /**
+   * Column order as keys, outermost left. Part of the view because which two
+   * columns sit side by side IS the view for anyone comparing them — a view
+   * that restored the filters but not the arrangement would rebuild half the
+   * thing. Empty means "as the table declares them".
+   */
+  columnOrder: string[];
   pageSize: number;
   /** Delivery date as `YYYY-MM-DD` — views are date-scoped like everything else. */
   dateKey: string;

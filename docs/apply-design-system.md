@@ -937,6 +937,20 @@ Three details in that row are load-bearing rather than decorative:
   centring and measure from the bottom: 10px margin + the row's own 2px bottom
   padding puts them exactly 12px above the hairline.
 
+**Column order is the reader's, not the schema's** (`useColumnOrder`). Which two
+columns sit side by side is what makes a comparison possible at a glance, and the
+right pair differs by who is looking — dispatch wants Driver beside Planned Date,
+accounting wants Qty beside Status. Every column header drags, and ⌘/Ctrl + ← →
+moves a focused one a step, because a header that only moves by mouse does not
+move for everyone. Two things do NOT move: the leading select box and the
+trailing row-open chevron are the FRAME a row is read inside, not content, and
+the chevron is pinned to the right edge so it survives a sideways scroll —
+neither is draggable and nothing can be dropped past them. The order belongs in
+the saved view alongside the filters: a view that restored the narrowing but not
+the arrangement rebuilds half the thing. A saved order that predates a new column
+keeps the column, in its declared position — a stale view may cost you the
+ordering, never the data.
+
 **Scope controls lead the toolbar's right cluster**, so the row reads outward:
 what *scopes* the view → how it is *presented* (view switch, column tools) → the
 action that *adds* to it. A scope control placed between the icon tools and the

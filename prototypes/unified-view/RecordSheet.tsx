@@ -34,13 +34,18 @@ export interface RecordSheetProps {
    * scrolled sideways to be read, and a table you scroll to read is a table you
    * cannot compare rows in.
    *
-   * It is CAPPED at 864px rather than filling the viewport. 60px-from-the-edge
-   * is the most a sheet may take, not the width it should be: on a wide monitor
-   * that leaves a two-column form with a metre between a label and its control,
-   * and the tables here are three and four columns, not ten. 1040 fits both
-   * comfortably; the viewport clamp only bites on a narrow screen.
+   * `xwide` is 1120px, for a step whose tables run to eight columns. IT IS PER
+   * STEP, NOT PER SHEET: a sheet is only as wide as what is currently in it, so
+   * a form of stacked fields does not inherit the width its pricing tables
+   * needed, and nobody reads a two-column form with a metre between a label and
+   * its control. The same rule `BulkEditDialog` follows when its summary step
+   * goes from `default` to `lg`.
+   *
+   * All three are CAPPED rather than filling the viewport. 60px-from-the-edge is
+   * the most a sheet may take, not the width it should be; the viewport clamp
+   * only bites on a narrow screen.
    */
-  size?: "narrow" | "wide";
+  size?: "narrow" | "wide" | "xwide";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -96,9 +101,11 @@ export function RecordSheet({
         showCloseButton={false}
         className={cn(
           "gap-0 p-0",
-          size === "wide"
-            ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"
-            : "w-[560px] sm:max-w-[560px]"
+          size === "xwide"
+            ? "w-[min(1120px,calc(100vw-60px))] sm:max-w-[min(1120px,calc(100vw-60px))]"
+            : size === "wide"
+              ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"
+              : "w-[560px] sm:max-w-[560px]"
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">

@@ -814,7 +814,17 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because
   60px-from-the-edge is the **most** a sheet may take, not the width it should be —
   a sheet that eats a wide monitor turns two-column pairs into a hunt across the
-  screen and leaves nothing of the list it came from.
+  screen and leaves nothing of the list it came from. `xwide` is **1120px**, for
+  a step whose tables run past six columns.
+- **Width is per STEP, not per sheet.** A sheet is only as wide as what is
+  currently in it: a form of stacked fields must not inherit the width its
+  pricing tables needed. `BulkEditDialog` already does this — `default` while
+  you pick, `lg` for the summary — and a two-step sheet does the same. The
+  symptom of getting it wrong is a heading that wraps onto a second line and
+  stops sitting over the column it names, which reads as though the headers
+  have slipped; a heading too long for its column is a column that is too
+  narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
+  colgroup.
 - **Section rhythm — 40 / 16.** Sections sit **40px** apart (the sheet body's own
   gap); a section's title sits **16px** from its content (`SheetSection`'s default).
   The outer gap being 2.5x the inner is what makes a heading read as belonging to

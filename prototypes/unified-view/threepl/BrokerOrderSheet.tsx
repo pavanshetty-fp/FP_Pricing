@@ -547,7 +547,10 @@ export function BrokerOrderSheet({
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
     setSelected(new Set());
-    setStep("order");
+    /* AN ACCEPTED ORDER OPENS ON STEP 2. It is the only reason to open one: the
+       order itself was settled before it was ever sent out, and what is waiting
+       in that lane is a price to agree. Every other stage opens on the order. */
+    setStep(order?.status === "Accepted" ? "pricing" : "order");
     setShownQuote(null);
   }, [open, creating, order]);
 
@@ -825,8 +828,11 @@ export function BrokerOrderSheet({
 
   return (
     <RecordSheet
-      /* Two tables live in this sheet; 560px cannot hold five columns. */
-      size="wide"
+      /* WIDTH FOLLOWS THE STEP, not the sheet. Step 1's widest table is five
+         columns and reads well at 864; step 2's is eight, and at 864 its
+         headers wrapped onto two lines and stopped lining up with the figures
+         under them. A sheet is only as wide as what is currently in it. */
+      size={step === "pricing" ? "xwide" : "wide"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -2060,17 +2066,20 @@ export function BrokerOrderSheet({
                 </SheetSectionNote>
               }
             >
+              {/* COLUMN WIDTHS ARE SET SO NO HEADER WRAPS. A two-line header
+                  over one line of figures stops sitting above the column it
+                  names — which is what "the headers are off" looks like. */}
               <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full min-w-[720px] table-fixed border-collapse">
+                <table className="w-full min-w-[980px] table-fixed border-collapse">
                   <colgroup>
                     <col />
-                    <col className="w-[86px]" />
-                    <col className="w-[86px]" />
-                    <col className="w-[92px]" />
-                    <col className="w-[78px]" />
-                    <col className="w-[78px]" />
-                    <col className="w-[92px]" />
                     <col className="w-[104px]" />
+                    <col className="w-[112px]" />
+                    <col className="w-[112px]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[104px]" />
+                    <col className="w-[120px]" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border bg-fp-surface-1a">
@@ -2215,14 +2224,14 @@ export function BrokerOrderSheet({
             }
           >
             <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full min-w-[640px] table-fixed border-collapse">
+              <table className="w-full min-w-[840px] table-fixed border-collapse">
                 <colgroup>
                   <col />
-                  <col className="w-[92px]" />
                   <col className="w-[104px]" />
-                  <col className="w-[104px]" />
-                  <col className="w-[104px]" />
-                  <col className="w-[112px]" />
+                  <col className="w-[124px]" />
+                  <col className="w-[116px]" />
+                  <col className="w-[124px]" />
+                  <col className="w-[128px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">

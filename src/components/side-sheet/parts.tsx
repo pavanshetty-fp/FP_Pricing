@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,13 +252,19 @@ export function SheetSectionNote({
 /**
  * A step strip for a sheet whose work has an ORDER to it — do this, then that.
  *
- * NOT TABS. Tabs are views of one thing and you may read them in any order; a
- * step is a stage, and the second one exists because the first has produced
- * something. So a step can be unreachable, and when it is it says why rather
- * than going quiet: "no quotes yet" is the answer to "why can I not click
- * this", and a disabled control that gives no answer just gets clicked again.
+ * BUILT ON THE DS `Tabs`, `line` variant, so the underline, the hover, the
+ * focus ring and the roving-focus keyboard behaviour are the ones every other
+ * tab strip in this system has. What is added is the part that makes it a
+ * STEPPER rather than tabs: a number on each, and the ability for a step to be
+ * unreachable.
  *
- * The number is not decoration — it is what makes a strip of two labels read as
+ * NOT TABS, THOUGH. Tabs are views of one thing and may be read in any order; a
+ * step is a stage, and the second one exists because the first produced
+ * something. So a step can be disabled, and when it is it says why rather than
+ * going quiet — "no quotes yet" is the answer to "why can I not click this",
+ * and a disabled control that gives no answer just gets clicked again.
+ *
+ * The number is not decoration: it is what makes a strip of two labels read as
  * a sequence rather than as a choice between them.
  */
 export function SheetSteps({
@@ -275,42 +282,30 @@ export function SheetSteps({
   onValueChange: (next: string) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Steps" className="flex items-center gap-1">
-      {steps.map((s, i) => {
-        const active = s.value === value;
-        const disabled = Boolean(s.disabledReason);
-        return (
-          <button
+    <Tabs value={value} onValueChange={onValueChange}>
+      <TabsList variant="line" className="h-11 gap-1 p-0">
+        {steps.map((s, i) => (
+          <TabsTrigger
             key={s.value}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            disabled={disabled}
+            value={s.value}
+            disabled={Boolean(s.disabledReason)}
             title={s.disabledReason}
-            onClick={() => onValueChange(s.value)}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm outline-none transition-colors",
-              "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-              active
-                ? "border-foreground font-medium text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-              disabled && "cursor-not-allowed opacity-50 hover:text-muted-foreground"
-            )}
+            className="gap-2 px-3"
           >
             <span
               className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums",
-                active
+                "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums transition-colors",
+                s.value === value
                   ? "bg-foreground text-background"
-                  : "border border-fp-outline-2 text-muted-foreground"
+                  : "border border-fp-outline-2"
               )}
             >
               {i + 1}
             </span>
             {s.label}
-          </button>
-        );
-      })}
-    </div>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

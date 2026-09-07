@@ -42,8 +42,12 @@ export function TableRequiredLabel({
   children: React.ReactNode;
   required?: boolean;
 }) {
+  /* NEVER WRAPS. A column heading that breaks onto a second line stops sitting
+     over the column it names, and the table reads as though its headers have
+     slipped — which is exactly what it looks like. A heading too long for its
+     column is a column that is too narrow, and that is fixed in the colgroup. */
   return (
-    <span className="text-sm font-medium text-foreground">
+    <span className="text-sm font-medium whitespace-nowrap text-foreground">
       {children}
       {required && <span className="text-destructive"> *</span>}
     </span>

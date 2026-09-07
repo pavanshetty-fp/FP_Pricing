@@ -1993,8 +1993,17 @@ export function BrokerOrderSheet({
                  one is a question with an answer already in it — so it states
                  the name and whether they hold the order. More than one and it
                  becomes a picker, because the table below can only show one. */
+              /* IT SAYS WHAT THE LIST IS. A bare dropdown of company names on a
+                 heading row is a question nobody asked: these are the delivery
+                 partners that said yes to this order, and the control picks
+                 whose price the table below shows. Unlabelled, the only way to
+                 find that out was to open it. */
               action={
                 quotingPartners.length > 1 ? (
+                  <span className="flex items-center gap-2">
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      Quote from
+                    </span>
                   <Combobox
                     className="h-8 w-64"
                     value={shownVendorId}
@@ -2013,9 +2022,13 @@ export function BrokerOrderSheet({
                     }))}
                     searchPlaceholder="Search partners…"
                   />
+                  </span>
                 ) : (
                   <span className="text-xs text-muted-foreground">
-                    {vendorById(shownVendorId)?.name}
+                    Quote from{" "}
+                    <span className="text-foreground">
+                      {vendorById(shownVendorId)?.name}
+                    </span>
                     {draft.vendorId === shownVendorId && " · holds this order"}
                   </span>
                 )

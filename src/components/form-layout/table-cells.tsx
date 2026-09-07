@@ -53,8 +53,13 @@ export function TableRequiredLabel({
 export interface TableCellSelectProps {
   value: string;
   options: string[];
-  /** Second line under the value. Omit for a single-line cell. */
-  description?: string;
+  /**
+   * Second line under the value. A NODE, not just a string: a cell's second
+   * line is often a state — a chip saying this partner will never see the
+   * invitation — and the alternative was floating that chip over the cell,
+   * where a narrow column laid it on top of the name.
+   */
+  description?: React.ReactNode;
   placeholder?: string;
   disabled?: boolean;
   /** Option count at or above which the search field appears. Default: always. */
@@ -106,7 +111,9 @@ export function TableCellSelect({
               {value || placeholder}
             </span>
             {description && (
-              <span className="truncate text-xs text-muted-foreground">
+              /* `items-start` so a chip on this line keeps its own width
+                 instead of stretching to the cell. */
+              <span className="flex items-start truncate text-xs text-muted-foreground">
                 {description}
               </span>
             )}

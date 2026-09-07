@@ -1540,24 +1540,31 @@ export function BrokerOrderSheet({
                                 placeholder="Add partner"
                                 disabled={draft.status === "Blocked"}
                                 aria-label={`Delivery partner for row ${i + 1}`}
+                                /* UNDER THE NAME, NOT OVER IT. §6 Email
+                                   Management: a partner with emails off will
+                                   never see the invitation, which is the one
+                                   thing worth knowing at the moment of inviting
+                                   them — but floated over the cell it landed on
+                                   top of the very name it was qualifying as soon
+                                   as the column was narrow. The cell's second
+                                   line is where a state about the value goes;
+                                   the row grows if it must. */
+                                description={
+                                  v && (!v.emailsEnabled || !v.hasAccount) ? (
+                                    <Badge
+                                      variant={
+                                        v.emailsEnabled ? "secondary" : "destructive"
+                                      }
+                                    >
+                                      {v.emailsEnabled ? "Link only" : "Emails off"}
+                                    </Badge>
+                                  ) : undefined
+                                }
                                 onChange={(name) => {
                                   const picked = eligible.find((x) => x.name === name);
                                   if (picked) setPartnerAt(i, picked.id);
                                 }}
                               />
-                              {v && (!v.emailsEnabled || !v.hasAccount) && (
-                                <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2">
-                                  {/* §6 Email Management: a partner with emails
-                                      off will never see the invitation, which is
-                                      the one thing worth knowing at the moment of
-                                      inviting them. */}
-                                  <Badge
-                                    variant={v.emailsEnabled ? "secondary" : "destructive"}
-                                  >
-                                    {v.emailsEnabled ? "Link only" : "Emails off"}
-                                  </Badge>
-                                </span>
-                              )}
                             </td>
                             <td className="truncate px-3 text-sm text-muted-foreground">
                               {v?.base ?? "—"}

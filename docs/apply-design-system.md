@@ -942,7 +942,13 @@ columns sit side by side is what makes a comparison possible at a glance, and th
 right pair differs by who is looking — dispatch wants Driver beside Planned Date,
 accounting wants Qty beside Status. Every column header drags, and ⌘/Ctrl + ← →
 moves a focused one a step, because a header that only moves by mouse does not
-move for everyone. Two things do NOT move: the leading select box and the
+move for everyone. **The sign that a header moves lives on the DIVIDER**
+(`ColumnDragGrip`): a grip revealed only while the pointer is on the boundary,
+belonging to the column on its left, the way a spreadsheet's divider does. A mark
+that is always drawn is a mark on every header at once, and a row of eleven grips
+reads as decoration; the divider is where a pointer already goes when someone is
+thinking about the shape of the table. It is the sign, not the handle — the whole
+header stays draggable, so nobody depends on finding it. Two things do NOT move: the leading select box and the
 trailing row-open chevron are the FRAME a row is read inside, not content, and
 the chevron is pinned to the right edge so it survives a sideways scroll —
 neither is draggable and nothing can be dropped past them. The order belongs in

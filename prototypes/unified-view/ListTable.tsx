@@ -9,6 +9,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import {
+  ColumnDragGrip,
   GroupHeaderRow,
   useColumnOrder,
   type GroupNode,
@@ -164,6 +165,9 @@ export function ListTable<Row, K extends string>({
                     "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
+                  {/* The sign that this header moves — revealed on the divider
+                      only. See `ColumnDragGrip`. */}
+                  {col.key !== actionsKey && <ColumnDragGrip />}
                   {col.label && col.sortable ? (
                     <button
                       type="button"

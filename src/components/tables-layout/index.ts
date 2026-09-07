@@ -49,6 +49,7 @@ export type {
   ColumnKey,
   TwoLineText,
 } from "./types";
+export { ColumnDragGrip } from "./ColumnDragGrip";
 export {
   useColumnOrder,
   type UseColumnOrderOptions,

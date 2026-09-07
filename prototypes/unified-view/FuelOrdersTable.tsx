@@ -39,6 +39,7 @@ import type {
   TwoLine as TwoLineData,
 } from "./types";
 import {
+  ColumnDragGrip,
   GroupHeaderRow,
   useColumnOrder,
   type GroupNode,
@@ -471,6 +472,9 @@ export function FuelOrdersTable({
                     "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
+                  {/* The sign that this header moves — revealed on the divider
+                      only. See `ColumnDragGrip`. */}
+                  {!FIXED_COLUMNS.includes(col.key) && <ColumnDragGrip />}
                   {col.key === "select" ? (
                     <Checkbox
                       checked={headerState}

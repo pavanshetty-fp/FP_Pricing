@@ -59,7 +59,10 @@ export type BrokerStatus =
      with a badge rather than getting a lane of its own. A lane per outcome of
      one step is how a board grows past being readable. */
   | "Partial Accounting Synced"
-  | "Accounting Synced";
+  | "Accounting Synced"
+  /* THE TERMINAL EXIT. Not a stage of the work — a way out of it — which is
+     why it is last in the lane order rather than in sequence with the rest. */
+  | "Cancelled";
 
 /** Lane / tab order. The board renders lanes in exactly this sequence. */
 export const BROKER_STATUSES: BrokerStatus[] = [
@@ -70,6 +73,7 @@ export const BROKER_STATUSES: BrokerStatus[] = [
   "Completed",
   "Accounting Sync Ready",
   "Accounting Synced",
+  "Cancelled",
 ];
 
 /** What the dashboard's filter tabs split on (§5.2). NOT the Order Type field. */
@@ -244,6 +248,25 @@ export interface VendorQuote {
   lines: QuoteLine[];
 }
 
+/**
+ * ONE SAVE, ONE ENTRY.
+ *
+ * The unit of the trail is the SESSION, not the keystroke: someone opens an
+ * order, changes four things and presses Save, and what happened is one edit
+ * with four parts. A row per field would bury the shape of the change under
+ * its pieces, and the timestamp would be a lie in three of the four rows — the
+ * time recorded is the time it was SAVED, because that is the moment anything
+ * became true.
+ */
+export interface AuditEntry {
+  /** ISO instant of the save. */
+  at: string;
+  /** Who saved it. */
+  by: string;
+  /** One line per thing that changed, already in words. */
+  changes: string[];
+}
+
 export interface BrokerOrder {
   id: string;
   /** "D-104882" or "M-104883" — the prefix is derived from `kind`, never typed. */
@@ -286,6 +309,8 @@ export interface BrokerOrder {
   state: string;
   createdBy: string;
   tags: string[];
+  /** Every save that changed something, newest last. */
+  audit: AuditEntry[];
   /** Set only on a recurring order. `null` on every other kind. */
   recurrence: { fromDateKey: string; frequency: string } | null;
   /**
@@ -354,6 +379,69 @@ export function isOrderReady(r: BrokerOrder): boolean {
   );
 }
 
+/**
+ * WHAT CHANGED, IN WORDS — the diff that becomes one audit entry.
+ *
+ * It reads fields, not objects, and it says the OLD value as well as the new
+ * one: "Status Assigned -> Accepted" answers the question the trail is opened
+ * to answer, where "Status changed" only proves someone was here. Fields
+ * nobody would ask about later are left out on purpose — a trail that logs
+ * everything is one nobody reads.
+ */
+export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
+  const out: string[] = [];
+  const say = (label: string, from: unknown, to: unknown) => {
+    if (String(from ?? "") === String(to ?? "")) return;
+    out.push(`${label}: ${from || "—"} → ${to || "—"}`);
+  };
+  say("Status", a.status, b.status);
+  say("Customer", a.customer.title, b.customer.title);
+  say("Ship to", a.shipTo, b.shipTo);
+  say("Planned date", a.date.title, b.date.title);
+  say(
+    "Delivery window",
+    `${a.window.start}–${a.window.end}`,
+    `${b.window.start}–${b.window.end}`
+  );
+  say("Order type", a.orderType, b.orderType);
+  say("PO number", a.poNumber, b.poNumber);
+  say("POC", a.primaryPoc, b.primaryPoc);
+  say("Sales person", a.salesperson, b.salesperson);
+  say("Urgent", a.urgent ? "yes" : "no", b.urgent ? "yes" : "no");
+  say("Tags", a.tags.join(", "), b.tags.join(", "));
+  say("Instructions", a.instructions, b.instructions);
+
+  const names = (ids: string[]) =>
+    ids.filter(Boolean).map((id) => VENDORS.find((v) => v.id === id)?.name ?? id);
+  say("Vendors invited", names(a.invitedVendorIds).join(", "), names(b.invitedVendorIds).join(", "));
+  say("Acknowledged", names(a.acceptedVendorIds).join(", "), names(b.acceptedVendorIds).join(", "));
+  say(
+    "Vendor holding the order",
+    names(a.vendorId ? [a.vendorId] : []).join(""),
+    names(b.vendorId ? [b.vendorId] : []).join("")
+  );
+
+  /* LINES ARE COMPARED AS A WHOLE. "Line 2 gallons 400 -> 500" is precise and
+     unreadable next to a reordered list; the shape of the order is what someone
+     is checking, so the shape is what is written down. */
+  const shape = (r: BrokerOrder) =>
+    r.lines
+      .map((l) => `${l.asset || "?"} ${l.product} ${l.topOff ? "top-off" : `${l.gal ?? 0} gal`}`)
+      .join(" · ");
+  say("Products", shape(a), shape(b));
+
+  const priced = (r: BrokerOrder) =>
+    r.quotes
+      .map((q) => `${VENDORS.find((v) => v.id === q.vendorId)?.name ?? q.vendorId} ${money2(quoteTotal(q, r.lines))}`)
+      .join(" · ");
+  say("Vendor pricing", priced(a), priced(b));
+  say("Customer pricing", money2(customerTotal(a.lines)), money2(customerTotal(b.lines)));
+  return out;
+}
+
+const money2 = (n: number) =>
+  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 /** Gallons a line is priced on — what was delivered if known, else requested. */
 export function billableGal(l: OrderLine): number {
   return l.deliveredGal ?? l.gal ?? 0;
@@ -389,13 +477,16 @@ export function customerTotal(lines: OrderLine[]): number {
 
 export type BrokerColumnKey =
   | "order"
+  | "type"
   | "customer"
   | "shipTo"
   | "date"
   | "window"
+  | "products"
   | "qty"
   | "vendor"
   | "status"
+  | "createdBy"
   | "actions";
 
 export interface BrokerColumnDef {
@@ -409,13 +500,18 @@ export interface BrokerColumnDef {
 /** Widths follow the DS column-frame vocabulary; actions = 44 as everywhere. */
 export const BROKER_COLUMNS: BrokerColumnDef[] = [
   { key: "order", label: "Order #", width: 130, sortable: true },
+  /* The same disc the board card wears, so the type is read the same way in
+     both views rather than as a letter here and a word there. */
+  { key: "type", label: "Type", width: 74 },
   { key: "customer", label: "Customer", width: 230 },
   { key: "shipTo", label: "Ship To", width: 190 },
   { key: "date", label: "Planned Date", width: 165, sortable: true },
   { key: "window", label: "Delivery Window", width: 160 },
+  { key: "products", label: "Products", width: 230 },
   { key: "qty", label: "Qty (Gal)", width: 110, sortable: true, align: "right" },
-  { key: "vendor", label: "Delivery Partner", width: 210 },
+  { key: "vendor", label: "Vendor", width: 210 },
   { key: "status", label: "Status", width: 200, sortable: true },
+  { key: "createdBy", label: "Created By", width: 170 },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -997,6 +1093,18 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
           ? "System — Recurring"
           : CREATED_BY[i % (CREATED_BY.length - 1)],
       tags: pick() < 0.45 ? [ORDER_TAGS[i % ORDER_TAGS.length]] : [],
+      /* THE TRAIL STARTS AT CREATION. An empty history on a record that
+         plainly exists is a history nobody trusts afterwards. */
+      audit: [
+        {
+          at: new Date(when.getTime() - 86_400_000).toISOString(),
+          by:
+            kind === "Recurring"
+              ? "System — Recurring"
+              : CREATED_BY[i % (CREATED_BY.length - 1)],
+          changes: ["Order created"],
+        },
+      ],
       loadOrder: null,
       recurrence:
         kind === "Recurring"
@@ -1036,6 +1144,26 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       if (k % 3 === 0) r.urgent = true;
     });
 
+  /* CANCELLED HAS TO EXIST TO BE SEEN. It is a terminal exit rather than a
+     stage, so it is not in the status rotation the generator walks — without
+     this the lane would ship permanently empty, which teaches nothing about
+     how it behaves. Every eleventh order, from the ones that had not yet
+     reached accounting. */
+  rows.forEach((r, k) => {
+    if (k % 11 !== 4) return;
+    if (r.status.startsWith("Accounting") || r.status === "Completed") return;
+    r.status = "Cancelled";
+    r.blockedReason = null;
+    r.audit = [
+      ...r.audit,
+      {
+        at: new Date(Date.now() - 3_600_000).toISOString(),
+        by: CREATED_BY[k % CREATED_BY.length],
+        changes: ["Status: Assigned → Cancelled", "Cancelled by customer"],
+      },
+    ];
+  });
+
   return rows;
 })();
 
@@ -1046,6 +1174,10 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
 export function assertConsistent(rows: BrokerOrder[]): string[] {
   const problems: string[] = [];
   for (const r of rows) {
+    /* A CANCELLED ORDER IS A SNAPSHOT of whatever it was when it stopped, so
+       the stage rules below do not apply to it — they describe work in
+       progress, and there is none. */
+    if (r.status === "Cancelled") continue;
     if (r.kind === "Movement") {
       if (!r.orderNo.startsWith("M-")) problems.push(`${r.orderNo}: movement order without an M prefix`);
       if (r.orderType !== "Asset Movement") problems.push(`${r.orderNo}: movement order typed ${r.orderType}`);
@@ -1203,7 +1335,7 @@ export const BROKER_SEARCH_FIELDS = [
   { key: "date", label: "Planned Date", text: (r: BrokerOrder) => r.date.title },
   {
     key: "vendor",
-    label: "Delivery Partner",
+    label: "Vendor",
     text: (r: BrokerOrder) => VENDORS.find((v) => v.id === r.vendorId)?.name ?? "",
   },
   { key: "status", label: "Status", text: (r: BrokerOrder) => r.status },
@@ -1240,6 +1372,7 @@ export const BROKER_LANE_COLOR: Record<BrokerStatus, LaneColorName> = {
   "Accounting Sync Ready": "yellow",
   "Partial Accounting Synced": "yellow",
   "Accounting Synced": "purple",
+  Cancelled: "grey",
 };
 
 /** The DS lane palette's key names. Kept as a local type so this data module
@@ -1275,6 +1408,7 @@ export const BROKER_STATUS_TONE: Record<
   "Accounting Sync Ready": "processing",
   "Partial Accounting Synced": "processing",
   "Accounting Synced": "success",
+  Cancelled: "neutral",
 };
 
 /** Half-hour grid for the §5.3 start/end window selects. */

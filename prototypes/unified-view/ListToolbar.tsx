@@ -80,6 +80,13 @@ export interface ListToolbarProps<K extends string> {
   /** Omit entirely on lists that are not date-scoped. */
   dateScope?: { date: Date; onDateChange: (d: Date) => void };
   /**
+   * A DIFFERENT date control, in the same slot. 3PL scopes by a RANGE because a
+   * broker's delivery windows run over weekends and a one-day view of those is
+   * a lane that keeps looking empty — but that is 3PL's answer, not every
+   * list's, so it is supplied rather than switched on. Wins over `dateScope`.
+   */
+  dateControl?: React.ReactNode;
+  /**
    * Grouping. `dimensions` are a property of the list's DATA, so each screen
    * supplies its own; the menu is ordered and capped at two levels.
    */
@@ -141,6 +148,7 @@ export function ListToolbar<K extends string>({
   view,
   onViewChange,
   dateScope,
+  dateControl,
   groupBy,
 }: ListToolbarProps<K>) {
   const colLabel =
@@ -186,12 +194,14 @@ export function ListToolbar<K extends string>({
 
       {/* RIGHT — [date] │ view switch │ column tools */}
       <div className="flex items-center gap-1">
-        {dateScope && (
+        {(dateControl ?? dateScope) && (
           <>
-            <DateFilter
-              value={dateScope.date}
-              onChange={dateScope.onDateChange}
-            />
+            {dateControl ?? (
+              <DateFilter
+                value={dateScope!.date}
+                onChange={dateScope!.onDateChange}
+              />
+            )}
             <div className="mx-1 h-5 w-px bg-border" aria-hidden />
           </>
         )}

@@ -43,7 +43,19 @@ import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   SheetField,
   SheetSection,
@@ -61,7 +73,12 @@ import {
 } from "@/components/form-layout";
 import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
-import { VENDORS, vendorById } from "./vendors";
+import {
+  VENDORS,
+  vendorById,
+  vendorBlockedReason,
+  type BusinessLine,
+} from "./vendors";
 import {
   BROKER_STATUS_TONE,
   HUBS,
@@ -468,6 +485,16 @@ function emptyDraft(): BrokerOrderDraft {
   };
 }
 
+/** The trail's clock: the day and the minute, which is the grain anyone asks
+ *  a history in. Seconds would be precision nobody uses. */
+const AUDIT_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 /** Currency, one way. Three decimals only where a per-gallon rate needs them. */
 const money = (n: number, dp = 2) =>
   `$${n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp })}`;
@@ -659,9 +686,19 @@ export function BrokerOrderSheet({
    * carrier whose only line is Asset Movement.
    */
   const requiredLine = isMovement ? "Asset Movement" : "Bulk Fuel";
-  const eligible = VENDORS.filter((v) =>
-    v.businessLines.some((b) => b === requiredLine)
-  );
+  /* ELIGIBILITY IS A RULE, NOT A LIST. Active, compliant on the delivery date,
+     running the right line of business, and serving the state it ships to —
+     `vendorBlockedReason` owns all four and returns the reason, so the picker
+     can say WHY somebody is missing instead of simply not offering them. */
+  const orderContext = {
+    businessLine: requiredLine as BusinessLine,
+    state: site?.state ?? "",
+    on: draft.plannedDate ?? new Date(),
+  };
+  const blockedReasonFor = (v: (typeof VENDORS)[number]) =>
+    vendorBlockedReason(v, orderContext);
+  const eligible = VENDORS.filter((v) => blockedReasonFor(v) === null);
+  const ineligible = VENDORS.filter((v) => blockedReasonFor(v) !== null);
   /* THE PARTNER TABLE'S ROWS. `invitedVendorIds` doubles as the row list, with
      `""` standing for a row that exists but has not been filled in yet — the
      same shape the Delivery Order uses for a blank asset line. It keeps "what
@@ -669,8 +706,20 @@ export function BrokerOrderSheet({
      disagree. */
   const partnerRows = draft.invitedVendorIds;
   const invitedIds = partnerRows.filter(Boolean);
-  /** Only what can still be added — an invited partner is not an option. */
+  /** Only what can still be added — an invited vendor is not an option. */
   const uninvited = eligible.filter((v) => !invitedIds.includes(v.id));
+  /* WHY THE LIST IS SHORT. A picker that quietly omits half the vendors is one
+     people work around by ringing somebody; listed with their reason, the
+     omission is an answer. */
+  const ineligibleNote =
+    ineligible.length > 0
+      ? `${ineligible.length} vendor${ineligible.length === 1 ? "" : "s"} not offered: ` +
+        ineligible
+          .slice(0, 4)
+          .map((v) => `${v.name} (${blockedReasonFor(v)})`)
+          .join("; ") +
+        (ineligible.length > 4 ? "…" : "")
+      : null;
 
   /* ── Workflow transitions. Each one moves the status AND the vendor fields
         together, so the pair cannot end up contradicting itself. ─────────── */
@@ -729,6 +778,12 @@ export function BrokerOrderSheet({
       if (real.length === 0) return d;
       const next = [...d.acceptedVendorIds];
       for (const id of real) if (!next.includes(id)) next.push(id);
+      toast.success(
+        real.length === 1
+          ? `${vendorById(real[0])?.name ?? "Vendor"} acknowledged`
+          : `${real.length} vendors acknowledged`,
+        { description: "Moved to Accepted." }
+      );
       return { ...d, acceptedVendorIds: next, status: "Accepted" };
     });
 
@@ -737,7 +792,13 @@ export function BrokerOrderSheet({
      nothing left to agree, so the order is done as a piece of paperwork
      whatever the truck is doing. */
   const acceptFor = (vendorId: string) =>
-    setDraft((d) =>
+    setDraft((d) => {
+      if (d && d.status !== "Completed") {
+        toast.success(`Quote accepted — ${vendorById(vendorId)?.name}`, {
+          description: "Pricing is settled. Moved to Completed.",
+        });
+      }
+      return (
       d
         ? {
             ...d,
@@ -748,11 +809,39 @@ export function BrokerOrderSheet({
               : [...d.acceptedVendorIds, vendorId],
           }
         : d
-    );
+      );
+    });
+
+  /* THE TERMINAL EXIT. Available from any live stage and from none of the dead
+     ones — an order already cancelled or already through accounting has nothing
+     left to cancel. It is confirmed because it cannot be walked back here. */
+  const cancellable =
+    draft.status !== "Cancelled" &&
+    draft.status !== "Accounting Synced" &&
+    !creating;
+  const cancelOrder = () =>
+    setDraft((d) => {
+      if (!d) return d;
+      toast.success(`${order?.orderNo ?? "Order"} cancelled`, {
+        description: "It leaves the working lanes. Save to keep the change.",
+      });
+      return { ...d, status: "Cancelled" };
+    });
 
   /** Draft -> Assigned. The moment the invitations actually go out. */
   const sendInvitations = () =>
-    setDraft((d) => (d ? { ...d, status: "Assigned" } : d));
+    setDraft((d) => {
+      if (!d) return d;
+      const n = d.invitedVendorIds.filter(Boolean).length;
+      /* SAY IT OUT LOUD. Sending is the first act on this order that reaches
+         somebody outside the building; a status chip quietly changing three
+         sections up is not an acknowledgement that it happened. */
+      toast.success(
+        `Invitation sent to ${n} ${n === 1 ? "vendor" : "vendors"}`,
+        { description: "Waiting on acknowledgement." }
+      );
+      return { ...d, status: "Assigned" };
+    });
 
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
      It also opens step 2, because the numbers are the reason anyone does this
@@ -763,7 +852,11 @@ export function BrokerOrderSheet({
     setStep("pricing");
   };
   const advance = (status: BrokerStatus) =>
-    setDraft((d) => (d ? { ...d, status } : d));
+    setDraft((d) => {
+      if (!d) return d;
+      toast.success(`${order?.orderNo ?? "Order"} → ${status}`);
+      return { ...d, status };
+    });
 
   /* THE TABLE'S SELECTION IS TRANSIENT, and starts empty. Adding a partner is
      not choosing one to act on: the tick is how you say "do something to these
@@ -867,6 +960,7 @@ export function BrokerOrderSheet({
       /* Decisions about the delivery itself, taken at the moment of committing
          — so they stay in view however far the body has scrolled. */
       footerAside={
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
         <FlagRow
           flags={[
             {
@@ -883,6 +977,34 @@ export function BrokerOrderSheet({
             },
           ]}
         />
+        {cancellable && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                Cancel order
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  It leaves the working lanes and moves to Cancelled. Any vendor
+                  already invited is told it has gone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep it</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={cancelOrder}>
+                  Cancel order
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        </div>
       }
       headerAside={
         <div className="flex items-center gap-2">
@@ -1586,15 +1708,19 @@ export function BrokerOrderSheet({
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection
-        title="Delivery Partner"
+        title="Vendor"
         note={
-          <SheetSectionNote label="How inviting partners works">
+          <SheetSectionNote label="How inviting vendors works">
             <p className="text-foreground">
-              Showing partners that run {requiredLine}.
+              Showing vendors that are active, compliant on the delivery date,
+              run {requiredLine}, and serve {site?.state ?? "the ship-to state"}.
             </p>
             <p className="mt-1.5 text-muted-foreground">
               Everyone invited is notified at the same time.
             </p>
+            {ineligibleNote && (
+              <p className="mt-1.5 text-muted-foreground">{ineligibleNote}</p>
+            )}
             <p className="mt-1.5 text-muted-foreground">
               Whoever accepts first takes the order; the rest are told it has
               gone.
@@ -1631,11 +1757,11 @@ export function BrokerOrderSheet({
                         <Checkbox
                           checked={headerChecked}
                           onCheckedChange={(c) => selectAllPartners(c === true)}
-                          aria-label="Select all delivery partners"
+                          aria-label="Select all vendors"
                         />
                       </th>
                       <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Delivery Partner</TableRequiredLabel>
+                        <TableRequiredLabel>Vendor</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Address</TableRequiredLabel>
@@ -1661,7 +1787,7 @@ export function BrokerOrderSheet({
                           colSpan={showQuoteCol ? 7 : 6}
                           className="px-3 text-sm text-muted-foreground"
                         >
-                          No delivery partner yet.
+                          No vendor yet.
                         </td>
                       </tr>
                     ) : (
@@ -1697,9 +1823,9 @@ export function BrokerOrderSheet({
                                   ...(v ? [v.name] : []),
                                   ...uninvited.map((x) => x.name),
                                 ]}
-                                placeholder="Add partner"
+                                placeholder="Add vendor"
                                 disabled={draft.status === "Blocked"}
-                                aria-label={`Delivery partner for row ${i + 1}`}
+                                aria-label={`Vendor for row ${i + 1}`}
                                 /* NO REACHABILITY TAG. "Emails off" and "Link
                                    only" described how the invitation would
                                    travel, which is the vendor record's business
@@ -1778,7 +1904,7 @@ export function BrokerOrderSheet({
                                     onSelect={() => removePartnerRows([i])}
                                   >
                                     <ThumbsDown />
-                                    Remove delivery partner
+                                    Remove vendor
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1797,7 +1923,7 @@ export function BrokerOrderSheet({
                 onClick={addPartnerRow}
                 className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
               >
-                <Plus className="size-4" /> Add partner
+                <Plus className="size-4" /> Add vendor
               </button>
             </div>
 
@@ -1822,7 +1948,7 @@ export function BrokerOrderSheet({
                 </Button>
                 <span className="text-xs text-muted-foreground">
                   {invitedIds.length === 1
-                    ? "Asks this partner to take the order."
+                    ? "Asks this vendor to take the order."
                     : "All of them are asked at once."}
                 </span>
               </div>
@@ -1873,7 +1999,7 @@ export function BrokerOrderSheet({
             <div className="flex justify-center">
               <BulkActionBar
                 count={selectedRows.length}
-                noun="partner"
+                noun="vendor"
                 onClear={() => selectAllPartners(false)}
                 actions={[
                   {
@@ -1892,7 +2018,7 @@ export function BrokerOrderSheet({
                   },
                   {
                     key: "remove",
-                    label: "Remove delivery partner",
+                    label: "Remove vendor",
                     icon: <ThumbsDown />,
                     destructive: true,
                     onSelect: () => removePartnerRows(selectedRows),
@@ -1952,6 +2078,37 @@ export function BrokerOrderSheet({
         }}
         onSave={(summary) => set("customRecurrence", summary)}
       />
+
+      {/* ── ACTIVITY ────────────────────────────────────────────────────────
+          Last, because it is the answer to a question asked after the fact.
+          NEWEST FIRST: the trail is opened to find out what just happened far
+          more often than to read the record's whole life. */}
+      {order && order.audit.length > 0 && (
+        <SheetSection title="Activity">
+          <ol className="flex flex-col gap-3">
+            {[...order.audit].reverse().map((e, i) => (
+              <li
+                key={`${e.at}-${i}`}
+                className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3"
+              >
+                <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                  <span className="font-medium text-foreground">{e.by}</span>
+                  <span className="text-muted-foreground">
+                    {AUDIT_FMT.format(new Date(e.at))}
+                  </span>
+                </span>
+                {/* ONE LINE PER THING THAT CHANGED, old value and new. "Status
+                    changed" only proves somebody was here. */}
+                {e.changes.map((c) => (
+                  <span key={c} className="text-sm text-foreground">
+                    {c}
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ol>
+        </SheetSection>
+      )}
 
       <SheetSection title="Additional Details">
         <SheetField label="Upload Supporting Image">
@@ -2020,7 +2177,7 @@ export function BrokerOrderSheet({
                               ? "Priced"
                               : "Not priced",
                     }))}
-                    searchPlaceholder="Search partners…"
+                    searchPlaceholder="Search vendors…"
                   />
                   </span>
                 ) : (

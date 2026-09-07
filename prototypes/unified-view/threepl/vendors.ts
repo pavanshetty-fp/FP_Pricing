@@ -38,6 +38,16 @@ export interface Vendor {
   /** Has an account on the vendor app. Optional per the vendor flow — a vendor
    *  can acknowledge from the emailed public link with no login at all. */
   hasAccount: boolean;
+  /* ── ELIGIBILITY. A vendor is offered for an order only if all of these hold.
+     They are separate fields rather than one `eligible` flag because the picker
+     has to say WHICH rule stopped a vendor: "not offered" is the answer people
+     escalate, "compliance expired on 12 Aug" is the answer they act on. ──── */
+  /** Deactivated vendors keep their history and take no new work. */
+  active: boolean;
+  /** States the vendor will run into. An order ships to exactly one. */
+  serviceStates: string[];
+  /** Insurance and authority, as `YYYY-MM-DD`. Past this, no new assignments. */
+  complianceValidTo: string;
 }
 
 export const VENDORS: Vendor[] = [
@@ -50,6 +60,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 12,
     emailsEnabled: true,
     hasAccount: true,
+    active: true,
+    serviceStates: ["California", "Arizona"],
+    complianceValidTo: "2027-01-15",
   },
   {
     id: "vd-2",
@@ -60,6 +73,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 24,
     emailsEnabled: true,
     hasAccount: true,
+    active: false,
+    serviceStates: ["California"],
+    complianceValidTo: "2026-11-30",
   },
   {
     id: "vd-3",
@@ -70,6 +86,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 31,
     emailsEnabled: true,
     hasAccount: false,
+    active: true,
+    serviceStates: ["California"],
+    complianceValidTo: "2026-06-30",
   },
   {
     id: "vd-4",
@@ -80,6 +99,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 41,
     emailsEnabled: false,
     hasAccount: true,
+    active: true,
+    serviceStates: ["California", "Oregon", "Nevada"],
+    complianceValidTo: "2027-09-01",
   },
   {
     id: "vd-5",
@@ -90,6 +112,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 55,
     emailsEnabled: true,
     hasAccount: true,
+    active: true,
+    serviceStates: ["California", "Texas"],
+    complianceValidTo: "2027-03-20",
   },
   {
     id: "vd-6",
@@ -100,6 +125,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 68,
     emailsEnabled: true,
     hasAccount: true,
+    active: true,
+    serviceStates: ["California"],
+    complianceValidTo: "2027-07-11",
   },
   {
     id: "vd-7",
@@ -110,6 +138,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 19,
     emailsEnabled: true,
     hasAccount: false,
+    active: true,
+    serviceStates: ["California", "Oregon"],
+    complianceValidTo: "2027-02-28",
   },
   {
     id: "vd-8",
@@ -120,6 +151,9 @@ export const VENDORS: Vendor[] = [
     distanceMi: 77,
     emailsEnabled: true,
     hasAccount: true,
+    active: true,
+    serviceStates: ["California"],
+    complianceValidTo: "2027-05-22",
   },
 ];
 
@@ -127,6 +161,34 @@ export const vendorById = (id: string | null) =>
   id ? (VENDORS.find((v) => v.id === id) ?? null) : null;
 
 export const vendorName = (id: string | null) => vendorById(id)?.name ?? "—";
+
+/**
+ * WHY A VENDOR CANNOT TAKE THIS ORDER — the reason, or null when it can.
+ *
+ * A REASON, NOT A BOOLEAN. "Not offered" is the answer people escalate;
+ * "compliance expired 30 Jun 2026" is the answer they act on, and it is the
+ * same sentence whether it is read by the person picking or by the person they
+ * ring afterwards. The rules are checked in the order they can be fixed in:
+ * a deactivated vendor is somebody's decision, an expired document is a task,
+ * geography and capability are facts about the vendor.
+ */
+export function vendorBlockedReason(
+  v: Vendor,
+  order: { businessLine: BusinessLine; state: string; on: Date }
+): string | null {
+  if (!v.active) return "Deactivated";
+  const [y, m, d] = v.complianceValidTo.split("-").map(Number);
+  if (new Date(y, m - 1, d) < order.on) {
+    return `Compliance expired ${v.complianceValidTo}`;
+  }
+  if (!v.businessLines.some((b) => b === order.businessLine)) {
+    return `Does not run ${order.businessLine}`;
+  }
+  if (!v.serviceStates.includes(order.state)) {
+    return `Does not serve ${order.state}`;
+  }
+  return null;
+}
 
 /* ────────────────────────────────────────────────────────────── list view ──
    What the Vendors screen needs on top of the records themselves.

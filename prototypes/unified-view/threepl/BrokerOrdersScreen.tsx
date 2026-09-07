@@ -30,12 +30,14 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
-import type { CodeDiscTone } from "@/components/ui/code-disc";
+import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
   AssetMovementSheet,
   type AssetMovementDraft,
 } from "./AssetMovementSheet";
+import { toast } from "sonner";
+import { DateRangeFilter, type DateRange } from "./DateRangeFilter";
 import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
@@ -53,6 +55,7 @@ import {
   HUBS,
   ORDER_TYPE_FILTERS,
   siteAddress,
+  diffOrder,
   isAllTopOff,
   isOrderReady,
   matchesBrokerOrder,
@@ -178,7 +181,7 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
     {
       kind: "stack",
       key: "partner",
-      heading: "Delivery Partner",
+      heading: "Vendor",
       lines: vendor
         ? [
             { text: vendor.name, level: 1 },
@@ -346,6 +349,8 @@ interface ViewState {
   columnWidths: Record<string, number>;
   pageSize: number;
   dateKey: string;
+  /** The other end of the window. Absent on views saved before ranges. */
+  dateKeyTo?: string;
   colScope: string;
   colQuery: string;
   /** Selected filter facets, as `facetKey:option`. Was `kind` when the order
@@ -376,7 +381,12 @@ export function BrokerOrdersScreen({
      order does not mention, so a stale view never costs a column. */
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
-  const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  /* A RANGE, not a day — see `DateRangeFilter`. It opens on today, so nothing
+     changes for someone who only ever works one day at a time. */
+  const [range, setRange] = React.useState<DateRange>(() => {
+    const today = startOfDay(new Date());
+    return { from: today, to: today };
+  });
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   // Board-first, per §5.2. This is the one list in the prototype that does not
@@ -398,7 +408,8 @@ export function BrokerOrdersScreen({
     columnOrder,
     columnWidths,
     pageSize,
-    dateKey: dateKeyOf(date),
+    dateKey: dateKeyOf(range.from),
+    dateKeyTo: dateKeyOf(range.to),
     colScope,
     colQuery,
     facets: [...facetSel].sort(),
@@ -413,6 +424,7 @@ export function BrokerOrdersScreen({
       columnWidths: {},
       pageSize: 25,
       dateKey: dateKeyOf(startOfDay(new Date())),
+      dateKeyTo: dateKeyOf(startOfDay(new Date())),
       colScope: "customer",
       colQuery: "",
       facets: [],
@@ -432,7 +444,10 @@ export function BrokerOrdersScreen({
     setColumnWidths(s.columnWidths ?? {});
     setPageSize(s.pageSize);
     const [y, m, d] = s.dateKey.split("-").map(Number);
-    setDate(new Date(y, m - 1, d));
+    const from = new Date(y, m - 1, d);
+    /* A view saved before ranges existed has one date; one date is a range. */
+    const [ty, tm, td] = (s.dateKeyTo ?? s.dateKey).split("-").map(Number);
+    setRange({ from, to: new Date(ty, tm - 1, td) });
     setColScope(s.colScope);
     setColQuery(s.colQuery);
     setFacetSel(new Set(s.facets ?? []));
@@ -452,8 +467,12 @@ export function BrokerOrdersScreen({
   const cq = colQuery.trim().toLowerCase();
 
   const onDate = React.useMemo(
-    () => rows.filter((r) => r.dateKey === dateKeyOf(date)),
-    [rows, date]
+    () => {
+      const from = dateKeyOf(range.from);
+      const to = dateKeyOf(range.to);
+      return rows.filter((r) => r.dateKey >= from && r.dateKey <= to);
+    },
+    [rows, range]
   );
   /** Tab counts are computed BEFORE the kind filter, so each tab can show how
    *  many rows it holds rather than only the active one being non-zero. */
@@ -582,12 +601,9 @@ export function BrokerOrdersScreen({
      able to reach a site nobody has ordered to yet. */
   const shipTos = React.useMemo(() => SHIP_TO_SITES.map((x) => x.name), []);
 
-  const saveOrder = (order: BrokerOrder, draft: BrokerOrderDraft) =>
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id !== order.id
-          ? r
-          : {
+  /** The draft's fields, folded onto the stored order. Pure, so the save can
+   *  diff the before and after without running the mapping twice. */
+  const applyDraft = (r: BrokerOrder, draft: BrokerOrderDraft): BrokerOrder => ({
               ...r,
               customer: { title: draft.customer, description: draft.erpId },
               shipTo: draft.shipTo,
@@ -624,13 +640,41 @@ export function BrokerOrdersScreen({
                     dateKey: dateKeyOf(draft.plannedDate),
                   }
                 : {}),
-            }
-      )
-    );
+});
+
+  /** Save, then write what the save changed and say so out loud. */
+  const saveOrderAndAudit = (order: BrokerOrder, draft: BrokerOrderDraft) => {
+    setRows((prev) => {
+      const saved = prev.map((r) => (r.id === order.id ? applyDraft(r, draft) : r));
+      const before = prev.find((r) => r.id === order.id);
+      const after = saved.find((r) => r.id === order.id);
+      if (!before || !after) return saved;
+      const changes = diffOrder(before, after);
+      if (changes.length === 0) return saved;
+      const entry = {
+        at: new Date().toISOString(),
+        by: "Dana Whitfield",
+        changes,
+      };
+      /* THE MOVE IS THE HEADLINE. Four edits and a lane change is, to anyone
+         watching the board, a lane change — so that is what the toast says,
+         and the rest is a count. */
+      const moved = changes.find((c: string) => c.startsWith("Status:"));
+      toast.success(moved ? moved.replace("Status: ", `${after.orderNo}: `) : `${after.orderNo} updated`, {
+        description:
+          changes.length > 1
+            ? `${changes.length} changes saved`
+            : undefined,
+      });
+      return saved.map((r) =>
+        r.id === order.id ? { ...r, audit: [...r.audit, entry] } : r
+      );
+    });
+  };
 
   /** New orders continue the D- series in steps of 7, as the seeds do. */
   const createOrder = (draft: BrokerOrderDraft) => {
-    const when = draft.plannedDate ?? date;
+    const when = draft.plannedDate ?? range.from;
     const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
     const nextNo =
       Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
@@ -658,6 +702,13 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
         quotes: [],
+        audit: [
+          {
+            at: new Date().toISOString(),
+            by: "Dana Whitfield",
+            changes: ["Order created"],
+          },
+        ],
         urgent: draft.urgent,
         signatureOnDelivery: draft.signatureOnDelivery,
         poNumber: draft.poNumber,
@@ -702,7 +753,7 @@ export function BrokerOrdersScreen({
      carries exactly one asset, no quantity, and an M prefix that `orders.ts`
      asserts on. `assertConsistent` fails the build if any of that drifts. */
   const createMovement = (draft: AssetMovementDraft) => {
-    const when = draft.plannedDate ?? date;
+    const when = draft.plannedDate ?? range.from;
     const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
     const nextNo = Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
     const offset = Math.round(
@@ -746,6 +797,13 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: [],
         quoteRequested: false,
         quotes: [],
+        audit: [
+          {
+            at: new Date().toISOString(),
+            by: "Dana Whitfield",
+            changes: ["Order created"],
+          },
+        ],
         urgent: draft.urgent,
         signatureOnDelivery: draft.signature,
         poNumber: draft.poNumber,
@@ -789,6 +847,10 @@ export function BrokerOrdersScreen({
             )}
           </div>
         );
+      case "type": {
+        const c = laneCardCode(row);
+        return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
+      }
       case "customer":
         return <TwoLineCell {...row.customer} />;
       case "shipTo":
@@ -805,6 +867,26 @@ export function BrokerOrdersScreen({
         return (
           <span className="text-sm tabular-nums text-foreground">
             {isAllTopOff(row.lines) ? "Top-off" : totalGal(row.lines).toLocaleString()}
+          </span>
+        );
+      /* PRODUCTS, NOT PRODUCT. An order carries several and the list is what
+         someone scans to find the one they are thinking of; the count carries
+         the rest rather than a name that happens to be first. */
+      case "products": {
+        const names = [...new Set(row.lines.map((l) => l.product))];
+        return (
+          <span className="truncate text-sm text-foreground" title={names.join(", ")}>
+            {names[0] ?? "—"}
+            {names.length > 1 && (
+              <span className="text-muted-foreground"> +{names.length - 1}</span>
+            )}
+          </span>
+        );
+      }
+      case "createdBy":
+        return (
+          <span className="truncate text-sm text-muted-foreground">
+            {row.createdBy}
           </span>
         );
       case "vendor":
@@ -832,6 +914,12 @@ export function BrokerOrdersScreen({
     }
   };
 
+  /* THE WINDOW, IN WORDS. One day reads as a date; a range reads as a range. */
+  const rangeLabel =
+    dateKeyOf(range.from) === dateKeyOf(range.to)
+      ? formatFullDate(range.from)
+      : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`;
+
   const emptyBody = (
     <Empty className="h-full">
       <EmptyHeader>
@@ -839,8 +927,8 @@ export function BrokerOrdersScreen({
         <EmptyTitle>{q ? "No matching orders" : "Nothing planned"}</EmptyTitle>
         <EmptyDescription>
           {q
-            ? `No 3PL orders on ${formatFullDate(date)} match “${search.trim()}”.`
-            : `No 3PL orders are planned for ${formatFullDate(date)}.`}
+            ? `No 3PL orders in ${rangeLabel} match “${search.trim()}”.`
+            : `No 3PL orders are planned for ${rangeLabel}.`}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -849,7 +937,10 @@ export function BrokerOrdersScreen({
           size="sm"
           onClick={() => {
             if (q) setSearch("");
-            else setDate(startOfDay(new Date()));
+            else {
+              const today = startOfDay(new Date());
+              setRange({ from: today, to: today });
+            }
             setPage(1);
           }}
         >
@@ -1016,13 +1107,15 @@ export function BrokerOrdersScreen({
           }}
           view={view}
           onViewChange={setView}
-          dateScope={{
-            date,
-            onDateChange: (d) => {
-              setDate(d);
-              setPage(1);
-            },
-          }}
+          dateControl={
+            <DateRangeFilter
+              value={range}
+              onChange={(next) => {
+                setRange(next);
+                setPage(1);
+              }}
+            />
+          }
         />
         <ColumnSearchChip
           searchFields={BROKER_SEARCH_FIELDS}
@@ -1082,7 +1175,7 @@ export function BrokerOrdersScreen({
           setCreating(false);
           setOpenId(null);
         }}
-        onSave={saveOrder}
+        onSave={saveOrderAndAudit}
         onCreate={createOrder}
         customers={customers}
         shipTos={shipTos}
@@ -1104,8 +1197,24 @@ export function BrokerOrdersScreen({
         />
       )}
 
-      {/* The board is not a paged list, so a "Showing 1–25 of 54" footer under it
-          would be describing something that isn't on screen. */}
+      {/* THE BOARD GETS A TOTAL INSTEAD OF PAGINATION. It is not a paged list,
+          so "Showing 1–25 of 54" would describe something that is not on screen
+          — but the lane counts have to add up to something, and until now there
+          was nothing to add them up to. It states the window as well, because a
+          total with no scope is a number you cannot check. */}
+      {view === "board" && sorted.length > 0 && (
+        <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
+          <span className="font-medium text-foreground">
+            {sorted.length.toLocaleString()}{" "}
+            {sorted.length === 1 ? "order" : "orders"}
+          </span>
+          <span className="text-muted-foreground">
+            across {lanes.filter((l) => l.cards.length > 0).length} of{" "}
+            {lanes.length} lanes · {rangeLabel}
+          </span>
+        </div>
+      )}
+
       <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
         <TablePagination
           className="h-9"

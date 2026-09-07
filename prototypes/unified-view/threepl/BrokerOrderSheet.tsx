@@ -84,6 +84,8 @@ import {
   customerLineTotal,
   totalGal,
   type BrokerOrder,
+  type VendorQuote,
+  type QuoteLine,
   type BrokerOrderType,
   type BrokerStatus,
   type OrderLine,
@@ -355,6 +357,13 @@ export interface BrokerOrderDraft {
   invitedVendorIds: string[];
   /** Partners that accepted the invitation — see `BrokerOrder`. */
   acceptedVendorIds: string[];
+  /**
+   * The partners' prices. ON THE DRAFT because step 2 lets them be TYPED: a
+   * partner that gave its price on the phone still has a price, and an order
+   * that could only hold a quote the partner had entered itself would have
+   * nowhere to put it.
+   */
+  quotes: VendorQuote[];
   quoteRequested: boolean;
   /**
    * Which INVITED partners are being asked for a price. Selection, not the
@@ -410,6 +419,8 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
     acceptedVendorIds: [...o.acceptedVendorIds],
+    // Copied deeply — editing a quote line must not mutate the row behind it.
+    quotes: o.quotes.map((q) => ({ ...q, lines: q.lines.map((l) => ({ ...l })) })),
     quoteRequested: o.quoteRequested,
     primaryPoc: o.primaryPoc,
     salesperson: o.salesperson,
@@ -449,6 +460,7 @@ function emptyDraft(): BrokerOrderDraft {
     vendorId: null,
     invitedVendorIds: [],
     acceptedVendorIds: [],
+    quotes: [],
     quoteRequested: false,
     primaryPoc: "",
     salesperson: "",
@@ -643,7 +655,7 @@ export function BrokerOrderSheet({
 
   const isMovement = order?.kind === "Movement";
   const gal = totalGal(draft.lines);
-  const quotes = order?.quotes ?? [];
+  const quotes = draft.quotes;
 
   /**
    * The picker offers only partners that run the line of business this order
@@ -750,14 +762,62 @@ export function BrokerOrderSheet({
      at which the order has a partner and more invitations mean nothing. */
   const accepted = Boolean(draft.vendorId);
 
-  const shownQuote =
-    quotes.find((q) => q.vendorId === shownQuoteId) ??
-    /* Default to the one that HOLDS the order, else the first in. Not the
-       cheapest: ranking them for the reader is deciding for them. */
-    quotes.find((q) => q.vendorId === draft.vendorId) ??
-    quotes[0];
+  /* TYPING INTO AN EMPTY QUOTE CREATES IT. A partner that has accepted but not
+     priced still has a row to fill in — the broker takes the price off a call
+     and types it — so the first keystroke makes the quote and the line it lands
+     on rather than requiring an "add quote" step first. */
+  const setQuoteLine = (vendorId: string, asset: string, patch: Partial<QuoteLine>) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const blank = (a: string): QuoteLine => ({
+        asset: a,
+        pricePerGal: 0,
+        tax: 0,
+        fees: 0,
+        deliveryFees: 0,
+      });
+      const has = d.quotes.some((q) => q.vendorId === vendorId);
+      const quotes = has
+        ? d.quotes
+        : [...d.quotes, { vendorId, lines: [] as QuoteLine[] }];
+      return {
+        ...d,
+        quotes: quotes.map((q) =>
+          q.vendorId !== vendorId
+            ? q
+            : {
+                ...q,
+                lines: q.lines.some((l) => l.asset === asset)
+                  ? q.lines.map((l) => (l.asset === asset ? { ...l, ...patch } : l))
+                  : [...q.lines, { ...blank(asset), ...patch }],
+              }
+        ),
+      };
+    });
+
+  /* EVERY PARTNER THAT ACCEPTED gets a row, priced or not — the table is the
+     list of who could take this order, and a partner missing from it because it
+     has not sent numbers yet is a partner you cannot enter numbers for. */
+  const quotingPartners = draft.acceptedVendorIds;
+  /* WHICH PARTNER'S SHEET IS OPEN. Defaults to the one that HOLDS the order,
+     else the first that accepted — not the cheapest, because ranking them for
+     the reader is deciding for them. */
+  const shownVendorId =
+    (shownQuoteId && quotingPartners.includes(shownQuoteId) ? shownQuoteId : null) ??
+    (draft.vendorId && quotingPartners.includes(draft.vendorId)
+      ? draft.vendorId
+      : null) ??
+    quotingPartners[0] ??
+    null;
+  const shownQuote = quotes.find((q) => q.vendorId === shownVendorId);
+  const quoteOf = (vendorId: string) => quotes.find((q) => q.vendorId === vendorId);
+  const costOf = (vendorId: string) => {
+    const q = quoteOf(vendorId);
+    return q ? quoteTotal(q, draft.lines) : 0;
+  };
   const revenue = customerTotal(draft.lines);
-  const shownMargin = shownQuote ? revenue - quoteTotal(shownQuote, draft.lines) : 0;
+  const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
+  const shownMargin = revenue - shownCost;
   const canSubmit =
     draft.customer.trim() !== "" &&
     draft.shipTo.trim() !== "" &&
@@ -806,11 +866,14 @@ export function BrokerOrderSheet({
         if (creating) onCreate?.(draft);
         else if (order) onSave(order, draft);
       }}
-      /* THE STRIP ONLY EXISTS WHEN THE SECOND STEP DOES. A permanent "2" that
-         is never reachable is a promise the sheet does not keep; on an order
-         nobody has quoted there is one step, so there is no strip. */
+      /* THE STRIP EXISTS ONCE A PARTNER HAS ACCEPTED, not once one has priced.
+         Pricing is work the broker can do — off a phone call, or ahead of the
+         partner — and gating the step on the partner's numbers arriving would
+         make the sheet refuse to hold a price it is perfectly able to take.
+         Before anyone accepts there is nothing to price against, so there is
+         one step and no strip. */
       steps={
-        quotes.length > 0 ? (
+        quotingPartners.length > 0 ? (
           <SheetSteps
             value={step}
             onValueChange={(v: string) => setStep(v as "order" | "pricing")}
@@ -1914,28 +1977,29 @@ export function BrokerOrderSheet({
                   </tr>
                 </thead>
                 <tbody>
-                  {quotes.map((q) => {
-                    const v = vendorById(q.vendorId);
-                    const cost = quoteTotal(q, draft.lines);
+                  {quotingPartners.map((vid) => {
+                    const v = vendorById(vid);
+                    const q = quoteOf(vid);
+                    const cost = costOf(vid);
                     const margin = revenue - cost;
-                    const held = draft.vendorId === q.vendorId;
+                    const held = draft.vendorId === vid;
                     return (
                       <tr
-                        key={q.vendorId}
+                        key={vid}
                         className={cn(
                           "h-12 cursor-pointer border-b border-border transition-colors last:border-b-0",
-                          shownQuoteId === q.vendorId ? "bg-fp-surface-1a" : "hover:bg-accent"
+                          shownVendorId === vid ? "bg-fp-surface-1a" : "hover:bg-accent"
                         )}
-                        onClick={() => setShownQuote(q.vendorId)}
+                        onClick={() => setShownQuote(vid)}
                       >
                         <td className="px-3">
-                          {/* WHICH QUOTE YOU ARE READING is a radio, because the
-                              detail table below can only show one at a time. */}
+                          {/* WHICH PARTNER'S SHEET IS OPEN is a radio, because
+                              the table below can only show one at a time. */}
                           <input
                             type="radio"
                             name="shown-quote"
-                            checked={shownQuoteId === q.vendorId}
-                            onChange={() => setShownQuote(q.vendorId)}
+                            checked={shownVendorId === vid}
+                            onChange={() => setShownQuote(vid)}
                             aria-label={`Show ${v?.name ?? "partner"}'s quote`}
                             className="size-4 accent-primary"
                           />
@@ -1954,7 +2018,14 @@ export function BrokerOrderSheet({
                           {v ? `${v.safetyScore} · ${v.distanceMi} mi` : "—"}
                         </td>
                         <td className="px-3 text-right text-sm tabular-nums text-foreground">
-                          {money(cost)}
+                          {/* NOT PRICED IS NOT ZERO. A partner that has sent
+                              nothing shows so, rather than a $0.00 that would
+                              read as the cheapest quote on the table. */}
+                          {q ? (
+                            money(cost)
+                          ) : (
+                            <span className="text-muted-foreground">Not priced</span>
+                          )}
                         </td>
                         {/* THE NUMBER THE DECISION TURNS ON, and the only place
                             in this sheet where a figure is allowed a colour: a
@@ -1963,10 +2034,10 @@ export function BrokerOrderSheet({
                         <td
                           className={cn(
                             "px-3 text-right text-sm font-medium tabular-nums",
-                            margin < 0 ? "text-destructive" : "text-foreground"
+                            q && margin < 0 ? "text-destructive" : "text-foreground"
                           )}
                         >
-                          {money(margin)}
+                          {q ? money(margin) : <span className="text-muted-foreground">—</span>}
                         </td>
                       </tr>
                     );
@@ -1976,9 +2047,18 @@ export function BrokerOrderSheet({
             </div>
           </SheetSection>
 
-          {shownQuote && (
+          {shownVendorId && (
             <SheetSection
-              title={`What ${vendorById(shownQuote.vendorId)?.name ?? "the partner"} charges`}
+              title={`What ${vendorById(shownVendorId)?.name ?? "the partner"} charges`}
+              note={
+                <SheetSectionNote label="About this quote">
+                  Typed here as well as received. A partner that gave its price
+                  on a call still has a price, and an order that could only hold
+                  numbers the partner entered itself would have nowhere to put
+                  it. Delivered gallons are the exception — they are typed once,
+                  in Customer Pricing below.
+                </SheetSectionNote>
+              }
             >
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full min-w-[720px] table-fixed border-collapse">
@@ -2022,7 +2102,9 @@ export function BrokerOrderSheet({
                   </thead>
                   <tbody>
                     {draft.lines.map((l, i) => {
-                      const ql = shownQuote.lines.find((x) => x.asset === l.asset);
+                      const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
+                      const put = (patch: Partial<QuoteLine>) =>
+                        setQuoteLine(shownVendorId, l.asset, patch);
                       return (
                         <tr key={i} className="h-12 border-b border-border last:border-b-0">
                           <td className="px-3">
@@ -2064,20 +2146,44 @@ export function BrokerOrderSheet({
                           >
                             {billableGal(l).toLocaleString()}
                           </td>
-                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                            {ql ? money(ql.pricePerGal, 3) : "—"}
+                          <td className="relative p-0">
+                            <TableCellInput
+                              value={ql ? String(ql.pricePerGal) : ""}
+                              placeholder="0.000"
+                              numeric
+                              aria-label={`Partner price per gallon for line ${i + 1}`}
+                              onChange={(v) => put({ pricePerGal: num(v) })}
+                            />
                           </td>
-                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                            {ql ? money(ql.tax) : "—"}
+                          <td className="relative p-0">
+                            <TableCellInput
+                              value={ql ? String(ql.tax) : ""}
+                              placeholder="0.00"
+                              numeric
+                              aria-label={`Partner tax for line ${i + 1}`}
+                              onChange={(v) => put({ tax: num(v) })}
+                            />
                           </td>
-                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                            {ql ? money(ql.fees) : "—"}
+                          <td className="relative p-0">
+                            <TableCellInput
+                              value={ql ? String(ql.fees) : ""}
+                              placeholder="0.00"
+                              numeric
+                              aria-label={`Partner fees for line ${i + 1}`}
+                              onChange={(v) => put({ fees: num(v) })}
+                            />
                           </td>
-                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                            {ql ? money(ql.deliveryFees) : "—"}
+                          <td className="relative p-0">
+                            <TableCellInput
+                              value={ql ? String(ql.deliveryFees) : ""}
+                              placeholder="0.00"
+                              numeric
+                              aria-label={`Partner delivery fees for line ${i + 1}`}
+                              onChange={(v) => put({ deliveryFees: num(v) })}
+                            />
                           </td>
                           <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                            {ql ? money(quoteLineTotal(ql, l)) : "—"}
+                            {ql ? money(quoteLineTotal(ql, l)) : money(0)}
                           </td>
                         </tr>
                       );
@@ -2089,7 +2195,7 @@ export function BrokerOrderSheet({
                         Partner total
                       </td>
                       <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                        {money(quoteTotal(shownQuote, draft.lines))}
+                        {money(shownCost)}
                       </td>
                     </tr>
                   </tfoot>
@@ -2212,7 +2318,7 @@ export function BrokerOrderSheet({
               between them, then the button. Accepting is not reversible from
               here, so the number it turns on is stated beside it rather than
               two sections up. */}
-          {shownQuote && (
+          {shownVendorId && (
             <SheetSection title="Accept">
               <div className="flex flex-col gap-3 rounded-md border border-fp-outline-1 bg-fp-surface-1a p-4">
                 <div className="flex items-baseline justify-between gap-4">
@@ -2225,10 +2331,10 @@ export function BrokerOrderSheet({
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
                   <span className="text-sm text-muted-foreground">
-                    {vendorById(shownQuote.vendorId)?.name ?? "Partner"} charges
+                    {vendorById(shownVendorId)?.name ?? "Partner"} charges
                   </span>
                   <span className="text-sm tabular-nums text-foreground">
-                    −{money(quoteTotal(shownQuote, draft.lines))}
+                    −{money(shownCost)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-4 border-t border-dashed border-fp-outline-1 pt-3">
@@ -2249,15 +2355,21 @@ export function BrokerOrderSheet({
                     This order loses money at the pricing above.
                   </p>
                 )}
+                {!shownQuote && (
+                  <p className="text-xs text-muted-foreground">
+                    This partner has not priced the order. Type their charges
+                    above, or accept and settle the price later.
+                  </p>
+                )}
               </div>
-              {draft.vendorId === shownQuote.vendorId ? (
+              {draft.vendorId === shownVendorId ? (
                 <div className="flex items-center gap-2 text-sm text-status-success">
                   <Check className="size-4 shrink-0" />
                   Quote accepted — this partner holds the order.
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <Button onClick={() => acceptFor(shownQuote.vendorId)}>
+                  <Button onClick={() => acceptFor(shownVendorId)}>
                     <Check /> Accept quote
                   </Button>
                   {draft.vendorId && (

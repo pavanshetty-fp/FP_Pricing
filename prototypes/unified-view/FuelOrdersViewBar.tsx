@@ -62,6 +62,8 @@ export interface ViewState {
    * thing. Empty means "as the table declares them".
    */
   columnOrder: string[];
+  /** Reader-set column widths in px, by key. Empty means "as declared". */
+  columnWidths: Record<string, number>;
   pageSize: number;
   /** Delivery date as `YYYY-MM-DD` — views are date-scoped like everything else. */
   dateKey: string;

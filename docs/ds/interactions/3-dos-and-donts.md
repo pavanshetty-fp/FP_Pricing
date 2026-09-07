@@ -48,6 +48,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   from the 40/16 rhythm (`ux/2-rules`).
 - **Don't make hiding a column the only way to move one.** Headers drag, and
   ⌘/Ctrl + ← → moves a focused one (`ux/2-rules`).
+- **Don't hang two gestures off one target.** The divider resizes; the header
+  moves. Different cursors, so the pointer says which before the press
+  (`ux/2-rules`).
 - **Don't confirm an empty removal.** Ask before erasing filled rows; close an
   untouched section without a dialog (`ux/2-rules`).
 - **Don't put a bin on a section heading.** Turning an optional section off is a

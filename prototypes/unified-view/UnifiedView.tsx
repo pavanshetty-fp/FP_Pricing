@@ -286,6 +286,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   /* Empty = the table's declared order. The table fills in anything a saved
      order does not mention, so a stale view never costs a column. */
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   const [date, setDate] = React.useState(() => startOfDay(new Date()));
   // Search-by-column and the view switch — both part of the DS toolbar unit.
   const [colScope, setColScope] = React.useState("customer");
@@ -302,6 +303,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       sortDir: null,
       hidden: [],
       columnOrder: [],
+      columnWidths: {},
       pageSize: 25,
       dateKey: dateKeyOf(startOfDay(new Date())),
       colScope: "customer",
@@ -321,6 +323,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     );
     setHiddenColumns(new Set(st.hidden as FuelOrderColumnKey[]));
     setColumnOrder(st.columnOrder ?? []);
+    setColumnWidths(st.columnWidths ?? {});
     setPageSize(st.pageSize);
     const [y, m, d] = st.dateKey.split("-").map(Number);
     setDate(new Date(y, m - 1, d));
@@ -416,6 +419,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     sortDir: sort?.dir ?? null,
     hidden: [...hiddenColumns],
     columnOrder,
+    columnWidths,
     pageSize,
     dateKey: dateKeyOf(date),
     colScope,
@@ -795,6 +799,8 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
               hidden={g.effectiveHidden}
               columnOrder={columnOrder}
               onReorderColumns={setColumnOrder}
+              columnWidths={columnWidths}
+              onResizeColumns={setColumnWidths}
               onOpenOrder={(row) => setOpenOrderId(row.id)}
             />
           )}

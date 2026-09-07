@@ -942,13 +942,26 @@ columns sit side by side is what makes a comparison possible at a glance, and th
 right pair differs by who is looking — dispatch wants Driver beside Planned Date,
 accounting wants Qty beside Status. Every column header drags, and ⌘/Ctrl + ← →
 moves a focused one a step, because a header that only moves by mouse does not
-move for everyone. **The sign that a header moves lives on the DIVIDER**
-(`ColumnDragGrip`): a grip revealed only while the pointer is on the boundary,
-belonging to the column on its left, the way a spreadsheet's divider does. A mark
-that is always drawn is a mark on every header at once, and a row of eleven grips
-reads as decoration; the divider is where a pointer already goes when someone is
-thinking about the shape of the table. It is the sign, not the handle — the whole
-header stays draggable, so nobody depends on finding it. Two things do NOT move: the leading select box and the
+move for everyone. **Columns also RESIZE** (`useColumnWidths`), and the two
+gestures get different targets and different cursors, because both begin with a
+pointer held on a header and a table that guessed would guess wrong in the way
+that costs most — you meant to widen a column and reordered the table instead.
+
+- **The divider resizes**, `col-resize`, the split every spreadsheet already
+  taught. `ColumnResizeHandle` straddles the boundary and belongs to the column
+  on its left; double-click restores the declared width, ← → nudge it 16px, and
+  64px is the floor. While a divider is held, the reorder hook stands down.
+- **The header body moves**, `cursor-grab`, with `ColumnMoveGrip` fading in over
+  the header's own 12px left padding — so the sign costs the label no room and
+  nothing reflows. It is the sign, not the handle: the whole `<th>` is draggable.
+
+Both marks are drawn only under the pointer. Always on, they would be marks on
+every header at once, and a row of eleven reads as decoration.
+
+A resize watches for its release on the WINDOW as well as on the handle: a
+pointer let go outside the window would otherwise strand the "resizing" flag and
+silently refuse every column drag until reload — one control disabling another is
+the worst kind of bug to find. Two things do NOT move: the leading select box and the
 trailing row-open chevron are the FRAME a row is read inside, not content, and
 the chevron is pinned to the right edge so it survives a sideways scroll —
 neither is draggable and nothing can be dropped past them. The order belongs in

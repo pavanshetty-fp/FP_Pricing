@@ -49,7 +49,13 @@ export type {
   ColumnKey,
   TwoLineText,
 } from "./types";
-export { ColumnDragGrip } from "./ColumnDragGrip";
+export { ColumnResizeHandle, ColumnMoveGrip } from "./ColumnHandles";
+export {
+  useColumnWidths,
+  type UseColumnWidthsOptions,
+  type UseColumnWidthsResult,
+  type ColumnResizeProps,
+} from "./useColumnWidths";
 export {
   useColumnOrder,
   type UseColumnOrderOptions,

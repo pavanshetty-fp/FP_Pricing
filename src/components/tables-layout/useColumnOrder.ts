@@ -28,6 +28,12 @@ export interface UseColumnOrderOptions {
   /** Supply with `onChange` to control the order from outside. */
   value?: string[];
   onChange?: (next: string[]) => void;
+  /**
+   * Asked at the moment a drag would start. Return false to refuse it — the
+   * table uses this to stand down while a pointer is resizing a divider, since
+   * both gestures begin on a header and only one of them can be meant.
+   */
+  canDrag?: () => boolean;
 }
 
 export interface ColumnHeaderDragProps {
@@ -61,6 +67,7 @@ export function useColumnOrder({
   fixed = [],
   value,
   onChange,
+  canDrag,
 }: UseColumnOrderOptions): UseColumnOrderResult {
   const [own, setOwn] = React.useState<string[]>(keys);
   const controlled = value !== undefined;
@@ -135,6 +142,10 @@ export function useColumnOrder({
          looks exactly like one that cannot. */
       title: "Drag to reorder. ⌘/Ctrl + ← → moves it one column.",
       onDragStart: (e) => {
+        if (canDrag && !canDrag()) {
+          e.preventDefault();
+          return;
+        }
         dragRef.current = key;
         setDragging(key);
         e.dataTransfer.effectAllowed = "move";

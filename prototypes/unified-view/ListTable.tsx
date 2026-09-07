@@ -9,9 +9,11 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import {
-  ColumnDragGrip,
+  ColumnMoveGrip,
+  ColumnResizeHandle,
   GroupHeaderRow,
   useColumnOrder,
+  useColumnWidths,
   type GroupNode,
 } from "@/components/tables-layout";
 import {
@@ -80,6 +82,9 @@ export interface ListTableProps<Row, K extends string> {
    */
   columnOrder?: string[];
   onReorderColumns?: (next: string[]) => void;
+  /** Reader-set column widths in px, by key. Same dual-mode as the order. */
+  columnWidths?: Record<string, number>;
+  onResizeColumns?: (next: Record<string, number>) => void;
   /**
    * Grouped render list from `groupRows`. Omitted, the table renders `rows`
    * flat — which is what every ungrouped list does.
@@ -111,15 +116,26 @@ export function ListTable<Row, K extends string>({
   groupUnit = "",
   columnOrder,
   onReorderColumns,
+  columnWidths,
+  onResizeColumns,
 }: ListTableProps<Row, K>) {
   /* THE PINNED CHEVRON IS THE FRAME, not a column: it is how a row is opened
      and it is stuck to the right edge so it survives a sideways scroll. It
      does not move, and nothing can be dropped past it. */
+  /* THE DIVIDER RESIZES, THE HEADER MOVES — and the reorder hook stands down
+     while a divider is held, because both gestures start on a header. */
+  const fixed = React.useMemo(() => [actionsKey], [actionsKey]);
+  const widths = useColumnWidths({
+    fixed,
+    value: columnWidths,
+    onChange: onResizeColumns,
+  });
   const cols = useColumnOrder({
     keys: React.useMemo(() => columns.map((c) => c.key), [columns]),
-    fixed: React.useMemo(() => [actionsKey], [actionsKey]),
+    fixed,
     value: columnOrder,
     onChange: onReorderColumns,
+    canDrag: () => !widths.isResizing(),
   });
   const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key)));
 
@@ -128,7 +144,7 @@ export function ListTable<Row, K extends string>({
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visible.map((c) => (
-            <col key={c.key} style={{ width: `${c.width}px` }} />
+            <col key={c.key} style={{ width: `${widths.widthOf(c)}px` }} />
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
@@ -152,7 +168,7 @@ export function ListTable<Row, K extends string>({
                       : undefined
                   }
                   className={cn(
-                    "relative border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "group/th relative border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
                     col.key === actionsKey && "sticky right-0 z-30",
                     /* The dragged header fades; the one it will land against
@@ -165,9 +181,12 @@ export function ListTable<Row, K extends string>({
                     "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
-                  {/* The sign that this header moves — revealed on the divider
-                      only. See `ColumnDragGrip`. */}
-                  {col.key !== actionsKey && <ColumnDragGrip />}
+                  {/* Two gestures, two targets — see `ColumnHandles`. */}
+                  {col.key !== actionsKey && <ColumnMoveGrip />}
+                  {(() => {
+                    const rp = widths.resizeProps(col);
+                    return rp ? <ColumnResizeHandle {...rp} /> : null;
+                  })()}
                   {col.label && col.sortable ? (
                     <button
                       type="button"

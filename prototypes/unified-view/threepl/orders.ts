@@ -107,6 +107,21 @@ export interface OrderLine {
   topOff: boolean;
   /** The asset belongs to the broker, not the customer — badged on the row. */
   rental?: boolean;
+  /**
+   * What actually went in. Null until the delivery says — and EDITABLE while a
+   * quote is being reviewed, because both sides of the margin are computed from
+   * it and a broker pricing an order is pricing what they expect to deliver,
+   * not what was asked for.
+   */
+  deliveredGal?: number | null;
+  /**
+   * THE BROKER'S OWN NUMBERS, per line — what the customer pays, and the margin
+   * on top. They sit on the ORDER LINE and not on the quote because they are
+   * the broker's, not the partner's: switching which partner takes the order
+   * must not throw away the pricing worked out for the customer.
+   */
+  pricePerGal?: number;
+  marginPerGal?: number;
 }
 
 /**
@@ -202,14 +217,27 @@ export const loadOptions = (
 
 
 /** A vendor's submitted quote (§5.9 / §5.20). Shape follows the order's kind. */
+/**
+ * ONE LINE OF A PARTNER'S QUOTE — what they charge to move this product.
+ *
+ * It mirrors the order line it prices, because a quote that could not be laid
+ * beside the order line by line could not be compared with the customer price
+ * at all, which is the whole reason a broker reads one.
+ */
+export interface QuoteLine {
+  /** Matches an `OrderLine.asset` on the same order. */
+  asset: string;
+  /** Per gallon delivered, before tax and fees. */
+  pricePerGal: number;
+  tax: number;
+  fees: number;
+  deliveryFees: number;
+}
+
 export interface VendorQuote {
   vendorId: string;
-  /** Fuel orders: rate per gallon + a service charge. */
-  ratePerGal?: number;
-  serviceCharge?: number;
-  /** Movement orders: fee + tax instead. Total unit cost = fee + tax. */
-  fee?: number;
-  tax?: number;
+  /** Per order line. Everything else about a quote is derived from these. */
+  lines: QuoteLine[];
 }
 
 export interface BrokerOrder {
@@ -230,10 +258,20 @@ export interface BrokerOrder {
   window: { start: string; end: string };
   lines: OrderLine[];
   status: BrokerStatus;
-  /** The vendor that ACCEPTED. Null until one does. */
+  /**
+   * The partner whose QUOTE THE BROKER ACCEPTED — the one that holds the order.
+   * Null until the broker picks, which is a separate act from a partner saying
+   * yes: a partner accepting an invitation only earns the right to quote.
+   */
   vendorId: string | null;
-  /** Every vendor invited. More than one is normal — first to accept wins. */
+  /** Every vendor invited. More than one is normal. */
   invitedVendorIds: string[];
+  /**
+   * Partners that ACCEPTED THE INVITATION. This is what moves an order out of
+   * Assigned and into Accepted — the first of the two things a partner does.
+   * The second is sharing a quote, which is `quotes` below.
+   */
+  acceptedVendorIds: string[];
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
@@ -294,12 +332,32 @@ export function isAllTopOff(lines: OrderLine[]): boolean {
   return lines.length > 0 && lines.every((l) => l.topOff);
 }
 
-/** Total unit cost of a quote — rate x gallons + charge, or fee + tax. */
-export function quoteTotal(q: VendorQuote, gal: number): number {
-  if (q.fee !== undefined || q.tax !== undefined) {
-    return (q.fee ?? 0) + (q.tax ?? 0);
-  }
-  return (q.ratePerGal ?? 0) * gal + (q.serviceCharge ?? 0);
+/** Gallons a line is priced on — what was delivered if known, else requested. */
+export function billableGal(l: OrderLine): number {
+  return l.deliveredGal ?? l.gal ?? 0;
+}
+
+/** One quote line's cost to the broker: D x A + T + F + delivery fees. */
+export function quoteLineTotal(q: QuoteLine, l: OrderLine): number {
+  return billableGal(l) * q.pricePerGal + q.tax + q.fees + q.deliveryFees;
+}
+
+/** What the partner charges for the whole order. */
+export function quoteTotal(q: VendorQuote, lines: OrderLine[]): number {
+  return q.lines.reduce((sum, ql) => {
+    const l = lines.find((x) => x.asset === ql.asset);
+    return sum + (l ? quoteLineTotal(ql, l) : 0);
+  }, 0);
+}
+
+/** One line's revenue: A x (B + C) — the customer-pricing table's last column. */
+export function customerLineTotal(l: OrderLine): number {
+  return billableGal(l) * ((l.pricePerGal ?? 0) + (l.marginPerGal ?? 0));
+}
+
+/** What the customer pays for the whole order. */
+export function customerTotal(lines: OrderLine[]): number {
+  return lines.reduce((sum, l) => sum + customerLineTotal(l), 0);
 }
 
 export type BrokerColumnKey =
@@ -710,9 +768,13 @@ function vendorStateFor(
   status: BrokerStatus,
   kind: OrderKind,
   pick: () => number
-): { vendorId: string | null; invitedVendorIds: string[] } {
+): {
+  vendorId: string | null;
+  invitedVendorIds: string[];
+  acceptedVendorIds: string[];
+} {
   if (status === "Draft" || status === "Blocked") {
-    return { vendorId: null, invitedVendorIds: [] };
+    return { vendorId: null, invitedVendorIds: [], acceptedVendorIds: [] };
   }
   // THE POOL IS FILTERED BY BUSINESS LINE. The spec makes Business Lines a
   // filter on the vendor picker (§5.5 "Table View") precisely because a carrier
@@ -725,19 +787,39 @@ function vendorStateFor(
   ).map((v) => v.id);
   const first = pool[Math.floor(pick() * pool.length)];
   if (status === "Assigned") {
-    // Out for acknowledgement. Sometimes to one vendor, sometimes to several —
-    // both are normal, and the difference is what the rejection rule turns on.
+    /* OUT FOR ACKNOWLEDGEMENT and nobody has said yes yet — that is what
+       Assigned means. Sometimes one invite, sometimes several; both are normal,
+       and the difference is what the rejection rule turns on. */
     const extra = pool.filter((id) => id !== first);
     const n = pick() < 0.45 ? 1 + Math.floor(pick() * 2) : 0;
     return {
       vendorId: null,
       invitedVendorIds: [first, ...extra.slice(0, n)],
+      acceptedVendorIds: [],
     };
   }
-  // Accepted and everything downstream of it: one vendor holds the order, and
-  // it is one of the vendors that was invited.
   const alsoInvited = pool.filter((id) => id !== first).slice(0, pick() < 0.4 ? 1 : 0);
-  return { vendorId: first, invitedVendorIds: [first, ...alsoInvited] };
+  const invited = [first, ...alsoInvited];
+  if (status === "Accepted") {
+    /* ACCEPTED IS THE PARTNER'S ACT, NOT THE BROKER'S. At least one partner has
+       said yes; whether the broker has taken anyone's quote is the next
+       question, and on roughly half of these it has not been answered yet —
+       which is the state step 2 of the sheet exists for. */
+    const accepted =
+      invited.length > 1 && pick() < 0.4 ? invited : [first];
+    return {
+      vendorId: pick() < 0.45 ? first : null,
+      invitedVendorIds: invited,
+      acceptedVendorIds: accepted,
+    };
+  }
+  // Completed and everything downstream: the broker has taken a quote, and the
+  // partner holding the order is one that accepted the invitation.
+  return {
+    vendorId: first,
+    invitedVendorIds: invited,
+    acceptedVendorIds: [first],
+  };
 }
 
 const FIRST_ORDER_NO = 104_620;
@@ -789,32 +871,58 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
         gal: topOff ? null : 150 + Math.floor(pick() * 34) * 50,
         topOff,
         rental: isMovement ? false : asset.rental,
+        /* DELIVERED IS KNOWN ONLY ONCE IT HAS BEEN. Filled in below for the
+           stages downstream of the delivery; null while the order is still
+           being priced, where the broker may type an expected figure. */
+        deliveredGal: null,
+        /* The broker's own numbers, unset until someone prices the order. */
+        pricePerGal: undefined,
+        marginPerGal: undefined,
       };
     });
 
-    const { vendorId, invitedVendorIds } = vendorStateFor(status, kind, pick);
+    /* Past the delivery, the gallons are a fact and the pricing is settled —
+       an order in Accounting Sync Ready with no numbers on it could not have
+       been invoiced. */
+    if (status === "Completed" || status.startsWith("Accounting")) {
+      for (const l of lines) {
+        l.deliveredGal = l.gal == null ? 50 + Math.floor(pick() * 20) * 25 : l.gal;
+        l.pricePerGal = Number((3.1 + pick() * 0.8).toFixed(3));
+        l.marginPerGal = Number((0.18 + pick() * 0.34).toFixed(3));
+      }
+    }
+
+    const { vendorId, invitedVendorIds, acceptedVendorIds } = vendorStateFor(
+      status,
+      kind,
+      pick
+    );
     // Movement orders always run the quote flow (§5.20); fuel orders sometimes.
     const quoteRequested = isMovement || pick() < 0.25;
     const gal = totalGal(lines);
+    /* A QUOTE FOLLOWS AN ACCEPTANCE — a partner cannot price an order it has
+       not agreed to take, so only `acceptedVendorIds` can appear here. Not all
+       of them have got round to it: an accepted order with no quote yet is the
+       first of the two notifications, and one with a quote is the second. */
     const quotes: VendorQuote[] =
-      quoteRequested && invitedVendorIds.length > 0
-        ? invitedVendorIds
-            // Only vendors that have actually replied have a quote on file, so
-            // an Assigned order can legitimately show fewer quotes than invites.
-            .filter((_, k) => status !== "Assigned" || k === 0 || pick() < 0.5)
-            .map((vid) =>
-              isMovement
-                ? {
-                    vendorId: vid,
-                    fee: 220 + Math.floor(pick() * 18) * 10,
-                    tax: 18 + Math.floor(pick() * 9) * 2,
-                  }
-                : {
-                    vendorId: vid,
-                    ratePerGal: Number((2.85 + pick() * 0.9).toFixed(3)),
-                    serviceCharge: 35 + Math.floor(pick() * 8) * 5,
-                  }
-            )
+      quoteRequested && acceptedVendorIds.length > 0
+        ? acceptedVendorIds
+            .filter((_, k) => k === 0 || pick() < 0.6)
+            .filter(() => (status === "Accepted" ? pick() < 0.7 : true))
+            .map((vid) => ({
+              vendorId: vid,
+              lines: lines.map((l) => ({
+                asset: l.asset,
+                pricePerGal: Number(
+                  (isMovement ? 0 : 2.85 + pick() * 0.9).toFixed(3)
+                ),
+                tax: Math.round((isMovement ? 18 + pick() * 16 : 6 + pick() * 14) * 100) / 100,
+                fees: Math.round((12 + pick() * 40) * 100) / 100,
+                deliveryFees: Math.round(
+                  (isMovement ? 220 + pick() * 180 : 25 + pick() * 60) * 100
+                ) / 100,
+              })),
+            }))
         : [];
 
     rows.push({
@@ -839,6 +947,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       status,
       vendorId,
       invitedVendorIds,
+      acceptedVendorIds,
       quoteRequested,
       quotes,
       urgent: pick() < 0.14,
@@ -909,20 +1018,50 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
       problems.push(`${r.orderNo}: delivery order without a D prefix`);
     }
     const preVendor = r.status === "Draft" || r.status === "Blocked";
-    if (preVendor && (r.vendorId || r.invitedVendorIds.length)) {
+    if (
+      preVendor &&
+      (r.vendorId || r.invitedVendorIds.length || r.acceptedVendorIds.length)
+    ) {
       problems.push(`${r.orderNo}: ${r.status} cannot have vendors`);
     }
-    if (r.status === "Assigned" && r.vendorId) {
+    /* THE TWO ACTS ARE SEPARATE and the lanes turn on the first of them.
+       Assigned = invited, nobody has said yes. Accepted = somebody has. Whether
+       the BROKER has taken a quote is a third thing, and only the stages past
+       the delivery require it. */
+    if (r.status === "Assigned" && r.acceptedVendorIds.length) {
       problems.push(`${r.orderNo}: Assigned means invited, not accepted`);
+    }
+    if (r.status === "Assigned" && r.vendorId) {
+      problems.push(`${r.orderNo}: Assigned cannot already have a partner`);
     }
     if (r.status === "Assigned" && r.invitedVendorIds.length === 0) {
       problems.push(`${r.orderNo}: Assigned with nobody invited`);
     }
-    if (!preVendor && r.status !== "Assigned" && !r.vendorId) {
-      problems.push(`${r.orderNo}: ${r.status} with no accepting vendor`);
+    if (!preVendor && r.status !== "Assigned" && r.acceptedVendorIds.length === 0) {
+      problems.push(`${r.orderNo}: ${r.status} with nobody having accepted`);
     }
-    if (r.vendorId && !r.invitedVendorIds.includes(r.vendorId)) {
-      problems.push(`${r.orderNo}: accepting vendor was never invited`);
+    if (!preVendor && r.status !== "Assigned" && r.status !== "Accepted" && !r.vendorId) {
+      problems.push(`${r.orderNo}: ${r.status} with no partner holding the order`);
+    }
+    for (const id of r.acceptedVendorIds) {
+      if (!r.invitedVendorIds.includes(id)) {
+        problems.push(`${r.orderNo}: a vendor accepted an invitation never sent`);
+      }
+    }
+    if (r.vendorId && !r.acceptedVendorIds.includes(r.vendorId)) {
+      problems.push(`${r.orderNo}: the order's partner never accepted the invitation`);
+    }
+    /* A QUOTE FOLLOWS AN ACCEPTANCE. A partner cannot price an order it has not
+       agreed to take. */
+    for (const q of r.quotes) {
+      if (!r.acceptedVendorIds.includes(q.vendorId)) {
+        problems.push(`${r.orderNo}: a quote from a partner that never accepted`);
+      }
+      for (const ql of q.lines) {
+        if (!r.lines.some((l) => l.asset === ql.asset)) {
+          problems.push(`${r.orderNo}: a quote line for an asset not on the order`);
+        }
+      }
     }
     // A partner has to actually run the line of business the order needs.
     const needs = r.kind === "Movement" ? "Asset Movement" : "Bulk Fuel";

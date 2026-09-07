@@ -189,7 +189,11 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
         : [
             {
               text:
-                r.invitedVendorIds.length > 0 ? "Out for acknowledgement" : "Not assigned",
+                r.acceptedVendorIds.length > 0
+                  ? `${r.acceptedVendorIds.length} accepted — no quote taken yet`
+                  : r.invitedVendorIds.length > 0
+                    ? "Out for acknowledgement"
+                    : "Not assigned",
               level: 3 as const,
             },
           ],
@@ -277,12 +281,32 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
     };
   }
   if (r.status === "Assigned") {
+    /* NOBODY HAS SAID YES YET — that is the whole of what Assigned means. */
     const n = r.invitedVendorIds.length;
     return {
       status: "caution",
+      text: `Awaiting acknowledgement — ${n} invited`,
+    };
+  }
+  /* THE TWO NOTIFICATIONS, in the order they arrive. A partner accepting the
+     invitation is the first and moves the order into this lane; the quote is
+     the second, and it is the one that has something to be done about — so it
+     is the one that carries the action. */
+  if (r.status === "Accepted" && !r.vendorId) {
+    const priced = r.quotes.length;
+    if (priced > 0) {
+      return {
+        status: "caution",
+        text: `${priced} ${priced === 1 ? "quote" : "quotes"} in — review pricing`,
+        actionLabel: "Review",
+      };
+    }
+    const n = r.acceptedVendorIds.length;
+    return {
+      status: "default",
       text: r.quoteRequested
-        ? `Awaiting pricing — ${n} invited`
-        : `Awaiting acknowledgement — ${n} invited`,
+        ? `${n === 1 ? "A partner" : `${n} partners`} accepted — awaiting pricing`
+        : `${n === 1 ? "A partner" : `${n} partners`} accepted`,
     };
   }
   if (r.status === "Accounting Sync Ready") {
@@ -611,6 +635,7 @@ export function BrokerOrdersScreen({
         status: draft.status,
         vendorId: draft.vendorId,
         invitedVendorIds: draft.invitedVendorIds,
+        acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
         quotes: [],
         urgent: draft.urgent,
@@ -698,6 +723,7 @@ export function BrokerOrdersScreen({
         status: "Draft",
         vendorId: null,
         invitedVendorIds: [],
+        acceptedVendorIds: [],
         quoteRequested: false,
         quotes: [],
         urgent: draft.urgent,

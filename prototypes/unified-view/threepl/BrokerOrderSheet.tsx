@@ -348,6 +348,8 @@ export interface BrokerOrderDraft {
   status: BrokerStatus;
   vendorId: string | null;
   invitedVendorIds: string[];
+  /** Partners that accepted the invitation — see `BrokerOrder`. */
+  acceptedVendorIds: string[];
   quoteRequested: boolean;
   /**
    * Which INVITED partners are being asked for a price. Selection, not the
@@ -402,6 +404,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     status: o.status,
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
+    acceptedVendorIds: [...o.acceptedVendorIds],
     quoteRequested: o.quoteRequested,
     primaryPoc: o.primaryPoc,
     salesperson: o.salesperson,
@@ -440,6 +443,7 @@ function emptyDraft(): BrokerOrderDraft {
     status: "Draft",
     vendorId: null,
     invitedVendorIds: [],
+    acceptedVendorIds: [],
     quoteRequested: false,
     primaryPoc: "",
     salesperson: "",
@@ -680,8 +684,22 @@ export function BrokerOrderSheet({
     });
   };
 
+  /* ACCEPTING A QUOTE IS THE BROKER'S ACT — it names the partner that holds the
+     order. It is not what put the order in the Accepted lane: the partner did
+     that by accepting the invitation. */
   const acceptFor = (vendorId: string) =>
-    setDraft((d) => (d ? { ...d, status: "Accepted", vendorId } : d));
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            status: "Accepted",
+            vendorId,
+            acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
+              ? d.acceptedVendorIds
+              : [...d.acceptedVendorIds, vendorId],
+          }
+        : d
+    );
   const advance = (status: BrokerStatus) =>
     setDraft((d) => (d ? { ...d, status } : d));
 
@@ -1588,7 +1606,7 @@ export function BrokerOrderSheet({
                               <td className="px-3 text-right text-sm tabular-nums">
                                 {quote ? (
                                   <span className="text-foreground">
-                                    ${quoteTotal(quote, gal).toLocaleString(undefined, {
+                                    ${quoteTotal(quote, draft.lines).toLocaleString(undefined, {
                                       maximumFractionDigits: 2,
                                     })}
                                   </span>
@@ -1733,12 +1751,14 @@ export function BrokerOrderSheet({
               return (
                 <SheetField label="Accepted pricing">
                   <p className="text-sm tabular-nums text-foreground">
-                    {q.fee !== undefined
-                      ? `Fee $${q.fee} + tax $${q.tax} = $${quoteTotal(q, gal).toLocaleString()}`
-                      : `$${q.ratePerGal}/gal + $${q.serviceCharge} service = $${quoteTotal(
-                          q,
-                          gal
-                        ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                    $
+                    {quoteTotal(q, draft.lines).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    <span className="text-muted-foreground">
+                      across {q.lines.length}{" "}
+                      {q.lines.length === 1 ? "line" : "lines"}
+                    </span>
                   </p>
                 </SheetField>
               );

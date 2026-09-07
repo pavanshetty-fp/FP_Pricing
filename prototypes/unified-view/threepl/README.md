@@ -275,3 +275,52 @@ another.
 | `BrokerOrdersScreen.tsx` | the dashboard — view bar, action bar, tabs, board/table, pagination |
 | `BrokerBoard.tsx` | **forked** from the DS `KanbanBoard`; see its header |
 | `BrokerOrderSheet.tsx` | the order sheet and the vendor workflow |
+| `directoryCore.ts` | the vocabulary the four record types share — audit events, attachments, contacts, ship-tos, the seeded generators, and the two kinds of missing value |
+| `directory.ts` | Customers, Products and Rental Assets: the full field sets, the hand-written core records, the generators that take them to volume, and the asset conflict rules |
+| `directoryLinks.ts` | the cross-references between the four entities, made in one place because the import graph will not carry them |
+| `directoryDims.ts` | columns, search, sort and grouping for those three lists |
+| `directoryUrl.ts` | the list's state in the address bar |
+| `DirectoryList.tsx` | the list shell — search, facets, chips, grouping, selection, bulk bar, pagination, export |
+| `DirectoryEntityScreen.tsx` | list → record → form, and the traffic between them |
+| `DirectoryRecordPage.tsx` | the record layout and its shared sections (fields, related tables, attachments, audit, notes) |
+| `DirectoryForm.tsx` | the create/edit form and its validation contract |
+| `CustomerRecord.tsx` · `VendorRecord.tsx` · `ProductRecord.tsx` · `AssetRecord.tsx` | what each entity's record page shows and what its form asks |
+| `DirectoryScreens.tsx` | the four configs — columns, cells, facets, exports, bulk verbs — and the four screens |
+
+---
+
+## The Directory
+
+Four entities, one set of screens.
+
+**Volume is deliberate.** 150 customers, 80 vendors, 60 products, 120 assets.
+Pagination, grouping, filtering and the "no results" state are all untestable on
+a list of eight, and every one of them shipped broken somewhere because it was
+only ever seen with a handful of rows.
+
+**Records are incomplete on purpose.** A real directory has accounts entered in
+a hurry with no ZIP and no tax ID, and test records somebody made during
+onboarding and never cleaned up — both are in the seed. The screens print `-`
+for a field nobody has filled and `N/A` for one that does not apply, and never
+suppress either: a cell that goes blank makes an incomplete record look
+finished.
+
+**A record is a PAGE, an order is a SHEET.** An order is opened to do one thing
+and close, and the sheet keeps the board behind it. A directory record is
+opened to read — ten sections and several child lists — and a sheet that deep
+is a scrolling column with a board behind it that no longer relates to it.
+
+**Three derived facts are never stored:** a customer's available credit, a
+product's customer and vendor reach, and an asset's conflicts. Each of them
+would be wrong the first time anything else was edited.
+
+### Still open
+
+- **Contacts and ship-tos are read-only.** They render, and the record page
+  counts them, but there is no add/edit/archive for a child row yet — the form
+  handles the parent record only.
+- **Attachments do not upload.** The list, the expiry colouring and the download
+  affordance are real; the file picker is not wired.
+- **Roles and permissions.** `canWrite` is threaded through the list, the record
+  page and the bulk bar, and is hard-coded true. There is no role model behind
+  it yet.

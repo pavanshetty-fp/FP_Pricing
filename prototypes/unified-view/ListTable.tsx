@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   HoverCard,
   HoverCardContent,
@@ -18,6 +20,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -73,6 +76,22 @@ export interface ListTableProps<Row, K extends string> {
   /** Which column key holds the pinned chevron. */
   actionsKey: K;
   /**
+   * SELECTION IS OPT-IN. A list with nothing to do to a selection should not
+   * spend 44px on a checkbox column that leads nowhere, so the column exists
+   * only when the handlers for it do — the same rule the bulk bar follows.
+   */
+  selectedIds?: ReadonlySet<string>;
+  onToggleRow?: (id: string) => void;
+  /** `next` is the state the header checkbox is moving TO, so the caller does
+   *  not have to re-derive it from the current selection. */
+  onToggleAll?: (next: boolean) => void;
+  /**
+   * Skeleton rows in place of content. Not a spinner: a list that collapses to
+   * a spinner loses its own height, and the page jumps when the rows land.
+   */
+  loading?: boolean;
+  skeletonRows?: number;
+  /**
    * Column order, as keys. Supply with `onReorderColumns` to keep it in a saved
    * view; leave both off and the table remembers it for the session only. The
    * pinned chevron column never moves.
@@ -106,6 +125,11 @@ export function ListTable<Row, K extends string>({
   onOpenRow,
   openLabel,
   actionsKey,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
+  loading = false,
+  skeletonRows = 10,
   nodes,
   collapsedGroups,
   onToggleGroupCollapse,
@@ -131,16 +155,36 @@ export function ListTable<Row, K extends string>({
   });
   const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key)));
 
+  /* THE CHECKBOX COLUMN IS NOT A COLUMN. It cannot be hidden, reordered,
+     resized or sorted, so it sits outside `cols` entirely and is drawn as a
+     fixed 44px cell at the head of every row — the mirror of the pinned
+     chevron at the tail. */
+  const selectable = Boolean(selectedIds && onToggleRow);
+  const ids = rows.map(rowId);
+  const allSelected = selectable && ids.length > 0 && ids.every((id) => selectedIds!.has(id));
+  const someSelected = selectable && ids.some((id) => selectedIds!.has(id));
+  const span = visible.length + (selectable ? 1 : 0);
+
   return (
     <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
+          {selectable && <col style={{ width: "44px" }} />}
           {visible.map((c) => (
             <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
           <TableRow className="h-10">
+            {selectable && (
+              <TableHead className="border-b border-fp-outline-1 bg-fp-table-header px-3">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={() => onToggleAll?.(!allSelected)}
+                  aria-label={allSelected ? "Clear selection" : "Select all rows on this page"}
+                />
+              </TableHead>
+            )}
             {visible.map((col) => {
               const active = sort?.key === col.key;
               const SortIcon = !active
@@ -193,7 +237,29 @@ export function ListTable<Row, K extends string>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(nodes ??
+          {loading
+            ? Array.from({ length: skeletonRows }, (_, i) => (
+                <TableRow key={`sk-${i}`} className="h-14">
+                  {selectable && (
+                    <TableCell className="px-3">
+                      <Skeleton className="size-4 rounded-[4px]" />
+                    </TableCell>
+                  )}
+                  {visible.map((col) => (
+                    <TableCell key={col.key} className="px-3">
+                      {col.key === actionsKey ? null : (
+                        <Skeleton
+                          className="h-4"
+                          /* Widths vary per column and per row so the block
+                             reads as text arriving, not as a loading bar. */
+                          style={{ width: `${45 + ((i * 17 + col.key.length * 11) % 45)}%` }}
+                        />
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            : (nodes ??
             rows.map((row) => ({
               kind: "row" as const,
               id: rowId(row),
@@ -204,7 +270,7 @@ export function ListTable<Row, K extends string>({
             node.kind === "group" ? (
               <GroupHeaderRow
                 key={node.id}
-                colSpan={visible.length}
+                colSpan={span}
                 depth={node.depth}
                 label={node.label}
                 dimLabel={node.dimLabel}
@@ -216,7 +282,20 @@ export function ListTable<Row, K extends string>({
                 onToggle={() => onToggleGroupCollapse?.(node.id)}
               />
             ) : (
-            <TableRow key={node.id} className="group/row h-14">
+            <TableRow
+              key={node.id}
+              className="group/row h-14"
+              data-state={selectedIds?.has(node.id) ? "selected" : undefined}
+            >
+              {selectable && (
+                <TableCell className="px-3">
+                  <Checkbox
+                    checked={selectedIds!.has(node.id)}
+                    onCheckedChange={() => onToggleRow!(node.id)}
+                    aria-label={`Select ${openLabel(node.row).replace(/^Open /, "")}`}
+                  />
+                </TableCell>
+              )}
               {visible.map((col) => (
                 <TableCell
                   key={col.key}
@@ -246,8 +325,8 @@ export function ListTable<Row, K extends string>({
                 </TableCell>
               ))}
             </TableRow>
-            )
-          )}
+              )
+            )}
         </TableBody>
       </Table>
     </div>

@@ -1,21 +1,48 @@
 import * as React from "react";
-import { Boxes, Contact, Droplet, Shield, Truck } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Boxes, Contact, Droplet, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/ui/status-chip";
-import { DATE_FMT } from "../data";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { OverflowList, TwoLineCell } from "../ListTable";
-import { DirectoryList } from "./DirectoryList";
+import {
+  DirectoryEntityScreen,
+  activeBulkAction,
+  tagBulkAction,
+  type EntityConfig,
+  type Navigator,
+} from "./DirectoryEntityScreen";
+import {
+  DASH,
+  PLACES,
+  STATE_NAMES,
+  blank,
+  daysFromToday,
+  formatDate,
+  money,
+  oneLineAddress,
+  type RecordStatus,
+} from "./directoryCore";
 import {
   BROKER_CUSTOMERS,
   BROKER_PRODUCTS,
   CREDIT_STATUSES,
+  MAINTENANCE_STATUSES,
+  PAYMENT_TERMS,
   PRODUCT_CATEGORIES,
   RENTAL_ASSETS,
   RENTAL_STATUSES,
   RENTAL_TYPES,
-  USD,
+  UNITS_OF_MEASURE,
   creditAvailable,
   creditBlocked,
+  customerReach,
+  endingSoon,
+  monthlyRevenue,
+  shipToNames,
   type BrokerCustomer,
   type BrokerProduct,
   type RentalAsset,
@@ -30,442 +57,1258 @@ import {
   RENTAL_ASSET_COLUMNS,
   RENTAL_ASSET_GROUP_DIMS,
   RENTAL_ASSET_SEARCH_FIELDS,
+  matchesAsset,
+  matchesCustomer,
+  matchesProduct,
+  sortAssets,
+  sortCustomers,
+  sortProducts,
   type BrokerCustomerColumnKey,
   type BrokerProductColumnKey,
   type RentalAssetColumnKey,
 } from "./directoryDims";
 import {
+  AVAILABILITY_STATUSES,
   BUSINESS_LINES,
+  COMPLIANCE_STATUSES,
   DISTANCE_BANDS,
   SAFETY_BANDS,
   VENDORS,
   VENDOR_COLUMNS,
   VENDOR_SEARCH_FIELDS,
+  assignedOrderCount,
   distanceBand,
+  hasOverdueDocs,
   matchesVendor,
   safetyBand,
   sortVendors,
   type Vendor,
   type VendorColumnKey,
 } from "./vendors";
-import { VENDOR_GROUP_DIMS } from "./vendorDims";
+import "./directoryLinks";
+import {
+  assetsForCustomer,
+  ordersForCustomer,
+  vendorsForProduct,
+} from "./directoryLinks";
+import {
+  customerBadges,
+  customerFormSections,
+  customerSections,
+  customerStats,
+  customerStatusTone,
+} from "./CustomerRecord";
+import {
+  vendorBadges,
+  vendorFormSections,
+  vendorSections,
+  vendorStats,
+  vendorStatusTone,
+} from "./VendorRecord";
+import {
+  productBadges,
+  productFormSections,
+  productSections,
+  productStats,
+  productStatusTone,
+  productSubtitle,
+} from "./ProductRecord";
+import {
+  assetBadges,
+  assetFormSections,
+  assetSections,
+  assetStats,
+  assetStatusTone,
+} from "./AssetRecord";
 
 /*
-  The four Directory screens. Each is its records, its columns, its cells and
-  what it can be grouped or filtered by — everything else is `DirectoryList`.
+  The four Directory screens.
 
-  A generic sort, so three of the four do not each write the same twenty lines.
-  It reads the value through the cell's own accessor, which keeps "how a column
-  sorts" next to "how it renders" rather than in a switch far away.
+  EACH ONE IS A CONFIG, not a component. What differs between Customers and
+  Rental Assets is entirely declarative — columns, cells, facets, what a record
+  page shows, what a form asks — and `DirectoryEntityScreen` does the rest. The
+  point is not brevity: it is that the fourth screen cannot behave differently
+  from the first by accident.
+
+  MISSING VALUES ARE PRINTED, NOT SUPPRESSED. `-` for a field somebody has not
+  filled in, `N/A` for one that does not apply. A cell that goes blank makes an
+  incomplete record look complete, and the whole reason to have a directory is
+  to see which records are not finished.
 */
-function makeSort<Row, K extends string>(of: Record<string, (r: Row) => string | number>) {
-  return (rows: Row[], sort: { key: K; dir: "asc" | "desc" } | null): Row[] => {
-    if (!sort) return rows;
-    const get = of[sort.key];
-    if (!get) return rows;
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const x = get(a);
-      const y = get(b);
-      if (typeof x === "number" && typeof y === "number") return (x - y) * dir;
-      return String(x).localeCompare(String(y)) * dir;
-    });
-  };
-}
 
-const fmtDate = (iso: string) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  return DATE_FMT.format(new Date(y, m - 1, d));
-};
+/* ── shared cell helpers ───────────────────────────────────────────────── */
 
-/* ─────────────────────────────────────────────────────────────── vendors ── */
+const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
+  <span className="text-sm text-muted-foreground/70">{children}</span>
+);
 
-export function BrokerVendorsScreen() {
-  const [rows, setRows] = React.useState<Vendor[]>(VENDORS);
-
-  const setEmails = (id: string, on: boolean) =>
-    setRows((prev) => prev.map((v) => (v.id === id ? { ...v, emailsEnabled: on } : v)));
-
-  const renderCell = (v: Vendor, key: VendorColumnKey) => {
-    switch (key) {
-      case "name":
-        return <TwoLineCell title={v.name} description={v.base} />;
-      case "lines":
-        return <OverflowList values={v.businessLines} label="business lines" />;
-      case "safety":
-        /* Same shield the order sheet's partner table uses, so a score means
-           the same thing in both places. */
-        return (
-          <span className="flex items-center justify-end gap-1.5 tabular-nums">
-            <Shield className="size-3.5 text-muted-foreground" />
-            {v.safetyScore}
-          </span>
-        );
-      case "distance":
-        return <span className="tabular-nums">{v.distanceMi} mi</span>;
-      case "emails":
-        /* EDITED IN PLACE. §6 makes this the screen's one real action and it is
-           a single boolean — a sheet to flip one switch is a round trip. */
-        return (
-          <Switch
-            checked={v.emailsEnabled}
-            onCheckedChange={(on) => setEmails(v.id, on)}
-            aria-label={`Email ${v.name}`}
-          />
-        );
-      case "account":
-        /* A vendor without an account still works — they acknowledge from the
-           emailed link — so this is a fact, not a fault. */
-        return (
-          <StatusChip tone={v.hasAccount ? "success" : "neutral"} variant="text">
-            {v.hasAccount ? "Has account" : "Link only"}
-          </StatusChip>
-        );
-      default:
-        return null;
-    }
-  };
-
+/** Long text that has to fit a column: clipped, with the whole of it on hover. */
+function Clamped({ text }: { text: string | null }) {
+  if (!text) return <Muted />;
   return (
-    <DirectoryList<Vendor, VendorColumnKey>
-      rows={rows}
-      columns={VENDOR_COLUMNS}
-      rowId={(v) => v.id}
-      renderCell={renderCell}
-      matches={matchesVendor}
-      searchFields={VENDOR_SEARCH_FIELDS}
-      searchPlaceholder="Search vendors, cities, business lines…"
-      sortRows={sortVendors}
-      dimensions={VENDOR_GROUP_DIMS}
-      /* The picker's own filters (§5.5). RANGES, because nobody asks for
-         "safety exactly 88" — and the same bands back the grouping, so
-         filtering and grouping speak one vocabulary. */
-      facets={[
-        {
-          key: "lines",
-          label: "Business Lines",
-          options: [...BUSINESS_LINES],
-          valueOf: (v) => v.businessLines,
-        },
-        {
-          key: "safety",
-          label: "Safety Score",
-          options: [...SAFETY_BANDS],
-          valueOf: (v) => safetyBand(v.safetyScore),
-        },
-        {
-          key: "distance",
-          label: "Distance",
-          options: [...DISTANCE_BANDS],
-          valueOf: (v) => distanceBand(v.distanceMi),
-        },
-      ]}
-      noun="vendor"
-      /* NOTHING SUMS. A summed distance is meaningless and an averaged safety
-         score is a different statistic sitting where a total goes. */
-      emptyIcon={<Truck />}
-      openLabel={(v) => `Open vendor ${v.name}`}
-    />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="block truncate text-sm text-foreground">{text}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">{text}</TooltipContent>
+    </Tooltip>
   );
 }
 
-/* ───────────────────────────────────────────────────────────── customers ── */
+const Money = ({ value, cents = false }: { value: number | null; cents?: boolean }) =>
+  value === null ? <Muted /> : <span className="text-sm tabular-nums">{money(value, cents)}</span>;
 
-const sortCustomers = makeSort<BrokerCustomer, BrokerCustomerColumnKey>({
-  name: (c) => c.name,
-  credit: (c) => c.creditStatus,
-  limit: (c) => c.creditLimit ?? -1,
-  balance: (c) => c.balance,
-  terms: (c) => c.terms,
-});
+const RECORD_STATUS_TONE = (s: RecordStatus) =>
+  s === "active" ? ("success" as const) : ("neutral" as const);
 
-export function BrokerCustomersScreen() {
-  const renderCell = (c: BrokerCustomer, key: BrokerCustomerColumnKey) => {
-    switch (key) {
-      case "name":
-        return <TwoLineCell title={c.name} description={c.erpId} />;
-      case "shipTos":
-        return <OverflowList values={c.shipTos} label="ship-tos" />;
-      case "credit":
-        /* The chip carries the STATUS; being over the limit is a separate fact
-           and shows on the balance, where the number that caused it is. */
-        return (
-          <StatusChip
-            tone={
-              c.creditStatus === "Approved"
-                ? "success"
-                : c.creditStatus === "On hold"
-                  ? "processing"
-                  : "failed"
-            }
-            variant="text"
-          >
-            {c.creditStatus}
-          </StatusChip>
-        );
-      case "limit":
-        /* No limit set is not a limit of zero — one means "unbounded until
-           somebody decides", the other means "cannot order at all". */
-        return (
-          <span className="tabular-nums">
-            {c.creditLimit === null ? (
-              <span className="text-muted-foreground">Not set</span>
-            ) : (
-              USD.format(c.creditLimit)
-            )}
-          </span>
-        );
-      case "balance": {
-        const over = c.creditLimit !== null && c.balance > c.creditLimit;
-        const left = creditAvailable(c);
-        return (
-          <span className="flex flex-col items-end tabular-nums">
-            <span className={over ? "font-medium text-status-failed" : undefined}>
-              {USD.format(c.balance)}
+function RecordStatusChip({ status }: { status: RecordStatus }) {
+  return (
+    <StatusChip tone={RECORD_STATUS_TONE(status)} variant="text">
+      <span className="capitalize">{status}</span>
+    </StatusChip>
+  );
+}
+
+const STATE_CODES = Object.keys(STATE_NAMES);
+const CITY_NAMES = [...new Set(PLACES.map((p) => p.city))];
+
+/* ═══════════════════════════════════════════════════════════════ customers ═ */
+
+export function customerConfig(): EntityConfig<BrokerCustomer, BrokerCustomerColumnKey> {
+  return {
+    urlKey: "customers",
+    parentLabel: "Customers",
+    noun: "customer",
+    rowId: (c) => c.id,
+    nameOf: (c) => c.name,
+    columns: BROKER_CUSTOMER_COLUMNS,
+    matches: matchesCustomer,
+    searchFields: BROKER_CUSTOMER_SEARCH_FIELDS,
+    searchPlaceholder: "Search by customer name",
+    sortRows: sortCustomers,
+    dimensions: BROKER_CUSTOMER_GROUP_DIMS,
+    emptyIcon: <Contact />,
+    /* THE ONE THING THAT SUMS. Dollars owed add up; a credit limit does not,
+       because a group of accounts does not share one limit. */
+    measureOf: (c) => c.currentBalance,
+    measureUnit: "",
+    formatTotal: (n) => `${money(n)} outstanding`,
+
+    renderCell: (c, key) => {
+      switch (key) {
+        case "name":
+          return <TwoLineCell title={c.name} description={c.erpId} />;
+        case "erpId":
+          return <span className="text-sm tabular-nums">{c.erpId}</span>;
+        case "phone":
+          return c.phone ? <span className="text-sm tabular-nums">{c.phone}</span> : <Muted />;
+        case "address":
+          return <Clamped text={c.addressLine1 ? oneLineAddress(c) : null} />;
+        case "city":
+          return c.city ? <span className="text-sm">{c.city}</span> : <Muted />;
+        case "zip":
+          return c.zip ? <span className="text-sm tabular-nums">{c.zip}</span> : <Muted />;
+        case "state":
+          return c.state ? <span className="text-sm">{c.state}</span> : <Muted />;
+        case "credit":
+          return (
+            <StatusChip
+              tone={
+                c.creditStatus === "Approved"
+                  ? "success"
+                  : c.creditStatus === "On hold"
+                    ? "processing"
+                    : "failed"
+              }
+              variant="text"
+            >
+              {c.creditStatus}
+            </StatusChip>
+          );
+        case "limit":
+          /* NO LIMIT IS NOT ZERO, and printing `$0` for it would block orders
+             that should go through — so it says so in words. */
+          return c.creditLimit === null ? <Muted>Not set</Muted> : <Money value={c.creditLimit} />;
+        case "balance": {
+          const over = creditBlocked(c) && c.creditLimit !== null && c.currentBalance > c.creditLimit;
+          return (
+            <span
+              className={`text-sm tabular-nums ${over ? "font-medium text-status-failed" : ""}`}
+              title={over ? `Over the ${money(c.creditLimit)} limit` : undefined}
+            >
+              {money(c.currentBalance)}
             </span>
-            {left !== null && (
-              <span className="text-xs text-muted-foreground">
-                {left >= 0 ? `${USD.format(left)} left` : `${USD.format(-left)} over`}
-              </span>
-            )}
-          </span>
-        );
+          );
+        }
+        case "instruction":
+          return <Clamped text={c.customerInstruction} />;
+        case "shipTos":
+          return <OverflowList values={shipToNames(c)} label="ship-to" />;
+        case "terms":
+          return <span className="text-sm">{c.paymentTerms}</span>;
+        case "poc":
+          return c.mainContactName ? (
+            <TwoLineCell title={c.mainContactName} description={blank(c.phone)} />
+          ) : (
+            <Muted />
+          );
+        case "status":
+          return <RecordStatusChip status={c.status} />;
+        default:
+          return null;
       }
-      case "terms":
-        return c.terms;
-      case "poc":
-        return <TwoLineCell title={c.poc} description={c.pocPhone} />;
-      default:
-        return null;
-    }
-  };
+    },
 
-  return (
-    <DirectoryList<BrokerCustomer, BrokerCustomerColumnKey>
-      rows={BROKER_CUSTOMERS}
-      columns={BROKER_CUSTOMER_COLUMNS}
-      rowId={(c) => c.id}
-      renderCell={renderCell}
-      matches={(c, q) =>
-        `${c.name} ${c.erpId} ${c.poc} ${c.shipTos.join(" ")}`.toLowerCase().includes(q)
+    facets: [
+      { key: "status", label: "Status", options: ["active", "inactive", "archived"], valueOf: (c) => c.status },
+      { key: "credit", label: "Credit Status", options: [...CREDIT_STATUSES], valueOf: (c) => c.creditStatus },
+      { key: "terms", label: "Payment Terms", options: [...PAYMENT_TERMS], valueOf: (c) => c.paymentTerms },
+      { key: "state", label: "State", options: STATE_CODES, searchable: true, valueOf: (c) => c.state ?? "" },
+      { key: "city", label: "City", options: CITY_NAMES, searchable: true, valueOf: (c) => c.city ?? "" },
+      {
+        key: "balance",
+        label: "Balance",
+        options: ["Has balance", "Zero balance", "Over limit"],
+        valueOf: (c) => {
+          const out: string[] = [c.currentBalance > 0 ? "Has balance" : "Zero balance"];
+          if (c.creditLimit !== null && c.currentBalance > c.creditLimit) out.push("Over limit");
+          return out;
+        },
+      },
+      {
+        key: "activity",
+        label: "Activity",
+        options: ["Has active orders", "Has recurring orders", "Has rental assets", "No orders"],
+        valueOf: (c) => {
+          const orders = ordersForCustomer(c.name);
+          const out: string[] = [];
+          if (orders.some((o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status))) {
+            out.push("Has active orders");
+          }
+          if (orders.some((o) => o.kind === "Recurring")) out.push("Has recurring orders");
+          if (assetsForCustomer(c.id).length > 0) out.push("Has rental assets");
+          if (orders.length === 0) out.push("No orders");
+          return out;
+        },
+      },
+      {
+        key: "tagged",
+        label: "Tags",
+        options: ["Tagged", "Untagged"],
+        valueOf: (c) => (c.tags.length > 0 ? "Tagged" : "Untagged"),
+      },
+      {
+        key: "recent",
+        label: "Recency",
+        options: ["Created in 30 days", "Updated in 7 days", "Updated in 30 days"],
+        valueOf: (c) => {
+          const out: string[] = [];
+          const created = daysFromToday(c.createdAt.slice(0, 10)) ?? -999;
+          const updated = daysFromToday(c.updatedAt.slice(0, 10)) ?? -999;
+          if (created >= -30) out.push("Created in 30 days");
+          if (updated >= -7) out.push("Updated in 7 days");
+          if (updated >= -30) out.push("Updated in 30 days");
+          return out;
+        },
+      },
+    ],
+
+    exportRow: (c) => ({
+      "Customer Name": c.name,
+      "ERP ID": c.erpId,
+      Status: c.status,
+      Phone: blank(c.phone),
+      Address: oneLineAddress(c),
+      City: blank(c.city),
+      State: blank(c.state),
+      Zip: blank(c.zip),
+      Credit: c.creditStatus,
+      "Credit Limit": c.creditLimit ?? "",
+      "Current Balance": c.currentBalance,
+      "Available Credit": creditAvailable(c) ?? "",
+      Terms: c.paymentTerms,
+      "Primary POC": blank(c.mainContactName),
+      "Ship-Tos": shipToNames(c).join(" | "),
+      "Customer Instruction": blank(c.customerInstruction),
+      Tags: c.tags.join(" | "),
+    }),
+
+    subtitleOf: (c) => (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="tabular-nums">{c.erpId}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{c.city && c.state ? `${c.city}, ${c.state}` : "No address on file"}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{c.paymentTerms}</span>
+      </span>
+    ),
+    statusOf: (c) => ({ label: c.status, tone: customerStatusTone(c) }),
+    badgesOf: customerBadges,
+    statsOf: customerStats,
+    sectionsOf: (c, go) => customerSections(c, go),
+
+    formSections: customerFormSections(),
+    blank: (id) => ({
+      id,
+      name: "",
+      erpId: "",
+      status: "active",
+      phone: null,
+      secondaryPhone: null,
+      email: null,
+      billingEmail: null,
+      dispatchEmail: null,
+      mainContactName: null,
+      mainContactRole: null,
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      state: null,
+      zip: null,
+      country: "USA",
+      creditStatus: "Unapproved",
+      creditLimit: null,
+      currentBalance: 0,
+      paymentTerms: "Net 30",
+      taxId: null,
+      taxExempt: false,
+      currency: "USD",
+      accountingCustomerId: null,
+      customerInstruction: null,
+      deliveryNotes: null,
+      defaultShipToId: null,
+      preferredVendorId: null,
+      portalAccessEnabled: false,
+      tags: [],
+      notes: null,
+      attachments: [],
+      contacts: [],
+      audit: [
+        {
+          id: `au-${Date.now().toString(36)}`,
+          at: new Date().toISOString(),
+          by: "Dana Whitfield",
+          action: "Created",
+          changes: ["Customer record created"],
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    statusField: {
+      get: (c) => c.status,
+      set: (c, next) => ({ ...c, status: next, updatedAt: new Date().toISOString() }),
+    },
+    auditOf: (c) => c.audit,
+    withAudit: (c, entry) => ({
+      ...c,
+      audit: [entry, ...c.audit],
+      updatedAt: entry.at,
+    }),
+    extraBulkActions: (selected, apply) => [
+      tagBulkAction<BrokerCustomer>(
+        apply,
+        (c, tag) => (c.tags.includes(tag) ? c : { ...c, tags: [...c.tags, tag] }),
+        selected.length
+      ),
+    ],
+  };
+}
+
+/* ═════════════════════════════════════════════════════════════════ vendors ═ */
+
+export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
+  return {
+    urlKey: "vendors",
+    parentLabel: "Vendors",
+    noun: "vendor",
+    rowId: (v) => v.id,
+    nameOf: (v) => v.name,
+    columns: VENDOR_COLUMNS,
+    matches: matchesVendor,
+    searchFields: VENDOR_SEARCH_FIELDS,
+    searchPlaceholder: "Search vendors, contacts, cities, states, products…",
+    sortRows: sortVendors,
+    dimensions: [
+      { key: "lines", label: "Business Line", multi: true, valuesOf: (v: Vendor) => v.businessLines },
+      { key: "compliance", label: "Compliance", hides: "compliance", order: [...COMPLIANCE_STATUSES], valuesOf: (v: Vendor) => [v.complianceStatus] },
+      { key: "state", label: "Home State", hides: "state", valuesOf: (v: Vendor) => (v.state ? [v.state] : []) },
+      { key: "availability", label: "Availability", order: [...AVAILABILITY_STATUSES], valuesOf: (v: Vendor) => [v.availabilityStatus] },
+      { key: "safety", label: "Safety Band", order: [...SAFETY_BANDS], valuesOf: (v: Vendor) => [safetyBand(v.safetyScore)] },
+    ],
+    /* NOTHING SUMS. A safety score is a property of one vendor, and a summed
+       distance is meaningless — so the footer counts and claims nothing. */
+    emptyIcon: <Truck />,
+
+    renderCell: (v, key) => {
+      switch (key) {
+        case "name":
+          return <TwoLineCell title={v.name} description={v.legalBusinessName ?? v.vendorType} />;
+        case "erpId":
+          return v.erpVendorId ? <span className="text-sm tabular-nums">{v.erpVendorId}</span> : <Muted />;
+        case "dispatchPhone":
+          return v.dispatchPhone ? <span className="text-sm tabular-nums">{v.dispatchPhone}</span> : <Muted />;
+        case "dispatchEmail":
+          return <Clamped text={v.dispatchEmail} />;
+        case "address":
+          return <Clamped text={v.addressLine1 ? oneLineAddress(v) : null} />;
+        case "city":
+          return v.city ? <span className="text-sm">{v.city}</span> : <Muted />;
+        case "state":
+          return v.state ? <span className="text-sm">{v.state}</span> : <Muted />;
+        case "serviceArea":
+          return <OverflowList values={v.serviceStates} label="state" />;
+        case "products":
+          return (
+            <OverflowList
+              values={v.supportedProductIds
+                .map((id) => BROKER_PRODUCTS.find((p) => p.id === id)?.name ?? "")
+                .filter(Boolean)}
+              label="product"
+            />
+          );
+        case "compliance": {
+          const days = daysFromToday(v.complianceValidTo);
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <StatusChip
+                    tone={
+                      v.complianceStatus === "Valid"
+                        ? "success"
+                        : v.complianceStatus === "Expiring"
+                          ? "processing"
+                          : "failed"
+                    }
+                    variant="text"
+                  >
+                    {v.complianceStatus}
+                  </StatusChip>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {days === null
+                  ? "No expiry recorded"
+                  : days < 0
+                    ? `Lapsed ${Math.abs(days)} days ago (${formatDate(v.complianceValidTo)})`
+                    : `${days} days left (${formatDate(v.complianceValidTo)})`}
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        case "status":
+          return (
+            <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
+              {v.active ? "Active" : "Inactive"}
+            </StatusChip>
+          );
+        case "rateCard": {
+          const base = v.rateCard.find((l) => l.id === v.defaultRateCardId) ?? v.rateCard[0];
+          return base ? (
+            <TwoLineCell title={base.label} description={`${money(base.rate, true)} ${base.unit}`} />
+          ) : (
+            <Muted />
+          );
+        }
+        case "assigned": {
+          const n = assignedOrderCount(v.id);
+          return n === 0 ? <Muted>0</Muted> : <span className="text-sm tabular-nums">{n}</span>;
+        }
+        case "instruction":
+          return <Clamped text={v.vendorInstruction} />;
+        case "lines":
+          return <OverflowList values={v.businessLines} label="line" />;
+        case "safety":
+          return <span className="text-sm tabular-nums">{v.safetyScore}</span>;
+        case "distance":
+          return <span className="text-sm tabular-nums">{v.distanceMi} mi</span>;
+        case "emails":
+          return (
+            <StatusChip tone={v.emailsEnabled ? "success" : "neutral"} variant="text">
+              {v.emailsEnabled ? "On" : "Off"}
+            </StatusChip>
+          );
+        case "account":
+          /* A vendor without an account still works — they acknowledge from
+             the emailed link — so this is a fact, not a fault. */
+          return (
+            <StatusChip tone={v.hasAccount ? "success" : "neutral"} variant="text">
+              {v.hasAccount ? "Has account" : "Link only"}
+            </StatusChip>
+          );
+        default:
+          return null;
       }
-      searchFields={BROKER_CUSTOMER_SEARCH_FIELDS}
-      searchPlaceholder="Search accounts, ERP IDs, ship-tos…"
-      sortRows={sortCustomers}
-      dimensions={BROKER_CUSTOMER_GROUP_DIMS}
-      facets={[
-        {
-          key: "credit",
-          label: "Credit Status",
-          options: [...CREDIT_STATUSES],
-          valueOf: (c) => c.creditStatus,
+    },
+
+    facets: [
+      { key: "status", label: "Active", options: ["Active", "Inactive"], valueOf: (v) => (v.active ? "Active" : "Inactive") },
+      { key: "compliance", label: "Compliance", options: [...COMPLIANCE_STATUSES], valueOf: (v) => v.complianceStatus },
+      { key: "lines", label: "Business Lines", options: [...BUSINESS_LINES], valueOf: (v) => v.businessLines },
+      { key: "serviceState", label: "Service State", options: Object.values(STATE_NAMES), searchable: true, valueOf: (v) => v.serviceStates },
+      { key: "availability", label: "Availability", options: [...AVAILABILITY_STATUSES], valueOf: (v) => v.availabilityStatus },
+      { key: "safety", label: "Safety Score", options: [...SAFETY_BANDS], valueOf: (v) => safetyBand(v.safetyScore) },
+      { key: "distance", label: "Distance", options: [...DISTANCE_BANDS], valueOf: (v) => distanceBand(v.distanceMi) },
+      {
+        key: "flags",
+        label: "Flags",
+        options: [
+          "Has overdue docs",
+          "Has active assignments",
+          "Approved for assignment",
+          "TopOff capable",
+          "Asset handling",
+          "After hours",
+        ],
+        valueOf: (v) => {
+          const out: string[] = [];
+          if (hasOverdueDocs(v)) out.push("Has overdue docs");
+          if (assignedOrderCount(v.id) > 0) out.push("Has active assignments");
+          if (v.approvedForAssignment) out.push("Approved for assignment");
+          if (v.topOffCapable) out.push("TopOff capable");
+          if (v.assetHandlingCapable) out.push("Asset handling");
+          if (v.afterHoursCapable) out.push("After hours");
+          return out;
         },
+      },
+    ],
+
+    exportRow: (v) => ({
+      "Vendor Name": v.name,
+      "Vendor ID": blank(v.erpVendorId),
+      "Legal Name": blank(v.legalBusinessName),
+      Type: v.vendorType,
+      "Dispatch Contact": blank(v.dispatchContactName),
+      "Dispatch Phone": blank(v.dispatchPhone),
+      "Dispatch Email": blank(v.dispatchEmail),
+      Address: oneLineAddress(v),
+      City: blank(v.city),
+      State: blank(v.state),
+      "Service Area": v.serviceStates.join(" | "),
+      "Business Lines": v.businessLines.join(" | "),
+      "Supported Products": v.supportedProductIds.length,
+      Compliance: v.complianceStatus,
+      "Compliance Valid To": v.complianceValidTo,
+      Active: v.active ? "Yes" : "No",
+      "Approved For Assignment": v.approvedForAssignment ? "Yes" : "No",
+      "Safety Score": v.safetyScore,
+      "Assigned Orders": assignedOrderCount(v.id),
+      "Payment Terms": v.paymentTerms,
+      "Vendor Instruction": blank(v.vendorInstruction),
+    }),
+
+    subtitleOf: (v) => (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="tabular-nums">{blank(v.erpVendorId)}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{v.base}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{v.businessLines.join(", ") || "No business lines"}</span>
+      </span>
+    ),
+    statusOf: (v) => ({ label: v.active ? "Active" : "Inactive", tone: vendorStatusTone(v) }),
+    badgesOf: vendorBadges,
+    statsOf: vendorStats,
+    sectionsOf: (v) => vendorSections(v),
+
+    formSections: vendorFormSections(),
+    blank: (id) => ({
+      id,
+      name: "",
+      erpVendorId: null,
+      legalBusinessName: null,
+      dbaName: null,
+      taxId: null,
+      status: "active",
+      vendorType: "Carrier",
+      mainContactName: null,
+      dispatchContactName: null,
+      accountingContactName: null,
+      escalationContactName: null,
+      phone: null,
+      dispatchPhone: null,
+      email: null,
+      dispatchEmail: null,
+      accountingEmail: null,
+      contacts: [],
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      state: null,
+      zip: null,
+      country: "USA",
+      base: "",
+      serviceAreaType: "state",
+      serviceStates: [],
+      coveredCities: [],
+      coveredZips: [],
+      maxRadiusMiles: null,
+      businessLines: [],
+      supportedProductIds: [],
+      supportedOrderTypes: [],
+      topOffCapable: false,
+      assetHandlingCapable: false,
+      afterHoursCapable: false,
+      complianceStatus: "Missing",
+      complianceValidTo: "",
+      insuranceExpiry: null,
+      licenseNumbers: [],
+      documents: [],
+      approvedForAssignment: false,
+      active: true,
+      defaultRateCardId: null,
+      rateCard: [],
+      minimumCharge: null,
+      paymentTerms: "Net 30",
+      accountingVendorId: null,
+      availabilityStatus: "Available",
+      blackoutDates: [],
+      assignmentPriority: 3,
+      preferredCustomerIds: [],
+      safetyScore: 0,
+      distanceMi: 0,
+      emailsEnabled: true,
+      hasAccount: false,
+      vendorInstruction: null,
+      tags: [],
+      notes: null,
+      attachments: [],
+      audit: [
         {
-          key: "blocked",
-          label: "Can Order",
-          options: ["Can order", "Blocked"],
-          valueOf: (c) => (creditBlocked(c) ? "Blocked" : "Can order"),
+          id: `au-${Date.now().toString(36)}`,
+          at: new Date().toISOString(),
+          by: "Dana Whitfield",
+          action: "Created",
+          changes: ["Vendor record created"],
         },
-      ]}
-      noun="account"
-      /* DOLLARS OWED ADD UP — the one thing on this list that sums to something
-         true. A summed credit limit would not: limits are not a pool. */
-      measureOf={(c) => c.balance}
-      formatTotal={(t) => `${USD.format(t)} outstanding`}
-      emptyIcon={<Contact />}
-      openLabel={(c) => `Open account ${c.name}`}
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    statusField: {
+      get: (v) => v.status,
+      set: (v, next) => ({
+        ...v,
+        status: next,
+        /* Archiving a vendor also switches them off. A record that is archived
+           but still `active` would keep turning up on the order picker, which
+           is the exact confusion archiving exists to end. */
+        active: next === "active" ? v.active : false,
+        updatedAt: new Date().toISOString(),
+      }),
+    },
+    auditOf: (v) => v.audit,
+    withAudit: (v, entry) => ({ ...v, audit: [entry, ...v.audit], updatedAt: entry.at }),
+    extraBulkActions: (selected, apply) => [
+      activeBulkAction<Vendor>(
+        apply,
+        (v) => v.active,
+        (v, next) => ({ ...v, active: next, status: next ? "active" : "inactive" }),
+        selected
+      ),
+      tagBulkAction<Vendor>(
+        apply,
+        (v, tag) => (v.tags.includes(tag) ? v : { ...v, tags: [...v.tags, tag] }),
+        selected.length
+      ),
+    ],
+  };
+}
+
+/* ════════════════════════════════════════════════════════════════ products ═ */
+
+export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumnKey> {
+  return {
+    urlKey: "products",
+    parentLabel: "Products",
+    noun: "product",
+    rowId: (p) => p.id,
+    nameOf: (p) => p.name,
+    columns: BROKER_PRODUCT_COLUMNS,
+    matches: matchesProduct,
+    searchFields: BROKER_PRODUCT_SEARCH_FIELDS,
+    searchPlaceholder: "Search by product name or code",
+    sortRows: sortProducts,
+    dimensions: BROKER_PRODUCT_GROUP_DIMS,
+    emptyIcon: <Droplet />,
+
+    renderCell: (p, key) => {
+      switch (key) {
+        case "name":
+          return <TwoLineCell title={p.name} description={p.hazmat ?? p.category} />;
+        case "code":
+          return <span className="text-sm tabular-nums">{p.productCode}</span>;
+        case "category":
+          return <span className="text-sm">{p.category}</span>;
+        case "unit":
+          return <span className="text-sm">{p.unit}</span>;
+        case "topOff":
+          return (
+            <StatusChip tone={p.topOffSupported ? "success" : "neutral"} variant="text">
+              {p.topOffSupported ? "Supported" : "Fixed qty"}
+            </StatusChip>
+          );
+        case "price":
+          return <Money value={p.basePrice} cents />;
+        case "taxCode":
+          /* A taxable product with no code is the one gap that produces a
+             wrong invoice rather than an incomplete record — so it is loud. */
+          return p.taxCode ? (
+            <span className="text-sm">{p.taxCode}</span>
+          ) : p.taxable ? (
+            <StatusChip tone="failed" variant="text">Missing</StatusChip>
+          ) : (
+            <Muted>N/A</Muted>
+          );
+        case "accounting":
+          return p.revenueAccount ? (
+            <TwoLineCell title={p.revenueAccount} description={p.cogsAccount ?? "No COGS account"} />
+          ) : (
+            <StatusChip tone="processing" variant="text">Unmapped</StatusChip>
+          );
+        case "status":
+          return <RecordStatusChip status={p.status} />;
+        case "customers":
+          return <span className="text-sm tabular-nums">{customerReach(p)}</span>;
+        case "vendors": {
+          const n = vendorsForProduct(p).length;
+          return n === 0 ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm font-medium tabular-nums text-status-failed">0</span>
+              </TooltipTrigger>
+              <TooltipContent>No vendor can fulfil this — orders naming it cannot be assigned</TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-sm tabular-nums">{n}</span>
+          );
+        }
+        case "notes":
+          return <Clamped text={p.notes ?? p.description} />;
+        default:
+          return null;
+      }
+    },
+
+    facets: [
+      { key: "status", label: "Status", options: ["active", "inactive", "archived"], valueOf: (p) => p.status },
+      { key: "category", label: "Category", options: [...PRODUCT_CATEGORIES], valueOf: (p) => p.category },
+      { key: "unit", label: "Unit of Measure", options: [...UNITS_OF_MEASURE], valueOf: (p) => p.unit },
+      { key: "topOff", label: "TopOff", options: ["Supported", "Not supported"], valueOf: (p) => (p.topOffSupported ? "Supported" : "Not supported") },
+      {
+        key: "config",
+        label: "Configuration",
+        options: ["Tax configured", "Tax missing", "Accounting mapped", "Accounting unmapped", "No vendor can fulfil"],
+        valueOf: (p) => {
+          const out: string[] = [];
+          out.push(p.taxCode ? "Tax configured" : "Tax missing");
+          out.push(p.revenueAccount && p.cogsAccount ? "Accounting mapped" : "Accounting unmapped");
+          if (vendorsForProduct(p).length === 0) out.push("No vendor can fulfil");
+          return out;
+        },
+      },
+      {
+        key: "usage",
+        label: "Usage",
+        options: ["Used in active orders", "Used in recurring orders", "Never ordered"],
+        valueOf: (p) => {
+          const orders = BROKER_PRODUCTS.length > 0 ? ordersUsing(p.name) : [];
+          const out: string[] = [];
+          if (orders.some((o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status))) {
+            out.push("Used in active orders");
+          }
+          if (orders.some((o) => o.kind === "Recurring")) out.push("Used in recurring orders");
+          if (orders.length === 0) out.push("Never ordered");
+          return out;
+        },
+      },
+    ],
+
+    exportRow: (p) => ({
+      "Product Name": p.name,
+      "Product Code": p.productCode,
+      Category: p.category,
+      "Unit of Measure": p.unit,
+      "TopOff Supported": p.topOffSupported ? "Yes" : "No",
+      "Base Price": p.basePrice ?? "",
+      "Tax Code": blank(p.taxCode),
+      "Revenue Account": blank(p.revenueAccount),
+      "COGS Account": blank(p.cogsAccount),
+      Status: p.status,
+      "Available Customers": customerReach(p),
+      "Available Vendors": vendorsForProduct(p).length,
+      Hazmat: blank(p.hazmat),
+      Notes: blank(p.notes),
+    }),
+
+    subtitleOf: productSubtitle,
+    statusOf: (p) => ({ label: p.status, tone: productStatusTone(p) }),
+    badgesOf: productBadges,
+    statsOf: productStats,
+    sectionsOf: (p, go) => productSections(p, go),
+
+    formSections: productFormSections(),
+    blank: (id) => ({
+      id,
+      name: "",
+      productCode: "",
+      erpItemId: null,
+      category: "Fuel",
+      description: null,
+      status: "active",
+      unit: "gal",
+      quantityPrecision: 0,
+      minimumQuantity: null,
+      maximumQuantity: null,
+      defaultQuantity: null,
+      topOffSupported: false,
+      quantityOverrideAllowed: true,
+      basePrice: null,
+      currency: "USD",
+      taxCode: null,
+      taxable: true,
+      revenueAccount: null,
+      cogsAccount: null,
+      inventoryClassification: null,
+      availableToAllCustomers: true,
+      allowedCustomerIds: [],
+      blockedCustomerIds: [],
+      availableVendorIds: [],
+      defaultVendorIds: [],
+      geographyRestrictions: [],
+      hazmat: null,
+      hazardFlags: [],
+      sdsAttachments: [],
+      tags: [],
+      notes: null,
+      attachments: [],
+      audit: [
+        {
+          id: `au-${Date.now().toString(36)}`,
+          at: new Date().toISOString(),
+          by: "Dana Whitfield",
+          action: "Created",
+          changes: ["Product record created"],
+        },
+      ],
+      displayOrder: 999,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    statusField: {
+      get: (p) => p.status,
+      set: (p, next) => ({ ...p, status: next, updatedAt: new Date().toISOString() }),
+    },
+    auditOf: (p) => p.audit,
+    withAudit: (p, entry) => ({ ...p, audit: [entry, ...p.audit], updatedAt: entry.at }),
+    extraBulkActions: (selected, apply) => [
+      {
+        key: "topoff",
+        label: "Enable TopOff",
+        icon: <Droplet />,
+        onSelect: () =>
+          apply(
+            (p) => ({ ...p, topOffSupported: true }),
+            `TopOff enabled on ${selected.length} ${selected.length === 1 ? "product" : "products"}`
+          ),
+      },
+    ],
+  };
+}
+
+/* Local helper — the product facet needs orders without importing the module
+   twice under two names. */
+import { BROKER_ORDERS } from "./orders";
+const ordersUsing = (productName: string) =>
+  BROKER_ORDERS.filter((o) => o.lines.some((l) => l.product === productName));
+
+/* ═══════════════════════════════════════════════════════════ rental assets ═ */
+
+export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
+  return {
+    urlKey: "assets",
+    parentLabel: "Rental Assets",
+    noun: "asset",
+    rowId: (a) => a.id,
+    nameOf: (a) => a.name,
+    columns: RENTAL_ASSET_COLUMNS,
+    matches: matchesAsset,
+    searchFields: RENTAL_ASSET_SEARCH_FIELDS,
+    searchPlaceholder: "Search by asset, serial, customer or location",
+    sortRows: sortAssets,
+    dimensions: RENTAL_ASSET_GROUP_DIMS,
+    emptyIcon: <Boxes />,
+    /* ONLY WHAT IS OUT EARNS. Capacity would be the obvious measure and is
+       wrong — a group's tanks do not pool into one tank. */
+    measureOf: (a) => (a.availabilityStatus === "On rent" ? a.rentalRate : 0),
+    formatTotal: (n) => `${money(n)} / mo on rent`,
+
+    renderCell: (a, key) => {
+      switch (key) {
+        case "name":
+          return <TwoLineCell title={a.name} description={a.serialNumber ?? "No serial"} />;
+        case "serial":
+          return a.serialNumber ? (
+            <span className="text-sm tabular-nums">{a.serialNumber}</span>
+          ) : (
+            <Muted />
+          );
+        case "type":
+          return <span className="text-sm">{a.assetType}</span>;
+        case "customer":
+          return a.customer ? (
+            <span className="text-sm">{a.customer}</span>
+          ) : (
+            <Muted>At the yard</Muted>
+          );
+        case "shipTo":
+          return a.shipTo ? <span className="text-sm">{a.shipTo}</span> : <Muted />;
+        case "address":
+          return <Clamped text={a.addressLine1 ? oneLineAddress(a) : null} />;
+        case "city":
+          return a.city ? <span className="text-sm">{a.city}</span> : <Muted />;
+        case "state":
+          return a.state ? <span className="text-sm">{a.state}</span> : <Muted />;
+        case "status":
+          return <RecordStatusChip status={a.status} />;
+        case "availability":
+          return (
+            <StatusChip
+              tone={
+                a.availabilityStatus === "Available"
+                  ? "success"
+                  : a.availabilityStatus === "On rent"
+                    ? "processing"
+                    : a.availabilityStatus === "In maintenance"
+                      ? "failed"
+                      : "neutral"
+              }
+              variant="text"
+            >
+              {a.availabilityStatus}
+            </StatusChip>
+          );
+        case "start":
+          return a.rentalStartDate ? (
+            <span className="text-sm tabular-nums">{formatDate(a.rentalStartDate)}</span>
+          ) : (
+            <Muted>N/A</Muted>
+          );
+        case "end":
+          if (!a.rentalEndDate) {
+            return a.availabilityStatus === "On rent" ? <Muted>Open ended</Muted> : <Muted>N/A</Muted>;
+          }
+          return (
+            <span className="flex items-center gap-1.5">
+              <span className="text-sm tabular-nums">{formatDate(a.rentalEndDate)}</span>
+              {endingSoon(a) && (
+                <Badge variant="secondary" className="font-normal">
+                  Soon
+                </Badge>
+              )}
+            </span>
+          );
+        case "rate":
+          return <Money value={a.rentalRate} />;
+        case "product": {
+          const p = BROKER_PRODUCTS.find((x) => x.id === a.associatedProductId);
+          return p ? <span className="text-sm">{p.name}</span> : <Muted>N/A</Muted>;
+        }
+        case "maintenance":
+          return (
+            <StatusChip
+              tone={
+                a.maintenanceStatus === "OK"
+                  ? "success"
+                  : a.maintenanceStatus === "Service due"
+                    ? "processing"
+                    : "failed"
+              }
+              variant="text"
+            >
+              {a.maintenanceStatus}
+            </StatusChip>
+          );
+        default:
+          return null;
+      }
+    },
+
+    facets: [
+      { key: "status", label: "Record Status", options: ["active", "inactive", "archived"], valueOf: (a) => a.status },
+      { key: "availability", label: "Availability", options: [...RENTAL_STATUSES], valueOf: (a) => a.availabilityStatus },
+      { key: "type", label: "Asset Type", options: [...RENTAL_TYPES], valueOf: (a) => a.assetType },
+      { key: "maintenance", label: "Maintenance", options: [...MAINTENANCE_STATUSES], valueOf: (a) => a.maintenanceStatus },
+      {
+        key: "customer",
+        label: "Customer",
+        searchable: true,
+        options: [...new Set(RENTAL_ASSETS.map((a) => a.customer).filter((x): x is string => Boolean(x)))].sort(),
+        valueOf: (a) => a.customer ?? "",
+      },
+      { key: "state", label: "State", options: STATE_CODES, searchable: true, valueOf: (a) => a.state ?? "" },
+      {
+        key: "flags",
+        label: "Flags",
+        options: ["Rental ending soon", "Compliance risk", "Under maintenance", "Linked to recurring", "Unassigned"],
+        valueOf: (a) => {
+          const out: string[] = [];
+          if (endingSoon(a)) out.push("Rental ending soon");
+          if (a.complianceStatus === "Expired" || a.complianceStatus === "Expiring") out.push("Compliance risk");
+          if (a.availabilityStatus === "In maintenance") out.push("Under maintenance");
+          if (BROKER_ORDERS.some((o) => o.kind === "Recurring" && o.lines.some((l) => l.asset === a.name))) {
+            out.push("Linked to recurring");
+          }
+          if (!a.customerId) out.push("Unassigned");
+          return out;
+        },
+      },
+    ],
+
+    exportRow: (a) => ({
+      "Asset Name": a.name,
+      Serial: blank(a.serialNumber),
+      "Asset Type": a.assetType,
+      Ownership: a.ownershipType,
+      Customer: blank(a.customer),
+      "Ship-to": blank(a.shipTo),
+      Address: oneLineAddress(a),
+      City: blank(a.city),
+      State: blank(a.state),
+      Status: a.status,
+      Availability: a.availabilityStatus,
+      "Rental Start": blank(a.rentalStartDate),
+      "Rental End": blank(a.rentalEndDate),
+      Rate: a.rentalRate,
+      "Billing Frequency": a.billingFrequency,
+      Capacity: a.capacityGal > 0 ? a.capacityGal : "N/A",
+      "Linked Product": blank(BROKER_PRODUCTS.find((p) => p.id === a.associatedProductId)?.name ?? null),
+      Maintenance: a.maintenanceStatus,
+      Compliance: a.complianceStatus,
+      "Next Service Due": blank(a.nextServiceDue),
+    }),
+
+    subtitleOf: (a) => (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="tabular-nums">{blank(a.serialNumber)}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{a.assetType}</span>
+        <span aria-hidden className="text-fp-outline-1">·</span>
+        <span>{a.customer ? `${a.customer} — ${a.shipTo ?? "site not set"}` : "At the yard"}</span>
+      </span>
+    ),
+    statusOf: (a) => ({ label: a.availabilityStatus, tone: assetStatusTone(a) }),
+    badgesOf: assetBadges,
+    statsOf: assetStats,
+    sectionsOf: (a, go) => assetSections(a, go),
+
+    formSections: assetFormSections(),
+    blank: (id) => ({
+      id,
+      name: "",
+      assetType: "Bulk Tank",
+      serialNumber: null,
+      qrCode: null,
+      externalAssetId: null,
+      ownershipType: "owned",
+      status: "active",
+      customerId: null,
+      customer: null,
+      shipToId: null,
+      shipTo: null,
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      state: null,
+      zip: null,
+      country: "USA",
+      latitude: null,
+      longitude: null,
+      installedDate: null,
+      removalDate: null,
+      availabilityStatus: "Available",
+      rentalStartDate: null,
+      rentalEndDate: null,
+      contractId: null,
+      billingFrequency: "Monthly",
+      rentalRate: 0,
+      depositAmount: null,
+      autoRenew: false,
+      associatedProductId: null,
+      capacityGal: 0,
+      unit: "gal",
+      fillThreshold: null,
+      reorderPoint: null,
+      topOffRelevant: false,
+      assignedVendorId: null,
+      lastServiceDate: null,
+      nextServiceDue: null,
+      maintenanceStatus: "OK",
+      complianceStatus: "Not required",
+      assetPhoto: null,
+      documents: [],
+      inspectionFiles: [],
+      installationRecords: [],
+      tags: [],
+      notes: null,
+      audit: [
+        {
+          id: `au-${Date.now().toString(36)}`,
+          at: new Date().toISOString(),
+          by: "Dana Whitfield",
+          action: "Created",
+          changes: ["Asset record created"],
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    statusField: {
+      get: (a) => a.status,
+      set: (a, next) => ({
+        ...a,
+        status: next,
+        availabilityStatus: next === "archived" ? "Retired" : a.availabilityStatus,
+        updatedAt: new Date().toISOString(),
+      }),
+    },
+    auditOf: (a) => a.audit,
+    withAudit: (a, entry) => ({ ...a, audit: [entry, ...a.audit], updatedAt: entry.at }),
+    extraBulkActions: (selected, apply) => [
+      {
+        key: "maintenance",
+        label: "Mark under maintenance",
+        icon: <Boxes />,
+        onSelect: () =>
+          apply(
+            (a) => ({ ...a, availabilityStatus: "In maintenance", maintenanceStatus: "Out of service" }),
+            `${selected.length} ${selected.length === 1 ? "asset" : "assets"} marked under maintenance`
+          ),
+      },
+      tagBulkAction<RentalAsset>(
+        apply,
+        (a, tag) => (a.tags.includes(tag) ? a : { ...a, tags: [...a.tags, tag] }),
+        selected.length
+      ),
+    ],
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════ the four ═ */
+
+/**
+ * The Directory's own state, held once above the four screens.
+ *
+ * An edit made on Vendors has to be visible from a Product's "who can fulfil
+ * this" table, so the arrays cannot live inside the screens that render them.
+ * A real app would refetch; this owns them.
+ */
+export function useDirectoryData() {
+  const [customers, setCustomers] = React.useState(BROKER_CUSTOMERS);
+  const [vendors, setVendors] = React.useState(VENDORS);
+  const [products, setProducts] = React.useState(BROKER_PRODUCTS);
+  const [assets, setAssets] = React.useState(RENTAL_ASSETS);
+  return { customers, setCustomers, vendors, setVendors, products, setProducts, assets, setAssets };
+}
+
+export type DirectoryData = ReturnType<typeof useDirectoryData>;
+
+export function BrokerCustomersScreen({
+  data,
+  navigate,
+  focusId,
+  onFocusHandled,
+}: {
+  data: DirectoryData;
+  navigate: Navigator;
+  focusId?: string | null;
+  onFocusHandled?: () => void;
+}) {
+  const config = React.useMemo(customerConfig, []);
+  return (
+    <DirectoryEntityScreen
+      config={config}
+      rows={data.customers}
+      onRowsChange={data.setCustomers}
+      navigate={navigate}
+      focusId={focusId}
+      onFocusHandled={onFocusHandled}
     />
   );
 }
 
-/* ────────────────────────────────────────────────────────────── products ── */
-
-const sortProducts = makeSort<BrokerProduct, BrokerProductColumnKey>({
-  name: (p) => p.name,
-  category: (p) => p.category,
-  taxable: (p) => (p.taxable ? 1 : 0),
-  price: (p) => p.refPrice,
-  status: (p) => (p.active ? 1 : 0),
-});
-
-export function BrokerProductsScreen() {
-  const renderCell = (p: BrokerProduct, key: BrokerProductColumnKey) => {
-    switch (key) {
-      case "name":
-        return <TwoLineCell title={p.name} description={p.id.toUpperCase()} />;
-      case "category":
-        return p.category;
-      case "unit":
-        return <span className="text-muted-foreground">{p.unit}</span>;
-      case "taxable":
-        /* Exempt is the exception and the one worth spotting: dyed diesel is
-           off-road, and the dye IS the exemption. */
-        return (
-          <StatusChip tone={p.taxable ? "neutral" : "processing"} variant="text">
-            {p.taxable ? "Taxable" : "Exempt"}
-          </StatusChip>
-        );
-      case "hazmat":
-        return p.hazmat ? (
-          <span className="tabular-nums">{p.hazmat}</span>
-        ) : (
-          <span className="text-muted-foreground">Not regulated</span>
-        );
-      case "price":
-        return (
-          <span className="tabular-nums">
-            ${p.refPrice.toFixed(2)}
-            <span className="text-muted-foreground"> /{p.unit}</span>
-          </span>
-        );
-      case "status":
-        /* Inactive is not deleted — old orders still reference it. */
-        return (
-          <StatusChip tone={p.active ? "success" : "neutral"} variant="text">
-            {p.active ? "Active" : "Inactive"}
-          </StatusChip>
-        );
-      default:
-        return null;
-    }
-  };
-
+export function BrokerVendorsScreen({
+  data,
+  navigate,
+  focusId,
+  onFocusHandled,
+}: {
+  data: DirectoryData;
+  navigate: Navigator;
+  focusId?: string | null;
+  onFocusHandled?: () => void;
+}) {
+  const config = React.useMemo(vendorConfig, []);
   return (
-    <DirectoryList<BrokerProduct, BrokerProductColumnKey>
-      rows={BROKER_PRODUCTS}
-      columns={BROKER_PRODUCT_COLUMNS}
-      rowId={(p) => p.id}
-      renderCell={renderCell}
-      matches={(p, q) =>
-        `${p.name} ${p.category} ${p.hazmat ?? ""}`.toLowerCase().includes(q)
-      }
-      searchFields={BROKER_PRODUCT_SEARCH_FIELDS}
-      searchPlaceholder="Search products, categories, hazmat classes…"
-      sortRows={sortProducts}
-      dimensions={BROKER_PRODUCT_GROUP_DIMS}
-      facets={[
-        {
-          key: "category",
-          label: "Category",
-          options: [...PRODUCT_CATEGORIES],
-          valueOf: (p) => p.category,
-        },
-        {
-          key: "status",
-          label: "Status",
-          options: ["Active", "Inactive"],
-          valueOf: (p) => (p.active ? "Active" : "Inactive"),
-        },
-        {
-          key: "taxable",
-          label: "Tax",
-          options: ["Taxable", "Exempt"],
-          valueOf: (p) => (p.taxable ? "Taxable" : "Exempt"),
-        },
-      ]}
-      noun="product"
-      /* NOTHING SUMS. A reference price is per gallon; adding seven of them
-         produces a number with no referent. */
-      emptyIcon={<Droplet />}
-      openLabel={(p) => `Open product ${p.name}`}
+    <DirectoryEntityScreen
+      config={config}
+      rows={data.vendors}
+      onRowsChange={data.setVendors}
+      navigate={navigate}
+      focusId={focusId}
+      onFocusHandled={onFocusHandled}
     />
   );
 }
 
-/* ────────────────────────────────────────────────────── rental assets ── */
-
-const sortAssets = makeSort<RentalAsset, RentalAssetColumnKey>({
-  name: (a) => a.name,
-  type: (a) => a.type,
-  capacity: (a) => a.capacityGal,
-  status: (a) => a.status,
-  rate: (a) => a.monthlyRate,
-  // Never-rented sorts last under ascending, which is where it belongs.
-  since: (a) => a.onRentSince ?? "9999",
-});
-
-export function BrokerRentalAssetsScreen() {
-  const renderCell = (a: RentalAsset, key: RentalAssetColumnKey) => {
-    switch (key) {
-      case "name":
-        return <TwoLineCell title={a.name} description={a.serial} />;
-      case "type":
-        return a.type;
-      case "capacity":
-        /* A pump cart holds nothing — "—" rather than "0 gal", which would
-           read as an empty tank. */
-        return a.capacityGal > 0 ? (
-          <span className="tabular-nums">{a.capacityGal.toLocaleString()} gal</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        );
-      case "status":
-        return (
-          <StatusChip
-            tone={
-              a.status === "On rent"
-                ? "success"
-                : a.status === "Available"
-                  ? "neutral"
-                  : "processing"
-            }
-            variant="text"
-          >
-            {a.status}
-          </StatusChip>
-        );
-      case "customer":
-        return a.customer ? (
-          <TwoLineCell title={a.customer} description={a.shipTo ?? ""} />
-        ) : (
-          <span className="text-muted-foreground">In the yard</span>
-        );
-      case "rate":
-        return <span className="tabular-nums">{USD.format(a.monthlyRate)}</span>;
-      case "since":
-        return a.onRentSince ? (
-          <span className="tabular-nums">{fmtDate(a.onRentSince)}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        );
-      default:
-        return null;
-    }
-  };
-
+export function BrokerProductsScreen({
+  data,
+  navigate,
+  focusId,
+  onFocusHandled,
+}: {
+  data: DirectoryData;
+  navigate: Navigator;
+  focusId?: string | null;
+  onFocusHandled?: () => void;
+}) {
+  const config = React.useMemo(productConfig, []);
   return (
-    <DirectoryList<RentalAsset, RentalAssetColumnKey>
-      rows={RENTAL_ASSETS}
-      columns={RENTAL_ASSET_COLUMNS}
-      rowId={(a) => a.id}
-      renderCell={renderCell}
-      matches={(a, q) =>
-        `${a.name} ${a.serial} ${a.type} ${a.customer ?? ""} ${a.shipTo ?? ""}`
-          .toLowerCase()
-          .includes(q)
-      }
-      searchFields={RENTAL_ASSET_SEARCH_FIELDS}
-      searchPlaceholder="Search assets, serials, accounts…"
-      sortRows={sortAssets}
-      dimensions={RENTAL_ASSET_GROUP_DIMS}
-      facets={[
-        {
-          key: "status",
-          label: "Status",
-          options: [...RENTAL_STATUSES],
-          valueOf: (a) => a.status,
-        },
-        { key: "type", label: "Type", options: [...RENTAL_TYPES], valueOf: (a) => a.type },
-      ]}
-      noun="asset"
-      /* REVENUE, NOT CAPACITY. Capacity is the obvious pick and is wrong — a
-         group's tanks do not pool into one tank. What a group of assets is
-         worth is what the ones ON RENT bill each month; the rest bill nothing,
-         which is exactly the point of the number. */
-      measureOf={(a) => (a.status === "On rent" ? a.monthlyRate : 0)}
-      formatTotal={(t) => `${USD.format(t)}/mo on rent`}
-      emptyIcon={<Boxes />}
-      openLabel={(a) => `Open asset ${a.name}`}
+    <DirectoryEntityScreen
+      config={config}
+      rows={data.products}
+      onRowsChange={data.setProducts}
+      navigate={navigate}
+      focusId={focusId}
+      onFocusHandled={onFocusHandled}
     />
   );
 }
+
+export function RentalAssetsScreen({
+  data,
+  navigate,
+  focusId,
+  onFocusHandled,
+}: {
+  data: DirectoryData;
+  navigate: Navigator;
+  focusId?: string | null;
+  onFocusHandled?: () => void;
+}) {
+  const config = React.useMemo(assetConfig, []);
+  return (
+    <DirectoryEntityScreen
+      config={config}
+      rows={data.assets}
+      onRowsChange={data.setAssets}
+      navigate={navigate}
+      focusId={focusId}
+      onFocusHandled={onFocusHandled}
+    />
+  );
+}
+
+/** Kept for the monthly-revenue footer used by the old screen wiring. */
+export { monthlyRevenue };

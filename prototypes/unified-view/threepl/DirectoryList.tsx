@@ -1,5 +1,7 @@
 import * as React from "react";
-import { SearchX } from "lucide-react";
+import { Download, Plus, SearchX, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -8,34 +10,48 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import {
+  BulkActionBar,
   GroupedListFooter,
+  TablePagination,
   useGrouping,
+  type BulkAction,
   type GroupDim,
 } from "@/components/tables-layout";
+import { toast } from "sonner";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, type ListView } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ListTable } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
+import { packList, readUrl, unpackList, writeUrl } from "./directoryUrl";
 
 /*
-  The Directory's list shell — Vendors, Customers, Products, Rental Assets.
+  The Directory's list shell — Customers, Vendors, Products, Rental Assets.
 
   ONE COMPONENT, FOUR SCREENS. The four share a shape exactly: a record list
-  with no date scope, no create CTA, no bulk bar, a facet panel, grouping, and a
+  with no date scope, a facet panel, grouping, selection, pagination and a
   footer that counts. Four copies of that would have drifted within a release —
   and the drift would have been in the parts nobody looks at twice, like which
   screens suspend pagination while grouped.
 
   WHAT EACH SCREEN STILL OWNS is what is genuinely its own: its records, its
   columns and how their cells render, what it can be grouped and filtered by,
-  and whether anything about it SUMS. Everything below that line is the same
-  everywhere, so it lives here.
+  what can be DONE to a selection of them, and whether anything about it SUMS.
+  Everything below that line is the same everywhere, so it lives here.
 
   NOT DATE-SCOPED, deliberately. A carrier, an account, a product and a tank
   carry no date, so the toolbar's date stepper is omitted rather than shown with
   nothing to scope — the same call Sales' Customers screen makes.
+
+  PAGINATION AND GROUPING ARE EXCLUSIVE. At 30 rows a page a group straddles
+  the boundary and its header claims a count for records that are not on
+  screen, so while grouped the list scrolls whole and reports its shape
+  instead. That is `GroupedListFooter`'s entire reason for existing, and the
+  two footers keep the same skeleton so the bottom of the screen does not jump.
 */
+
+/** The reference screen's own set. Kept exactly, including the large ones. */
+export const DIRECTORY_PAGE_SIZES = [10, 20, 30, 50, 100, 200, 400];
 
 export interface DirectoryFacet<Row> {
   key: string;
@@ -43,6 +59,7 @@ export interface DirectoryFacet<Row> {
   options: string[];
   /** The value a row presents to this facet. Must match an option exactly. */
   valueOf: (row: Row) => string | string[];
+  searchable?: boolean;
 }
 
 export interface DirectoryColumn<K extends string> {
@@ -76,10 +93,20 @@ export interface DirectoryListProps<Row, K extends string> {
   /** Formats the footer's total — for currency, where a unit suffix is wrong. */
   formatTotal?: (total: number) => string;
   emptyIcon: React.ReactNode;
-  /** Row click opens something. Omit on a list with no record view yet — the
-   *  chevron still renders, so the row's shape does not change between lists. */
+  /** Row click opens the record. */
   onOpenRow?: (row: Row) => void;
   openLabel: (row: Row) => string;
+  /** Header CTA. Omitted, no button is drawn — no dead controls. */
+  onCreate?: () => void;
+  createLabel?: string;
+  /** One CSV row per record, in the order the columns are declared. */
+  exportRow?: (row: Row) => Record<string, string | number>;
+  /** What can be done to a selection. Omitted, the checkbox column is absent. */
+  bulkActions?: (selected: Row[], clear: () => void) => BulkAction[];
+  /** Namespaces this list's URL params so four screens can share one address. */
+  urlKey: string;
+  /** Whether the reader may create, edit or archive here. */
+  canWrite?: boolean;
 }
 
 interface ViewState {
@@ -90,10 +117,45 @@ interface ViewState {
   pageSize: number;
   colScope: string;
   colQuery: string;
+  filters: string[];
 }
 
 const keyOf = (s: ViewState) =>
-  JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
+  JSON.stringify({ ...s, hidden: [...s.hidden].sort(), filters: [...s.filters].sort() });
+
+/** `"credit:Approved"` reads as `Credit · Approved` on the chip. */
+function chipLabel(id: string, facets: { key: string; label: string }[]): string {
+  const facet = facets.find((f) => id.startsWith(`${f.key}:`));
+  if (!facet) return id;
+  return `${facet.label}: ${id.slice(facet.key.length + 1)}`;
+}
+
+/**
+ * CSV of what is on screen, not of the table.
+ *
+ * Export means "the rows I am looking at" — filtered, searched and sorted, all
+ * pages of them. Exporting the page would be a surprise and exporting the whole
+ * table would ignore the filtering somebody just did.
+ */
+function downloadCsv(name: string, records: Record<string, string | number>[]): void {
+  if (records.length === 0) return;
+  const headers = Object.keys(records[0]);
+  const cell = (v: string | number) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [
+    headers.join(","),
+    ...records.map((r) => headers.map((h) => cell(r[h])).join(",")),
+  ].join("\n");
+
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function DirectoryList<Row, K extends string>({
   rows,
@@ -114,6 +176,12 @@ export function DirectoryList<Row, K extends string>({
   emptyIcon,
   onOpenRow,
   openLabel,
+  onCreate,
+  createLabel,
+  exportRow,
+  bulkActions,
+  urlKey,
+  canWrite = true,
 }: DirectoryListProps<Row, K>) {
   const toggleColumns = React.useMemo(
     () => columns.filter((c) => c.label).map((c) => ({ key: c.key, label: c.label })),
@@ -121,16 +189,47 @@ export function DirectoryList<Row, K extends string>({
   );
   const firstScope = searchFields[0]?.key ?? "";
 
-  const [search, setSearch] = React.useState("");
-  const [sort, setSort] = React.useState<{ key: K; dir: "asc" | "desc" } | null>(null);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(25);
-  const [hidden, setHidden] = React.useState<Set<K>>(new Set());
-  const [colScope, setColScope] = React.useState(firstScope);
-  const [colQuery, setColQuery] = React.useState("");
+  /* ── initial state, from the URL if it carries any ────────────────────── */
+  const boot = React.useMemo(() => {
+    const u = readUrl();
+    /* Params belong to whichever entity the address names. Landing on Vendors
+       with the Customers list's page number would be worse than ignoring it. */
+    return u.entity === urlKey ? u : {};
+  }, [urlKey]);
+
+  const [search, setSearch] = React.useState(boot.q ?? "");
+  const [sort, setSort] = React.useState<{ key: K; dir: "asc" | "desc" } | null>(
+    boot.sortBy ? { key: boot.sortBy as K, dir: boot.sortDir === "desc" ? "desc" : "asc" } : null
+  );
+  const [page, setPage] = React.useState(Number(boot.page) > 0 ? Number(boot.page) : 1);
+  const [pageSize, setPageSize] = React.useState(
+    DIRECTORY_PAGE_SIZES.includes(Number(boot.pageSize)) ? Number(boot.pageSize) : 30
+  );
+  const [hidden, setHidden] = React.useState<Set<K>>(new Set(unpackList(boot.cols) as K[]));
+  const [colScope, setColScope] = React.useState(boot.colScope ?? firstScope);
+  const [colQuery, setColQuery] = React.useState(boot.colQuery ?? "");
   const [view, setView] = React.useState<ListView>("table");
   /** Applied facet ids, `facetKey:option`. Empty = everything. */
-  const [applied, setApplied] = React.useState<string[]>([]);
+  const [applied, setApplied] = React.useState<string[]>(unpackList(boot.filters));
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+
+  /*
+    THE LOADING STATE IS REAL, not a toggle in a demo.
+
+    Changing the page, the page size or the sort is the moment a real list goes
+    back to the server, and the skeleton is what the reader sees while it does.
+    Showing it for one frame on those three transitions is the honest amount:
+    long enough that the state exists and is designed, short enough that it is
+    never in the way.
+  */
+  const [loading, setLoading] = React.useState(false);
+  const settle = React.useRef<number | undefined>(undefined);
+  const reload = React.useCallback(() => {
+    setLoading(true);
+    window.clearTimeout(settle.current);
+    settle.current = window.setTimeout(() => setLoading(false), 260);
+  }, []);
+  React.useEffect(() => () => window.clearTimeout(settle.current), []);
 
   const current: ViewState = {
     search,
@@ -140,6 +239,7 @@ export function DirectoryList<Row, K extends string>({
     pageSize,
     colScope,
     colQuery,
+    filters: applied,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -147,9 +247,10 @@ export function DirectoryList<Row, K extends string>({
       sortKey: null,
       sortDir: null,
       hidden: [],
-      pageSize: 25,
+      pageSize: 30,
       colScope: firstScope,
       colQuery: "",
+      filters: [],
     }),
     [firstScope]
   );
@@ -160,7 +261,9 @@ export function DirectoryList<Row, K extends string>({
     setPageSize(s.pageSize);
     setColScope(s.colScope);
     setColQuery(s.colQuery);
+    setApplied(s.filters);
     setPage(1);
+    reload();
   };
   const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
 
@@ -203,6 +306,29 @@ export function DirectoryList<Row, K extends string>({
     pageSize,
   });
 
+  /* The URL trails the state rather than driving it: one writer, no loop. */
+  React.useEffect(() => {
+    writeUrl({
+      entity: urlKey,
+      q: search || null,
+      page: page > 1 ? page : null,
+      pageSize: pageSize === 30 ? null : pageSize,
+      sortBy: sort?.key ?? null,
+      sortDir: sort?.dir ?? null,
+      cols: packList([...hidden]) || null,
+      colScope: colQuery ? colScope : null,
+      colQuery: colQuery || null,
+      filters: packList(applied) || null,
+      group: packList(g.groupBy) || null,
+    });
+  }, [urlKey, search, page, pageSize, sort, hidden, colScope, colQuery, applied, g.groupBy]);
+
+  /* A page that no longer exists — the last row on it was filtered away. */
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  React.useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   const onSort = (key: K) => {
     setSort((prev) => {
       if (prev?.key !== key) return { key, dir: "asc" };
@@ -210,101 +336,207 @@ export function DirectoryList<Row, K extends string>({
       return null;
     });
     setPage(1);
+    reload();
   };
 
   const plural = nounPlural ?? `${noun}s`;
   const count = sorted.length;
 
+  /* SELECTION IS SCOPED TO WHAT IS ON SCREEN. "Select all" on a filtered list
+     of 3,000 that silently picks up rows nobody has seen is how people delete
+     the wrong thing; the header checkbox takes the visible page and no more. */
+  const pageIds = g.visibleRows.map(rowId);
+  const selectedRows = sorted.filter((r) => selected.has(rowId(r)));
+  const clearSelection = () => setSelected(new Set());
+  const actions = bulkActions?.(selectedRows, clearSelection) ?? [];
+
+  const chips = applied.map((id) => ({ id, label: chipLabel(id, facets) }));
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* No CTA: a Directory record is onboarded elsewhere — a carrier through a
-          contract, an account from Dispatch, a product from the price book. The
-          view bar renders its button only when a handler is passed. */}
       <FuelOrdersViewBar {...savedViews} />
 
-      <div className="mt-4 shrink-0">
-        <ListToolbar
-          searchValue={search}
-          onSearchChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
-          searchPlaceholder={searchPlaceholder}
-          filters={
-            facets.length > 0 ? (
-              <ListFilters
-                facets={facets.map((f) => ({
-                  key: f.key,
-                  label: f.label,
-                  options: f.options,
-                }))}
-                onApply={(ids) => {
-                  setApplied([...ids]);
+      <div className="mt-4 flex shrink-0 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <ListToolbar
+            searchValue={search}
+            onSearchChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            searchPlaceholder={searchPlaceholder}
+            filters={
+              facets.length > 0 ? (
+                <ListFilters
+                  facets={facets.map((f) => ({
+                    key: f.key,
+                    label: f.label,
+                    options: f.options,
+                    searchable: f.searchable,
+                  }))}
+                  onApply={(ids) => {
+                    setApplied([...ids]);
+                    setPage(1);
+                    reload();
+                  }}
+                />
+              ) : undefined
+            }
+            groupBy={{
+              dimensions: g.menuDimensions,
+              value: g.groupBy,
+              onChange: (next) => {
+                g.setGrouping(next);
+                setPage(1);
+              },
+            }}
+            columns={toggleColumns}
+            hiddenColumns={hidden}
+            onToggleColumn={(k) =>
+              setHidden((prev) => {
+                const next = new Set(prev);
+                if (next.has(k)) next.delete(k);
+                else next.add(k);
+                return next;
+              })
+            }
+            onShowAllColumns={() => setHidden(new Set())}
+            onHideAllColumns={() => setHidden(new Set(toggleColumns.map((c) => c.key)))}
+            searchFields={searchFields}
+            colScope={colScope}
+            onColScopeChange={(v) => {
+              setColScope(v);
+              setPage(1);
+            }}
+            colQuery={colQuery}
+            onColQueryChange={(v) => {
+              setColQuery(v);
+              setPage(1);
+            }}
+            view={view}
+            onViewChange={setView}
+          />
+        </div>
+
+        {/* EXPORT SITS WITH THE SEARCH, not with Add New. Both act on the list
+            you have narrowed to; Add New acts on the directory. */}
+        {exportRow && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            disabled={count === 0}
+            onClick={() => {
+              downloadCsv(`${urlKey}-${new Date().toISOString().slice(0, 10)}`,
+                sorted.map(exportRow));
+              toast.success(`Exported ${count.toLocaleString()} ${count === 1 ? noun : plural}`, {
+                description: "The filtered list, all pages, in the order shown.",
+              });
+            }}
+          >
+            <Download />
+            Export
+          </Button>
+        )}
+        {onCreate && (
+          <Button
+            size="sm"
+            className="shrink-0"
+            disabled={!canWrite}
+            /* A DEAD CONTROL MUST SAY WHY. Hiding it would leave someone
+               without the permission wondering where the button went. */
+            title={canWrite ? undefined : `You do not have permission to add a ${noun}`}
+            onClick={onCreate}
+          >
+            <Plus />
+            {createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
+          </Button>
+        )}
+      </div>
+
+      <ColumnSearchChip
+        searchFields={searchFields}
+        colScope={colScope}
+        colQuery={colQuery}
+        onClear={() => {
+          setColQuery("");
+          setPage(1);
+        }}
+      />
+
+      {/* ACTIVE FILTERS, SAID OUT LOUD. The facet panel remembers what was
+          picked, but it is closed — and a list that is quietly narrowed is the
+          single most common way people conclude their data is missing. */}
+      {chips.length > 0 && (
+        <div className="mt-2 flex shrink-0 flex-wrap items-center gap-1.5">
+          {chips.map((c) => (
+            <Badge key={c.id} variant="secondary" className="gap-1 pr-1 font-normal">
+              {c.label}
+              <button
+                type="button"
+                aria-label={`Remove filter ${c.label}`}
+                className="rounded-sm p-0.5 outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-ring/50"
+                onClick={() => {
+                  setApplied((prev) => prev.filter((x) => x !== c.id));
                   setPage(1);
                 }}
-              />
-            ) : undefined
-          }
-          groupBy={{
-            dimensions: g.menuDimensions,
-            value: g.groupBy,
-            onChange: (next) => {
-              g.setGrouping(next);
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              setApplied([]);
               setPage(1);
-            },
-          }}
-          columns={toggleColumns}
-          hiddenColumns={hidden}
-          onToggleColumn={(k) =>
-            setHidden((prev) => {
-              const next = new Set(prev);
-              if (next.has(k)) next.delete(k);
-              else next.add(k);
-              return next;
-            })
-          }
-          onShowAllColumns={() => setHidden(new Set())}
-          onHideAllColumns={() => setHidden(new Set(toggleColumns.map((c) => c.key)))}
-          searchFields={searchFields}
-          colScope={colScope}
-          onColScopeChange={(v) => {
-            setColScope(v);
-            setPage(1);
-          }}
-          colQuery={colQuery}
-          onColQueryChange={(v) => {
-            setColQuery(v);
-            setPage(1);
-          }}
-          view={view}
-          onViewChange={setView}
-        />
-        <ColumnSearchChip
-          searchFields={searchFields}
-          colScope={colScope}
-          colQuery={colQuery}
-          onClear={() => {
-            setColQuery("");
-            setPage(1);
-          }}
-        />
-      </div>
+              reload();
+            }}
+          >
+            Clear all filters
+          </Button>
+        </div>
+      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {count === 0 ? (
+          {count === 0 && !loading ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  {q || applied.length > 0 ? <SearchX /> : emptyIcon}
+                  {q || applied.length > 0 || cq ? <SearchX /> : emptyIcon}
                 </EmptyMedia>
-                <EmptyTitle>No matching {plural}</EmptyTitle>
+                {/* THREE EMPTY STATES, NOT ONE. Nothing here yet, nothing
+                    matches what you typed, and nothing matches the filters are
+                    three different situations with three different next
+                    actions, and one shared sentence would fit none of them. */}
+                <EmptyTitle>
+                  {q || cq
+                    ? `No ${plural} match your search`
+                    : applied.length > 0
+                      ? `No ${plural} match these filters`
+                      : `No ${plural} yet`}
+                </EmptyTitle>
                 <EmptyDescription>
-                  {q
-                    ? `No ${plural} match “${search.trim()}”.`
-                    : `No ${noun} matches the filters applied.`}
+                  {q || cq
+                    ? `Nothing found for “${(search || colQuery).trim()}”. Check the spelling, or search a different column.`
+                    : applied.length > 0
+                      ? "Try removing a filter — the chips above show what is applied."
+                      : `Add your first ${noun} to get started.`}
                 </EmptyDescription>
               </EmptyHeader>
+              {applied.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setApplied([])}>
+                  Clear all filters
+                </Button>
+              )}
+              {applied.length === 0 && !q && !cq && onCreate && canWrite && (
+                <Button size="sm" onClick={onCreate}>
+                  <Plus />
+                  {createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
+                </Button>
+              )}
             </Empty>
           ) : (
             <ListTable
@@ -323,13 +555,51 @@ export function DirectoryList<Row, K extends string>({
               actionsKey={"actions" as K}
               openLabel={openLabel}
               onOpenRow={onOpenRow}
+              loading={loading}
+              skeletonRows={Math.min(pageSize, 12)}
+              selectedIds={bulkActions ? selected : undefined}
+              onToggleRow={
+                bulkActions
+                  ? (id) =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(id)) next.delete(id);
+                        else next.add(id);
+                        return next;
+                      })
+                  : undefined
+              }
+              onToggleAll={
+                bulkActions
+                  ? (next) =>
+                      setSelected((prev) => {
+                        const out = new Set(prev);
+                        pageIds.forEach((id) => (next ? out.add(id) : out.delete(id)));
+                        return out;
+                      })
+                  : undefined
+              }
             />
           )}
         </div>
+
+        {selected.size > 0 && actions.length > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+            <div className="pointer-events-auto">
+              <BulkActionBar
+                count={selected.size}
+                noun={noun}
+                actions={actions}
+                tools={false}
+                onClear={clearSelection}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grouped, the footer reports the shape of the list; flat, it reports
-          the one number a record list has — how many there are. */}
+          the page position — the one number a paged list owes the reader. */}
       <div className="mt-4 shrink-0">
         {g.grouped ? (
           <GroupedListFooter
@@ -344,14 +614,30 @@ export function DirectoryList<Row, K extends string>({
             onCollapseAll={g.collapseAll}
           />
         ) : (
-          <div className="text-sm tabular-nums text-muted-foreground">
-            {count} {count === 1 ? noun : plural}
-            {measureOf !== undefined &&
-              ` · ${
-                formatTotal
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TablePagination
+              className="h-9 w-full"
+              page={page}
+              pageSize={pageSize}
+              total={count}
+              pageSizeOptions={DIRECTORY_PAGE_SIZES}
+              onPageChange={(p) => {
+                setPage(p);
+                reload();
+              }}
+              onPageSizeChange={(s) => {
+                setPageSize(s);
+                setPage(1);
+                reload();
+              }}
+            />
+            {measureOf !== undefined && (
+              <div className="text-sm tabular-nums text-muted-foreground">
+                {formatTotal
                   ? formatTotal(g.total ?? 0)
-                  : `${(g.total ?? 0).toLocaleString()}${measureUnit ? ` ${measureUnit}` : ""}`
-              }`}
+                  : `${(g.total ?? 0).toLocaleString()}${measureUnit ? ` ${measureUnit}` : ""}`}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -132,12 +132,12 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
               asset: r.lines[0]?.asset || "Asset not chosen",
               /* A tank in transit is EMPTY, so this column carries its type
                  rather than a product it is not holding. */
-              product: asset?.type ?? r.movement.tankType,
+              product: asset?.assetType ?? r.movement.tankType,
               qty: cap > 0 ? `${cap.toLocaleString()} gal` : "—",
               qtySoft: cap === 0,
               /* WHICH unit, under its name. The route left this row for the
                  card header: it describes the ORDER, not the tank. */
-              assetId: asset?.serial,
+              assetId: asset?.serialNumber ?? undefined,
             },
           ],
         };
@@ -823,7 +823,7 @@ export function BrokerOrdersScreen({
           yard: draft.yard,
           /* Both are the ASSET's facts now — the sheet no longer asks for
              them, it shows the ones that arrived with the tank. */
-          tankType: asset?.type ?? "",
+          tankType: asset?.assetType ?? "",
           capacityGal: asset?.capacityGal ?? 0,
         },
       },

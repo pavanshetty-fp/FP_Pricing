@@ -49,6 +49,8 @@ import {
   BrokerCustomersScreen,
   BrokerProductsScreen,
   BrokerRentalAssetsScreen,
+  useDirectoryData,
+  type DirectoryNavigator,
 } from "./threepl";
 import { ProfileScreen } from "./ProfileScreen";
 import { SettingsScreen } from "./SettingsScreen";
@@ -919,17 +921,44 @@ function ModuleNotBuilt({ label }: { label: string }) {
   );
 }
 
+/**
+ * DEEP LINKS INTO THE DIRECTORY.
+ *
+ * The four Directory lists put their state in the address bar, and a URL that
+ * restores the filters but drops the SCREEN is a link nobody can share — it
+ * lands on Orders with a query string that means nothing there. So the shell
+ * reads `entity` on boot and starts where the address says.
+ *
+ * Read once, at startup only. After that the screens own the URL and reading
+ * it again would fight them.
+ */
+const ENTITY_DESTINATION: Record<string, string> = {
+  customers: "3pl-customers",
+  vendors: "3pl-vendors",
+  products: "3pl-products",
+  assets: "3pl-rental-assets",
+};
+
+function readEntityBoot(): { module: string; nav: string; sub: string; record: string | null } | null {
+  if (typeof window === "undefined") return null;
+  const p = new URLSearchParams(window.location.search);
+  const dest = ENTITY_DESTINATION[p.get("entity") ?? ""];
+  if (!dest) return null;
+  return { module: "3pl", nav: "3pl-directory", sub: dest, record: p.get("record") };
+}
+
 export function UnifiedView() {
-  const [moduleKey, setModuleKey] = React.useState(readStoredModule);
+  const boot = React.useRef(readEntityBoot()).current;
+  const [moduleKey, setModuleKey] = React.useState(() => boot?.module ?? readStoredModule());
   /* Two nav levels, two pieces of state. `navKey` is the RAIL selection
      (Tier-1); `subKey` is the DRAWER selection (Tier-2) and is null for a rail
      item that has no second level — which is every Sales destination. The
      screen on show is `subKey ?? navKey`. */
   const [navKey, setNavKey] = React.useState(
-    () => MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
+    () => boot?.nav ?? MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
   );
-  const [subKey, setSubKey] = React.useState<string | null>(() =>
-    firstSubKey(MODULE_NAV[readStoredModule()]?.[0]?.key ?? "")
+  const [subKey, setSubKey] = React.useState<string | null>(
+    () => boot?.sub ?? firstSubKey(MODULE_NAV[readStoredModule()]?.[0]?.key ?? "")
   );
 
   /** Selecting a rail item lands on the first destination inside its drawer. */
@@ -985,6 +1014,43 @@ export function UnifiedView() {
     setFocus(null);
   };
 
+  /*
+    THE DIRECTORY'S RECORDS, held here rather than inside the four screens.
+
+    An edit made on Vendors has to be visible from a Product's "who can fulfil
+    this" list, and a record page has to be able to open a record belonging to
+    another entity. Both need one owner above all four screens, and this is the
+    only component that sits there.
+  */
+  const directory = useDirectoryData();
+  /** The record another entity's page asked us to open, and where it lives. */
+  const [dirFocus, setDirFocus] = React.useState<{ nav: string; id: string } | null>(
+    boot?.record ? { nav: boot.sub, id: boot.record } : null
+  );
+  const openInDirectory = React.useCallback(
+    (nav: string, id: string) => {
+      setNavKey("3pl-directory");
+      setSubKey(nav);
+      setDirFocus({ nav, id });
+    },
+    []
+  );
+  const directoryNav: DirectoryNavigator = React.useMemo(
+    () => ({
+      openCustomer: (id) => openInDirectory("3pl-customers", id),
+      openVendor: (id) => openInDirectory("3pl-vendors", id),
+      openProduct: (id) => openInDirectory("3pl-products", id),
+      openAsset: (id) => openInDirectory("3pl-rental-assets", id),
+    }),
+    [openInDirectory]
+  );
+  const dirProps = (nav: string) => ({
+    data: directory,
+    navigate: directoryNav,
+    focusId: dirFocus?.nav === nav ? dirFocus.id : null,
+    onFocusHandled: () => setDirFocus(null),
+  });
+
   /** A search hit is a (module, destination, record) address. */
   const goTo = (m: string, nav: string, recordId: string | null) => {
     setModuleKey(m);
@@ -1025,9 +1091,9 @@ export function UnifiedView() {
       case "3pl-delivery-orders":
         return <BrokerOrdersScreen focus={focus} />;
       case "3pl-vendors":
-        return <BrokerVendorsScreen />;
+        return <BrokerVendorsScreen {...dirProps("3pl-vendors")} />;
       case "3pl-customers":
-        return <BrokerCustomersScreen />;
+        return <BrokerCustomersScreen {...dirProps("3pl-customers")} />;
       case "3pl-recurring-orders":
         return (
           <NotBuiltYet
@@ -1036,9 +1102,9 @@ export function UnifiedView() {
           />
         );
       case "3pl-products":
-        return <BrokerProductsScreen />;
+        return <BrokerProductsScreen {...dirProps("3pl-products")} />;
       case "3pl-rental-assets":
-        return <BrokerRentalAssetsScreen />;
+        return <BrokerRentalAssetsScreen {...dirProps("3pl-rental-assets")} />;
       default:
         return <NotBuiltYet label={active?.label ?? "Screen"} detail="Not built yet." />;
     }

@@ -287,7 +287,7 @@ export function AssetMovementSheet({
   const pool: RentalAsset[] = !sourceChosen
     ? []
     : isDelivery
-      ? RENTAL_ASSETS.filter((a) => a.status === "Available")
+      ? RENTAL_ASSETS.filter((a) => a.availabilityStatus === "Available")
       : RENTAL_ASSETS.filter((a) => a.shipTo === draft.shipTo);
 
   const available = pool;
@@ -693,7 +693,7 @@ export function AssetMovementSheet({
                 {/* DERIVED, so text — a disabled control here would be a box
                     inviting a click that does nothing. */}
                 <td className="px-3 text-sm text-muted-foreground">
-                  {asset ? asset.type : "—"}
+                  {asset ? asset.assetType : "—"}
                 </td>
                 <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
                   {asset && asset.capacityGal > 0
@@ -734,7 +734,7 @@ export function AssetMovementSheet({
 
         {asset && (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm">
-            <span className="text-foreground">{asset.serial}</span>
+            <span className="text-foreground">{asset.serialNumber ?? "—"}</span>
             <span aria-hidden className="text-fp-outline-1">
               |
             </span>

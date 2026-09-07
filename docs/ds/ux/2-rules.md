@@ -171,16 +171,22 @@ that costs most — you meant to widen a column and reordered the table instead.
   can be grabbed, and two bars alone read as the same six-dot mark the move grip
   uses; the rule between them is what makes the gesture legible as "this edge,
   left or right".
+  **It lights with its HEADER, not with its own 12px zone**: hovering the Status
+  cell shows the edge between Status and Customer and nothing else — the divider
+  you are about to reach for is the one belonging to the column you are already
+  on. Gated on the zone, the mark only appeared once the pointer had found a
+  12px strip it had no reason to aim at; gated on nothing, all eleven dividers
+  lit at once and the row read as a grid rather than as a control.
 - **The header body moves**, `cursor-grab`, with `ColumnMoveGrip` fading in over
   the header's own 12px left padding — so the sign costs the label no room and
   nothing reflows. It is the sign, not the handle: the whole `<th>` is draggable.
 
-Both marks are drawn only under the pointer, and **only ever one at a time**: the
-move grip is the resize handle's `peer` and steps aside the moment the pointer
-reaches the divider, because the header is still hovered there and two marks at
-once is the table offering two gestures while saying nothing about which the
-press will take. Always on, they would be marks on every header at once, and a
-row of eleven reads as decoration.
+Both marks come up together on the hovered header — one saying the column moves,
+one showing the edge that resizes — and then the move grip **steps aside** as the
+pointer reaches the divider: it is the handle's `peer`, and from there on the two
+would be two answers to one press. Nothing is drawn on any other header. Always
+on, they would be marks on every header at once, and a row of eleven reads as
+decoration.
 
 A resize watches for its release on the WINDOW as well as on the handle: a
 pointer let go outside the window would otherwise strand the "resizing" flag and

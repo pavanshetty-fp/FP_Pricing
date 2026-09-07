@@ -26,9 +26,17 @@ import { cn } from "@/lib/utils";
  * same six-dot mark the move grip uses; the rule between them is what makes the
  * gesture legible as "this edge, left or right".
  *
- * Shown only under the pointer, and it is a `peer` so the move grip can get out
- * of its way: two marks on one header at the same moment is the table offering
- * two gestures and saying nothing about which one the press will take.
+ * IT LIGHTS WITH ITS HEADER, not with its own 12px zone. Hovering the Status
+ * cell shows the edge between Status and Customer, and nothing else — the
+ * divider you are about to reach for is the one belonging to the column you are
+ * already on. Gated on the zone instead, the mark only appeared once the pointer
+ * had found a 12px strip it had no reason to aim at; gated on nothing, all
+ * eleven dividers lit at once and the row read as a grid, not as a control.
+ *
+ * It is still a `peer`, so the move grip can get out of its way once the pointer
+ * actually reaches the divider: two marks on one header at the moment of
+ * pressing is the table offering two gestures and saying nothing about which one
+ * the press will take.
  */
 export function ColumnResizeHandle({
   className,
@@ -39,7 +47,8 @@ export function ColumnResizeHandle({
       {...props}
       className={cn(
         "peer/resize absolute inset-y-0 -right-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center",
-        "opacity-0 transition-opacity duration-100 hover:opacity-100 focus-visible:opacity-100",
+        "opacity-0 transition-opacity duration-100",
+        "group-hover/th:opacity-100 hover:opacity-100 focus-visible:opacity-100",
         "outline-none data-[resizing]:opacity-100",
         className
       )}
@@ -62,10 +71,12 @@ export function ColumnResizeHandle({
  * is the header rather than this 12px mark, and ⌘/Ctrl + ← → moves a focused
  * header for anyone not using a pointer.
  *
- * IT YIELDS TO THE DIVIDER. Rendered AFTER `ColumnResizeHandle` so it can be
- * its `peer`, it hides the moment the pointer enters the resize zone — the
- * header is still hovered there, and showing both marks would be the table
- * offering two gestures without saying which the press will take.
+ * IT YIELDS TO THE DIVIDER. Both marks come up together when the header is
+ * hovered — one saying the column moves, one showing the edge that resizes —
+ * but rendered AFTER `ColumnResizeHandle` it is that handle's `peer`, so it
+ * hides the moment the pointer actually reaches the divider. Up to that point
+ * the two are describing different halves of the header; from there on they
+ * would be two answers to one press.
  */
 export function ColumnMoveGrip({ className }: { className?: string }) {
   return (

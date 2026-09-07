@@ -687,12 +687,11 @@ export function BrokerOrderSheet({
       if (!d) return d;
       const next = [...d.invitedVendorIds];
       next[i] = id;
-      return {
-        ...d,
-        invitedVendorIds: next,
-        status: next.some(Boolean) ? "Assigned" : "Draft",
-        vendorId: null,
-      };
+      /* ADDING A PARTNER IS NOT SENDING. Filling the row used to flip the
+         order to Assigned on the spot, which meant an order went out the
+         moment a name was picked — there was no draft to finish and no moment
+         to change your mind. Sending is its own act; see the CTA below. */
+      return { ...d, invitedVendorIds: next, vendorId: null };
     });
 
   /** Withdrawing invitations, by row, not the whole round. */
@@ -706,7 +705,8 @@ export function BrokerOrderSheet({
       return {
         ...d,
         invitedVendorIds: next,
-        status: next.some(Boolean) ? d.status : "Draft",
+        acceptedVendorIds: d.acceptedVendorIds.filter((id) => !gone.has(id)),
+        quotes: d.quotes.filter((q) => !gone.has(q.vendorId)),
         vendorId: gone.has(d.vendorId ?? "") ? null : d.vendorId,
       };
     });
@@ -732,12 +732,16 @@ export function BrokerOrderSheet({
       return { ...d, acceptedVendorIds: next, status: "Accepted" };
     });
 
+  /* COMPLETED IS THE COMMERCIAL END, NOT THE PHYSICAL ONE. Taking a price
+     settles what the partner charges and what the customer pays; there is
+     nothing left to agree, so the order is done as a piece of paperwork
+     whatever the truck is doing. */
   const acceptFor = (vendorId: string) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            status: "Accepted",
+            status: "Completed",
             vendorId,
             acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
               ? d.acceptedVendorIds
@@ -745,6 +749,10 @@ export function BrokerOrderSheet({
           }
         : d
     );
+
+  /** Draft -> Assigned. The moment the invitations actually go out. */
+  const sendInvitations = () =>
+    setDraft((d) => (d ? { ...d, status: "Assigned" } : d));
 
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
      It also opens step 2, because the numbers are the reason anyone does this
@@ -1805,6 +1813,23 @@ export function BrokerOrderSheet({
                 describing a selection that now starts empty. It sits directly
                 under the table it applies to, above anything that acts on a
                 selection. */}
+            {/* SENDING IS AN ACT, and it is the one that moves this order out
+                of Draft. It says who it is going to, because "Send" on its own
+                on a table of three is an invitation to press it and find out. */}
+            {draft.status === "Draft" && invitedIds.length > 0 && (
+              <div className="flex items-center gap-3">
+                <Button onClick={sendInvitations}>
+                  <Check /> Send invitation
+                  {invitedIds.length > 1 ? `s (${invitedIds.length})` : ""}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {invitedIds.length === 1
+                    ? "Asks this partner to take the order."
+                    : "All of them are asked at once."}
+                </span>
+              </div>
+            )}
+
             {/* IT IS ASKED ONCE, BEFORE ANYONE IS ASKED ANYTHING. What was
                 requested of the partners is a fact about the round the moment
                 it goes out; a switch afterwards offers to change a question
@@ -1905,24 +1930,9 @@ export function BrokerOrderSheet({
                 </SheetField>
               );
             })()}
-            {draft.status === "Accepted" && (
-              <Button variant="outline" onClick={() => advance("Completed")}>
-                Submit delivery details for them
-              </Button>
-            )}
-            {draft.status === "Completed" && (
-              <Button
-                variant="outline"
-                onClick={() => advance("Accounting Sync Ready")}
-              >
-                Mark ready for accounting
-              </Button>
-            )}
-            {draft.status === "Accounting Sync Ready" && (
-              <Button variant="outline" onClick={() => advance("Accounting Synced")}>
-                Sync to accounting
-              </Button>
-            )}
+            {/* THE STAGE CTAs LIVE IN STEP 2, under the acceptance that earns
+                them — see "Final Calculations". Repeating them here would be
+                two places to move one order on. */}
             {draft.status === "Accounting Synced" && (
               <p className="text-xs text-muted-foreground">
                 Synced. Every field is locked once an order reaches this stage.
@@ -2369,37 +2379,116 @@ export function BrokerOrderSheet({
               here, so the number it turns on is stated beside it rather than
               two sections up. */}
           {shownVendorId && (
-            <SheetSection title="Accept">
-              <div className="flex flex-col gap-3 rounded-md border border-fp-outline-1 bg-fp-surface-1a p-4">
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    Customer pays
-                  </span>
-                  <span className="text-sm tabular-nums text-foreground">
-                    {money(revenue)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    {vendorById(shownVendorId)?.name ?? "Partner"} charges
-                  </span>
-                  <span className="text-sm tabular-nums text-foreground">
-                    −{money(shownCost)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-4 border-t border-dashed border-fp-outline-1 pt-3">
-                  <span className="text-sm font-medium text-foreground">
-                    Your margin
-                  </span>
-                  <span
-                    className={cn(
-                      "text-base font-semibold tabular-nums",
-                      shownMargin < 0 ? "text-destructive" : "text-foreground"
-                    )}
-                  >
-                    {money(shownMargin)}
-                  </span>
-                </div>
+            <SheetSection
+              title="Final Calculations"
+              note={
+                <SheetSectionNote label="About final calculations">
+                  Line by line: what the partner charges to move it, what the
+                  customer pays, and what is left. Both figures come from the
+                  two tables above — this is where they meet.
+                </SheetSectionNote>
+              }
+            >
+              {/* PER LINE, BECAUSE THE MARGIN IS NOT EVENLY SPREAD. One thin
+                  product inside a healthy order is invisible in a single total,
+                  and it is the line you would have repriced if you had seen it. */}
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full min-w-[760px] table-fixed border-collapse">
+                  <colgroup>
+                    <col />
+                    <col className="w-[112px]" />
+                    <col className="w-[148px]" />
+                    <col className="w-[148px]" />
+                    <col className="w-[128px]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-border bg-fp-surface-1a">
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Asset</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-right">
+                        <TableRequiredLabel>Delivered</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-right">
+                        <TableRequiredLabel>Partner charge</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-right">
+                        <TableRequiredLabel>Customer pricing</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-right">
+                        <TableRequiredLabel>Margin</TableRequiredLabel>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draft.lines.map((l, i) => {
+                      const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
+                      const cost = ql ? quoteLineTotal(ql, l) : 0;
+                      const sell = customerLineTotal(l);
+                      return (
+                        <tr
+                          key={i}
+                          className="h-12 border-b border-border last:border-b-0"
+                        >
+                          <td className="px-3">
+                            <span className="flex min-w-0 flex-col">
+                              <span className="truncate text-sm text-foreground">
+                                {l.asset || "—"}
+                              </span>
+                              <span className="truncate text-xs text-muted-foreground">
+                                {l.product}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                            {billableGal(l).toLocaleString()}
+                          </td>
+                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                            {ql ? money(cost) : "—"}
+                          </td>
+                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                            {money(sell)}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-3 text-right text-sm font-medium tabular-nums",
+                              sell - cost < 0 ? "text-destructive" : "text-foreground"
+                            )}
+                          >
+                            {money(sell - cost)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="h-11 border-t border-border bg-fp-surface-1a">
+                      <td colSpan={2} className="px-3 text-sm text-muted-foreground">
+                        Total — {vendorById(shownVendorId)?.name ?? "partner"}
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                        {money(shownCost)}
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                        {money(revenue)}
+                      </td>
+                      {/* THE NUMBER THE DECISION TURNS ON, and the only figure
+                          in this sheet allowed a colour: a margin that has gone
+                          negative is the one thing here that must not be read
+                          past. */}
+                      <td
+                        className={cn(
+                          "px-3 text-right text-sm font-semibold tabular-nums",
+                          shownMargin < 0 ? "text-destructive" : "text-foreground"
+                        )}
+                      >
+                        {money(shownMargin)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div className="flex flex-col gap-3">
                 {shownMargin < 0 && (
                   <p className="text-xs text-destructive">
                     This order loses money at the pricing above.
@@ -2423,31 +2512,48 @@ export function BrokerOrderSheet({
                     Quote accepted — {vendorById(shownVendorId)?.name} holds this
                     order.
                   </div>
-                  {draft.status === "Accepted" && (
+                  {draft.status === "Completed" && (
                     <div className="flex items-center gap-3">
-                      <Button variant="outline" onClick={() => advance("Completed")}>
-                        Submit delivery details for them
+                      <Button
+                        variant="outline"
+                        onClick={() => advance("Accounting Sync Ready")}
+                      >
+                        Move to Accounting Sync Ready
                       </Button>
                       <span className="text-xs text-muted-foreground">
-                        Records the delivery and moves the order to Completed.
+                        Hands the finished pricing to accounting.
                       </span>
                     </div>
                   )}
-                  {draft.status === "Completed" && (
-                    <Button
-                      variant="outline"
-                      onClick={() => advance("Accounting Sync Ready")}
-                    >
-                      Mark ready for accounting
-                    </Button>
-                  )}
-                  {draft.status === "Accounting Sync Ready" && (
-                    <Button
-                      variant="outline"
-                      onClick={() => advance("Accounting Synced")}
-                    >
-                      Sync to accounting
-                    </Button>
+                  {/* TWO OUTCOMES AND A THIRD THAT IS DOING NOTHING. Some of an
+                      order can reach the ledger and some can be rejected, so
+                      "synced" is not the only way out of this stage — and a
+                      stage whose only button is the happy path is one people
+                      press to get rid of. Leaving it alone is the third, and it
+                      needs no button. */}
+                  {(draft.status === "Accounting Sync Ready" ||
+                    draft.status === "Partial Accounting Synced") && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => advance("Accounting Synced")}
+                      >
+                        Mark accounting synced
+                      </Button>
+                      {draft.status !== "Partial Accounting Synced" && (
+                        <Button
+                          variant="outline"
+                          onClick={() => advance("Partial Accounting Synced")}
+                        >
+                          Mark partially synced
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {draft.status === "Partial Accounting Synced"
+                          ? "Part of this order is still to reach accounting."
+                          : "Or leave it here until accounting has taken it."}
+                      </span>
+                    </div>
                   )}
                 </div>
               ) : (

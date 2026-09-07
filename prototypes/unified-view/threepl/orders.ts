@@ -54,6 +54,11 @@ export type BrokerStatus =
   | "Accepted"
   | "Completed"
   | "Accounting Sync Ready"
+  /* PARTIAL IS A STATUS BUT NOT A LANE. Some of the order reached accounting
+     and some did not, so there is work left — it sits in the Sync Ready lane
+     with a badge rather than getting a lane of its own. A lane per outcome of
+     one step is how a board grows past being readable. */
+  | "Partial Accounting Synced"
   | "Accounting Synced";
 
 /** Lane / tab order. The board renders lanes in exactly this sequence. */
@@ -330,6 +335,24 @@ export function totalGal(lines: OrderLine[]): number {
 /** True when every line is a top-off, so the Qty cell reads "Top-off", not "0". */
 export function isAllTopOff(lines: OrderLine[]): boolean {
   return lines.length > 0 && lines.every((l) => l.topOff);
+}
+
+/**
+ * IS THIS DRAFT READY TO SEND? Everything the order needs before anyone can be
+ * asked to take it: who it is for, where it goes, when, what is on it, and at
+ * least one partner to ask. A draft that is ready and a draft that is half
+ * typed look identical in a lane of eight, which is the whole reason the card
+ * says which it is.
+ */
+export function isOrderReady(r: BrokerOrder): boolean {
+  return (
+    r.customer.title.trim() !== "" &&
+    r.shipTo.trim() !== "" &&
+    r.dateKey !== "" &&
+    r.lines.length > 0 &&
+    r.lines.every((l) => l.asset.trim() !== "") &&
+    r.invitedVendorIds.filter(Boolean).length > 0
+  );
 }
 
 /** Gallons a line is priced on — what was delivered if known, else requested. */
@@ -774,7 +797,23 @@ function vendorStateFor(
   acceptedVendorIds: string[];
 } {
   if (status === "Draft" || status === "Blocked") {
-    return { vendorId: null, invitedVendorIds: [], acceptedVendorIds: [] };
+    /* A DRAFT MAY ALREADY HAVE ITS PARTNERS PICKED. Sending is an explicit act
+       now, so "chosen but not sent" is a real state — and it is the difference
+       between a card that says Draft and one that says Ready. A fixture that
+       never produced it would leave half of that badge unreachable. */
+    const ready = pick() < 0.45;
+    if (!ready) return { vendorId: null, invitedVendorIds: [], acceptedVendorIds: [] };
+    const needsLine = kind === "Movement" ? "Asset Movement" : "Bulk Fuel";
+    const picks = VENDORS.filter((v) =>
+      v.businessLines.some((b) => b === needsLine)
+    ).map((v) => v.id);
+    const one = picks[Math.floor(pick() * picks.length)];
+    const extra = picks.filter((id) => id !== one).slice(0, pick() < 0.35 ? 1 : 0);
+    return {
+      vendorId: null,
+      invitedVendorIds: [one, ...extra],
+      acceptedVendorIds: [],
+    };
   }
   // THE POOL IS FILTERED BY BUSINESS LINE. The spec makes Business Lines a
   // filter on the vendor picker (§5.5 "Table View") precisely because a carrier
@@ -1018,11 +1057,11 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
       problems.push(`${r.orderNo}: delivery order without a D prefix`);
     }
     const preVendor = r.status === "Draft" || r.status === "Blocked";
-    if (
-      preVendor &&
-      (r.vendorId || r.invitedVendorIds.length || r.acceptedVendorIds.length)
-    ) {
-      problems.push(`${r.orderNo}: ${r.status} cannot have vendors`);
+    /* A DRAFT MAY HAVE PARTNERS PICKED — sending is a separate act — but
+       nobody can have accepted an invitation that has not gone out, and the
+       order cannot have a partner holding it. */
+    if (preVendor && (r.vendorId || r.acceptedVendorIds.length)) {
+      problems.push(`${r.orderNo}: ${r.status} cannot have an accepted partner`);
     }
     /* THE TWO ACTS ARE SEPARATE and the lanes turn on the first of them.
        Assigned = invited, nobody has said yes. Accepted = somebody has. Whether
@@ -1201,6 +1240,7 @@ export const BROKER_LANE_COLOR: Record<BrokerStatus, LaneColorName> = {
   Accepted: "cyan",
   Completed: "green",
   "Accounting Sync Ready": "yellow",
+  "Partial Accounting Synced": "yellow",
   "Accounting Synced": "purple",
 };
 
@@ -1235,6 +1275,7 @@ export const BROKER_STATUS_TONE: Record<
   Accepted: "processing",
   Completed: "success",
   "Accounting Sync Ready": "processing",
+  "Partial Accounting Synced": "processing",
   "Accounting Synced": "success",
 };
 

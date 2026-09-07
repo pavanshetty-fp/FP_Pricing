@@ -54,6 +54,7 @@ import {
   ORDER_TYPE_FILTERS,
   siteAddress,
   isAllTopOff,
+  isOrderReady,
   matchesBrokerOrder,
   matchesBrokerOrderIn,
   sortBrokerOrders,
@@ -241,6 +242,16 @@ function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "n
   const out: { label: string; tone?: "critical" | "neutral" }[] = [];
   if (r.urgent) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
+  /* DRAFT OR READY. A draft that has everything it needs and a draft that is
+     half typed look identical in a lane of eight, and the difference is the
+     only thing anyone opens that lane to find out. Sending is an explicit act,
+     so "Ready" means ready to be sent, not sent. */
+  if (r.status === "Draft") {
+    out.push({ label: isOrderReady(r) ? "Ready" : "Draft" });
+  }
+  /* Some of it reached accounting and some did not — the lane is still Sync
+     Ready because there is work left, and the badge is what says which. */
+  if (r.status === "Partial Accounting Synced") out.push({ label: "Partial" });
   return out;
 }
 
@@ -510,7 +521,16 @@ export function BrokerOrdersScreen({
     () =>
       BROKER_STATUSES.map((status) => {
         const dir = laneSort[status];
-        let cards = filtered.filter((r) => r.status === status);
+        /* PARTIAL LIVES IN SYNC READY. It is not a lane of its own — a lane per
+           outcome of one step is how a board stops being readable — and it must
+           not vanish from the board either, so it sits in the lane whose work
+           is not finished, wearing a badge. */
+        let cards = filtered.filter(
+          (r) =>
+            r.status === status ||
+            (status === "Accounting Sync Ready" &&
+              r.status === "Partial Accounting Synced")
+        );
         if (dir) {
           cards = [...cards].sort((a, b) => {
             const d = timeToMinutes(a.window.start) - timeToMinutes(b.window.start);

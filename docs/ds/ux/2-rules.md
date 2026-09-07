@@ -165,13 +165,22 @@ that costs most — you meant to widen a column and reordered the table instead.
 - **The divider resizes**, `col-resize`, the split every spreadsheet already
   taught. `ColumnResizeHandle` straddles the boundary and belongs to the column
   on its left; double-click restores the declared width, ← → nudge it 16px, and
-  64px is the floor. While a divider is held, the reorder hook stands down.
+  64px is the floor. While a divider is held, the reorder hook stands down. It
+  draws `┆│┆` — **the boundary rule itself, with a short bar either side**. These
+  headers carry no column rules otherwise, so the edge has to be drawn before it
+  can be grabbed, and two bars alone read as the same six-dot mark the move grip
+  uses; the rule between them is what makes the gesture legible as "this edge,
+  left or right".
 - **The header body moves**, `cursor-grab`, with `ColumnMoveGrip` fading in over
   the header's own 12px left padding — so the sign costs the label no room and
   nothing reflows. It is the sign, not the handle: the whole `<th>` is draggable.
 
-Both marks are drawn only under the pointer. Always on, they would be marks on
-every header at once, and a row of eleven reads as decoration.
+Both marks are drawn only under the pointer, and **only ever one at a time**: the
+move grip is the resize handle's `peer` and steps aside the moment the pointer
+reaches the divider, because the header is still hovered there and two marks at
+once is the table offering two gestures while saying nothing about which the
+press will take. Always on, they would be marks on every header at once, and a
+row of eleven reads as decoration.
 
 A resize watches for its release on the WINDOW as well as on the handle: a
 pointer let go outside the window would otherwise strand the "resizing" flag and

@@ -487,12 +487,14 @@ export function FuelOrdersTable({
                     "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   )}
                 >
-                  {/* Two gestures, two targets — see `ColumnHandles`. */}
-                  {!FIXED_COLUMNS.includes(col.key) && <ColumnMoveGrip />}
+                  {/* Two gestures, two targets — see `ColumnHandles`. The
+                      resize handle comes FIRST so the move grip can be its peer
+                      and step aside when the pointer reaches the divider. */}
                   {(() => {
                     const rp = widths.resizeProps(col);
                     return rp ? <ColumnResizeHandle {...rp} /> : null;
                   })()}
+                  {!FIXED_COLUMNS.includes(col.key) && <ColumnMoveGrip />}
                   {col.key === "select" ? (
                     <Checkbox
                       checked={headerState}

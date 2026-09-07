@@ -27,6 +27,7 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
 - **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).
 - **A silently draggable header** — ❌ columns move but nothing on screen says so · ✅ `ColumnMoveGrip` in the header, `ColumnResizeHandle` on the divider, each revealed on hover (`ux/2-rules`).
+- **Two marks at once** — ❌ the move grip and the resize handle both showing on one hovered header · ✅ the grip is the handle's peer and steps aside on the divider (`ux/2-rules`).
 - **One target, two gestures** — ❌ the divider both resizes and reorders, so a widen becomes a reorder · ✅ divider resizes (`col-resize`), header moves (`grab`) (`ux/2-rules`).
 - **A frozen column order** — ❌ the schema's order is the reader's, so comparing two columns means hiding the six between them · ✅ `useColumnOrder` on the headers, order saved with the view (`ux/2-rules`).
 - **Confirming nothing** — ❌ "are you sure?" over a section whose table is still a row of blanks · ✅ `hasContent` decides whether the dialog appears (`ux/2-rules`).

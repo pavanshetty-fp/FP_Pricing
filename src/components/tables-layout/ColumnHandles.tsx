@@ -19,9 +19,16 @@ import { cn } from "@/lib/utils";
  * either side, and belongs to the column on its LEFT, the way a spreadsheet's
  * divider does.
  *
- * Shown only under the pointer. Always drawn, it would be a mark on every
- * header at once, and a row of eleven of them reads as decoration rather than
- * as a control.
+ * WHAT IT DRAWS is the boundary itself and a short bar on either side of it:
+ * `┆│┆`. The full-height rule is the edge you are about to move — these headers
+ * carry no column rules otherwise, so the divider has to be drawn before it can
+ * be grabbed — and the two bars are the grip on it. Two bars alone read as the
+ * same six-dot mark the move grip uses; the rule between them is what makes the
+ * gesture legible as "this edge, left or right".
+ *
+ * Shown only under the pointer, and it is a `peer` so the move grip can get out
+ * of its way: two marks on one header at the same moment is the table offering
+ * two gestures and saying nothing about which one the press will take.
  */
 export function ColumnResizeHandle({
   className,
@@ -31,15 +38,16 @@ export function ColumnResizeHandle({
     <span
       {...props}
       className={cn(
-        "absolute inset-y-0 -right-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center",
+        "peer/resize absolute inset-y-0 -right-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center",
         "opacity-0 transition-opacity duration-100 hover:opacity-100 focus-visible:opacity-100",
         "outline-none data-[resizing]:opacity-100",
         className
       )}
     >
-      <span className="flex h-2.5 items-stretch gap-[2px]">
-        <span className="w-px rounded-full bg-fp-outline-2" />
-        <span className="w-px rounded-full bg-fp-outline-2" />
+      <span className="flex h-full items-center gap-[3px]">
+        <span className="h-2.5 w-px rounded-full bg-fp-outline-2" />
+        <span className="h-full w-px bg-fp-outline-2" />
+        <span className="h-2.5 w-px rounded-full bg-fp-outline-2" />
       </span>
     </span>
   );
@@ -53,6 +61,11 @@ export function ColumnResizeHandle({
  * IT IS THE SIGN, NOT THE HANDLE: the whole `<th>` is draggable, so the target
  * is the header rather than this 12px mark, and ⌘/Ctrl + ← → moves a focused
  * header for anyone not using a pointer.
+ *
+ * IT YIELDS TO THE DIVIDER. Rendered AFTER `ColumnResizeHandle` so it can be
+ * its `peer`, it hides the moment the pointer enters the resize zone — the
+ * header is still hovered there, and showing both marks would be the table
+ * offering two gestures without saying which the press will take.
  */
 export function ColumnMoveGrip({ className }: { className?: string }) {
   return (
@@ -61,6 +74,7 @@ export function ColumnMoveGrip({ className }: { className?: string }) {
       className={cn(
         "pointer-events-none absolute top-1/2 left-0 size-3 -translate-y-1/2 text-fp-outline-2",
         "opacity-0 transition-opacity duration-100 group-hover/th:opacity-100",
+        "peer-hover/resize:opacity-0",
         className
       )}
     />

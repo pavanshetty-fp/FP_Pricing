@@ -287,3 +287,4 @@ export {
   ContextMenuShortcut, ContextMenuGroup, ContextMenuSub, ContextMenuSubContent,
   ContextMenuSubTrigger, ContextMenuRadioGroup,
 } from "./context-menu";
+export { Steps, type StepItem } from "./steps";

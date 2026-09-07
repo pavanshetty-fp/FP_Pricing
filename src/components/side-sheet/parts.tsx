@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Steps, type StepItem } from "@/components/ui/steps";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -250,62 +250,29 @@ export function SheetSectionNote({
 }
 
 /**
- * A step strip for a sheet whose work has an ORDER to it — do this, then that.
+ * The sheet's step strip — the DS `Steps` control, sized and spaced for a
+ * sheet header.
  *
- * BUILT ON THE DS `Tabs`, `line` variant, so the underline, the hover, the
- * focus ring and the roving-focus keyboard behaviour are the ones every other
- * tab strip in this system has. What is added is the part that makes it a
- * STEPPER rather than tabs: a number on each, and the ability for a step to be
- * unreachable.
- *
- * NOT TABS, THOUGH. Tabs are views of one thing and may be read in any order; a
- * step is a stage, and the second one exists because the first produced
- * something. So a step can be disabled, and when it is it says why rather than
- * going quiet — "no quotes yet" is the answer to "why can I not click this",
- * and a disabled control that gives no answer just gets clicked again.
- *
- * The number is not decoration: it is what makes a strip of two labels read as
- * a sequence rather than as a choice between them.
+ * A THIN WRAPPER ON PURPOSE. It exists so a sheet does not have to remember the
+ * height and the border the header strip needs, not to be a second stepper: the
+ * states, the numbering, the connector and the disabled-with-a-reason behaviour
+ * are all `Steps`.
  */
 export function SheetSteps({
   steps,
   value,
   onValueChange,
 }: {
-  steps: {
-    value: string;
-    label: string;
-    /** Why this step cannot be opened yet. Present = disabled. */
-    disabledReason?: string;
-  }[];
+  steps: StepItem[];
   value: string;
   onValueChange: (next: string) => void;
 }) {
   return (
-    <Tabs value={value} onValueChange={onValueChange}>
-      <TabsList variant="line" className="h-11 gap-1 p-0">
-        {steps.map((s, i) => (
-          <TabsTrigger
-            key={s.value}
-            value={s.value}
-            disabled={Boolean(s.disabledReason)}
-            title={s.disabledReason}
-            className="gap-2 px-3"
-          >
-            <span
-              className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums transition-colors",
-                s.value === value
-                  ? "bg-foreground text-background"
-                  : "border border-fp-outline-2"
-              )}
-            >
-              {i + 1}
-            </span>
-            {s.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <Steps
+      steps={steps}
+      value={value}
+      onValueChange={onValueChange}
+      className="h-14 max-w-lg"
+    />
   );
 }

@@ -937,6 +937,40 @@ Three details in that row are load-bearing rather than decorative:
   centring and measure from the bottom: 10px margin + the row's own 2px bottom
   padding puts them exactly 12px above the hairline.
 
+### Every table's columns move and resize. This is the default, not a feature.
+
+**Render `TableColumnHeader` instead of `<TableHead>`, and call
+`useTableColumns` once.** That is the whole of it — the header carries the drag
+props, the keyboard, the drop indicator, both hover marks, and the guard that
+stops a resize press starting a column drag. The DS's own `DataTable` uses it,
+so a table copied from the gallery has the behaviour before anyone thinks about
+it.
+
+```tsx
+const cols = useTableColumns({
+  keys: COLUMNS.map((c) => c.key),
+  // Structure, not content: the select box and the pinned row-open cell.
+  fixed: ["select", "actions"],
+  // Optional — supply these to keep the arrangement in a saved view.
+  order, onOrderChange, widths, onWidthsChange,
+});
+const visible = cols.arrange(COLUMNS.filter((c) => !hidden.has(c.key)));
+…
+<col style={{ width: `${cols.widthOf(col)}px` }} />
+…
+<TableColumnHeader cols={cols} col={col}>{col.label}</TableColumnHeader>
+```
+
+**There is no enable flag, and there should not be one.** A table that opts out
+is a table whose columns the reader may not arrange, and nobody should be able to
+reach that by leaving a prop off. If a particular column must not move — because
+it is the frame rather than the content — name it in `fixed`.
+
+**The order and the widths belong in the saved view**, alongside the filters: a
+view that restored the narrowing but not the arrangement rebuilds half the thing.
+Leave `order`/`widths` off and the table remembers them for the session only,
+which is the right default for a list with no views.
+
 **Column order is the reader's, not the schema's** (`useColumnOrder`). Which two
 columns sit side by side is what makes a comparison possible at a glance, and the
 right pair differs by who is looking — dispatch wants Driver beside Planned Date,

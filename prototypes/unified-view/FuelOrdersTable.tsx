@@ -21,7 +21,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -39,11 +38,9 @@ import type {
   TwoLine as TwoLineData,
 } from "./types";
 import {
-  ColumnMoveGrip,
-  ColumnResizeHandle,
   GroupHeaderRow,
-  useColumnOrder,
-  useColumnWidths,
+  TableColumnHeader,
+  useTableColumns,
   type GroupNode,
   groupSelectionState,
 } from "@/components/tables-layout";
@@ -423,19 +420,15 @@ export function FuelOrdersTable({
      how you pick rows and the other is how you open one, and the chevron is
      pinned to the right edge so it survives a sideways scroll. Neither moves,
      and nothing can be dropped outside them. */
-  /* THE DIVIDER RESIZES, THE HEADER MOVES — and the reorder hook stands down
-     while a divider is held, because both gestures start on a header. */
-  const widths = useColumnWidths({
-    fixed: FIXED_COLUMNS,
-    value: columnWidths,
-    onChange: onResizeColumns,
-  });
-  const cols = useColumnOrder({
+  /* Columns move and resize because the DS header does it — see
+     `useTableColumns`. Nothing here but which columns are structure. */
+  const cols = useTableColumns({
     keys: React.useMemo(() => FUEL_ORDER_COLUMNS.map((c) => c.key), []),
     fixed: FIXED_COLUMNS,
-    value: columnOrder,
-    onChange: onReorderColumns,
-    canDrag: () => !widths.isResizing(),
+    order: columnOrder,
+    onOrderChange: onReorderColumns,
+    widths: columnWidths,
+    onWidthsChange: onResizeColumns,
   });
   const visibleColumns = cols.arrange(
     FUEL_ORDER_COLUMNS.filter((c) => !hidden?.has(c.key))
@@ -446,7 +439,7 @@ export function FuelOrdersTable({
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
-            <col key={c.key} style={{ width: `${widths.widthOf(c)}px` }} />
+            <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
@@ -459,9 +452,10 @@ export function FuelOrdersTable({
                   ? ChevronUp
                   : ChevronDown;
               return (
-                <TableHead
+                <TableColumnHeader
                   key={col.key}
-                  {...cols.headerProps(col.key)}
+                  cols={cols}
+                  col={col}
                   aria-sort={
                     active
                       ? sort.dir === "asc"
@@ -470,31 +464,13 @@ export function FuelOrdersTable({
                       : undefined
                   }
                   className={cn(
-                    "group/th relative border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
+                    "border-b border-fp-outline-1 bg-fp-surface-1a px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
                     // Pinned so the row-open control stays reachable while the
                     // grid scrolls sideways. z-30 clears the sticky thead (z-20).
-                    col.key === "actions" && "sticky right-0 z-30",
-                    /* THE COLUMN BEING DRAGGED FADES; the one it will land
-                        against draws a 2px rule on the side it will land on, so
-                        the indicator says where the drop goes rather than only
-                        which header is under the pointer. */
-                    "data-[dragging]:opacity-40",
-                    "before:pointer-events-none before:absolute before:inset-y-0 before:w-0.5 before:bg-transparent",
-                    "data-[drop=before]:before:left-0 data-[drop=before]:before:bg-ring",
-                    "data-[drop=after]:before:right-0 data-[drop=after]:before:bg-ring",
-                    !FIXED_COLUMNS.includes(col.key) && "cursor-grab",
-                    "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+                    col.key === "actions" && "sticky right-0 z-30"
                   )}
                 >
-                  {/* Two gestures, two targets — see `ColumnHandles`. The
-                      resize handle comes FIRST so the move grip can be its peer
-                      and step aside when the pointer reaches the divider. */}
-                  {(() => {
-                    const rp = widths.resizeProps(col);
-                    return rp ? <ColumnResizeHandle {...rp} /> : null;
-                  })()}
-                  {!FIXED_COLUMNS.includes(col.key) && <ColumnMoveGrip />}
                   {col.key === "select" ? (
                     <Checkbox
                       checked={headerState}
@@ -522,7 +498,7 @@ export function FuelOrdersTable({
                   ) : col.label ? (
                     <span>{col.label}</span>
                   ) : null}
-                </TableHead>
+                </TableColumnHeader>
               );
             })}
           </TableRow>

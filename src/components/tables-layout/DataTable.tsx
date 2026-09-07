@@ -40,7 +40,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -53,6 +52,11 @@ import { InvoiceCard } from "@/components/info-cards";
 import { usePreferences } from "@/components/preferences";
 import { StatusChip } from "@/components/ui/status-chip";
 import { COLUMNS, statusBadgeVariant, statusTone } from "./data";
+import { TableColumnHeader } from "./TableColumnHeader";
+
+/** Structure, not content — see `TableColumnHeader`. */
+const FIXED_COLUMNS = ["select", "actions"];
+import { useTableColumns } from "./useTableColumns";
 import { GroupHeaderRow } from "./GroupHeaderRow";
 import { groupSelectionState, type GroupNode } from "./grouping";
 import type {
@@ -386,7 +390,14 @@ export function DataTable({
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
   const headerState = allSelected ? true : someSelected ? "indeterminate" : false;
-  const visibleColumns = COLUMNS.filter((c) => !hidden?.has(c.key));
+  /* THE DEFAULT, NOT A FEATURE. Every table's columns move and resize; the DS
+     header carries both, so this is the whole of the wiring — which of these
+     columns are structure rather than content. */
+  const cols = useTableColumns({
+    keys: React.useMemo(() => COLUMNS.map((c) => c.key), []),
+    fixed: FIXED_COLUMNS,
+  });
+  const visibleColumns = cols.arrange(COLUMNS.filter((c) => !hidden?.has(c.key)));
 
   // Measure the scroll viewport so an expanded row's detail can fill the VISIBLE
   // width (not the table's much wider scroll width) — its columns then sit
@@ -417,7 +428,7 @@ export function DataTable({
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {visibleColumns.map((c) => (
-            <col key={c.key} style={{ width: `${c.width}px` }} />
+            <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
@@ -430,8 +441,10 @@ export function DataTable({
                   ? ChevronUp
                   : ChevronDown;
               return (
-                <TableHead
+                <TableColumnHeader
                   key={col.key}
+                  cols={cols}
+                  col={col}
                   aria-sort={
                     active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined
                   }
@@ -471,7 +484,7 @@ export function DataTable({
                   ) : col.key === "actions" ? (
                     <div className="flex justify-end">{headerAction}</div>
                   ) : null}
-                </TableHead>
+                </TableColumnHeader>
               );
             })}
           </TableRow>

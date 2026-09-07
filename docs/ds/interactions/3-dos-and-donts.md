@@ -46,6 +46,10 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't let one checkbox column mean two things** (§4b).
 - **Don't override a section's gap per instance** — that is how a sheet drifts
   from the 40/16 rhythm (`ux/2-rules`).
+- **Don't hand-roll a `<TableHead>`.** `TableColumnHeader` + `useTableColumns`
+  is how a table gets moving and resizing columns, and it is the default —
+  a table without them is a table whose columns the reader may not arrange
+  (`ux/2-rules`).
 - **Don't make hiding a column the only way to move one.** Headers drag, and
   ⌘/Ctrl + ← → moves a focused one (`ux/2-rules`).
 - **Don't hang two gestures off one target.** The divider resizes; the header

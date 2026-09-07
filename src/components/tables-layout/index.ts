@@ -50,6 +50,12 @@ export type {
   TwoLineText,
 } from "./types";
 export { ColumnResizeHandle, ColumnMoveGrip } from "./ColumnHandles";
+export { TableColumnHeader } from "./TableColumnHeader";
+export {
+  useTableColumns,
+  type UseTableColumnsOptions,
+  type UseTableColumnsResult,
+} from "./useTableColumns";
 export {
   useColumnWidths,
   type UseColumnWidthsOptions,

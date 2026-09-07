@@ -54,6 +54,12 @@ export interface RecordSheetProps {
   createAction: string;
   /** Rendered beside the title, e.g. a StatusChip. */
   headerAside?: React.ReactNode;
+  /**
+   * A step strip under the header — `SheetSteps`. It sits above the body and
+   * outside its scroll, because which step you are on is not something that
+   * should be able to scroll away from you.
+   */
+  steps?: React.ReactNode;
   /** Disable submit while the draft is incomplete. */
   canSubmit?: boolean;
   /**
@@ -76,6 +82,7 @@ export function RecordSheet({
   editAction = "Save Changes",
   createAction,
   headerAside,
+  steps,
   canSubmit = true,
   footerAside,
   onSubmit,
@@ -106,6 +113,10 @@ export function RecordSheet({
             <span className="sr-only">Close</span>
           </SheetClose>
         </div>
+
+        {steps && (
+          <div className="shrink-0 border-b border-border px-4">{steps}</div>
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
           {children}

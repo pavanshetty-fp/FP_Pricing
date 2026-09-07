@@ -232,11 +232,10 @@ export const loadOptions = (
 export interface QuoteLine {
   /** Matches an `OrderLine.asset` on the same order. */
   asset: string;
-  /** Per gallon delivered, before tax and fees. */
-  pricePerGal: number;
-  tax: number;
-  fees: number;
-  deliveryFees: number;
+  /** (B) What the vendor charges per gallon delivered. */
+  ratePerGal: number;
+  /** (C) Everything else they add per gallon — fuel, tolls, wait time. */
+  surcharge: number;
 }
 
 export interface VendorQuote {
@@ -360,9 +359,14 @@ export function billableGal(l: OrderLine): number {
   return l.deliveredGal ?? l.gal ?? 0;
 }
 
-/** One quote line's cost to the broker: D x A + T + F + delivery fees. */
+/**
+ * TOTAL LANDING COST for one line — D x (B + C), the vendor's rate and its
+ * surcharge over the gallons actually moved. "Landing" because it is what the
+ * product costs the broker once it is on the ground: the whole point of the
+ * column is that a low rate with a high surcharge is not a cheap quote.
+ */
 export function quoteLineTotal(q: QuoteLine, l: OrderLine): number {
-  return billableGal(l) * q.pricePerGal + q.tax + q.fees + q.deliveryFees;
+  return billableGal(l) * (q.ratePerGal + q.surcharge);
 }
 
 /** What the partner charges for the whole order. */
@@ -952,14 +956,8 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
               vendorId: vid,
               lines: lines.map((l) => ({
                 asset: l.asset,
-                pricePerGal: Number(
-                  (isMovement ? 0 : 2.85 + pick() * 0.9).toFixed(3)
-                ),
-                tax: Math.round((isMovement ? 18 + pick() * 16 : 6 + pick() * 14) * 100) / 100,
-                fees: Math.round((12 + pick() * 40) * 100) / 100,
-                deliveryFees: Math.round(
-                  (isMovement ? 220 + pick() * 180 : 25 + pick() * 60) * 100
-                ) / 100,
+                ratePerGal: Number((2.85 + pick() * 0.9).toFixed(3)),
+                surcharge: Number((0.08 + pick() * 0.22).toFixed(3)),
               })),
             }))
         : [];

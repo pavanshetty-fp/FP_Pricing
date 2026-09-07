@@ -800,10 +800,8 @@ export function BrokerOrderSheet({
       if (!d) return d;
       const blank = (a: string): QuoteLine => ({
         asset: a,
-        pricePerGal: 0,
-        tax: 0,
-        fees: 0,
-        deliveryFees: 0,
+        ratePerGal: 0,
+        surcharge: 0,
       });
       const has = d.quotes.some((q) => q.vendorId === vendorId);
       const quotes = has
@@ -2106,57 +2104,57 @@ export function BrokerOrderSheet({
 
           {shownVendorId && (
             <SheetSection
-              title={`What ${vendorById(shownVendorId)?.name ?? "the partner"} charges`}
+              title="Vendor Pricing"
               note={
-                <SheetSectionNote label="About this quote">
-                  Typed here as well as received. A partner that gave its price
-                  on a call still has a price, and an order that could only hold
-                  numbers the partner entered itself would have nowhere to put
-                  it. Delivered gallons are the exception — they are typed once,
-                  in Customer Pricing below.
+                <SheetSectionNote label="About vendor pricing">
+                  What {vendorById(shownVendorId)?.name ?? "the partner"} charges
+                  to move this order. TLC is the total landing cost — delivered
+                  gallons times rate plus surcharge — because a low rate with a
+                  high surcharge is not a cheap quote.
+                  <span className="mt-1.5 block">
+                    Typed here as well as received: a partner that gave its price
+                    on a call still has a price. Delivered gallons are the
+                    exception — typed once, in Customer Pricing below.
+                  </span>
                 </SheetSectionNote>
               }
             >
-              {/* COLUMN WIDTHS ARE SET SO NO HEADER WRAPS. A two-line header
-                  over one line of figures stops sitting above the column it
-                  names — which is what "the headers are off" looks like. */}
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">
                   <colgroup>
                     <col />
-                    <col className="w-[104px]" />
+                    <col className="w-[22%]" />
                     <col className="w-[112px]" />
-                    <col className="w-[112px]" />
-                    <col className="w-[96px]" />
-                    <col className="w-[96px]" />
-                    <col className="w-[104px]" />
-                    <col className="w-[120px]" />
+                    <col className="w-[132px]" />
+                    <col className="w-[124px]" />
+                    <col className="w-[128px]" />
+                    <col className="w-[140px]" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border bg-fp-surface-1a">
                       <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Asset</TableRequiredLabel>
+                        <TableRequiredLabel>Asset name</TableRequiredLabel>
+                      </th>
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Product</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Requested</TableRequiredLabel>
+                        <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Delivered (D)</TableRequiredLabel>
+                        <TableRequiredLabel>Delivered gal (D)</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Price/gal (A)</TableRequiredLabel>
+                        <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Tax (T)</TableRequiredLabel>
+                        <TableRequiredLabel>Surcharge (C)</TableRequiredLabel>
                       </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Fees (F)</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Delivery</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>D×A+F+T</TableRequiredLabel>
+                      <th
+                        className="px-3 py-2.5 text-right"
+                        title="Total landing cost — delivered gallons x (rate + surcharge)"
+                      >
+                        <TableRequiredLabel>TLC D×(B+C)</TableRequiredLabel>
                       </th>
                     </tr>
                   </thead>
@@ -2166,16 +2164,15 @@ export function BrokerOrderSheet({
                       const put = (patch: Partial<QuoteLine>) =>
                         setQuoteLine(shownVendorId, l.asset, patch);
                       return (
-                        <tr key={i} className="h-12 border-b border-border last:border-b-0">
-                          <td className="px-3">
-                            <span className="flex min-w-0 flex-col">
-                              <span className="truncate text-sm text-foreground">
-                                {l.asset || "—"}
-                              </span>
-                              <span className="truncate text-xs text-muted-foreground">
-                                {l.product}
-                              </span>
-                            </span>
+                        <tr
+                          key={i}
+                          className="h-12 border-b border-border last:border-b-0"
+                        >
+                          <td className="truncate px-3 text-sm text-foreground">
+                            {l.asset || "—"}
+                          </td>
+                          <td className="truncate px-3 text-sm text-muted-foreground">
+                            {l.product}
                           </td>
                           <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
                             {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
@@ -2183,14 +2180,9 @@ export function BrokerOrderSheet({
                           {/* READ-ONLY HERE. The same figure is typed in the
                               customer table below — one editable place, so the
                               two tables cannot come to disagree about how much
-                              went in.
-
-                              UNTIL IT IS TYPED, THE REQUESTED FIGURE IS WHAT
-                              THE SUB-TOTAL USES, so it is what this cell shows
-                              — dimmed, because it is an assumption rather than
-                              a fact. A dash here beside a sub-total computed on
-                              400 gallons is a column that contradicts the one
-                              next to it. */}
+                              went in. Until it is typed the requested figure is
+                              what the TLC uses, so that is what this cell shows,
+                              dimmed, because it is an assumption. */}
                           <td
                             className={cn(
                               "px-3 text-right text-sm tabular-nums",
@@ -2208,38 +2200,20 @@ export function BrokerOrderSheet({
                           </td>
                           <td className="relative p-0">
                             <TableCellInput
-                              value={ql ? String(ql.pricePerGal) : ""}
+                              value={ql ? String(ql.ratePerGal) : ""}
                               placeholder="0.000"
                               numeric
-                              aria-label={`Partner price per gallon for line ${i + 1}`}
-                              onChange={(v) => put({ pricePerGal: num(v) })}
+                              aria-label={`Vendor rate per gallon for line ${i + 1}`}
+                              onChange={(v) => put({ ratePerGal: num(v) })}
                             />
                           </td>
                           <td className="relative p-0">
                             <TableCellInput
-                              value={ql ? String(ql.tax) : ""}
-                              placeholder="0.00"
+                              value={ql ? String(ql.surcharge) : ""}
+                              placeholder="0.000"
                               numeric
-                              aria-label={`Partner tax for line ${i + 1}`}
-                              onChange={(v) => put({ tax: num(v) })}
-                            />
-                          </td>
-                          <td className="relative p-0">
-                            <TableCellInput
-                              value={ql ? String(ql.fees) : ""}
-                              placeholder="0.00"
-                              numeric
-                              aria-label={`Partner fees for line ${i + 1}`}
-                              onChange={(v) => put({ fees: num(v) })}
-                            />
-                          </td>
-                          <td className="relative p-0">
-                            <TableCellInput
-                              value={ql ? String(ql.deliveryFees) : ""}
-                              placeholder="0.00"
-                              numeric
-                              aria-label={`Partner delivery fees for line ${i + 1}`}
-                              onChange={(v) => put({ deliveryFees: num(v) })}
+                              aria-label={`Vendor surcharge for line ${i + 1}`}
+                              onChange={(v) => put({ surcharge: num(v) })}
                             />
                           </td>
                           <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
@@ -2251,8 +2225,8 @@ export function BrokerOrderSheet({
                   </tbody>
                   <tfoot>
                     <tr className="h-11 border-t border-border bg-fp-surface-1a">
-                      <td colSpan={7} className="px-3 text-right text-sm text-muted-foreground">
-                        Partner total
+                      <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
+                        Products-level subtotal
                       </td>
                       <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
                         {money(shownCost)}
@@ -2275,49 +2249,49 @@ export function BrokerOrderSheet({
             }
           >
             <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full min-w-[840px] table-fixed border-collapse">
+              <table className="w-full min-w-[980px] table-fixed border-collapse">
                 <colgroup>
                   <col />
-                  <col className="w-[104px]" />
+                  <col className="w-[22%]" />
                   <col className="w-[124px]" />
-                  <col className="w-[116px]" />
+                  <col className="w-[132px]" />
                   <col className="w-[124px]" />
-                  <col className="w-[128px]" />
+                  <col className="w-[124px]" />
+                  <col className="w-[140px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-surface-1a">
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Asset</TableRequiredLabel>
+                      <TableRequiredLabel>Asset name</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Product</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Requested</TableRequiredLabel>
+                      <TableRequiredLabel>Requested gal</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Delivered (A)</TableRequiredLabel>
+                      <TableRequiredLabel>Delivered gal (A)</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
                       <TableRequiredLabel>Price/gal (B)</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Margin/gal (C)</TableRequiredLabel>
+                      <TableRequiredLabel>Margin (C)</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>A×(B+C)</TableRequiredLabel>
+                      <TableRequiredLabel>Total A×(B+C)</TableRequiredLabel>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {draft.lines.map((l, i) => (
                     <tr key={i} className="h-12 border-b border-border last:border-b-0">
-                      <td className="px-3">
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate text-sm text-foreground">
-                            {l.asset || "—"}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {l.product}
-                          </span>
-                        </span>
+                      <td className="truncate px-3 text-sm text-foreground">
+                        {l.asset || "—"}
+                      </td>
+                      <td className="truncate px-3 text-sm text-muted-foreground">
+                        {l.product}
                       </td>
                       <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
                         {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
@@ -2362,8 +2336,8 @@ export function BrokerOrderSheet({
                 </tbody>
                 <tfoot>
                   <tr className="h-11 border-t border-border bg-fp-surface-1a">
-                    <td colSpan={5} className="px-3 text-right text-sm text-muted-foreground">
-                      Customer total
+                    <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
+                      Products-level subtotal
                     </td>
                     <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
                       {money(revenue)}
@@ -2409,8 +2383,11 @@ export function BrokerOrderSheet({
                       <th className="px-3 py-2.5 text-right">
                         <TableRequiredLabel>Delivered</TableRequiredLabel>
                       </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Partner charge</TableRequiredLabel>
+                      <th
+                        className="px-3 py-2.5 text-right"
+                        title="Total landing cost — what the vendor charges for this line"
+                      >
+                        <TableRequiredLabel>Vendor TLC</TableRequiredLabel>
                       </th>
                       <th className="px-3 py-2.5 text-right">
                         <TableRequiredLabel>Customer pricing</TableRequiredLabel>

@@ -1,19 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
-  AttachmentsSection,
-  AuditSection,
-  DetailCard,
-  DetailPanel,
-  Field,
-  NotesSection,
-  RelatedTable,
-  SectionStack,
-  TagList,
-  type BadgeTone,
-  type RecordSection,
-  type RecordSummaryStat,
-} from "./DirectoryRecordPage";
+  AttachmentTable,
+  AuditList,
+  NoteBlock,
+  ReadField,
+  ReadGrid,
+  SheetTable,
+  TagRow,
+  type RecordReadSection,
+} from "./DirectoryRecordSheet";
 import { DASH, daysFromToday, formatDate, money } from "./directoryCore";
 import { BROKER_PRODUCTS } from "./directory";
 import { ordersForVendor } from "./directoryLinks";
@@ -26,404 +22,273 @@ import {
   assignedOrderCount,
   type Vendor,
 } from "./vendors";
-import type { FormSectionDef } from "./DirectoryForm";
+import type { FormSectionDef } from "./directoryFormTypes";
 
 /*
-  What a vendor record shows, and why in this order.
+  What a vendor record shows in the sheet, beyond the fields it edits.
 
-  ELIGIBILITY IS THE HEADLINE. Everything at the top of this page exists to
-  answer one question — can I give this carrier work today — and that question
-  has four independent answers: are they switched on, are they approved, is the
-  paperwork current, and are they free. Four badges, because collapsing them
-  into one "eligible / not eligible" chip destroys the only useful part, which
-  is WHICH of the four is the problem.
+  ELIGIBILITY IS THE HEADLINE, and it is four independent answers: are they
+  switched on, are they approved, is the paperwork current, and are they free.
+  Four chips, because collapsing them into one "eligible / not eligible"
+  destroys the only useful part — WHICH of the four is the problem.
 
-  COMPLIANCE IS COUNTED IN DAYS, not shown as a date. "Expires 2026-11-30" is
-  a date somebody has to subtract today from; "expires in 84 days" is the
-  answer they were doing the subtraction to get.
+  COMPLIANCE IS COUNTED IN DAYS, not shown as a date. "Expires 2026-11-30" is a
+  date somebody has to subtract today from; "84 days left" is the answer they
+  were doing the subtraction to get.
 */
 
-const AVAIL_TONE: Record<string, BadgeTone> = {
-  Available: "success",
-  Limited: "warning",
-  Unavailable: "critical",
-};
+const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
 
-const COMPLIANCE_TONE: Record<string, BadgeTone> = {
-  Valid: "success",
-  Expiring: "warning",
-  Expired: "critical",
-  Missing: "critical",
-};
-
-export const vendorStatusTone = (v: Vendor): BadgeTone => (v.active ? "success" : "neutral");
-
-export function vendorBadges(v: Vendor) {
+export function vendorHeaderAside(v: Vendor) {
   const days = daysFromToday(v.complianceValidTo);
-  const out: { label: string; tone: BadgeTone; title?: string }[] = [
+  return (
+    <span className="flex items-center gap-1.5">
+      <StatusChip tone={v.active ? "success" : "neutral"} variant="soft">
+        {v.active ? "Active" : "Inactive"}
+      </StatusChip>
+      <StatusChip
+        tone={
+          v.complianceStatus === "Valid"
+            ? "success"
+            : v.complianceStatus === "Expiring"
+              ? "processing"
+              : "failed"
+        }
+        variant="soft"
+      >
+        {days !== null && days < 0
+          ? `Compliance expired`
+          : days !== null && days < 60
+            ? `Compliance ${days}d`
+            : "Compliance valid"}
+      </StatusChip>
+      {!v.approvedForAssignment && (
+        <StatusChip tone="failed" variant="soft">
+          Not approved
+        </StatusChip>
+      )}
+      {v.availabilityStatus !== "Available" && (
+        <StatusChip tone="processing" variant="soft">
+          {v.availabilityStatus}
+        </StatusChip>
+      )}
+    </span>
+  );
+}
+
+export function vendorReadSections(v: Vendor): RecordReadSection[] {
+  const orders = ordersForVendor(v.id);
+  const live = orders.filter(
+    (o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status)
+  );
+  const history = orders.filter((o) =>
+    ["Completed", "Accounting Synced", "Cancelled"].includes(o.status)
+  );
+  const products = BROKER_PRODUCTS.filter((p) => v.supportedProductIds.includes(p.id));
+  const days = daysFromToday(v.complianceValidTo);
+
+  return [
     {
-      label: v.complianceStatus,
-      tone: COMPLIANCE_TONE[v.complianceStatus] ?? "neutral",
-      title:
+      key: "standing",
+      title: "Standing",
+      note:
         days === null
           ? undefined
           : days < 0
-            ? `Lapsed ${Math.abs(days)} days ago on ${formatDate(v.complianceValidTo)}`
-            : `Current for another ${days} days, until ${formatDate(v.complianceValidTo)}`,
-    },
-    { label: v.availabilityStatus, tone: AVAIL_TONE[v.availabilityStatus] ?? "neutral" },
-  ];
-  if (!v.approvedForAssignment) {
-    out.push({
-      label: "Not approved",
-      tone: "critical",
-      title: "Somebody has withheld assignment approval. This is a decision, not a document.",
-    });
-  }
-  if (!v.emailsEnabled) {
-    out.push({ label: "Emails off", tone: "warning", title: "Invitations will not be emailed to this vendor" });
-  }
-  return out;
-}
-
-export function vendorStats(v: Vendor): RecordSummaryStat[] {
-  const days = daysFromToday(v.complianceValidTo);
-  const base = v.rateCard.find((l) => l.minGallons === null);
-  return [
-    {
-      label: "Safety score",
-      value: v.safetyScore,
-      hint: v.safetyScore >= 90 ? "Top band" : v.safetyScore >= 80 ? "Acceptable" : "Below target",
-      tone: v.safetyScore >= 90 ? "success" : v.safetyScore >= 70 ? undefined : "critical",
-    },
-    {
-      label: "Compliance",
-      value: days === null ? DASH : days < 0 ? `${Math.abs(days)} days overdue` : `${days} days left`,
-      hint: formatDate(v.complianceValidTo),
-      tone: days === null ? undefined : days < 0 ? "critical" : days < 60 ? "warning" : "success",
-    },
-    { label: "Live orders", value: assignedOrderCount(v.id), hint: "Assigned, accepted or in flight" },
-    {
-      label: "Base rate",
-      value: base ? `${money(base.rate, true)} ${base.unit}` : DASH,
-      hint: base?.fuelSurcharge ? `+ ${money(base.fuelSurcharge, true)} surcharge` : "No surcharge",
-    },
-    { label: "Coverage", value: `${v.serviceStates.length} states`, hint: v.serviceStates.join(", ") || DASH },
-  ];
-}
-
-export function vendorSections(v: Vendor): RecordSection[] {
-  const orders = ordersForVendor(v.id);
-  const live = orders.filter((o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status));
-  const history = orders.filter((o) => ["Completed", "Accounting Synced", "Cancelled"].includes(o.status));
-  const products = BROKER_PRODUCTS.filter((p) => v.supportedProductIds.includes(p.id));
-
-  return [
-    {
-      key: "overview",
-      label: "Overview",
+            ? `Lapsed ${Math.abs(days)} days ago`
+            : `${days} days of cover left`,
       render: () => (
-        <SectionStack>
-          <DetailCard title="Identity">
-            <Field label="Vendor name" value={v.name} />
-            <Field label="Legal business name" value={v.legalBusinessName} />
-            <Field label="DBA" value={v.dbaName} />
-            <Field label="Vendor ID" value={v.erpVendorId} />
-            <Field label="Vendor type" value={v.vendorType} />
-            <Field label="Tax ID" value={v.taxId} />
-            <Field label="Record status" value={<span className="capitalize">{v.status}</span>} />
-            <Field label="Created" value={formatDate(v.createdAt.slice(0, 10))} />
-            <Field label="Last updated" value={formatDate(v.updatedAt.slice(0, 10))} />
-          </DetailCard>
-
-          <DetailCard title="Address">
-            <Field label="Address line 1" value={v.addressLine1} />
-            <Field label="Address line 2" value={v.addressLine2} />
-            <Field label="City" value={v.city} />
-            <Field label="State" value={v.state} />
-            <Field label="Zip" value={v.zip} />
-            <Field label="Country" value={v.country} />
-          </DetailCard>
-
-          <DetailCard title="Assignment">
-            <Field
-              label="Approved for assignment"
-              value={v.approvedForAssignment ? "Yes" : "No — withheld"}
-            />
-            <Field label="Assignment priority" value={`${v.assignmentPriority} of 5`} />
-            <Field label="Availability" value={v.availabilityStatus} />
-            <Field label="Vendor app account" value={v.hasAccount ? "Has account" : "Email link only"} />
-            <Field label="Email invitations" value={v.emailsEnabled ? "Enabled" : "Disabled"} />
-            <Field label="Tags" value={<TagList tags={v.tags} />} wide />
-          </DetailCard>
-        </SectionStack>
+        <ReadGrid>
+          <ReadField label="Compliance status" value={v.complianceStatus} />
+          <ReadField label="Valid until" value={formatDate(v.complianceValidTo)} />
+          <ReadField label="Insurance expiry" value={formatDate(v.insuranceExpiry)} />
+          <ReadField label="Licences" value={<TagRow tags={v.licenseNumbers} />} />
+          <ReadField label="Live orders" value={assignedOrderCount(v.id)} />
+          <ReadField label="Distance from yard" value={`${v.distanceMi} mi`} />
+          <ReadField
+            label="Blackout dates"
+            value={
+              v.blackoutDates.length > 0 ? (
+                <TagRow tags={v.blackoutDates.map((d) => formatDate(d))} />
+              ) : (
+                "None"
+              )
+            }
+            wide
+          />
+          <ReadField label="Tags" value={<TagRow tags={v.tags} />} wide />
+        </ReadGrid>
+      ),
+    },
+    {
+      /* NOT "Service coverage" — that heading is already the editable section
+         above, and two blocks with one name is how somebody edits the wrong
+         one. This is the part of coverage the form does not ask for. */
+      key: "coverage-detail",
+      title: "Coverage detail",
+      note: "Derived from the service area above",
+      render: () => (
+        <ReadGrid>
+          <ReadField
+            label="Cities covered"
+            value={v.coveredCities.length > 0 ? <TagRow tags={v.coveredCities} /> : null}
+            wide
+          />
+          <ReadField
+            label="ZIPs covered"
+            value={v.coveredZips.length > 0 ? <TagRow tags={v.coveredZips} /> : null}
+            wide
+          />
+          <ReadField label="Order types" value={<TagRow tags={v.supportedOrderTypes} />} wide />
+        </ReadGrid>
       ),
     },
     {
       key: "contacts",
-      label: "Dispatch Contacts",
+      title: "Contacts",
       count: v.contacts.length,
       render: () => (
-        <SectionStack>
-          <DetailCard title="Named contacts">
-            <Field label="Main contact" value={v.mainContactName} />
-            <Field label="Dispatch contact" value={v.dispatchContactName} />
-            <Field label="Accounting contact" value={v.accountingContactName} />
-            <Field label="Escalation contact" value={v.escalationContactName} />
-            <Field label="Main phone" value={v.phone} />
-            <Field label="Dispatch phone" value={v.dispatchPhone} />
-            <Field label="General email" value={v.email} />
-            <Field label="Dispatch email" value={v.dispatchEmail} />
-            <Field label="Accounting email" value={v.accountingEmail} />
-          </DetailCard>
-          <DetailPanel title="Contact list">
-            <RelatedTable
-              rows={v.contacts}
-              rowKey={(p) => p.id}
-              emptyTitle="No contacts"
-              emptyBody="Nobody is recorded here. Dispatch has no one to call."
-              columns={[
-                {
-                  key: "name",
-                  label: "Name",
-                  render: (p) => (
-                    <span className="flex items-center gap-2">
-                      {p.name}
-                      {p.isPrimary && <Badge variant="secondary" className="font-normal">Primary</Badge>}
-                    </span>
-                  ),
-                },
-                { key: "role", label: "Role", render: (p) => p.role },
-                { key: "phone", label: "Phone", render: (p) => p.phone ?? <Muted /> },
-                { key: "email", label: "Email", render: (p) => p.email ?? <Muted /> },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "coverage",
-      label: "Service Coverage",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Where they run">
-            <Field label="Service area type" value={<span className="capitalize">{v.serviceAreaType}</span>} />
-            <Field label="Max radius" value={v.maxRadiusMiles ? `${v.maxRadiusMiles} mi` : null} />
-            <Field label="Distance from yard" value={`${v.distanceMi} mi`} />
-            <Field
-              label="States covered"
-              value={v.serviceStates.length > 0 ? <TagList tags={v.serviceStates} /> : null}
-              wide
-            />
-            <Field
-              label="Cities covered"
-              value={v.coveredCities.length > 0 ? <TagList tags={v.coveredCities} /> : null}
-              wide
-            />
-            <Field
-              label="ZIPs covered"
-              value={v.coveredZips.length > 0 ? <TagList tags={v.coveredZips} /> : null}
-              wide
-            />
-          </DetailCard>
-          <DetailCard title="Availability">
-            <Field label="Status" value={v.availabilityStatus} />
-            <Field
-              label="Blackout dates"
-              value={
-                v.blackoutDates.length > 0 ? (
-                  <TagList tags={v.blackoutDates.map((d) => formatDate(d))} />
-                ) : (
-                  "None"
-                )
-              }
-              wide
-            />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "capabilities",
-      label: "Product Capabilities",
-      count: products.length,
-      render: () => (
-        <SectionStack>
-          <DetailCard title="What they can carry">
-            <Field label="Business lines" value={<TagList tags={v.businessLines} />} wide />
-            <Field label="Order types" value={<TagList tags={v.supportedOrderTypes} />} wide />
-            <Field label="Top-off capable" value={v.topOffCapable ? "Yes" : "No"} />
-            <Field label="Asset handling" value={v.assetHandlingCapable ? "Yes" : "No"} />
-            <Field label="After hours" value={v.afterHoursCapable ? "Yes" : "No"} />
-          </DetailCard>
-          <DetailPanel title={`Supported products (${products.length})`}>
-            <RelatedTable
-              rows={products}
-              rowKey={(p) => p.id}
-              emptyTitle="No products"
-              emptyBody="This vendor's business lines do not cover anything in the catalogue."
-              columns={[
-                { key: "name", label: "Product", render: (p) => p.name },
-                { key: "code", label: "Code", render: (p) => p.productCode },
-                { key: "cat", label: "Category", render: (p) => p.category },
-                { key: "unit", label: "UOM", render: (p) => p.unit },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "rates",
-      label: "Rate Card",
-      count: v.rateCard.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Contracted rates">
-            <RelatedTable
-              rows={v.rateCard}
-              rowKey={(l) => l.id}
-              emptyTitle="No rate card"
-              emptyBody="Quotes from this vendor cannot be checked against anything."
-              columns={[
-                {
-                  key: "label",
-                  label: "Tier",
-                  render: (l) => (
-                    <span className="flex items-center gap-2">
-                      {l.label}
-                      {l.id === v.defaultRateCardId && (
-                        <Badge variant="secondary" className="font-normal">Default</Badge>
-                      )}
-                    </span>
-                  ),
-                },
-                { key: "min", label: "From", align: "right", render: (l) => (l.minGallons ? `${l.minGallons.toLocaleString()} gal` : <Muted />) },
-                { key: "rate", label: "Rate", align: "right", render: (l) => `${money(l.rate, true)} ${l.unit}` },
-                { key: "fsc", label: "Fuel surcharge", align: "right", render: (l) => (l.fuelSurcharge === null ? <Muted /> : money(l.fuelSurcharge, true)) },
-              ]}
-            />
-          </DetailPanel>
-          <DetailCard title="Terms">
-            <Field label="Minimum charge" value={money(v.minimumCharge)} />
-            <Field label="Payment terms" value={v.paymentTerms} />
-            <Field label="Accounting vendor ID" value={v.accountingVendorId} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "compliance",
-      label: "Compliance",
-      count: v.documents.length,
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Standing">
-            <Field label="Compliance status" value={v.complianceStatus} />
-            <Field label="Valid until" value={formatDate(v.complianceValidTo)} />
-            <Field label="Insurance expiry" value={formatDate(v.insuranceExpiry)} />
-            <Field label="Licences" value={<TagList tags={v.licenseNumbers} />} wide />
-          </DetailCard>
-          <AttachmentsSection groups={[{ title: "Compliance documents", files: v.documents }]} />
-        </SectionStack>
-      ),
-    },
-    {
-      key: "active",
-      label: "Active Assignments",
-      count: live.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Orders in flight">
-            <RelatedTable
-              rows={live.slice(0, 60)}
-              rowKey={(o) => o.id}
-              emptyTitle="No live assignments"
-              emptyBody="This vendor is not carrying anything right now."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "shipTo", label: "Ship-to", render: (o) => o.shipTo },
-                { key: "date", label: "Date", render: (o) => o.date.title },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (o) => (
-                    <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "history",
-      label: "Historical Orders",
-      count: history.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Completed and closed">
-            <RelatedTable
-              rows={history.slice(0, 60)}
-              rowKey={(o) => o.id}
-              emptyTitle="No history"
-              emptyBody="Nothing has been completed with this vendor yet."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "date", label: "Date", render: (o) => o.date.title },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (o) => (
-                    <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "attachments",
-      label: "Attachments",
-      count: v.attachments.length,
-      render: () => <AttachmentsSection groups={[{ title: "Files", files: v.attachments }]} />,
-    },
-    {
-      key: "notes",
-      label: "Notes",
-      render: () => (
-        <NotesSection
-          blocks={[
+        <SheetTable
+          rows={v.contacts}
+          rowKey={(p) => p.id}
+          emptyBody="Nobody is recorded here. Dispatch has no one to call."
+          columns={[
             {
-              title: "Vendor instruction",
-              body: v.vendorInstruction,
-              hint: "Shown to dispatch when this vendor is picked. Nothing recorded.",
+              key: "name",
+              label: "Name",
+              render: (p) => (
+                <span className="flex items-center gap-2">
+                  {p.name}
+                  {p.isPrimary && (
+                    <Badge variant="secondary" className="font-normal">
+                      Primary
+                    </Badge>
+                  )}
+                </span>
+              ),
             },
-            { title: "Internal notes", body: v.notes, hint: "No internal notes." },
+            { key: "role", label: "Role", render: (p) => p.role },
+            { key: "phone", label: "Phone", render: (p) => p.phone ?? <Muted /> },
+            { key: "email", label: "Email", render: (p) => p.email ?? <Muted /> },
           ]}
         />
       ),
     },
     {
+      key: "rates",
+      title: "Rate card",
+      count: v.rateCard.length,
+      render: () => (
+        <SheetTable
+          rows={v.rateCard}
+          rowKey={(l) => l.id}
+          emptyBody="No rate card. Quotes from this vendor cannot be checked against anything."
+          columns={[
+            {
+              key: "label",
+              label: "Tier",
+              render: (l) => (
+                <span className="flex items-center gap-2">
+                  {l.label}
+                  {l.id === v.defaultRateCardId && (
+                    <Badge variant="secondary" className="font-normal">
+                      Default
+                    </Badge>
+                  )}
+                </span>
+              ),
+            },
+            {
+              key: "min",
+              label: "From",
+              align: "right",
+              render: (l) => (l.minGallons ? `${l.minGallons.toLocaleString()} gal` : <Muted />),
+            },
+            {
+              key: "rate",
+              label: "Rate",
+              align: "right",
+              render: (l) => `${money(l.rate, true)} ${l.unit}`,
+            },
+            {
+              key: "fsc",
+              label: "Surcharge",
+              align: "right",
+              render: (l) => (l.fuelSurcharge === null ? <Muted /> : money(l.fuelSurcharge, true)),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "products",
+      title: "Supported products",
+      count: products.length,
+      render: () => (
+        <SheetTable
+          rows={products}
+          rowKey={(p) => p.id}
+          emptyBody="This vendor's business lines cover nothing in the catalogue."
+          columns={[
+            { key: "name", label: "Product", render: (p) => p.name },
+            { key: "code", label: "Code", render: (p) => p.productCode },
+            { key: "cat", label: "Category", render: (p) => p.category },
+            { key: "unit", label: "UOM", render: (p) => p.unit },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "assignments",
+      title: "Assignments",
+      note: `${live.length} live · ${history.length} closed`,
+      render: () => (
+        <SheetTable
+          rows={[...live, ...history]}
+          rowKey={(o) => o.id}
+          emptyBody="This vendor has never been given work."
+          columns={[
+            { key: "no", label: "Order", render: (o) => o.orderNo },
+            { key: "cust", label: "Customer", render: (o) => o.customer.title },
+            { key: "date", label: "Date", render: (o) => o.date.title },
+            {
+              key: "status",
+              label: "Status",
+              render: (o) => (
+                <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
+                  {o.status}
+                </StatusChip>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "documents",
+      title: "Compliance documents",
+      count: v.documents.length,
+      render: () => <AttachmentTable files={v.documents} />,
+    },
+    {
+      key: "attachments",
+      title: "Attachments",
+      count: v.attachments.length,
+      render: () => <AttachmentTable files={v.attachments} />,
+    },
+    {
+      key: "notes",
+      title: "Internal notes",
+      render: () => <NoteBlock body={v.notes} hint="No internal notes." />,
+    },
+    {
       key: "audit",
-      label: "Audit History",
+      title: "Audit History",
       count: v.audit.length,
-      render: () => <AuditSection events={v.audit} />,
+      render: () => <AuditList events={v.audit} />,
     },
   ];
 }
-
-const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
 
 /* ─────────────────────────────────────────────────────────────── the form ── */
 

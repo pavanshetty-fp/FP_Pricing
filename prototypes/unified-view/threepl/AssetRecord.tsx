@@ -1,20 +1,16 @@
 import { AlertTriangle } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
-  AttachmentsSection,
-  AuditSection,
-  DetailCard,
-  DetailPanel,
-  Field,
-  NotesSection,
-  RelatedTable,
-  SectionStack,
-  TagList,
-  type BadgeTone,
-  type RecordSection,
-  type RecordSummaryStat,
-} from "./DirectoryRecordPage";
-import { DASH, daysFromToday, formatDate, money, oneLineAddress } from "./directoryCore";
+  AttachmentTable,
+  AuditList,
+  NoteBlock,
+  ReadField,
+  ReadGrid,
+  SheetTable,
+  TagRow,
+  type RecordReadSection,
+} from "./DirectoryRecordSheet";
+import { daysFromToday, formatDate, money, oneLineAddress } from "./directoryCore";
 import {
   MAINTENANCE_STATUSES,
   OWNERSHIP_TYPES,
@@ -27,313 +23,201 @@ import {
 import { ordersForAsset, productById } from "./directoryLinks";
 import { BROKER_STATUS_TONE } from "./orders";
 import { vendorById } from "./vendors";
-import type { FormSectionDef } from "./DirectoryForm";
+import type { FormSectionDef } from "./directoryFormTypes";
 
 /*
-  What a rental asset record shows, and why in this order.
+  What a rental asset record shows in the sheet, beyond the fields it edits.
 
-  AN ASSET IS A THING IN A PLACE, ON A CLOCK. Three clocks, in fact — the
-  rental period, the service interval and the compliance certificate — and each
-  of them independently makes the asset undispatchable when it runs out. The
-  summary strip carries all three because "where is it and can I move it" is
-  the only question anyone opens this page with.
+  AN ASSET IS A THING IN A PLACE, ON A CLOCK. Three clocks — the rental period,
+  the service interval, the compliance certificate — and each independently
+  makes the asset undispatchable when it runs out.
 
-  CONFLICTS ARE COMPUTED WHEN ASKED, never stored. A conflict is a relationship
-  between the asset, a date range and everything already booked against it, so
-  a `hasConflict` flag would be stale the moment anything moved. The panel below
-  runs the rules live against today.
+  THE WARNINGS PANEL ASKS "WHAT IS WRONG WITH IT", not "may I book it". The
+  booking rules compare an asset against a REQUESTED range; run against the
+  account it is already out to, every rental clashes with itself. This sheet
+  has no requested range, so it asks the other question.
 */
 
-const AVAIL_TONE: Record<string, BadgeTone> = {
-  "On rent": "info",
-  Available: "success",
-  "In maintenance": "warning",
-  Retired: "neutral",
-};
-
-const MAINT_TONE: Record<string, BadgeTone> = {
-  OK: "success",
-  "Service due": "warning",
-  Overdue: "critical",
-  "Out of service": "critical",
-};
-
-const COMPLIANCE_TONE: Record<string, BadgeTone> = {
-  Valid: "success",
-  Expiring: "warning",
-  Expired: "critical",
-  "Not required": "neutral",
-};
-
-export const assetStatusTone = (a: RentalAsset): BadgeTone =>
-  AVAIL_TONE[a.availabilityStatus] ?? "neutral";
-
-export function assetBadges(a: RentalAsset) {
-  const out: { label: string; tone: BadgeTone; title?: string }[] = [
-    { label: a.maintenanceStatus, tone: MAINT_TONE[a.maintenanceStatus] ?? "neutral" },
-    { label: a.complianceStatus, tone: COMPLIANCE_TONE[a.complianceStatus] ?? "neutral" },
-  ];
-  if (endingSoon(a)) {
-    const left = daysFromToday(a.rentalEndDate);
-    out.push({
-      label: `Ends in ${left} days`,
-      tone: "warning",
-      title: `Rental ends ${formatDate(a.rentalEndDate)}${a.autoRenew ? " — auto-renews" : ""}`,
-    });
-  }
-  if (a.status === "archived") out.push({ label: "Archived", tone: "neutral" });
-  return out;
+export function assetHeaderAside(a: RentalAsset) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <StatusChip
+        tone={
+          a.availabilityStatus === "Available"
+            ? "success"
+            : a.availabilityStatus === "On rent"
+              ? "processing"
+              : a.availabilityStatus === "In maintenance"
+                ? "failed"
+                : "neutral"
+        }
+        variant="soft"
+      >
+        {a.availabilityStatus}
+      </StatusChip>
+      {a.maintenanceStatus !== "OK" && (
+        <StatusChip
+          tone={a.maintenanceStatus === "Service due" ? "processing" : "failed"}
+          variant="soft"
+        >
+          {a.maintenanceStatus}
+        </StatusChip>
+      )}
+      {(a.complianceStatus === "Expired" || a.complianceStatus === "Expiring") && (
+        <StatusChip tone={a.complianceStatus === "Expired" ? "failed" : "processing"} variant="soft">
+          Compliance {a.complianceStatus.toLowerCase()}
+        </StatusChip>
+      )}
+      {endingSoon(a) && (
+        <StatusChip tone="processing" variant="soft">
+          Ends in {daysFromToday(a.rentalEndDate)}d
+        </StatusChip>
+      )}
+    </span>
+  );
 }
 
-export function assetStats(a: RentalAsset): RecordSummaryStat[] {
-  const serviceIn = daysFromToday(a.nextServiceDue);
-  return [
-    {
-      label: "Availability",
-      value: a.availabilityStatus,
-      hint: a.customer ?? "At the yard",
-      tone: a.availabilityStatus === "In maintenance" ? "warning" : undefined,
-    },
-    {
-      label: "Capacity",
-      /* A nozzle holds nothing, and "0 gal" reads as an empty tank rather
-         than as a thing that has no capacity. */
-      value: a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} ${a.unit}` : "N/A",
-      hint: a.capacityGal > 0 ? `Fill at ${a.fillThreshold?.toLocaleString() ?? DASH}` : a.assetType,
-    },
-    {
-      label: "Rate",
-      value: money(a.rentalRate),
-      hint: a.billingFrequency,
-    },
-    {
-      label: "Rental ends",
-      value: a.rentalEndDate ? formatDate(a.rentalEndDate) : a.availabilityStatus === "On rent" ? "Open ended" : "N/A",
-      hint: a.autoRenew ? "Auto-renews" : a.rentalEndDate ? "Does not renew" : undefined,
-      tone: endingSoon(a) ? "warning" : undefined,
-    },
-    {
-      label: "Next service",
-      value: serviceIn === null ? DASH : serviceIn < 0 ? `${Math.abs(serviceIn)} days overdue` : `${serviceIn} days`,
-      hint: formatDate(a.nextServiceDue),
-      tone: serviceIn === null ? undefined : serviceIn < 0 ? "critical" : serviceIn < 30 ? "warning" : "success",
-    },
-  ];
-}
-
-export function assetSections(
+export function assetReadSections(
   a: RentalAsset,
   go: { openCustomer: (id: string) => void; openVendor: (id: string) => void }
-): RecordSection[] {
+): RecordReadSection[] {
   const orders = ordersForAsset(a.name);
   const recurring = orders.filter((o) => o.kind === "Recurring");
   const product = productById(a.associatedProductId);
   const vendor = vendorById(a.assignedVendorId);
+  const warnings = assetDispatchWarnings(a);
+  const serviceIn = daysFromToday(a.nextServiceDue);
 
-  /* WHAT IS WRONG WITH IT AS IT STANDS, not whether it could be booked. The
-     booking rules compare an asset against a REQUESTED range; run against the
-     account this asset is already out to, every rental clashes with itself.
-     This page has no requested range, so it asks the other question. */
-  const conflicts = assetDispatchWarnings(a);
+  const sections: RecordReadSection[] = [];
 
-  return [
-    {
-      key: "overview",
-      label: "Overview",
+  if (warnings.length > 0) {
+    sections.push({
+      key: "warnings",
+      title: warnings.length === 1 ? "One issue with this asset" : `${warnings.length} issues with this asset`,
       render: () => (
-        <SectionStack>
-          {conflicts.length > 0 && (
-            <div className="flex items-start gap-2.5 rounded-md border border-fp-banner-accent-caution/40 bg-fp-banner-accent-caution/5 px-4 py-3">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fp-banner-accent-caution" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {conflicts.length === 1 ? "One issue" : `${conflicts.length} issues`} with this asset
-                </p>
-                <ul className="mt-1 flex flex-col gap-0.5">
-                  {conflicts.map((c) => (
-                    <li key={c} className="text-sm text-muted-foreground">
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          <DetailCard title="Identity">
-            <Field label="Asset name" value={a.name} />
-            <Field label="Asset type" value={a.assetType} />
-            <Field label="Serial number" value={a.serialNumber} />
-            <Field label="QR code" value={a.qrCode} />
-            <Field label="External asset ID" value={a.externalAssetId} />
-            <Field label="Ownership" value={<span className="capitalize">{a.ownershipType.replace(/_/g, " ")}</span>} />
-            <Field label="Record status" value={<span className="capitalize">{a.status}</span>} />
-            <Field label="Tags" value={<TagList tags={a.tags} />} wide />
-          </DetailCard>
-          <DetailCard title="What it holds">
-            <Field
-              label="Capacity"
-              value={a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} ${a.unit}` : "N/A"}
-            />
-            <Field label="Linked product" value={product?.name} />
-            <Field label="Fill threshold" value={a.fillThreshold === null ? null : `${a.fillThreshold.toLocaleString()} ${a.unit}`} />
-            <Field label="Reorder point" value={a.reorderPoint === null ? null : `${a.reorderPoint.toLocaleString()} ${a.unit}`} />
-            <Field label="Top-off relevant" value={a.topOffRelevant ? "Yes" : "No"} />
-          </DetailCard>
-        </SectionStack>
+        <div className="flex items-start gap-2.5 rounded-md border border-fp-banner-accent-caution/40 bg-fp-banner-accent-caution/5 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fp-banner-accent-caution" />
+          <ul className="flex flex-col gap-0.5">
+            {warnings.map((w) => (
+              <li key={w} className="text-sm text-foreground">
+                {w}
+              </li>
+            ))}
+          </ul>
+        </div>
       ),
-    },
+    });
+  }
+
+  sections.push(
     {
       key: "placement",
-      label: "Customer / Location",
+      title: "Placement and clocks",
+      note: a.customer ? `${a.customer} — ${a.shipTo ?? "site not set"}` : "At the yard",
       render: () => (
-        <SectionStack>
-          <DetailCard title="Where it is">
-            <Field
-              label="Customer"
-              value={
-                a.customerId && a.customer ? (
-                  <button
-                    type="button"
-                    className="text-left underline-offset-2 hover:underline"
-                    onClick={() => go.openCustomer(a.customerId!)}
-                  >
-                    {a.customer}
-                  </button>
-                ) : (
-                  "At the yard"
-                )
-              }
-            />
-            <Field label="Ship-to" value={a.shipTo} />
-            <Field label="Installed" value={formatDate(a.installedDate)} />
-            <Field label="Removed" value={formatDate(a.removalDate)} />
-            <Field label="Address" value={oneLineAddress(a)} wide />
-            <Field
-              label="Coordinates"
-              value={
-                a.latitude !== null && a.longitude !== null
-                  ? `${a.latitude}, ${a.longitude}`
-                  : null
-              }
-            />
-            <Field label="Country" value={a.country} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "rental",
-      label: "Rental Terms",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="The contract">
-            <Field label="Contract ID" value={a.contractId} />
-            <Field label="Rental start" value={formatDate(a.rentalStartDate)} />
-            <Field label="Rental end" value={a.rentalEndDate ? formatDate(a.rentalEndDate) : a.availabilityStatus === "On rent" ? "Open ended" : null} />
-            <Field label="Billing frequency" value={a.billingFrequency} />
-            <Field label="Rate" value={money(a.rentalRate)} />
-            <Field label="Deposit" value={money(a.depositAmount)} />
-            <Field label="Auto renew" value={a.autoRenew ? "Yes" : "No"} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "service",
-      label: "Service & Maintenance",
-      count: a.inspectionFiles.length,
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Standing">
-            <Field label="Maintenance status" value={a.maintenanceStatus} />
-            <Field label="Compliance status" value={a.complianceStatus} />
-            <Field label="Last service" value={formatDate(a.lastServiceDate)} />
-            <Field label="Next service due" value={formatDate(a.nextServiceDue)} />
-            <Field
-              label="Service vendor"
-              value={
-                vendor ? (
-                  <button
-                    type="button"
-                    className="text-left underline-offset-2 hover:underline"
-                    onClick={() => go.openVendor(vendor.id)}
-                  >
-                    {vendor.name}
-                  </button>
-                ) : null
-              }
-            />
-          </DetailCard>
-          <AttachmentsSection
-            groups={[
-              { title: "Inspection files", files: a.inspectionFiles },
-              { title: "Installation records", files: a.installationRecords },
-            ]}
+        <ReadGrid>
+          <ReadField
+            label="Customer"
+            value={
+              a.customerId && a.customer ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:underline"
+                  onClick={() => go.openCustomer(a.customerId!)}
+                >
+                  {a.customer}
+                </button>
+              ) : (
+                "At the yard"
+              )
+            }
           />
-        </SectionStack>
+          <ReadField label="Ship-to" value={a.shipTo} />
+          <ReadField label="Address" value={a.addressLine1 ? oneLineAddress(a) : null} wide />
+          <ReadField
+            label="Capacity"
+            /* A nozzle holds nothing, and "0 gal" reads as an empty tank
+               rather than as a thing that has no capacity. */
+            value={a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} ${a.unit}` : "N/A"}
+          />
+          <ReadField label="Linked product" value={product?.name} />
+          <ReadField
+            label="Rental ends"
+            value={
+              a.rentalEndDate
+                ? formatDate(a.rentalEndDate)
+                : a.availabilityStatus === "On rent"
+                  ? "Open ended"
+                  : "N/A"
+            }
+          />
+          <ReadField label="Auto renew" value={a.autoRenew ? "Yes" : "No"} />
+          <ReadField
+            label="Next service"
+            value={
+              serviceIn === null
+                ? null
+                : serviceIn < 0
+                  ? `${Math.abs(serviceIn)} days overdue`
+                  : `${serviceIn} days (${formatDate(a.nextServiceDue)})`
+            }
+          />
+          <ReadField label="Last service" value={formatDate(a.lastServiceDate)} />
+          <ReadField
+            label="Service vendor"
+            value={
+              vendor ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:underline"
+                  onClick={() => go.openVendor(vendor.id)}
+                >
+                  {vendor.name}
+                </button>
+              ) : null
+            }
+          />
+          <ReadField label="Contract ID" value={a.contractId} />
+          <ReadField label="QR code" value={a.qrCode} />
+          <ReadField label="External asset ID" value={a.externalAssetId} />
+          <ReadField label="Tags" value={<TagRow tags={a.tags} />} wide />
+        </ReadGrid>
       ),
     },
     {
       key: "orders",
-      label: "Linked Orders",
-      count: orders.length,
+      title: "Linked orders",
+      note: `${orders.length} orders · ${recurring.length} recurring`,
       render: () => (
-        <SectionStack>
-          <DetailPanel title="Orders naming this asset">
-            <RelatedTable
-              rows={orders.slice(0, 60)}
-              rowKey={(o) => o.id}
-              emptyTitle="No linked orders"
-              emptyBody="Nothing has been delivered to or moved with this asset."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "type", label: "Type", render: (o) => o.orderType },
-                { key: "date", label: "Date", render: (o) => o.date.title },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (o) => (
-                    <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "recurring",
-      label: "Recurring Schedules",
-      count: recurring.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Schedules this asset is on">
-            <RelatedTable
-              rows={recurring}
-              rowKey={(o) => o.id}
-              emptyTitle="Not on a schedule"
-              emptyBody="Moving this asset will not disturb a recurring order."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "freq", label: "Frequency", render: (o) => o.recurrence?.frequency ?? DASH },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
+        <SheetTable
+          rows={orders}
+          rowKey={(o) => o.id}
+          emptyBody="Nothing has been delivered to or moved with this asset."
+          columns={[
+            { key: "no", label: "Order", render: (o) => o.orderNo },
+            { key: "cust", label: "Customer", render: (o) => o.customer.title },
+            { key: "type", label: "Type", render: (o) => o.orderType },
+            { key: "date", label: "Date", render: (o) => o.date.title },
+            {
+              key: "status",
+              label: "Status",
+              render: (o) => (
+                <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
+                  {o.status}
+                </StatusChip>
+              ),
+            },
+          ]}
+        />
       ),
     },
     {
       key: "billing",
-      label: "Billing History",
+      title: "Billing history",
       render: () => {
         /* Derived from the rental period rather than stored: one row per
            billing period since the rental began, which is exactly what a
-           monthly rental at a flat rate produces. */
+           flat-rate rental produces. */
         const rows: { id: string; period: string; amount: number }[] = [];
         if (a.rentalStartDate) {
           const start = new Date(`${a.rentalStartDate}T00:00:00Z`);
@@ -344,7 +228,11 @@ export function assetSections(
           while (cursor <= end && i < 36) {
             rows.push({
               id: `${a.id}-bill-${i}`,
-              period: cursor.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
+              period: cursor.toLocaleDateString("en-US", {
+                month: "short",
+                year: "numeric",
+                timeZone: "UTC",
+              }),
               amount: a.rentalRate * step,
             });
             cursor.setUTCMonth(cursor.getUTCMonth() + step);
@@ -352,44 +240,45 @@ export function assetSections(
           }
         }
         return (
-          <SectionStack>
-            <DetailPanel title={`Billed periods (${rows.length})`}>
-              <RelatedTable
-                rows={rows.reverse().slice(0, 36)}
-                rowKey={(r) => r.id}
-                emptyTitle="Never billed"
-                emptyBody="This asset has not been on rent, so nothing has been charged for it."
-                columns={[
-                  { key: "period", label: "Period", render: (r) => r.period },
-                  { key: "freq", label: "Frequency", render: () => a.billingFrequency },
-                  { key: "amt", label: "Amount", align: "right", render: (r) => money(r.amount) },
-                ]}
-              />
-            </DetailPanel>
-          </SectionStack>
+          <SheetTable
+            rows={rows.reverse()}
+            rowKey={(r) => r.id}
+            emptyBody="This asset has not been on rent, so nothing has been charged for it."
+            columns={[
+              { key: "period", label: "Period", render: (r) => r.period },
+              { key: "freq", label: "Frequency", render: () => a.billingFrequency },
+              { key: "amt", label: "Amount", align: "right", render: (r) => money(r.amount) },
+            ]}
+          />
         );
       },
     },
     {
-      key: "attachments",
-      label: "Attachments",
+      key: "inspections",
+      title: "Inspection and installation records",
+      count: a.inspectionFiles.length + a.installationRecords.length,
+      render: () => <AttachmentTable files={[...a.inspectionFiles, ...a.installationRecords]} />,
+    },
+    {
+      key: "documents",
+      title: "Documents",
       count: a.documents.length,
-      render: () => <AttachmentsSection groups={[{ title: "Documents", files: a.documents }]} />,
+      render: () => <AttachmentTable files={a.documents} />,
     },
     {
       key: "notes",
-      label: "Notes",
-      render: () => (
-        <NotesSection blocks={[{ title: "Asset notes", body: a.notes, hint: "No notes recorded." }]} />
-      ),
+      title: "Asset notes",
+      render: () => <NoteBlock body={a.notes} hint="No notes recorded." />,
     },
     {
       key: "audit",
-      label: "Audit History",
+      title: "Audit History",
       count: a.audit.length,
-      render: () => <AuditSection events={a.audit} />,
-    },
-  ];
+      render: () => <AuditList events={a.audit} />,
+    }
+  );
+
+  return sections;
 }
 
 /* ─────────────────────────────────────────────────────────────── the form ── */

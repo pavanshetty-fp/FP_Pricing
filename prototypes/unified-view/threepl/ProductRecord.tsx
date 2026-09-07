@@ -1,20 +1,15 @@
 import { StatusChip } from "@/components/ui/status-chip";
 import {
-  AttachmentsSection,
-  AuditSection,
-  DetailCard,
-  DetailPanel,
-  Field,
-  NotesSection,
-  RelatedTable,
-  SectionStack,
-  TagList,
-  type BadgeTone,
-  type RecordSection,
-  type RecordSummaryStat,
-} from "./DirectoryRecordPage";
-import { DASH, money } from "./directoryCore";
-import { formatDate } from "./directoryCore";
+  AttachmentTable,
+  AuditList,
+  NoteBlock,
+  ReadField,
+  ReadGrid,
+  SheetTable,
+  TagRow,
+  type RecordReadSection,
+} from "./DirectoryRecordSheet";
+import { DASH, formatDate, money } from "./directoryCore";
 import {
   BROKER_CUSTOMERS,
   PRODUCT_CATEGORIES,
@@ -24,75 +19,53 @@ import {
 } from "./directory";
 import { ordersForProduct, vendorsForProduct } from "./directoryLinks";
 import { BROKER_STATUS_TONE } from "./orders";
-import type { FormSectionDef } from "./DirectoryForm";
+import type { FormSectionDef } from "./directoryFormTypes";
 
 /*
-  What a product record shows, and why in this order.
+  What a product record shows in the sheet, beyond the fields it edits.
 
-  A PRODUCT IS A SET OF RULES, not a thing. Everything on this page constrains
-  an order line: what it can be measured in, how much of it may be ordered,
-  whether "top off" is even offerable, who may buy it, and who can deliver it.
-  So the sections follow the order those rules bite in during order entry.
+  A PRODUCT IS A SET OF RULES, not a thing. Everything here constrains an order
+  line: what it can be measured in, how much may be ordered, whether "top off"
+  is even offerable, who may buy it, and who can deliver it.
 
   TWO NUMBERS ARE COMPUTED, NEVER STORED — how many customers may buy it and
-  how many vendors can fulfil it. Both are the answer to "why is this product
-  not on the picker", and a stored count would be wrong the first time anyone
-  edited a vendor.
+  how many vendors can fulfil it. Both answer "why is this product not on the
+  picker", and a stored count would be wrong the first time a vendor was
+  edited.
 */
 
-const STATUS_TONE: Record<string, BadgeTone> = {
-  active: "success",
-  inactive: "neutral",
-  archived: "neutral",
-};
+const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
 
-export const productStatusTone = (p: BrokerProduct): BadgeTone =>
-  STATUS_TONE[p.status] ?? "neutral";
-
-export function productBadges(p: BrokerProduct) {
-  const out: { label: string; tone: BadgeTone; title?: string }[] = [];
-  if (p.topOffSupported) {
-    out.push({
-      label: "Top-off",
-      tone: "info",
-      title: "Order lines may be entered as a top-off instead of a fixed quantity",
-    });
-  }
-  if (p.hazmat) out.push({ label: p.hazmat, tone: "warning" });
-  if (!p.taxCode) {
-    out.push({ label: "No tax code", tone: "critical", title: "Invoices for this product cannot be taxed correctly" });
-  }
-  if (!p.revenueAccount || !p.cogsAccount) {
-    out.push({ label: "Unmapped", tone: "warning", title: "Missing an accounting mapping — it will not sync cleanly" });
-  }
-  return out;
+export function productHeaderAside(p: BrokerProduct) {
+  const vendors = vendorsForProduct(p).length;
+  return (
+    <span className="flex items-center gap-1.5">
+      <StatusChip tone={p.status === "active" ? "success" : "neutral"} variant="soft">
+        <span className="capitalize">{p.status}</span>
+      </StatusChip>
+      {p.topOffSupported && (
+        <StatusChip tone="processing" variant="soft">
+          Top-off
+        </StatusChip>
+      )}
+      {p.taxable && !p.taxCode && (
+        <StatusChip tone="failed" variant="soft">
+          No tax code
+        </StatusChip>
+      )}
+      {vendors === 0 && (
+        <StatusChip tone="failed" variant="soft">
+          No vendor can fulfil
+        </StatusChip>
+      )}
+    </span>
+  );
 }
 
-export function productStats(p: BrokerProduct): RecordSummaryStat[] {
-  const vendors = vendorsForProduct(p);
-  const orders = ordersForProduct(p.name);
-  return [
-    { label: "Base price", value: money(p.basePrice, true), hint: `per ${p.unit}` },
-    { label: "Unit of measure", value: p.unit, hint: `${p.quantityPrecision} decimal places` },
-    {
-      label: "Customers",
-      value: customerReach(p),
-      hint: p.availableToAllCustomers ? "Available to all" : "Restricted list",
-    },
-    {
-      label: "Vendors",
-      value: vendors.length,
-      hint: vendors.length === 0 ? "Nobody can fulfil this" : "Can fulfil",
-      tone: vendors.length === 0 ? "critical" : undefined,
-    },
-    { label: "Used on", value: orders.length, hint: "Orders, all time" },
-  ];
-}
-
-export function productSections(
+export function productReadSections(
   p: BrokerProduct,
   go: { openVendor: (id: string) => void; openCustomer: (id: string) => void }
-): RecordSection[] {
+): RecordReadSection[] {
   const vendors = vendorsForProduct(p);
   const orders = ordersForProduct(p.name);
   const recurring = orders.filter((o) => o.kind === "Recurring");
@@ -102,248 +75,150 @@ export function productSections(
 
   return [
     {
-      key: "overview",
-      label: "Overview",
+      key: "reach",
+      title: "Reach",
+      note: `${customerReach(p)} customers · ${vendors.length} vendors`,
       render: () => (
-        <SectionStack>
-          <DetailCard title="Identity">
-            <Field label="Product name" value={p.name} />
-            <Field label="Product code" value={p.productCode} />
-            <Field label="ERP item ID" value={p.erpItemId} />
-            <Field label="Category" value={p.category} />
-            <Field label="Status" value={<span className="capitalize">{p.status}</span>} />
-            <Field label="Display order" value={p.displayOrder} />
-            <Field label="Description" value={p.description} wide />
-            <Field label="Tags" value={<TagList tags={p.tags} />} wide />
-          </DetailCard>
-          <DetailCard title="Safety">
-            <Field label="Hazmat class" value={p.hazmat} />
-            <Field label="Hazard flags" value={p.hazardFlags.length > 0 ? <TagList tags={p.hazardFlags} /> : null} wide />
-            <Field label="Inventory classification" value={p.inventoryClassification} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "pricing",
-      label: "Pricing",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Price">
-            <Field label="Base price" value={money(p.basePrice, true)} />
-            <Field label="Currency" value={p.currency} />
-            <Field label="Per" value={p.unit} />
-            <Field label="Taxable" value={p.taxable ? "Yes" : "No"} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Quantity Rules",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="How much may be ordered">
-            <Field label="Unit of measure" value={p.unit} />
-            <Field label="Precision" value={`${p.quantityPrecision} decimal places`} />
-            <Field label="Minimum" value={p.minimumQuantity === null ? null : `${p.minimumQuantity.toLocaleString()} ${p.unit}`} />
-            <Field label="Maximum" value={p.maximumQuantity === null ? null : `${p.maximumQuantity.toLocaleString()} ${p.unit}`} />
-            <Field label="Default" value={p.defaultQuantity === null ? null : `${p.defaultQuantity.toLocaleString()} ${p.unit}`} />
-            <Field label="Override allowed" value={p.quantityOverrideAllowed ? "Yes" : "No"} />
-            <Field
-              label="Top-off supported"
-              value={
-                p.topOffSupported
-                  ? "Yes — a line may be entered as a top-off"
-                  : "No — every line needs a quantity"
-              }
-              wide
-            />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "customers",
-      label: "Customer Availability",
-      count: allowed.length,
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Who may buy it">
-            <Field label="Available to all customers" value={p.availableToAllCustomers ? "Yes" : "No — restricted list"} />
-            <Field label="Explicitly blocked" value={p.blockedCustomerIds.length} />
-            <Field
-              label="Geography restrictions"
-              value={p.geographyRestrictions.length > 0 ? <TagList tags={p.geographyRestrictions} /> : "None"}
-              wide
-            />
-          </DetailCard>
-          <DetailPanel title={`Eligible accounts (${allowed.length})`}>
-            <RelatedTable
-              rows={allowed.slice(0, 60)}
-              rowKey={(c) => c.id}
-              onOpenRow={(c) => go.openCustomer(c.id)}
-              emptyTitle="No eligible accounts"
-              emptyBody="Nobody can order this product. Check the availability rules above."
-              columns={[
-                { key: "name", label: "Customer", render: (c) => c.name },
-                { key: "erp", label: "ERP ID", render: (c) => c.erpId },
-                { key: "credit", label: "Credit", render: (c) => c.creditStatus },
-                { key: "state", label: "State", render: (c) => c.state ?? <Muted /> },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
+        <ReadGrid>
+          <ReadField label="Base price" value={`${money(p.basePrice, true)} per ${p.unit}`} />
+          <ReadField
+            label="Top-off"
+            value={p.topOffSupported ? "A line may be a top-off" : "Every line needs a quantity"}
+          />
+          <ReadField
+            label="Quantity"
+            value={
+              p.minimumQuantity === null && p.maximumQuantity === null
+                ? null
+                : `${p.minimumQuantity?.toLocaleString() ?? "—"} – ${p.maximumQuantity?.toLocaleString() ?? "no max"} ${p.unit}`
+            }
+          />
+          <ReadField label="Default quantity" value={p.defaultQuantity === null ? null : `${p.defaultQuantity.toLocaleString()} ${p.unit}`} />
+          <ReadField label="Hazard flags" value={p.hazardFlags.length > 0 ? <TagRow tags={p.hazardFlags} /> : null} />
+          <ReadField label="Tags" value={<TagRow tags={p.tags} />} />
+          <ReadField
+            label="Geography restrictions"
+            value={p.geographyRestrictions.length > 0 ? <TagRow tags={p.geographyRestrictions} /> : "None"}
+            wide
+          />
+          <ReadField label="Last updated" value={formatDate(p.updatedAt.slice(0, 10))} />
+          <ReadField label="Created" value={formatDate(p.createdAt.slice(0, 10))} />
+        </ReadGrid>
       ),
     },
     {
       key: "vendors",
-      label: "Vendor Capability",
+      title: "Vendors who can fulfil this",
       count: vendors.length,
       render: () => (
-        <SectionStack>
-          <DetailPanel title={`Vendors who can fulfil this (${vendors.length})`}>
-            <RelatedTable
-              rows={vendors}
-              rowKey={(v) => v.id}
-              onOpenRow={(v) => go.openVendor(v.id)}
-              emptyTitle="No vendor can fulfil this"
-              emptyBody="No carrier's business lines cover this product, so an order naming it cannot be assigned."
-              columns={[
-                { key: "name", label: "Vendor", render: (v) => v.name },
-                { key: "base", label: "Base", render: (v) => v.base },
-                { key: "lines", label: "Business lines", render: (v) => v.businessLines.join(", ") },
-                {
-                  key: "default",
-                  label: "Default",
-                  render: (v) => (p.defaultVendorIds.includes(v.id) ? "Yes" : <Muted />),
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (v) => (
-                    <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
-                      {v.active ? "Active" : "Inactive"}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "accounting",
-      label: "Tax & Accounting",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Mapping">
-            <Field label="Tax code" value={p.taxCode} />
-            <Field label="Taxable" value={p.taxable ? "Yes" : "No"} />
-            <Field label="Revenue account" value={p.revenueAccount} />
-            <Field label="COGS account" value={p.cogsAccount} />
-            <Field label="ERP item ID" value={p.erpItemId} />
-            <Field label="Inventory classification" value={p.inventoryClassification} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "usage",
-      label: "Order Usage",
-      count: orders.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Orders naming this product">
-            <RelatedTable
-              rows={orders.slice(0, 60)}
-              rowKey={(o) => o.id}
-              emptyTitle="Never ordered"
-              emptyBody="No order line has named this product."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "date", label: "Date", render: (o) => o.date.title },
-                {
-                  key: "qty",
-                  label: "Quantity",
-                  align: "right",
-                  render: (o) => {
-                    const line = o.lines.find((l) => l.product === p.name);
-                    if (!line) return <Muted />;
-                    return line.topOff ? "Top-off" : `${(line.gal ?? 0).toLocaleString()} ${p.unit}`;
-                  },
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (o) => (
-                    <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "recurring",
-      label: "Recurring Usage",
-      count: recurring.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Recurring templates using this product">
-            <RelatedTable
-              rows={recurring}
-              rowKey={(o) => o.id}
-              emptyTitle="Not on any schedule"
-              emptyBody="Changing this product will not disturb a recurring template."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "cust", label: "Customer", render: (o) => o.customer.title },
-                { key: "freq", label: "Frequency", render: (o) => o.recurrence?.frequency ?? DASH },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "attachments",
-      label: "Attachments",
-      count: p.attachments.length + p.sdsAttachments.length,
-      render: () => (
-        <AttachmentsSection
-          groups={[
-            { title: "Safety data sheets", files: p.sdsAttachments },
-            { title: "Files", files: p.attachments },
+        <SheetTable
+          rows={vendors}
+          rowKey={(v) => v.id}
+          onOpenRow={(v) => go.openVendor(v.id)}
+          emptyBody="No carrier's business lines cover this product, so an order naming it cannot be assigned."
+          columns={[
+            { key: "name", label: "Vendor", render: (v) => v.name },
+            { key: "base", label: "Base", render: (v) => v.base },
+            { key: "lines", label: "Business lines", render: (v) => v.businessLines.join(", ") },
+            {
+              key: "default",
+              label: "Default",
+              render: (v) => (p.defaultVendorIds.includes(v.id) ? "Yes" : <Muted />),
+            },
+            {
+              key: "status",
+              label: "Status",
+              render: (v) => (
+                <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
+                  {v.active ? "Active" : "Inactive"}
+                </StatusChip>
+              ),
+            },
           ]}
         />
       ),
     },
     {
-      key: "notes",
-      label: "Notes",
+      key: "customers",
+      title: "Eligible accounts",
+      count: allowed.length,
+      note: p.availableToAllCustomers ? "Available to all customers" : "Restricted list",
       render: () => (
-        <NotesSection
-          blocks={[{ title: "Product notes", body: p.notes, hint: "No notes recorded." }]}
+        <SheetTable
+          rows={allowed}
+          rowKey={(c) => c.id}
+          onOpenRow={(c) => go.openCustomer(c.id)}
+          emptyBody="Nobody can order this product. Check the availability rules above."
+          columns={[
+            { key: "name", label: "Customer", render: (c) => c.name },
+            { key: "erp", label: "ERP ID", render: (c) => c.erpId },
+            { key: "credit", label: "Credit", render: (c) => c.creditStatus },
+            { key: "state", label: "State", render: (c) => c.state ?? <Muted /> },
+          ]}
         />
       ),
     },
     {
+      key: "usage",
+      title: "Order usage",
+      note: `${orders.length} orders · ${recurring.length} recurring`,
+      render: () => (
+        <SheetTable
+          rows={orders}
+          rowKey={(o) => o.id}
+          emptyBody="No order line has named this product."
+          columns={[
+            { key: "no", label: "Order", render: (o) => o.orderNo },
+            { key: "cust", label: "Customer", render: (o) => o.customer.title },
+            { key: "date", label: "Date", render: (o) => o.date.title },
+            {
+              key: "qty",
+              label: "Quantity",
+              align: "right",
+              render: (o) => {
+                const line = o.lines.find((l) => l.product === p.name);
+                if (!line) return <Muted />;
+                return line.topOff ? "Top-off" : `${(line.gal ?? 0).toLocaleString()} ${p.unit}`;
+              },
+            },
+            {
+              key: "status",
+              label: "Status",
+              render: (o) => (
+                <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
+                  {o.status}
+                </StatusChip>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "sds",
+      title: "Safety data sheets",
+      count: p.sdsAttachments.length,
+      render: () => <AttachmentTable files={p.sdsAttachments} />,
+    },
+    {
+      key: "attachments",
+      title: "Attachments",
+      count: p.attachments.length,
+      render: () => <AttachmentTable files={p.attachments} />,
+    },
+    {
+      key: "notes",
+      title: "Product notes",
+      render: () => <NoteBlock body={p.notes} hint="No notes recorded." />,
+    },
+    {
       key: "audit",
-      label: "Audit History",
+      title: "Audit History",
       count: p.audit.length,
-      render: () => <AuditSection events={p.audit} />,
+      render: () => <AuditList events={p.audit} />,
     },
   ];
 }
-
-const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
 
 export const productSubtitle = (p: BrokerProduct) =>
   `${p.productCode} · ${p.category} · updated ${formatDate(p.updatedAt.slice(0, 10))}`;

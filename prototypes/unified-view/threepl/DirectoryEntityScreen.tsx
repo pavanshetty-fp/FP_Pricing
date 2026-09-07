@@ -4,38 +4,40 @@ import { Archive, CheckCircle2, Download, Tag, XCircle } from "lucide-react";
 import type { BulkAction } from "@/components/tables-layout";
 import { DirectoryList, type DirectoryColumn, type DirectoryFacet } from "./DirectoryList";
 import {
-  DirectoryRecordPage,
-  type BadgeTone,
-  type RecordSection,
-  type RecordSummaryStat,
-} from "./DirectoryRecordPage";
-import { DirectoryForm, type FormSectionDef } from "./DirectoryForm";
+  DirectoryRecordSheet,
+  type RecordReadSection,
+} from "./DirectoryRecordSheet";
+import type { FormSectionDef } from "./directoryFormTypes";
 import { writeUrl } from "./directoryUrl";
 import type { AuditEvent, RecordStatus } from "./directoryCore";
 import type { GroupDim } from "@/components/tables-layout";
 
 /*
-  List → record → form, for one entity.
+  A list, and a sheet over it. For one entity.
 
-  WHY THIS IS ONE COMPONENT AND NOT FOUR. The three screens are the same three
-  screens on every entity, and so is the traffic between them: a row opens a
-  record, a record opens a form, a saved form returns to the record it came
-  from, a cancelled create returns to the list. Written four times, the fourth
-  copy would be the one where Cancel from Create lands on a record that does
-  not exist yet.
+  THE DS'S RECORD INTERACTION IS THE SIDE SHEET — `RecordSheet`, as
+  `CustomerSheet` uses it. The record IS the form: `mode` decides whether the
+  header reads Edit or Create, the body carries the fields, and the footer
+  carries Save Changes. There is no separate full-page detail and no separate
+  editor, because that would be a second pattern doing the same job, and the
+  list would stop being visible behind the thing you opened from it.
 
-  WHAT AN ENTITY STILL SUPPLIES is everything that is genuinely about ITS
-  records — columns, cells, facets, the record layout, the form, and what
-  "archive" means for it. The traffic rules are here.
+  WHY THIS IS ONE COMPONENT AND NOT FOUR. The traffic is identical on every
+  entity: a row opens the sheet, saving closes it, creating prepends a record,
+  archiving flips a status. Written four times, the fourth copy is the one
+  where a cancelled create leaves a half-made record in the list.
+
+  WHAT AN ENTITY STILL SUPPLIES is everything genuinely about ITS records —
+  columns, cells, facets, the form's fields, what the sheet shows below them,
+  and what "archive" means for it.
 
   STATE LIVES HERE, at the top of the entity. A saved edit has to be visible on
-  the list behind it and in the record on top of it, and the only way to make
-  that true without a store is to own the array in one place and pass it down.
-  Real screens would refetch; this prototype mutates its own copy and keeps the
-  audit trail honest about it.
+  the list behind the sheet, and the only way to make that true without a store
+  is to own the array in one place. Real screens would refetch; this prototype
+  mutates its own copy and keeps the audit trail honest about it.
 
-  BACK BEHAVES. Opening a record pushes a history entry so the browser's Back
-  returns to the list — the one navigation people try without being told.
+  BACK BEHAVES. Opening a record pushes a history entry, so the browser's Back
+  closes the sheet — the one navigation people try without being told.
 */
 
 export interface EntityConfig<Row, K extends string> {
@@ -63,12 +65,11 @@ export interface EntityConfig<Row, K extends string> {
   emptyIcon: React.ReactNode;
   exportRow: (row: Row) => Record<string, string | number>;
 
-  /* ── the record page ── */
-  subtitleOf: (row: Row) => React.ReactNode;
-  statusOf: (row: Row) => { label: string; tone: BadgeTone };
-  badgesOf: (row: Row) => { label: string; tone: BadgeTone; title?: string }[];
-  statsOf: (row: Row) => RecordSummaryStat[];
-  sectionsOf: (row: Row, go: Navigator) => RecordSection[];
+  /* ── the sheet ── */
+  /** The chips beside the sheet's title — status, and what blocks this record. */
+  headerAsideOf: (row: Row) => React.ReactNode;
+  /** Everything the sheet shows but does not edit, below the form's sections. */
+  readSectionsOf: (row: Row, go: Navigator) => RecordReadSection[];
 
   /* ── the form ── */
   formSections: FormSectionDef<Row>[];
@@ -96,11 +97,8 @@ export interface Navigator {
   openAsset: (id: string) => void;
 }
 
-type Mode =
-  | { kind: "list" }
-  | { kind: "record"; id: string }
-  | { kind: "edit"; id: string }
-  | { kind: "create" };
+/** The sheet is open on a record, open on a new one, or closed. */
+type Sheet = { kind: "record"; id: string } | { kind: "create" } | null;
 
 export interface DirectoryEntityScreenProps<Row, K extends string> {
   config: EntityConfig<Row, K>;
@@ -111,6 +109,8 @@ export interface DirectoryEntityScreenProps<Row, K extends string> {
   focusId?: string | null;
   onFocusHandled?: () => void;
   canWrite?: boolean;
+  /** The list's total, for the page header. */
+  onTotalChange?: (label: string | null) => void;
 }
 
 /** The audit entry a save writes. One per save, listing what actually moved. */
@@ -149,40 +149,45 @@ export function DirectoryEntityScreen<Row, K extends string>({
   focusId,
   onFocusHandled,
   canWrite = true,
+  onTotalChange,
 }: DirectoryEntityScreenProps<Row, K>) {
-  const [mode, setMode] = React.useState<Mode>({ kind: "list" });
-  const [section, setSection] = React.useState<string | undefined>(undefined);
+  const [sheet, setSheet] = React.useState<Sheet>(null);
   const seq = React.useRef(0);
 
-  /* A jump from another entity's record page lands on the record, not the list. */
+  /* A jump from another entity's sheet opens this entity's sheet on that
+     record — the list is behind it either way, which is the point. */
   React.useEffect(() => {
     if (!focusId) return;
-    setMode({ kind: "record", id: focusId });
-    setSection(undefined);
+    setSheet({ kind: "record", id: focusId });
     onFocusHandled?.();
   }, [focusId, onFocusHandled]);
 
-  const record = mode.kind === "record" || mode.kind === "edit"
-    ? rows.find((r) => config.rowId(r) === mode.id) ?? null
-    : null;
+  const record =
+    sheet?.kind === "record" ? rows.find((r) => config.rowId(r) === sheet.id) ?? null : null;
+
+  /* A BLANK RECORD IS MADE ONCE PER OPEN, not on every render — remade each
+     time, the sheet's draft would reset under the reader's hands. */
+  const blank = React.useMemo(
+    () => (sheet?.kind === "create" ? config.blank(`${config.urlKey.slice(0, 2)}-new-${(seq.current += 1)}`) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sheet?.kind === "create"]
+  );
 
   const openRecord = (row: Row) => {
     const id = config.rowId(row);
-    setMode({ kind: "record", id });
-    setSection(undefined);
-    /* PUSH, not replace: Back from a record should return to the list, and
-       that is the one navigation nobody has to be told about. */
+    setSheet({ kind: "record", id });
+    /* PUSH, not replace: Back should close the sheet, and that is the one
+       navigation nobody has to be told about. */
     writeUrl({ entity: config.urlKey, record: id }, { push: true });
   };
 
-  const backToList = () => {
-    setMode({ kind: "list" });
+  const closeSheet = () => {
+    setSheet(null);
     writeUrl({ record: null });
   };
 
-  const replaceRow = (id: string, fn: (row: Row) => Row) => {
+  const replaceRow = (id: string, fn: (row: Row) => Row) =>
     onRowsChange(rows.map((r) => (config.rowId(r) === id ? fn(r) : r)));
-  };
 
   const applyToMany = (ids: string[], fn: (row: Row) => Row, message: string) => {
     const set = new Set(ids);
@@ -190,9 +195,37 @@ export function DirectoryEntityScreen<Row, K extends string>({
     toast.success(message);
   };
 
-  /* ── the list ─────────────────────────────────────────────────────────── */
-  if (mode.kind === "list") {
-    return (
+  const plural = config.nounPlural ?? `${config.noun}s`;
+  const Noun = config.noun[0].toUpperCase() + config.noun.slice(1);
+
+  const submit = (draft: Row) => {
+    if (sheet?.kind === "create") {
+      onRowsChange([draft, ...rows]);
+      toast.success(`${Noun} created`, { description: config.nameOf(draft) });
+      closeSheet();
+      return;
+    }
+    if (!record) return;
+    const entry = auditFor(record, draft, config.formSections, "Dana Whitfield");
+    const next = entry ? config.withAudit(draft, entry) : draft;
+    replaceRow(config.rowId(next), () => next);
+    /* A save that changed nothing says so rather than claiming a save — the
+       audit trail stays clean and nobody goes looking for the diff. */
+    if (entry) {
+      toast.success("Changes saved", {
+        description:
+          entry.changes.length === 1 ? entry.changes[0] : `${entry.changes.length} fields updated`,
+      });
+    } else {
+      toast.info("Nothing to save", { description: "No fields were changed." });
+    }
+    closeSheet();
+  };
+
+  const initial = sheet?.kind === "create" ? blank : record;
+
+  return (
+    <>
       <DirectoryList<Row, K>
         rows={rows}
         columns={config.columns}
@@ -214,18 +247,22 @@ export function DirectoryEntityScreen<Row, K extends string>({
         openLabel={(r) => `Open ${config.noun} ${config.nameOf(r)}`}
         urlKey={config.urlKey}
         canWrite={canWrite}
+        onTotalChange={onTotalChange}
         exportRow={config.exportRow}
-        onCreate={() => setMode({ kind: "create" })}
+        onCreate={() => setSheet({ kind: "create" })}
+        createLabel={`Add New ${Noun}`}
         bulkActions={(selected, clear) => {
           const ids = selected.map(config.rowId);
           const allArchived = selected.every((r) => config.statusField.get(r) === "archived");
-          const base: BulkAction[] = [
+          return [
             {
               key: "export",
               label: "Export selection",
               icon: <Download />,
               onSelect: () => {
-                toast.success(`${selected.length} ${selected.length === 1 ? config.noun : config.nounPlural ?? `${config.noun}s`} exported`);
+                toast.success(
+                  `${selected.length} ${selected.length === 1 ? config.noun : plural} exported`
+                );
                 clear();
               },
             },
@@ -244,151 +281,34 @@ export function DirectoryEntityScreen<Row, K extends string>({
                 applyToMany(
                   ids,
                   (r) => config.statusField.set(r, allArchived ? "active" : "archived"),
-                  `${ids.length} ${ids.length === 1 ? config.noun : config.nounPlural ?? `${config.noun}s`} ${allArchived ? "restored" : "archived"}`
+                  `${ids.length} ${ids.length === 1 ? config.noun : plural} ${allArchived ? "restored" : "archived"}`
                 );
                 clear();
               },
             },
           ];
-          return base;
         }}
       />
-    );
-  }
 
-  /* ── create / edit ────────────────────────────────────────────────────── */
-  if (mode.kind === "create" || (mode.kind === "edit" && record)) {
-    const creating = mode.kind === "create";
-    const initial = creating
-      ? config.blank(`${config.urlKey.slice(0, 2)}-new-${(seq.current += 1)}`)
-      : (record as Row);
-
-    const finish = (draft: Row, close: boolean) => {
-      if (creating) {
-        onRowsChange([draft, ...rows]);
-        toast.success(`${config.noun[0].toUpperCase()}${config.noun.slice(1)} created`, {
-          description: config.nameOf(draft),
-        });
-        if (close) backToList();
-        else {
-          setMode({ kind: "record", id: config.rowId(draft) });
-          writeUrl({ entity: config.urlKey, record: config.rowId(draft) }, { push: true });
-        }
-        return;
-      }
-
-      const entry = auditFor(initial, draft, config.formSections, "Dana Whitfield");
-      const next = entry ? config.withAudit(draft, entry) : draft;
-      replaceRow(config.rowId(next), () => next);
-      /* A save that changed nothing says so, rather than claiming a save. The
-         audit trail stays clean and nobody goes looking for the diff. */
-      if (entry) {
-        toast.success("Changes saved", {
-          description:
-            entry.changes.length === 1
-              ? entry.changes[0]
-              : `${entry.changes.length} fields updated`,
-        });
-      } else {
-        toast.info("Nothing to save", { description: "No fields were changed." });
-      }
-      if (close) setMode({ kind: "record", id: config.rowId(next) });
-    };
-
-    return (
-      <DirectoryForm<Row>
-        mode={creating ? "create" : "edit"}
-        noun={config.noun[0].toUpperCase() + config.noun.slice(1)}
-        title={creating ? undefined : config.nameOf(initial)}
-        parentLabel={creating ? config.parentLabel : `Back to ${config.nameOf(initial)}`}
-        initial={initial}
-        sections={config.formSections}
-        onCancel={() =>
-          creating ? backToList() : setMode({ kind: "record", id: config.rowId(initial) })
-        }
-        onSave={(d) => finish(d, false)}
-        onSaveAndClose={(d) => finish(d, true)}
-        archived={!creating && config.statusField.get(initial) === "archived"}
-        onArchive={
-          creating
-            ? undefined
-            : () => {
-                const wasArchived = config.statusField.get(initial) === "archived";
-                replaceRow(config.rowId(initial), (r) =>
-                  config.statusField.set(r, wasArchived ? "active" : "archived")
-                );
-                toast.success(
-                  `${config.nameOf(initial)} ${wasArchived ? "restored" : "archived"}`
-                );
-                setMode({ kind: "record", id: config.rowId(initial) });
-              }
-        }
-      />
-    );
-  }
-
-  /* ── the record ───────────────────────────────────────────────────────── */
-  if (record) {
-    const archived = config.statusField.get(record) === "archived";
-    return (
-      <DirectoryRecordPage
-        parentLabel={config.parentLabel}
-        onBack={backToList}
-        title={config.nameOf(record)}
-        subtitle={config.subtitleOf(record)}
-        status={config.statusOf(record)}
-        badges={config.badgesOf(record)}
-        stats={config.statsOf(record)}
-        sections={config.sectionsOf(record, navigate)}
-        activeSection={section}
-        onSectionChange={setSection}
-        canWrite={canWrite}
-        archived={archived}
-        onEdit={() => setMode({ kind: "edit", id: config.rowId(record) })}
-        onArchive={() => {
-          replaceRow(config.rowId(record), (r) =>
-            config.statusField.set(r, archived ? "active" : "archived")
-          );
-          toast.success(`${config.nameOf(record)} ${archived ? "restored" : "archived"}`, {
-            description: archived
-              ? "It is selectable on new orders again."
-              : "Existing orders keep it. It is no longer offered on new ones.",
-          });
-        }}
-        extraActions={[
-          {
-            label: "Copy record link",
-            onSelect: () => {
-              const url = `${window.location.origin}${window.location.pathname}?entity=${config.urlKey}&record=${config.rowId(record)}`;
-              void navigator.clipboard?.writeText(url);
-              toast.success("Link copied");
-            },
-          },
-        ]}
-      />
-    );
-  }
-
-  /* The record was archived away, or the id in the URL is stale. */
-  return (
-    <DirectoryList<Row, K>
-      rows={rows}
-      columns={config.columns}
-      rowId={config.rowId}
-      renderCell={config.renderCell}
-      matches={config.matches}
-      searchFields={config.searchFields}
-      searchPlaceholder={config.searchPlaceholder}
-      sortRows={config.sortRows}
-      dimensions={config.dimensions}
-      facets={config.facets}
-      noun={config.noun}
-      nounPlural={config.nounPlural}
-      emptyIcon={config.emptyIcon}
-      onOpenRow={openRecord}
-      openLabel={(r) => `Open ${config.noun} ${config.nameOf(r)}`}
-      urlKey={config.urlKey}
-    />
+      {initial && (
+        <DirectoryRecordSheet<Row>
+          open
+          onOpenChange={(next) => {
+            if (!next) closeSheet();
+          }}
+          mode={sheet?.kind === "create" ? "create" : "edit"}
+          noun={Noun}
+          title={config.nameOf(initial)}
+          headerAside={sheet?.kind === "create" ? undefined : config.headerAsideOf(initial)}
+          initial={initial}
+          sections={config.formSections}
+          readSections={
+            sheet?.kind === "create" ? [] : config.readSectionsOf(initial, navigate)
+          }
+          onSubmit={submit}
+        />
+      )}
+    </>
   );
 }
 

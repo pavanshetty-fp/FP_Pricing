@@ -50,8 +50,8 @@ import { packList, readUrl, unpackList, writeUrl } from "./directoryUrl";
   two footers keep the same skeleton so the bottom of the screen does not jump.
 */
 
-/** The reference screen's own set. Kept exactly, including the large ones. */
-export const DIRECTORY_PAGE_SIZES = [10, 20, 30, 50, 100, 200, 400];
+/** Mirrors `TablePagination`'s own default set — used only to validate a URL. */
+const DS_PAGE_SIZES = [10, 25, 50, 100];
 
 export interface DirectoryFacet<Row> {
   key: string;
@@ -105,6 +105,16 @@ export interface DirectoryListProps<Row, K extends string> {
   bulkActions?: (selected: Row[], clear: () => void) => BulkAction[];
   /** Namespaces this list's URL params so four screens can share one address. */
   urlKey: string;
+  /**
+   * THE LIST'S TOTAL GOES TO THE PAGE HEADER, not under the footer.
+   *
+   * It is a fact about the whole list — "these 150 accounts are owed
+   * $9.7m" — and the footer is where the page position lives. Sat down
+   * there it read as a property of page 1 of 5, and it was the last thing on
+   * a screen somebody has to scroll to reach. Beside the title it is the
+   * first, which is where a headline number belongs.
+   */
+  onTotalChange?: (label: string | null) => void;
   /** Whether the reader may create, edit or archive here. */
   canWrite?: boolean;
 }
@@ -182,6 +192,7 @@ export function DirectoryList<Row, K extends string>({
   bulkActions,
   urlKey,
   canWrite = true,
+  onTotalChange,
 }: DirectoryListProps<Row, K>) {
   const toggleColumns = React.useMemo(
     () => columns.filter((c) => c.label).map((c) => ({ key: c.key, label: c.label })),
@@ -202,8 +213,12 @@ export function DirectoryList<Row, K extends string>({
     boot.sortBy ? { key: boot.sortBy as K, dir: boot.sortDir === "desc" ? "desc" : "asc" } : null
   );
   const [page, setPage] = React.useState(Number(boot.page) > 0 ? Number(boot.page) : 1);
-  const [pageSize, setPageSize] = React.useState(
-    DIRECTORY_PAGE_SIZES.includes(Number(boot.pageSize)) ? Number(boot.pageSize) : 30
+  /* THE DS'S PAGINATION, unchanged. `TablePagination` ships its own page-size
+     set and its own footer copy, and both are already documented; a second set
+     of sizes here would make this list the one screen that counts differently
+     from every other. The URL may name a size, but only one the DS offers. */
+  const [pageSize, setPageSize] = React.useState(() =>
+    DS_PAGE_SIZES.includes(Number(boot.pageSize)) ? Number(boot.pageSize) : 25
   );
   const [hidden, setHidden] = React.useState<Set<K>>(new Set(unpackList(boot.cols) as K[]));
   const [colScope, setColScope] = React.useState(boot.colScope ?? firstScope);
@@ -247,7 +262,7 @@ export function DirectoryList<Row, K extends string>({
       sortKey: null,
       sortDir: null,
       hidden: [],
-      pageSize: 30,
+      pageSize: 25,
       colScope: firstScope,
       colQuery: "",
       filters: [],
@@ -312,7 +327,7 @@ export function DirectoryList<Row, K extends string>({
       entity: urlKey,
       q: search || null,
       page: page > 1 ? page : null,
-      pageSize: pageSize === 30 ? null : pageSize,
+      pageSize: pageSize === 25 ? null : pageSize,
       sortBy: sort?.key ?? null,
       sortDir: sort?.dir ?? null,
       cols: packList([...hidden]) || null,
@@ -322,6 +337,21 @@ export function DirectoryList<Row, K extends string>({
       group: packList(g.groupBy) || null,
     });
   }, [urlKey, search, page, pageSize, sort, hidden, colScope, colQuery, applied, g.groupBy]);
+
+  /* The header's number follows the FILTERED list, so narrowing the list
+     narrows the total with it — a total that ignored the filters would be a
+     different number from the rows underneath it. */
+  React.useEffect(() => {
+    if (!onTotalChange) return undefined;
+    onTotalChange(
+      measureOf === undefined
+        ? null
+        : formatTotal
+          ? formatTotal(g.total ?? 0)
+          : `${(g.total ?? 0).toLocaleString()}${measureUnit ? ` ${measureUnit}` : ""}`
+    );
+    return () => onTotalChange(null);
+  }, [onTotalChange, measureOf, formatTotal, measureUnit, g.total]);
 
   /* A page that no longer exists — the last row on it was filtered away. */
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -614,31 +644,20 @@ export function DirectoryList<Row, K extends string>({
             onCollapseAll={g.collapseAll}
           />
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <TablePagination
-              className="h-9 w-full"
-              page={page}
-              pageSize={pageSize}
-              total={count}
-              pageSizeOptions={DIRECTORY_PAGE_SIZES}
-              onPageChange={(p) => {
-                setPage(p);
-                reload();
-              }}
-              onPageSizeChange={(s) => {
-                setPageSize(s);
-                setPage(1);
-                reload();
-              }}
-            />
-            {measureOf !== undefined && (
-              <div className="text-sm tabular-nums text-muted-foreground">
-                {formatTotal
-                  ? formatTotal(g.total ?? 0)
-                  : `${(g.total ?? 0).toLocaleString()}${measureUnit ? ` ${measureUnit}` : ""}`}
-              </div>
-            )}
-          </div>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={count}
+            onPageChange={(p) => {
+              setPage(p);
+              reload();
+            }}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+              reload();
+            }}
+          />
         )}
       </div>
     </div>

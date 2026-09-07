@@ -91,35 +91,10 @@ import {
   ordersForCustomer,
   vendorsForProduct,
 } from "./directoryLinks";
-import {
-  customerBadges,
-  customerFormSections,
-  customerSections,
-  customerStats,
-  customerStatusTone,
-} from "./CustomerRecord";
-import {
-  vendorBadges,
-  vendorFormSections,
-  vendorSections,
-  vendorStats,
-  vendorStatusTone,
-} from "./VendorRecord";
-import {
-  productBadges,
-  productFormSections,
-  productSections,
-  productStats,
-  productStatusTone,
-  productSubtitle,
-} from "./ProductRecord";
-import {
-  assetBadges,
-  assetFormSections,
-  assetSections,
-  assetStats,
-  assetStatusTone,
-} from "./AssetRecord";
+import { customerFormSections, customerHeaderAside, customerReadSections } from "./CustomerRecord";
+import { vendorFormSections, vendorHeaderAside, vendorReadSections } from "./VendorRecord";
+import { productFormSections, productHeaderAside, productReadSections } from "./ProductRecord";
+import { assetFormSections, assetHeaderAside, assetReadSections } from "./AssetRecord";
 
 /*
   The four Directory screens.
@@ -333,19 +308,8 @@ export function customerConfig(): EntityConfig<BrokerCustomer, BrokerCustomerCol
       Tags: c.tags.join(" | "),
     }),
 
-    subtitleOf: (c) => (
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <span className="tabular-nums">{c.erpId}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{c.city && c.state ? `${c.city}, ${c.state}` : "No address on file"}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{c.paymentTerms}</span>
-      </span>
-    ),
-    statusOf: (c) => ({ label: c.status, tone: customerStatusTone(c) }),
-    badgesOf: customerBadges,
-    statsOf: customerStats,
-    sectionsOf: (c, go) => customerSections(c, go),
+    headerAsideOf: customerHeaderAside,
+    readSectionsOf: (c, go) => customerReadSections(c, go),
 
     formSections: customerFormSections(),
     blank: (id) => ({
@@ -598,19 +562,8 @@ export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
       "Vendor Instruction": blank(v.vendorInstruction),
     }),
 
-    subtitleOf: (v) => (
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <span className="tabular-nums">{blank(v.erpVendorId)}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{v.base}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{v.businessLines.join(", ") || "No business lines"}</span>
-      </span>
-    ),
-    statusOf: (v) => ({ label: v.active ? "Active" : "Inactive", tone: vendorStatusTone(v) }),
-    badgesOf: vendorBadges,
-    statsOf: vendorStats,
-    sectionsOf: (v) => vendorSections(v),
+    headerAsideOf: vendorHeaderAside,
+    readSectionsOf: (v) => vendorReadSections(v),
 
     formSections: vendorFormSections(),
     blank: (id) => ({
@@ -842,11 +795,8 @@ export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumn
       Notes: blank(p.notes),
     }),
 
-    subtitleOf: productSubtitle,
-    statusOf: (p) => ({ label: p.status, tone: productStatusTone(p) }),
-    badgesOf: productBadges,
-    statsOf: productStats,
-    sectionsOf: (p, go) => productSections(p, go),
+    headerAsideOf: productHeaderAside,
+    readSectionsOf: (p, go) => productReadSections(p, go),
 
     formSections: productFormSections(),
     blank: (id) => ({
@@ -1089,19 +1039,8 @@ export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
       "Next Service Due": blank(a.nextServiceDue),
     }),
 
-    subtitleOf: (a) => (
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <span className="tabular-nums">{blank(a.serialNumber)}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{a.assetType}</span>
-        <span aria-hidden className="text-fp-outline-1">·</span>
-        <span>{a.customer ? `${a.customer} — ${a.shipTo ?? "site not set"}` : "At the yard"}</span>
-      </span>
-    ),
-    statusOf: (a) => ({ label: a.availabilityStatus, tone: assetStatusTone(a) }),
-    badgesOf: assetBadges,
-    statsOf: assetStats,
-    sectionsOf: (a, go) => assetSections(a, go),
+    headerAsideOf: assetHeaderAside,
+    readSectionsOf: (a, go) => assetReadSections(a, go),
 
     formSections: assetFormSections(),
     blank: (id) => ({
@@ -1219,11 +1158,13 @@ export function BrokerCustomersScreen({
   navigate,
   focusId,
   onFocusHandled,
+  onTotalChange,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
+  onTotalChange?: (label: string | null) => void;
 }) {
   const config = React.useMemo(customerConfig, []);
   return (
@@ -1234,6 +1175,7 @@ export function BrokerCustomersScreen({
       navigate={navigate}
       focusId={focusId}
       onFocusHandled={onFocusHandled}
+      onTotalChange={onTotalChange}
     />
   );
 }
@@ -1243,11 +1185,13 @@ export function BrokerVendorsScreen({
   navigate,
   focusId,
   onFocusHandled,
+  onTotalChange,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
+  onTotalChange?: (label: string | null) => void;
 }) {
   const config = React.useMemo(vendorConfig, []);
   return (
@@ -1258,6 +1202,7 @@ export function BrokerVendorsScreen({
       navigate={navigate}
       focusId={focusId}
       onFocusHandled={onFocusHandled}
+      onTotalChange={onTotalChange}
     />
   );
 }
@@ -1267,11 +1212,13 @@ export function BrokerProductsScreen({
   navigate,
   focusId,
   onFocusHandled,
+  onTotalChange,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
+  onTotalChange?: (label: string | null) => void;
 }) {
   const config = React.useMemo(productConfig, []);
   return (
@@ -1282,6 +1229,7 @@ export function BrokerProductsScreen({
       navigate={navigate}
       focusId={focusId}
       onFocusHandled={onFocusHandled}
+      onTotalChange={onTotalChange}
     />
   );
 }
@@ -1291,11 +1239,13 @@ export function RentalAssetsScreen({
   navigate,
   focusId,
   onFocusHandled,
+  onTotalChange,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
+  onTotalChange?: (label: string | null) => void;
 }) {
   const config = React.useMemo(assetConfig, []);
   return (
@@ -1306,6 +1256,7 @@ export function RentalAssetsScreen({
       navigate={navigate}
       focusId={focusId}
       onFocusHandled={onFocusHandled}
+      onTotalChange={onTotalChange}
     />
   );
 }

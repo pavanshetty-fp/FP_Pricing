@@ -1,27 +1,16 @@
-import { Contact } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
-  AttachmentsSection,
-  AuditSection,
-  DetailCard,
-  DetailPanel,
-  Field,
-  NotesSection,
-  RelatedTable,
-  SectionStack,
-  TagList,
-  type BadgeTone,
-  type RecordSection,
-  type RecordSummaryStat,
-} from "./DirectoryRecordPage";
-import {
-  DASH,
-  formatDate,
-  money,
-  oneLineAddress,
-  notApplicable,
-} from "./directoryCore";
+  AttachmentTable,
+  AuditList,
+  NoteBlock,
+  ReadField,
+  ReadGrid,
+  SheetTable,
+  TagRow,
+  type RecordReadSection,
+} from "./DirectoryRecordSheet";
+import { DASH, formatDate, money, oneLineAddress } from "./directoryCore";
 import {
   PAYMENT_TERMS,
   CREDIT_STATUSES,
@@ -29,388 +18,259 @@ import {
   creditBlocked,
   type BrokerCustomer,
 } from "./directory";
-import {
-  assetsForCustomer,
-  ordersForCustomer,
-  shipTosForCustomer,
-} from "./directoryLinks";
+import { assetsForCustomer, ordersForCustomer, shipTosForCustomer } from "./directoryLinks";
 import { BROKER_STATUS_TONE } from "./orders";
 import { vendorById, VENDORS } from "./vendors";
-import type { FormSectionDef } from "./DirectoryForm";
+import type { FormSectionDef } from "./directoryFormTypes";
 
 /*
-  What a customer record shows, and why in this order.
+  What a customer record shows in the sheet, beyond the fields it edits.
 
-  THE SUMMARY ANSWERS "CAN THEY ORDER". Credit exposure is not one number, it
-  is three that only mean anything together — the limit, what is drawn against
-  it, and what is left — and the third is the one people are actually asking
-  for. It is computed here rather than stored, because a stored "available"
-  goes stale the moment a balance moves.
+  THE FORM COVERS THE RECORD'S OWN FIELDS. What is left is everything the
+  account is ATTACHED to — its people, its sites, what it has ordered, what of
+  ours is sitting on its land — and none of that is edited here, so it reads as
+  tables under the form rather than as more inputs.
 
-  TABS IN THE ORDER SOMEBODY WORKS. Overview to see who they are, contacts to
-  ring them, ship-tos because that is where the fuel goes, financials for the
-  question the summary raised, then everything the account is attached to.
+  CREDIT IS THE HEADLINE, and it is three numbers that only mean anything
+  together: the limit, what is drawn against it, and what is left. The third is
+  the one people are actually asking for, and it is computed — a stored
+  "available" goes stale the moment a balance moves.
 */
 
-const RECORD_TONE: Record<string, BadgeTone> = {
-  active: "success",
-  inactive: "neutral",
-  archived: "neutral",
-};
+const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
 
-const CREDIT_TONE: Record<string, BadgeTone> = {
-  Approved: "success",
-  "On hold": "warning",
-  Unapproved: "critical",
-};
-
-export function customerBadges(c: BrokerCustomer) {
-  const out: { label: string; tone: BadgeTone; title?: string }[] = [
-    { label: c.creditStatus, tone: CREDIT_TONE[c.creditStatus] ?? "neutral" },
-  ];
-  /* OVER LIMIT IS ITS OWN BADGE, not a shade of the credit status. An account
-     can be fully approved AND over its limit — that is exactly the pair that
-     blocks an order, and one chip cannot carry both facts. */
-  if (c.creditLimit !== null && c.currentBalance > c.creditLimit) {
-    out.push({
-      label: "Over limit",
-      tone: "critical",
-      title: `${money(c.currentBalance)} drawn against a ${money(c.creditLimit)} limit`,
-    });
-  }
-  if (c.taxExempt) out.push({ label: "Tax exempt", tone: "info" });
-  if (c.portalAccessEnabled) out.push({ label: "Portal access", tone: "neutral" });
-  return out;
+/** The chip beside the sheet's title — status first, exposure second. */
+export function customerHeaderAside(c: BrokerCustomer) {
+  const over = c.creditLimit !== null && c.currentBalance > c.creditLimit;
+  return (
+    <span className="flex items-center gap-1.5">
+      <StatusChip tone={c.status === "active" ? "success" : "neutral"} variant="soft">
+        <span className="capitalize">{c.status}</span>
+      </StatusChip>
+      <StatusChip
+        tone={
+          c.creditStatus === "Approved" ? "success" : c.creditStatus === "On hold" ? "processing" : "failed"
+        }
+        variant="soft"
+      >
+        {c.creditStatus}
+      </StatusChip>
+      {/* OVER LIMIT IS ITS OWN CHIP, not a shade of the credit status. An
+          account can be fully approved AND over its limit — that is exactly
+          the pair that blocks an order, and one chip cannot carry both. */}
+      {over && (
+        <StatusChip tone="failed" variant="soft">
+          Over limit
+        </StatusChip>
+      )}
+    </span>
+  );
 }
 
-export function customerStats(c: BrokerCustomer): RecordSummaryStat[] {
-  const available = creditAvailable(c);
-  const sites = shipTosForCustomer(c.id);
-  const orders = ordersForCustomer(c.name);
-  return [
-    {
-      label: "Credit limit",
-      value: c.creditLimit === null ? "No limit set" : money(c.creditLimit),
-      hint: c.creditLimit === null ? "Nothing approved yet" : c.paymentTerms,
-    },
-    {
-      label: "Current balance",
-      value: money(c.currentBalance),
-      hint: `${c.currency} · ${c.paymentTerms}`,
-      tone: creditBlocked(c) ? "critical" : undefined,
-    },
-    {
-      label: "Available credit",
-      value: available === null ? DASH : money(available),
-      hint: available === null ? "Requires a limit" : available < 0 ? "Over limit" : "Headroom",
-      tone: available !== null && available < 0 ? "critical" : "success",
-    },
-    { label: "Ship-to locations", value: sites.length, hint: `${sites.filter((s) => s.status === "active").length} active` },
-    { label: "Orders", value: orders.length, hint: "All time" },
-  ];
-}
-
-export function customerSections(
+export function customerReadSections(
   c: BrokerCustomer,
   go: { openAsset: (id: string) => void; openVendor: (id: string) => void }
-): RecordSection[] {
+): RecordReadSection[] {
   const sites = shipTosForCustomer(c.id);
   const orders = ordersForCustomer(c.name);
   const assets = assetsForCustomer(c.id);
   const recurring = orders.filter((o) => o.kind === "Recurring");
+  const available = creditAvailable(c);
   const preferred = vendorById(c.preferredVendorId);
 
   return [
     {
-      key: "overview",
-      label: "Overview",
+      key: "credit",
+      title: "Credit position",
+      note: creditBlocked(c) ? "This account cannot place new orders" : "Clear to order",
       render: () => (
-        <SectionStack>
-          <DetailCard title="Identity">
-            <Field label="Customer name" value={c.name} />
-            <Field label="ERP ID" value={c.erpId} />
-            <Field label="Accounting ID" value={c.accountingCustomerId} />
-            <Field label="Record status" value={<span className="capitalize">{c.status}</span>} />
-            <Field label="Created" value={formatDate(c.createdAt.slice(0, 10))} />
-            <Field label="Last updated" value={formatDate(c.updatedAt.slice(0, 10))} />
-          </DetailCard>
-
-          <DetailCard title="Primary contact">
-            <Field label="Name" value={c.mainContactName} />
-            <Field label="Role" value={c.mainContactRole} />
-            <Field label="Phone" value={c.phone} />
-            <Field label="Secondary phone" value={c.secondaryPhone} />
-            <Field label="Email" value={c.email} />
-            <Field label="Billing email" value={c.billingEmail} />
-            <Field label="Dispatch email" value={c.dispatchEmail} />
-          </DetailCard>
-
-          <DetailCard title="Billing address">
-            <Field label="Address line 1" value={c.addressLine1} />
-            <Field label="Address line 2" value={c.addressLine2} />
-            <Field label="City" value={c.city} />
-            <Field label="State" value={c.state} />
-            <Field label="Zip" value={c.zip} />
-            <Field label="Country" value={c.country} />
-          </DetailCard>
-
-          <DetailCard title="Operations">
-            <Field
-              label="Preferred vendor"
-              value={
-                preferred ? (
-                  <button
-                    type="button"
-                    className="text-left underline-offset-2 hover:underline"
-                    onClick={() => go.openVendor(preferred.id)}
-                  >
-                    {preferred.name}
-                  </button>
-                ) : null
-              }
-            />
-            <Field label="Portal access" value={c.portalAccessEnabled ? "Enabled" : "Disabled"} />
-            <Field label="Tags" value={<TagList tags={c.tags} />} wide />
-          </DetailCard>
-        </SectionStack>
+        <ReadGrid>
+          <ReadField
+            label="Credit limit"
+            value={c.creditLimit === null ? "No limit set" : money(c.creditLimit)}
+          />
+          <ReadField label="Current balance" value={money(c.currentBalance)} />
+          <ReadField
+            label="Available credit"
+            value={
+              available === null ? (
+                "N/A"
+              ) : (
+                <span className={available < 0 ? "font-medium text-status-failed" : undefined}>
+                  {money(available)}
+                </span>
+              )
+            }
+          />
+          <ReadField label="Payment terms" value={c.paymentTerms} />
+          <ReadField label="Tax exempt" value={c.taxExempt ? "Yes" : "No"} />
+          <ReadField label="Accounting ID" value={c.accountingCustomerId} />
+          <ReadField
+            label="Preferred vendor"
+            value={
+              preferred ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:underline"
+                  onClick={() => go.openVendor(preferred.id)}
+                >
+                  {preferred.name}
+                </button>
+              ) : null
+            }
+          />
+          <ReadField label="Tags" value={<TagRow tags={c.tags} />} />
+        </ReadGrid>
       ),
     },
     {
       key: "contacts",
-      label: "Contacts",
+      title: "Contacts",
       count: c.contacts.length,
       render: () => (
-        <SectionStack>
-          <DetailPanel title="People at this account">
-            <RelatedTable
-              rows={c.contacts}
-              rowKey={(p) => p.id}
-              emptyTitle="No contacts"
-              emptyBody="Nobody has been recorded for this account. Add one so dispatch has somebody to call."
-              columns={[
-                {
-                  key: "name",
-                  label: "Name",
-                  render: (p) => (
-                    <span className="flex items-center gap-2">
-                      {p.name}
-                      {p.isPrimary && (
-                        <Badge variant="secondary" className="font-normal">
-                          Primary
-                        </Badge>
-                      )}
-                    </span>
-                  ),
-                },
-                { key: "role", label: "Role", render: (p) => p.role },
-                { key: "phone", label: "Phone", render: (p) => p.phone ?? <Muted /> },
-                { key: "email", label: "Email", render: (p) => p.email ?? <Muted /> },
-                { key: "notes", label: "Notes", render: (p) => p.notes ?? <Muted /> },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "shiptos",
-      label: "Ship-to Locations",
-      count: sites.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Where this account receives">
-            <RelatedTable
-              rows={sites}
-              rowKey={(s) => s.id}
-              emptyTitle="No ship-to locations"
-              emptyBody="An order cannot be created without one. Add the first delivery site."
-              columns={[
-                {
-                  key: "name",
-                  label: "Location",
-                  render: (s) => (
-                    <span className="flex items-center gap-2">
-                      {s.locationName}
-                      {s.isDefault && (
-                        <Badge variant="secondary" className="font-normal">
-                          Default
-                        </Badge>
-                      )}
-                    </span>
-                  ),
-                },
-                { key: "addr", label: "Address", render: (s) => oneLineAddress(s) },
-                {
-                  key: "geo",
-                  label: "Coordinates",
-                  /* A site with no geocode cannot be routed, which is the only
-                     reason this column is on screen rather than in the drawer. */
-                  render: (s) =>
-                    s.latitude !== null && s.longitude !== null ? (
-                      <span className="tabular-nums">{s.latitude}, {s.longitude}</span>
-                    ) : (
-                      <span className="text-muted-foreground/70">Not geocoded</span>
-                    ),
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (s) => (
-                    <StatusChip tone={s.status === "active" ? "success" : "neutral"} variant="text">
-                      <span className="capitalize">{s.status}</span>
-                    </StatusChip>
-                  ),
-                },
-                { key: "notes", label: "Notes", render: (s) => s.notes ?? <Muted /> },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "financials",
-      label: "Financials",
-      render: () => (
-        <SectionStack>
-          <DetailCard title="Credit">
-            <Field label="Credit status" value={c.creditStatus} />
-            <Field label="Credit limit" value={c.creditLimit === null ? "No limit set" : money(c.creditLimit)} />
-            <Field label="Current balance" value={money(c.currentBalance)} />
-            <Field
-              label="Available credit"
-              value={creditAvailable(c) === null ? notApplicable(null) : money(creditAvailable(c))}
-            />
-            <Field label="Payment terms" value={c.paymentTerms} />
-            <Field label="Currency" value={c.currency} />
-          </DetailCard>
-          <DetailCard title="Tax and accounting">
-            <Field label="Tax ID" value={c.taxId} />
-            <Field label="Tax exempt" value={c.taxExempt ? "Yes" : "No"} />
-            <Field label="Accounting customer ID" value={c.accountingCustomerId} />
-          </DetailCard>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "orders",
-      label: "Orders",
-      count: orders.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Orders placed by this account">
-            <RelatedTable
-              rows={orders.slice(0, 60)}
-              rowKey={(o) => o.id}
-              emptyTitle="No orders yet"
-              emptyBody="Nothing has been ordered against this account."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "type", label: "Type", render: (o) => o.orderType },
-                { key: "shipTo", label: "Ship-to", render: (o) => o.shipTo },
-                { key: "date", label: "Date", render: (o) => o.date.title },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (o) => (
-                    <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ),
-                },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "recurring",
-      label: "Recurring Orders",
-      count: recurring.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="Recurring schedules">
-            <RelatedTable
-              rows={recurring}
-              rowKey={(o) => o.id}
-              emptyTitle="No recurring schedules"
-              emptyBody="This account orders one delivery at a time."
-              columns={[
-                { key: "no", label: "Order", render: (o) => o.orderNo },
-                { key: "freq", label: "Frequency", render: (o) => o.recurrence?.frequency ?? DASH },
-                { key: "shipTo", label: "Ship-to", render: (o) => o.shipTo },
-                { key: "next", label: "Next", render: (o) => o.date.title },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "assets",
-      label: "Rental Assets",
-      count: assets.length,
-      render: () => (
-        <SectionStack>
-          <DetailPanel title="On rent to this account">
-            <RelatedTable
-              rows={assets}
-              rowKey={(a) => a.id}
-              onOpenRow={(a) => go.openAsset(a.id)}
-              emptyTitle="No assets on rent"
-              emptyBody="Nothing of ours is currently sitting at this account's sites."
-              columns={[
-                { key: "name", label: "Asset", render: (a) => a.name },
-                { key: "serial", label: "Serial", render: (a) => a.serialNumber ?? <Muted /> },
-                { key: "type", label: "Type", render: (a) => a.assetType },
-                { key: "site", label: "Ship-to", render: (a) => a.shipTo ?? <Muted /> },
-                { key: "start", label: "Since", render: (a) => formatDate(a.rentalStartDate) },
-                { key: "rate", label: "Rate", align: "right", render: (a) => money(a.rentalRate) },
-              ]}
-            />
-          </DetailPanel>
-        </SectionStack>
-      ),
-    },
-    {
-      key: "attachments",
-      label: "Attachments",
-      count: c.attachments.length,
-      render: () => <AttachmentsSection groups={[{ title: "Documents", files: c.attachments }]} />,
-    },
-    {
-      key: "notes",
-      label: "Notes",
-      render: () => (
-        <NotesSection
-          blocks={[
+        <SheetTable
+          rows={c.contacts}
+          rowKey={(p) => p.id}
+          emptyBody="Nobody is recorded for this account. Dispatch has no one to call."
+          columns={[
             {
-              title: "Customer instruction",
-              body: c.customerInstruction,
-              hint: "Printed on the dispatch sheet. Nothing recorded.",
+              key: "name",
+              label: "Name",
+              render: (p) => (
+                <span className="flex items-center gap-2">
+                  {p.name}
+                  {p.isPrimary && (
+                    <Badge variant="secondary" className="font-normal">
+                      Primary
+                    </Badge>
+                  )}
+                </span>
+              ),
             },
-            { title: "Delivery notes", body: c.deliveryNotes, hint: "No site notes recorded." },
-            { title: "Internal notes", body: c.notes, hint: "No internal notes." },
+            { key: "role", label: "Role", render: (p) => p.role },
+            { key: "phone", label: "Phone", render: (p) => p.phone ?? <Muted /> },
+            { key: "email", label: "Email", render: (p) => p.email ?? <Muted /> },
           ]}
         />
       ),
     },
     {
+      key: "shiptos",
+      title: "Ship-to Locations",
+      count: sites.length,
+      render: () => (
+        <SheetTable
+          rows={sites}
+          rowKey={(s) => s.id}
+          emptyBody="No delivery sites. An order cannot be created without one."
+          columns={[
+            {
+              key: "name",
+              label: "Location",
+              render: (s) => (
+                <span className="flex items-center gap-2">
+                  {s.locationName}
+                  {s.isDefault && (
+                    <Badge variant="secondary" className="font-normal">
+                      Default
+                    </Badge>
+                  )}
+                </span>
+              ),
+            },
+            { key: "addr", label: "Address", render: (s) => oneLineAddress(s) },
+            {
+              key: "geo",
+              label: "Geocoded",
+              /* A site with no coordinates cannot be routed, which is the only
+                 reason this column is on screen rather than buried. */
+              render: (s) =>
+                s.latitude !== null && s.longitude !== null ? (
+                  "Yes"
+                ) : (
+                  <span className="text-muted-foreground/70">Not geocoded</span>
+                ),
+            },
+            {
+              key: "status",
+              label: "Status",
+              render: (s) => (
+                <StatusChip tone={s.status === "active" ? "success" : "neutral"} variant="text">
+                  <span className="capitalize">{s.status}</span>
+                </StatusChip>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "orders",
+      title: "Orders",
+      note: `${orders.length} all time · ${recurring.length} recurring`,
+      render: () => (
+        <SheetTable
+          rows={orders}
+          rowKey={(o) => o.id}
+          emptyBody="Nothing has been ordered against this account."
+          columns={[
+            { key: "no", label: "Order", render: (o) => o.orderNo },
+            { key: "type", label: "Type", render: (o) => o.orderType },
+            { key: "shipTo", label: "Ship-to", render: (o) => o.shipTo },
+            { key: "date", label: "Date", render: (o) => o.date.title },
+            {
+              key: "status",
+              label: "Status",
+              render: (o) => (
+                <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="text">
+                  {o.status}
+                </StatusChip>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "assets",
+      title: "Rental Assets",
+      count: assets.length,
+      render: () => (
+        <SheetTable
+          rows={assets}
+          rowKey={(a) => a.id}
+          onOpenRow={(a) => go.openAsset(a.id)}
+          emptyBody="Nothing of ours is sitting at this account's sites."
+          columns={[
+            { key: "name", label: "Asset", render: (a) => a.name },
+            { key: "serial", label: "Serial", render: (a) => a.serialNumber ?? <Muted /> },
+            { key: "type", label: "Type", render: (a) => a.assetType },
+            { key: "site", label: "Ship-to", render: (a) => a.shipTo ?? <Muted /> },
+            { key: "start", label: "Since", render: (a) => formatDate(a.rentalStartDate) },
+            { key: "rate", label: "Rate", align: "right", render: (a) => money(a.rentalRate) },
+          ]}
+        />
+      ),
+    },
+    {
+      key: "attachments",
+      title: "Attachments",
+      count: c.attachments.length,
+      render: () => <AttachmentTable files={c.attachments} />,
+    },
+    {
+      key: "notes",
+      title: "Internal notes",
+      render: () => <NoteBlock body={c.notes} hint="No internal notes." />,
+    },
+    {
       key: "audit",
-      label: "Audit History",
+      title: "Audit History",
       count: c.audit.length,
-      render: () => <AuditSection events={c.audit} />,
+      render: () => <AuditList events={c.audit} />,
     },
   ];
 }
-
-const Muted = () => <span className="text-muted-foreground/70">{DASH}</span>;
-
-export const CUSTOMER_EMPTY_ICON = <Contact />;
-
-export const customerStatusTone = (c: BrokerCustomer): BadgeTone =>
-  RECORD_TONE[c.status] ?? "neutral";
 
 /* ─────────────────────────────────────────────────────────────── the form ── */
 

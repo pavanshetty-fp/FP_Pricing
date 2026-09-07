@@ -281,10 +281,10 @@ another.
 | `directoryDims.ts` | columns, search, sort and grouping for those three lists |
 | `directoryUrl.ts` | the list's state in the address bar |
 | `DirectoryList.tsx` | the list shell — search, facets, chips, grouping, selection, bulk bar, pagination, export |
-| `DirectoryEntityScreen.tsx` | list → record → form, and the traffic between them |
-| `DirectoryRecordPage.tsx` | the record layout and its shared sections (fields, related tables, attachments, audit, notes) |
-| `DirectoryForm.tsx` | the create/edit form and its validation contract |
-| `CustomerRecord.tsx` · `VendorRecord.tsx` · `ProductRecord.tsx` · `AssetRecord.tsx` | what each entity's record page shows and what its form asks |
+| `DirectoryEntityScreen.tsx` | the list, and the sheet over it |
+| `DirectoryRecordSheet.tsx` | the record sheet, and the read-only blocks it renders below the form |
+| `directoryFormTypes.ts` | the field/section vocabulary and the validation contract |
+| `CustomerRecord.tsx` · `VendorRecord.tsx` · `ProductRecord.tsx` · `AssetRecord.tsx` | what each entity's form asks and what its sheet shows below it |
 | `DirectoryScreens.tsx` | the four configs — columns, cells, facets, exports, bulk verbs — and the four screens |
 
 ---
@@ -305,10 +305,27 @@ for a field nobody has filled and `N/A` for one that does not apply, and never
 suppress either: a cell that goes blank makes an incomplete record look
 finished.
 
-**A record is a PAGE, an order is a SHEET.** An order is opened to do one thing
-and close, and the sheet keeps the board behind it. A directory record is
-opened to read — ten sections and several child lists — and a sheet that deep
-is a scrolling column with a board behind it that no longer relates to it.
+**A record is a SIDE SHEET, and the sheet IS the form.** That is the DS's own
+interaction for a record — `RecordSheet`, as `CustomerSheet` uses it: `mode`
+decides whether the header reads Edit or Create, the body carries the fields,
+the footer carries Save Changes. An earlier pass built a full-page detail with
+a separate editor; that was a second pattern doing one job, and it took the
+list off screen. It is gone. The sheet runs at `wide`, because these records
+carry tables and the DS's own note on `narrow` says a table at 560 has to be
+scrolled sideways to be read.
+
+**Related records live in the same scroll**, as `SheetSection`s under the
+editable ones — a vendor's rate card, an account's ship-tos, an asset's billing
+history. Section rhythm is the DS's 40 / 16 throughout.
+
+**Pagination is the DS's, untouched.** `TablePagination` ships its own page-size
+set and its own footer copy; a second set of sizes here would make the Directory
+the one place that counts differently from every other list.
+
+**The list's total sits beside the page title**, not under the footer. It is a
+fact about the whole list, and down there it read as a property of page 1 of 5,
+at the bottom of a screen somebody has to scroll to reach. It follows the
+filtered rows, so narrowing the list narrows the number with it.
 
 **Three derived facts are never stored:** a customer's available credit, a
 product's customer and vendor reach, and an asset's conflicts. Each of them

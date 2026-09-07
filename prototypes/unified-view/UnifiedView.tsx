@@ -1044,11 +1044,23 @@ export function UnifiedView() {
     }),
     [openInDirectory]
   );
+  /*
+    THE DIRECTORY LIST'S TOTAL, IN THE PAGE HEADER.
+
+    It is a fact about the whole list — "these 150 accounts owe $9.7m" — and
+    under the footer it read as a property of page 1 of 5, at the very bottom
+    of a screen somebody has to scroll to reach. Beside the title it is the
+    first thing on the page, which is where a headline number belongs. It
+    follows the FILTERED list, so narrowing the rows narrows the number with
+    them.
+  */
+  const [listTotal, setListTotal] = React.useState<string | null>(null);
   const dirProps = (nav: string) => ({
     data: directory,
     navigate: directoryNav,
     focusId: dirFocus?.nav === nav ? dirFocus.id : null,
     onFocusHandled: () => setDirFocus(null),
+    onTotalChange: setListTotal,
   });
 
   /** A search hit is a (module, destination, record) address. */
@@ -1113,7 +1125,18 @@ export function UnifiedView() {
   return (
     <TooltipProvider>
       <AppShell
-        title={accountTitle ?? activeSub?.label ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
+        title={
+          <div className="flex min-w-0 items-baseline gap-3">
+            <h1 className="truncate text-xl font-semibold leading-none text-foreground">
+              {accountTitle ?? activeSub?.label ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
+            </h1>
+            {listTotal && (
+              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                {listTotal}
+              </span>
+            )}
+          </div>
+        }
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
         topBar={

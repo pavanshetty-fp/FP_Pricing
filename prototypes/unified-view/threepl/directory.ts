@@ -33,6 +33,7 @@ import { CUSTOMERS as SALES_CUSTOMERS } from "../customers";
 import { MOVEMENT_ASSET_NAMES, PRODUCTS, SHIP_TO_SITES } from "./orders";
 import {
   ASSET_TAGS,
+  CONTACT_ROLES,
   CUSTOMER_TAGS,
   PLACES,
   PRODUCT_TAGS,
@@ -287,10 +288,7 @@ function makeCustomer(spec: {
     billingEmail: maybe(r, sparse ? 0.15 : 0.75, `ap@${domain}`),
     dispatchEmail: maybe(r, sparse ? 0.15 : 0.6, `dispatch@${domain}`),
     mainContactName: sparse ? maybe(r, 0.35, contactName) : contactName,
-    mainContactRole: maybe(r, sparse ? 0.2 : 0.8, pickFrom(r, [
-      "Site Foreman", "Fleet Manager", "Operations Manager", "Accounts Payable",
-      "Facilities Lead", "Yard Supervisor", "Owner",
-    ] as const)),
+    mainContactRole: maybe(r, sparse ? 0.2 : 0.8, pickFrom(r, CONTACT_ROLES)),
 
     addressLine1: sparse ? maybe(r, 0.4, streetAddress(r)) : streetAddress(r),
     addressLine2: maybe(r, 0.18, `Suite ${intBetween(r, 100, 890)}`),
@@ -339,14 +337,13 @@ function attachCustomerChildren(c: BrokerCustomer, seed: number): void {
   const r = rng(seed + 7717);
   const domain = domainFor(c.name);
 
-  const roles = ["Site Foreman", "Accounts Payable", "Dispatcher", "Fleet Manager", "Owner"];
   const n = intBetween(r, c.mainContactName ? 1 : 0, 4);
   c.contacts = Array.from({ length: n }, (_, i) => {
     const nm = i === 0 && c.mainContactName ? c.mainContactName : personName(r);
     return {
       id: `${c.id}-ct-${i + 1}`,
       name: nm,
-      role: i === 0 && c.mainContactRole ? c.mainContactRole : pickFrom(r, roles),
+      role: i === 0 && c.mainContactRole ? c.mainContactRole : pickFrom(r, CONTACT_ROLES),
       phone: maybe(r, 0.85, phoneNumber(r)),
       email: maybe(r, 0.8, emailFor(nm, domain)),
       isPrimary: i === 0,

@@ -80,6 +80,7 @@ export interface EntityConfig<Row, K extends string> {
     get: (row: Row) => RecordStatus;
     set: (row: Row, next: RecordStatus) => Row;
   };
+  /** The record's edit history — shown in the header's drawer, not the body. */
   auditOf: (row: Row) => AuditEvent[];
   withAudit: (row: Row, entry: AuditEvent) => Row;
   /** Verbs beyond archive that this entity's selection supports. */
@@ -305,6 +306,9 @@ export function DirectoryEntityScreen<Row, K extends string>({
           readSections={
             sheet?.kind === "create" ? [] : config.readSectionsOf(initial, navigate)
           }
+          /* A record being created has no history — the icon would open an
+             empty drawer, so it is not drawn at all. */
+          audit={sheet?.kind === "create" ? undefined : config.auditOf(initial)}
           onSubmit={submit}
         />
       )}

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDownIcon } from "lucide-react";
+import { Check, ChevronDownIcon, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { selectTriggerClasses } from "@/components/ui/select";
 import {
@@ -38,6 +38,15 @@ import {
   cost of guessing wrong — reaching for the keyboard and having it do nothing —
   is worse than a search box on a short list. `searchThreshold` remains for the
   rare list where the box genuinely costs more than it gives.
+
+  `allowCreate` MAKES THE LIST A SUGGESTION RATHER THAN A LAW. Some fields have
+  a known set that is nonetheless incomplete — a contact's role, a tag, a
+  category somebody invented this morning. Forcing those into a fixed list
+  makes people put the real answer in a notes field, where nothing can filter
+  or group by it; leaving them a bare text input loses the consistency the list
+  was giving. So: the options are offered first, and what is typed can become
+  one. The new value is returned through `onValueChange` like any other, and
+  `onCreate` fires alongside it for a caller that needs to persist it.
 */
 
 export interface ComboboxOption {
@@ -60,6 +69,15 @@ export interface ComboboxProps {
   size?: "sm" | "default";
   /** Option count at or above which the search field appears. Default: always. */
   searchThreshold?: number;
+  /**
+   * Offer what has been typed as a new option when it matches nothing. The
+   * search field becomes required for it — there is nowhere else to type.
+   */
+  allowCreate?: boolean;
+  /** Fires with the new value when a create is chosen, before `onValueChange`. */
+  onCreate?: (value: string) => void;
+  /** Verb on the create row. Default: `Create "…"`. */
+  createLabel?: (query: string) => string;
   /** Trigger classes — width lives here, as it does on `SelectTrigger`. */
   className?: string;
   contentClassName?: string;
@@ -81,6 +99,9 @@ export function Combobox({
   disabled,
   size = "default",
   searchThreshold = 1,
+  allowCreate = false,
+  onCreate,
+  createLabel = (q) => `Create “${q}”`,
   className,
   contentClassName,
   align = "start",
@@ -88,9 +109,27 @@ export function Combobox({
   id,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const items = React.useMemo(() => options.map(normalise), [options]);
   const selected = items.find((o) => o.value === value);
-  const showSearch = items.length >= searchThreshold;
+  const showSearch = allowCreate || items.length >= searchThreshold;
+
+  /* A value that is not in the list is still a value — one somebody created
+     earlier. It shows on the trigger like any other, so a field does not go
+     blank because its option came from outside the set. */
+  const label = selected ? (selected.label ?? selected.value) : value || placeholder;
+
+  const trimmed = query.trim();
+  const canCreate =
+    allowCreate &&
+    trimmed.length > 0 &&
+    !items.some((o) => (o.label ?? o.value).toLowerCase() === trimmed.toLowerCase());
+
+  const choose = (next: string) => {
+    onValueChange(next);
+    setOpen(false);
+    setQuery("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -107,9 +146,7 @@ export function Combobox({
           data-placeholder={selected ? undefined : ""}
           className={cn(selectTriggerClasses, className)}
         >
-          <span className="min-w-0 flex-1 truncate text-left">
-            {selected ? (selected.label ?? selected.value) : placeholder}
-          </span>
+          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
           <ChevronDownIcon className="size-4 opacity-50" />
         </button>
       </PopoverTrigger>
@@ -124,19 +161,42 @@ export function Combobox({
         )}
       >
         <Command>
-          {showSearch && <CommandInput placeholder={searchPlaceholder} />}
+          {showSearch && (
+            <CommandInput
+              placeholder={allowCreate ? "Search or type a new one…" : searchPlaceholder}
+              value={query}
+              onValueChange={setQuery}
+            />
+          )}
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+            {/* With `allowCreate` the empty state never shows: whatever was
+                typed is already offered as the create row above it. */}
+            {!canCreate && <CommandEmpty>{emptyText}</CommandEmpty>}
+            {canCreate && (
+              <CommandGroup>
+                <CommandItem
+                  /* `forceMount` and a value equal to the query: Command
+                     filters its own items, and a create row filtered out by
+                     the text that produced it would never be reachable. */
+                  forceMount
+                  value={trimmed}
+                  onSelect={() => {
+                    onCreate?.(trimmed);
+                    choose(trimmed);
+                  }}
+                >
+                  <Plus className="size-4 shrink-0" />
+                  <span className="truncate">{createLabel(trimmed)}</span>
+                </CommandItem>
+              </CommandGroup>
+            )}
             <CommandGroup>
               {items.map((o) => (
                 <CommandItem
                   key={o.value}
                   value={`${o.value} ${o.description ?? ""}`}
                   disabled={o.disabled}
-                  onSelect={() => {
-                    onValueChange(o.value);
-                    setOpen(false);
-                  }}
+                  onSelect={() => choose(o.value)}
                 >
                   <Check
                     className={cn(

@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
-  AuditList,
   NoteBlock,
   ReadField,
   ReadGrid,
@@ -281,12 +280,6 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
       title: "Internal notes",
       render: () => <NoteBlock body={v.notes} hint="No internal notes." />,
     },
-    {
-      key: "audit",
-      title: "Audit History",
-      count: v.audit.length,
-      render: () => <AuditList events={v.audit} />,
-    },
   ];
 }
 
@@ -302,7 +295,18 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
         { key: "legalBusinessName", label: "Legal business name", kind: "text", get: (d) => d.legalBusinessName, set: (d, v) => ({ ...d, legalBusinessName: (v as string) || null }) },
         { key: "dbaName", label: "DBA", kind: "text", get: (d) => d.dbaName, set: (d, v) => ({ ...d, dbaName: (v as string) || null }) },
         { key: "erpVendorId", label: "Vendor ID", kind: "text", get: (d) => d.erpVendorId, set: (d, v) => ({ ...d, erpVendorId: (v as string) || null }) },
-        { key: "vendorType", label: "Vendor type", kind: "select", required: true, options: VENDOR_TYPES, get: (d) => d.vendorType, set: (d, v) => ({ ...d, vendorType: String(v) }) },
+        {
+          key: "vendorType",
+          label: "Vendor type",
+          /* Creatable for the same reason a role is: the six types cover most
+             carriers and not all of them. */
+          kind: "combobox",
+          options: VENDOR_TYPES,
+          allowCreate: true,
+          required: true,
+          get: (d) => d.vendorType,
+          set: (d, v) => ({ ...d, vendorType: String(v) }),
+        },
         { key: "taxId", label: "Tax ID", kind: "text", get: (d) => d.taxId, set: (d, v) => ({ ...d, taxId: (v as string) || null }) },
         { key: "active", label: "Active", kind: "switch", description: "Deactivated vendors keep their history and take no new work.", get: (d) => d.active, set: (d, v) => ({ ...d, active: Boolean(v), status: v ? "active" : "inactive" }) },
       ],

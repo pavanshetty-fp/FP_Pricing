@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Download, FileText, Image as ImageIcon, Sheet as SheetIcon } from "lucide-react";
+import { Download, FileText, History, Image as ImageIcon, Sheet as SheetIcon, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,6 +15,16 @@ import {
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../RecordSheet";
@@ -56,6 +67,16 @@ export interface RecordReadSection {
 }
 
 export interface DirectoryRecordSheetProps<T> {
+  /**
+   * The record's edit history.
+   *
+   * NOT A SECTION. It is the longest block on the record and the one people
+   * read least often, and at the bottom of the body it pushed everything
+   * anyone opens the sheet FOR — the related records — behind a wall of "field
+   * changed" lines. It gets an icon in the header instead, which also makes it
+   * reachable without scrolling at all.
+   */
+  audit?: AuditEvent[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -85,8 +106,10 @@ export function DirectoryRecordSheet<T>({
   initial,
   sections,
   readSections = [],
+  audit,
   onSubmit,
 }: DirectoryRecordSheetProps<T>) {
+  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<T>(initial);
   const [touched, setTouched] = React.useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = React.useState(false);
@@ -156,22 +179,23 @@ export function DirectoryRecordSheet<T>({
             </SelectContent>
           </Select>
         );
-      case "switch":
+      case "combobox":
         return (
-          <div className="flex h-9 items-center">
-            <Switch id={f.key} checked={Boolean(v)} onCheckedChange={(on) => set(f, on)} />
-          </div>
+          <Combobox
+            id={f.key}
+            value={typeof v === "string" ? v : ""}
+            options={f.options ?? []}
+            placeholder={f.placeholder ?? "Select…"}
+            allowCreate={f.allowCreate}
+            aria-label={f.label}
+            className={cn("w-full", bad && "border-destructive")}
+            onValueChange={(next) => {
+              set(f, next);
+              blur();
+            }}
+          />
         );
-      case "checkbox":
-        return (
-          <div className="flex h-9 items-center">
-            <Checkbox
-              id={f.key}
-              checked={Boolean(v)}
-              onCheckedChange={(on) => set(f, on === true)}
-            />
-          </div>
-        );
+
       case "textarea":
         return (
           <Textarea
@@ -224,6 +248,25 @@ export function DirectoryRecordSheet<T>({
       createTitle={`Create New ${noun}`}
       createAction={`Create ${noun}`}
       headerAside={headerAside}
+      headerActions={
+        audit && audit.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Audit history (${audit.length} ${audit.length === 1 ? "entry" : "entries"})`}
+                onClick={() => setHistoryOpen(true)}
+              >
+                <History />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Audit history · {audit.length} {audit.length === 1 ? "entry" : "entries"}
+            </TooltipContent>
+          </Tooltip>
+        ) : undefined
+      }
       canSubmit={errorCount === 0}
       onSubmit={() => {
         setSubmitted(true);
@@ -240,23 +283,90 @@ export function DirectoryRecordSheet<T>({
           {/* Two up. A sheet at `wide` fits a pair of fields comfortably and
               three would put a metre between a label and its control. */}
           <div className="grid grid-cols-2 gap-4">
-            {s.fields.map((f) => (
-              <SheetField
-                key={f.key}
-                label={f.label}
-                required={f.required}
-                description={showError(f.key) ? undefined : f.description}
-                className={f.wide ? "col-span-2" : undefined}
-              >
-                {control(f)}
-                {showError(f.key) && (
-                  <p className="text-xs text-destructive">{errors[f.key]}</p>
-                )}
-              </SheetField>
-            ))}
+            {s.fields.map((f) =>
+              /*
+                A TOGGLE IS NOT A FIELD WITH A CONTROL UNDER IT.
+
+                Stacked like every other field, a switch put its label on one
+                line and a 20px control alone on the next, leaving a hole
+                beside it and reading as if something were missing. A toggle is
+                a statement and an answer: the statement goes on the left,
+                aligned with every other label, the answer sits at the far
+                right of the row, and the helper text runs under the statement
+                where it explains what turning it on does. That is the row
+                `CustomerSheet` already uses for Active.
+
+                Always full width, so the two edges the reader's eye follows —
+                the left edge of the labels and the right edge of the sheet —
+                are the two things the row is pinned to.
+              */
+              f.kind === "switch" || f.kind === "checkbox" ? (
+                <div
+                  key={f.key}
+                  className="col-span-2 flex items-start justify-between gap-4"
+                >
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <label
+                      htmlFor={f.key}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      {f.label}
+                      {f.required && <span className="text-destructive"> *</span>}
+                    </label>
+                    {(showError(f.key) || f.description) && (
+                      <span
+                        className={cn(
+                          "text-xs",
+                          showError(f.key) ? "text-destructive" : "text-muted-foreground"
+                        )}
+                      >
+                        {showError(f.key) ? errors[f.key] : f.description}
+                      </span>
+                    )}
+                  </div>
+                  <div className="shrink-0 pt-0.5">
+                    {f.kind === "switch" ? (
+                      <Switch
+                        id={f.key}
+                        checked={Boolean(f.get(draft))}
+                        onCheckedChange={(on) => set(f, on)}
+                      />
+                    ) : (
+                      <Checkbox
+                        id={f.key}
+                        checked={Boolean(f.get(draft))}
+                        onCheckedChange={(on) => set(f, on === true)}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <SheetField
+                  key={f.key}
+                  label={f.label}
+                  required={f.required}
+                  description={showError(f.key) ? undefined : f.description}
+                  className={f.wide ? "col-span-2" : undefined}
+                >
+                  {control(f)}
+                  {showError(f.key) && (
+                    <p className="text-xs text-destructive">{errors[f.key]}</p>
+                  )}
+                </SheetField>
+              )
+            )}
           </div>
         </SheetSection>
       ))}
+
+      {audit && (
+        <AuditDrawer
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          title={title}
+          events={audit}
+        />
+      )}
 
       {readSections.map((s) => (
         <SheetSection
@@ -496,6 +606,59 @@ export function AuditList({ events }: { events: AuditEvent[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * The record's history, in its own drawer over the record sheet.
+ *
+ * NARROW AND OVER THE TOP. A history is a column of short entries — 420px is
+ * as wide as one ever needs — and it opens ON the record rather than replacing
+ * it, so closing it puts you back exactly where you were with nothing
+ * re-rendered underneath. It carries no footer, because there is nothing here
+ * to save: reading a history is not editing anything.
+ */
+export function AuditDrawer({
+  open,
+  onOpenChange,
+  title,
+  events,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  events: AuditEvent[];
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        /* One step above the record sheet it opens from, so it stacks rather
+           than fighting it for the same layer. */
+        className="z-[60] w-[min(420px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(420px,calc(100vw-60px))]"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle className="text-base">Audit history</SheetTitle>
+            <span className="truncate text-xs text-muted-foreground">
+              {title} · {events.length} {events.length === 1 ? "entry" : "entries"}
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="Close audit history"
+            onClick={() => onOpenChange(false)}
+            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-4">
+          <AuditList events={events} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

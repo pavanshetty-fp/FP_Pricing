@@ -247,6 +247,27 @@ const LAST = [
 export const personName = (r: () => number): string =>
   `${pickFrom(r, FIRST)} ${pickFrom(r, LAST)}`;
 
+/**
+ * The roles a contact usually has — a SUGGESTION, not a law.
+ *
+ * A directory that forces every contact into seven roles gets "Other" in the
+ * role field and the real answer in a note, where nothing can filter on it.
+ * So the field offers these and takes anything: the list keeps the common
+ * cases consistent and the rest stay findable.
+ */
+export const CONTACT_ROLES = [
+  "Site Foreman",
+  "Fleet Manager",
+  "Operations Manager",
+  "Accounts Payable",
+  "Facilities Lead",
+  "Yard Supervisor",
+  "Dispatcher",
+  "Owner",
+  "Safety Officer",
+  "Procurement",
+] as const;
+
 /** `+1-559-555-0142`. The 555 block, because these are not real numbers. */
 export function phoneNumber(r: () => number): string {
   const area = pickFrom(r, ["559", "661", "916", "209", "713", "816", "415", "480", "503", "702"] as const);

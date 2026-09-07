@@ -318,6 +318,17 @@ scrolled sideways to be read.
 editable ones — a vendor's rate card, an account's ship-tos, an asset's billing
 history. Section rhythm is the DS's 40 / 16 throughout.
 
+**Audit history is a drawer, not a section.** It is the longest block on a
+record and the one people read least often; at the bottom of the body it pushed
+everything anyone opens the sheet FOR behind a wall of "field changed" lines. It
+gets an icon in the sheet header, which also makes it reachable without
+scrolling.
+
+**A toggle is a statement and an answer**, not a field with a control under it.
+Label left on the labels' own edge, switch hard right, helper text under the
+label. Stacked like an input it left a 20px control alone on a line with a hole
+beside it. Same row `CustomerSheet` already used for Active.
+
 **Pagination is the DS's, untouched.** `TablePagination` ships its own page-size
 set and its own footer copy; a second set of sizes here would make the Directory
 the one place that counts differently from every other list.

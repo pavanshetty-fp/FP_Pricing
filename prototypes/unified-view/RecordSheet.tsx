@@ -60,6 +60,15 @@ export interface RecordSheetProps {
   /** Rendered beside the title, e.g. a StatusChip. */
   headerAside?: React.ReactNode;
   /**
+   * Controls at the far right of the header, left of Close.
+   *
+   * For things that OPEN something rather than change the record — a history,
+   * a preview, a related list. They live in the header because they are not
+   * part of the form and must not scroll away with it, and left of Close
+   * because Close is the last thing on that edge in every sheet.
+   */
+  headerActions?: React.ReactNode;
+  /**
    * A step strip under the header — `SheetSteps`. It sits above the body and
    * outside its scroll, because which step you are on is not something that
    * should be able to scroll away from you.
@@ -87,6 +96,7 @@ export function RecordSheet({
   editAction = "Save Changes",
   createAction,
   headerAside,
+  headerActions,
   steps,
   canSubmit = true,
   footerAside,
@@ -115,10 +125,13 @@ export function RecordSheet({
             </SheetTitle>
             {headerAside}
           </div>
-          <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
-            <X className="size-4" />
-            <span className="sr-only">Close</span>
-          </SheetClose>
+          <div className="flex shrink-0 items-center gap-1">
+            {headerActions}
+            <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
+              <X className="size-4" />
+              <span className="sr-only">Close</span>
+            </SheetClose>
+          </div>
         </div>
 
         {steps && (

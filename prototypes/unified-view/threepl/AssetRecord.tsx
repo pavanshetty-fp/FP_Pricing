@@ -2,7 +2,6 @@ import { AlertTriangle } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
-  AuditList,
   NoteBlock,
   ReadField,
   ReadGrid,
@@ -270,12 +269,6 @@ export function assetReadSections(
       title: "Asset notes",
       render: () => <NoteBlock body={a.notes} hint="No notes recorded." />,
     },
-    {
-      key: "audit",
-      title: "Audit History",
-      count: a.audit.length,
-      render: () => <AuditList events={a.audit} />,
-    }
   );
 
   return sections;

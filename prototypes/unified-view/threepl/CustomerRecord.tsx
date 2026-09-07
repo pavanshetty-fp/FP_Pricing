@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
-  AuditList,
   NoteBlock,
   ReadField,
   ReadGrid,
@@ -10,7 +9,7 @@ import {
   TagRow,
   type RecordReadSection,
 } from "./DirectoryRecordSheet";
-import { DASH, formatDate, money, oneLineAddress } from "./directoryCore";
+import { CONTACT_ROLES, DASH, formatDate, money, oneLineAddress } from "./directoryCore";
 import {
   PAYMENT_TERMS,
   CREDIT_STATUSES,
@@ -263,12 +262,6 @@ export function customerReadSections(
       title: "Internal notes",
       render: () => <NoteBlock body={c.notes} hint="No internal notes." />,
     },
-    {
-      key: "audit",
-      title: "Audit History",
-      count: c.audit.length,
-      render: () => <AuditList events={c.audit} />,
-    },
   ];
 }
 
@@ -321,7 +314,19 @@ export function customerFormSections(): FormSectionDef<BrokerCustomer>[] {
       title: "Contact",
       fields: [
         { key: "mainContactName", label: "Main contact", kind: "text", get: (d) => d.mainContactName, set: (d, v) => ({ ...d, mainContactName: (v as string) || null }) },
-        { key: "mainContactRole", label: "Role", kind: "text", get: (d) => d.mainContactRole, set: (d, v) => ({ ...d, mainContactRole: (v as string) || null }) },
+        {
+          key: "mainContactRole",
+          label: "Role",
+          /* THE COMMON ROLES, AND ANYTHING ELSE. A closed list here would send
+             "Night Yard Lead" into a notes field, where nothing can filter by
+             it; a bare text box would give ten spellings of "Foreman". */
+          kind: "combobox",
+          options: CONTACT_ROLES,
+          allowCreate: true,
+          placeholder: "Select or type a role",
+          get: (d) => d.mainContactRole,
+          set: (d, v) => ({ ...d, mainContactRole: (v as string) || null }),
+        },
         {
           key: "phone",
           label: "Phone",

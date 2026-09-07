@@ -37,6 +37,13 @@ export type FieldKind =
   | "money"
   | "date"
   | "select"
+  /**
+   * A select you can type into, and — with `allowCreate` — extend. For a field
+   * whose set is known but not closed: a contact's role, a tag, a category
+   * somebody invented this morning. A fixed list there pushes the real answer
+   * into a notes field where nothing can filter on it.
+   */
+  | "combobox"
   | "switch"
   | "checkbox"
   | "textarea";
@@ -50,6 +57,8 @@ export interface FormFieldDef<T> {
   description?: string;
   placeholder?: string;
   options?: readonly string[];
+  /** `combobox` only — offer what was typed when it matches no option. */
+  allowCreate?: boolean;
   /** Full width in the section grid — instructions, notes, addresses. */
   wide?: boolean;
   /** Reads the value out of the draft. */

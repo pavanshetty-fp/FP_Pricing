@@ -1,7 +1,6 @@
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
-  AuditList,
   NoteBlock,
   ReadField,
   ReadGrid,
@@ -210,12 +209,6 @@ export function productReadSections(
       key: "notes",
       title: "Product notes",
       render: () => <NoteBlock body={p.notes} hint="No notes recorded." />,
-    },
-    {
-      key: "audit",
-      title: "Audit History",
-      count: p.audit.length,
-      render: () => <AuditList events={p.audit} />,
     },
   ];
 }

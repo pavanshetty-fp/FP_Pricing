@@ -483,14 +483,6 @@ function VendorRow({ id }: { id: string }) {
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-medium text-foreground">{v.name}</span>
-        {!v.emailsEnabled && (
-          // §6 Email Management: a vendor with emails off will never see an
-          // invitation, so saying so at the point of inviting them is the whole
-          // value of the flag.
-          <Badge variant="destructive" className="shrink-0">
-            Emails off
-          </Badge>
-        )}
         {!v.hasAccount && (
           <Badge variant="secondary" className="shrink-0">
             Link only
@@ -720,9 +712,26 @@ export function BrokerOrderSheet({
     });
   };
 
-  /* ACCEPTING A QUOTE IS THE BROKER'S ACT — it names the partner that holds the
-     order. It is not what put the order in the Accepted lane: the partner did
-     that by accepting the invitation. */
+  /* TWO ACTS, AND THEY ARE NOT THE SAME ONE.
+
+     ACKNOWLEDGE is the partner's: they have agreed to take the order if it is
+     theirs. Several partners can do it — that is the point of inviting several
+     — and it is what moves the order into the Accepted lane. The broker can do
+     it FOR them, because most of this is settled on the phone and the sheet is
+     a record of what happened, not the place it happens.
+
+     ACCEPT A QUOTE is the broker's: it names the one partner that holds the
+     order. Exactly one, and the rest do not go away — see `heldIds`. */
+  const acknowledgeFor = (ids: string[]) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const real = ids.filter(Boolean);
+      if (real.length === 0) return d;
+      const next = [...d.acceptedVendorIds];
+      for (const id of real) if (!next.includes(id)) next.push(id);
+      return { ...d, acceptedVendorIds: next, status: "Accepted" };
+    });
+
   const acceptFor = (vendorId: string) =>
     setDraft((d) =>
       d
@@ -736,6 +745,15 @@ export function BrokerOrderSheet({
           }
         : d
     );
+
+  /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
+     It also opens step 2, because the numbers are the reason anyone does this
+     and step 1 has nowhere to put them. */
+  const acknowledgeAndAccept = (vendorId: string) => {
+    acceptFor(vendorId);
+    setShownQuote(vendorId);
+    setStep("pricing");
+  };
   const advance = (status: BrokerStatus) =>
     setDraft((d) => (d ? { ...d, status } : d));
 
@@ -872,12 +890,14 @@ export function BrokerOrderSheet({
         if (creating) onCreate?.(draft);
         else if (order) onSave(order, draft);
       }}
-      /* THE STRIP EXISTS ONCE A PARTNER HAS ACCEPTED, not once one has priced.
-         Pricing is work the broker can do — off a phone call, or ahead of the
-         partner — and gating the step on the partner's numbers arriving would
-         make the sheet refuse to hold a price it is perfectly able to take.
-         Before anyone accepts there is nothing to price against, so there is
-         one step and no strip. */
+      /* THE STRIP EXISTS ONCE A PARTNER HAS ACKNOWLEDGED, whoever did the
+         acknowledging. Two ways in, and they are the same state: the partner
+         accepted the invitation, or the broker recorded that they had —
+         "acknowledge and accept quote", for the price that came off a call.
+         Pricing is work the broker can do either way, so gating the step on the
+         partner's numbers arriving would make the sheet refuse to hold a price
+         it is perfectly able to take. Before anyone acknowledges there is
+         nothing to price against, so there is one step and no strip. */
       steps={
         quotingPartners.length > 0 ? (
           <SheetSteps
@@ -1674,26 +1694,13 @@ export function BrokerOrderSheet({
                                 placeholder="Add partner"
                                 disabled={draft.status === "Blocked"}
                                 aria-label={`Delivery partner for row ${i + 1}`}
-                                /* UNDER THE NAME, NOT OVER IT. §6 Email
-                                   Management: a partner with emails off will
-                                   never see the invitation, which is the one
-                                   thing worth knowing at the moment of inviting
-                                   them — but floated over the cell it landed on
-                                   top of the very name it was qualifying as soon
-                                   as the column was narrow. The cell's second
-                                   line is where a state about the value goes;
-                                   the row grows if it must. */
-                                description={
-                                  v && (!v.emailsEnabled || !v.hasAccount) ? (
-                                    <Badge
-                                      variant={
-                                        v.emailsEnabled ? "secondary" : "destructive"
-                                      }
-                                    >
-                                      {v.emailsEnabled ? "Link only" : "Emails off"}
-                                    </Badge>
-                                  ) : undefined
-                                }
+                                /* NO REACHABILITY TAG. "Emails off" and "Link
+                                   only" described how the invitation would
+                                   travel, which is the vendor record's business
+                                   and not this order's — and on the row they
+                                   read as a warning about the partner. The
+                                   fields are still on the vendor; nothing on
+                                   this table speaks for them. */
                                 onChange={(name) => {
                                   const picked = eligible.find((x) => x.name === name);
                                   if (picked) setPartnerAt(i, picked.id);
@@ -1743,23 +1750,29 @@ export function BrokerOrderSheet({
                                     <MoreHorizontal />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-60">
+                                <DropdownMenuContent align="end" className="w-72">
+                                  {/* ONE ITEM, NOT TWO. Doing this on a partner's
+                                      behalf is one act with one reason: the
+                                      price was agreed on a call and someone is
+                                      writing it down. It opens step 2, which is
+                                      where the numbers go. */}
                                   <DropdownMenuItem
-                                    disabled={draft.quoteRequested && !quote}
-                                    onSelect={() => acceptFor(id)}
+                                    onSelect={() => acknowledgeAndAccept(id)}
                                   >
                                     <Check />
-                                    {draft.quoteRequested
-                                      ? "Accept quote"
-                                      : "Acknowledge for them"}
+                                    Acknowledge and accept quote
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
+                                  {/* NOT "CANCEL INVITATION". Before it is sent
+                                      there is nothing to cancel, and after it is
+                                      sent this is still a removal — one label
+                                      that is true at both moments. */}
                                   <DropdownMenuItem
                                     variant="destructive"
                                     onSelect={() => removePartnerRows([i])}
                                   >
                                     <ThumbsDown />
-                                    Cancel invitation
+                                    Remove delivery partner
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1792,25 +1805,38 @@ export function BrokerOrderSheet({
                 describing a selection that now starts empty. It sits directly
                 under the table it applies to, above anything that acts on a
                 selection. */}
-            {invitedIds.length > 0 && (
-              <label
-                htmlFor="quote"
-                className="flex cursor-pointer items-center justify-between gap-4"
-              >
-                <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
-                  Request a quote
-                  <span className="text-xs font-normal text-muted-foreground">
-                    Every invited partner submits pricing instead of a plain
-                    acknowledgement.
+            {/* IT IS ASKED ONCE, BEFORE ANYONE IS ASKED ANYTHING. What was
+                requested of the partners is a fact about the round the moment
+                it goes out; a switch afterwards offers to change a question
+                that has already been put — and turning it off would not take
+                the quotes back. Editable while the order is a Draft, stated
+                from then on. */}
+            {invitedIds.length > 0 &&
+              (draft.status === "Draft" ? (
+                <label
+                  htmlFor="quote"
+                  className="flex cursor-pointer items-center justify-between gap-4"
+                >
+                  <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
+                    Request a quote
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Every invited partner submits pricing instead of a plain
+                      acknowledgement.
+                    </span>
                   </span>
-                </span>
-                <Switch
-                  id="quote"
-                  checked={draft.quoteRequested}
-                  onCheckedChange={(v) => set("quoteRequested", v)}
-                />
-              </label>
-            )}
+                  <Switch
+                    id="quote"
+                    checked={draft.quoteRequested}
+                    onCheckedChange={(v) => set("quoteRequested", v)}
+                  />
+                </label>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {draft.quoteRequested
+                    ? "Pricing was requested from every partner invited."
+                    : "A plain acknowledgement was requested — no pricing."}
+                </p>
+              ))}
 
             {/* THE DS BAR, not a second one. It comes LAST in the section
                 because it is about the rows someone has just ticked — it
@@ -1828,22 +1854,22 @@ export function BrokerOrderSheet({
                 onClear={() => selectAllPartners(false)}
                 actions={[
                   {
+                    /* AS MANY AS ARE TICKED. Acknowledging is the partner's
+                       act, and several partners saying yes is the normal
+                       outcome of inviting several — it was only ever the
+                       BROKER'S choice of whose price to take that had to be
+                       one, and that is a different control in step 2. */
                     key: "ack",
                     label: "Acknowledge for them",
                     icon: <Check />,
-                    disabled: selectedRows.length !== 1,
-                    title:
-                      selectedRows.length !== 1
-                        ? "Only one partner can take the order."
-                        : undefined,
                     onSelect: () => {
-                      const id = partnerRows[selectedRows[0]];
-                      if (id) acceptFor(id);
+                      acknowledgeFor(selectedRows.map((i) => partnerRows[i]));
+                      selectAllPartners(false);
                     },
                   },
                   {
-                    key: "cancel",
-                    label: "Cancel invitation",
+                    key: "remove",
+                    label: "Remove delivery partner",
                     icon: <ThumbsDown />,
                     destructive: true,
                     onSelect: () => removePartnerRows(selectedRows),
@@ -2015,8 +2041,23 @@ export function BrokerOrderSheet({
                             <span className="truncate text-sm font-medium text-foreground">
                               {v?.name ?? "—"}
                             </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {held ? "Holds this order" : v?.base}
+                            {/* ON HOLD, NOT CANCELLED. Taking one partner's
+                                price does not un-ask the others: if the one
+                                holding it backs out, the fallbacks have to
+                                still be here, with their numbers. */}
+                            <span
+                              className={cn(
+                                "truncate text-xs",
+                                held
+                                  ? "text-status-success"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              {held
+                                ? "Holds this order"
+                                : draft.vendorId
+                                  ? `On hold · ${v?.base}`
+                                  : v?.base}
                             </span>
                           </span>
                         </td>
@@ -2372,9 +2413,42 @@ export function BrokerOrderSheet({
                 )}
               </div>
               {draft.vendorId === shownVendorId ? (
-                <div className="flex items-center gap-2 text-sm text-status-success">
-                  <Check className="size-4 shrink-0" />
-                  Quote accepted — this partner holds the order.
+                /* THE NEXT MOVE BELONGS HERE. Accepting used to leave you in
+                   step 2 with the next CTA back in step 1's partner section —
+                   an order that had just been agreed looked finished, and the
+                   thing that carried it forward was on another screen. */
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-sm text-status-success">
+                    <Check className="size-4 shrink-0" />
+                    Quote accepted — {vendorById(shownVendorId)?.name} holds this
+                    order.
+                  </div>
+                  {draft.status === "Accepted" && (
+                    <div className="flex items-center gap-3">
+                      <Button variant="outline" onClick={() => advance("Completed")}>
+                        Submit delivery details for them
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Records the delivery and moves the order to Completed.
+                      </span>
+                    </div>
+                  )}
+                  {draft.status === "Completed" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => advance("Accounting Sync Ready")}
+                    >
+                      Mark ready for accounting
+                    </Button>
+                  )}
+                  {draft.status === "Accounting Sync Ready" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => advance("Accounting Synced")}
+                    >
+                      Sync to accounting
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
@@ -2383,7 +2457,8 @@ export function BrokerOrderSheet({
                   </Button>
                   {draft.vendorId && (
                     <span className="text-xs text-muted-foreground">
-                      Replaces {vendorById(draft.vendorId)?.name}, who holds it now.
+                      Takes this price instead. {vendorById(draft.vendorId)?.name}{" "}
+                      goes on hold rather than being cancelled.
                     </span>
                   )}
                 </div>

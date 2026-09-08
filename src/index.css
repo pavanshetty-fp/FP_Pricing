@@ -349,13 +349,21 @@
   --secondary: var(--fp-emphasis-quiet);
   --sidebar-accent: var(--fp-emphasis);
   --fp-lane: var(--fp-card-2);
-  /* A BOARD LANE IS NOT A ROW BAND. `--fp-lane` is the fill behind a grouped
-     table's header row, measured to stay visible against a white table; a
-     board lane is a much larger area holding cards that carry their own
-     border, so it can sit far lighter without losing them. Two jobs, two
-     tokens — pointing the board at `--fp-lane` would have dragged every group
-     band up with it. */
-  --fp-board-lane: var(--fp-card-3);
+  /* A BOARD LANE IS NOT A ROW BAND, and it keeps its own token for that
+     reason: `--fp-lane` is the fill behind a grouped table's header row, and
+     dragging one to suit the other would move every group band in the app.
+
+     THE VALUE MOVED DOWN A STEP, from --fp-card-3 to --fp-card-2. The
+     reasoning for the lighter value was that a lane is a large area holding
+     cards that carry their own border, so it could sit very light without
+     losing them — true of the cards, and it missed the lane itself. At #fafafa
+     on a #ffffff content layer the lane was a 5/255 step: the cards read
+     perfectly and the COLUMN they sat in barely existed, so eight lanes read
+     as one field of cards rather than as eight columns. At #f4f5f8 the step is
+     11/255 against the layer and 11/255 against the cards inside it — the lane
+     is legible as a container from across the room, and a white card on it is
+     still the lightest thing in the lane, which is the order that matters. */
+  --fp-board-lane: var(--fp-card-2);
   /* A TABLE HEADER NEEDS ITS OWN GROUND. In dark the panel fill already differs
      from the content layer, so the header reads; in light both are #ffffff and
      the header row had nothing but its hairline — a header that is only a line

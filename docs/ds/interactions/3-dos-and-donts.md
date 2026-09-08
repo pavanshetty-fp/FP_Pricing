@@ -15,6 +15,17 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   total — rows → total → add (T4).
 - **Name a checkbox column** when the tick does one specific thing (T5).
 - **Set helper text 4px under its control** (§2b).
+- **Open a directory record in a side sheet, and let the sheet be the form** (§1).
+- **Size a sheet by its content** — `wide` the moment it carries a table (§1).
+- **Put a toggle's label left and its switch hard right**, helper under the label (§1).
+- **Use a creatable combobox for a set that is known but not closed** (§1).
+- **Keep `TablePagination`'s own page sizes and footer copy** (§4c).
+- **Put a list's total beside the page title**, following the filtered rows (§4c).
+- **Show active filters as chips with a Clear all** (§4c).
+- **Write three empty states** — nothing yet / no search match / no filter match (§4c).
+- **Load a list with skeleton rows**, never a spinner (§4c).
+- **Print both `–` and `N/A`** — a blank cell hides an unfinished record (§4c).
+- **Put the audit history behind a header icon**, in its own drawer (§8.4).
 - **Make every dropdown searchable**, short lists included (§2a).
 - **Drop a list below its field**, left-aligned (§2a).
 - **Keep "none" as a real option** — "— Unassigned", "Not set" (§2a).
@@ -62,3 +73,15 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't give a section heading a minimum height.** The 16 is measured from the
   title's own line; a padded row renders it as 20, and 22 once the heading
   carries an action (`ux/2-rules`).
+- **Don't build a full-page detail with a separate editor beside it** — one sheet
+  does both, and a page takes the list off screen (§1).
+- **Don't override a table's page sizes or footer copy** — one list that counts
+  differently is one list everybody has to re-read (§4c).
+- **Don't paginate a grouped list** — a group straddling the boundary claims a
+  count for rows that are not on screen (§4c).
+- **Don't leave a filtered list unlabelled** — a quietly narrowed list reads as
+  missing data (§4c).
+- **Don't stack a toggle like an input** — it leaves a lone 20px control with a
+  hole beside it (§1).
+- **Don't put the audit history at the foot of a record body** — it buries
+  everything the record was opened for (§8.4).

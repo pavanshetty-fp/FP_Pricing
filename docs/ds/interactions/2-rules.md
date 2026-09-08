@@ -71,10 +71,38 @@ code that implements it.*
   number(+unit), single-select, searchable-select, chip-multiselect.
 - **Inline cell editing**: a cell expands in place (chevron) to its editor; edits
   save inline. Use for quick edits within a data table.
-- **Full-page form** (not a modal) for create/edit of any non-trivial record.
-  Header (title + context + close), stacked sections, **sticky footer** with the
-  primary save ("Confirm and Save" / "Update and Save"). Modals are reserved for
-  short, single-purpose tasks.
+- **A DIRECTORY RECORD IS A SIDE SHEET, AND THE SHEET IS THE FORM.** `RecordSheet`
+  is the container; `mode` decides whether the header reads Edit or Create; the
+  body carries the fields; the footer carries Cancel + Save Changes. There is **no
+  separate read-only detail page with an editor beside it** — that is two patterns
+  doing one job, and both of them take the list off screen, which is the thing a
+  sheet exists to prevent.
+  - Size by CONTENT, not by record: `narrow` (560) for stacked fields, `wide` (864)
+    when the sheet carries tables — at 560 a table has to be scrolled sideways, and
+    a table you scroll to read is one you cannot compare rows in. `xwide` (1120) per
+    *step*, not per sheet.
+  - **Related records live in the same scroll**, as `SheetSection`s under the
+    editable ones. Section rhythm is **40 / 16**, measured from the title's own line.
+  - **Things that OPEN rather than change** — a history, a preview — go in the
+    sheet's `headerActions` slot, left of Close, so they neither scroll away nor
+    get mistaken for part of the form.
+- **Full-page form** (not a modal) remains right for a *flow* rather than a record —
+  something with steps, or with no list behind it to return to. Modals stay reserved
+  for short, single-purpose tasks.
+- **Form validation contract** (identical everywhere): nothing is red until the
+  field has been left; after a failed submit everything validates live; a failed
+  submit **keeps every character** and focuses the first problem; cancelling with
+  changes confirms, cancelling without them does not. Mark **both** required and
+  optional — marking one makes the reader infer the other, and on a long form the
+  inference is wrong often enough to matter.
+- **A set that is known but not closed gets a creatable combobox** (`allowCreate`),
+  not a locked select and not a bare text input. A locked list sends the real answer
+  into a notes field where nothing can filter it; a text input gives ten spellings
+  of the same thing.
+- **A toggle is a statement and an answer, not a field with a control under it.**
+  Label left on the labels' own edge, switch hard right against the container edge,
+  helper text under the label. Full width. Stacked like an input it leaves a 20px
+  control alone on a line with a hole beside it.
 
 ## 2. Selection & pickers (standardize ONE)
 
@@ -211,6 +239,34 @@ Where a hovered icon is already the whole message (a copy glyph beside a value),
 add **no tooltip at all**: a floating label repeating it covers the thing next to
 it, which is often the next thing someone wanted.
 
+### 4c. Pagination, columns and the list's own numbers
+- **`TablePagination` ships its own page sizes and its own footer copy. Use them.**
+  Overriding either makes one screen count differently from every other, and the
+  reader has to re-learn the footer per list.
+- **Pagination and grouping are exclusive.** While grouped, the list scrolls whole
+  and `GroupedListFooter` reports its *shape* — at 25 rows a page a group straddles
+  the boundary and its header claims a count for rows that are not on screen. Both
+  footers keep the same left/centre/right skeleton so the bottom of the screen does
+  not jump when grouping turns on.
+- **Every column moves and resizes** — drag the header to reorder, drag the divider
+  to resize, double-click to reset, arrows to nudge. Both marks appear on hover of
+  *that* column only, and the two gestures are mutually exclusive.
+- **A list total belongs beside the page title, not under the footer.** It is a fact
+  about the whole list; under the footer it reads as a property of the current page
+  and sits at the bottom of a screen somebody has to scroll to reach. It follows the
+  *filtered* rows.
+- **Active filters are said out loud** as chips with a Clear all, above the table.
+  The facet panel remembers what was picked but it is closed, and a quietly narrowed
+  list is the most common way people conclude their data is missing.
+- **Three empty states, not one**: nothing here yet / nothing matches your search /
+  nothing matches these filters. Three different situations, three different next
+  actions, and one shared sentence fits none of them.
+- **Loading is skeleton rows, never a spinner** — a list that collapses to a spinner
+  loses its own height and the page jumps when the rows land.
+- **Two kinds of missing value, and both are printed.** `–` means the field applies
+  and nobody filled it in; `N/A` means it does not apply. A cell that goes blank
+  makes an incomplete record look finished.
+
 ## 4b. Bulk operations
 
 - **ONE BAR, actions passed in.** What can be done to a selection is a property of
@@ -338,9 +394,18 @@ detail next to the list, or **Modal** for peek. Structure:
 - Inside a section, a **property grid** (§8.6) on top, **sub-entity tables**
   below, and a **document gallery** (§8.7) when relevant.
 
-This is a **detail / read view**, distinct from the **full-page form** rule
-for non-trivial create/edit (§1). Read-with-light-edit → overlay; substantive
-create/edit → full page.
+**SUPERSEDED IN PART (§1).** The old split — read-with-light-edit → overlay,
+substantive create/edit → full page — was tried on the Directory and reverted. A
+directory record is substantive *and* belongs in the sheet: the sheet IS the form,
+and a full page for it meant a second pattern for one job with the list gone from
+behind it. Keep the full page for a **flow** (steps, or nothing to return to), not
+for a record. §1 is canonical; this section's structure notes still apply.
+
+**Audit history is a drawer, not a section.** It is the longest block on a record
+and the one read least often; at the foot of the body it pushes everything the
+sheet was opened FOR behind a wall of "field changed" lines. Icon in the header,
+420px drawer stacked over the record, no footer — reading a history is not editing
+anything.
 
 ### 8.5 One state machine, many surfaces
 A record's status transitions are defined once and exposed through *every*

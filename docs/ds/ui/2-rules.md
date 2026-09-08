@@ -38,7 +38,22 @@ mistakes, and Checks derive from these.
   outer border** — it lifts with shadow.
 - Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
   the content layer.
-- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-accent` (the `--fp-lane` token is legacy).
+- Inner cards step up to `bg-fp-card-1`.
+- **A board lane's ground is `bg-fp-board-lane`** — one token, every board (the DS
+  Kanban and the 3PL brokerage board both take it, so they move together). It is
+  *not* `bg-accent`: `--accent` is the control-emphasis family (the fill behind a
+  selected menu item), and a lane that borrows it moves whenever selection is
+  retuned. Light resolves to `--fp-card-2`; measured, that is an 11/255 step under
+  the content layer and 11/255 above the white cards on it — the lane reads as a
+  column, and a card is still the lightest thing in it.
+- **A board lane is not a row band.** `--fp-lane` is the fill behind a *grouped
+  table's* header row; `--fp-board-lane` is the fill behind a *board column*. They
+  stay two tokens even when they resolve to the same value, so retuning one never
+  drags the other.
+- **A table header needs its own ground in light** (`bg-fp-table-header`). Dark
+  gets it from the panel fill; in light the layer and the header are both `#ffffff`
+  and a header that is only a hairline stops being a header the moment the first
+  row has one too.
 - Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
   no shadow.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in

@@ -162,7 +162,20 @@ function Card({ card }: { card: KanbanCard }) {
 
 function KanbanLane({ lane }: { lane: Lane }) {
   return (
-    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-accent">
+    /*
+      `bg-fp-board-lane`, NOT `bg-accent`.
+
+      A board lane is a SURFACE, and `--accent` is the control-emphasis family —
+      the fill behind a selected menu item. Borrowing it meant the lane moved
+      whenever selection was retuned, and it sat two steps below the content
+      layer (#e5e7eb on #ffffff), heavy enough that the white cards on it read
+      as the figure and the lane as a block of colour rather than as a column.
+
+      `--fp-board-lane` is the token that exists for this one job, so every
+      board in the app — this one and the 3PL brokerage board — now takes the
+      same ground and moves together when it is retuned.
+    */
+    <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-md bg-fp-board-lane">
       {/* Colored top strip */}
       <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} />
       {/* Lane header */}

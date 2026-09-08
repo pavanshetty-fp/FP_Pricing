@@ -103,7 +103,25 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
           <ReadField label="Insurance expiry" value={formatDate(v.insuranceExpiry)} />
           <ReadField label="Licences" value={<TagRow tags={v.licenseNumbers} />} />
           <ReadField label="Live orders" value={assignedOrderCount(v.id)} />
+          <ReadField label="Safety score" value={`${v.safetyScore} / 100`} />
           <ReadField label="Distance from yard" value={`${v.distanceMi} mi`} />
+          <ReadField label="Legal business name" value={v.legalBusinessName} />
+          <ReadField label="Vendor type" value={v.vendorType} />
+          {/* THE COMMS SETTINGS LIVE HERE NOW. Both left the table — real,
+              rarely looked at, never the reason somebody opens the list — so
+              the record is where they have to be readable. */}
+          <ReadField
+            label="Email invitations"
+            value={v.emailsEnabled ? "Enabled" : "Disabled — this vendor is not emailed"}
+          />
+          <ReadField
+            label="Vendor app"
+            value={v.hasAccount ? "Has an account" : "Email link only"}
+          />
+          <ReadField
+            label="Approved for assignment"
+            value={v.approvedForAssignment ? "Yes" : "No — withheld"}
+          />
           <ReadField
             label="Blackout dates"
             value={

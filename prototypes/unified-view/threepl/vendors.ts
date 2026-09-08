@@ -452,24 +452,16 @@ export const hasOverdueDocs = (v: Vendor): boolean =>
 
 export type VendorColumnKey =
   | "name"
+  | "dispatch"
+  | "lines"
   | "erpId"
-  | "dispatchPhone"
-  | "dispatchEmail"
   | "address"
-  | "city"
-  | "state"
   | "serviceArea"
   | "products"
-  | "compliance"
   | "status"
   | "rateCard"
   | "assigned"
   | "instruction"
-  | "lines"
-  | "safety"
-  | "distance"
-  | "emails"
-  | "account"
   | "actions";
 
 export interface VendorColumnDef {
@@ -480,26 +472,39 @@ export interface VendorColumnDef {
   align?: "right";
 }
 
+/*
+  TWELVE COLUMNS, DOWN FROM TWENTY — and the cut is by a rule, not by taste.
+
+  A VENDOR LIST EXISTS TO ANSWER ONE QUESTION: who can take this work. So a
+  column earns its place if it feeds that answer. The eligibility inputs are
+  active status, compliance, business lines, service area, supported products —
+  those stay. Everything else was reference, and reference belongs in the
+  record, which is one click away and has room for it.
+
+  WHAT LEFT THE TABLE, and why:
+    · Safety Score, Distance  — ranking inputs at ASSIGNMENT time, not
+      directory-browsing facts. Distance especially: it is miles from a
+      SHIP-TO, and a directory has no ship-to, so the number here is a
+      placeholder pretending to be a measurement. Both remain FILTERS — a
+      facet does not need a column to work.
+    · Emails on/off, Vendor App  — per-vendor comms config. Real, rarely
+      looked at, and never the reason somebody opens this list.
+    · City, State  — folded into Address, as on Customers.
+    · Compliance  — folded under the vendor's name, where the name is.
+    · Dispatch Phone + Email  — one column, two lines.
+*/
 export const VENDOR_COLUMNS: VendorColumnDef[] = [
-  { key: "name", label: "Vendor Name", width: 260, sortable: true },
-  { key: "erpId", label: "Vendor ID", width: 140, sortable: true },
-  { key: "dispatchPhone", label: "Dispatch Phone", width: 170 },
-  { key: "dispatchEmail", label: "Dispatch Email", width: 230 },
-  { key: "address", label: "Address", width: 260 },
-  { key: "city", label: "City", width: 140, sortable: true },
-  { key: "state", label: "State", width: 100, sortable: true },
-  { key: "serviceArea", label: "Service Area", width: 220 },
-  { key: "products", label: "Supported Products", width: 240 },
-  { key: "compliance", label: "Compliance", width: 150, sortable: true },
-  { key: "status", label: "Active Status", width: 140, sortable: true },
-  { key: "rateCard", label: "Default Rate Card", width: 190 },
-  { key: "assigned", label: "Assigned Orders", width: 160, sortable: true, align: "right" },
+  { key: "name", label: "Vendor Name", width: 250, sortable: true },
+  { key: "dispatch", label: "Dispatch", width: 240 },
   { key: "lines", label: "Business Lines", width: 230 },
-  { key: "safety", label: "Safety Score", width: 150, sortable: true, align: "right" },
-  { key: "distance", label: "Distance", width: 130, sortable: true, align: "right" },
-  { key: "emails", label: "Emails", width: 130, sortable: true },
-  { key: "account", label: "Vendor App", width: 160, sortable: true },
-  { key: "instruction", label: "Vendor Instruction", width: 300 },
+  { key: "erpId", label: "Vendor ID", width: 130, sortable: true },
+  { key: "address", label: "Address", width: 250, sortable: true },
+  { key: "serviceArea", label: "Service Area", width: 200 },
+  { key: "products", label: "Supported Products", width: 230 },
+  { key: "status", label: "Status", width: 120, sortable: true },
+  { key: "rateCard", label: "Default Rate Card", width: 180 },
+  { key: "assigned", label: "Assigned Orders", width: 150, sortable: true, align: "right" },
+  { key: "instruction", label: "Notes", width: 64 },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -535,15 +540,11 @@ export function sortVendors(rows: Vendor[], sort: VendorSortState | null): Vendo
     switch (sort.key) {
       case "name": return v.name;
       case "erpId": return v.erpVendorId ?? "";
-      case "city": return v.city ?? "";
-      case "state": return v.state ?? "";
-      case "compliance": return v.complianceStatus;
+      /* Sorting by address means sorting by PLACE, not by house number — the
+         same call the Customers list makes on its merged column. */
+      case "address": return `${v.city ?? ""} ${v.state ?? ""}`.trim();
       case "status": return v.active ? 1 : 0;
       case "assigned": return assignedOrderCount(v.id);
-      case "safety": return v.safetyScore;
-      case "distance": return v.distanceMi;
-      case "emails": return v.emailsEnabled ? 1 : 0;
-      case "account": return v.hasAccount ? 1 : 0;
       default: return v.name;
     }
   };

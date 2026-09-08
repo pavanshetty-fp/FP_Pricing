@@ -2,7 +2,9 @@ import * as React from "react";
 import { Boxes, Contact, Droplet, NotebookPen, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -437,7 +439,9 @@ export function customerConfig(
 
 /* ═════════════════════════════════════════════════════════════════ vendors ═ */
 
-export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
+export function vendorConfig(
+  onOpenNote: (v: Vendor) => void
+): EntityConfig<Vendor, VendorColumnKey> {
   return {
     urlKey: "vendors",
     parentLabel: "Vendors",
@@ -451,8 +455,11 @@ export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
     sortRows: sortVendors,
     dimensions: [
       { key: "lines", label: "Business Line", multi: true, valuesOf: (v: Vendor) => v.businessLines },
-      { key: "compliance", label: "Compliance", hides: "compliance", order: [...COMPLIANCE_STATUSES], valuesOf: (v: Vendor) => [v.complianceStatus] },
-      { key: "state", label: "Home State", hides: "state", valuesOf: (v: Vendor) => (v.state ? [v.state] : []) },
+      /* No `hides` on either: compliance now lives under the vendor's name and
+         state inside Address, and hiding those columns while grouped would
+         take the name and the street away with them. */
+      { key: "compliance", label: "Compliance", order: [...COMPLIANCE_STATUSES], valuesOf: (v: Vendor) => [v.complianceStatus] },
+      { key: "state", label: "Home State", valuesOf: (v: Vendor) => (v.state ? [v.state] : []) },
       { key: "availability", label: "Availability", order: [...AVAILABILITY_STATUSES], valuesOf: (v: Vendor) => [v.availabilityStatus] },
       { key: "safety", label: "Safety Band", order: [...SAFETY_BANDS], valuesOf: (v: Vendor) => [safetyBand(v.safetyScore)] },
     ],
@@ -462,20 +469,87 @@ export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
 
     renderCell: (v, key) => {
       switch (key) {
-        case "name":
-          return <TwoLineCell title={v.name} description={v.legalBusinessName ?? v.vendorType} />;
+        case "name": {
+          /*
+            COMPLIANCE RIDES UNDER THE NAME, where the legal name used to.
+
+            It is the fact that most often decides whether this vendor is
+            usable today, and it was eleven columns to the right. The legal
+            name it replaced is reference — it belongs in the record, not in
+            the one line a reader always sees.
+
+            SILENT WHEN VALID. A green tick on 64 of 80 rows is not
+            information, it is texture, and it makes the 16 that matter harder
+            to find rather than easier. Valid states the date, muted, the same
+            weight the legal name had. Only expiring or expired take a colour.
+          */
+          const days = daysFromToday(v.complianceValidTo);
+          const bad = days !== null && days < 0;
+          const soon = days !== null && days >= 0 && days < 60;
+          return (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate text-sm font-medium text-foreground">{v.name}</span>
+              <span
+                className={cn(
+                  "truncate text-xs",
+                  bad
+                    ? "font-medium text-status-failed"
+                    : soon
+                      ? "text-fp-banner-accent-caution"
+                      : "text-muted-foreground"
+                )}
+                title={
+                  days === null
+                    ? undefined
+                    : bad
+                      ? `Lapsed ${Math.abs(days)} days ago`
+                      : `${days} days of cover left`
+                }
+              >
+                {bad
+                  ? `Compliance expired ${formatDate(v.complianceValidTo)}`
+                  : soon
+                    ? `Compliance expires ${formatDate(v.complianceValidTo)}`
+                    : `Compliant to ${formatDate(v.complianceValidTo)}`}
+              </span>
+            </div>
+          );
+        }
+        case "dispatch":
+          /* THE TWO THINGS YOU DO WITH A DISPATCH DESK — ring it or email it —
+             and both are values somebody needs in another window, so both are
+             copyable rather than selectable-by-dragging. */
+          return (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <CopyValue
+                value={v.dispatchPhone ?? ""}
+                label={`${v.name} dispatch phone`}
+                tabular
+                className="text-sm"
+              />
+              <CopyValue
+                value={v.dispatchEmail ?? ""}
+                label={`${v.name} dispatch email`}
+                className="text-xs text-muted-foreground"
+              />
+            </div>
+          );
+        case "lines":
+          return <OverflowList values={v.businessLines} label="line" />;
         case "erpId":
           return v.erpVendorId ? <span className="text-sm tabular-nums">{v.erpVendorId}</span> : <Muted />;
-        case "dispatchPhone":
-          return v.dispatchPhone ? <span className="text-sm tabular-nums">{v.dispatchPhone}</span> : <Muted />;
-        case "dispatchEmail":
-          return <Clamped text={v.dispatchEmail} />;
         case "address":
-          return <Clamped text={v.addressLine1 ? oneLineAddress(v) : null} />;
-        case "city":
-          return v.city ? <span className="text-sm">{v.city}</span> : <Muted />;
-        case "state":
-          return v.state ? <span className="text-sm">{v.state}</span> : <Muted />;
+          if (!v.addressLine1 && !v.city && !v.state && !v.zip) return <Muted />;
+          return (
+            <TwoLineCell
+              title={v.addressLine1 ?? DASH}
+              description={
+                [v.city, [v.state, v.zip].filter(Boolean).join(" ")]
+                  .filter(Boolean)
+                  .join(", ") || DASH
+              }
+            />
+          );
         case "serviceArea":
           return <OverflowList values={v.serviceStates} label="state" />;
         case "products":
@@ -487,41 +561,19 @@ export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
               label="product"
             />
           );
-        case "compliance": {
-          const days = daysFromToday(v.complianceValidTo);
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <StatusChip
-                    tone={
-                      v.complianceStatus === "Valid"
-                        ? "success"
-                        : v.complianceStatus === "Expiring"
-                          ? "processing"
-                          : "failed"
-                    }
-                    variant="text"
-                  >
-                    {v.complianceStatus}
-                  </StatusChip>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {days === null
-                  ? "No expiry recorded"
-                  : days < 0
-                    ? `Lapsed ${Math.abs(days)} days ago (${formatDate(v.complianceValidTo)})`
-                    : `${days} days left (${formatDate(v.complianceValidTo)})`}
-              </TooltipContent>
-            </Tooltip>
-          );
-        }
         case "status":
+          /* ACTIVE AND APPROVED ARE TWO DECISIONS. A vendor can be switched on
+             and still be withheld from assignment, and that pair is what
+             stops an order — one chip cannot carry both. */
           return (
-            <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
-              {v.active ? "Active" : "Inactive"}
-            </StatusChip>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
+                {v.active ? "Active" : "Inactive"}
+              </StatusChip>
+              {v.active && !v.approvedForAssignment && (
+                <span className="truncate text-xs text-status-failed">Not approved</span>
+              )}
+            </div>
           );
         case "rateCard": {
           const base = v.rateCard.find((l) => l.id === v.defaultRateCardId) ?? v.rateCard[0];
@@ -536,26 +588,22 @@ export function vendorConfig(): EntityConfig<Vendor, VendorColumnKey> {
           return n === 0 ? <Muted>0</Muted> : <span className="text-sm tabular-nums">{n}</span>;
         }
         case "instruction":
-          return <Clamped text={v.vendorInstruction} />;
-        case "lines":
-          return <OverflowList values={v.businessLines} label="line" />;
-        case "safety":
-          return <span className="text-sm tabular-nums">{v.safetyScore}</span>;
-        case "distance":
-          return <span className="text-sm tabular-nums">{v.distanceMi} mi</span>;
-        case "emails":
-          return (
-            <StatusChip tone={v.emailsEnabled ? "success" : "neutral"} variant="text">
-              {v.emailsEnabled ? "On" : "Off"}
-            </StatusChip>
-          );
-        case "account":
-          /* A vendor without an account still works — they acknowledge from
-             the emailed link — so this is a fact, not a fault. */
-          return (
-            <StatusChip tone={v.hasAccount ? "success" : "neutral"} variant="text">
-              {v.hasAccount ? "Has account" : "Link only"}
-            </StatusChip>
+          return v.vendorInstruction ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Read dispatch notes for ${v.name}`}
+                  onClick={() => onOpenNote(v)}
+                >
+                  <NotebookPen />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Read dispatch notes</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Muted />
           );
         default:
           return null;
@@ -1284,17 +1332,48 @@ export function BrokerVendorsScreen({
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
 }) {
-  const config = React.useMemo(vendorConfig, []);
+  const [note, setNote] = React.useState<Vendor | null>(null);
+  const config = React.useMemo(() => vendorConfig(setNote), []);
   return (
-    <DirectoryEntityScreen
-      config={config}
-      rows={data.vendors}
-      onRowsChange={data.setVendors}
-      navigate={navigate}
-      focusId={focusId}
-      onFocusHandled={onFocusHandled}
-      onTotalChange={onTotalChange}
-    />
+    <>
+      <DirectoryEntityScreen
+        config={config}
+        rows={data.vendors}
+        onRowsChange={data.setVendors}
+        navigate={navigate}
+        focusId={focusId}
+        onFocusHandled={onFocusHandled}
+        onTotalChange={onTotalChange}
+      />
+      <ReadDrawer
+        open={note !== null}
+        onOpenChange={(o) => !o && setNote(null)}
+        title="Dispatch notes"
+        subtitle={note?.name}
+      >
+        {note && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Vendor instruction</h3>
+              <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                {note.vendorInstruction ?? (
+                  <span className="text-muted-foreground/70">Nothing recorded.</span>
+                )}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Shown to dispatch when this vendor is picked for an order.
+              </p>
+            </div>
+            {note.notes && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Internal notes</h3>
+                <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">{note.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </ReadDrawer>
+    </>
   );
 }
 

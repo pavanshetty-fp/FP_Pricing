@@ -82,7 +82,15 @@ export const BROKER_CUSTOMER_COLUMNS = [
   { key: "shipTos" as const, label: "Ship-Tos", width: 230 },
   { key: "terms" as const, label: "Terms", width: 130, sortable: true },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
-  { key: "instruction" as const, label: "Customer Instructions", width: 170 },
+  /* 64px — the table's own resize minimum, and the narrowest this can be.
+     The cell is a 32px icon: 32 + 24px of padding is 56, so the label is free
+     up to ~34px of text and the FLOOR is set by `useColumnWidths`, not by the
+     word. "Notes" measures 34px and fits inside it; "Instructions" would cost
+     92px, and the extra 28px buys precision this column does not need — the
+     icon's tooltip and the drawer's own title both say "Delivery instructions"
+     in full. Judged within its own table there is no other notes column to
+     confuse it with. */
+  { key: "instruction" as const, label: "Notes", width: 64 },
   { key: "actions" as const, label: "", width: 44 },
 ];
 

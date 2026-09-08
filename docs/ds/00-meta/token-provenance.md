@@ -119,6 +119,13 @@ mode variables there and asked for them to come across. Source is
 taken **verbatim**, at Pavan's explicit direction, after the two consequences
 below were measured and raised:
 
+> **Correction, later than this sync — `--border` / `--input` are now `#d4d4d8` (zinc/300).**
+> The sync's zinc/400 (`#a1a1aa`) is a mid grey rather than a hairline: measured against
+> the `#ffffff` content layer it is **2.56:1**, roughly 5× the weight of `--fp-outline-1`,
+> and one value was carrying both the structural divider and the field border. Dividers
+> read as hard rules. zinc/300 measures **1.48:1**. The rows below record what the sync
+> did; the primitives in `index.css` are the current truth.
+
 | token | was | now | Figma alias |
 |---|---|---|---|
 | `--background` | `#efefeb` | `#ffffff` | `colors/background-light` |

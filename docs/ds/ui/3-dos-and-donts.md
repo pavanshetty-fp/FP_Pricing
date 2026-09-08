@@ -12,6 +12,8 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Land radii on the ramp** — buttons/inputs `md`, cards `lg`.
 - **Give a board lane `bg-fp-board-lane`** — the one token every board shares.
 - **Give a table header `bg-fp-table-header`** so it survives light mode.
+- **Keep structural strokes on `--border` / `--input`** and card rims on
+  `--fp-outline-1` — two families, two jobs.
 
 ## Don't
 - **Don't hardcode hex** (`bg-[#fa6400]`) — use `bg-brand`.
@@ -25,3 +27,5 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   surface, and the lane will move the next time selection is retuned.
 - **Don't point a board lane at `--fp-lane`** — that is the grouped-table band;
   moving it drags every group header in the app.
+- **Don't darken the hairline to make a boundary read** — reach for spacing or a
+  surface step first. A divider is a separation, not a rule.

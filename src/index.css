@@ -309,8 +309,18 @@
      Retint the emphasis grey and this does NOT follow — tie them deliberately
      if that is what you want. */
   --fp-outline-2: #ededed;
-  --fp-stroke-hairline: #a1a1aa; /* global hairline — base/border, zinc/400 */
-  --fp-stroke-field: #a1a1aa; /* field border — base/input, zinc/400 */
+  /* THE HAIRLINE FAMILY — zinc/300, DOWN A STEP FROM THE SYNC.
+     The Figma sync put base/border and base/input on zinc/400 (#a1a1aa). That
+     is a mid grey, not a hairline: measured against the #ffffff content layer
+     it is 2.56:1, about 5x the weight of --fp-outline-1, and the same value
+     was doing duty as BOTH a structural divider and a field border. On screen
+     the rule under a tab strip read as a hard line rather than as a
+     separation. zinc/300 (#d4d4d8) is 1.48:1 — a divider that separates
+     without drawing the eye.
+     One value still covers divider and field; splitting them is the next
+     question, not this change. */
+  --fp-stroke-hairline: #d4d4d8; /* global hairline — base/border, zinc/300 */
+  --fp-stroke-field: #d4d4d8; /* field border — base/input, zinc/300 */
   /* Destructive / failed. Light stays red-600 because --status-failed carries
      body-sized status text and measures 4.83 here. --destructive no longer
      aliases this in light: the Figma sync moved it to red/500 (#ef4444, 3.76),

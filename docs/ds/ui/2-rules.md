@@ -11,6 +11,21 @@ mistakes, and Checks derive from these.
   buttons/inputs → `md`, cards → `lg`), text from the type scale, spacing from the
   named steps. No one-off values.
 
+## Strokes
+- **Two stroke families, and they are not interchangeable.**
+  `--border` / `--input` (both `--fp-stroke-*`, **zinc/300 `#d4d4d8`** in light) are
+  the *structural* hairline: page-header and tab-strip dividers, field borders,
+  a table's outer edge and row rules. `--fp-outline-1` (`#e2e5ea`) is the *card*
+  hairline: a card's rim, rules inside it, a sheet's section dividers.
+- **Never raise the hairline to make something read.** It was zinc/400 (`#a1a1aa`,
+  2.56:1 on white) after the Figma sync, and at that weight a divider under a tab
+  strip read as a hard rule rather than as a separation — 5× the weight of the card
+  hairline for a line doing less work. zinc/300 measures 1.48:1. If a boundary is
+  not reading, the answer is usually spacing or a surface step, not a darker line.
+- **Known gap:** one value still covers both the structural divider and the field
+  border, and `--fp-outline-2` (the "stronger" rim) is *lighter* than
+  `--fp-outline-1` in light. Both are recorded, neither is fixed.
+
 ## Color governance
 - **`--brand` (`#fa6400`, orange) is the accent, not `--primary`.** Don't confuse
   the tokens.

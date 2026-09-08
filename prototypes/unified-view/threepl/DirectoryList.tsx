@@ -67,7 +67,7 @@ export interface DirectoryColumn<K extends string> {
   label: string;
   width: number;
   sortable?: boolean;
-  align?: "right";
+  align?: "right" | "center";
 }
 
 export interface DirectoryListProps<Row, K extends string> {

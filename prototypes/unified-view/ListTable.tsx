@@ -51,7 +51,13 @@ export interface ListColumn<K extends string> {
   label: string;
   width: number;
   sortable?: boolean;
-  align?: "left" | "right";
+  /**
+   * `right` for money and for counts that are compared down the column —
+   * the digits line up and the eye reads magnitude without reading numbers.
+   * `center` for a short count that is READ rather than compared, where a
+   * right edge miles from the header looks like a mistake.
+   */
+  align?: "left" | "right" | "center";
 }
 
 export interface ListSort<K extends string> {
@@ -207,6 +213,7 @@ export function ListTable<Row, K extends string>({
                   className={cn(
                     "border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
+                    col.align === "center" && "text-center",
                     col.key === actionsKey && "sticky right-0 z-30"
                   )}
                 >
@@ -302,6 +309,7 @@ export function ListTable<Row, K extends string>({
                   className={cn(
                     "px-3",
                     col.align === "right" && "text-right",
+                    col.align === "center" && "text-center",
                     col.key === actionsKey &&
                       "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover group-data-[state=selected]/row:before:bg-fp-row-selected"
                   )}

@@ -469,7 +469,7 @@ export interface VendorColumnDef {
   label: string;
   width: number;
   sortable?: boolean;
-  align?: "right";
+  align?: "right" | "center";
 }
 
 /*
@@ -493,17 +493,31 @@ export interface VendorColumnDef {
     · Compliance  — folded under the vendor's name, where the name is.
     · Dispatch Phone + Email  — one column, two lines.
 */
+/*
+  THE ORDER IS THE ONE THE READER ARRANGED, adopted as the default rather than
+  argued with. Identity first, then the number that says how busy they are,
+  then how to reach them, then what they can do, then where, then the
+  commercial terms.
+
+  Load is third on purpose. Once a shortlist is eligible, "how much work are
+  they already carrying" is the next question, and it was ninth.
+*/
 export const VENDOR_COLUMNS: VendorColumnDef[] = [
   { key: "name", label: "Vendor Name", width: 250, sortable: true },
+  { key: "erpId", label: "Vendor ID", width: 130, sortable: true },
+  /* CENTRED, not right-aligned. These are 1-2 digit counts that get READ, not
+     compared down the column — at 150px a right edge sits so far from a
+     15px header that it reads as a mistake. `tabular-nums` stays, so the
+     digits still line up with each other. Money and long figures keep
+     `right`, where lining up the units is the whole point. */
+  { key: "assigned", label: "Assigned Orders", width: 150, sortable: true, align: "center" },
   { key: "dispatch", label: "Dispatch", width: 240 },
   { key: "lines", label: "Business Lines", width: 230 },
-  { key: "erpId", label: "Vendor ID", width: 130, sortable: true },
   { key: "address", label: "Address", width: 250, sortable: true },
   { key: "serviceArea", label: "Service Area", width: 200 },
   { key: "products", label: "Supported Products", width: 230 },
   { key: "status", label: "Status", width: 120, sortable: true },
   { key: "rateCard", label: "Default Rate Card", width: 180 },
-  { key: "assigned", label: "Assigned Orders", width: 150, sortable: true, align: "right" },
   { key: "instruction", label: "Notes", width: 64 },
   { key: "actions", label: "", width: 44 },
 ];

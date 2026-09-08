@@ -12,19 +12,34 @@ mistakes, and Checks derive from these.
   named steps. No one-off values.
 
 ## Strokes
-- **Two stroke families, and they are not interchangeable.**
-  `--border` / `--input` (both `--fp-stroke-*`, **zinc/300 `#d4d4d8`** in light) are
-  the *structural* hairline: page-header and tab-strip dividers, field borders,
-  a table's outer edge and row rules. `--fp-outline-1` (`#e2e5ea`) is the *card*
-  hairline: a card's rim, rules inside it, a sheet's section dividers.
-- **Never raise the hairline to make something read.** It was zinc/400 (`#a1a1aa`,
-  2.56:1 on white) after the Figma sync, and at that weight a divider under a tab
-  strip read as a hard rule rather than as a separation — 5× the weight of the card
-  hairline for a line doing less work. zinc/300 measures 1.48:1. If a boundary is
-  not reading, the answer is usually spacing or a surface step, not a darker line.
-- **Known gap:** one value still covers both the structural divider and the field
-  border, and `--fp-outline-2` (the "stronger" rim) is *lighter* than
-  `--fp-outline-1` in light. Both are recorded, neither is fixed.
+**Three weights, three jobs.** In light:
+
+| token | light | on `#ffffff` | job |
+|---|---|---|---|
+| `--fp-outline-1` | `#e2e5ea` | 1.26:1 | a card's own rim |
+| `--border` (`--fp-stroke-hairline`) | `#d4d4d8` zinc/300 | 1.48:1 | a structural divider — page header, tab strip, table edge and row rules, sidebar edge |
+| `--input` (`--fp-stroke-field`) · `--fp-outline-2` | `#c4c4c9` | 1.74:1 | a field's boundary, and the rim that has to beat a card's (hover / active) |
+
+- **A field border does more work than a divider**, which is why they are not one
+  value. In light an `Input` is `bg-transparent` — only dark gets `dark:bg-input/30`
+  — so the border is the *only* thing that makes a field a field; a divider merely
+  separates two things that exist anyway.
+- **The hover rim must be darker than the resting rim.** `--fp-outline-2` was
+  `#ededed` (1.17:1) against `--fp-outline-1`'s 1.26 — the "stronger" rim was the
+  weaker one, and every Kanban card got *lighter* on hover. Any future retune keeps
+  `outline-2` below `outline-1` on the contrast column above.
+- **`--fp-stroke-field` and `--fp-outline-2` share a value and stay separate
+  tokens** — the same discipline `--fp-lane` / `--fp-board-lane` follow. One is a
+  field's only boundary, the other is a rim; retuning one must never drag the other.
+- **`#c4c4c9` is deliberately off the Tailwind ramp.** The neutral ramps jump from
+  ~1.48 at 300 to ~2.56 at 400, and a field border wants the gap between them. It
+  keeps zinc's hue (B−R +5 vs zinc/300's +4) so the three read as one family.
+- **Never raise a stroke to make something read.** If a boundary is not reading, the
+  answer is nearly always spacing or a surface step, not a darker line.
+- **3:1 is not reachable on this ramp.** WCAG 1.4.11 asks 3:1 for a control's
+  boundary; on white that first happens at `#949494`. No neutral ramp value meets it
+  — zinc/400 did not either. Closing it properly means giving inputs a *fill*, not a
+  darker border.
 
 ## Color governance
 - **`--brand` (`#fa6400`, orange) is the accent, not `--primary`.** Don't confuse

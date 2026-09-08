@@ -233,12 +233,18 @@
      ON DARK, ELEVATION IS A LIGHTER RIM — NOT A DARKER SHADOW. Measured against
      `--accent`, per theme:
          rim --fp-outline-1   dark [12,13,14]   light [24,20,15]
-         rim --fp-outline-2   dark [45,40,32]   light  [0,0,0]  <-- collides
+         rim --fp-outline-2   dark [45,40,32]   light  [0,0,0]  <-- collided
          fill --fp-card-1     dark  [0,0,0]     light [31,27,22]
-     So the rim token has to differ by theme — `--fp-outline-2` is byte-identical
-     to `--accent` in light. Overlay-tier elements therefore carry
+     So the rim token had to differ by theme — `--fp-outline-2` sat on top of
+     `--accent` in light. Overlay-tier elements therefore carry
      `border-fp-outline-1 dark:border-fp-outline-2`, which gives BOTH themes a
      working rim, and the shadow returns to being ambient depth at Figma's 10%.
+
+     SUPERSEDED, PARTLY: `--fp-outline-2` moved to #c4c4c9 to fix the hover
+     inversion, so it no longer collides with `--accent` and light now has a
+     working rim of its own. The `dark:` variant above is therefore no longer
+     load-bearing — it is left in place because unpicking it touches every
+     overlay-tier surface, which is a separate change with its own before/after.
 
      DS FOLLOW-UP (Figma): the library has no overlay-rim token. One variable
      would replace the `dark:` variant above. The shadow scale itself needs no
@@ -303,24 +309,45 @@
      a value. */
   --fp-emphasis-hover: #e1e1e1;
   --fp-outline-1: #e2e5ea; /* quiet rim */
-  /* Stronger rim. Its light value currently EQUALS --fp-emphasis, but the two
-     are separate families on purpose: this one is only ever a border (all 18
-     call sites are `border-fp-outline-2`) and it carries its own dark value.
-     Retint the emphasis grey and this does NOT follow — tie them deliberately
-     if that is what you want. */
-  --fp-outline-2: #ededed;
-  /* THE HAIRLINE FAMILY — zinc/300, DOWN A STEP FROM THE SYNC.
-     The Figma sync put base/border and base/input on zinc/400 (#a1a1aa). That
-     is a mid grey, not a hairline: measured against the #ffffff content layer
-     it is 2.56:1, about 5x the weight of --fp-outline-1, and the same value
-     was doing duty as BOTH a structural divider and a field border. On screen
-     the rule under a tab strip read as a hard line rather than as a
-     separation. zinc/300 (#d4d4d8) is 1.48:1 — a divider that separates
-     without drawing the eye.
-     One value still covers divider and field; splitting them is the next
-     question, not this change. */
-  --fp-stroke-hairline: #d4d4d8; /* global hairline — base/border, zinc/300 */
-  --fp-stroke-field: #d4d4d8; /* field border — base/input, zinc/300 */
+  /* STRONGER RIM — and it now actually is stronger.
+     It was #ededed, which measured 1.17:1 on white against --fp-outline-1's
+     1.26: the "stronger" rim was the WEAKER of the two, so every Kanban card
+     (BoardView, KanbanBoard, BrokerBoard all pair `border-fp-outline-1` with
+     `hover:border-fp-outline-2`) got LIGHTER on hover. The affordance ran
+     backwards. At #c4c4c9 the step is 1.26 -> 1.74, +0.47 in the right
+     direction.
+     It carries the same value as --fp-stroke-field and stays a SEPARATE
+     primitive, the same discipline --fp-lane / --fp-board-lane follow: this
+     one is a rim (border, and a 1px connector fill in five places), that one
+     is a field's only boundary. Two jobs, two tokens, so retuning one never
+     drags the other. */
+  --fp-outline-2: #c4c4c9;
+  /* THE HAIRLINE FAMILY — THREE WEIGHTS, THREE JOBS.
+       --fp-outline-1     #e2e5ea  1.26:1  a card's own rim
+       --fp-stroke-hairline #d4d4d8  1.48:1  a structural divider
+       --fp-stroke-field  #c4c4c9  1.74:1  a field's boundary, and the rim
+                                           that has to beat a card's
+
+     THE SPLIT IS BECAUSE A FIELD BORDER DOES MORE WORK THAN A DIVIDER. In
+     light an Input is `bg-transparent` — only dark gets `dark:bg-input/30` —
+     so the border is the ONLY thing that makes a field a field. A divider
+     merely separates two things that exist anyway. One value cannot be right
+     for both, and it was: the Figma sync put base/border and base/input on
+     zinc/400 (#a1a1aa, 2.56:1), a mid grey five times the weight of the card
+     rim, and a tab strip's rule read as a hard line rather than a separation.
+
+     #c4c4c9 IS NOT ON THE TAILWIND RAMP, on purpose. The neutral ramps jump
+     straight from ~1.48 at 300 to ~2.56 at 400, and the weight a field border
+     wants is inside that gap. It keeps zinc's hue (B-R +5, against zinc/300's
+     +4) so the three sit on one line rather than reading as three greys.
+
+     MEASURED 3:1 IS NOT REACHABLE HERE. WCAG 1.4.11 asks 3:1 for a control's
+     boundary; on white that first happens at #949494. Nothing on any neutral
+     ramp meets it — zinc/400 did not either — so this was never an accessible
+     vs not choice, only a weight one. Worth revisiting with a filled input,
+     which is the fix that would actually close it. */
+  --fp-stroke-hairline: #d4d4d8; /* structural divider — base/border, zinc/300 */
+  --fp-stroke-field: #c4c4c9; /* field boundary — base/input, off-ramp by design */
   /* Destructive / failed. Light stays red-600 because --status-failed carries
      body-sized status text and measures 4.83 here. --destructive no longer
      aliases this in light: the Figma sync moved it to red/500 (#ef4444, 3.76),
@@ -392,10 +419,14 @@
      body threshold; accepted as a design decision. Not --fp-danger, which
      --status-failed keeps at 4.83. */
   --destructive: #ef4444;
-  /* base/sidebar-border. No primitive holds this value any more — it is what
-     --fp-stroke-field used to be, before base/input took it to zinc/400. Dark
-     literals this token too. */
-  --sidebar-border: #abb3c2;
+  /* FOLDED INTO THE HAIRLINE FAMILY. It was a literal #abb3c2 (2.11:1) left
+     over from what --fp-stroke-field used to be, which made the sidebar's own
+     divider the DARKEST hairline in the app — heavier than every border it
+     sat next to. A sidebar edge is a structural divider like any other, so it
+     takes the divider weight and moves with it.
+     Light only: dark keeps its own literal below, a translucent white over a
+     tinted sidebar, which is a different mechanism and was never the problem. */
+  --sidebar-border: var(--fp-stroke-hairline);
 
   /* No family — one consumer, or a pair no primitive describes. */
   --primary: #090c0f;

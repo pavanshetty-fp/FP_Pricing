@@ -12,8 +12,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Land radii on the ramp** — buttons/inputs `md`, cards `lg`.
 - **Give a board lane `bg-fp-board-lane`** — the one token every board shares.
 - **Give a table header `bg-fp-table-header`** so it survives light mode.
-- **Keep structural strokes on `--border` / `--input`** and card rims on
-  `--fp-outline-1` — two families, two jobs.
+- **Pick the stroke by its job** — card rim `--fp-outline-1`, divider `--border`,
+  field boundary and hover rim `--input` / `--fp-outline-2`.
+- **Keep the hover rim darker than the resting rim.**
 
 ## Don't
 - **Don't hardcode hex** (`bg-[#fa6400]`) — use `bg-brand`.
@@ -29,3 +30,5 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   moving it drags every group header in the app.
 - **Don't darken the hairline to make a boundary read** — reach for spacing or a
   surface step first. A divider is a separation, not a rule.
+- **Don't give a field the divider's weight** — in light the border is the only
+  thing that makes a field a field.

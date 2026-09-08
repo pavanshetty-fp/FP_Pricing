@@ -1,8 +1,18 @@
 # FP DS 2026 — change bulletin for downstream repos
 
 **Base repo:** `pavanshetty-fp/FP-DS-2026` (branch `feat/unified-view-prototype`)
-**Range:** `18a4a20..f18d030` — 2026-08-24 17:55 → 2026-08-25 17:35
+**Range as labelled:** `18a4a20..f18d030` — 2026-08-24 17:55 → 2026-08-25 17:35
+**Range by content:** `18a4a20..91dad88` — see the correction below.
 **Audience:** any repo that takes FP DS 2026 as its base and needs to pull these changes forward.
+
+> **Bulletin #1 of 2.** Continue with
+> [`handoff-org-repo-2026-09.md`](handoff-org-repo-2026-09.md) once this is applied.
+>
+> **CORRECTION — this document covers more than its range label says.** §1a describes the
+> two-layer token restructure, which landed at `91dad88` on **27 Aug, twenty minutes after
+> this bulletin was committed**. Treat `91dad88` as the real end of this range; that is where
+> bulletin #2 begins. If `src/index.css` in your repo already has `--fp-ink-1`, you have
+> applied this one.
 
 FP DS 2026 is the base. Everything below lives in `src/` and is meant to travel.
 `prototypes/unified-view/` is where patterns get proven, not where they live — anything

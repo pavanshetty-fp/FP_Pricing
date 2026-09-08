@@ -4,6 +4,19 @@ This repo is the **FleetPanda Design System (FP-DS-2026)**: a rulebook + a toolk
 reusable React components used to build new screens and flows in a consistent style.
 New work happens across many separate chat sessions — this note keeps them consistent.
 
+## Porting this to another repo?
+
+If you are a downstream repo taking FP DS 2026 as your base, do **not** read the commit log —
+read the change bulletins, in order:
+
+1. [`docs/handoff-org-repo-tokens-components.md`](docs/handoff-org-repo-tokens-components.md)
+   — through 27 Aug 2026
+2. [`docs/handoff-org-repo-2026-09.md`](docs/handoff-org-repo-2026-09.md)
+   — 27 Aug → 8 Sep 2026
+
+`src/` and `docs/` travel. **`prototypes/unified-view/` does not** — it is where patterns get
+proven, not where they live; anything worth keeping from it is already promoted into `src/`.
+
 ## The loop (every session)
 
 1. **Pull first.** Start from the newest version:

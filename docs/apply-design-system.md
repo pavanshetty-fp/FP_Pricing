@@ -170,6 +170,36 @@ mistakes, and Checks derive from these.
   buttons/inputs → `md`, cards → `lg`), text from the type scale, spacing from the
   named steps. No one-off values.
 
+## Strokes
+**Three weights, three jobs.** In light:
+
+| token | light | on `#ffffff` | job |
+|---|---|---|---|
+| `--fp-outline-1` | `#e2e5ea` | 1.26:1 | a card's own rim |
+| `--border` (`--fp-stroke-hairline`) | `#d4d4d8` zinc/300 | 1.48:1 | a structural divider — page header, tab strip, table edge and row rules, sidebar edge |
+| `--input` (`--fp-stroke-field`) · `--fp-outline-2` | `#c4c4c9` | 1.74:1 | a field's boundary, and the rim that has to beat a card's (hover / active) |
+
+- **A field border does more work than a divider**, which is why they are not one
+  value. In light an `Input` is `bg-transparent` — only dark gets `dark:bg-input/30`
+  — so the border is the *only* thing that makes a field a field; a divider merely
+  separates two things that exist anyway.
+- **The hover rim must be darker than the resting rim.** `--fp-outline-2` was
+  `#ededed` (1.17:1) against `--fp-outline-1`'s 1.26 — the "stronger" rim was the
+  weaker one, and every Kanban card got *lighter* on hover. Any future retune keeps
+  `outline-2` below `outline-1` on the contrast column above.
+- **`--fp-stroke-field` and `--fp-outline-2` share a value and stay separate
+  tokens** — the same discipline `--fp-lane` / `--fp-board-lane` follow. One is a
+  field's only boundary, the other is a rim; retuning one must never drag the other.
+- **`#c4c4c9` is deliberately off the Tailwind ramp.** The neutral ramps jump from
+  ~1.48 at 300 to ~2.56 at 400, and a field border wants the gap between them. It
+  keeps zinc's hue (B−R +5 vs zinc/300's +4) so the three read as one family.
+- **Never raise a stroke to make something read.** If a boundary is not reading, the
+  answer is nearly always spacing or a surface step, not a darker line.
+- **3:1 is not reachable on this ramp.** WCAG 1.4.11 asks 3:1 for a control's
+  boundary; on white that first happens at `#949494`. No neutral ramp value meets it
+  — zinc/400 did not either. Closing it properly means giving inputs a *fill*, not a
+  darker border.
+
 ## Color governance
 - **`--brand` (`#fa6400`, orange) is the accent, not `--primary`.** Don't confuse
   the tokens.
@@ -197,7 +227,22 @@ mistakes, and Checks derive from these.
   outer border** — it lifts with shadow.
 - Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
   the content layer.
-- Inner cards step up to `bg-fp-card-1`; the Kanban lane track is `bg-accent` (the `--fp-lane` token is legacy).
+- Inner cards step up to `bg-fp-card-1`.
+- **A board lane's ground is `bg-fp-board-lane`** — one token, every board (the DS
+  Kanban and the 3PL brokerage board both take it, so they move together). It is
+  *not* `bg-accent`: `--accent` is the control-emphasis family (the fill behind a
+  selected menu item), and a lane that borrows it moves whenever selection is
+  retuned. Light resolves to `--fp-card-2`; measured, that is an 11/255 step under
+  the content layer and 11/255 above the white cards on it — the lane reads as a
+  column, and a card is still the lightest thing in it.
+- **A board lane is not a row band.** `--fp-lane` is the fill behind a *grouped
+  table's* header row; `--fp-board-lane` is the fill behind a *board column*. They
+  stay two tokens even when they resolve to the same value, so retuning one never
+  drags the other.
+- **A table header needs its own ground in light** (`bg-fp-table-header`). Dark
+  gets it from the panel fill; in light the layer and the header are both `#ffffff`
+  and a header that is only a hairline stops being a header the moment the first
+  row has one too.
 - Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
   no shadow.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
@@ -264,6 +309,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Use Lucide icons only.**
 - **Lift the content layer with `shadow-fp-surface`, no border.**
 - **Land radii on the ramp** — buttons/inputs `md`, cards `lg`.
+- **Give a board lane `bg-fp-board-lane`** — the one token every board shares.
+- **Give a table header `bg-fp-table-header`** so it survives light mode.
+- **Pick the stroke by its job** — card rim `--fp-outline-1`, divider `--border`,
+  field boundary and hover rim `--input` / `--fp-outline-2`.
+- **Keep the hover rim darker than the resting rim.**
 
 ## Don't
 - **Don't hardcode hex** (`bg-[#fa6400]`) — use `bg-brand`.
@@ -273,6 +323,14 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't use arbitrary radii** (`rounded-[5px]`).
 - **Don't add Tabler/Hugeicons/Phosphor/Remix/emoji.**
 - **Don't trace a light/foreign mock** — re-map to FP tokens.
+- **Don't paint a board lane with `bg-accent`** — that is control emphasis, not a
+  surface, and the lane will move the next time selection is retuned.
+- **Don't point a board lane at `--fp-lane`** — that is the grouped-table band;
+  moving it drags every group header in the app.
+- **Don't darken the hairline to make a boundary read** — reach for spacing or a
+  surface step first. A divider is a separation, not a rule.
+- **Don't give a field the divider's weight** — in light the border is the only
+  thing that makes a field a field.
 
 
 ---
@@ -1455,10 +1513,38 @@ code that implements it.*
   number(+unit), single-select, searchable-select, chip-multiselect.
 - **Inline cell editing**: a cell expands in place (chevron) to its editor; edits
   save inline. Use for quick edits within a data table.
-- **Full-page form** (not a modal) for create/edit of any non-trivial record.
-  Header (title + context + close), stacked sections, **sticky footer** with the
-  primary save ("Confirm and Save" / "Update and Save"). Modals are reserved for
-  short, single-purpose tasks.
+- **A DIRECTORY RECORD IS A SIDE SHEET, AND THE SHEET IS THE FORM.** `RecordSheet`
+  is the container; `mode` decides whether the header reads Edit or Create; the
+  body carries the fields; the footer carries Cancel + Save Changes. There is **no
+  separate read-only detail page with an editor beside it** — that is two patterns
+  doing one job, and both of them take the list off screen, which is the thing a
+  sheet exists to prevent.
+  - Size by CONTENT, not by record: `narrow` (560) for stacked fields, `wide` (864)
+    when the sheet carries tables — at 560 a table has to be scrolled sideways, and
+    a table you scroll to read is one you cannot compare rows in. `xwide` (1120) per
+    *step*, not per sheet.
+  - **Related records live in the same scroll**, as `SheetSection`s under the
+    editable ones. Section rhythm is **40 / 16**, measured from the title's own line.
+  - **Things that OPEN rather than change** — a history, a preview — go in the
+    sheet's `headerActions` slot, left of Close, so they neither scroll away nor
+    get mistaken for part of the form.
+- **Full-page form** (not a modal) remains right for a *flow* rather than a record —
+  something with steps, or with no list behind it to return to. Modals stay reserved
+  for short, single-purpose tasks.
+- **Form validation contract** (identical everywhere): nothing is red until the
+  field has been left; after a failed submit everything validates live; a failed
+  submit **keeps every character** and focuses the first problem; cancelling with
+  changes confirms, cancelling without them does not. Mark **both** required and
+  optional — marking one makes the reader infer the other, and on a long form the
+  inference is wrong often enough to matter.
+- **A set that is known but not closed gets a creatable combobox** (`allowCreate`),
+  not a locked select and not a bare text input. A locked list sends the real answer
+  into a notes field where nothing can filter it; a text input gives ten spellings
+  of the same thing.
+- **A toggle is a statement and an answer, not a field with a control under it.**
+  Label left on the labels' own edge, switch hard right against the container edge,
+  helper text under the label. Full width. Stacked like an input it leaves a 20px
+  control alone on a line with a hole beside it.
 
 ## 2. Selection & pickers (standardize ONE)
 
@@ -1595,6 +1681,34 @@ Where a hovered icon is already the whole message (a copy glyph beside a value),
 add **no tooltip at all**: a floating label repeating it covers the thing next to
 it, which is often the next thing someone wanted.
 
+### 4c. Pagination, columns and the list's own numbers
+- **`TablePagination` ships its own page sizes and its own footer copy. Use them.**
+  Overriding either makes one screen count differently from every other, and the
+  reader has to re-learn the footer per list.
+- **Pagination and grouping are exclusive.** While grouped, the list scrolls whole
+  and `GroupedListFooter` reports its *shape* — at 25 rows a page a group straddles
+  the boundary and its header claims a count for rows that are not on screen. Both
+  footers keep the same left/centre/right skeleton so the bottom of the screen does
+  not jump when grouping turns on.
+- **Every column moves and resizes** — drag the header to reorder, drag the divider
+  to resize, double-click to reset, arrows to nudge. Both marks appear on hover of
+  *that* column only, and the two gestures are mutually exclusive.
+- **A list total belongs beside the page title, not under the footer.** It is a fact
+  about the whole list; under the footer it reads as a property of the current page
+  and sits at the bottom of a screen somebody has to scroll to reach. It follows the
+  *filtered* rows.
+- **Active filters are said out loud** as chips with a Clear all, above the table.
+  The facet panel remembers what was picked but it is closed, and a quietly narrowed
+  list is the most common way people conclude their data is missing.
+- **Three empty states, not one**: nothing here yet / nothing matches your search /
+  nothing matches these filters. Three different situations, three different next
+  actions, and one shared sentence fits none of them.
+- **Loading is skeleton rows, never a spinner** — a list that collapses to a spinner
+  loses its own height and the page jumps when the rows land.
+- **Two kinds of missing value, and both are printed.** `–` means the field applies
+  and nobody filled it in; `N/A` means it does not apply. A cell that goes blank
+  makes an incomplete record look finished.
+
 ## 4b. Bulk operations
 
 - **ONE BAR, actions passed in.** What can be done to a selection is a property of
@@ -1722,9 +1836,18 @@ detail next to the list, or **Modal** for peek. Structure:
 - Inside a section, a **property grid** (§8.6) on top, **sub-entity tables**
   below, and a **document gallery** (§8.7) when relevant.
 
-This is a **detail / read view**, distinct from the **full-page form** rule
-for non-trivial create/edit (§1). Read-with-light-edit → overlay; substantive
-create/edit → full page.
+**SUPERSEDED IN PART (§1).** The old split — read-with-light-edit → overlay,
+substantive create/edit → full page — was tried on the Directory and reverted. A
+directory record is substantive *and* belongs in the sheet: the sheet IS the form,
+and a full page for it meant a second pattern for one job with the list gone from
+behind it. Keep the full page for a **flow** (steps, or nothing to return to), not
+for a record. §1 is canonical; this section's structure notes still apply.
+
+**Audit history is a drawer, not a section.** It is the longest block on a record
+and the one read least often; at the foot of the body it pushes everything the
+sheet was opened FOR behind a wall of "field changed" lines. Icon in the header,
+420px drawer stacked over the record, no footer — reading a history is not editing
+anything.
 
 ### 8.5 One state machine, many surfaces
 A record's status transitions are defined once and exposed through *every*
@@ -1789,6 +1912,17 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   total — rows → total → add (T4).
 - **Name a checkbox column** when the tick does one specific thing (T5).
 - **Set helper text 4px under its control** (§2b).
+- **Open a directory record in a side sheet, and let the sheet be the form** (§1).
+- **Size a sheet by its content** — `wide` the moment it carries a table (§1).
+- **Put a toggle's label left and its switch hard right**, helper under the label (§1).
+- **Use a creatable combobox for a set that is known but not closed** (§1).
+- **Keep `TablePagination`'s own page sizes and footer copy** (§4c).
+- **Put a list's total beside the page title**, following the filtered rows (§4c).
+- **Show active filters as chips with a Clear all** (§4c).
+- **Write three empty states** — nothing yet / no search match / no filter match (§4c).
+- **Load a list with skeleton rows**, never a spinner (§4c).
+- **Print both `–` and `N/A`** — a blank cell hides an unfinished record (§4c).
+- **Put the audit history behind a header icon**, in its own drawer (§8.4).
 - **Make every dropdown searchable**, short lists included (§2a).
 - **Drop a list below its field**, left-aligned (§2a).
 - **Keep "none" as a real option** — "— Unassigned", "Not set" (§2a).
@@ -1820,6 +1954,34 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't let one checkbox column mean two things** (§4b).
 - **Don't override a section's gap per instance** — that is how a sheet drifts
   from the 40/16 rhythm (`ux/2-rules`).
+- **Don't hand-roll a `<TableHead>`.** `TableColumnHeader` + `useTableColumns`
+  is how a table gets moving and resizing columns, and it is the default —
+  a table without them is a table whose columns the reader may not arrange
+  (`ux/2-rules`).
+- **Don't make hiding a column the only way to move one.** Headers drag, and
+  ⌘/Ctrl + ← → moves a focused one (`ux/2-rules`).
+- **Don't hang two gestures off one target.** The divider resizes; the header
+  moves. Different cursors, so the pointer says which before the press
+  (`ux/2-rules`).
+- **Don't confirm an empty removal.** Ask before erasing filled rows; close an
+  untouched section without a dialog (`ux/2-rules`).
+- **Don't put a bin on a section heading.** Turning an optional section off is a
+  minus — nothing is destroyed and one click brings it back (`ux/2-rules`).
+- **Don't give a section heading a minimum height.** The 16 is measured from the
+  title's own line; a padded row renders it as 20, and 22 once the heading
+  carries an action (`ux/2-rules`).
+- **Don't build a full-page detail with a separate editor beside it** — one sheet
+  does both, and a page takes the list off screen (§1).
+- **Don't override a table's page sizes or footer copy** — one list that counts
+  differently is one list everybody has to re-read (§4c).
+- **Don't paginate a grouped list** — a group straddling the boundary claims a
+  count for rows that are not on screen (§4c).
+- **Don't leave a filtered list unlabelled** — a quietly narrowed list reads as
+  missing data (§4c).
+- **Don't stack a toggle like an input** — it leaves a lone 20px control with a
+  hole beside it (§1).
+- **Don't put the audit history at the foot of a record body** — it buries
+  everything the record was opened for (§8.4).
 
 
 ---
@@ -1852,6 +2014,16 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Pre-ticked rows** — ❌ adding a row ticks it, so a bulk bar appears before anything is chosen · ✅ selections start empty and transient (§4b).
 - **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
 - **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).
+- **A silently draggable header** — ❌ columns move but nothing on screen says so · ✅ `ColumnMoveGrip` in the header, `ColumnResizeHandle` on the divider, each revealed on hover (`ux/2-rules`).
+- **A white-on-white header** — ❌ `bg-fp-surface-1a` on a `thead`, which is the content layer's own colour in light · ✅ `bg-fp-table-header` (`ux/2-rules`).
+- **A bare `<TableHead>`** — ❌ a new table whose columns cannot be moved or resized, indistinguishable from one that must not be · ✅ `TableColumnHeader` + `useTableColumns` (`ux/2-rules`).
+- **Every divider lit at once** — ❌ hovering the header row draws eleven resize marks, so the row reads as a grid · ✅ each mark lights with its own header (`ux/2-rules`).
+- **Two marks at once** — ❌ the move grip and the resize handle both showing on one hovered header · ✅ the grip is the handle's peer and steps aside on the divider (`ux/2-rules`).
+- **One target, two gestures** — ❌ the divider both resizes and reorders, so a widen becomes a reorder · ✅ divider resizes (`col-resize`), header moves (`grab`) (`ux/2-rules`).
+- **A frozen column order** — ❌ the schema's order is the reader's, so comparing two columns means hiding the six between them · ✅ `useColumnOrder` on the headers, order saved with the view (`ux/2-rules`).
+- **Confirming nothing** — ❌ "are you sure?" over a section whose table is still a row of blanks · ✅ `hasContent` decides whether the dialog appears (`ux/2-rules`).
+- **A bin on a section heading** — ❌ `<Trash2>` to turn an optional section off, next to the bins that delete table rows · ✅ `SheetSectionRemove`, a minus (`ux/2-rules`).
+- **A padded heading row** — ❌ a `min-h` on the section title so a 16px gap renders as 20, and 22 once the heading carries a button · ✅ the row is the title's own line and a taller action hangs off it (`ux/2-rules`).
 
 
 ---

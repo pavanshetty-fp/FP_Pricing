@@ -1,6 +1,7 @@
 import * as React from "react";
-import { Boxes, Contact, Droplet, Truck } from "lucide-react";
+import { Boxes, Contact, Droplet, NotebookPen, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   Tooltip,
@@ -8,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { OverflowList, TwoLineCell } from "../ListTable";
+import { ReadDrawer } from "./DirectoryRecordSheet";
 import {
   DirectoryEntityScreen,
   activeBulkAction,
@@ -149,7 +151,11 @@ const CITY_NAMES = [...new Set(PLACES.map((p) => p.city))];
 
 /* ═══════════════════════════════════════════════════════════════ customers ═ */
 
-export function customerConfig(): EntityConfig<BrokerCustomer, BrokerCustomerColumnKey> {
+export function customerConfig(
+  /* The instruction cell OPENS something, so it needs a handler; the screen
+     owns that state because the drawer lives beside the list, not in it. */
+  onOpenNote: (c: BrokerCustomer) => void
+): EntityConfig<BrokerCustomer, BrokerCustomerColumnKey> {
   return {
     urlKey: "customers",
     parentLabel: "Customers",
@@ -172,38 +178,67 @@ export function customerConfig(): EntityConfig<BrokerCustomer, BrokerCustomerCol
     renderCell: (c, key) => {
       switch (key) {
         case "name":
-          return <TwoLineCell title={c.name} description={c.erpId} />;
+          /* ONE LINE. The ERP id used to ride under the name AND have its own
+             column — the same string twice, three characters apart. It kept
+             the column. */
+          return <span className="text-sm font-medium text-foreground">{c.name}</span>;
         case "erpId":
           return <span className="text-sm tabular-nums">{c.erpId}</span>;
-        case "phone":
-          return c.phone ? <span className="text-sm tabular-nums">{c.phone}</span> : <Muted />;
-        case "address":
-          return <Clamped text={c.addressLine1 ? oneLineAddress(c) : null} />;
-        case "city":
-          return c.city ? <span className="text-sm">{c.city}</span> : <Muted />;
-        case "zip":
-          return c.zip ? <span className="text-sm tabular-nums">{c.zip}</span> : <Muted />;
-        case "state":
-          return c.state ? <span className="text-sm">{c.state}</span> : <Muted />;
-        case "credit":
-          return (
-            <StatusChip
-              tone={
-                c.creditStatus === "Approved"
-                  ? "success"
-                  : c.creditStatus === "On hold"
-                    ? "processing"
-                    : "failed"
-              }
-              variant="text"
-            >
-              {c.creditStatus}
-            </StatusChip>
+        case "poc":
+          /* NAME OVER NUMBER, and the number is why the Phone column is gone:
+             it was printing this same string one column to the left. */
+          return c.mainContactName ? (
+            <TwoLineCell title={c.mainContactName} description={blank(c.phone)} />
+          ) : c.phone ? (
+            <span className="text-sm tabular-nums">{c.phone}</span>
+          ) : (
+            <Muted />
           );
-        case "limit":
-          /* NO LIMIT IS NOT ZERO, and printing `$0` for it would block orders
-             that should go through — so it says so in words. */
-          return c.creditLimit === null ? <Muted>Not set</Muted> : <Money value={c.creditLimit} />;
+        case "address":
+          /* STREET OVER PLACE. A postal address is one fact, and the second
+             line takes the same muted treatment the ERP id used to have under
+             the name — near enough to read as part of the same thing, quiet
+             enough not to compete with the street. */
+          if (!c.addressLine1 && !c.city && !c.state && !c.zip) return <Muted />;
+          return (
+            <TwoLineCell
+              title={c.addressLine1 ?? DASH}
+              description={
+                [c.city, [c.state, c.zip].filter(Boolean).join(" ")]
+                  .filter(Boolean)
+                  .join(", ") || DASH
+              }
+            />
+          );
+        case "credit": {
+          const over = c.creditLimit !== null && c.currentBalance > c.creditLimit;
+          return (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <StatusChip
+                tone={
+                  c.creditStatus === "Approved"
+                    ? "success"
+                    : c.creditStatus === "On hold"
+                      ? "processing"
+                      : "failed"
+                }
+                variant="text"
+              >
+                {c.creditStatus}
+              </StatusChip>
+              {/* NO LIMIT IS NOT ZERO. Printing `$0` would block orders that
+                  should go through, so it says so in words — and under the
+                  status, where "Not set" reads as expected beside Unapproved
+                  and as an omission beside Approved. */}
+              <span
+                className="truncate text-xs tabular-nums text-muted-foreground"
+                title={over ? `Over the ${money(c.creditLimit)} limit` : undefined}
+              >
+                {c.creditLimit === null ? "No limit set" : `${money(c.creditLimit)} limit`}
+              </span>
+            </div>
+          );
+        }
         case "balance": {
           const over = creditBlocked(c) && c.creditLimit !== null && c.currentBalance > c.creditLimit;
           return (
@@ -215,20 +250,41 @@ export function customerConfig(): EntityConfig<BrokerCustomer, BrokerCustomerCol
             </span>
           );
         }
-        case "instruction":
-          return <Clamped text={c.customerInstruction} />;
         case "shipTos":
           return <OverflowList values={shipToNames(c)} label="ship-to" />;
         case "terms":
           return <span className="text-sm">{c.paymentTerms}</span>;
-        case "poc":
-          return c.mainContactName ? (
-            <TwoLineCell title={c.mainContactName} description={blank(c.phone)} />
+        case "status":
+          return <RecordStatusChip status={c.status} />;
+        case "instruction":
+          /*
+            AN ICON, NOT A TRUNCATED SENTENCE.
+
+            The instruction is prose — a gate code, a rule about Fridays — and
+            a 320px column showed the first six words of it followed by an
+            ellipsis. Six words of a driver instruction is worse than none:
+            long enough to look like the whole thing, short enough to be
+            missing the part that matters. The icon says one exists and opens
+            it in full; an account with none shows nothing at all, which is
+            the honest answer and scans far faster down a column.
+          */
+          return c.customerInstruction || c.deliveryNotes ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Read delivery instructions for ${c.name}`}
+                  onClick={() => onOpenNote(c)}
+                >
+                  <NotebookPen />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Read delivery instructions</TooltipContent>
+            </Tooltip>
           ) : (
             <Muted />
           );
-        case "status":
-          return <RecordStatusChip status={c.status} />;
         default:
           return null;
       }
@@ -1166,17 +1222,52 @@ export function BrokerCustomersScreen({
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
 }) {
-  const config = React.useMemo(customerConfig, []);
+  /** The account whose delivery instructions are open, or none. */
+  const [note, setNote] = React.useState<BrokerCustomer | null>(null);
+  const config = React.useMemo(() => customerConfig(setNote), []);
   return (
-    <DirectoryEntityScreen
-      config={config}
-      rows={data.customers}
-      onRowsChange={data.setCustomers}
-      navigate={navigate}
-      focusId={focusId}
-      onFocusHandled={onFocusHandled}
-      onTotalChange={onTotalChange}
-    />
+    <>
+      <DirectoryEntityScreen
+        config={config}
+        rows={data.customers}
+        onRowsChange={data.setCustomers}
+        navigate={navigate}
+        focusId={focusId}
+        onFocusHandled={onFocusHandled}
+        onTotalChange={onTotalChange}
+      />
+      <ReadDrawer
+        open={note !== null}
+        onOpenChange={(o) => !o && setNote(null)}
+        title="Delivery instructions"
+        subtitle={note?.name}
+      >
+        {note && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Customer instruction</h3>
+              <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                {note.customerInstruction ?? (
+                  <span className="text-muted-foreground/70">Nothing recorded.</span>
+                )}
+              </p>
+              {/* WHO READS IT is the reason it is worth opening at all. */}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Printed on the dispatch sheet — the driver reads this.
+              </p>
+            </div>
+            {note.deliveryNotes && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Delivery notes</h3>
+                <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                  {note.deliveryNotes}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </ReadDrawer>
+    </>
   );
 }
 

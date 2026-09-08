@@ -610,14 +610,64 @@ export function AuditList({ events }: { events: AuditEvent[] }) {
 }
 
 /**
- * The record's history, in its own drawer over the record sheet.
+ * A READ-ONLY DRAWER — one thing, looked at, closed.
  *
- * NARROW AND OVER THE TOP. A history is a column of short entries — 420px is
- * as wide as one ever needs — and it opens ON the record rather than replacing
- * it, so closing it puts you back exactly where you were with nothing
- * re-rendered underneath. It carries no footer, because there is nothing here
- * to save: reading a history is not editing anything.
+ * NARROW AND OVER THE TOP. What goes in here is a column of short content —
+ * 420px is as wide as it ever needs — and it opens ON whatever is behind it
+ * rather than replacing it, so closing puts the reader back exactly where they
+ * were with nothing re-rendered underneath.
+ *
+ * NO FOOTER, deliberately. There is nothing to save: reading is not editing.
+ * The moment something in here needs a Save it belongs in the record sheet
+ * instead, which is the form.
+ *
+ * It stacks a layer above the record sheet so the two coexist rather than
+ * fighting for the same one — and it opens straight off a LIST row too, where
+ * there is no record sheet underneath at all.
  */
+export function ReadDrawer({
+  open,
+  onOpenChange,
+  title,
+  subtitle,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="z-[60] w-[min(420px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(420px,calc(100vw-60px))]"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle className="text-base">{title}</SheetTitle>
+            {subtitle && (
+              <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label={`Close ${title.toLowerCase()}`}
+            onClick={() => onOpenChange(false)}
+            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** The record's history, in a `ReadDrawer`. */
 export function AuditDrawer({
   open,
   onOpenChange,
@@ -630,35 +680,14 @@ export function AuditDrawer({
   events: AuditEvent[];
 }) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        /* One step above the record sheet it opens from, so it stacks rather
-           than fighting it for the same layer. */
-        className="z-[60] w-[min(420px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(420px,calc(100vw-60px))]"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <SheetTitle className="text-base">Audit history</SheetTitle>
-            <span className="truncate text-xs text-muted-foreground">
-              {title} · {events.length} {events.length === 1 ? "entry" : "entries"}
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label="Close audit history"
-            onClick={() => onOpenChange(false)}
-            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto p-4">
-          <AuditList events={events} />
-        </div>
-      </SheetContent>
-    </Sheet>
+    <ReadDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Audit history"
+      subtitle={`${title} · ${events.length} ${events.length === 1 ? "entry" : "entries"}`}
+    >
+      <AuditList events={events} />
+    </ReadDrawer>
   );
 }
 

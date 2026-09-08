@@ -43,37 +43,46 @@ import {
 export type BrokerCustomerColumnKey =
   | "name"
   | "erpId"
-  | "phone"
+  | "poc"
   | "address"
-  | "city"
-  | "zip"
-  | "state"
   | "credit"
-  | "limit"
   | "balance"
-  | "instruction"
   | "shipTos"
   | "terms"
-  | "poc"
   | "status"
+  | "instruction"
   | "actions";
 
+/*
+  ELEVEN COLUMNS, DOWN FROM SIXTEEN. Four of the old ones were parts of a
+  single fact printed apart, and one was a duplicate:
+
+    · Address + City + Zip + State  ->  ONE Address column, two lines. A
+      street, a city, a state and a ZIP are one postal address; splitting them
+      cost four column widths and made the reader assemble it themselves.
+    · Credit + Credit Limit         ->  ONE Credit column. A limit means
+      nothing without the status it sits under — "Not set" reads as an error
+      beside Unapproved and as an omission beside Approved.
+    · Phone                          ->  gone. It was the same number already
+      printed under Primary POC, and a table that says a thing twice teaches
+      people to distrust both.
+
+  POC MOVED TO THIRD, right after the identifiers. Who to ring is the question
+  a directory is opened with most often, and it was sitting past the fold.
+
+  CUSTOMER INSTRUCTIONS MOVED LAST, and stopped being text. See its cell.
+*/
 export const BROKER_CUSTOMER_COLUMNS = [
-  { key: "name" as const, label: "Customer Name", width: 260, sortable: true },
+  { key: "name" as const, label: "Customer Name", width: 240, sortable: true },
   { key: "erpId" as const, label: "ERP ID", width: 130, sortable: true },
-  { key: "phone" as const, label: "Phone", width: 165 },
-  { key: "address" as const, label: "Address", width: 240 },
-  { key: "city" as const, label: "City", width: 140, sortable: true },
-  { key: "zip" as const, label: "Zip", width: 100, sortable: true },
-  { key: "state" as const, label: "State", width: 90, sortable: true },
-  { key: "credit" as const, label: "Credit", width: 140, sortable: true },
-  { key: "limit" as const, label: "Credit Limit ($)", width: 160, sortable: true, align: "right" as const },
+  { key: "poc" as const, label: "Primary POC", width: 210 },
+  { key: "address" as const, label: "Address", width: 260, sortable: true },
+  { key: "credit" as const, label: "Credit", width: 170, sortable: true },
   { key: "balance" as const, label: "Current Balance ($)", width: 180, sortable: true, align: "right" as const },
-  { key: "instruction" as const, label: "Customer Instruction", width: 320 },
   { key: "shipTos" as const, label: "Ship-Tos", width: 230 },
   { key: "terms" as const, label: "Terms", width: 130, sortable: true },
-  { key: "poc" as const, label: "Primary POC", width: 210 },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
+  { key: "instruction" as const, label: "Customer Instructions", width: 170 },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -109,11 +118,12 @@ export function sortCustomers(rows: BrokerCustomer[], sort: CustomerSort | null)
     switch (sort.key) {
       case "name": return c.name;
       case "erpId": return c.erpId;
-      case "city": return c.city;
-      case "zip": return c.zip;
-      case "state": return c.state;
+      /* SORTING BY ADDRESS MEANS SORTING BY PLACE. Nobody wants their accounts
+         ordered by house number, so the merged column sorts on the second
+         line — city, then state — which is what "sort by address" is asking
+         for on a list of customers. */
+      case "address": return `${c.city ?? ""} ${c.state ?? ""}`.trim();
       case "credit": return c.creditStatus;
-      case "limit": return c.creditLimit;
       case "balance": return c.currentBalance;
       case "terms": return c.paymentTerms;
       case "status": return c.status;
@@ -149,7 +159,8 @@ export const BROKER_CUSTOMER_GROUP_DIMS: GroupDim<BrokerCustomer>[] = [
   {
     key: "state",
     label: "State",
-    hides: "state",
+    /* No `hides`: state is part of the Address column now, and hiding that
+       while grouped by state would take the street away with it. */
     valuesOf: (c) => (c.state ? [c.state] : []),
   },
   {

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowDownUp, ArrowDown, ArrowUp, ChevronRight, Info } from "lucide-react";
+import { ArrowDownUp, ArrowDown, ArrowUp, Check, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
@@ -195,6 +195,25 @@ export interface BoardCard {
    * a stage with something outstanding says the more urgent thing instead.
    */
   detailLabel?: string;
+  /**
+   * The bottom-most row: one thing this card is waiting to have done, named on
+   * the left and done by the button on the right.
+   *
+   * NOT AN ALERT. An alert reports a condition — a credit hold, a missing
+   * acknowledgement — and takes the footer's whole line. This is a step the
+   * stage always has, on every card in it, and it sits BELOW "View details"
+   * because reading the order comes before acting on it.
+   *
+   * `done` is the state after: the same row, saying what happened, with
+   * nothing left to press.
+   */
+  footerAction?: {
+    label: string;
+    actionLabel: string;
+    done?: boolean;
+    doneLabel?: string;
+    onAction?: () => void;
+  };
 }
 
 export interface BoardLane {
@@ -454,6 +473,36 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             <ChevronRight className="size-3.5" />
           </div>
         )
+      )}
+
+      {card.footerAction && (
+        <div className="flex items-center justify-between gap-2 border-t border-fp-outline-1 px-3.5 py-2.5">
+          {card.footerAction.done ? (
+            <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {card.footerAction.doneLabel ?? card.footerAction.label}
+              </span>
+            </span>
+          ) : (
+            <>
+              <span className="truncate text-xs text-foreground">
+                {card.footerAction.label}
+              </span>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={(e) => {
+                  /* The card itself opens the order; this must not. */
+                  e.stopPropagation();
+                  card.footerAction?.onAction?.();
+                }}
+              >
+                {card.footerAction.actionLabel}
+              </Button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

@@ -42,6 +42,7 @@ import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
   BROKER_LANE_COLOR,
+  type BrokerStatus,
   BROKER_ORDERS,
   BROKER_SEARCH_FIELDS,
   BROKER_STATUSES,
@@ -286,6 +287,18 @@ function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
  * Only stages with something OUTSTANDING get one. An alert on every card is not
  * an alert, it is a border — so Draft, Accepted, Completed and Synced carry none.
  */
+/**
+ * What a lane is CALLED, where that differs from the status it holds.
+ *
+ * "Completed" answers "completed what?" — an order is completed several times
+ * over on its way through this board, and the one this lane means is the
+ * delivery. The status itself is unchanged: it is what the record, the filter
+ * and the chip all say, and renaming it would rename them too.
+ */
+const LANE_TITLE: Partial<Record<BrokerStatus, string>> = {
+  Completed: "Delivery Completed",
+};
+
 function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
   if (r.status === "Blocked") {
     return {
@@ -534,6 +547,13 @@ export function BrokerOrdersScreen({
     [sorted, page, pageSize]
   );
 
+  /** Orders whose invoice has been asked for from this board. Kept here rather
+   *  than on the order because it is a message sent, not a status the order
+   *  moves into — the lane does not change. */
+  const [invoiceRequested, setInvoiceRequested] = React.useState<Set<string>>(
+    () => new Set()
+  );
+
   /** Lanes, in lifecycle order. Lane sort is by window start, which is the only
    *  ordering a dispatcher asks a lane for. */
   const lanes: BoardLane[] = React.useMemo(
@@ -556,11 +576,12 @@ export function BrokerOrdersScreen({
             return dir === "asc" ? d : -d;
           });
         }
+        const title = LANE_TITLE[status] ?? status;
         return {
           key: status,
-          title: status,
+          title,
           color: BROKER_LANE_COLOR[status],
-          emptyLabel: `No orders in ${status.toLowerCase()}`,
+          emptyLabel: `No orders in ${title.toLowerCase()}`,
           cards: cards.map((r) => ({
             id: r.id,
             title: r.orderNo,
@@ -570,10 +591,25 @@ export function BrokerOrdersScreen({
             units: laneCardUnits(r),
             alert: laneCardAlert(r),
             detailLabel: "View details",
+            /* THE STAGE'S OWN NEXT STEP. Delivery is done and the vendor has
+               not billed for it yet — every card in this lane is waiting on the
+               same thing, so the row is on every card rather than being an
+               alert that fires on some. */
+            footerAction:
+              status === "Accepted"
+                ? {
+                    label: "Request invoice",
+                    actionLabel: "Send request",
+                    done: invoiceRequested.has(r.id),
+                    doneLabel: "Invoice requested",
+                    onAction: () =>
+                      setInvoiceRequested((prev) => new Set(prev).add(r.id)),
+                  }
+                : undefined,
           })),
         };
       }),
-    [filtered, laneSort]
+    [filtered, laneSort, invoiceRequested]
   );
 
   const onSort = (key: BrokerColumnKey) => {

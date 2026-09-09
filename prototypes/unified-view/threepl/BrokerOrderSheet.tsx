@@ -7,6 +7,7 @@ import {
   Copy,
   Download,
   History as HistoryIcon,
+  Ban,
   MoreHorizontal,
   Truck,
   Pencil,
@@ -58,7 +59,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   SheetField,
@@ -695,6 +695,7 @@ export function BrokerOrderSheet({
   const [editingSales, setEditingSales] = React.useState(false);
   const [salesEdit, setSalesEdit] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [confirmCancel, setConfirmCancel] = React.useState(false);
   /* AUTOSAVE FEEDBACK. A draft order is kept as it is typed; the header says
      so, because an autosave nobody is told about is one nobody relies on. */
   const saveState = useDraftSaveState(draft, open);
@@ -1187,33 +1188,6 @@ export function BrokerOrderSheet({
             },
           ]}
         />
-        {cancellable && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                className="text-sm text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                Cancel order
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  It leaves the working lanes and moves to Cancelled. Any vendor
-                  already invited is told it has gone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep it</AlertDialogCancel>
-                <AlertDialogAction variant="destructive" onClick={cancelOrder}>
-                  Cancel order
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
         </div>
       }
       headerAside={
@@ -1239,7 +1213,24 @@ export function BrokerOrderSheet({
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-52">
+              {/* CANCELLING AND DELETING ARE THE TWO WAYS AN ORDER ENDS, so
+                  they sit together — and together is the only place the
+                  difference between them is legible. "Cancel order" spent its
+                  life in the footer three inches from a Close X, where it read
+                  as "cancel out of this sheet"; here it reads as what it is,
+                  next to the harder version of itself. */}
+              {cancellable && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setConfirmCancel(true);
+                  }}
+                >
+                  <Ban />
+                  Cancel order
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 variant="destructive"
                 onSelect={(e) => {
@@ -3221,6 +3212,24 @@ export function BrokerOrderSheet({
           </Button>
         </div>
       )}
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel {order?.orderNo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It leaves the working lanes and moves to Cancelled, keeping its
+              history. Any vendor already invited is told it has gone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={cancelOrder}>
+              Cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* DELETING IS NOT CANCELLING, and the copy has to say which. Cancel
           leaves the order in the Cancelled lane with its history; delete takes

@@ -1480,8 +1480,17 @@ export function BrokerOrderSheet({
       <SheetSection title="POC Details">
         {/* One person per row: name and the two ways to reach them read as a
             single fact, so they sit side by side rather than wrapping over two
-            rows with the contact detached from whose it is. */}
-        <div className="grid grid-cols-3 gap-4">
+            rows with the contact detached from whose it is.
+
+            FOUR TO FIVE, not one to two. The read-out card took two thirds of
+            every row it appeared in, and it is the half of the row nobody
+            types into — a phone number needs the width it needs, while a name,
+            a date or a picker was being squeezed to fit around it. The card
+            gives back a fifth of its width and the control takes it. The same
+            split is used by the three rows that pair a control with a card and
+            by the schedule row below, so the left edges of the form's controls
+            line up all the way down. */}
+        <div className="grid grid-cols-9 gap-4">
           <SheetField
             label={
               <span className="flex w-full items-center justify-between gap-2">
@@ -1503,6 +1512,7 @@ export function BrokerOrderSheet({
                 )}
               </span>
             }
+            className="col-span-4"
           >
             <Combobox
               className="w-full"
@@ -1522,7 +1532,7 @@ export function BrokerOrderSheet({
               name's answer, and each value carries its own copy button — a
               number goes to a dialler, an address goes to a mail client, and one
               control over the pair would hand over both. */}
-          <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
@@ -1562,7 +1572,7 @@ export function BrokerOrderSheet({
             two POCs read as two of the same thing rather than as a field and
             an afterthought. */}
         {draft.secondaryPoc !== "" && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-9 gap-4">
             <SheetField
               label={
                 <span className="flex w-full items-center justify-between gap-2">
@@ -1576,6 +1586,7 @@ export function BrokerOrderSheet({
                   </button>
                 </span>
               }
+              className="col-span-4"
             >
               <Combobox
                 className="w-full"
@@ -1587,7 +1598,7 @@ export function BrokerOrderSheet({
                 emptyText="No contact found."
               />
             </SheetField>
-            <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+            <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
               {poc2 ? (
                 <>
                   <CopyValue value={poc2.phone} label="Secondary POC contact" tabular />
@@ -1619,9 +1630,9 @@ export function BrokerOrderSheet({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-9 gap-4">
           {/* Optional: an order can be raised before anyone owns it. */}
-          <SheetField label="Sales Person">
+          <SheetField label="Sales Person" className="col-span-4">
             <Combobox
               className="w-full"
               value={draft.salesperson}
@@ -1636,7 +1647,7 @@ export function BrokerOrderSheet({
               asks for the same kind of thing should be the same size, and two
               read-out cards side by side that differ in width read as two
               different kinds of card. */}
-          <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <>
                 <CopyValue
@@ -1673,8 +1684,8 @@ export function BrokerOrderSheet({
       </SheetSection>
 
       <SheetSection title="Schedule Details">
-        <div className="grid grid-cols-3 gap-4">
-          <SheetField label="Planned Delivery Date" required>
+        <div className="grid grid-cols-9 gap-4">
+          <SheetField label="Planned Delivery Date" required className="col-span-4">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -1705,17 +1716,18 @@ export function BrokerOrderSheet({
               could not say "7 to 11", or "all day", or a two-hour slot — a
               customer who could take one was filed under the nearest option
               and the difference lived in somebody's head. */}
-          <SheetField label="Delivery Window" required className="col-span-2">
-            <TimeWindowSlider
-              start={windowMinutes[0]}
-              end={windowMinutes[1]}
-              onChange={(a, b) => {
-                set("windowStart", formatMinutes(a));
-                set("windowEnd", formatMinutes(b));
-              }}
-              aria-label="Delivery window"
-            />
-          </SheetField>
+          <TimeWindowSlider
+            className="col-span-5"
+            label="Delivery Window"
+            required
+            start={windowMinutes[0]}
+            end={windowMinutes[1]}
+            onChange={(a, b) => {
+              set("windowStart", formatMinutes(a));
+              set("windowEnd", formatMinutes(b));
+            }}
+            aria-label="Delivery window"
+          />
 
           {/* A FIELD, not a checkbox. Recurring is a property of the order that
               belongs in the row that describes its schedule, and it gates the
@@ -1724,7 +1736,7 @@ export function BrokerOrderSheet({
               "No" is a real answer, which is why it is an option rather than an
               unticked box: an empty checkbox and a deliberate "not recurring"
               look identical and are not the same thing. */}
-          <SheetField label="Recurring Order" required>
+          <SheetField label="Recurring Order" required className="col-span-4">
             <Combobox
               className="w-full"
               value={draft.recurring ? "Yes" : "No"}

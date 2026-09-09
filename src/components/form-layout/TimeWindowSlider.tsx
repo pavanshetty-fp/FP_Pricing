@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
@@ -54,8 +56,15 @@ export function parseWindow(label: string): [number, number] | null {
 export const formatWindow = (start: number, end: number) =>
   `${formatMinutes(start)} – ${formatMinutes(end)}`;
 
-/** Hours worth labelling. Every third, so the scale reads without crowding. */
+/** Hours worth labelling. Every sixth, so the scale reads without crowding. */
 const TICKS = [0, 6, 12, 18, 24];
+
+/** `4 hr window`, or `All day` when the pair covers midnight to midnight. */
+export function formatSpan(start: number, end: number): string {
+  const span = end - start;
+  if (span >= DAY_MIN) return "All day";
+  return `${(span / 60).toLocaleString(undefined, { maximumFractionDigits: 1 })} hr window`;
+}
 
 export interface TimeWindowSliderProps {
   /** Minutes from midnight. */
@@ -64,6 +73,13 @@ export interface TimeWindowSliderProps {
   onChange: (start: number, end: number) => void;
   /** Shortest window the slider will allow, in minutes. Default 60. */
   minSpan?: number;
+  /**
+   * The field's own label. Given here rather than by a wrapping `SheetField`
+   * so the label and the value it produces share ONE line — see below.
+   */
+  label?: React.ReactNode;
+  /** Marks the label with the destructive asterisk the DS forms already use. */
+  required?: boolean;
   className?: string;
   "aria-label"?: string;
 }
@@ -73,50 +89,80 @@ export function TimeWindowSlider({
   end,
   onChange,
   minSpan = 60,
+  label,
+  required,
   className,
   "aria-label": ariaLabel = "Delivery window",
 }: TimeWindowSliderProps) {
-  const span = end - start;
-
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      {/* THE VALUE IS READ ABOVE THE TRACK, not inferred from the thumbs. A
-          slider whose current value can only be estimated by looking at where
-          the handles sit is a slider people distrust for anything precise. */}
+    /*
+      ONE FIELD, ONE HEIGHT. The label, the value and the track used to sit on
+      three lines, which made this field taller than the date beside it and
+      broke the row: two controls that are answered together should finish
+      together. Label and value now share the label's line, and the track and
+      its scale fill exactly the 36px a control occupies — so the field is the
+      same height as any other, and the row's baselines line up.
+    */
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      {/* THE VALUE IS READ, not inferred from where the handles sit. A slider
+          whose value can only be estimated is one people distrust for anything
+          precise — so it is printed, next to the name of the thing it sets. */}
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-medium tabular-nums text-foreground">
-          {formatWindow(start, end)}
+        <span className="flex min-w-0 items-baseline gap-2">
+          {label && (
+            <span className="text-sm font-medium whitespace-nowrap text-foreground">
+              {label}
+              {required && <span className="text-destructive"> *</span>}
+            </span>
+          )}
+          <span className="truncate text-sm tabular-nums text-foreground">
+            {formatWindow(start, end)}
+          </span>
         </span>
-        <span className="text-xs text-muted-foreground">
-          {span >= DAY_MIN
-            ? "All day"
-            : `${(span / 60).toLocaleString(undefined, { maximumFractionDigits: 1 })} hr window`}
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {formatSpan(start, end)}
         </span>
       </div>
 
-      <Slider
-        aria-label={ariaLabel}
-        min={0}
-        max={DAY_MIN}
-        step={STEP_MIN}
-        minStepsBetweenThumbs={minSpan / STEP_MIN}
-        value={[start, end]}
-        onValueChange={([a, b]) => onChange(a, b)}
-      />
+      <div className="flex flex-col gap-1">
+        <Slider
+          aria-label={ariaLabel}
+          min={0}
+          max={DAY_MIN}
+          step={STEP_MIN}
+          minStepsBetweenThumbs={minSpan / STEP_MIN}
+          value={[start, end]}
+          onValueChange={([a, b]) => onChange(a, b)}
+        />
 
-      {/* THE SCALE, so the handles have something to mean. Without it the
-          track is a bare line and "where in the day is this" is unanswerable
-          without reading the numbers above. */}
-      <div aria-hidden className="relative h-4 select-none">
-        {TICKS.map((h) => (
-          <span
-            key={h}
-            className="absolute -translate-x-1/2 text-[11px] tabular-nums text-muted-foreground"
-            style={{ left: `${(h / 24) * 100}%` }}
-          >
-            {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
-          </span>
-        ))}
+        {/* THE SCALE, so the handles have something to mean. Without it the
+            track is a bare line and "where in the day is this" is unanswerable
+            without reading the numbers above.
+
+            THE END LABELS ARE NOT CENTRED. Midnight sits at 0% and at 100%, so
+            centring hung half of each one outside the field — the left edge of
+            the form stepped out and back for one label. They are pinned to the
+            edges instead, which is also where the track starts and stops. */}
+        <div aria-hidden className="relative h-4 select-none">
+          {TICKS.map((h, i) => {
+            const first = i === 0;
+            const last = i === TICKS.length - 1;
+            return (
+              <span
+                key={h}
+                className={cn(
+                  "absolute text-[11px] tabular-nums text-muted-foreground",
+                  first && "left-0",
+                  last && "right-0",
+                  !first && !last && "-translate-x-1/2"
+                )}
+                style={first || last ? undefined : { left: `${(h / 24) * 100}%` }}
+              >
+                {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
+              </span>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

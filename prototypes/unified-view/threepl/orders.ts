@@ -267,6 +267,22 @@ export interface AuditEntry {
   changes: string[];
 }
 
+/** See `BrokerOrder.invoiceState`. */
+export type InvoiceState = "none" | "requested" | "received";
+
+/* SEVEN LONG, NOT THREE. A day's worth of orders is every 24th row, and 24 is
+   a multiple of 3 — a three-step cycle handed every card on the board the same
+   state. Seven shares no factor with 24, so one day walks the whole cycle. */
+const INVOICE_CYCLE: InvoiceState[] = [
+  "none",
+  "requested",
+  "received",
+  "requested",
+  "received",
+  "none",
+  "received",
+];
+
 export interface BrokerOrder {
   id: string;
   /** "D-104882" or "M-104883" — the prefix is derived from `kind`, never typed. */
@@ -302,6 +318,19 @@ export interface BrokerOrder {
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
+  /**
+   * Where the vendor's BILL has got to. Three states, one at a time:
+   *
+   *   none      nobody has asked for it yet
+   *   requested asked, and the ball is with the vendor
+   *   received  it arrived, and somebody has to look at it
+   *
+   * Separate from `quotes`: a quote is what the job WILL cost and is agreed
+   * before the work; an invoice is what it DID cost and arrives after. They
+   * were being shown in the same footer, so one card offered "review the
+   * pricing" and "ask for the bill" at the same time.
+   */
+  invoiceState: InvoiceState;
   urgent: boolean;
   signatureOnDelivery: boolean;
   poNumber: string;
@@ -1059,6 +1088,19 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
             }))
         : [];
 
+    /* SEEDED SO ALL THREE SHOW, and BY INDEX rather than by `pick()`. Every
+       draw taken from the generator shifts every value after it, so seeding a
+       new field from the random stream would have quietly reshuffled the whole
+       fixture — different vendors, different quotes, different lanes. The
+       cycle costs nothing and guarantees the three states are all on the
+       board.
+
+       An invoice can only be chased once a partner is on the order, so orders
+       without a vendor stay at `none`: there is nobody to ask. */
+    const invoiceState: InvoiceState = vendorId
+      ? INVOICE_CYCLE[i % INVOICE_CYCLE.length]
+      : "none";
+
     rows.push({
       id: `bo-${i}`,
       orderNo: `${isMovement ? "M" : "D"}-${FIRST_ORDER_NO + i * 7}`,
@@ -1084,6 +1126,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       acceptedVendorIds,
       quoteRequested,
       quotes,
+      invoiceState,
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",

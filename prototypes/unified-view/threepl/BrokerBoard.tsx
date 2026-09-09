@@ -196,23 +196,26 @@ export interface BoardCard {
    */
   detailLabel?: string;
   /**
-   * The bottom-most row: one thing this card is waiting to have done, named on
-   * the left and done by the button on the right.
+   * The bottom-most row: where one piece of business on this card has got to,
+   * named on the left, with whatever moves it on at the right.
    *
-   * NOT AN ALERT. An alert reports a condition — a credit hold, a missing
-   * acknowledgement — and takes the footer's whole line. This is a step the
-   * stage always has, on every card in it, and it sits BELOW "View details"
-   * because reading the order comes before acting on it.
+   * ONE STATE AT A TIME. It is a single row with a single label, not a stack —
+   * "Request invoice" and "Invoice received" are two points on one line, not
+   * two things to do. Omit `actionLabel` for the state that is waiting on
+   * somebody else: there is nothing to press, so there is no button.
    *
-   * `done` is the state after: the same row, saying what happened, with
-   * nothing left to press.
+   * NOT AN ALERT. An alert reports a condition that has arisen — a credit
+   * hold, a missing acknowledgement. This is a step the stage always has, and
+   * it sits BELOW "View details" because reading the order comes first.
    */
   footerAction?: {
     label: string;
-    actionLabel: string;
-    done?: boolean;
-    doneLabel?: string;
+    /** Absent = the row is a status line, waiting on the other side. */
+    actionLabel?: string;
+    actionVariant?: "success" | "outline";
     onAction?: () => void;
+    /** Quiet, with a tick — the ball is not in our court. */
+    waiting?: boolean;
   };
 }
 
@@ -477,34 +480,32 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
 
       {card.footerAction && (
         <div className="flex items-center justify-between gap-2 border-t border-fp-outline-1 px-3.5 py-2.5">
-          {card.footerAction.done ? (
+          {card.footerAction.waiting ? (
             <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {card.footerAction.doneLabel ?? card.footerAction.label}
-              </span>
+              <span className="truncate">{card.footerAction.label}</span>
             </span>
           ) : (
-            <>
-              <span className="truncate text-xs text-foreground">
-                {card.footerAction.label}
-              </span>
-              {/* FILLED, NOT OUTLINED. Every other control on a card is an
-                  outline or a plain word, so an outline here read as one more
-                  thing to look at rather than the thing to press. Green because
-                  it moves the order on rather than undoing anything. */}
-              <Button
-                variant="success"
-                size="xs"
-                onClick={(e) => {
-                  /* The card itself opens the order; this must not. */
-                  e.stopPropagation();
-                  card.footerAction?.onAction?.();
-                }}
-              >
-                {card.footerAction.actionLabel}
-              </Button>
-            </>
+            <span className="truncate text-xs text-foreground">
+              {card.footerAction.label}
+            </span>
+          )}
+          {card.footerAction.actionLabel && (
+            /* FILLED, NOT OUTLINED, for the step that moves the order on. Every
+               other control on a card is an outline or a plain word, so an
+               outline here read as one more thing to look at rather than the
+               thing to press. */
+            <Button
+              variant={card.footerAction.actionVariant ?? "success"}
+              size="xs"
+              onClick={(e) => {
+                /* The card itself opens the order; this must not. */
+                e.stopPropagation();
+                card.footerAction?.onAction?.();
+              }}
+            >
+              {card.footerAction.actionLabel}
+            </Button>
           )}
         </div>
       )}

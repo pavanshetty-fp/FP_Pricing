@@ -288,6 +288,51 @@ function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
  * an alert, it is a border — so Draft, Accepted, Completed and Synced carry none.
  */
 /**
+ * The invoice row: where the vendor's bill has got to, in one line.
+ *
+ * THREE STATES, ONE AT A TIME. Ask for it, wait for it, read it — points on
+ * one line rather than three things that could all be true. The middle one has
+ * no button because the ball is with the vendor.
+ *
+ * NOT WHILE THE ORDER STILL HAS A QUESTION OPEN. A card that is still asking
+ * which partner and at what price has no vendor to invoice and no agreed
+ * amount, so the row would offer to chase a bill from nobody — which is
+ * exactly what it did. Where the card carries an alert, the alert is the one
+ * thing to act on.
+ */
+function laneCardInvoice(
+  r: BrokerOrder,
+  onRequest: () => void,
+  onOpen: () => void
+): BoardLane["cards"][number]["footerAction"] {
+  if (!INVOICE_LANES.has(r.status)) return undefined;
+  if (!r.vendorId) return undefined;
+  if (laneCardAlert(r)) return undefined;
+
+  if (r.invoiceState === "requested") {
+    return { label: "Invoice requested", waiting: true };
+  }
+  if (r.invoiceState === "received") {
+    return {
+      label: "Invoice received",
+      actionLabel: "Review",
+      /* An outline, not the green one: reading a bill is not the same kind of
+         act as sending a request, and two filled greens on one board would
+         stop either meaning "this is the one to press". */
+      actionVariant: "outline",
+      /* Reviewing means reading the order, which is what the card already
+         opens — the button is a named way in, not a second destination. */
+      onAction: onOpen,
+    };
+  }
+  return { label: "Request invoice", actionLabel: "Send request", onAction: onRequest };
+}
+
+/** Where a bill is worth chasing: the partner is committed and the price is
+ *  settled, so there is somebody to ask and an amount to expect. */
+const INVOICE_LANES = new Set<BrokerStatus>(["Accepted"]);
+
+/**
  * What a lane is CALLED, where that differs from the status it holds.
  *
  * "Completed" answers "completed what?" — an order is completed several times
@@ -547,11 +592,14 @@ export function BrokerOrdersScreen({
     [sorted, page, pageSize]
   );
 
-  /** Orders whose invoice has been asked for from this board. Kept here rather
-   *  than on the order because it is a message sent, not a status the order
-   *  moves into — the lane does not change. */
-  const [invoiceRequested, setInvoiceRequested] = React.useState<Set<string>>(
-    () => new Set()
+  /** Sending the request moves the order's own `invoiceState` on. The lane does
+   *  not change: chasing a bill is not a step in the delivery. */
+  const requestInvoice = React.useCallback(
+    (id: string) =>
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, invoiceState: "requested" } : r))
+      ),
+    []
   );
 
   /** Lanes, in lifecycle order. Lane sort is by window start, which is the only
@@ -591,25 +639,15 @@ export function BrokerOrdersScreen({
             units: laneCardUnits(r),
             alert: laneCardAlert(r),
             detailLabel: "View details",
-            /* THE STAGE'S OWN NEXT STEP. Delivery is done and the vendor has
-               not billed for it yet — every card in this lane is waiting on the
-               same thing, so the row is on every card rather than being an
-               alert that fires on some. */
-            footerAction:
-              status === "Accepted"
-                ? {
-                    label: "Request invoice",
-                    actionLabel: "Send request",
-                    done: invoiceRequested.has(r.id),
-                    doneLabel: "Invoice requested",
-                    onAction: () =>
-                      setInvoiceRequested((prev) => new Set(prev).add(r.id)),
-                  }
-                : undefined,
+            footerAction: laneCardInvoice(
+              r,
+              () => requestInvoice(r.id),
+              () => setOpenId(r.id)
+            ),
           })),
         };
       }),
-    [filtered, laneSort, invoiceRequested]
+    [filtered, laneSort, requestInvoice, setOpenId]
   );
 
   const onSort = (key: BrokerColumnKey) => {
@@ -738,6 +776,8 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
         quotes: [],
+        /* A new order has not been delivered, let alone billed. */
+        invoiceState: "none",
         audit: [
           {
             at: new Date().toISOString(),
@@ -833,6 +873,7 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: [],
         quoteRequested: false,
         quotes: [],
+        invoiceState: "none",
         audit: [
           {
             at: new Date().toISOString(),

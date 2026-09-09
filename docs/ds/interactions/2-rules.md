@@ -95,6 +95,23 @@ code that implements it.*
   changes confirms, cancelling without them does not. Mark **both** required and
   optional — marking one makes the reader infer the other, and on a long form the
   inference is wrong often enough to matter.
+- **A FIELD STARTS WITH A CAPITAL, and nothing lies about the value to get it.**
+  Three layers, each doing the part it can honestly do:
+  - `Input` and `Textarea` set **`autoCapitalize="sentences"`** by default. It
+    changes what a soft keyboard offers, so what is stored is what the reader
+    saw. `email`, `url`, `password`, `tel`, `number` and any numeric `inputMode`
+    get `none` — those are case-carrying or have no letters.
+  - The **form normalises the first character on BLUR**, never while typing: a
+    field that rewrites itself mid-keystroke is a field people fight. Typed text
+    only (`text`, `tel`, `textarea`); never email, url, number, money or date;
+    never a chosen value.
+  - **Only the first character, once.** `text-transform: capitalize` uppercases
+    every word — it turns "Bray, Raymond and Marks" into "…And Marks" and a
+    street into title case.
+- **A raw enum is not a label.** A stored `active` shows as `Active`; the value
+  stays lowercase. Capitalise it where it is rendered, not in the data — and
+  never with a CSS transform on a list of values that already carry their own
+  case ("Net 30").
 - **A set that is known but not closed gets a creatable combobox** (`allowCreate`),
   not a locked select and not a bare text input. A locked list sends the real answer
   into a notes field where nothing can filter it; a text input gives ten spellings

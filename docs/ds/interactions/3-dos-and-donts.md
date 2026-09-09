@@ -19,6 +19,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Size a sheet by its content** — `wide` the moment it carries a table (§1).
 - **Put a toggle's label left and its switch hard right**, helper under the label (§1).
 - **Use a creatable combobox for a set that is known but not closed** (§1).
+- **Let a field start with a capital** — `autoCapitalize` plus a first-character
+  fix on blur (§1).
+- **Render a stored enum in sentence case**, leaving the value alone (§1).
 - **Keep `TablePagination`'s own page sizes and footer copy** (§4c).
 - **Put a list's total beside the page title**, following the filtered rows (§4c).
 - **Show active filters as chips with a Clear all** (§4c).
@@ -83,5 +86,10 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   missing data (§4c).
 - **Don't stack a toggle like an input** — it leaves a lone 20px control with a
   hole beside it (§1).
+- **Don't capitalise an email, a URL or a password** — they carry case, and a
+  silent edit there is a bounced invoice or a failed login (§1).
+- **Don't use `text-transform: capitalize` on typed text** — it title-cases every
+  word, not the first one (§1).
+- **Don't rewrite a field while somebody is typing in it** — normalise on blur (§1).
 - **Don't put the audit history at the foot of a record body** — it buries
   everything the record was opened for (§8.4).

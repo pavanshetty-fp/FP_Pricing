@@ -29,7 +29,7 @@ import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sh
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../RecordSheet";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
-import type { FormFieldDef, FormSectionDef } from "./directoryFormTypes";
+import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
 
 /*
   The Directory's record sheet.
@@ -92,6 +92,39 @@ export interface DirectoryRecordSheetProps<T> {
   onSubmit: (draft: T) => void;
 }
 
+/*
+  A FIELD STARTS WITH A CAPITAL, and this is the layer that can safely say so.
+
+  `Input` sets `autoCapitalize`, which only reaches a soft keyboard; on a
+  desktop nothing capitalises anything. So the form normalises the first
+  character on BLUR — after the reader has finished the word, never while they
+  are typing it, because a field that rewrites itself mid-keystroke is a field
+  people fight.
+
+  WHAT IS EXEMPT, and why each one:
+    · email, url  — case-carrying. "Ray.obuya@…" is a different string, and
+      capitalising it is the kind of silent edit that produces a bounced
+      invoice.
+    · number, money, date — no letters to capitalise.
+    · select, combobox, switch, checkbox — the value is chosen, not typed.
+
+  AND IT ONLY TOUCHES THE FIRST CHARACTER. `text-transform: capitalize`
+  uppercases every word, which turns "Bray, Raymond and Marks" into "Bray,
+  Raymond And Marks" and a street into title case. One character, once.
+*/
+const TYPED_TEXT: FieldKind[] = ["text", "tel", "textarea"];
+
+const sentenceCase = (v: string): string =>
+  v.length === 0 ? v : v[0].toUpperCase() + v.slice(1);
+
+/**
+ * The label an option shows. The VALUE is untouched — a record status stays
+ * the lowercase `active` the model stores, and only the word on screen is
+ * capitalised. Values that already start with a capital ("Net 30") pass
+ * straight through.
+ */
+const optionLabel = (v: string): string => sentenceCase(v);
+
 function isBlank(v: string | number | boolean | null): boolean {
   return v === null || v === undefined || v === "" || (typeof v === "number" && Number.isNaN(v));
 }
@@ -151,7 +184,14 @@ export function DirectoryRecordSheet<T>({
   const control = (f: FormFieldDef<T>) => {
     const v = f.get(draft);
     const bad = showError(f.key);
-    const blur = () => setTouched((t) => new Set(t).add(f.key));
+    const blur = () => {
+      setTouched((t) => new Set(t).add(f.key));
+      if (!TYPED_TEXT.includes(f.kind)) return;
+      const current = f.get(draft);
+      if (typeof current !== "string" || current.length === 0) return;
+      const next = sentenceCase(current);
+      if (next !== current) setDraft((d) => f.set(d, next));
+    };
 
     switch (f.kind) {
       case "select":
@@ -166,14 +206,18 @@ export function DirectoryRecordSheet<T>({
             <SelectTrigger
               id={f.key}
               aria-invalid={bad || undefined}
-              className={cn("w-full", bad && "border-destructive")}
+              /* `capitalize` on the TRIGGER only. Radix renders the chosen
+                 item's raw text here and there is no slot to relabel it, so
+                 the CSS does what `optionLabel` does in the list — and a
+                 value like "Net 30" is unaffected either way. */
+              className={cn("w-full capitalize", bad && "border-destructive")}
             >
               <SelectValue placeholder={f.placeholder ?? "Select…"} />
             </SelectTrigger>
             <SelectContent>
               {(f.options ?? []).map((o) => (
                 <SelectItem key={o} value={o}>
-                  {o}
+                  {optionLabel(o)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -184,7 +228,7 @@ export function DirectoryRecordSheet<T>({
           <Combobox
             id={f.key}
             value={typeof v === "string" ? v : ""}
-            options={f.options ?? []}
+            options={(f.options ?? []).map((o) => ({ value: o, label: optionLabel(o) }))}
             placeholder={f.placeholder ?? "Select…"}
             allowCreate={f.allowCreate}
             aria-label={f.label}

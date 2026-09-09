@@ -1537,6 +1537,23 @@ code that implements it.*
   changes confirms, cancelling without them does not. Mark **both** required and
   optional — marking one makes the reader infer the other, and on a long form the
   inference is wrong often enough to matter.
+- **A FIELD STARTS WITH A CAPITAL, and nothing lies about the value to get it.**
+  Three layers, each doing the part it can honestly do:
+  - `Input` and `Textarea` set **`autoCapitalize="sentences"`** by default. It
+    changes what a soft keyboard offers, so what is stored is what the reader
+    saw. `email`, `url`, `password`, `tel`, `number` and any numeric `inputMode`
+    get `none` — those are case-carrying or have no letters.
+  - The **form normalises the first character on BLUR**, never while typing: a
+    field that rewrites itself mid-keystroke is a field people fight. Typed text
+    only (`text`, `tel`, `textarea`); never email, url, number, money or date;
+    never a chosen value.
+  - **Only the first character, once.** `text-transform: capitalize` uppercases
+    every word — it turns "Bray, Raymond and Marks" into "…And Marks" and a
+    street into title case.
+- **A raw enum is not a label.** A stored `active` shows as `Active`; the value
+  stays lowercase. Capitalise it where it is rendered, not in the data — and
+  never with a CSS transform on a list of values that already carry their own
+  case ("Net 30").
 - **A set that is known but not closed gets a creatable combobox** (`allowCreate`),
   not a locked select and not a bare text input. A locked list sends the real answer
   into a notes field where nothing can filter it; a text input gives ten spellings
@@ -1916,6 +1933,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Size a sheet by its content** — `wide` the moment it carries a table (§1).
 - **Put a toggle's label left and its switch hard right**, helper under the label (§1).
 - **Use a creatable combobox for a set that is known but not closed** (§1).
+- **Let a field start with a capital** — `autoCapitalize` plus a first-character
+  fix on blur (§1).
+- **Render a stored enum in sentence case**, leaving the value alone (§1).
 - **Keep `TablePagination`'s own page sizes and footer copy** (§4c).
 - **Put a list's total beside the page title**, following the filtered rows (§4c).
 - **Show active filters as chips with a Clear all** (§4c).
@@ -1980,6 +2000,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
   missing data (§4c).
 - **Don't stack a toggle like an input** — it leaves a lone 20px control with a
   hole beside it (§1).
+- **Don't capitalise an email, a URL or a password** — they carry case, and a
+  silent edit there is a bounced invoice or a failed login (§1).
+- **Don't use `text-transform: capitalize` on typed text** — it title-cases every
+  word, not the first one (§1).
+- **Don't rewrite a field while somebody is typing in it** — normalise on blur (§1).
 - **Don't put the audit history at the foot of a record body** — it buries
   everything the record was opened for (§8.4).
 

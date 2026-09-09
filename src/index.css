@@ -170,6 +170,7 @@
   --color-fp-surface-base: var(--fp-surface-base);
   --color-status-foreground: var(--status-foreground);
   --color-status-success: var(--status-success);
+  --color-status-success-foreground: var(--status-success-foreground);
   --color-status-processing: var(--status-processing);
   --color-status-failed: var(--status-failed);
   --color-status-pink: var(--status-pink);
@@ -479,6 +480,12 @@
   --drawer: #fafbf8;
   --chip: #efefeb;
   --status-success: #15803d;
+  /* WHAT GOES ON A GREEN FILL, which is not what goes on a green DOT.
+     `--status-success` is tuned for a mark on the page ground — dark in light,
+     bright in dark — so a single foreground cannot serve both: white on the
+     light green measures 4.9:1, white on the dark green 2.2:1. The pair flips
+     with the theme instead, and the fill stays the same green either way. */
+  --status-success-foreground: #ffffff;
   --status-processing: #b45309;
   --status-pink: #db2777;
   --verified: #2563eb;
@@ -552,6 +559,7 @@
   --chip: #2a2f37;
   --fp-row-hover: #22272f;
   --status-success: #22c55e;
+  --status-success-foreground: #052e16;
   --status-processing: #f59e0b;
   --status-pink: #ff8080;
   --verified: #3b82f6;

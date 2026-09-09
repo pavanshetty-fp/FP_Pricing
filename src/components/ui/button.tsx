@@ -31,6 +31,12 @@ const buttonVariants = cva(
           "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        // The affirmative counterpart to `destructive`: a filled button for the
+        // one action that MOVES SOMETHING FORWARD where an outline would be
+        // read as optional. Same green the status family uses, with its own
+        // foreground — see the note on `--status-success-foreground`.
+        success:
+          "bg-status-success text-status-success-foreground shadow-xs hover:bg-status-success/90 focus-visible:ring-status-success/30",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",

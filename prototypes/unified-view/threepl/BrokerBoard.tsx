@@ -489,8 +489,12 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               <span className="truncate text-xs text-foreground">
                 {card.footerAction.label}
               </span>
+              {/* FILLED, NOT OUTLINED. Every other control on a card is an
+                  outline or a plain word, so an outline here read as one more
+                  thing to look at rather than the thing to press. Green because
+                  it moves the order on rather than undoing anything. */}
               <Button
-                variant="outline"
+                variant="success"
                 size="xs"
                 onClick={(e) => {
                   /* The card itself opens the order; this must not. */

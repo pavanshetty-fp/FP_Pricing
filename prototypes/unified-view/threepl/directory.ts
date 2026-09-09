@@ -844,6 +844,30 @@ export const RENTAL_TYPES = [
 ] as const;
 export type RentalType = (typeof RENTAL_TYPES)[number];
 
+/**
+ * How the tank itself is BUILT — not what kind of asset it is.
+ *
+ * `assetType` says "Bulk Tank" or "DEF Tote": what the thing is for. Tank type
+ * says whether it is single-walled, double-walled, fire-guarded, a cube, and
+ * so on: what it is made of and therefore where it is allowed to stand and
+ * what it may hold. Two different questions that were being answered by one
+ * field, which is why the filter offered categories nobody files a tank under.
+ *
+ * An asset that holds no fuel — a pump cart, a nozzle assembly — has no tank
+ * type, and says so.
+ */
+export const TANK_TYPES = [
+  "Fire Guard",
+  "Single Wall",
+  "Double Wall",
+  "Overhead",
+  "Trans Cube",
+  "Fuel Cube",
+  "Standard",
+  "Round",
+] as const;
+export type TankType = (typeof TANK_TYPES)[number];
+
 export const OWNERSHIP_TYPES = ["owned", "leased", "customer_owned", "vendor_owned"] as const;
 export type OwnershipType = (typeof OWNERSHIP_TYPES)[number];
 
@@ -855,6 +879,8 @@ export interface RentalAsset {
   /** The name that appears on an order line, where it is on rent. */
   name: string;
   assetType: RentalType;
+  /** How the tank is built. Null on anything that is not a tank. */
+  tankType: TankType | null;
   serialNumber: string | null;
   qrCode: string | null;
   externalAssetId: string | null;
@@ -967,6 +993,22 @@ const TYPE_CAPACITY: Record<RentalType, number[]> = {
   Trailer: [3000, 5000],
 };
 
+/**
+ * Not every build fits every asset. An "Overhead" DEF tote and a "Trans Cube"
+ * bulk tank are not things that exist, and seeding them would have put values
+ * in the filter that no yard could ever match.
+ */
+const TYPE_TANK_TYPES: Record<RentalType, readonly TankType[]> = {
+  "Bulk Tank": ["Fire Guard", "Single Wall", "Double Wall", "Overhead", "Standard", "Round"],
+  "Lube Skid": ["Single Wall", "Double Wall", "Standard"],
+  "DEF Tote": ["Trans Cube", "Fuel Cube", "Standard"],
+  "Pump Cart": [],
+  "Skid Tank": ["Fire Guard", "Single Wall", "Double Wall", "Standard", "Round"],
+  "Nozzle Assembly": [],
+  "Dispensing Unit": [],
+  Trailer: ["Single Wall", "Double Wall", "Standard"],
+};
+
 function makeAsset(spec: AssetSeed & { seed: number; id: string }): RentalAsset {
   const r = rng(spec.seed);
   const onRent = spec.availability === "On rent";
@@ -995,6 +1037,9 @@ function makeAsset(spec: AssetSeed & { seed: number; id: string }): RentalAsset 
     id: spec.id,
     name: spec.name,
     assetType: spec.type,
+    tankType: holdsFuel
+      ? pickFrom(r, TYPE_TANK_TYPES[spec.type] as unknown as TankType[])
+      : null,
     serialNumber: maybe(r, 0.95, spec.serial),
     qrCode: maybe(r, 0.55, `QR-${spec.serial.replace(/-/g, "")}`),
     externalAssetId: maybe(r, 0.4, `EXT-${intBetween(r, 10_000, 99_999)}`),

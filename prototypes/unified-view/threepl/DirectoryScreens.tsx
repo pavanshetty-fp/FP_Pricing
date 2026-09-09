@@ -1256,6 +1256,7 @@ export function assetConfig(
       id,
       name: "",
       assetType: "Bulk Tank",
+      tankType: null,
       serialNumber: null,
       qrCode: null,
       externalAssetId: null,

@@ -45,7 +45,7 @@ import {
 } from "@/components/side-sheet/parts";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DATE_FMT } from "../data";
-import { RENTAL_ASSETS, type RentalAsset } from "./directory";
+import { RENTAL_ASSETS, TANK_TYPES, type RentalAsset } from "./directory";
 import {
   ORDER_TAGS,
   POCS,
@@ -87,7 +87,7 @@ function HeaderFilter({
   label: string;
   value: string;
   /** Values worth offering — the caller passes only the ones present. */
-  options: string[];
+  options: readonly string[];
   allLabel: string;
   onChange: (value: string) => void;
 }) {
@@ -176,7 +176,10 @@ function AssetPickerSheet({
   /* BOTH FILTERS OFFER ONLY WHAT IS THERE. A tank type — or a capacity band —
      with nothing in this yard is a choice that can only empty the table. */
   const types = React.useMemo(
-    () => Array.from(new Set(assets.map((a) => a.assetType))).sort(),
+    /* IN THE ORDER THE BUSINESS LISTS THEM, not alphabetically. Tank types are
+       a fixed set with a conventional order — sorting them by first letter
+       makes a familiar list read as a new one. */
+    () => TANK_TYPES.filter((t) => assets.some((a) => a.tankType === t)),
     [assets]
   );
   const bands = React.useMemo(
@@ -191,7 +194,7 @@ function AssetPickerSheet({
     const q = query.trim().toLowerCase();
     const band = CAPACITY_BANDS.find((b) => b.label === capacity);
     return assets.filter((a) => {
-      if (type !== ALL_TYPES && a.assetType !== type) return false;
+      if (type !== ALL_TYPES && a.tankType !== type) return false;
       if (band && !band.test(a.capacityGal)) return false;
       if (!q) return true;
       return (
@@ -260,12 +263,9 @@ function AssetPickerSheet({
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
-          {rows.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">
-              No asset matches that. Clear the search, or the filters on Tank Type and Capacity.
-            </p>
-          ) : (
-            <table className="w-full table-fixed border-collapse">
+          {/* THE HEADER STAYS WHEN THE TABLE EMPTIES. The filters live on it,
+              so hiding it hid the only way out of the state it caused. */}
+          <table className="w-full table-fixed border-collapse">
               {/* FIXED, so the Add column cannot be squeezed off the edge by a
                   long asset name — the one column that must always be reachable
                   is the one that does the choosing. */}
@@ -308,6 +308,14 @@ function AssetPickerSheet({
                 </tr>
               </thead>
               <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-sm text-muted-foreground">
+                      No asset matches that. Clear the search, or the filters on
+                      Tank Type and Capacity.
+                    </td>
+                  </tr>
+                )}
                 {rows.map((a) => {
                   const chosen = a.id === selectedId;
                   return (
@@ -324,7 +332,7 @@ function AssetPickerSheet({
                         </span>
                       </td>
                       <td className="truncate px-3 py-2.5 text-sm text-muted-foreground">
-                        {a.assetType}
+                        {a.tankType ?? "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right text-sm tabular-nums text-muted-foreground">
                         {a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} gal` : "—"}
@@ -353,8 +361,7 @@ function AssetPickerSheet({
                   );
                 })}
               </tbody>
-            </table>
-          )}
+          </table>
         </div>
       </SheetContent>
     </Sheet>
@@ -1141,6 +1148,13 @@ export function AssetMovementSheet({
                     <span aria-hidden className="text-fp-outline-1">
                       |
                     </span>
+                    {/* WHAT IT IS, beside its serial. The fact grid below says
+                        how the tank is BUILT; what kind of asset it is belongs
+                        with its identity, not with its specification. */}
+                    <span>{asset.assetType}</span>
+                    <span aria-hidden className="text-fp-outline-1">
+                      |
+                    </span>
                     <span>
                       {asset.customer ? `On rent to ${asset.customer}` : "In the yard"}
                     </span>
@@ -1157,7 +1171,7 @@ export function AssetMovementSheet({
                 </Button>
               </div>
               <dl className="grid grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
-                <AssetFact label="Tank Type" value={asset.assetType} />
+                <AssetFact label="Tank Type" value={asset.tankType ?? "—"} />
                 <AssetFact
                   label="Capacity"
                   value={

@@ -21,10 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -61,7 +60,7 @@ import {
 } from "./orders";
 
 /**
- * A column's own filter, on the column.
+ * A column's own filter, on the column. Several values at once.
  *
  * ON THE HEADER, NOT ABOVE THE TABLE. A filter bar names the column it acts on
  * in words — "Tank type" — and then the reader has to find that column to see
@@ -69,29 +68,37 @@ import {
  * control and the values it narrows are in the same line of sight, and two
  * filters cannot be confused for each other.
  *
- * A MENU, NOT A SELECT. Per the DS rule, a dropdown menu is what a column
- * filter is — it acts on the table rather than holding a value in a form — and
- * the radio group is what says only one band can apply at a time.
+ * CHECKBOXES, NOT A RADIO. "Show me the double-walled ones" and "show me the
+ * double-walled AND the fire-guarded ones" are the same question asked twice,
+ * and a radio could only answer the first — you had to pick, look, go back and
+ * pick again. NOTHING TICKED MEANS EVERYTHING, which is why the list is not
+ * pre-filled with all of them: an all-ticked list and an empty one would show
+ * the same rows while looking like opposite states.
+ *
+ * THE MENU STAYS OPEN while values are ticked. Closing after each one turns
+ * choosing three types into three round trips.
  *
  * TINTED WHEN IT IS DOING SOMETHING. A filter that looks identical whether or
  * not it is on is how a table ends up quietly hiding rows.
  */
 function HeaderFilter({
   label,
+  allLabel,
   value,
   options,
-  allLabel,
   onChange,
 }: {
   /** The column's name, for the menu's heading and the trigger's label. */
   label: string;
-  value: string;
+  /** The "no filter" row, e.g. "All tank types". Ticked when nothing is. */
+  allLabel: string;
+  /** Chosen values. Empty means no filter. */
+  value: string[];
   /** Values worth offering — the caller passes only the ones present. */
   options: readonly string[];
-  allLabel: string;
-  onChange: (value: string) => void;
+  onChange: (value: string[]) => void;
 }) {
-  const active = value !== allLabel;
+  const active = value.length > 0;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -106,19 +113,32 @@ function HeaderFilter({
           <ListFilter className="size-3.5" />
         </button>
       </DropdownMenuTrigger>
-      {/* ABOVE THE SHEET IT LIVES IN. The sheet is z-60 and a portaled menu
-          is z-50, so the menu opened and rendered underneath — a filter that
+      {/* ABOVE THE SHEET IT LIVES IN. The sheet is z-60 and a portaled menu is
+          z-50, so the menu opened and rendered underneath — a filter that
           looked like it did nothing at all. */}
       <DropdownMenuContent align="start" className="z-[70] min-w-44">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-          <DropdownMenuRadioItem value={allLabel}>{allLabel}</DropdownMenuRadioItem>
-          {options.map((o) => (
-            <DropdownMenuRadioItem key={o} value={o}>
-              {o}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        {/* CLEARING IS A TICK, not a separate Clear button: "all of them" is
+            one of the answers, and it lives with the others. */}
+        <DropdownMenuCheckboxItem
+          checked={!active}
+          onCheckedChange={() => onChange([])}
+          onSelect={(e) => e.preventDefault()}
+        >
+          {allLabel}
+        </DropdownMenuCheckboxItem>
+        {options.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o}
+            checked={value.includes(o)}
+            onCheckedChange={(on) =>
+              onChange(on ? [...value, o] : value.filter((v) => v !== o))
+            }
+            onSelect={(e) => e.preventDefault()}
+          >
+            {o}
+          </DropdownMenuCheckboxItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -268,7 +288,8 @@ function AssetPickerSheet({
   sourceLabel: string;
 }) {
   const [query, setQuery] = React.useState("");
-  const [type, setType] = React.useState(ALL_TYPES);
+  /** Chosen tank types. Empty means no filter — see `HeaderFilter`. */
+  const [chosenTypes, setTypes] = React.useState<string[]>([]);
   /* Held as typed, not as numbers: a half-entered "1" is a real state of the
      field, and a filter that reinterprets it while you type is one that fights
      you. Parsed only where it is applied. */
@@ -277,7 +298,7 @@ function AssetPickerSheet({
 
   /* BOTH FILTERS OFFER ONLY WHAT IS THERE. A tank type — or a capacity band —
      with nothing in this yard is a choice that can only empty the table. */
-  const types = React.useMemo(
+  const tankTypes = React.useMemo(
     /* IN THE ORDER THE BUSINESS LISTS THEM, not alphabetically. Tank types are
        a fixed set with a conventional order — sorting them by first letter
        makes a familiar list read as a new one. */
@@ -290,7 +311,7 @@ function AssetPickerSheet({
     const hi = maxGal === "" ? null : Number(maxGal);
     const bounded = lo !== null || hi !== null;
     return assets.filter((a) => {
-      if (type !== ALL_TYPES && a.tankType !== type) return false;
+      if (chosenTypes.length > 0 && !chosenTypes.includes(a.tankType ?? "")) return false;
       if (bounded) {
         /* Not a tank, so not an answer to a question about tank sizes. */
         if (a.capacityGal <= 0) return false;
@@ -303,13 +324,13 @@ function AssetPickerSheet({
         (a.serialNumber ?? "").toLowerCase().includes(q)
       );
     });
-  }, [assets, query, type, minGal, maxGal]);
+  }, [assets, query, chosenTypes, minGal, maxGal]);
 
   /* A filter left set from last time is a table lying about what it holds. */
   React.useEffect(() => {
     if (!open) {
       setQuery("");
-      setType(ALL_TYPES);
+      setTypes([]);
       setMinGal("");
       setMaxGal("");
     }
@@ -387,10 +408,10 @@ function AssetPickerSheet({
                       <TableRequiredLabel>Tank Type</TableRequiredLabel>
                       <HeaderFilter
                         label="Tank type"
-                        value={type}
-                        options={types}
                         allLabel={ALL_TYPES}
-                        onChange={setType}
+                        value={chosenTypes}
+                        options={tankTypes}
+                        onChange={setTypes}
                       />
                     </span>
                   </th>

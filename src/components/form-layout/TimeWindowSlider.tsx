@@ -124,8 +124,17 @@ export function TimeWindowSlider({
         </span>
       </div>
 
-      <div className="flex flex-col gap-1">
+      {/*
+        THE CONTROL ZONE IS THE INPUT'S OWN 36px, and the two parts are placed
+        inside it rather than stacked to fill it. The track is centred, so it
+        sits on the same line as the date typed in the field beside it; the
+        scale is pinned to the floor, so its baseline is the input's bottom
+        edge. Stacked from the top instead, both landed high and the field read
+        as top-heavy next to its neighbour.
+      */}
+      <div className="relative h-9">
         <Slider
+          className="absolute inset-x-0 top-1/2 -translate-y-1/2"
           aria-label={ariaLabel}
           min={0}
           max={DAY_MIN}
@@ -143,7 +152,10 @@ export function TimeWindowSlider({
             centring hung half of each one outside the field — the left edge of
             the form stepped out and back for one label. They are pinned to the
             edges instead, which is also where the track starts and stops. */}
-        <div aria-hidden className="relative h-4 select-none">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-3 leading-none select-none"
+        >
           {TICKS.map((h, i) => {
             const first = i === 0;
             const last = i === TICKS.length - 1;
@@ -151,7 +163,7 @@ export function TimeWindowSlider({
               <span
                 key={h}
                 className={cn(
-                  "absolute text-[11px] tabular-nums text-muted-foreground",
+                  "absolute bottom-0 text-[11px] leading-none tabular-nums text-muted-foreground",
                   first && "left-0",
                   last && "right-0",
                   !first && !last && "-translate-x-1/2"

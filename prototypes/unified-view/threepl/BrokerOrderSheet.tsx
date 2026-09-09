@@ -1761,14 +1761,16 @@ export function BrokerOrderSheet({
               searchThreshold={3}
             />
           </SheetField>
-        </div>
 
-        {/* Revealed by the field above: a cadence with nothing recurring is a
-            question about nothing. "Custom" opens its own dialog rather than
-            growing five more fields nobody uses on the common cadences. */}
-        {draft.recurring && (
-          <div className="grid grid-cols-2 gap-4">
-            <SheetField label="Frequency" required>
+          {/* Revealed by the field beside it, IN THE ROW IT ANSWERS. A cadence
+              with nothing recurring is a question about nothing, so it appears
+              only on "Yes" — and when it appears it takes the empty half of the
+              row rather than pushing a new one below, which read as a separate
+              question and left a hole beside "Recurring Order".
+              "Custom" opens its own dialog rather than growing five more fields
+              nobody uses on the common cadences. */}
+          {draft.recurring && (
+            <SheetField label="Frequency" required className="col-span-5">
               <Combobox
                 className="w-full"
                 value={draft.recurrenceFrequency}
@@ -1781,8 +1783,14 @@ export function BrokerOrderSheet({
                 searchPlaceholder="Search cadences…"
               />
             </SheetField>
-            {draft.recurrenceFrequency === "Custom" && draft.customRecurrence && (
-              <SheetField label="Custom rule">
+          )}
+
+          {/* Under Frequency, in Frequency's own column — it is what that
+              choice resolved to, not a new question. */}
+          {draft.recurring &&
+            draft.recurrenceFrequency === "Custom" &&
+            draft.customRecurrence && (
+              <SheetField label="Custom rule" className="col-span-5 col-start-5">
                 <Button
                   variant="outline"
                   className="w-full justify-between font-normal"
@@ -1793,8 +1801,7 @@ export function BrokerOrderSheet({
                 </Button>
               </SheetField>
             )}
-          </div>
-        )}
+        </div>
 
       </SheetSection>
 

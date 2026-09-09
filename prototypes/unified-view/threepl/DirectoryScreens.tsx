@@ -122,18 +122,10 @@ const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
   <span className="text-sm text-muted-foreground/70">{children}</span>
 );
 
-/** Long text that has to fit a column: clipped, with the whole of it on hover. */
-function Clamped({ text }: { text: string | null }) {
-  if (!text) return <Muted />;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="block truncate text-sm text-foreground">{text}</span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">{text}</TooltipContent>
-    </Tooltip>
-  );
-}
+/* `Clamped` lived here — a truncating cell with the full text on hover. All
+   four lists replaced their prose columns with the Notes icon and its drawer,
+   so nothing truncates any more and it went with them. Six words of a driver
+   instruction was never worth a column. */
 
 const Money = ({ value, cents = false }: { value: number | null; cents?: boolean }) =>
   value === null ? <Muted /> : <span className="text-sm tabular-nums">{money(value, cents)}</span>;
@@ -1053,7 +1045,9 @@ const ordersUsing = (productName: string) =>
 
 /* ═══════════════════════════════════════════════════════════ rental assets ═ */
 
-export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
+export function assetConfig(
+  onOpenNote: (a: RentalAsset) => void
+): EntityConfig<RentalAsset, RentalAssetColumnKey> {
   return {
     urlKey: "assets",
     parentLabel: "Rental Assets",
@@ -1075,15 +1069,60 @@ export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
     renderCell: (a, key) => {
       switch (key) {
         case "name":
-          return <TwoLineCell title={a.name} description={a.serialNumber ?? "No serial"} />;
-        case "serial":
-          return a.serialNumber ? (
-            <span className="text-sm tabular-nums">{a.serialNumber}</span>
-          ) : (
-            <Muted />
+          /* One line: the serial moved into its own column, where it leads. */
+          return <span className="text-sm font-medium text-foreground">{a.name}</span>;
+        case "asset":
+          /* SERIAL OVER TYPE. A Bulk Tank is a category — there are 30 of them
+             — and FP-TK-0180 is the tank. The thing that identifies one row
+             takes the prominent line. */
+          return (
+            <TwoLineCell
+              title={a.serialNumber ?? DASH}
+              description={a.assetType}
+            />
           );
-        case "type":
-          return <span className="text-sm">{a.assetType}</span>;
+        case "rental": {
+          /*
+            A RENTAL IS A PERIOD, NOT TWO DATES, and its availability is what
+            the period MEANS. An asset out Feb-to-Feb and one sitting free are
+            the same two dates apart and completely different facts, so the
+            state belongs under the dates rather than four columns away.
+          */
+          const period = a.rentalStartDate
+            ? `${formatDate(a.rentalStartDate)} – ${
+                a.rentalEndDate ? formatDate(a.rentalEndDate) : "Open ended"
+              }`
+            : null;
+          const tone =
+            a.availabilityStatus === "Available"
+              ? "text-status-success"
+              : a.availabilityStatus === "On rent"
+                ? "text-fp-banner-accent-caution"
+                : a.availabilityStatus === "In maintenance"
+                  ? "text-status-failed"
+                  : "text-muted-foreground";
+          return (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex min-w-0 items-center gap-1.5">
+                {period ? (
+                  <span className="truncate text-sm tabular-nums text-foreground">{period}</span>
+                ) : (
+                  /* NOT ON RENT HAS NO PERIOD — `N/A`, not a blank and not a
+                     date range invented to fill the line. */
+                  <span className="text-sm text-muted-foreground/70">N/A</span>
+                )}
+                {endingSoon(a) && (
+                  <Badge variant="secondary" className="shrink-0 font-normal">
+                    Soon
+                  </Badge>
+                )}
+              </span>
+              <span className={cn("truncate text-xs font-medium", tone)}>
+                {a.availabilityStatus}
+              </span>
+            </div>
+          );
+        }
         case "customer":
           return a.customer ? (
             <span className="text-sm">{a.customer}</span>
@@ -1093,50 +1132,19 @@ export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
         case "shipTo":
           return a.shipTo ? <span className="text-sm">{a.shipTo}</span> : <Muted />;
         case "address":
-          return <Clamped text={a.addressLine1 ? oneLineAddress(a) : null} />;
-        case "city":
-          return a.city ? <span className="text-sm">{a.city}</span> : <Muted />;
-        case "state":
-          return a.state ? <span className="text-sm">{a.state}</span> : <Muted />;
+          if (!a.addressLine1 && !a.city && !a.state && !a.zip) return <Muted />;
+          return (
+            <TwoLineCell
+              title={a.addressLine1 ?? DASH}
+              description={
+                [a.city, [a.state, a.zip].filter(Boolean).join(" ")]
+                  .filter(Boolean)
+                  .join(", ") || DASH
+              }
+            />
+          );
         case "status":
           return <RecordStatusChip status={a.status} />;
-        case "availability":
-          return (
-            <StatusChip
-              tone={
-                a.availabilityStatus === "Available"
-                  ? "success"
-                  : a.availabilityStatus === "On rent"
-                    ? "processing"
-                    : a.availabilityStatus === "In maintenance"
-                      ? "failed"
-                      : "neutral"
-              }
-              variant="text"
-            >
-              {a.availabilityStatus}
-            </StatusChip>
-          );
-        case "start":
-          return a.rentalStartDate ? (
-            <span className="text-sm tabular-nums">{formatDate(a.rentalStartDate)}</span>
-          ) : (
-            <Muted>N/A</Muted>
-          );
-        case "end":
-          if (!a.rentalEndDate) {
-            return a.availabilityStatus === "On rent" ? <Muted>Open ended</Muted> : <Muted>N/A</Muted>;
-          }
-          return (
-            <span className="flex items-center gap-1.5">
-              <span className="text-sm tabular-nums">{formatDate(a.rentalEndDate)}</span>
-              {endingSoon(a) && (
-                <Badge variant="secondary" className="font-normal">
-                  Soon
-                </Badge>
-              )}
-            </span>
-          );
         case "rate":
           return <Money value={a.rentalRate} />;
         case "product": {
@@ -1157,6 +1165,24 @@ export function assetConfig(): EntityConfig<RentalAsset, RentalAssetColumnKey> {
             >
               {a.maintenanceStatus}
             </StatusChip>
+          );
+        case "notes":
+          return a.notes ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Read notes for ${a.name}`}
+                  onClick={() => onOpenNote(a)}
+                >
+                  <NotebookPen />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Read asset notes</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Muted />
           );
         default:
           return null;
@@ -1530,17 +1556,39 @@ export function RentalAssetsScreen({
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
 }) {
-  const config = React.useMemo(assetConfig, []);
+  const [note, setNote] = React.useState<RentalAsset | null>(null);
+  const config = React.useMemo(() => assetConfig(setNote), []);
   return (
-    <DirectoryEntityScreen
-      config={config}
-      rows={data.assets}
-      onRowsChange={data.setAssets}
-      navigate={navigate}
-      focusId={focusId}
-      onFocusHandled={onFocusHandled}
-      onTotalChange={onTotalChange}
-    />
+    <>
+      <DirectoryEntityScreen
+        config={config}
+        rows={data.assets}
+        onRowsChange={data.setAssets}
+        navigate={navigate}
+        focusId={focusId}
+        onFocusHandled={onFocusHandled}
+        onTotalChange={onTotalChange}
+      />
+      <ReadDrawer
+        open={note !== null}
+        onOpenChange={(o) => !o && setNote(null)}
+        title="Asset notes"
+        subtitle={note ? `${note.name} · ${note.serialNumber ?? "no serial"}` : undefined}
+      >
+        {note && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+              <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                {note.notes ?? (
+                  <span className="text-muted-foreground/70">Nothing recorded.</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+      </ReadDrawer>
+    </>
   );
 }
 

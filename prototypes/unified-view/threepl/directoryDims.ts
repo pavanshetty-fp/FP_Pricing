@@ -310,38 +310,45 @@ export const BROKER_PRODUCT_GROUP_DIMS: GroupDim<BrokerProduct>[] = [
 
 export type RentalAssetColumnKey =
   | "name"
-  | "serial"
-  | "type"
+  | "asset"
+  | "rental"
   | "customer"
   | "shipTo"
   | "address"
-  | "city"
-  | "state"
   | "status"
-  | "availability"
-  | "start"
-  | "end"
   | "rate"
   | "product"
   | "maintenance"
+  | "notes"
   | "actions";
 
+/*
+  ELEVEN COLUMNS, DOWN FROM SIXTEEN — five of them were halves of a fact.
+
+    · Asset ID + Asset Type     -> ONE column. The serial is the thing people
+      read a row by, so it leads and the type sits under it in the muted
+      weight — a Bulk Tank is a category, FP-TK-0180 is the tank.
+    · Rental Start + End + Availability -> ONE column. A rental is a PERIOD,
+      not two dates, and its availability is what the period MEANS: an asset
+      on rent Feb–Feb and one that is free are the same two dates apart and
+      completely different facts. Dates on top, state underneath.
+    · Address + City + State    -> ONE column, as on Customers and Vendors.
+
+  THE RENTAL COLUMN SITS THIRD, right after the asset it belongs to, because
+  "is this thing free" is the question the list is opened with.
+*/
 export const RENTAL_ASSET_COLUMNS = [
-  { key: "name" as const, label: "Asset Name", width: 210, sortable: true },
-  { key: "serial" as const, label: "Asset ID / Serial", width: 170, sortable: true },
-  { key: "type" as const, label: "Asset Type", width: 160, sortable: true },
-  { key: "customer" as const, label: "Customer", width: 250 },
-  { key: "shipTo" as const, label: "Ship-to / Location", width: 210 },
-  { key: "address" as const, label: "Address", width: 240 },
-  { key: "city" as const, label: "City", width: 140, sortable: true },
-  { key: "state" as const, label: "State", width: 90, sortable: true },
+  { key: "name" as const, label: "Asset Name", width: 200, sortable: true },
+  { key: "asset" as const, label: "Asset ID / Type", width: 180, sortable: true },
+  { key: "rental" as const, label: "Rental Start and End Date", width: 230, sortable: true },
+  { key: "customer" as const, label: "Customer", width: 240 },
+  { key: "shipTo" as const, label: "Ship-to / Location", width: 200 },
+  { key: "address" as const, label: "Address", width: 240, sortable: true },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
-  { key: "availability" as const, label: "Availability", width: 160, sortable: true },
-  { key: "start" as const, label: "Rental Start", width: 150, sortable: true },
-  { key: "end" as const, label: "Rental End", width: 170, sortable: true },
-  { key: "rate" as const, label: "Rate", width: 130, sortable: true, align: "right" as const },
-  { key: "product" as const, label: "Linked Product", width: 200 },
-  { key: "maintenance" as const, label: "Maintenance", width: 160, sortable: true },
+  { key: "rate" as const, label: "Rate", width: 120, sortable: true, align: "right" as const },
+  { key: "product" as const, label: "Linked Product", width: 190 },
+  { key: "maintenance" as const, label: "Maintenance", width: 150, sortable: true },
+  { key: "notes" as const, label: "Notes", width: 64 },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -369,14 +376,13 @@ export function sortAssets(rows: RentalAsset[], sort: AssetSort | null): RentalA
   const of = (a: RentalAsset): string | number | null => {
     switch (sort.key) {
       case "name": return a.name;
-      case "serial": return a.serialNumber;
-      case "type": return a.assetType;
-      case "city": return a.city;
-      case "state": return a.state;
+      case "asset": return a.serialNumber;
+      /* Sorts on the START, which is the date the header leads with. An asset
+         that is not on rent has none and falls to the bottom, which is where
+         a list sorted by rental period wants it. */
+      case "rental": return a.rentalStartDate;
+      case "address": return `${a.city ?? ""} ${a.state ?? ""}`.trim();
       case "status": return a.status;
-      case "availability": return a.availabilityStatus;
-      case "start": return a.rentalStartDate;
-      case "end": return a.rentalEndDate;
       case "rate": return a.rentalRate;
       case "maintenance": return a.maintenanceStatus;
       default: return a.name;
@@ -396,14 +402,14 @@ export const RENTAL_ASSET_GROUP_DIMS: GroupDim<RentalAsset>[] = [
   {
     key: "availability",
     label: "Availability",
-    hides: "availability",
+    /* No `hides`: availability is the second line of the Rental column now,
+       and hiding that would take the dates with it. */
     order: [...RENTAL_STATUSES],
     valuesOf: (a) => [a.availabilityStatus],
   },
   {
     key: "type",
     label: "Asset Type",
-    hides: "type",
     order: [...RENTAL_TYPES],
     valuesOf: (a) => [a.assetType],
   },

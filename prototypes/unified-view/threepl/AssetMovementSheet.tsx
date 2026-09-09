@@ -3,6 +3,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   ChevronDown,
+  ListFilter,
   Pencil,
   Plus,
   Search,
@@ -18,6 +19,14 @@ import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +59,67 @@ import {
   siteAddress,
   type MovementDirection,
 } from "./orders";
+
+/**
+ * A column's own filter, on the column.
+ *
+ * ON THE HEADER, NOT ABOVE THE TABLE. A filter bar names the column it acts on
+ * in words — "Tank type" — and then the reader has to find that column to see
+ * what the filter did. Sitting on the header there is nothing to match up: the
+ * control and the values it narrows are in the same line of sight, and two
+ * filters cannot be confused for each other.
+ *
+ * A MENU, NOT A SELECT. Per the DS rule, a dropdown menu is what a column
+ * filter is — it acts on the table rather than holding a value in a form — and
+ * the radio group is what says only one band can apply at a time.
+ *
+ * TINTED WHEN IT IS DOING SOMETHING. A filter that looks identical whether or
+ * not it is on is how a table ends up quietly hiding rows.
+ */
+function HeaderFilter({
+  label,
+  value,
+  options,
+  allLabel,
+  onChange,
+}: {
+  /** The column's name, for the menu's heading and the trigger's label. */
+  label: string;
+  value: string;
+  /** Values worth offering — the caller passes only the ones present. */
+  options: string[];
+  allLabel: string;
+  onChange: (value: string) => void;
+}) {
+  const active = value !== allLabel;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Filter by ${label.toLowerCase()}`}
+          className={cn(
+            "flex size-5 shrink-0 items-center justify-center rounded-sm outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50",
+            active ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          <ListFilter className="size-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-44">
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          <DropdownMenuRadioItem value={allLabel}>{allLabel}</DropdownMenuRadioItem>
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o} value={o}>
+              {o}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /** `vendor_owned` → `Vendor owned`. The directory stores ownership as a key;
  *  a form is not the place to read one. */
@@ -101,33 +171,48 @@ function AssetPickerSheet({
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState(ALL_TYPES);
+  const [capacity, setCapacity] = React.useState(ALL_CAPACITIES);
 
-  /* The filter offers what is actually there. A tank type with nothing in this
-     yard is a choice that can only empty the table. */
+  /* BOTH FILTERS OFFER ONLY WHAT IS THERE. A tank type — or a capacity band —
+     with nothing in this yard is a choice that can only empty the table. */
   const types = React.useMemo(
-    () => [ALL_TYPES, ...Array.from(new Set(assets.map((a) => a.assetType))).sort()],
+    () => Array.from(new Set(assets.map((a) => a.assetType))).sort(),
+    [assets]
+  );
+  const bands = React.useMemo(
+    () =>
+      CAPACITY_BANDS.filter((b) => assets.some((a) => b.test(a.capacityGal))).map(
+        (b) => b.label
+      ),
     [assets]
   );
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
+    const band = CAPACITY_BANDS.find((b) => b.label === capacity);
     return assets.filter((a) => {
       if (type !== ALL_TYPES && a.assetType !== type) return false;
+      if (band && !band.test(a.capacityGal)) return false;
       if (!q) return true;
       return (
         a.name.toLowerCase().includes(q) ||
         (a.serialNumber ?? "").toLowerCase().includes(q)
       );
     });
-  }, [assets, query, type]);
+  }, [assets, query, type, capacity]);
 
   /* A filter left set from last time is a table lying about what it holds. */
   React.useEffect(() => {
     if (!open) {
       setQuery("");
       setType(ALL_TYPES);
+      setCapacity(ALL_CAPACITIES);
     }
   }, [open]);
+
+  /* THE COUNT TELLS ON THE FILTERS. Two small icons on two headers are easy to
+     miss; a subtitle that has stopped saying "29 assets" is not. */
+  const narrowed = rows.length !== assets.length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -140,7 +225,9 @@ function AssetPickerSheet({
           <div className="flex min-w-0 flex-col gap-0.5">
             <SheetTitle className="text-base">Select asset</SheetTitle>
             <span className="truncate text-xs text-muted-foreground">
-              {assets.length} {assets.length === 1 ? "asset" : "assets"} {sourceLabel}
+              {narrowed
+                ? `${rows.length} of ${assets.length} assets ${sourceLabel}`
+                : `${assets.length} ${assets.length === 1 ? "asset" : "assets"} ${sourceLabel}`}
             </span>
           </div>
           <button
@@ -153,10 +240,13 @@ function AssetPickerSheet({
           </button>
         </div>
 
-        {/* THE CONTROLS DO NOT SCROLL WITH THE RESULTS. A search box that
-            scrolls away is one people scroll back up to find. */}
-        <div className="flex items-center gap-3 border-b border-border p-4">
-          <div className="relative min-w-0 flex-1">
+        {/* SEARCH STAYS ABOVE, FILTERS WENT TO THEIR COLUMNS. Search is the
+            only control here that acts on more than one column — it reads a
+            name and a serial — so it is the only one with nothing to sit next
+            to. It does not scroll with the results: a search box that scrolls
+            away is one people scroll back up to find. */}
+        <div className="border-b border-border p-4">
+          <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -167,21 +257,12 @@ function AssetPickerSheet({
               className="h-8 pl-8"
             />
           </div>
-          <Combobox
-            className="h-8 w-[180px] shrink-0"
-            size="sm"
-            value={type}
-            onValueChange={setType}
-            options={types}
-            aria-label="Filter by tank type"
-            searchThreshold={8}
-          />
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
           {rows.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">
-              No asset matches that. Clear the search or the tank type.
+              No asset matches that. Clear the search, or the filters on Tank Type and Capacity.
             </p>
           ) : (
             <table className="w-full table-fixed border-collapse">
@@ -200,10 +281,28 @@ function AssetPickerSheet({
                     <TableRequiredLabel>Asset</TableRequiredLabel>
                   </th>
                   <th className="px-3 py-2.5 text-left">
-                    <TableRequiredLabel>Tank Type</TableRequiredLabel>
+                    <span className="flex items-center gap-1">
+                      <TableRequiredLabel>Tank Type</TableRequiredLabel>
+                      <HeaderFilter
+                        label="Tank type"
+                        value={type}
+                        options={types}
+                        allLabel={ALL_TYPES}
+                        onChange={setType}
+                      />
+                    </span>
                   </th>
                   <th className="px-3 py-2.5 text-right">
-                    <TableRequiredLabel>Capacity</TableRequiredLabel>
+                    <span className="flex items-center justify-end gap-1">
+                      <TableRequiredLabel>Capacity</TableRequiredLabel>
+                      <HeaderFilter
+                        label="Capacity"
+                        value={capacity}
+                        options={bands}
+                        allLabel={ALL_CAPACITIES}
+                        onChange={setCapacity}
+                      />
+                    </span>
                   </th>
                   <th className="px-3 py-2.5" />
                 </tr>
@@ -330,9 +429,27 @@ const blankPeripheral = (): PeripheralRow => ({
   ownership: "",
 });
 
-/** The tank-type filter's "no filter" row. A word, so it can sit in the same
- *  list as the types themselves rather than being an empty value. */
+/** Each filter's "no filter" row. A word, so it can sit in the same list as
+ *  the values themselves rather than being an empty option. */
 const ALL_TYPES = "All tank types";
+const ALL_CAPACITIES = "All capacities";
+
+/**
+ * Capacity as BANDS, not as the eleven exact numbers the yard happens to hold.
+ * Nobody looks for a 1,500 gal tank and rejects a 2,000; they look for one big
+ * enough. Exact values would also be a filter that changes shape with the
+ * stock, so the same question would have different answers in two yards.
+ *
+ * "No capacity" is a real band, not a gap: a pump cart and a nozzle assembly
+ * have none, and "the ones that are not tanks" is a thing people look for.
+ */
+const CAPACITY_BANDS: { label: string; test: (gal: number) => boolean }[] = [
+  { label: "No capacity", test: (g) => g <= 0 },
+  { label: "Under 500 gal", test: (g) => g > 0 && g < 500 },
+  { label: "500 – 999 gal", test: (g) => g >= 500 && g < 1000 },
+  { label: "1,000 – 2,499 gal", test: (g) => g >= 1000 && g < 2500 },
+  { label: "2,500 gal and over", test: (g) => g >= 2500 },
+];
 
 const DOC_ACCESS = ["Internal only", "Visible to vendor", "Visible to customer"];
 

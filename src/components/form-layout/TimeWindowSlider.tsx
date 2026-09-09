@@ -126,15 +126,19 @@ export function TimeWindowSlider({
 
       {/*
         THE CONTROL ZONE IS THE INPUT'S OWN 36px, and the two parts are placed
-        inside it rather than stacked to fill it. The track is centred, so it
-        sits on the same line as the date typed in the field beside it; the
-        scale is pinned to the floor, so its baseline is the input's bottom
-        edge. Stacked from the top instead, both landed high and the field read
-        as top-heavy next to its neighbour.
+        inside it rather than stacked to fill it. The scale is pinned to the
+        floor, so its baseline is the input's bottom edge.
+
+        THE TRACK IS CENTRED BETWEEN THE TWO LINES OF TEXT, not in the box.
+        Centring it in the box put 21px of air above it and 7px below, so the
+        value on top read as belonging to nothing and the scale looked stuck to
+        the track. It now sits halfway between the bottom of the value and the
+        top of the scale — 12px of air either side — which is what makes the
+        three lines read as one control.
       */}
       <div className="relative h-9">
         <Slider
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2"
+          className="absolute inset-x-0 top-1.5"
           aria-label={ariaLabel}
           min={0}
           max={DAY_MIN}

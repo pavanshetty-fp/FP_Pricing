@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Map as MapIcon,
   Columns3,
   KanbanSquare,
   Search,
@@ -51,7 +52,12 @@ import { DateFilter } from "./DateFilter";
  * date at all. Fuel Orders and Asset Orders pass it; Customers does not.
  */
 
-export type ListView = "table" | "board";
+/**
+ * `map` is opt-in: a list only offers it when its records have a PLACE, which
+ * is true of vendors and of nothing else in the Directory. A view toggle that
+ * shows a dead third option on every screen teaches people to ignore it.
+ */
+export type ListView = "table" | "board" | "map";
 
 export interface ListSearchField {
   key: string;
@@ -77,6 +83,8 @@ export interface ListToolbarProps<K extends string> {
   onColQueryChange: (v: string) => void;
   view: ListView;
   onViewChange: (v: ListView) => void;
+  /** Offer the map view. Off unless the records are geographic. */
+  mapView?: boolean;
   /** Omit entirely on lists that are not date-scoped. */
   dateScope?: { date: Date; onDateChange: (d: Date) => void };
   /**
@@ -147,6 +155,7 @@ export function ListToolbar<K extends string>({
   onColQueryChange,
   view,
   onViewChange,
+  mapView = false,
   dateScope,
   dateControl,
   groupBy,
@@ -220,6 +229,15 @@ export function ListToolbar<K extends string>({
         >
           <KanbanSquare />
         </IconTool>
+        {mapView && (
+          <IconTool
+            label="Map view"
+            active={view === "map"}
+            onClick={() => onViewChange("map")}
+          >
+            <MapIcon />
+          </IconTool>
+        )}
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 

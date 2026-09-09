@@ -4,7 +4,12 @@ import {
   Check,
   CircleAlert,
   Layers,
+  ChevronDown,
+  Copy,
+  Download,
+  History as HistoryIcon,
   MoreHorizontal,
+  Truck,
   Pencil,
   Plus,
   Trash2,
@@ -71,7 +76,15 @@ import {
   TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout";
+import { MultiSelect } from "@/components/form-layout/MultiSelect";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { RecordSheet } from "../RecordSheet";
+import { EditDrawer, ReadDrawer } from "./DirectoryRecordSheet";
+import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT } from "../data";
 import {
   VENDORS,
@@ -83,6 +96,7 @@ import {
   BROKER_STATUS_TONE,
   HUBS,
   LISTING_TYPES,
+  ORDER_TAGS,
   POCS,
   POC_DIRECTORY,
   PRODUCTS,
@@ -356,6 +370,10 @@ function FlagRow({
   );
 }
 
+/** What is being sold. Brokerage buys the haul in; transportation runs it. */
+export const SERVICE_LINES = ["Brokerage", "Transportation"] as const;
+export type ServiceLine = (typeof SERVICE_LINES)[number];
+
 export interface BrokerOrderDraft {
   customer: string;
   erpId: string;
@@ -371,7 +389,16 @@ export interface BrokerOrderDraft {
   lines: OrderLine[];
   status: BrokerStatus;
   vendorId: string | null;
+  /**
+   * Vendors ON THE TABLE — candidates. Adding a row is not asking anybody.
+   */
   invitedVendorIds: string[];
+  /**
+   * Vendors the invitation has actually GONE to. Separate from the rows above
+   * because per-row inviting made the difference real: a table can hold three
+   * candidates with one asked, and a single list cannot say that.
+   */
+  sentVendorIds: string[];
   /** Partners that accepted the invitation — see `BrokerOrder`. */
   acceptedVendorIds: string[];
   /**
@@ -388,8 +415,25 @@ export interface BrokerOrderDraft {
    * invited, so the common case ("price from everyone") needs no clicks.
    */
 
+  /**
+   * BROKERAGE OR TRANSPORTATION — the service being sold, and the first thing
+   * decided about an order because it changes who fulfils it. Brokerage puts
+   * the load out to a vendor; transportation moves it on our own fleet.
+   */
+  serviceLine: ServiceLine;
   primaryPoc: string;
+  /** A second person to call. Optional — most orders have one. */
+  secondaryPoc: string;
   salesperson: string;
+  tags: string[];
+  /** §6's per-order kill switch for vendor email. */
+  notifyVendor: boolean;
+  /** Who may read the attachments and notes on this order. */
+  visibility: "Public" | "Private";
+  /** Never sent to the vendor or the customer. */
+  internalNote: string;
+  /** The whole load is a winter blend — one flag for the order, not per line. */
+  winterAdditive: boolean;
   instructions: string;
   recurring: boolean;
   recurrenceFrom: Date | null;
@@ -435,12 +479,24 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     status: o.status,
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
+    /* An order that already left Draft had its invitations sent — that is what
+       leaving Draft meant. */
+    sentVendorIds: o.status === "Draft" ? [] : [...o.invitedVendorIds],
     acceptedVendorIds: [...o.acceptedVendorIds],
     // Copied deeply — editing a quote line must not mutate the row behind it.
     quotes: o.quotes.map((q) => ({ ...q, lines: q.lines.map((l) => ({ ...l })) })),
     quoteRequested: o.quoteRequested,
+    /* An existing order predates the split, so it reads as Brokerage — every
+       one of them went out to a vendor. */
+    serviceLine: "Brokerage",
     primaryPoc: o.primaryPoc,
+    secondaryPoc: "",
     salesperson: o.salesperson,
+    tags: [],
+    notifyVendor: true,
+    visibility: "Public",
+    internalNote: "",
+    winterAdditive: false,
     instructions: o.instructions,
     recurring: o.kind === "Recurring",
     recurrenceFrom: o.recurrence
@@ -476,13 +532,66 @@ function emptyDraft(): BrokerOrderDraft {
     status: "Draft",
     vendorId: null,
     invitedVendorIds: [],
+    sentVendorIds: [],
     acceptedVendorIds: [],
     quotes: [],
     quoteRequested: false,
+    serviceLine: "Brokerage",
     primaryPoc: "",
+    secondaryPoc: "",
     salesperson: "",
+    tags: [],
+    /* ON by default — suppressing every email is the deliberate act, so it is
+       the one that costs a click. Same rule the movement sheet follows. */
+    notifyVendor: true,
+    visibility: "Public",
+    internalNote: "",
+    winterAdditive: false,
     instructions: "",
   };
+}
+
+/**
+ * The ··· beside a record picker.
+ *
+ * OUTSIDE THE COMBOBOX, deliberately. An "Edit customer" row inside the option
+ * list sits one arrow-key away from being chosen AS a customer, and a picker
+ * whose list contains something that is not a choice is a picker people learn
+ * to distrust. It is also quiet — ghost, icon-only, revealed by its tooltip —
+ * because editing the record is the rare act here and picking one is the
+ * common one.
+ */
+function RecordEditMenu({
+  label,
+  name,
+  onEdit,
+}: {
+  label: string;
+  name: string;
+  onEdit: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0"
+          disabled={name === ""}
+          aria-label={`More ${label} actions`}
+          title={name === "" ? `Select a ${label} first` : undefined}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onSelect={onEdit}>
+          <Pencil />
+          Edit {label} details
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 /** The trail's clock: the day and the minute, which is the grain anyone asks
@@ -573,12 +682,76 @@ export function BrokerOrderSheet({
     setShownQuote(null);
   }, [open, creating, order]);
 
+  /*
+    ALL OF THE BELOW SIT ABOVE THE EARLY RETURN, because a hook cannot be
+    conditional — the same reason `step` and `shownQuoteId` are already here.
+    They read `draft` defensively rather than assuming it exists.
+  */
+  /** The linked record open for editing, or none. */
+  const [editing, setEditing] = React.useState<{
+    kind: "customer" | "shipTo";
+    name: string;
+  } | null>(null);
+  /** Which POC's contact details are open for editing, or none. */
+  const [editingPoc, setEditingPoc] = React.useState<"primary" | "secondary" | null>(null);
+  /** The order's history, in the header's drawer. */
+  const [activityOpen, setActivityOpen] = React.useState(false);
+  /*
+    POC EDITS ARE HELD HERE, not written straight into the directory as you
+    type. The drawer has a Save, so the value has to be somewhere while it is
+    unsaved — and a half-typed phone number must not already be the customer's
+    number everywhere else in the app.
+  */
+  const [pocEdit, setPocEdit] = React.useState({ phone: "", email: "" });
+  const [recordEdit, setRecordEdit] = React.useState({ a: "", b: "", c: "", d: "" });
+  const editingPocName =
+    editingPoc === "primary"
+      ? draft?.primaryPoc ?? ""
+      : editingPoc === "secondary"
+        ? draft?.secondaryPoc ?? ""
+        : "";
+  /* A second POC cannot be the first one. Offering the same person twice is a
+     choice nobody wants and a support ticket somebody eventually files. */
+  const secondPocChoices = React.useMemo(
+    () => POCS.filter((p) => p !== draft?.primaryPoc),
+    [draft?.primaryPoc]
+  );
+
+  /* Load each drawer's own draft when it opens, not on every render. */
+  React.useEffect(() => {
+    if (!editingPoc) return;
+    const p = POC_DIRECTORY[editingPocName];
+    setPocEdit({ phone: p?.phone ?? "", email: p?.email ?? "" });
+  }, [editingPoc, editingPocName]);
+
+  React.useEffect(() => {
+    if (!editing) return;
+    if (editing.kind === "customer") {
+      const c = BROKER_CUSTOMERS.find((x) => x.name === editing.name);
+      setRecordEdit({
+        a: c?.phone ?? "",
+        b: c?.email ?? "",
+        c: c?.billingEmail ?? "",
+        d: c?.customerInstruction ?? "",
+      });
+    } else {
+      const st = SHIP_TO_SITES.find((x) => x.name === editing.name);
+      setRecordEdit({
+        a: st?.street ?? "",
+        b: st?.city ?? "",
+        c: st?.state ?? "",
+        d: st?.zip ?? "",
+      });
+    }
+  }, [editing]);
+
   if (!draft || (!creating && !order)) return null;
 
   /* Read-only companions to the two people/place selects. Derived, never
      stored on the draft — a copy would be a second source of truth. */
   const site = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
   const poc = POC_DIRECTORY[draft.primaryPoc];
+  const poc2 = POC_DIRECTORY[draft.secondaryPoc];
 
   const set = <K extends keyof BrokerOrderDraft>(
     key: K,
@@ -706,6 +879,8 @@ export function BrokerOrderSheet({
      disagree. */
   const partnerRows = draft.invitedVendorIds;
   const invitedIds = partnerRows.filter(Boolean);
+  /** Rows the invitation has actually gone to. */
+  const sentIds = draft.sentVendorIds;
   /** Only what can still be added — an invited vendor is not an option. */
   const uninvited = eligible.filter((v) => !invitedIds.includes(v.id));
   /* WHY THE LIST IS SHORT. A picker that quietly omits half the vendors is one
@@ -829,18 +1004,35 @@ export function BrokerOrderSheet({
     });
 
   /** Draft -> Assigned. The moment the invitations actually go out. */
-  const sendInvitations = () =>
+  /**
+   * Ask these vendors to take the order.
+   *
+   * PER ROW NOW, not one button for the table. The old control sent to
+   * everybody at once and vanished the moment the order left Draft, so a
+   * vendor added later could never be asked. Sending to the FIRST one is what
+   * moves the order out of Draft; sending to a second changes nothing but that
+   * vendor's own state.
+   */
+  const sendInvitations = (ids: string[]) =>
     setDraft((d) => {
       if (!d) return d;
-      const n = d.invitedVendorIds.filter(Boolean).length;
+      const fresh = ids.filter((id) => id && !d.sentVendorIds.includes(id));
+      if (fresh.length === 0) return d;
+      const names = fresh.map((id) => vendorById(id)?.name ?? "vendor");
       /* SAY IT OUT LOUD. Sending is the first act on this order that reaches
          somebody outside the building; a status chip quietly changing three
          sections up is not an acknowledgement that it happened. */
       toast.success(
-        `Invitation sent to ${n} ${n === 1 ? "vendor" : "vendors"}`,
+        fresh.length === 1
+          ? `Invitation sent to ${names[0]}`
+          : `Invitation sent to ${fresh.length} vendors`,
         { description: "Waiting on acknowledgement." }
       );
-      return { ...d, status: "Assigned" };
+      return {
+        ...d,
+        sentVendorIds: [...d.sentVendorIds, ...fresh],
+        status: d.status === "Draft" ? "Assigned" : d.status,
+      };
     });
 
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
@@ -977,6 +1169,60 @@ export function BrokerOrderSheet({
             },
           ]}
         />
+        {/*
+          THREE MORE ACTS, BEHIND ONE CONTROL. Push to dispatch, duplicate and
+          download tickets are things you do TO an order that is already saved —
+          none of them is the primary act of this sheet, and three more buttons
+          beside Save would have made the footer a toolbar and Save the fourth
+          thing on it. A menu keeps one primary button and puts the rest one
+          click away, which is the DS's emphasis budget: one primary per view.
+
+          EDIT ONLY. On a create sheet the order does not exist yet, so there
+          is nothing to dispatch, duplicate or print.
+        */}
+        {!creating && order && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                More actions
+                <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-60">
+              <DropdownMenuItem
+                disabled={draft.status === "Draft" || draft.status === "Blocked"}
+                onSelect={() =>
+                  toast.success("Pushed to dispatch", {
+                    description: `${order.orderNo} is on the dispatch board.`,
+                  })
+                }
+              >
+                <Truck />
+                Push to dispatch
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  toast.success("Order duplicated", {
+                    description: "A copy has been created as a Draft.",
+                  })
+                }
+              >
+                <Copy />
+                Duplicate order
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  toast.success("Tickets downloading", {
+                    description: `Delivery tickets for ${order.orderNo}.`,
+                  })
+                }
+              >
+                <Download />
+                Download tickets
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {cancellable && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -1013,6 +1259,32 @@ export function BrokerOrderSheet({
           </StatusChip>
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
         </div>
+      }
+      /* ACTIVITY IS A DRAWER, not a section — the same call the Directory
+         records make, and for the same reason: it is the longest block on the
+         order and the one read least often, and at the foot of the body it
+         pushed the vendor table and the additional details behind a wall of
+         "field changed" lines. The icon also makes it reachable without
+         scrolling, which on a two-step sheet matters more, not less. */
+      headerActions={
+        order && order.audit.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Activity (${order.audit.length} ${order.audit.length === 1 ? "entry" : "entries"})`}
+                onClick={() => setActivityOpen(true)}
+              >
+                <HistoryIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Activity · {order.audit.length}{" "}
+              {order.audit.length === 1 ? "entry" : "entries"}
+            </TooltipContent>
+          </Tooltip>
+        ) : undefined
       }
       onSubmit={() => {
         if (creating) onCreate?.(draft);
@@ -1060,35 +1332,90 @@ export function BrokerOrderSheet({
       )}
 
       <SheetSection title="Basic Details">
+        {/*
+          WHAT IS BEING SOLD, FIRST. Brokerage puts the load out to a vendor;
+          transportation runs it on our own fleet. It decides who fulfils the
+          order, so it is asked before anything about the order itself — and it
+          is a RADIO rather than a select because there are two of them and the
+          answer should be readable without opening anything.
+        */}
+        <SheetField label="Service" required>
+          <RadioGroup
+            className="flex gap-6"
+            value={draft.serviceLine}
+            onValueChange={(v) => set("serviceLine", v as ServiceLine)}
+          >
+            {SERVICE_LINES.map((sl) => (
+              <label
+                key={sl}
+                htmlFor={`svc-${sl}`}
+                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+              >
+                <RadioGroupItem id={`svc-${sl}`} value={sl} />
+                {sl}
+              </label>
+            ))}
+          </RadioGroup>
+        </SheetField>
+
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
             answer to the last one. */}
         <div className="flex flex-col gap-1">
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Customer" required>
-            <Combobox
-              className="w-full"
-              value={draft.customer}
-              onValueChange={(v) => set("customer", v)}
-              options={customers}
-              placeholder="Select customer"
-              searchPlaceholder="Search customers…"
-              emptyText="No customer found."
-            />
+          {/*
+            THE PICKER PICKS; THE MENU BESIDE IT EDITS.
+
+            A record chosen here is a record that might be wrong — a stale
+            address, a contact who left — and the person who notices is the one
+            raising the order. Sending them to the Directory and back loses the
+            draft. So each picker carries a quiet ··· that opens the record for
+            editing, and it is OUTSIDE the combobox: a menu item inside the
+            option list would be one arrow-key away from being chosen as a
+            customer, which is exactly the mistake worth designing out.
+          */}
+          <SheetField
+            label="Customer"
+            required
+            className="[&>label]:flex [&>label]:items-center [&>label]:justify-between"
+          >
+            <div className="flex items-center gap-1">
+              <Combobox
+                className="w-full"
+                value={draft.customer}
+                onValueChange={(v) => set("customer", v)}
+                options={customers}
+                placeholder="Select customer"
+                searchPlaceholder="Search customers…"
+                emptyText="No customer found."
+              />
+              <RecordEditMenu
+                label="customer"
+                name={draft.customer}
+                onEdit={() => setEditing({ kind: "customer", name: draft.customer })}
+              />
+            </div>
           </SheetField>
           <SheetField label="ShipTo" required>
             {/* A customer can have anywhere from ten to a hundred ship-tos, so
                 this is the field that most needs typing rather than scrolling. */}
-            <Combobox
-              className="w-full"
-              value={draft.shipTo}
-              onValueChange={(v) => set("shipTo", v)}
-              options={shipTos}
-              placeholder="Select ShipTo"
-              searchPlaceholder="Search ship-tos…"
-              emptyText="No ship-to found."
-            />
+            <div className="flex items-center gap-1">
+              <Combobox
+                className="w-full"
+                value={draft.shipTo}
+                onValueChange={(v) => set("shipTo", v)}
+                options={shipTos}
+                placeholder="Select ShipTo"
+                searchPlaceholder="Search ship-tos…"
+                emptyText="No ship-to found."
+              />
+              <RecordEditMenu
+                label="ship-to"
+                name={draft.shipTo}
+                onEdit={() => setEditing({ kind: "shipTo", name: draft.shipTo })}
+              />
+            </div>
           </SheetField>
         </div>
 
@@ -1131,18 +1458,33 @@ export function BrokerOrderSheet({
           </SheetField>
           {/* Admin-configured in the product — the values below are the ones
               the reference shows; the final list is still to come. */}
-          <SheetField label="Listing Type" required>
+          <SheetField label="Order Type" required>
             <Combobox
               className="w-full"
               value={draft.orderType}
               onValueChange={(v) => set("orderType", v as BrokerOrderType)}
               disabled={isMovement}
               options={[...LISTING_TYPES]}
-              placeholder="Select Listing Type"
+              placeholder="Select order type"
               searchPlaceholder="Search types…"
             />
           </SheetField>
         </div>
+
+        {/* TAGS GET THEIR OWN LINE — the same call the movement sheet makes.
+            Every other control here holds a single value in a fixed box; tags
+            are a growing list, so sharing a row would let the number of tags
+            decide the height of the field beside them. */}
+        <SheetField label="Tags">
+          <MultiSelect
+            options={[...ORDER_TAGS]}
+            value={draft.tags}
+            onChange={(v) => set("tags", v)}
+            addLabel="Add tags"
+            searchPlaceholder="Search tags…"
+            emptyText="No tag found."
+          />
+        </SheetField>
       </SheetSection>
 
       {/* The people on the order, together. POC and salesperson were split
@@ -1152,7 +1494,28 @@ export function BrokerOrderSheet({
             single fact, so they sit side by side rather than wrapping over two
             rows with the contact detached from whose it is. */}
         <div className="grid grid-cols-3 gap-4">
-          <SheetField label="POC Name" required>
+          <SheetField
+            label={
+              <span className="flex w-full items-center justify-between gap-2">
+                <span>
+                  POC Name<span className="text-destructive"> *</span>
+                </span>
+                {/* ADD A SECOND, on the row it belongs to. A site often has two
+                    numbers — the foreman and the office — and the second only
+                    exists on some orders, so it is a CTA rather than a field
+                    sitting empty on every one of them. */}
+                {draft.secondaryPoc === "" && (
+                  <button
+                    type="button"
+                    className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                    onClick={() => set("secondaryPoc", secondPocChoices[0] ?? "")}
+                  >
+                    + Secondary POC
+                  </button>
+                )}
+              </span>
+            }
+          >
             <Combobox
               className="w-full"
               value={draft.primaryPoc}
@@ -1179,6 +1542,24 @@ export function BrokerOrderSheet({
                   |
                 </span>
                 <CopyValue value={poc.email} label="POC email" />
+                {/* STILL A READ-OUT, now with a way in. The contact belongs to
+                    the PERSON, not the order, so it is not two inputs here —
+                    but a wrong number found while raising an order should be
+                    fixable without leaving it. The pencil opens the person. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="ml-auto shrink-0"
+                      aria-label={`Edit ${draft.primaryPoc} contact details`}
+                      onClick={() => setEditingPoc("primary")}
+                    >
+                      <Pencil />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit contact details</TooltipContent>
+                </Tooltip>
               </>
             ) : (
               <span className="text-sm text-muted-foreground">
@@ -1187,6 +1568,67 @@ export function BrokerOrderSheet({
             )}
           </div>
         </div>
+
+        {/* The second person, once asked for. Same row shape as the first, so
+            two POCs read as two of the same thing rather than as a field and
+            an afterthought. */}
+        {draft.secondaryPoc !== "" && (
+          <div className="grid grid-cols-3 gap-4">
+            <SheetField
+              label={
+                <span className="flex w-full items-center justify-between gap-2">
+                  <span>Secondary POC</span>
+                  <button
+                    type="button"
+                    className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                    onClick={() => set("secondaryPoc", "")}
+                  >
+                    Remove
+                  </button>
+                </span>
+              }
+            >
+              <Combobox
+                className="w-full"
+                value={draft.secondaryPoc}
+                onValueChange={(v) => set("secondaryPoc", v)}
+                options={secondPocChoices}
+                placeholder="Select POC Name"
+                searchPlaceholder="Search contacts…"
+                emptyText="No contact found."
+              />
+            </SheetField>
+            <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+              {poc2 ? (
+                <>
+                  <CopyValue value={poc2.phone} label="Secondary POC contact" tabular />
+                  <span aria-hidden className="mr-6 text-fp-outline-1">
+                    |
+                  </span>
+                  <CopyValue value={poc2.email} label="Secondary POC email" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="ml-auto shrink-0"
+                        aria-label={`Edit ${draft.secondaryPoc} contact details`}
+                        onClick={() => setEditingPoc("secondary")}
+                      >
+                        <Pencil />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit contact details</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Select a POC to see their contact and email.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-4">
           {/* Optional: an order can be raised before anyone owns it. */}
@@ -1392,8 +1834,12 @@ export function BrokerOrderSheet({
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Top off</TableRequiredLabel>
                     </th>
+                    {/* NOT REQUIRED. A line can name a product and a quantity
+                        with no asset — bulk into a tank that is not on our
+                        books, or a drop the driver identifies on arrival. The
+                        asterisk was refusing orders the business takes. */}
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Asset</TableRequiredLabel>
+                      <TableRequiredLabel>Asset</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Product</TableRequiredLabel>
@@ -1421,7 +1867,16 @@ export function BrokerOrderSheet({
                             aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
                           />
                         </td>
+                        {/* THE RENTAL BADGE BELONGS TO THE ASSET. It says the
+                            TANK is ours on hire, not that the fuel is — sat on
+                            the product cell it read as a rental product, which
+                            is not a thing. */}
                         <td className="relative p-0">
+                          {asset?.rental && (
+                            <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2 z-10">
+                              <Badge variant="secondary">Rental</Badge>
+                            </span>
+                          )}
                           <TableCellCombobox
                             value={line.asset}
                             options={siteAssets.map((a) => a.name)}
@@ -1455,11 +1910,6 @@ export function BrokerOrderSheet({
                             aria-label={`Product for line ${i + 1}`}
                             onChange={(v) => setLine(i, { product: v })}
                           />
-                          {asset?.rental && (
-                            <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2">
-                              <Badge variant="secondary">Rental</Badge>
-                            </span>
-                          )}
                         </td>
                         <td className="relative p-0">
                           <TableCellInput
@@ -1526,13 +1976,31 @@ export function BrokerOrderSheet({
             {/* Attached to the table's squared corner — the DS "+ Add more"
                 affordance. It belongs at the END of the rows, because that is
                 where the next row goes. */}
-            <button
-              type="button"
-              onClick={addBlankLine}
-              className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Plus className="size-4" /> Add asset
-            </button>
+            {/* THE ADD CHIP AND THE ORDER-WIDE FLAG SHARE A LINE, at opposite
+                ends of it. Winter additive is a property of the LOAD, not of a
+                row — every gallon on the truck is blended or none is — so it
+                cannot live in the table, and a section of its own for one
+                checkbox would be a heading with nothing under it. */}
+            <div className="flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={addBlankLine}
+                className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <Plus className="size-4" /> Add asset
+              </button>
+              <label
+                htmlFor="winter-additive"
+                className="flex cursor-pointer items-center gap-2 pr-1 text-sm text-foreground"
+              >
+                <Checkbox
+                  id="winter-additive"
+                  checked={draft.winterAdditive}
+                  onCheckedChange={(c) => set("winterAdditive", c === true)}
+                />
+                Mark as winter additive
+              </label>
+            </div>
           </div>
 
         </SheetSection>
@@ -1745,9 +2213,9 @@ export function BrokerOrderSheet({
                   <colgroup>
                     <col className="w-[44px]" />
                     <col className="w-[25%]" />
-                    <col className="w-[15%]" />
-                    <col className="w-[148px]" />
+                    <col className="w-[18%]" />
                     <col />
+                    <col className="w-[132px]" />
                     {showQuoteCol && <col className="w-[124px]" />}
                     <col className="w-[52px]" />
                   </colgroup>
@@ -1766,11 +2234,22 @@ export function BrokerOrderSheet({
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Address</TableRequiredLabel>
                       </th>
-                      <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Safety · Distance</TableRequiredLabel>
-                      </th>
+                      {/* SAFETY AND DISTANCE ARE GONE. They rank vendors when
+                          you are choosing between several; by the time a row
+                          exists the choice is made, and a score sitting beside
+                          a decision already taken is decoration. Both are still
+                          on the vendor record and still filters in the
+                          Directory. */}
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Products</TableRequiredLabel>
+                      </th>
+                      {/* INVITING IS PER ROW. It was one button under the table
+                          that sent to everybody at once, which is wrong the
+                          moment two vendors are listed and only one is ready —
+                          and it disappeared entirely once the order left Draft,
+                          taking the ability to add a vendor later with it. */}
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Invite</TableRequiredLabel>
                       </th>
                       {showQuoteCol && (
                         <th className="px-3 py-2.5 text-right">
@@ -1842,20 +2321,37 @@ export function BrokerOrderSheet({
                             <td className="truncate px-3 text-sm text-muted-foreground">
                               {v?.base ?? "—"}
                             </td>
-                            <td className="px-3 text-sm text-muted-foreground">
-                              {v ? (
-                                <span className="flex items-center gap-1.5 tabular-nums">
-                                  <Shield className="size-3.5 shrink-0" />
-                                  {v.safetyScore}
-                                  <span className="text-fp-outline-1">·</span>
-                                  {v.distanceMi} mi
-                                </span>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
                             <td className="truncate px-3 text-sm text-muted-foreground">
                               {v ? v.businessLines.join(" · ") : "—"}
+                            </td>
+                            {/* THREE STATES, and the row says which: not asked
+                                yet, asked, or already back with an answer. */}
+                            <td className="px-3">
+                              {!id ? (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              ) : draft.acceptedVendorIds.includes(id) ? (
+                                <StatusChip tone="success" variant="text">
+                                  Accepted
+                                </StatusChip>
+                              ) : sentIds.includes(id) ? (
+                                <StatusChip tone="processing" variant="text">
+                                  Invited
+                                </StatusChip>
+                              ) : (
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  disabled={draft.status === "Blocked"}
+                                  title={
+                                    draft.status === "Blocked"
+                                      ? "A blocked order cannot be sent to a vendor"
+                                      : undefined
+                                  }
+                                  onClick={() => sendInvitations([id])}
+                                >
+                                  <Check /> Invite
+                                </Button>
+                              )}
                             </td>
                             {showQuoteCol && (
                               <td className="px-3 text-right text-sm tabular-nums">
@@ -1927,6 +2423,29 @@ export function BrokerOrderSheet({
               </button>
             </div>
 
+            {/* §6's per-order kill switch, the same one the movement sheet
+                carries and the one this sheet was missing. ON by default —
+                suppressing every email is the deliberate act, so it is the one
+                that costs a click. It stands clear of the table by the same
+                40px the next section does: it is a decision about the order,
+                not a field in the list. */}
+            <label
+              htmlFor="do-notify"
+              className="mt-6 flex cursor-pointer items-center justify-between gap-4"
+            >
+              <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
+                Send email notifications to vendor
+                <span className="text-xs font-normal text-muted-foreground">
+                  Turn off to suppress every email for this order.
+                </span>
+              </span>
+              <Switch
+                id="do-notify"
+                checked={draft.notifyVendor}
+                onCheckedChange={(v) => set("notifyVendor", v)}
+              />
+            </label>
+
             {/* BULK. The same checked rows the quote switch reads — one
                 selection, not a second one that can disagree with it. Only one
                 partner can take the order, so acknowledging is a one-row
@@ -1937,22 +2456,6 @@ export function BrokerOrderSheet({
                 describing a selection that now starts empty. It sits directly
                 under the table it applies to, above anything that acts on a
                 selection. */}
-            {/* SENDING IS AN ACT, and it is the one that moves this order out
-                of Draft. It says who it is going to, because "Send" on its own
-                on a table of three is an invitation to press it and find out. */}
-            {draft.status === "Draft" && invitedIds.length > 0 && (
-              <div className="flex items-center gap-3">
-                <Button onClick={sendInvitations}>
-                  <Check /> Send invitation
-                  {invitedIds.length > 1 ? `s (${invitedIds.length})` : ""}
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {invitedIds.length === 1
-                    ? "Asks this vendor to take the order."
-                    : "All of them are asked at once."}
-                </span>
-              </div>
-            )}
 
             {/* IT IS ASKED ONCE, BEFORE ANYONE IS ASKED ANYTHING. What was
                 requested of the partners is a fact about the round the moment
@@ -2083,34 +2586,35 @@ export function BrokerOrderSheet({
           Last, because it is the answer to a question asked after the fact.
           NEWEST FIRST: the trail is opened to find out what just happened far
           more often than to read the record's whole life. */}
-      {order && order.audit.length > 0 && (
-        <SheetSection title="Activity">
-          <ol className="flex flex-col gap-3">
-            {[...order.audit].reverse().map((e, i) => (
-              <li
-                key={`${e.at}-${i}`}
-                className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3"
-              >
-                <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                  <span className="font-medium text-foreground">{e.by}</span>
-                  <span className="text-muted-foreground">
-                    {AUDIT_FMT.format(new Date(e.at))}
-                  </span>
-                </span>
-                {/* ONE LINE PER THING THAT CHANGED, old value and new. "Status
-                    changed" only proves somebody was here. */}
-                {e.changes.map((c) => (
-                  <span key={c} className="text-sm text-foreground">
-                    {c}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ol>
-        </SheetSection>
-      )}
-
       <SheetSection title="Additional Details">
+        {/*
+          WHO MAY SEE WHAT IS ATTACHED HERE. Public travels with the order —
+          the vendor and the customer see it. Private stays inside the
+          building. It leads the section because it governs everything under
+          it, and a file uploaded before the choice is made is a file uploaded
+          under an assumption.
+        */}
+        <SheetField label="Visibility" required>
+          <RadioGroup
+            className="flex gap-6"
+            value={draft.visibility}
+            onValueChange={(v) => set("visibility", v as "Public" | "Private")}
+          >
+            {(["Public", "Private"] as const).map((v) => (
+              <label
+                key={v}
+                htmlFor={`vis-${v}`}
+                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+              >
+                <RadioGroupItem id={`vis-${v}`} value={v} />
+                {v}
+                <span className="text-xs text-muted-foreground">
+                  {v === "Public" ? "— vendor and customer can see it" : "— your team only"}
+                </span>
+              </label>
+            ))}
+          </RadioGroup>
+        </SheetField>
         <SheetField label="Upload Supporting Image">
           {/* The DS control in its `field` variant — dropzone, note, and only
               the files actually added. The showcase variant's seeded chips and
@@ -2126,6 +2630,21 @@ export function BrokerOrderSheet({
             value={draft.instructions}
             placeholder="Enter any delivery instructions here"
             onChange={(e) => set("instructions", e.target.value)}
+          />
+        </SheetField>
+        {/* SEPARATE FROM THE INSTRUCTIONS ABOVE, and the description is the
+            whole reason it is its own field: one of these is read by a driver
+            at a gate, the other by nobody outside the building. A single
+            "Notes" box would have people writing gate codes where the vendor
+            can read them, or holding back things the driver needed. */}
+        <SheetField
+          label="Internal Note"
+          description="Visible only to your team — never sent to the vendor or the customer."
+        >
+          <Textarea
+            value={draft.internalNote}
+            placeholder="Add an internal note"
+            onChange={(e) => set("internalNote", e.target.value)}
           />
         </SheetField>
       </SheetSection>
@@ -2635,6 +3154,177 @@ export function BrokerOrderSheet({
           )}
         </>
       )}
+      {order && order.audit.length > 0 && (
+        <ReadDrawer
+          open={activityOpen}
+          onOpenChange={setActivityOpen}
+          title="Activity"
+          subtitle={`${order.orderNo} · ${order.audit.length} ${order.audit.length === 1 ? "entry" : "entries"}`}
+        >
+          <ol className="flex flex-col gap-4">
+            {[...order.audit].reverse().map((e, i) => (
+              <li
+                key={`${e.at}-${i}`}
+                className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3"
+              >
+                <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                  <span className="font-medium text-foreground">{e.by}</span>
+                  <span className="text-muted-foreground">
+                    {AUDIT_FMT.format(new Date(e.at))}
+                  </span>
+                </span>
+                {/* ONE LINE PER THING THAT CHANGED, old value and new. "Status
+                    changed" only proves somebody was here. */}
+                {e.changes.map((c) => (
+                  <span key={c} className="text-sm text-foreground">
+                    {c}
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ol>
+        </ReadDrawer>
+      )}
+
+      {/* ── linked-record editing ─────────────────────────────────────────
+          Both drawers stack a layer above the order sheet, so the draft behind
+          them is never unmounted — the whole point is that noticing a wrong
+          number should not cost somebody the order they were raising. */}
+      <EditDrawer
+        open={editingPoc !== null}
+        onOpenChange={(o) => !o && setEditingPoc(null)}
+        title="Edit contact details"
+        subtitle={editingPocName}
+        canSave={pocEdit.phone.trim() !== "" && pocEdit.email.includes("@")}
+        onSave={() => {
+          /* Written to the directory, because these belong to the PERSON: the
+             next order that names them should show the corrected number. */
+          POC_DIRECTORY[editingPocName] = { phone: pocEdit.phone, email: pocEdit.email };
+          toast.success("Contact details saved", { description: editingPocName });
+        }}
+      >
+        <SheetField label="Phone" required>
+          <Input
+            type="tel"
+            value={pocEdit.phone}
+            onChange={(e) => setPocEdit((p) => ({ ...p, phone: e.target.value }))}
+          />
+        </SheetField>
+        <SheetField
+          label="Email"
+          required
+          description="Used for delivery confirmations and signature requests."
+        >
+          <Input
+            type="email"
+            value={pocEdit.email}
+            onChange={(e) => setPocEdit((p) => ({ ...p, email: e.target.value }))}
+          />
+        </SheetField>
+        <p className="text-xs text-muted-foreground">
+          This is {editingPocName}&apos;s own record. Changing it here changes it on
+          every order that names them.
+        </p>
+      </EditDrawer>
+
+      <EditDrawer
+        open={editing !== null}
+        onOpenChange={(o) => !o && setEditing(null)}
+        title={editing?.kind === "shipTo" ? "Edit ship-to details" : "Edit customer details"}
+        subtitle={editing?.name}
+        onSave={() => {
+          if (!editing) return;
+          if (editing.kind === "customer") {
+            const c = BROKER_CUSTOMERS.find((x) => x.name === editing.name);
+            if (c) {
+              c.phone = recordEdit.a || null;
+              c.email = recordEdit.b || null;
+              c.billingEmail = recordEdit.c || null;
+              c.customerInstruction = recordEdit.d || null;
+            }
+          } else {
+            const st = SHIP_TO_SITES.find((x) => x.name === editing.name);
+            if (st) {
+              st.street = recordEdit.a;
+              st.city = recordEdit.b;
+              st.state = recordEdit.c;
+              st.zip = recordEdit.d;
+            }
+          }
+          toast.success(
+            editing.kind === "shipTo" ? "Ship-to saved" : "Customer saved",
+            { description: editing.name }
+          );
+        }}
+      >
+        {editing?.kind === "customer" ? (
+          <>
+            <SheetField label="Phone">
+              <Input
+                type="tel"
+                value={recordEdit.a}
+                onChange={(e) => setRecordEdit((r) => ({ ...r, a: e.target.value }))}
+              />
+            </SheetField>
+            <SheetField label="Email">
+              <Input
+                type="email"
+                value={recordEdit.b}
+                onChange={(e) => setRecordEdit((r) => ({ ...r, b: e.target.value }))}
+              />
+            </SheetField>
+            <SheetField label="Billing email" description="Where invoices go.">
+              <Input
+                type="email"
+                value={recordEdit.c}
+                onChange={(e) => setRecordEdit((r) => ({ ...r, c: e.target.value }))}
+              />
+            </SheetField>
+            <SheetField
+              label="Customer instruction"
+              description="Printed on the dispatch sheet — the driver reads this."
+            >
+              <Textarea
+                value={recordEdit.d}
+                onChange={(e) => setRecordEdit((r) => ({ ...r, d: e.target.value }))}
+              />
+            </SheetField>
+          </>
+        ) : (
+          <>
+            <SheetField label="Street">
+              <Input
+                value={recordEdit.a}
+                onChange={(e) => setRecordEdit((r) => ({ ...r, a: e.target.value }))}
+              />
+            </SheetField>
+            <div className="grid grid-cols-3 gap-3">
+              <SheetField label="City">
+                <Input
+                  value={recordEdit.b}
+                  onChange={(e) => setRecordEdit((r) => ({ ...r, b: e.target.value }))}
+                />
+              </SheetField>
+              <SheetField label="State">
+                <Input
+                  value={recordEdit.c}
+                  onChange={(e) => setRecordEdit((r) => ({ ...r, c: e.target.value }))}
+                />
+              </SheetField>
+              <SheetField label="Zip">
+                <Input
+                  value={recordEdit.d}
+                  onChange={(e) => setRecordEdit((r) => ({ ...r, d: e.target.value }))}
+                />
+              </SheetField>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This site belongs to the customer record. Changing it here changes it
+              on every order that delivers to it.
+            </p>
+          </>
+        )}
+      </EditDrawer>
     </RecordSheet>
   );
 }

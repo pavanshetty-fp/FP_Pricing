@@ -711,6 +711,78 @@ export function ReadDrawer({
   );
 }
 
+/**
+ * `ReadDrawer` with a footer — for a small edit that belongs to a record you
+ * reached from somewhere else.
+ *
+ * IT IS NOT THE RECORD SHEET, and must not grow into one. This is for the two
+ * or three fields somebody noticed were wrong while doing something else — a
+ * stale phone number found halfway through raising an order. The full record
+ * still lives in its own sheet; this is the shortcut that stops a wrong number
+ * costing somebody their draft.
+ */
+export function EditDrawer({
+  open,
+  onOpenChange,
+  title,
+  subtitle,
+  onSave,
+  canSave = true,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  subtitle?: string;
+  onSave: () => void;
+  canSave?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="z-[60] w-[min(460px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(460px,calc(100vw-60px))]"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle className="text-base">{title}</SheetTitle>
+            {subtitle && (
+              <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label={`Close ${title.toLowerCase()}`}
+            onClick={() => onOpenChange(false)}
+            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div className="flex flex-col gap-4">{children}</div>
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!canSave}
+            onClick={() => {
+              onSave();
+              onOpenChange(false);
+            }}
+          >
+            Save Changes
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 /** The record's history, in a `ReadDrawer`. */
 export function AuditDrawer({
   open,

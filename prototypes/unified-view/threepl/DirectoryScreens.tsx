@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { OverflowList, TwoLineCell } from "../ListTable";
 import { ReadDrawer } from "./DirectoryRecordSheet";
+import { VendorMapView } from "./VendorMapView";
 import {
   DirectoryEntityScreen,
   activeBulkAction,
@@ -659,6 +660,10 @@ export function vendorConfig(
       "Vendor Instruction": blank(v.vendorInstruction),
     }),
 
+    /* VENDORS ARE THE ONE DIRECTORY WITH A PLACE. "Who is near this job" is a
+       question a column cannot answer, because near is a relationship between
+       two locations and a table sorts by one. */
+    renderMap: (rows, open) => <VendorMapView vendors={rows} onOpenVendor={open} />,
     headerAsideOf: vendorHeaderAside,
     readSectionsOf: (v) => vendorReadSections(v),
 

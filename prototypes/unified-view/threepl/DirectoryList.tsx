@@ -117,6 +117,13 @@ export interface DirectoryListProps<Row, K extends string> {
   onTotalChange?: (label: string | null) => void;
   /** Whether the reader may create, edit or archive here. */
   canWrite?: boolean;
+  /**
+   * An alternative rendering of the SAME filtered, searched, sorted rows — the
+   * vendor map. It replaces the table only, so the toolbar, the facets and the
+   * chips keep working and the two views can never disagree about what is on
+   * screen.
+   */
+  renderMap?: (rows: Row[]) => React.ReactNode;
 }
 
 interface ViewState {
@@ -193,6 +200,7 @@ export function DirectoryList<Row, K extends string>({
   urlKey,
   canWrite = true,
   onTotalChange,
+  renderMap,
 }: DirectoryListProps<Row, K>) {
   const toggleColumns = React.useMemo(
     () => columns.filter((c) => c.label).map((c) => ({ key: c.key, label: c.label })),
@@ -445,6 +453,7 @@ export function DirectoryList<Row, K extends string>({
             }}
             view={view}
             onViewChange={setView}
+            mapView={Boolean(renderMap)}
           />
         </div>
 
@@ -531,7 +540,12 @@ export function DirectoryList<Row, K extends string>({
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {count === 0 && !loading ? (
+          {renderMap && view === "map" ? (
+            /* THE MAP TAKES THE SORTED ROWS, not the page. A map paginated to
+               25 pins is a map of a page, which is not a thing anybody wants —
+               and the footer switches to a plain count to match. */
+            renderMap(sorted)
+          ) : count === 0 && !loading ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -631,7 +645,11 @@ export function DirectoryList<Row, K extends string>({
       {/* Grouped, the footer reports the shape of the list; flat, it reports
           the page position — the one number a paged list owes the reader. */}
       <div className="mt-4 shrink-0">
-        {g.grouped ? (
+        {renderMap && view === "map" ? (
+          <div className="text-sm tabular-nums text-muted-foreground">
+            {count} {count === 1 ? noun : plural} on the map
+          </div>
+        ) : g.grouped ? (
           <GroupedListFooter
             groupCount={g.groups.groupCount}
             rowCount={g.groups.rowCount}

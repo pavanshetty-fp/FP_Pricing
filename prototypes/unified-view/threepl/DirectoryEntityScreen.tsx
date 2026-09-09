@@ -83,6 +83,8 @@ export interface EntityConfig<Row, K extends string> {
   /** The record's edit history — shown in the header's drawer, not the body. */
   auditOf: (row: Row) => AuditEvent[];
   withAudit: (row: Row, entry: AuditEvent) => Row;
+  /** An alternative rendering of the same rows — vendors only, for now. */
+  renderMap?: (rows: Row[], open: (row: Row) => void) => React.ReactNode;
   /** Verbs beyond archive that this entity's selection supports. */
   extraBulkActions?: (
     selected: Row[],
@@ -249,6 +251,9 @@ export function DirectoryEntityScreen<Row, K extends string>({
         urlKey={config.urlKey}
         canWrite={canWrite}
         onTotalChange={onTotalChange}
+        renderMap={
+          config.renderMap ? (rows) => config.renderMap!(rows, openRecord) : undefined
+        }
         exportRow={config.exportRow}
         onCreate={() => setSheet({ kind: "create" })}
         createLabel={`Add New ${Noun}`}

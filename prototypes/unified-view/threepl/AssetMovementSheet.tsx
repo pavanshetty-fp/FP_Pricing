@@ -25,7 +25,7 @@ import {
   SheetSection,
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
-import { RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, type RentalAsset } from "./directory";
 import {
@@ -157,7 +157,14 @@ function emptyDraft(direction: MovementDirection): AssetMovementDraft {
     primaryPoc: "",
     secondaryPocs: [],
     salesperson: "",
-    plannedDate: null,
+    /* TOMORROW, NOT BLANK — the same default the delivery order takes, and
+       for the same reason: it is the answer the form would have got anyway. */
+    plannedDate: (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    })(),
     poNumber: "",
     bolNumber: "",
     tags: [],
@@ -434,7 +441,7 @@ export function AssetMovementSheet({
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
-      saveState={saveState}
+      showCancel={false}
       editTitle="Movement Order"
       createTitle="Movement Order"
       createAction="Create Order"
@@ -443,7 +450,14 @@ export function AssetMovementSheet({
          menu that the form itself never states. Without it the only evidence of
          which way this order runs is which end happens to ask for a yard.
          Violet either way: on the board, both are an M. */
-      headerAside={<Badge variant="pastel-violet">{direction}</Badge>}
+      headerAside={
+        <span className="flex items-center gap-2">
+          <Badge variant="pastel-violet">{direction}</Badge>
+          {saveState !== "idle" && (
+            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+          )}
+        </span>
+      }
       canSubmit={canSubmit}
       onSubmit={() => onCreate(draft)}
       /* Decisions about the ACT of committing ride in the footer, in view at

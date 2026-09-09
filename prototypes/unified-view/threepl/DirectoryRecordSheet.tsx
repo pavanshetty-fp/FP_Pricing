@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
-import { RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
 import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
 
@@ -294,7 +294,14 @@ export function DirectoryRecordSheet<T>({
       editTitle={title}
       createTitle={`Create New ${noun}`}
       createAction={`Create ${noun}`}
-      headerAside={headerAside}
+      headerAside={
+        <span className="flex items-center gap-2">
+          {headerAside}
+          {saveState !== "idle" && (
+            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+          )}
+        </span>
+      }
       headerActions={
         audit && audit.length > 0 ? (
           <Tooltip>
@@ -315,7 +322,6 @@ export function DirectoryRecordSheet<T>({
         ) : undefined
       }
       canSubmit={errorCount === 0}
-      saveState={saveState}
       onSubmit={() => {
         setSubmitted(true);
         if (errorCount > 0) return;

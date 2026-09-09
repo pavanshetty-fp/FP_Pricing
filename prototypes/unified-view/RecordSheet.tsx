@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Check, Loader2, X } from "lucide-react";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -70,9 +71,21 @@ export interface RecordSheetProps {
    * nothing to reassure anybody about yet.
    *
    * It sits by the TITLE, not the footer: it is a statement about the record,
-   * not a control, and beside Save it would read as a second button.
+   * not a control, and beside Save it would read as a second button. The
+   * caller folds it into its own status chip with `DraftStatusChip` — one chip
+   * saying "Draft · Saved" rather than two elements sharing one meaning.
    */
-  saveState?: "idle" | "saving" | "saved";
+  /**
+   * The ··· at the right of the header, between the history icon and Close.
+   * For acts ON the record that are not part of filling it in — deleting it.
+   */
+  headerMenu?: React.ReactNode;
+  /**
+   * Cancel in the footer. OFF on a sheet that autosaves its draft: "Cancel"
+   * promises to undo, and a sheet that has already kept everything typed
+   * cannot keep that promise. Close is the honest exit there.
+   */
+  showCancel?: boolean;
   /**
    * Controls at the far right of the header, left of Close.
    *
@@ -142,6 +155,53 @@ export function useDraftSaveState(draft: unknown, enabled = true) {
   return state;
 }
 
+/**
+ * The status chip, with the draft's save state folded into it.
+ *
+ * ONE CHIP, NOT TWO THINGS SIDE BY SIDE. "Draft" and "Saved" were separate
+ * elements saying one thing between them — what state this record is in — and
+ * read as a status and an unrelated notice. `Draft · Saved` is the sentence
+ * they were already trying to make.
+ *
+ * The save half is quieter than the status half, because the status is the
+ * fact and the save is the reassurance.
+ */
+export function DraftStatusChip({
+  tone,
+  label,
+  saveState = "idle",
+}: {
+  tone: StatusTone;
+  label: string;
+  saveState?: "idle" | "saving" | "saved";
+}) {
+  return (
+    <StatusChip tone={tone} variant="soft">
+      {label}
+      {saveState !== "idle" && (
+        <>
+          <span aria-hidden className="opacity-40">
+            ·
+          </span>
+          <span className="inline-flex items-center gap-1 opacity-80" aria-live="polite">
+            {saveState === "saving" ? (
+              <>
+                <Loader2 className="size-3 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Check className="size-3" />
+                Saved
+              </>
+            )}
+          </span>
+        </>
+      )}
+    </StatusChip>
+  );
+}
+
 export function RecordSheet({
   size = "narrow",
   open,
@@ -152,8 +212,9 @@ export function RecordSheet({
   editAction = "Save Changes",
   createAction,
   headerAside,
-  saveState = "idle",
   headerActions,
+  headerMenu,
+  showCancel = true,
   steps,
   canSubmit = true,
   footerAside,
@@ -181,27 +242,10 @@ export function RecordSheet({
               {creating ? createTitle : editTitle}
             </SheetTitle>
             {headerAside}
-            {saveState !== "idle" && (
-              <span
-                className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
-                aria-live="polite"
-              >
-                {saveState === "saving" ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <Check className="size-3.5 text-status-success" />
-                    Saved
-                  </>
-                )}
-              </span>
-            )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}
+            {headerMenu}
             <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
               <X className="size-4" />
               <span className="sr-only">Close</span>
@@ -222,9 +266,11 @@ export function RecordSheet({
             {footerAside}
           </div>
           <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          {showCancel && (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          )}
           <Button
             disabled={!canSubmit}
             onClick={() => {

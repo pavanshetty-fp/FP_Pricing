@@ -4,7 +4,6 @@ import {
   Check,
   CircleAlert,
   Layers,
-  ChevronDown,
   Copy,
   Download,
   History as HistoryIcon,
@@ -71,6 +70,9 @@ import {
 import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
+  TimeWindowSlider,
+  formatMinutes,
+  parseWindow,
   TableCellCombobox,
   TableCellInput,
   TableCellSelect,
@@ -82,7 +84,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { EditDrawer, ReadDrawer } from "./DirectoryRecordSheet";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT } from "../data";
@@ -105,8 +107,6 @@ import {
   SALES_CONTACTS,
   SHIP_TO_SITES,
   loadOptions,
-  WINDOWS,
-  formatWindow,
   isAllTopOff,
   quoteTotal,
   quoteLineTotal,
@@ -511,12 +511,27 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
 }
 
 /** A blank order. Starts in Draft with no partner — the only legal start state. */
+/**
+ * TOMORROW, NOT BLANK.
+ *
+ * Almost every order booked today is for tomorrow, and a required date field
+ * that starts empty makes the common case cost a click and the calendar. A
+ * filled default is still a default — it can be changed — and it is honest,
+ * because it is the answer the form would have got anyway.
+ */
+function tomorrow(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function emptyDraft(): BrokerOrderDraft {
   return {
     customer: "",
     erpId: "",
     shipTo: "",
-    plannedDate: null,
+    plannedDate: tomorrow(),
     windowStart: "8:00 AM",
     windowEnd: "12:00 PM",
     poNumber: "",
@@ -679,6 +694,7 @@ export function BrokerOrderSheet({
   /** The salesperson's contact, open for editing. */
   const [editingSales, setEditingSales] = React.useState(false);
   const [salesEdit, setSalesEdit] = React.useState("");
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   /* AUTOSAVE FEEDBACK. A draft order is kept as it is typed; the header says
      so, because an autosave nobody is told about is one nobody relies on. */
   const saveState = useDraftSaveState(draft, open);
@@ -698,6 +714,14 @@ export function BrokerOrderSheet({
         : "";
   /* A second POC cannot be the first one. Offering the same person twice is a
      choice nobody wants and a support ticket somebody eventually files. */
+  /* The window is STORED as the two labels an order carries, and edited as
+     minutes. Parsing here keeps the stored shape unchanged — the board, the
+     table and the card all read `window.start` / `window.end` as text. */
+  const windowMinutes = React.useMemo<[number, number]>(() => {
+    const parsed = parseWindow(`${draft?.windowStart ?? ""} – ${draft?.windowEnd ?? ""}`);
+    return parsed ?? [8 * 60, 12 * 60];
+  }, [draft?.windowStart, draft?.windowEnd]);
+
   const secondPocChoices = React.useMemo(
     () => POCS.filter((p) => p !== draft?.primaryPoc),
     [draft?.primaryPoc]
@@ -1140,7 +1164,9 @@ export function BrokerOrderSheet({
       createTitle="Create Delivery Order"
       createAction="Create Order"
       canSubmit={canSubmit}
-      saveState={saveState}
+      /* AUTOSAVED, so Cancel is a promise the sheet cannot keep — it would
+         claim to undo what has already been kept. Close is the honest exit. */
+      showCancel={false}
       /* Decisions about the delivery itself, taken at the moment of committing
          — so they stay in view however far the body has scrolled. */
       footerAside={
@@ -1161,60 +1187,6 @@ export function BrokerOrderSheet({
             },
           ]}
         />
-        {/*
-          THREE MORE ACTS, BEHIND ONE CONTROL. Push to dispatch, duplicate and
-          download tickets are things you do TO an order that is already saved —
-          none of them is the primary act of this sheet, and three more buttons
-          beside Save would have made the footer a toolbar and Save the fourth
-          thing on it. A menu keeps one primary button and puts the rest one
-          click away, which is the DS's emphasis budget: one primary per view.
-
-          EDIT ONLY. On a create sheet the order does not exist yet, so there
-          is nothing to dispatch, duplicate or print.
-        */}
-        {!creating && order && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                More actions
-                <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-60">
-              <DropdownMenuItem
-                disabled={draft.status === "Draft" || draft.status === "Blocked"}
-                onSelect={() =>
-                  toast.success("Pushed to dispatch", {
-                    description: `${order.orderNo} is on the dispatch board.`,
-                  })
-                }
-              >
-                <Truck />
-                Push to dispatch
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  toast.success("Order duplicated", {
-                    description: "A copy has been created as a Draft.",
-                  })
-                }
-              >
-                <Copy />
-                Duplicate order
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  toast.success("Tickets downloading", {
-                    description: `Delivery tickets for ${order.orderNo}.`,
-                  })
-                }
-              >
-                <Download />
-                Download tickets
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
         {cancellable && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -1246,11 +1218,41 @@ export function BrokerOrderSheet({
       }
       headerAside={
         <div className="flex items-center gap-2">
-          <StatusChip tone={BROKER_STATUS_TONE[draft.status]} variant="soft">
-            {draft.status}
-          </StatusChip>
+          {/* ONE CHIP. "Draft" and "Saved" were two elements saying one thing
+              between them — what state this order is in. */}
+          <DraftStatusChip
+            tone={BROKER_STATUS_TONE[draft.status]}
+            label={draft.status}
+            saveState={saveState}
+          />
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
         </div>
+      }
+      /* ACTS ON THE ORDER, not part of filling it in. Deleting is the only one
+         of those, and it is destructive, so it is behind a menu AND a confirm
+         rather than sitting one mis-click from Close. */
+      headerMenu={
+        !creating && order ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More order actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setConfirmDelete(true);
+                }}
+              >
+                <Trash2 />
+                Delete order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined
       }
       /* ACTIVITY IS A DRAWER, not a section — the same call the Directory
          records make, and for the same reason: it is the longest block on the
@@ -1323,33 +1325,39 @@ export function BrokerOrderSheet({
         </div>
       )}
 
-      <SheetSection title="Basic Details">
-        {/*
-          WHAT IS BEING SOLD, FIRST. Brokerage puts the load out to a vendor;
-          transportation runs it on our own fleet. It decides who fulfils the
-          order, so it is asked before anything about the order itself — and it
-          is a RADIO rather than a select because there are two of them and the
-          answer should be readable without opening anything.
-        */}
-        <SheetField label="Service" required>
-          <RadioGroup
-            className="flex gap-6"
-            value={draft.serviceLine}
-            onValueChange={(v) => set("serviceLine", v as ServiceLine)}
-          >
-            {SERVICE_LINES.map((sl) => (
-              <label
-                key={sl}
-                htmlFor={`svc-${sl}`}
-                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
-              >
-                <RadioGroupItem id={`svc-${sl}`} value={sl} />
-                {sl}
-              </label>
-            ))}
-          </RadioGroup>
-        </SheetField>
+      {/*
+        JOB TYPE IS ITS OWN UNIT, ABOVE EVERYTHING.
 
+        Brokerage puts the load out to a vendor; transportation runs it on our
+        own fleet. It is not a basic DETAIL of the order — it decides what kind
+        of order this is, and therefore who fulfils it, so it is answered
+        before the form asking about the order begins. Under a "Basic Details"
+        heading it read as the first field of a list rather than as the
+        question the list depends on.
+
+        A RADIO because there are two of them and the answer should be readable
+        without opening anything.
+      */}
+      <SheetSection title="Job Type">
+        <RadioGroup
+          className="flex gap-6"
+          value={draft.serviceLine}
+          onValueChange={(v) => set("serviceLine", v as ServiceLine)}
+        >
+          {SERVICE_LINES.map((sl) => (
+            <label
+              key={sl}
+              htmlFor={`svc-${sl}`}
+              className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+            >
+              <RadioGroupItem id={`svc-${sl}`} value={sl} />
+              {sl}
+            </label>
+          ))}
+        </RadioGroup>
+      </SheetSection>
+
+      <SheetSection title="Basic Details">
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
@@ -1702,21 +1710,19 @@ export function BrokerOrderSheet({
               set the operation actually runs, so a start without a matching end
               — or a backwards pair — is unrepresentable rather than merely
               discouraged. The stored shape stays {start, end}. */}
-          <SheetField label="Delivery Window" required>
-            <Combobox
-              value={`${draft.windowStart}|${draft.windowEnd}`}
-              onValueChange={(v) => {
-                const [start, end] = v.split("|");
-                set("windowStart", start);
-                set("windowEnd", end);
+          {/* A WINDOW IS TWO TIMES, NOT A CATEGORY. The six fixed options
+              could not say "7 to 11", or "all day", or a two-hour slot — a
+              customer who could take one was filed under the nearest option
+              and the difference lived in somebody's head. */}
+          <SheetField label="Delivery Window" required className="col-span-2">
+            <TimeWindowSlider
+              start={windowMinutes[0]}
+              end={windowMinutes[1]}
+              onChange={(a, b) => {
+                set("windowStart", formatMinutes(a));
+                set("windowEnd", formatMinutes(b));
               }}
-              className="w-full"
-              options={WINDOWS.map((w) => ({
-                value: `${w.start}|${w.end}`,
-                label: formatWindow(w),
-              }))}
-              placeholder="Select Delivery Window"
-              searchPlaceholder="Search windows…"
+              aria-label="Delivery window"
             />
           </SheetField>
 
@@ -3159,6 +3165,91 @@ export function BrokerOrderSheet({
           )}
         </>
       )}
+      {/*
+        THREE ACTS ON A SAVED ORDER, side by side at the end of the form.
+
+        They were behind a "More actions" menu in the sticky footer, which put
+        them beside Save Changes — three things you do to an order sharing a
+        bar with the one thing you do to the FORM. Out here they are what they
+        are: the next steps once the order itself is settled, in the order
+        somebody takes them — dispatch it, copy it, print it.
+
+        Not in the footer, because the footer is for committing the sheet.
+      */}
+      {!creating && order && (
+        <div className="flex flex-wrap items-center gap-3 border-t border-fp-outline-1 pt-6">
+          <Button
+            variant="outline"
+            disabled={draft.status === "Draft" || draft.status === "Blocked"}
+            title={
+              draft.status === "Draft"
+                ? "Send the order to a vendor first"
+                : draft.status === "Blocked"
+                  ? "A blocked order cannot be dispatched"
+                  : undefined
+            }
+            onClick={() =>
+              toast.success("Pushed to dispatch", {
+                description: `${order.orderNo} is on the dispatch board.`,
+              })
+            }
+          >
+            <Truck />
+            Push to dispatch
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              toast.success("Order duplicated", {
+                description: "A copy has been created as a Draft.",
+              })
+            }
+          >
+            <Copy />
+            Duplicate order
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              toast.success("Tickets downloading", {
+                description: `Delivery tickets for ${order.orderNo}.`,
+              })
+            }
+          >
+            <Download />
+            Download tickets
+          </Button>
+        </div>
+      )}
+
+      {/* DELETING IS NOT CANCELLING, and the copy has to say which. Cancel
+          leaves the order in the Cancelled lane with its history; delete takes
+          it away, and there is nothing to look at afterwards. */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {order?.orderNo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The order and its history are removed for good. If you only want it
+              out of the working lanes, cancel it instead — a cancelled order keeps
+              its trail and can still be read.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                toast.success("Order deleted", { description: order?.orderNo });
+                onOpenChange(false);
+              }}
+            >
+              Delete order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {order && order.audit.length > 0 && (
         <ReadDrawer
           open={activityOpen}

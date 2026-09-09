@@ -775,7 +775,9 @@ export function vendorConfig(
 
 /* ════════════════════════════════════════════════════════════════ products ═ */
 
-export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumnKey> {
+export function productConfig(
+  onOpenNote: (p: BrokerProduct) => void
+): EntityConfig<BrokerProduct, BrokerProductColumnKey> {
   return {
     urlKey: "products",
     parentLabel: "Products",
@@ -801,10 +803,18 @@ export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumn
         case "unit":
           return <span className="text-sm">{p.unit}</span>;
         case "topOff":
+          /* NO DOT. A dot means a STATE — something that changes, and that you
+             might act on. Top-off is a capability the product either has or
+             does not, and dotting it put a signal next to a fact, which spends
+             the reader's attention on nothing. The words carry it. */
           return (
-            <StatusChip tone={p.topOffSupported ? "success" : "neutral"} variant="text">
+            <span
+              className={
+                p.topOffSupported ? "text-sm text-foreground" : "text-sm text-muted-foreground"
+              }
+            >
               {p.topOffSupported ? "Supported" : "Fixed qty"}
-            </StatusChip>
+            </span>
           );
         case "price":
           return <Money value={p.basePrice} cents />;
@@ -819,10 +829,15 @@ export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumn
             <Muted>N/A</Muted>
           );
         case "accounting":
+          /* NO DOT EITHER, but "Unmapped" keeps its colour: it is a GAP, not a
+             state — the product will not sync cleanly until somebody fixes it
+             — and colour is what makes it findable down a column of account
+             numbers. The dot was adding a second signal to say the one thing
+             the colour already said. */
           return p.revenueAccount ? (
             <TwoLineCell title={p.revenueAccount} description={p.cogsAccount ?? "No COGS account"} />
           ) : (
-            <StatusChip tone="processing" variant="text">Unmapped</StatusChip>
+            <span className="text-sm font-medium text-fp-banner-accent-caution">Unmapped</span>
           );
         case "status":
           return <RecordStatusChip status={p.status} />;
@@ -842,7 +857,23 @@ export function productConfig(): EntityConfig<BrokerProduct, BrokerProductColumn
           );
         }
         case "notes":
-          return <Clamped text={p.notes ?? p.description} />;
+          return p.notes || p.description ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Read notes for ${p.name}`}
+                  onClick={() => onOpenNote(p)}
+                >
+                  <NotebookPen />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Read product notes</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Muted />
+          );
         default:
           return null;
       }
@@ -1390,17 +1421,56 @@ export function BrokerProductsScreen({
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
 }) {
-  const config = React.useMemo(productConfig, []);
+  const [note, setNote] = React.useState<BrokerProduct | null>(null);
+  const config = React.useMemo(() => productConfig(setNote), []);
   return (
-    <DirectoryEntityScreen
-      config={config}
-      rows={data.products}
-      onRowsChange={data.setProducts}
-      navigate={navigate}
-      focusId={focusId}
-      onFocusHandled={onFocusHandled}
-      onTotalChange={onTotalChange}
-    />
+    <>
+      <DirectoryEntityScreen
+        config={config}
+        rows={data.products}
+        onRowsChange={data.setProducts}
+        navigate={navigate}
+        focusId={focusId}
+        onFocusHandled={onFocusHandled}
+        onTotalChange={onTotalChange}
+      />
+      <ReadDrawer
+        open={note !== null}
+        onOpenChange={(o) => !o && setNote(null)}
+        title="Product notes"
+        subtitle={note ? `${note.name} · ${note.productCode}` : undefined}
+      >
+        {note && (
+          <div className="flex flex-col gap-6">
+            {note.description && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Description</h3>
+                <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                  {note.description}
+                </p>
+              </div>
+            )}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+              <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">
+                {note.notes ?? (
+                  <span className="text-muted-foreground/70">Nothing recorded.</span>
+                )}
+              </p>
+            </div>
+            {note.hazmat && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Hazard classification</h3>
+                <p className="mt-1.5 text-sm text-foreground">{note.hazmat}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Printed on the bill of lading and the vehicle placard.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </ReadDrawer>
+    </>
   );
 }
 

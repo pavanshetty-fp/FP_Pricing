@@ -217,7 +217,8 @@ export const BROKER_PRODUCT_COLUMNS = [
   { key: "status" as const, label: "Status", width: 120, sortable: true },
   { key: "customers" as const, label: "Customers", width: 130, sortable: true, align: "right" as const },
   { key: "vendors" as const, label: "Vendors", width: 120, sortable: true, align: "right" as const },
-  { key: "notes" as const, label: "Product Notes", width: 300 },
+  /* Same 64px icon column as Customers and Vendors — see the note there. */
+  { key: "notes" as const, label: "Notes", width: 64 },
   { key: "actions" as const, label: "", width: 44 },
 ];
 

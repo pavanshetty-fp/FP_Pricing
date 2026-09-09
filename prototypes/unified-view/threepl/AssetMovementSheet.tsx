@@ -106,7 +106,10 @@ function HeaderFilter({
           <ListFilter className="size-3.5" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-44">
+      {/* ABOVE THE SHEET IT LIVES IN. The sheet is z-60 and a portaled menu
+          is z-50, so the menu opened and rendered underneath — a filter that
+          looked like it did nothing at all. */}
+      <DropdownMenuContent align="start" className="z-[70] min-w-44">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
           <DropdownMenuRadioItem value={allLabel}>{allLabel}</DropdownMenuRadioItem>
@@ -118,6 +121,101 @@ function HeaderFilter({
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * A range on a column, on the column.
+ *
+ * A CAPACITY IS A NUMBER, NOT A CATEGORY. Bands — "under 500", "1,000 to
+ * 2,499" — are somebody's guess at where the useful cuts are, and the guess is
+ * wrong as soon as a job needs at least 800. Two numbers ask the question
+ * people actually have: no smaller than this, no bigger than that. Either half
+ * on its own is a real filter, which is why neither is required.
+ *
+ * A POPOVER, NOT A MENU. A menu's items DO things and its keys are arrow keys;
+ * this holds two fields that have to be typed into.
+ *
+ * AN ASSET WITH NO CAPACITY IS OUT the moment either bound is set. A pump cart
+ * is not a 0-gallon tank — it is not a tank — and letting it satisfy "up to
+ * 500 gal" would answer a question about tanks with something that is not one.
+ */
+const digits = (v: string) => v.replace(/[^\d]/g, "");
+
+function HeaderRangeFilter({
+  label,
+  unit,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  /** Printed after each field, e.g. `gal`. */
+  unit: string;
+  min: string;
+  max: string;
+  onChange: (min: string, max: string) => void;
+}) {
+  const active = min !== "" || max !== "";
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Filter by ${label.toLowerCase()}`}
+          className={cn(
+            "flex size-5 shrink-0 items-center justify-center rounded-sm outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50",
+            active ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          <ListFilter className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="z-[70] w-60 p-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-sm font-medium text-foreground">{label}</span>
+            {/* Only offered when there is something to clear. */}
+            {active && (
+              <button
+                type="button"
+                onClick={() => onChange("", "")}
+                className="text-xs text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* TEXT WITH A NUMERIC INTENT, the house style for a number field —
+                `type="number"` puts a spinner in a 90px box and lets "e" and
+                "-" through. Digits only, taken as typed. */}
+            <Input
+              inputMode="numeric"
+              value={min}
+              onChange={(e) => onChange(digits(e.target.value), max)}
+              placeholder="Min"
+              aria-label={`Minimum ${label.toLowerCase()}`}
+              className="h-8 tabular-nums"
+            />
+            <span aria-hidden className="text-sm text-muted-foreground">
+              –
+            </span>
+            <Input
+              inputMode="numeric"
+              value={max}
+              onChange={(e) => onChange(min, digits(e.target.value))}
+              placeholder="Max"
+              aria-label={`Maximum ${label.toLowerCase()}`}
+              className="h-8 tabular-nums"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            In {unit}. Leave either side empty for no limit.
+          </span>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -171,7 +269,11 @@ function AssetPickerSheet({
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState(ALL_TYPES);
-  const [capacity, setCapacity] = React.useState(ALL_CAPACITIES);
+  /* Held as typed, not as numbers: a half-entered "1" is a real state of the
+     field, and a filter that reinterprets it while you type is one that fights
+     you. Parsed only where it is applied. */
+  const [minGal, setMinGal] = React.useState("");
+  const [maxGal, setMaxGal] = React.useState("");
 
   /* BOTH FILTERS OFFER ONLY WHAT IS THERE. A tank type — or a capacity band —
      with nothing in this yard is a choice that can only empty the table. */
@@ -182,34 +284,34 @@ function AssetPickerSheet({
     () => TANK_TYPES.filter((t) => assets.some((a) => a.tankType === t)),
     [assets]
   );
-  const bands = React.useMemo(
-    () =>
-      CAPACITY_BANDS.filter((b) => assets.some((a) => b.test(a.capacityGal))).map(
-        (b) => b.label
-      ),
-    [assets]
-  );
-
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    const band = CAPACITY_BANDS.find((b) => b.label === capacity);
+    const lo = minGal === "" ? null : Number(minGal);
+    const hi = maxGal === "" ? null : Number(maxGal);
+    const bounded = lo !== null || hi !== null;
     return assets.filter((a) => {
       if (type !== ALL_TYPES && a.tankType !== type) return false;
-      if (band && !band.test(a.capacityGal)) return false;
+      if (bounded) {
+        /* Not a tank, so not an answer to a question about tank sizes. */
+        if (a.capacityGal <= 0) return false;
+        if (lo !== null && a.capacityGal < lo) return false;
+        if (hi !== null && a.capacityGal > hi) return false;
+      }
       if (!q) return true;
       return (
         a.name.toLowerCase().includes(q) ||
         (a.serialNumber ?? "").toLowerCase().includes(q)
       );
     });
-  }, [assets, query, type, capacity]);
+  }, [assets, query, type, minGal, maxGal]);
 
   /* A filter left set from last time is a table lying about what it holds. */
   React.useEffect(() => {
     if (!open) {
       setQuery("");
       setType(ALL_TYPES);
-      setCapacity(ALL_CAPACITIES);
+      setMinGal("");
+      setMaxGal("");
     }
   }, [open]);
 
@@ -295,12 +397,15 @@ function AssetPickerSheet({
                   <th className="px-3 py-2.5 text-right">
                     <span className="flex items-center justify-end gap-1">
                       <TableRequiredLabel>Capacity</TableRequiredLabel>
-                      <HeaderFilter
+                      <HeaderRangeFilter
                         label="Capacity"
-                        value={capacity}
-                        options={bands}
-                        allLabel={ALL_CAPACITIES}
-                        onChange={setCapacity}
+                        unit="gallons"
+                        min={minGal}
+                        max={maxGal}
+                        onChange={(lo, hi) => {
+                          setMinGal(lo);
+                          setMaxGal(hi);
+                        }}
                       />
                     </span>
                   </th>
@@ -436,27 +541,9 @@ const blankPeripheral = (): PeripheralRow => ({
   ownership: "",
 });
 
-/** Each filter's "no filter" row. A word, so it can sit in the same list as
- *  the values themselves rather than being an empty option. */
+/** The tank-type filter's "no filter" row. A word, so it can sit in the same
+ *  list as the types themselves rather than being an empty option. */
 const ALL_TYPES = "All tank types";
-const ALL_CAPACITIES = "All capacities";
-
-/**
- * Capacity as BANDS, not as the eleven exact numbers the yard happens to hold.
- * Nobody looks for a 1,500 gal tank and rejects a 2,000; they look for one big
- * enough. Exact values would also be a filter that changes shape with the
- * stock, so the same question would have different answers in two yards.
- *
- * "No capacity" is a real band, not a gap: a pump cart and a nozzle assembly
- * have none, and "the ones that are not tanks" is a thing people look for.
- */
-const CAPACITY_BANDS: { label: string; test: (gal: number) => boolean }[] = [
-  { label: "No capacity", test: (g) => g <= 0 },
-  { label: "Under 500 gal", test: (g) => g > 0 && g < 500 },
-  { label: "500 – 999 gal", test: (g) => g >= 500 && g < 1000 },
-  { label: "1,000 – 2,499 gal", test: (g) => g >= 1000 && g < 2500 },
-  { label: "2,500 gal and over", test: (g) => g >= 2500 },
-];
 
 const DOC_ACCESS = ["Internal only", "Visible to vendor", "Visible to customer"];
 

@@ -72,8 +72,8 @@ export interface RecordSheetProps {
    *
    * It sits by the TITLE, not the footer: it is a statement about the record,
    * not a control, and beside Save it would read as a second button. The
-   * caller folds it into its own status chip with `DraftStatusChip` — one chip
-   * saying "Draft · Saved" rather than two elements sharing one meaning.
+   * caller passes it through `DraftStatusChip`, which on a Draft swaps the
+   * chip for the line "Draft saved" rather than showing both.
    */
   /**
    * The ··· at the right of the header, between the history icon and Close.
@@ -156,15 +156,17 @@ export function useDraftSaveState(draft: unknown, enabled = true) {
 }
 
 /**
- * The status chip, with the draft's save state folded into it.
+ * The record's state in the header: what it IS, and whether the draft is kept.
  *
- * ONE CHIP, NOT TWO THINGS SIDE BY SIDE. "Draft" and "Saved" were separate
- * elements saying one thing between them — what state this record is in — and
- * read as a status and an unrelated notice. `Draft · Saved` is the sentence
- * they were already trying to make.
+ * ONE THING WHEN THEY ARE THE SAME WORD. On a Draft, a status dot, the word
+ * "Draft", a separator dot and the word "Saved" were four marks for one fact.
+ * Once typing starts the chip gives way to plain text — "Draft saving…", then
+ * "Draft saved" — which carries the status and the reassurance in one line.
  *
- * The save half is quieter than the status half, because the status is the
- * fact and the save is the reassurance.
+ * TWO WHEN THEY ARE NOT. An Assigned order being edited still has a status
+ * worth seeing, and "Assigned saved" is not a sentence — so the status keeps
+ * its chip and the save note sits beside it. The word stays "Draft" either
+ * way, because what is kept is the draft of the edit, not the order.
  */
 export function DraftStatusChip({
   tone,
@@ -175,30 +177,57 @@ export function DraftStatusChip({
   label: string;
   saveState?: "idle" | "saving" | "saved";
 }) {
+  const note =
+    saveState === "saving" ? (
+      <>
+        <Loader2 className="size-3 animate-spin" />
+        Draft saving…
+      </>
+    ) : (
+      <>
+        <Check className="size-3" />
+        Draft saved
+      </>
+    );
+
+  if (saveState === "idle") {
+    return (
+      <StatusChip tone={tone} variant="soft">
+        {label}
+      </StatusChip>
+    );
+  }
+
+  /* A DRAFT SAYS IT ONCE. "Draft saved" already contains the status, so the
+     chip — its dot, its fill, its own word "Draft" — would be saying the same
+     thing a second and third time. Plain text, one mark, one meaning. */
+  if (label.toLowerCase() === "draft") {
+    return (
+      <span
+        className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+        aria-live="polite"
+      >
+        {note}
+      </span>
+    );
+  }
+
+  /* NOT A DRAFT, so two things are true at once. An Assigned order still has a
+     status worth seeing, and "Assigned saved" is not a sentence — the status
+     keeps its chip and the save note sits beside it. The word stays "Draft"
+     because what is kept is the draft of the edit, not the order. */
   return (
-    <StatusChip tone={tone} variant="soft">
-      {label}
-      {saveState !== "idle" && (
-        <>
-          <span aria-hidden className="opacity-40">
-            ·
-          </span>
-          <span className="inline-flex items-center gap-1 opacity-80" aria-live="polite">
-            {saveState === "saving" ? (
-              <>
-                <Loader2 className="size-3 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              <>
-                <Check className="size-3" />
-                Saved
-              </>
-            )}
-          </span>
-        </>
-      )}
-    </StatusChip>
+    <span className="flex items-center gap-2">
+      <StatusChip tone={tone} variant="soft">
+        {label}
+      </StatusChip>
+      <span
+        className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+        aria-live="polite"
+      >
+        {note}
+      </span>
+    </span>
   );
 }
 

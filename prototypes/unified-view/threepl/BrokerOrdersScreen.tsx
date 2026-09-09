@@ -834,12 +834,16 @@ export function BrokerOrdersScreen({
 
   const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
     switch (key) {
-      case "order":
+      case "order": {
+        /* The disc carries its own tooltip and aria-label — the letter is
+           never the only thing holding the meaning. */
+        const c = laneCardCode(row);
         return (
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm tabular-nums text-foreground">
               {row.orderNo}
             </span>
+            <CodeDisc code={c.text} label={c.label} tone={c.tone} />
             {row.urgent && (
               <Badge variant="destructive" className="shrink-0">
                 !
@@ -847,9 +851,6 @@ export function BrokerOrdersScreen({
             )}
           </div>
         );
-      case "type": {
-        const c = laneCardCode(row);
-        return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
       }
       case "customer":
         return <TwoLineCell {...row.customer} />;

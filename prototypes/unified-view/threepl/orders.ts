@@ -477,7 +477,6 @@ export function customerTotal(lines: OrderLine[]): number {
 
 export type BrokerColumnKey =
   | "order"
-  | "type"
   | "customer"
   | "shipTo"
   | "date"
@@ -499,10 +498,12 @@ export interface BrokerColumnDef {
 
 /** Widths follow the DS column-frame vocabulary; actions = 44 as everywhere. */
 export const BROKER_COLUMNS: BrokerColumnDef[] = [
-  { key: "order", label: "Order #", width: 130, sortable: true },
-  /* The same disc the board card wears, so the type is read the same way in
-     both views rather than as a letter here and a word there. */
-  { key: "type", label: "Type", width: 74 },
+  /* ORDER NUMBER AND TYPE, one column. They are one identity — nobody reads
+     the type without the order it belongs to — and as its own column the disc
+     sat in 74px of otherwise empty width, a rail of single letters with a
+     header nobody needed. It wears the same disc the board card does, in the
+     same place: number first, disc after. */
+  { key: "order", label: "Order #", width: 170, sortable: true },
   { key: "customer", label: "Customer", width: 230 },
   { key: "shipTo", label: "Ship To", width: 190 },
   { key: "date", label: "Planned Date", width: 165, sortable: true },

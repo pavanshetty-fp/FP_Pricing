@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Boxes, Contact, Droplet, NotebookPen, Truck } from "lucide-react";
+import { Boxes, Contact, Droplet, NotebookPen, TriangleAlert, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyValue } from "@/components/ui/copy-value";
@@ -43,6 +43,7 @@ import {
   UNITS_OF_MEASURE,
   creditAvailable,
   creditBlocked,
+  classificationOf,
   customerReach,
   endingSoon,
   monthlyRevenue,
@@ -795,9 +796,51 @@ export function productConfig(
     renderCell: (p, key) => {
       switch (key) {
         case "name":
-          return <TwoLineCell title={p.name} description={p.hazmat ?? p.category} />;
-        case "code":
-          return <span className="text-sm tabular-nums">{p.productCode}</span>;
+          return <TwoLineCell title={p.name} description={p.productCode} />;
+        case "classification": {
+          const h = classificationOf(p);
+          /* NOT REGULATED IS AN ANSWER, and a common one — DEF, lubes,
+             coolant, every service line. It gets words and no icon, because an
+             icon on two thirds of the catalogue would stop meaning anything. */
+          if (!h) return <Muted>Not regulated</Muted>;
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex min-w-0 items-center gap-2">
+                  {/* ONE ICON, THREE STRENGTHS. Same glyph every time so the
+                      column reads as one scale rather than as a legend to
+                      learn; only the colour moves, and it moves with the
+                      DOT's own grading — a flammable gas over Packing Group
+                      II over Packing Group III. */}
+                  <TriangleAlert
+                    className={cn(
+                      "size-4 shrink-0",
+                      h.severity === 3
+                        ? "text-fp-banner-accent-warning"
+                        : h.severity === 2
+                          ? "text-fp-banner-accent-caution"
+                          : "text-muted-foreground"
+                    )}
+                  />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm text-foreground">
+                      Class {h.classNumber}
+                      {h.packingGroup && (
+                        <span className="text-muted-foreground"> · PG {h.packingGroup}</span>
+                      )}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {h.substance} · {h.unNumber}
+                    </span>
+                  </span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                {h.className} · {h.unNumber}. {h.note}
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
         case "category":
           return <span className="text-sm">{p.category}</span>;
         case "unit":

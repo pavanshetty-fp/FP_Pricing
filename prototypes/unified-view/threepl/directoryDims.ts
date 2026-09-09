@@ -31,6 +31,7 @@ import {
   RENTAL_STATUSES,
   RENTAL_TYPES,
   UNITS_OF_MEASURE,
+  classificationOf,
   customerReach,
   shipToNames,
   type BrokerCustomer,
@@ -192,7 +193,7 @@ export const BROKER_CUSTOMER_GROUP_DIMS: GroupDim<BrokerCustomer>[] = [
 
 export type BrokerProductColumnKey =
   | "name"
-  | "code"
+  | "classification"
   | "category"
   | "unit"
   | "topOff"
@@ -206,8 +207,13 @@ export type BrokerProductColumnKey =
   | "actions";
 
 export const BROKER_PRODUCT_COLUMNS = [
-  { key: "name" as const, label: "Product Name", width: 250, sortable: true },
-  { key: "code" as const, label: "Product Code", width: 140, sortable: true },
+  /* NAME OVER CODE. They were adjacent columns holding one identity, and the
+     code is what people actually type into search — it belongs beside the
+     name, not 140px away from it. */
+  { key: "name" as const, label: "Product and Code", width: 250, sortable: true },
+  /* Freed by the merge above, and it earns the place: what a product IS in
+     regulatory terms decides who may carry it. */
+  { key: "classification" as const, label: "Classification", width: 240, sortable: true },
   { key: "category" as const, label: "Category", width: 140, sortable: true },
   { key: "unit" as const, label: "UOM", width: 100, sortable: true },
   { key: "topOff" as const, label: "TopOff", width: 130, sortable: true },
@@ -245,7 +251,9 @@ export function sortProducts(rows: BrokerProduct[], sort: ProductSort | null): B
   const of = (p: BrokerProduct): string | number | null => {
     switch (sort.key) {
       case "name": return p.name;
-      case "code": return p.productCode;
+      /* Sorts by DANGER, not alphabetically — descending puts the propane and
+         the petrol at the top, which is the only reason to sort this column. */
+      case "classification": return classificationOf(p)?.severity ?? 0;
       case "category": return p.category;
       case "unit": return p.unit;
       case "topOff": return p.topOffSupported ? 1 : 0;

@@ -699,7 +699,15 @@ function buildProducts(): BrokerProduct[] {
           category: fam.cat,
           unit: fam.unit,
           taxable: r() < 0.85,
-          hazmat: fam.cat === "Fuel" ? "Class 3 · UN1202" : null,
+          /* Not every fuel is a Class 3 liquid. Propane is a flammable GAS —
+             Class 2.1, UN1978 — and calling it diesel on the placard is the
+             kind of seed-data shortcut that teaches a screen the wrong shape. */
+          hazmat:
+            fam.cat !== "Fuel"
+              ? null
+              : fam.head === "Propane"
+                ? "Class 2.1 · UN1978"
+                : "Class 3 · UN1202",
           basePrice: Number((fam.price[0] + r() * (fam.price[1] - fam.price[0])).toFixed(2)),
           active: r() < 0.88,
         })
@@ -740,6 +748,83 @@ export function assertProductsCoverOrders(): void {
       throw new Error(`Product "${name}" is orderable but missing from the Products list`);
     }
   }
+}
+
+/* ── hazard classification ─────────────────────────────────────────────────
+   WHAT A UN NUMBER MEANS, spelled out.
+
+   `hazmat` is stored as the string that goes on the placard — "Class 3 ·
+   UN1202" — because that is the form a driver and a BOL both want. It is
+   useless to everyone else: nobody reading a product list knows UN1202 from
+   UN1203, and the two travel under different rules.
+
+   SEVERITY IS THE DOT'S OWN SCALE, not one invented here. Within a hazard
+   class the Packing Group grades the danger — I greatest, II medium, III
+   minor — and a flammable GAS outranks any of them because it needs no heat
+   at all to be in its dangerous state. Three levels, and this catalogue
+   exercises all three: propane, petrol, diesel.
+────────────────────────────────────────────────────────────────────────── */
+
+export interface HazardClassification {
+  /** `3`, `2.1` — the DOT hazard class as it is written. */
+  classNumber: string;
+  /** What the class means in words. */
+  className: string;
+  unNumber: string;
+  /** The substance the UN number actually names. */
+  substance: string;
+  /** DOT packing group. Null for gases, which are not assigned one. */
+  packingGroup: "I" | "II" | "III" | null;
+  /** 3 is the most dangerous. Drives the icon's colour, nothing else. */
+  severity: 1 | 2 | 3;
+  /** One line on why it is graded there — the icon's tooltip. */
+  note: string;
+}
+
+const UN_NUMBERS: Record<string, HazardClassification> = {
+  UN1978: {
+    classNumber: "2.1",
+    className: "Flammable gas",
+    unNumber: "UN1978",
+    substance: "Propane",
+    packingGroup: null,
+    severity: 3,
+    note: "Flammable gas — already a vapour, ignites with no heating at all.",
+  },
+  UN1203: {
+    classNumber: "3",
+    className: "Flammable liquid",
+    unNumber: "UN1203",
+    substance: "Gasoline",
+    packingGroup: "II",
+    severity: 2,
+    note: "Packing Group II — flash point far below ambient, so its vapour is flammable at any working temperature.",
+  },
+  UN1202: {
+    classNumber: "3",
+    className: "Flammable liquid",
+    unNumber: "UN1202",
+    substance: "Diesel / gas oil",
+    packingGroup: "III",
+    severity: 1,
+    note: "Packing Group III — combustible rather than readily ignitable; needs heating before it will light.",
+  },
+  UN1223: {
+    classNumber: "3",
+    className: "Flammable liquid",
+    unNumber: "UN1223",
+    substance: "Kerosene",
+    packingGroup: "III",
+    severity: 1,
+    note: "Packing Group III — combustible rather than readily ignitable; needs heating before it will light.",
+  },
+};
+
+/** The classification behind a product's placard string, or null if unregulated. */
+export function classificationOf(p: BrokerProduct): HazardClassification | null {
+  if (!p.hazmat) return null;
+  const un = p.hazmat.match(/UN\d+/)?.[0];
+  return (un && UN_NUMBERS[un]) || null;
 }
 
 /** How many accounts may buy it — the list column, computed not stored. */

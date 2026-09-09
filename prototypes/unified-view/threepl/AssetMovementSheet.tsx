@@ -1,5 +1,14 @@
 import * as React from "react";
-import { Calendar as CalendarIcon, ChevronDown, Plus, Trash2 } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Check,
+  ChevronDown,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +18,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/form-layout/MultiSelect";
@@ -16,7 +26,6 @@ import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
   TableCellCombobox,
   TableCellInput,
-  TableCellMultiSelect,
   TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout";
@@ -41,6 +50,217 @@ import {
   siteAddress,
   type MovementDirection,
 } from "./orders";
+
+/** `vendor_owned` → `Vendor owned`. The directory stores ownership as a key;
+ *  a form is not the place to read one. */
+const humanise = (v: string) =>
+  v.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+/** One label-over-value fact on the chosen asset's card. */
+function AssetFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="truncate text-sm text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * The asset picker — a table of what can be moved, on top of the form.
+ *
+ * WHY A SHEET AND NOT A DROPDOWN. Choosing an asset is not choosing a word: a
+ * yard holds twenty-nine of them and the answer depends on the tank's type,
+ * its capacity and whether it is free — three facts a one-line option cannot
+ * carry. A dropdown made people pick a NAME and then check afterwards whether
+ * it was the right thing; a table lets them compare before committing.
+ *
+ * SEARCH AND ONE FILTER. Name or serial covers "I know which one"; tank type
+ * covers "I know what kind I need". Everything else the table already shows,
+ * so a filter for it would only be a second way to read the same column.
+ *
+ * ADD ON THE ROW, not a footer button over a selected row. The row is the
+ * thing being chosen, so the affordance belongs on it — and there is no
+ * confirm step because there is nothing to confirm: one asset, chosen, done.
+ */
+function AssetPickerSheet({
+  open,
+  onOpenChange,
+  assets,
+  selectedId,
+  onSelect,
+  sourceLabel,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  assets: RentalAsset[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  /** Where this list comes from, e.g. "Turlock Yard". Names the subtitle. */
+  sourceLabel: string;
+}) {
+  const [query, setQuery] = React.useState("");
+  const [type, setType] = React.useState(ALL_TYPES);
+
+  /* The filter offers what is actually there. A tank type with nothing in this
+     yard is a choice that can only empty the table. */
+  const types = React.useMemo(
+    () => [ALL_TYPES, ...Array.from(new Set(assets.map((a) => a.assetType))).sort()],
+    [assets]
+  );
+
+  const rows = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return assets.filter((a) => {
+      if (type !== ALL_TYPES && a.assetType !== type) return false;
+      if (!q) return true;
+      return (
+        a.name.toLowerCase().includes(q) ||
+        (a.serialNumber ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [assets, query, type]);
+
+  /* A filter left set from last time is a table lying about what it holds. */
+  React.useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setType(ALL_TYPES);
+    }
+  }, [open]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="z-[60] w-[min(620px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(620px,calc(100vw-60px))]"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle className="text-base">Select asset</SheetTitle>
+            <span className="truncate text-xs text-muted-foreground">
+              {assets.length} {assets.length === 1 ? "asset" : "assets"} {sourceLabel}
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="Close select asset"
+            onClick={() => onOpenChange(false)}
+            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* THE CONTROLS DO NOT SCROLL WITH THE RESULTS. A search box that
+            scrolls away is one people scroll back up to find. */}
+        <div className="flex items-center gap-3 border-b border-border p-4">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or serial…"
+              aria-label="Search assets"
+              className="h-8 pl-8"
+            />
+          </div>
+          <Combobox
+            className="h-8 w-[180px] shrink-0"
+            size="sm"
+            value={type}
+            onValueChange={setType}
+            options={types}
+            aria-label="Filter by tank type"
+            searchThreshold={8}
+          />
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto">
+          {rows.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">
+              No asset matches that. Clear the search or the tank type.
+            </p>
+          ) : (
+            <table className="w-full table-fixed border-collapse">
+              {/* FIXED, so the Add column cannot be squeezed off the edge by a
+                  long asset name — the one column that must always be reachable
+                  is the one that does the choosing. */}
+              <colgroup>
+                <col />
+                <col className="w-[26%]" />
+                <col className="w-[100px]" />
+                <col className="w-[92px]" />
+              </colgroup>
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-border bg-fp-table-header">
+                  <th className="px-4 py-2.5 text-left">
+                    <TableRequiredLabel>Asset</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Tank Type</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-right">
+                    <TableRequiredLabel>Capacity</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((a) => {
+                  const chosen = a.id === selectedId;
+                  return (
+                    <tr
+                      key={a.id}
+                      className="group/row border-b border-border last:border-b-0 hover:bg-accent/40"
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="truncate text-sm text-foreground">{a.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {a.serialNumber ?? "No serial"}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="truncate px-3 py-2.5 text-sm text-muted-foreground">
+                        {a.assetType}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm tabular-nums text-muted-foreground">
+                        {a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} gal` : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        {/* THE ONE ALREADY ON THE ORDER SAYS SO rather than
+                            offering to be added again. */}
+                        {chosen ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Check className="size-3.5" /> Added
+                          </span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              onSelect(a.id);
+                              onOpenChange(false);
+                            }}
+                          >
+                            <Plus /> Add
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 /**
  * Asset Delivery and Asset Pickup — §5.20's other two create flows.
@@ -109,6 +329,10 @@ const blankPeripheral = (): PeripheralRow => ({
   condition: "",
   ownership: "",
 });
+
+/** The tank-type filter's "no filter" row. A word, so it can sit in the same
+ *  list as the types themselves rather than being an empty value. */
+const ALL_TYPES = "All tank types";
 
 const DOC_ACCESS = ["Internal only", "Visible to vendor", "Visible to customer"];
 
@@ -304,6 +528,15 @@ export function AssetMovementSheet({
     ? "Choose a yard first — the assets offered are the ones sitting in it."
     : "Choose a ship-to first — the assets offered are the ones on rent there.";
 
+  /* Where the list came from, said once — the empty state's count and the
+     picker's subtitle are the same sentence about the same set. */
+  const sourceLabel = isDelivery
+    ? `in ${draft.yard}`
+    : `on rent at ${draft.shipTo}`;
+
+  /** The asset table, on top of the form. Closed until asked for. */
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+
   const setPeripheral = (i: number, patch: Partial<PeripheralRow>) =>
     setDraft((d) => ({
       ...d,
@@ -493,28 +726,26 @@ export function AssetMovementSheet({
       <SheetSection
         title="POC Details"
         /* ADDING A PERSON ACTS ON THE SECTION, not on a field, so it sits on
-           the heading row. As a field it also broke the row: the picker's empty
-           box is taller than a select, which stretched the row and left the
-           Sales Person read-out floating below the control it belongs to. Two
-           rows of the same 1 + 2 shape now, the same pair the Delivery Order
-           sheet uses. */
+           the heading row.
+
+           IT ADDS A FIELD, NOT A CHIP. As a token picker in the heading, "Add
+           POC" collected names into a box that was nowhere near the Primary POC
+           it sat above, and a second person ended up looking nothing like the
+           first — no label, no contact read-out, no way to see whose number was
+           whose. It now appends a Secondary POC row of exactly the same shape
+           as Primary, under it, where a second person belongs. */
         action={
-          <MultiSelect
-            options={POCS.filter((p) => p !== draft.primaryPoc)}
-            value={draft.secondaryPocs}
-            onChange={(v) => set("secondaryPocs", v)}
-            addLabel="Add POC"
-            searchPlaceholder="Search contacts…"
-            emptyText="No contact found."
-            /* Sized to its content and framed like the other heading actions —
-               a full-width bordered box in a heading row reads as a field that
-               has lost its label. */
-            className="min-h-8 w-auto justify-end border-transparent px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          />
+          <button
+            type="button"
+            onClick={() => set("secondaryPocs", [...draft.secondaryPocs, ""])}
+            className="flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <Plus className="size-4" /> Add POC
+          </button>
         }
       >
-        <div className="grid grid-cols-3 items-end gap-4">
-          <SheetField label="Primary POC">
+        <div className="grid grid-cols-9 items-end gap-4">
+          <SheetField label="Primary POC" className="col-span-4">
             <Combobox
               className="w-full"
               value={draft.primaryPoc}
@@ -526,7 +757,7 @@ export function AssetMovementSheet({
           </SheetField>
           {/* Derived, so a read-out with its own copy buttons — not a pair of
               disabled fields pretending to be editable. */}
-          <div className="col-span-2 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
@@ -543,8 +774,75 @@ export function AssetMovementSheet({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 items-end gap-4">
-          <SheetField label="Sales Person">
+        {/* SAME ROW, SAME SHAPE. A second person is another of the first kind
+            of thing, so it gets the first kind of row — and its own Remove,
+            because a row that was added by a click has to be removable by
+            one. */}
+        {draft.secondaryPocs.map((name, i) => {
+          const contact = POC_DIRECTORY[name];
+          return (
+            <div key={i} className="grid grid-cols-9 items-end gap-4">
+              <SheetField
+                label={
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <span>Secondary POC</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "secondaryPocs",
+                          draft.secondaryPocs.filter((_, k) => k !== i)
+                        )
+                      }
+                      className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      Remove
+                    </button>
+                  </span>
+                }
+                className="col-span-4"
+              >
+                <Combobox
+                  className="w-full"
+                  value={name}
+                  onValueChange={(v) =>
+                    set(
+                      "secondaryPocs",
+                      draft.secondaryPocs.map((p, k) => (k === i ? v : p))
+                    )
+                  }
+                  /* Nobody is offered twice: a person already on the order is
+                     not a second person to add to it. */
+                  options={POCS.filter(
+                    (p) =>
+                      p === name ||
+                      (p !== draft.primaryPoc && !draft.secondaryPocs.includes(p))
+                  )}
+                  placeholder="Select Secondary POC"
+                  searchPlaceholder="Search contacts…"
+                />
+              </SheetField>
+              <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+                {contact ? (
+                  <>
+                    <CopyValue value={contact.phone} label="POC contact" tabular />
+                    <span aria-hidden className="mr-6 text-fp-outline-1">
+                      |
+                    </span>
+                    <CopyValue value={contact.email} label="POC email" />
+                  </>
+                ) : (
+                  <span className="truncate text-sm text-muted-foreground">
+                    Select a POC to see their contact and email.
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="grid grid-cols-9 items-end gap-4">
+          <SheetField label="Sales Person" className="col-span-4">
             <Combobox
               className="w-full"
               value={draft.salesperson}
@@ -556,7 +854,7 @@ export function AssetMovementSheet({
           </SheetField>
           {/* SAME SHAPE AND SAME GRID as the POC row above — two read-out cards
               that differ in width read as two different kinds of card. */}
-          <div className="col-span-2 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
               <CopyValue
                 value={SALES_CONTACTS[draft.salesperson]}
@@ -656,111 +954,133 @@ export function AssetMovementSheet({
           different layouts for three lists of things was the cost of not using
           it here. */}
       <SheetSection title="Asset Details">
-        {/* ONE ROW, AND NO ADD CHIP. §5.20: a movement order carries exactly
-            one asset — `assertConsistent` enforces it — so the affordance that
-            would add a second is the one thing this table must not have.
+        {/* ONE ASSET, CHOSEN FROM A TABLE, THEN READ AS A CARD. §5.20: a
+            movement order carries exactly one asset — `assertConsistent`
+            enforces it — so this section never grows a second row, and the
+            table it used to be was a table of one.
 
-            THE ASSET IS THE ONLY THING PICKED. Type and capacity are the
-            asset's own facts and arrive with it, the same way the Delivery
-            Order's product arrives with its tank; product is what the tank is
-            to carry, which is a decision, so it stays editable. */}
-        {/* HELPER TEXT IS PART OF THE CONTROL, 4px under it — the DS rule the
-            fields follow, applied to a table. At the section gap it floated
-            between the table and the next section and got read as a heading
-            for the wrong one. */}
-        <div className="flex flex-col gap-1">
-        <div className="overflow-hidden rounded-md border border-border">
-          <table className="w-full table-fixed border-collapse">
-            <colgroup>
-              <col />
-              <col className="w-[26%]" />
-              <col className="w-[120px]" />
-              <col className="w-[24%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border bg-fp-table-header">
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel required>Asset</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel>Tank Type</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Capacity</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel>Product</TableRequiredLabel>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="h-11">
-                <td className="relative p-0">
-                  <TableCellCombobox
-                    value={asset?.name ?? ""}
-                    options={available.map((a) => a.name)}
-                    disabled={!sourceChosen}
-                    placeholder={sourceChosen ? "Select asset" : "Not available yet"}
-                    aria-label="Asset"
-                    onChange={(name) => {
-                      const picked = available.find((a) => a.name === name);
-                      set("assetId", picked?.id ?? "");
-                    }}
-                  />
-                </td>
-                {/* DERIVED, so text — a disabled control here would be a box
-                    inviting a click that does nothing. */}
-                <td className="px-3 text-sm text-muted-foreground">
-                  {asset ? asset.assetType : "—"}
-                </td>
-                <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                  {asset && asset.capacityGal > 0
-                    ? `${asset.capacityGal.toLocaleString()} gal`
-                    : "—"}
-                </td>
-                <td className="relative p-0">
-                  <TableCellMultiSelect
-                    values={draft.products}
-                    options={[...PRODUCTS]}
-                    unitLabel="product"
-                    placeholder="Select product"
-                    aria-label="Products for this asset"
-                    onChange={(v) => set("products", v)}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {/* RED ONLY WHEN IT BLOCKS. Until a yard is chosen this line is the
-            reason the row above cannot be filled, which is a different kind of
-            sentence from "3 assets in Fresno Yard" — and if both were red the
-            colour would stop meaning anything. */}
-        <p
-          className={cn(
-            "text-xs",
-            sourceChosen ? "text-muted-foreground" : "text-destructive"
-          )}
-        >
-          {sourceChosen
-            ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${
-                isDelivery ? `in ${draft.yard}` : `on rent at ${draft.shipTo}`
-              }. Search by name or serial.`
-            : gate}
-        </p>
-        </div>
+            THE PICK AND THE READ ARE DIFFERENT JOBS. Picking needs every
+            asset's type, capacity and serial side by side to compare, which is
+            a table and does not fit in a form; reading back the one you chose
+            needs those same facts laid out plainly, which is a card. Doing
+            both in a four-column row of a table meant the choosing was done
+            blind — a name in a dropdown — and the reading was three cells wide.
 
-        {asset && (
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm">
-            <span className="text-foreground">{asset.serialNumber ?? "—"}</span>
-            <span aria-hidden className="text-fp-outline-1">
-              |
-            </span>
-            <span className="text-muted-foreground">
-              {asset.customer ? `On rent to ${asset.customer}` : "In the yard"}
-            </span>
+            PRODUCTS COME AFTER, not beside. What the tank carries is the only
+            decision on this section that is not the asset itself, and it
+            cannot be answered before there is an asset to answer it about. */}
+        {!asset ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm text-foreground">Select asset</span>
+                <span className="text-xs text-muted-foreground">
+                  One asset per movement order. Search, filter by tank type, and
+                  add it from the list.
+                </span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!sourceChosen}
+                onClick={() => setPickerOpen(true)}
+              >
+                <Plus /> Select asset
+              </Button>
+            </div>
+            {/* RED ONLY WHEN IT BLOCKS. Until a source is chosen this line is
+                the reason the button above is dead, which is a different kind
+                of sentence from "29 assets in Turlock Yard" — and if both were
+                red the colour would stop meaning anything. */}
+            <p
+              className={cn(
+                "text-xs",
+                sourceChosen ? "text-muted-foreground" : "text-destructive"
+              )}
+            >
+              {sourceChosen
+                ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${sourceLabel}.`
+                : gate}
+            </p>
           </div>
+        ) : (
+          <>
+            {/* THE CARD IS THE ASSET AS IT ARRIVED. Every fact on it is the
+                asset's own and none of it is editable here — changing a tank's
+                capacity on an order would be editing the tank. The one control
+                is Edit, and it reopens the list.
+
+                EDIT ON HOVER, the rule the read-out cards already follow: a
+                pencil sitting on every card at rest reads as an invitation to
+                change facts that are not this form's to change. */}
+            <div className="group/asset relative overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a">
+              <div className="flex items-start justify-between gap-4 border-b border-fp-outline-1 px-4 py-3">
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {asset.name}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span>{asset.serialNumber ?? "No serial"}</span>
+                    <span aria-hidden className="text-fp-outline-1">
+                      |
+                    </span>
+                    <span>
+                      {asset.customer ? `On rent to ${asset.customer}` : "In the yard"}
+                    </span>
+                  </span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Change asset"
+                  onClick={() => setPickerOpen(true)}
+                  className="shrink-0 opacity-0 transition-opacity group-hover/asset:opacity-100 group-focus-within/asset:opacity-100"
+                >
+                  <Pencil />
+                </Button>
+              </div>
+              <dl className="grid grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
+                <AssetFact label="Tank Type" value={asset.assetType} />
+                <AssetFact
+                  label="Capacity"
+                  value={
+                    asset.capacityGal > 0
+                      ? `${asset.capacityGal.toLocaleString()} ${asset.unit}`
+                      : "—"
+                  }
+                />
+                <AssetFact label="Ownership" value={humanise(asset.ownershipType)} />
+                <AssetFact label="Availability" value={asset.availabilityStatus} />
+                <AssetFact label="Asset ID" value={asset.externalAssetId ?? asset.id} />
+                <AssetFact label="Compliance" value={asset.complianceStatus} />
+              </dl>
+            </div>
+
+            {/* THE NEXT QUESTION, and only now answerable. */}
+            <SheetField
+              label="Products"
+              description="What this asset will carry. One or more."
+            >
+              <MultiSelect
+                options={[...PRODUCTS]}
+                value={draft.products}
+                onChange={(v) => set("products", v)}
+                addLabel="Add product"
+                searchPlaceholder="Search products…"
+                emptyText="No product found."
+              />
+            </SheetField>
+          </>
         )}
+
+        <AssetPickerSheet
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          assets={available}
+          selectedId={draft.assetId}
+          onSelect={(id) => set("assetId", id)}
+          sourceLabel={sourceLabel}
+        />
       </SheetSection>
 
       {/* Two OPTIONAL manifests, each hidden until asked for — the same rule

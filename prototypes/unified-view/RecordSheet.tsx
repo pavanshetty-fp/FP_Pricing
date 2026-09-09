@@ -1,5 +1,5 @@
 import * as React from "react";
-import { X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -60,6 +60,20 @@ export interface RecordSheetProps {
   /** Rendered beside the title, e.g. a StatusChip. */
   headerAside?: React.ReactNode;
   /**
+   * DRAFT AUTOSAVE, SAID OUT LOUD.
+   *
+   * A sheet that keeps a draft has to tell the reader it is keeping it, or
+   * they behave as though it does not — they finish fields they meant to come
+   * back to, and they hesitate to close. Three states and nothing else:
+   * `saving` while a change settles, `saved` once it has, and `idle` before
+   * anything has been typed, which shows nothing at all because there is
+   * nothing to reassure anybody about yet.
+   *
+   * It sits by the TITLE, not the footer: it is a statement about the record,
+   * not a control, and beside Save it would read as a second button.
+   */
+  saveState?: "idle" | "saving" | "saved";
+  /**
    * Controls at the far right of the header, left of Close.
    *
    * For things that OPEN something rather than change the record — a history,
@@ -86,6 +100,48 @@ export interface RecordSheetProps {
   children: React.ReactNode;
 }
 
+/**
+ * Watch a draft and report whether it has been kept.
+ *
+ * ONE HOOK, SO EVERY DRAFT SHEET SAYS THE SAME THING. A sheet that autosaves
+ * silently is a sheet people do not trust with unfinished work: they either
+ * finish fields they meant to return to, or they hesitate to close. The
+ * feedback is the feature.
+ *
+ * `saving` for 500ms after a change settles, then `saved`. It stays `idle`
+ * until the FIRST change, because before anyone has typed there is nothing to
+ * reassure them about — and a sheet that opens saying "Saved" is claiming to
+ * have done something it has not.
+ */
+export function useDraftSaveState(draft: unknown, enabled = true) {
+  const [state, setState] = React.useState<"idle" | "saving" | "saved">("idle");
+  const serialised = React.useMemo(() => JSON.stringify(draft ?? null), [draft]);
+  const first = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!enabled) {
+      first.current = null;
+      setState("idle");
+      return undefined;
+    }
+    /* A SHEET FILLS ITS DRAFT ONE RENDER AFTER IT OPENS, so the first value
+       seen here is `null` and the second is the untouched form. Treating that
+       as an edit made every sheet open saying "Saved" — claiming to have kept
+       something nobody had typed. The baseline is the first REAL draft. */
+    if (draft === null || draft === undefined) return undefined;
+    if (first.current === null) {
+      first.current = serialised;
+      return undefined;
+    }
+    if (serialised === first.current) return undefined;
+    setState("saving");
+    const t = window.setTimeout(() => setState("saved"), 500);
+    return () => window.clearTimeout(t);
+  }, [serialised, enabled, draft]);
+
+  return state;
+}
+
 export function RecordSheet({
   size = "narrow",
   open,
@@ -96,6 +152,7 @@ export function RecordSheet({
   editAction = "Save Changes",
   createAction,
   headerAside,
+  saveState = "idle",
   headerActions,
   steps,
   canSubmit = true,
@@ -124,6 +181,24 @@ export function RecordSheet({
               {creating ? createTitle : editTitle}
             </SheetTitle>
             {headerAside}
+            {saveState !== "idle" && (
+              <span
+                className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+                aria-live="polite"
+              >
+                {saveState === "saving" ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5 text-status-success" />
+                    Saved
+                  </>
+                )}
+              </span>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}

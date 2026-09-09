@@ -25,7 +25,7 @@ import {
   SheetSection,
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
-import { RecordSheet } from "../RecordSheet";
+import { RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, type RentalAsset } from "./directory";
 import {
@@ -425,12 +425,16 @@ export function AssetMovementSheet({
     </SheetSection>
   );
 
+  /* Same autosave feedback as the delivery order sheet. */
+  const saveState = useDraftSaveState(draft, open);
+
   return (
     <RecordSheet
       size="wide"
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
+      saveState={saveState}
       editTitle="Movement Order"
       createTitle="Movement Order"
       createAction="Create Order"

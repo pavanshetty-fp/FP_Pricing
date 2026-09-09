@@ -82,7 +82,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RecordSheet } from "../RecordSheet";
+import { RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { EditDrawer, ReadDrawer } from "./DirectoryRecordSheet";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT } from "../data";
@@ -552,45 +552,25 @@ function emptyDraft(): BrokerOrderDraft {
 }
 
 /**
- * The ··· beside a record picker.
- *
- * OUTSIDE THE COMBOBOX, deliberately. An "Edit customer" row inside the option
- * list sits one arrow-key away from being chosen AS a customer, and a picker
- * whose list contains something that is not a choice is a picker people learn
- * to distrust. It is also quiet — ghost, icon-only, revealed by its tooltip —
- * because editing the record is the rare act here and picking one is the
- * common one.
+ * The pencil on an option row. Small, ghost, and hidden until the row is
+ * hovered or focused — editing a record is the rare act in a picker and
+ * choosing one is the common one, so it must not compete with the name.
  */
-function RecordEditMenu({
-  label,
-  name,
-  onEdit,
-}: {
-  label: string;
-  name: string;
-  onEdit: () => void;
-}) {
+function OptionEditButton({ label, onEdit }: { label: string; onEdit: () => void }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0"
-          disabled={name === ""}
-          aria-label={`More ${label} actions`}
-          title={name === "" ? `Select a ${label} first` : undefined}
-        >
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onSelect={onEdit}>
-          <Pencil />
-          Edit {label} details
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="size-6"
+      aria-label={label}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onEdit();
+      }}
+    >
+      <Pencil className="size-3.5" />
+    </Button>
   );
 }
 
@@ -696,6 +676,12 @@ export function BrokerOrderSheet({
   const [editingPoc, setEditingPoc] = React.useState<"primary" | "secondary" | null>(null);
   /** The order's history, in the header's drawer. */
   const [activityOpen, setActivityOpen] = React.useState(false);
+  /** The salesperson's contact, open for editing. */
+  const [editingSales, setEditingSales] = React.useState(false);
+  const [salesEdit, setSalesEdit] = React.useState("");
+  /* AUTOSAVE FEEDBACK. A draft order is kept as it is typed; the header says
+     so, because an autosave nobody is told about is one nobody relies on. */
+  const saveState = useDraftSaveState(draft, open);
   /*
     POC EDITS ARE HELD HERE, not written straight into the directory as you
     type. The drawer has a Save, so the value has to be somewhere while it is
@@ -723,6 +709,11 @@ export function BrokerOrderSheet({
     const p = POC_DIRECTORY[editingPocName];
     setPocEdit({ phone: p?.phone ?? "", email: p?.email ?? "" });
   }, [editingPoc, editingPocName]);
+
+  React.useEffect(() => {
+    if (!editingSales) return;
+    setSalesEdit(SALES_CONTACTS[draft?.salesperson ?? ""] ?? "");
+  }, [editingSales, draft?.salesperson]);
 
   React.useEffect(() => {
     if (!editing) return;
@@ -1149,6 +1140,7 @@ export function BrokerOrderSheet({
       createTitle="Create Delivery Order"
       createAction="Create Order"
       canSubmit={canSubmit}
+      saveState={saveState}
       /* Decisions about the delivery itself, taken at the moment of committing
          — so they stay in view however far the body has scrolled. */
       footerAside={
@@ -1365,57 +1357,54 @@ export function BrokerOrderSheet({
         <div className="flex flex-col gap-1">
         <div className="grid grid-cols-2 gap-4">
           {/*
-            THE PICKER PICKS; THE MENU BESIDE IT EDITS.
+            THE EDIT LIVES ON THE OPTION ROW, revealed on hover.
 
-            A record chosen here is a record that might be wrong — a stale
-            address, a contact who left — and the person who notices is the one
-            raising the order. Sending them to the Directory and back loses the
-            draft. So each picker carries a quiet ··· that opens the record for
-            editing, and it is OUTSIDE the combobox: a menu item inside the
-            option list would be one arrow-key away from being chosen as a
-            customer, which is exactly the mistake worth designing out.
+            A record chosen here might be wrong — a stale address, a contact who
+            left — and the person who notices is the one raising the order.
+            Sending them to the Directory and back loses the draft.
+
+            ON THE ROW, not beside the field: the affordance appears where the
+            reader is already looking, on the record they are considering, and
+            it can only ever mean THAT one. A ··· outside the box asked "edit
+            which?" and answered "whichever is currently chosen", which is a
+            different and worse question. The row's own click still selects —
+            the pencil stops the event before Command sees it.
           */}
-          <SheetField
-            label="Customer"
-            required
-            className="[&>label]:flex [&>label]:items-center [&>label]:justify-between"
-          >
-            <div className="flex items-center gap-1">
-              <Combobox
-                className="w-full"
-                value={draft.customer}
-                onValueChange={(v) => set("customer", v)}
-                options={customers}
-                placeholder="Select customer"
-                searchPlaceholder="Search customers…"
-                emptyText="No customer found."
-              />
-              <RecordEditMenu
-                label="customer"
-                name={draft.customer}
-                onEdit={() => setEditing({ kind: "customer", name: draft.customer })}
-              />
-            </div>
+          <SheetField label="Customer" required>
+            <Combobox
+              className="w-full"
+              value={draft.customer}
+              onValueChange={(v) => set("customer", v)}
+              options={customers}
+              placeholder="Select customer"
+              searchPlaceholder="Search customers…"
+              emptyText="No customer found."
+              optionAction={(name) => (
+                <OptionEditButton
+                  label={`Edit ${name}`}
+                  onEdit={() => setEditing({ kind: "customer", name })}
+                />
+              )}
+            />
           </SheetField>
           <SheetField label="ShipTo" required>
             {/* A customer can have anywhere from ten to a hundred ship-tos, so
                 this is the field that most needs typing rather than scrolling. */}
-            <div className="flex items-center gap-1">
-              <Combobox
-                className="w-full"
-                value={draft.shipTo}
-                onValueChange={(v) => set("shipTo", v)}
-                options={shipTos}
-                placeholder="Select ShipTo"
-                searchPlaceholder="Search ship-tos…"
-                emptyText="No ship-to found."
-              />
-              <RecordEditMenu
-                label="ship-to"
-                name={draft.shipTo}
-                onEdit={() => setEditing({ kind: "shipTo", name: draft.shipTo })}
-              />
-            </div>
+            <Combobox
+              className="w-full"
+              value={draft.shipTo}
+              onValueChange={(v) => set("shipTo", v)}
+              options={shipTos}
+              placeholder="Select ShipTo"
+              searchPlaceholder="Search ship-tos…"
+              emptyText="No ship-to found."
+              optionAction={(name) => (
+                <OptionEditButton
+                  label={`Edit ${name}`}
+                  onEdit={() => setEditing({ kind: "shipTo", name })}
+                />
+              )}
+            />
           </SheetField>
         </div>
 
@@ -1534,7 +1523,7 @@ export function BrokerOrderSheet({
               name's answer, and each value carries its own copy button — a
               number goes to a dialler, an address goes to a mail client, and one
               control over the pair would hand over both. */}
-          <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {poc ? (
               <>
                 <CopyValue value={poc.phone} label="POC contact" tabular />
@@ -1542,16 +1531,17 @@ export function BrokerOrderSheet({
                   |
                 </span>
                 <CopyValue value={poc.email} label="POC email" />
-                {/* STILL A READ-OUT, now with a way in. The contact belongs to
-                    the PERSON, not the order, so it is not two inputs here —
-                    but a wrong number found while raising an order should be
-                    fixable without leaving it. The pencil opens the person. */}
+                {/* ON HOVER, like the copy buttons beside it. A card that is a
+                    READ-OUT should look like one at rest; a pencil sitting on
+                    it permanently makes it read as a field, which is exactly
+                    what it is not. Keyboard focus reveals it too, so it is not
+                    mouse-only. */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="ml-auto shrink-0"
+                      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
                       aria-label={`Edit ${draft.primaryPoc} contact details`}
                       onClick={() => setEditingPoc("primary")}
                     >
@@ -1598,7 +1588,7 @@ export function BrokerOrderSheet({
                 emptyText="No contact found."
               />
             </SheetField>
-            <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+            <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
               {poc2 ? (
                 <>
                   <CopyValue value={poc2.phone} label="Secondary POC contact" tabular />
@@ -1611,7 +1601,7 @@ export function BrokerOrderSheet({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="ml-auto shrink-0"
+                        className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
                         aria-label={`Edit ${draft.secondaryPoc} contact details`}
                         onClick={() => setEditingPoc("secondary")}
                       >
@@ -1647,13 +1637,33 @@ export function BrokerOrderSheet({
               asks for the same kind of thing should be the same size, and two
               read-out cards side by side that differ in width read as two
               different kinds of card. */}
-          <div className="col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
+          <div className="group/card col-span-2 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
             {SALES_CONTACTS[draft.salesperson] ? (
-              <CopyValue
-                value={SALES_CONTACTS[draft.salesperson]}
-                label="sales contact"
-                tabular
-              />
+              <>
+                <CopyValue
+                  value={SALES_CONTACTS[draft.salesperson]}
+                  label="sales contact"
+                  tabular
+                />
+                {/* SAME CARD, SAME AFFORDANCE. A salesperson's number goes
+                    stale exactly as often as a POC's, and a card that is
+                    editable in one place and not the other is a rule nobody
+                    can learn. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
+                      aria-label={`Edit ${draft.salesperson} contact details`}
+                      onClick={() => setEditingSales(true)}
+                    >
+                      <Pencil />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit contact details</TooltipContent>
+                </Tooltip>
+              </>
             ) : (
               <span className="text-sm text-muted-foreground">
                 Select a sales person to see their contact.
@@ -2463,8 +2473,11 @@ export function BrokerOrderSheet({
                 that has already been put — and turning it off would not take
                 the quotes back. Editable while the order is a Draft, stated
                 from then on. */}
-            {invitedIds.length > 0 &&
-              (draft.status === "Draft" ? (
+            {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this said what had
+                been asked for weeks ago — a sentence nobody could act on, in
+                the place a control used to be. What was requested is in the
+                activity trail, where the rest of the order's history is. */}
+            {invitedIds.length > 0 && draft.status === "Draft" && (
                 <label
                   htmlFor="quote"
                   className="flex cursor-pointer items-center justify-between gap-4"
@@ -2482,13 +2495,7 @@ export function BrokerOrderSheet({
                     onCheckedChange={(v) => set("quoteRequested", v)}
                   />
                 </label>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {draft.quoteRequested
-                    ? "Pricing was requested from every partner invited."
-                    : "A plain acknowledgement was requested — no pricing."}
-                </p>
-              ))}
+              )}
 
             {/* THE DS BAR, not a second one. It comes LAST in the section
                 because it is about the rows someone has just ticked — it
@@ -2582,10 +2589,8 @@ export function BrokerOrderSheet({
         onSave={(summary) => set("customRecurrence", summary)}
       />
 
-      {/* ── ACTIVITY ────────────────────────────────────────────────────────
-          Last, because it is the answer to a question asked after the fact.
-          NEWEST FIRST: the trail is opened to find out what just happened far
-          more often than to read the record's whole life. */}
+      {/* LAST IN THE SHEET, and it belongs here: everything above is what the
+          order IS, and this is what is attached to it. Nothing after it. */}
       <SheetSection title="Additional Details">
         {/*
           WHO MAY SEE WHAT IS ATTACHED HERE. Public travels with the order —
@@ -3224,6 +3229,30 @@ export function BrokerOrderSheet({
         <p className="text-xs text-muted-foreground">
           This is {editingPocName}&apos;s own record. Changing it here changes it on
           every order that names them.
+        </p>
+      </EditDrawer>
+
+      <EditDrawer
+        open={editingSales}
+        onOpenChange={setEditingSales}
+        title="Edit contact details"
+        subtitle={draft.salesperson}
+        canSave={salesEdit.trim() !== ""}
+        onSave={() => {
+          SALES_CONTACTS[draft.salesperson] = salesEdit;
+          toast.success("Contact details saved", { description: draft.salesperson });
+        }}
+      >
+        <SheetField label="Phone" required>
+          <Input
+            type="tel"
+            value={salesEdit}
+            onChange={(e) => setSalesEdit(e.target.value)}
+          />
+        </SheetField>
+        <p className="text-xs text-muted-foreground">
+          This is {draft.salesperson}&apos;s own record. Changing it here changes it
+          on every order they own.
         </p>
       </EditDrawer>
 

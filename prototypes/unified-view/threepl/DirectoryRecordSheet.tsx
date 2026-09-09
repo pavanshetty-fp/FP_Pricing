@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
-import { RecordSheet } from "../RecordSheet";
+import { RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
 import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
 
@@ -146,6 +146,9 @@ export function DirectoryRecordSheet<T>({
   const [draft, setDraft] = React.useState<T>(initial);
   const [touched, setTouched] = React.useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = React.useState(false);
+  /* The same header feedback the order sheets give. A record sheet holds a
+     draft exactly as they do, and silence about it reads the same way. */
+  const saveState = useDraftSaveState(draft, open);
 
   /* A sheet is reused across records, so the draft resets when the record it
      is showing changes — not when the component happens to remount. */
@@ -312,6 +315,7 @@ export function DirectoryRecordSheet<T>({
         ) : undefined
       }
       canSubmit={errorCount === 0}
+      saveState={saveState}
       onSubmit={() => {
         setSubmitted(true);
         if (errorCount > 0) return;

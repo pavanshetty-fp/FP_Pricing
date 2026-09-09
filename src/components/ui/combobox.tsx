@@ -78,6 +78,17 @@ export interface ComboboxProps {
   onCreate?: (value: string) => void;
   /** Verb on the create row. Default: `Create "…"`. */
   createLabel?: (query: string) => string;
+  /**
+   * A control at the right of each option row, revealed on hover and on
+   * keyboard focus of that row.
+   *
+   * IT IS NOT A MENU ITEM. An "Edit customer" row sitting IN the list is one
+   * arrow-key from being chosen as a customer; an affordance ON the row is
+   * unambiguously about that row, and it appears where the reader is already
+   * looking — at the option they are considering. It must not select: the
+   * handler stops the event before Command sees it.
+   */
+  optionAction?: (value: string) => React.ReactNode;
   /** Trigger classes — width lives here, as it does on `SelectTrigger`. */
   className?: string;
   contentClassName?: string;
@@ -102,6 +113,7 @@ export function Combobox({
   allowCreate = false,
   onCreate,
   createLabel = (q) => `Create “${q}”`,
+  optionAction,
   className,
   contentClassName,
   align = "start",
@@ -196,6 +208,7 @@ export function Combobox({
                   key={o.value}
                   value={`${o.value} ${o.description ?? ""}`}
                   disabled={o.disabled}
+                  className="group/opt"
                   onSelect={() => choose(o.value)}
                 >
                   <Check
@@ -212,6 +225,22 @@ export function Combobox({
                       </span>
                     )}
                   </span>
+                  {optionAction && (
+                    <span
+                      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/opt:opacity-100 group-focus-within/opt:opacity-100 group-data-[selected=true]/opt:opacity-100"
+                      /* The row is the target for SELECTING; this corner of it
+                         is not. Without this a click on the pencil would both
+                         open the editor and pick the option under it. */
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      {optionAction(o.value)}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

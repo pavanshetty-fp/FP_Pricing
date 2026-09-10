@@ -61,6 +61,15 @@ export interface RecordSheetProps {
   /** Rendered beside the title, e.g. a StatusChip. */
   headerAside?: React.ReactNode;
   /**
+   * A second line under the title, inside the sticky header.
+   *
+   * For a fact about the record that must not scroll away — "this partner
+   * holds the order" is the answer to a question the reader has while they are
+   * looking at any part of the sheet, and at the bottom of a long step it was
+   * only true where nobody was looking.
+   */
+  headerSubtitle?: React.ReactNode;
+  /**
    * DRAFT AUTOSAVE, SAID OUT LOUD.
    *
    * A sheet that keeps a draft has to tell the reader it is keeping it, or
@@ -241,6 +250,7 @@ export function RecordSheet({
   editAction = "Save Changes",
   createAction,
   headerAside,
+  headerSubtitle,
   headerActions,
   headerMenu,
   showCancel = true,
@@ -266,11 +276,14 @@ export function RecordSheet({
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <div className="flex items-center gap-2.5">
-            <SheetTitle className="text-base">
-              {creating ? createTitle : editTitle}
-            </SheetTitle>
-            {headerAside}
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <SheetTitle className="text-base">
+                {creating ? createTitle : editTitle}
+              </SheetTitle>
+              {headerAside}
+            </div>
+            {headerSubtitle}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}

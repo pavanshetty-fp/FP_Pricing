@@ -17,7 +17,7 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { BannerCallout } from "@/components/ui/banner";
+import { BannerInline } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1251,6 +1251,18 @@ export function BrokerOrderSheet({
           ]}
         />
         </div>
+      }
+      headerSubtitle={
+        /* WHO HOLDS THIS ORDER, on the sticky bar. Only once one does: before
+           that it is a question, and a header is no place for those. */
+        draft.vendorId ? (
+          <span className="flex items-center gap-1.5 text-xs text-status-success">
+            <Check className="size-3.5 shrink-0" />
+            <span className="truncate">
+              Quote accepted — {vendorById(draft.vendorId)?.name} holds this order.
+            </span>
+          </span>
+        ) : undefined
       }
       headerAside={
         <div className="flex items-center gap-2">
@@ -2815,44 +2827,21 @@ export function BrokerOrderSheet({
                 section note because it is not background: it decides whether
                 the subtotal below counts.
 
-                THE DS'S INFO BANNER, not a card of my own. This is exactly what
-                that component is for — a statement about the section, carried
-                by the semantic status colour — and a hand-rolled bordered box
-                said the same thing in a way that would drift from every other
-                banner in the app the first time the token moved.
+                THE INLINE BANNER, NOT THE CALLOUT. A solid indigo bar with
+                white text is the DS's loudest voice, and this is a standing
+                condition of the order rather than something that has gone
+                wrong: it was pulling the eye away from the figures it exists to
+                explain. On the card surface with the status carried by the text
+                colour, it is read once and then sits still.
               */}
-              <BannerCallout status="info">
-                <span className="block font-medium">
-                  {hasLoadOrder
-                    ? "Load order created — you supply the product"
-                    : "No load order — the partner supplies the product"}
-                </span>
-                <span className="mt-0.5 block text-fp-banner-foreground/85">
-                  {hasLoadOrder ? (
-                    <>
-                      The fuel is already yours, so the base price is not theirs
-                      to charge. This quote is{" "}
-                      <span className="font-medium text-fp-banner-foreground">
-                        freight, fees and taxes
-                      </span>{" "}
-                      only — the base price below is shown for reference and does
-                      not count towards the total.
-                    </>
-                  ) : (
-                    <>
-                      They source the fuel as well as move it, so they charge the{" "}
-                      <span className="font-medium text-fp-banner-foreground">
-                        base price — product plus their margin
-                      </span>{" "}
-                      — and then{" "}
-                      <span className="font-medium text-fp-banner-foreground">
-                        freight, fees and taxes
-                      </span>{" "}
-                      on top.
-                    </>
-                  )}
-                </span>
-              </BannerCallout>
+              <BannerInline
+                status="info"
+                title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
+              >
+                {hasLoadOrder
+                  ? "The vendor charges freight, fees and taxes only — the base price is yours."
+                  : "The charges will be set by the vendor."}
+              </BannerInline>
 
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">
@@ -3310,12 +3299,11 @@ export function BrokerOrderSheet({
                   </tfoot>
                 </table>
               </div>
+              {/* NO "THIS ORDER LOSES MONEY" LINE. The margin cell in the row
+                  above is already red and already the only figure in this sheet
+                  allowed a colour — a sentence under the table restated it in
+                  words and made the one warning look like two. */}
               <div className="flex flex-col gap-3">
-                {shownMargin < 0 && (
-                  <p className="text-xs text-destructive">
-                    This order loses money at the pricing above.
-                  </p>
-                )}
                 {!shownQuote && (
                   <p className="text-xs text-muted-foreground">
                     This partner has not priced the order. Type their charges
@@ -3327,13 +3315,14 @@ export function BrokerOrderSheet({
                 /* THE NEXT MOVE BELONGS HERE. Accepting used to leave you in
                    step 2 with the next CTA back in step 1's partner section —
                    an order that had just been agreed looked finished, and the
-                   thing that carried it forward was on another screen. */
+                   thing that carried it forward was on another screen.
+
+                   THE ACCEPTANCE ITSELF IS IN THE HEADER, not here: who holds
+                   the order is a fact about the order, true on every step, and
+                   at the foot of a long one it was only visible where nobody
+                   was looking. What is left here is what accepting made
+                   possible. */
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 text-sm text-status-success">
-                    <Check className="size-4 shrink-0" />
-                    Quote accepted — {vendorById(shownVendorId)?.name} holds this
-                    order.
-                  </div>
                   {draft.status === "Completed" && (
                     <div className="flex items-center gap-3">
                       <Button

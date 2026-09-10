@@ -181,6 +181,7 @@
   --color-fp-banner-caution: var(--fp-banner-caution);
   --color-fp-banner-warning: var(--fp-banner-warning);
   --color-fp-banner-success: var(--fp-banner-success);
+  --color-fp-banner-accent-info: var(--fp-banner-accent-info);
   --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
   --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
   --color-fp-banner-accent-success: var(--fp-banner-accent-success);
@@ -493,6 +494,12 @@
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;
   --fp-banner-success: #166534;
+  /* THE FOURTH ACCENT, which the family was missing. Caution, warning and
+     success each had a text colour for the inline banner and info did not, so
+     the one status with no way to say itself quietly had to shout in a solid
+     fill. Same hue as `--fp-banner-info`, two steps lighter — dark enough to
+     read on the card surface, far enough from the body text to be a colour. */
+  --fp-banner-accent-info: #4338ca;
   --fp-banner-accent-caution: #b45309;
   --fp-banner-accent-warning: #b91c1c;
   --fp-banner-accent-success: #4d7c0f;
@@ -567,6 +574,7 @@
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;
   --fp-banner-success: #166534;
+  --fp-banner-accent-info: #a5b4fc;
   --fp-banner-accent-caution: #fcd34d;
   --fp-banner-accent-warning: #fca5a5;
   --fp-banner-accent-success: #bef264;

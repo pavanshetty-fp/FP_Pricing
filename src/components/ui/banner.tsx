@@ -85,6 +85,7 @@ const inlineAccent = cva("", {
   variants: {
     status: {
       default: "text-foreground",
+      info: "text-fp-banner-accent-info",
       caution: "text-fp-banner-accent-caution",
       warning: "text-fp-banner-accent-warning",
       success: "text-fp-banner-accent-success",
@@ -94,9 +95,20 @@ const inlineAccent = cva("", {
 });
 
 export interface BannerInlineProps
-  extends Omit<React.ComponentProps<"div">, "children">,
+  extends Omit<React.ComponentProps<"div">, "children" | "title">,
     VariantProps<typeof inlineAccent> {
   children: React.ReactNode;
+  /**
+   * A heading over the message, in the status colour.
+   *
+   * WITHOUT IT THE BANNER IS ONE 32px LINE, which is the shape it was built
+   * for and the shape most alerts want. Some say a thing and then say what
+   * follows from it — a state and its consequence — and squeezing both into one
+   * truncating line lost the half that mattered. With a title the banner grows
+   * to fit and stops truncating; the message drops to muted so the two lines
+   * are a heading and a body rather than two sentences of equal weight.
+   */
+  title?: React.ReactNode;
   onDismiss?: () => void;
   icon?: React.ReactNode;
 }
@@ -105,6 +117,7 @@ function BannerInline({
   status = "default",
   className,
   children,
+  title,
   onDismiss,
   icon,
   ...props
@@ -114,17 +127,33 @@ function BannerInline({
       role="status"
       data-status={status}
       className={cn(
-        "flex h-8 items-center gap-2 rounded-md bg-fp-card-1 px-3",
+        "flex gap-2 rounded-md bg-fp-card-1 px-3",
+        title ? "items-start py-2.5" : "h-8 items-center",
         className
       )}
       {...props}
     >
-      <span className={cn("shrink-0 [&_svg]:size-4", inlineAccent({ status }))}>
+      <span
+        className={cn(
+          "shrink-0 [&_svg]:size-4",
+          title && "mt-px",
+          inlineAccent({ status })
+        )}
+      >
         {icon ?? <Info />}
       </span>
-      <span className={cn("flex-1 truncate text-sm", inlineAccent({ status }))}>
-        {children}
-      </span>
+      {title ? (
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className={cn("text-sm font-medium", inlineAccent({ status }))}>
+            {title}
+          </span>
+          <span className="text-xs text-muted-foreground">{children}</span>
+        </span>
+      ) : (
+        <span className={cn("flex-1 truncate text-sm", inlineAccent({ status }))}>
+          {children}
+        </span>
+      )}
       {onDismiss && (
         <button
           type="button"

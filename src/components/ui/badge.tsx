@@ -55,7 +55,12 @@ const badgeVariants = cva(
        */
       shape: {
         pill: "",
-        disc: "size-4 justify-center rounded-full p-0 text-[9px] font-semibold",
+        /* 22px, NOT 16. The letter moved from 9px to the DS's 12px step, and
+           the circle moved with it: 16 x (12/9) is 21.3, and 22 keeps the same
+           proportion the disc has always had — "EM", the widest code, is 18.1px
+           at this size and fills 82% of the circle, against 85% before. At 20
+           it would have had less than a pixel of air on each side. */
+        disc: "size-5.5 justify-center rounded-full p-0 text-xs font-semibold",
       },
     },
     defaultVariants: {

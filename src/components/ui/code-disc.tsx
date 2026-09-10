@@ -31,7 +31,7 @@ export interface CodeDiscProps {
 }
 
 /**
- * Code disc — a 16px pastel circle carrying an initial, with the full word on
+ * Code disc — a 22px pastel circle carrying an initial, with the full word on
  * hover/focus. Use where a repeated category has to sit inside a dense row and
  * a full pill would not fit (table cells, list rows).
  *

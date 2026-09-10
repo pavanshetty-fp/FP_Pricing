@@ -67,11 +67,11 @@ function ShellDiagram() {
         <div className="flex w-13 shrink-0 flex-col items-center justify-center rounded-md bg-rail py-4 text-center text-[10px] text-muted-foreground">
           rail<br />52px
         </div>
-        <div className="flex w-40 shrink-0 flex-col justify-center rounded-lg bg-sidebar p-3 text-[10px] text-muted-foreground shadow-fp-surface">
+        <div className="flex w-40 shrink-0 flex-col justify-center rounded-lg bg-sidebar p-3 text-[10px] text-muted-foreground">
           drawer · 256px
           <br />+ shadow
         </div>
-        <div className="flex min-w-0 flex-1 flex-col rounded-md bg-fp-surface-1b p-4 shadow-fp-surface">
+        <div className="flex min-w-0 flex-1 flex-col rounded-md bg-fp-surface-1b p-4">
           <span className="text-[11px] text-muted-foreground">content layer · 16px inset (p-4) · no border</span>
           <div className="mt-2 h-10 rounded-md border border-fp-outline-1 bg-card" />
         </div>
@@ -96,8 +96,8 @@ export function PatternsReference() {
           title="Rail → drawer → content"
           spec={[
             <>Tier-1 <strong>rail</strong>: 52px icon strip (<code>bg-rail</code>), hover-expands to a 256px overlay (<code>bg-sidebar</code>). Flush with the background, no shadow.</>,
-            <>Tier-2 <strong>drawer</strong>: 256px contextual sub-nav (<code>rounded-lg bg-sidebar shadow-fp-surface</code>).</>,
-            <><strong>Content layer</strong>: fills the rest — <code>rounded-md bg-fp-surface-1b shadow-fp-surface</code>, <strong>no outer border</strong>.</>,
+            <>Tier-2 <strong>drawer</strong>: 256px contextual sub-nav (<code>rounded-lg bg-sidebar</code>). No shadow — it separates from the ground by value.</>,
+            <><strong>Content layer</strong>: fills the rest — <code>rounded-md bg-fp-surface-1b</code>, <strong>no outer border and no shadow</strong>.</>,
             <>Spacing laws: <code>8px</code> gaps + <code>8px</code> outer margin (<code>p-2 gap-2</code>); <code>16px</code> inset in the content body.</>,
             <>Body stacking order: action bar → tabs → accordions → content.</>,
           ]}

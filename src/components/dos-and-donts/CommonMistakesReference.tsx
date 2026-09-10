@@ -122,16 +122,16 @@ export function CommonMistakesReference() {
 
         {/* 4 — content layer border */}
         <Pair
-          title="Content layer: outer border vs shadow"
-          why="The content layer has NO outer border — it lifts off the background with shadow-fp-surface instead."
+          title="Content layer: outer border vs bare"
+          why="The content layer has NO outer border and no shadow — it separates from the tinted app ground by value alone."
           wrong={
             <div className="h-16 rounded-md border-2 border-fp-outline-2 bg-fp-surface-1b p-2 text-[11px] text-muted-foreground">
               border-2 …
             </div>
           }
           right={
-            <div className="h-16 rounded-md bg-fp-surface-1b p-2 text-[11px] text-muted-foreground shadow-fp-surface">
-              shadow-fp-surface
+            <div className="h-16 rounded-md bg-fp-surface-1b p-2 text-[11px] text-muted-foreground">
+              bg-fp-surface-1b
             </div>
           }
         />

@@ -725,7 +725,7 @@ export function App() {
       sidebar={
         screen.sidebar ? (
           <NavigationDrawer
-            className="rounded-lg bg-sidebar shadow-fp-surface"
+            className="rounded-lg bg-sidebar"
             brand={{
               name: screen.drawerTitle ?? screen.label,
               icon: screen.icon,

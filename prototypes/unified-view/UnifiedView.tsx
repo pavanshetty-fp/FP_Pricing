@@ -1165,7 +1165,7 @@ export function UnifiedView() {
         sidebar={
           subGroups && active ? (
             <NavigationDrawer
-              className="rounded-lg bg-sidebar shadow-fp-surface"
+              className="rounded-lg bg-sidebar"
               brand={{
                 name: active.label,
                 icon: active.icon,

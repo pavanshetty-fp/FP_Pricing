@@ -85,9 +85,13 @@ export function AppShell({
             the rail; gap-2 = 8px between the sidebar and the content layer. */}
         <div className="flex min-w-0 flex-1 gap-2 p-2">
           {sidebar}
-        {/* Content Layer: FP/Surface 1b (#1b2028), rounded-md, no outer border;
-            soft drop shadow lifts it off the app background (28679:1109). */}
-        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b shadow-fp-surface">
+        {/* Content Layer: FP/Surface 1b, rounded-md, no outer border and NO
+            SHADOW. The shadow existed to lift it off a ground it was the same
+            colour as; now that the app ground is the tinted surface-base, the
+            step in value does that job on its own — and a shadow on top of a
+            real value step is a second answer to a question already answered.
+            (28679:1109 drew it when light's ground was #ffffff.) */}
+        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
           {/* Page header. Title row (48px when alone); the optional breadcrumb
               sits directly beneath the title text, inside the header unit, above
               the divider. */}

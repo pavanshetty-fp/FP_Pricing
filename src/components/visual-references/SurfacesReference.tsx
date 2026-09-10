@@ -19,11 +19,11 @@ function Tag({ token, util }: { token: string; util: string }) {
   );
 }
 
-const LAYERS: { token: string; util: string; role: string; shadow?: boolean }[] = [
+const LAYERS: { token: string; util: string; role: string }[] = [
   { token: "background", util: "bg-background", role: "Full app background = Surface Base. The rail sits flush on it." },
   { token: "rail", util: "bg-rail", role: "Tier-1 icon rail (52px). Flush with the background, no shadow." },
-  { token: "sidebar / drawer", util: "bg-sidebar", role: "Tier-2 nav drawer (256px). Floats with shadow-fp-surface.", shadow: true },
-  { token: "fp-surface-1b", util: "bg-fp-surface-1b", role: "Content layer. rounded-md, no outer border, floats with shadow.", shadow: true },
+  { token: "sidebar / drawer", util: "bg-sidebar", role: "Tier-2 nav drawer (256px). Separates from the ground by value, no shadow." },
+  { token: "fp-surface-1b", util: "bg-fp-surface-1b", role: "Content layer. rounded-md, no outer border, no shadow." },
   { token: "card", util: "bg-card", role: "Card / raised panel (= Surface 1a). Separates via a border-fp-outline-1 hairline." },
   { token: "fp-card-1", util: "bg-fp-card-1", role: "Elevated inner card (a card inside a card, e.g. a Kanban lane)." },
 ];
@@ -34,7 +34,7 @@ export function SurfacesReference() {
       <div>
         <p className="text-sm text-muted-foreground">
           The FP look is a <strong>stack of surfaces</strong> that step in
-          lightness and lift with shadows. Compose every screen from these — and
+          lightness. Compose every screen from these — and
           drive the color from the token, never a raw hex. Toggle the theme
           (top-right) to see the same ladder in Light and FP.
         </p>
@@ -49,14 +49,14 @@ export function SurfacesReference() {
             <div className="flex w-13 shrink-0 items-start justify-center rounded-md bg-rail py-3 text-center text-[10px] text-muted-foreground">
               rail
             </div>
-            <div className="flex w-44 shrink-0 flex-col gap-2 rounded-lg bg-sidebar p-3 shadow-fp-surface">
+            <div className="flex w-44 shrink-0 flex-col gap-2 rounded-lg bg-sidebar p-3">
               <Tag token="sidebar" util="bg-sidebar" />
-              <span className="text-[11px] text-muted-foreground">+ shadow-fp-surface</span>
+              <span className="text-[11px] text-muted-foreground">drawer · no shadow</span>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-md bg-fp-surface-1b p-4 shadow-fp-surface">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-md bg-fp-surface-1b p-4">
               <Tag token="fp-surface-1b" util="bg-fp-surface-1b" />
               <span className="-mt-2 text-[11px] text-muted-foreground">
-                content layer · + shadow-fp-surface · no outer border
+                content layer · no outer border, no shadow
               </span>
               <div className="rounded-lg border border-fp-outline-1 bg-card p-4">
                 <Tag token="card" util="bg-card" />
@@ -83,16 +83,19 @@ export function SurfacesReference() {
                 <Tag token={l.token} util={l.util} />
                 <p className="mt-1 text-xs text-muted-foreground">
                   {l.role}
-                  {l.shadow && " (shadow-fp-surface)"}
                 </p>
               </div>
             </div>
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Elevation: only floating chrome (drawer, content layer) gets{" "}
-          <code className="text-foreground">shadow-fp-surface</code> (0 4px 4px
-          rgba(0,0,0,.15)). The rail and the background do not.
+          Elevation: nothing in the shell casts one. The drawer and the content
+          layer separate from the app ground by VALUE — the ground is the tinted
+          surface-base in both themes, so each layer already reads as a step up
+          from it, and a shadow on top of a real value step is a second answer
+          to a question already answered.{" "}
+          <code className="text-foreground">shadow-fp-surface</code> is kept for
+          things that genuinely float over content: a hovered card, a popover.
         </p>
       </Stack>
     </Stack>

@@ -192,6 +192,25 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
 
 const uniqueSorted = (xs: string[]) => [...new Set(xs)].sort();
 
+/** See the note at `loadOrder` in the seed. Null means no load order exists. */
+function seedLoadOrder(
+  i: number,
+  lines: { product: string }[]
+): BrokerOrder["loadOrder"] {
+  if (i % 3 !== 1) return null;
+  const products = [...new Set(lines.map((l) => l.product))];
+  const account = LOADING_ACCOUNTS.find((a) =>
+    products.every((p) => a.products.includes(p))
+  );
+  if (!account) return null;
+  return products.map((product) => ({
+    product,
+    terminal: account.terminal,
+    supplier: account.supplier,
+    loadingAccount: account.name,
+  }));
+}
+
 /**
  * The three selects, narrowed by EVERY product on the order at once.
  *
@@ -246,6 +265,15 @@ export interface VendorQuote {
   vendorId: string;
   /** Per order line. Everything else about a quote is derived from these. */
   lines: QuoteLine[];
+  /**
+   * ORDER-LEVEL CHARGES. Freight, fees and taxes are charged once for the run,
+   * not per gallon, so they cannot live on the lines — and they are charged
+   * WHOEVER supplies the product, which is what makes them the constant half
+   * of a quote. See `quoteTotal` for the half that is not constant.
+   */
+  freight: number;
+  fees: number;
+  taxes: number;
 }
 
 /**
@@ -486,12 +514,43 @@ export function quoteLineTotal(q: QuoteLine, l: OrderLine): number {
   return billableGal(l) * (q.ratePerGal + q.surcharge);
 }
 
-/** What the partner charges for the whole order. */
-export function quoteTotal(q: VendorQuote, lines: OrderLine[]): number {
+/**
+ * THE BASE PRICE — the product itself, at the partner's rate plus surcharge.
+ *
+ * It is only the partner's to charge when the partner is the one supplying the
+ * product. See `quoteTotal`.
+ */
+export function quoteBaseTotal(q: VendorQuote, lines: OrderLine[]): number {
   return q.lines.reduce((sum, ql) => {
     const l = lines.find((x) => x.asset === ql.asset);
     return sum + (l ? quoteLineTotal(ql, l) : 0);
   }, 0);
+}
+
+/** Freight, fees and taxes — charged on every order, whoever brings the fuel. */
+export function quoteOrderCharges(q: VendorQuote): number {
+  return q.freight + q.fees + q.taxes;
+}
+
+/**
+ * What the partner charges for the whole order — and it depends on WHO BOUGHT
+ * THE FUEL.
+ *
+ * A LOAD ORDER IS THE BROKER BUYING THE PRODUCT. When one exists, the partner
+ * is hauling fuel that is already yours: there is no base price to charge, and
+ * the quote is freight, fees and taxes alone. With no load order the partner
+ * sources the product as well, so the base price — product plus their margin —
+ * is theirs to charge on top.
+ *
+ * `chargesBase` is that fact, passed in rather than guessed: the quote does not
+ * know whether the order it belongs to has a load order.
+ */
+export function quoteTotal(
+  q: VendorQuote,
+  lines: OrderLine[],
+  chargesBase = true
+): number {
+  return (chargesBase ? quoteBaseTotal(q, lines) : 0) + quoteOrderCharges(q);
 }
 
 /** One line's revenue: A x (B + C) — the customer-pricing table's last column. */
@@ -1085,6 +1144,10 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
                 ratePerGal: Number((2.85 + pick() * 0.9).toFixed(3)),
                 surcharge: Number((0.08 + pick() * 0.22).toFixed(3)),
               })),
+              /* Charged once for the run, so they do not scale with gallons. */
+              freight: Math.round(180 + pick() * 320),
+              fees: Math.round(25 + pick() * 90),
+              taxes: Math.round(40 + pick() * 160),
             }))
         : [];
 
@@ -1149,7 +1212,20 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
           changes: ["Order created"],
         },
       ],
-      loadOrder: null,
+      /*
+        BOTH FLOWS ON THE BOARD. An order either has a load order — the broker
+        bought the fuel, and the partner only hauls it — or it does not, and
+        the partner supplies the product as well. Every seeded order was the
+        second kind, so the first was unreachable without building one by hand,
+        and the pricing rule that turns on it could not be seen at all.
+
+        Every third priced order gets one, BY INDEX rather than from the random
+        stream: a draw taken here would shift every value after it and reshuffle
+        the whole fixture. It is only filled where one loading account covers
+        every product on the order, because that is the rule the form enforces —
+        seeding a combination the form would refuse is seeding a lie.
+      */
+      loadOrder: seedLoadOrder(i, lines),
       recurrence:
         kind === "Recurring"
           ? {

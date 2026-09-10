@@ -3,6 +3,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   CircleAlert,
+  Info,
   Layers,
   Copy,
   Download,
@@ -108,6 +109,8 @@ import {
   SHIP_TO_SITES,
   loadOptions,
   isAllTopOff,
+  quoteBaseTotal,
+  quoteOrderCharges,
   quoteTotal,
   quoteLineTotal,
   billableGal,
@@ -643,6 +646,19 @@ export interface BrokerOrderSheetProps {
   shipTos: string[];
 }
 
+/**
+ * The three charges that ride on the order rather than on a gallon.
+ *
+ * A LIST, NOT THREE COPIES OF A ROW. They are typed the same way, totalled the
+ * same way and explained by the same sentence — written out three times, the
+ * next one added would have been three edits and the one after that four.
+ */
+const ORDER_CHARGES = [
+  { key: "freight", label: "Freight" },
+  { key: "fees", label: "Fees" },
+  { key: "taxes", label: "Taxes" },
+] as const satisfies readonly { key: keyof Pick<VendorQuote, "freight" | "fees" | "taxes">; label: string }[];
+
 export function BrokerOrderSheet({
   order,
   mode = "edit",
@@ -1096,6 +1112,33 @@ export function BrokerOrderSheet({
      priced still has a row to fill in — the broker takes the price off a call
      and types it — so the first keystroke makes the quote and the line it lands
      on rather than requiring an "add quote" step first. */
+  /** A quote that exists but says nothing yet — every figure zero, not absent,
+   *  so a typed freight does not have to invent the rest of the shape. */
+  const blankQuote = (vendorId: string): VendorQuote => ({
+    vendorId,
+    lines: [],
+    freight: 0,
+    fees: 0,
+    taxes: 0,
+  });
+
+  /** Freight, fees and taxes — one set per quote, not per line. */
+  const setQuoteCharge = (
+    vendorId: string,
+    patch: Partial<Pick<VendorQuote, "freight" | "fees" | "taxes">>
+  ) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const has = d.quotes.some((q) => q.vendorId === vendorId);
+      const quotes = has ? d.quotes : [...d.quotes, blankQuote(vendorId)];
+      return {
+        ...d,
+        quotes: quotes.map((q) =>
+          q.vendorId === vendorId ? { ...q, ...patch } : q
+        ),
+      };
+    });
+
   const setQuoteLine = (vendorId: string, asset: string, patch: Partial<QuoteLine>) =>
     setDraft((d) => {
       if (!d) return d;
@@ -1107,7 +1150,7 @@ export function BrokerOrderSheet({
       const has = d.quotes.some((q) => q.vendorId === vendorId);
       const quotes = has
         ? d.quotes
-        : [...d.quotes, { vendorId, lines: [] as QuoteLine[] }];
+        : [...d.quotes, blankQuote(vendorId)];
       return {
         ...d,
         quotes: quotes.map((q) =>
@@ -1139,12 +1182,31 @@ export function BrokerOrderSheet({
     null;
   const shownQuote = quotes.find((q) => q.vendorId === shownVendorId);
   const quoteOf = (vendorId: string) => quotes.find((q) => q.vendorId === vendorId);
+  /*
+    WHO BOUGHT THE FUEL. A load order is the broker buying the product; without
+    one, the partner sources it as well. That single fact decides whether the
+    base price — product plus the partner's margin — is theirs to charge, and
+    it is the difference between the two flows this sheet has to serve.
+
+    A load order whose every row has been set aside is not a load order: the
+    broker has bought nothing, so the partner is back to supplying it.
+  */
+  const hasLoadOrder = Boolean(
+    draft.loadRows && draft.loadRows.some((r) => !r.excluded)
+  );
+  /** The partner charges the base price only when the product is theirs. */
+  const chargesBase = !hasLoadOrder;
+
   const costOf = (vendorId: string) => {
     const q = quoteOf(vendorId);
-    return q ? quoteTotal(q, draft.lines) : 0;
+    return q ? quoteTotal(q, draft.lines, chargesBase) : 0;
   };
   const revenue = customerTotal(draft.lines);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
+  /** The base on its own, so the table can show it whether or not it counts. */
+  const shownBase = shownQuote ? quoteBaseTotal(shownQuote, draft.lines) : 0;
+  /** Freight + fees + taxes, which belong to no line. */
+  const shownCharges = shownQuote ? quoteOrderCharges(shownQuote) : 0;
   const shownMargin = revenue - shownCost;
   const canSubmit =
     draft.customer.trim() !== "" &&
@@ -2383,7 +2445,7 @@ export function BrokerOrderSheet({
                               <td className="px-3 text-right text-sm tabular-nums">
                                 {quote ? (
                                   <span className="text-foreground">
-                                    ${quoteTotal(quote, draft.lines).toLocaleString(undefined, {
+                                    ${quoteTotal(quote, draft.lines, chargesBase).toLocaleString(undefined, {
                                       maximumFractionDigits: 2,
                                     })}
                                   </span>
@@ -2569,7 +2631,7 @@ export function BrokerOrderSheet({
                 <SheetField label="Accepted pricing">
                   <p className="text-sm tabular-nums text-foreground">
                     $
-                    {quoteTotal(q, draft.lines).toLocaleString(undefined, {
+                    {quoteTotal(q, draft.lines, chargesBase).toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}{" "}
                     <span className="text-muted-foreground">
@@ -2744,6 +2806,52 @@ export function BrokerOrderSheet({
                 </SheetSectionNote>
               }
             >
+              {/*
+                THE RULE, ON THE SECTION IT CHANGES.
+
+                An order has two shapes and they price differently, so a table
+                of rates means one thing on a Tuesday and another on a Wednesday
+                unless it says which it is. It is stated here rather than in the
+                section note because it is not background: it decides whether
+                the subtotal below counts.
+              */}
+              <div className="flex items-start gap-2.5 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3.5 py-3">
+                <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <span className="flex flex-col gap-0.5 text-xs">
+                  <span className="text-sm font-medium text-foreground">
+                    {hasLoadOrder
+                      ? "Load order created — you supply the product"
+                      : "No load order — the partner supplies the product"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {hasLoadOrder ? (
+                      <>
+                        The fuel is already yours, so the base price is not
+                        theirs to charge. This quote is{" "}
+                        <span className="text-foreground">
+                          freight, fees and taxes
+                        </span>{" "}
+                        only — the products-level subtotal is shown for
+                        reference and does not count towards the total.
+                      </>
+                    ) : (
+                      <>
+                        They source the fuel as well as move it, so they charge
+                        the{" "}
+                        <span className="text-foreground">
+                          base price — product plus their margin
+                        </span>{" "}
+                        — and then{" "}
+                        <span className="text-foreground">
+                          freight, fees and taxes
+                        </span>{" "}
+                        on top.
+                      </>
+                    )}
+                  </span>
+                </span>
+              </div>
+
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">
                   <colgroup>
@@ -2848,12 +2956,78 @@ export function BrokerOrderSheet({
                       );
                     })}
                   </tbody>
+                  {/*
+                    THE BASE, THEN WHAT IS ADDED TO IT, THEN THE TOTAL.
+
+                    Freight, fees and taxes are charged once for the run, not
+                    per gallon, so they cannot be columns — a per-line freight
+                    would have to be divided by somebody and the division would
+                    be invented. They are rows under the table, which is also
+                    where the reader is already looking for a total.
+                  */}
                   <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-table-header">
-                      <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
-                        Products-level subtotal
+                    <tr className="h-11 border-t border-border">
+                      {/* LEFT, NOT RIGHT. The table is 980px wide and scrolls;
+                          a label right-aligned against its figure means both
+                          are off-screen together, and the reader scrolls to
+                          find out what the number is called. */}
+                      <td
+                        colSpan={6}
+                        className="px-3 text-sm text-muted-foreground"
+                      >
+                        Base price — product + margin
                       </td>
-                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                      <td
+                        className={cn(
+                          "px-3 text-right text-sm tabular-nums",
+                          /* STATED, NOT HIDDEN. The figure is what the partner
+                             would have charged; striking it says the quote was
+                             read and the base was set aside, where an absent
+                             row would look like nobody priced it. */
+                          chargesBase
+                            ? "font-medium text-foreground"
+                            : "text-muted-foreground/60 line-through"
+                        )}
+                        title={
+                          chargesBase
+                            ? undefined
+                            : "Not charged — the load order makes the product yours"
+                        }
+                      >
+                        {money(shownBase)}
+                      </td>
+                    </tr>
+                    {ORDER_CHARGES.map((c) => (
+                      <tr key={c.key} className="h-11 border-t border-border">
+                        <td
+                          colSpan={6}
+                          className="px-3 text-sm text-muted-foreground"
+                        >
+                          {c.label}
+                        </td>
+                        <td className="relative p-0">
+                          <TableCellInput
+                            value={
+                              shownQuote ? String(shownQuote[c.key] ?? 0) : ""
+                            }
+                            placeholder="0"
+                            numeric
+                            aria-label={`${c.label} charged by the partner`}
+                            onChange={(v) =>
+                              setQuoteCharge(shownVendorId, { [c.key]: num(v) })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="h-11 border-t border-border bg-fp-table-header">
+                      <td
+                        colSpan={6}
+                        className="px-3 text-sm text-muted-foreground"
+                      >
+                        Vendor total
+                      </td>
+                      <td className="px-3 text-right text-sm font-semibold tabular-nums text-foreground">
                         {money(shownCost)}
                       </td>
                     </tr>
@@ -3045,7 +3219,23 @@ export function BrokerOrderSheet({
                           <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
                             {billableGal(l).toLocaleString()}
                           </td>
-                          <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                          {/* STRUCK, NOT BLANK, when the load order means the
+                              base is not the partner's to charge — the reader
+                              needs to see that the figure exists and was set
+                              aside, or the column looks unpriced. */}
+                          <td
+                            className={cn(
+                              "px-3 text-right text-sm tabular-nums",
+                              chargesBase
+                                ? "text-muted-foreground"
+                                : "text-muted-foreground/60 line-through"
+                            )}
+                            title={
+                              chargesBase
+                                ? undefined
+                                : "Not charged — the load order makes the product yours"
+                            }
+                          >
                             {ql ? money(cost) : "—"}
                           </td>
                           <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
@@ -3062,6 +3252,34 @@ export function BrokerOrderSheet({
                         </tr>
                       );
                     })}
+                    {/* THE CHARGES THAT BELONG TO NO LINE. Without a row of
+                        their own the column stopped adding up to its own total
+                        — freight is charged once for the run, so there is no
+                        line to put it on and no honest way to spread it. */}
+                    <tr className="h-12 border-b border-border last:border-b-0">
+                      <td className="px-3">
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm text-foreground">
+                            Order-level charges
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            Freight, fees and taxes
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                        —
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                        {money(shownCharges)}
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                        —
+                      </td>
+                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                        {money(-shownCharges)}
+                      </td>
+                    </tr>
                   </tbody>
                   <tfoot>
                     <tr className="h-11 border-t border-border bg-fp-table-header">

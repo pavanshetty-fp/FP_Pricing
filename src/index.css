@@ -574,9 +574,18 @@
   --fp-ink-inverse: #090c0f; /* text on the primary fill */
   --fp-surface-base: #080808; /* the app ground */
   --fp-surface-1a: #11161d; /* inner panel */
-  --fp-selected: #431407;        /* orange/950 — the brand's own dark end */
-  --fp-selected-strong: #fdba74; /* orange/300 — 8.25 on the fill above */
-  --fp-selected-border: var(--brand);
+  /* DARK TAKES THE BRAND QUIETLY. The 950 (#431407) has no blue in it at all
+     and carried orange/300 text — a saturated fill under a bright label, which
+     on a near-black ground read as a warning strip rather than a selection.
+     The fill is the brand mixed INTO the surface instead of replacing it: a
+     warm step of 1.68 off the drawer and 1.35 off the content layer, enough to
+     find and not enough to shout. The label is the BODY colour — --fp-ink-1,
+     which is white in this theme — and not --fp-ink-inverse, which is the ink
+     for a light fill and would come out near-black here. It measures 12.1 on
+     the fill. */
+  --fp-selected: #3a2a1e;
+  --fp-selected-strong: var(--fp-ink-1);
+  --fp-selected-border: #6b4a30;
   --fp-surface-1b: #1b2028; /* content layer */
   --fp-card-1: #2a2f37; /* raised card / inset block */
   --fp-card-2: #1b2028; /* the quieter card step (Figma FP/Card 2) */

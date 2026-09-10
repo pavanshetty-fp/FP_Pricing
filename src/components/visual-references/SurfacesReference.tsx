@@ -24,7 +24,7 @@ const LAYERS: { token: string; util: string; role: string }[] = [
   { token: "rail", util: "bg-rail", role: "Tier-1 icon rail (52px). Flush with the background, no shadow." },
   { token: "sidebar / drawer", util: "bg-sidebar", role: "Tier-2 nav drawer (256px). Separates from the ground by value, no shadow." },
   { token: "fp-surface-1b", util: "bg-fp-surface-1b", role: "Content layer. rounded-md, no outer border, no shadow." },
-  { token: "card", util: "bg-card", role: "Card / raised panel (= Surface 1a). Separates via a border-fp-outline-1 hairline." },
+  { token: "card", util: "bg-card", role: "Card / raised panel and every field (= Surface 1a). One step under the content layer — it separates by value, not by its border." },
   { token: "fp-card-1", util: "bg-fp-card-1", role: "Elevated inner card (a card inside a card, e.g. a Kanban lane)." },
 ];
 

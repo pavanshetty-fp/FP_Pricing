@@ -14,6 +14,8 @@ const SEMANTIC = [
   { name: "primary", cls: "bg-primary" },
   { name: "secondary", cls: "bg-secondary" },
   { name: "accent", cls: "bg-accent" },
+  { name: "selected", cls: "bg-selected" },
+  { name: "selected-foreground", cls: "bg-selected-foreground" },
   { name: "muted", cls: "bg-muted" },
   { name: "destructive", cls: "bg-destructive" },
   { name: "foreground", cls: "bg-foreground" },

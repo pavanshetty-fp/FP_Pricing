@@ -415,12 +415,16 @@
      hovering a row still darkens against it rather than matching it. */
   --fp-table-header: var(--fp-card-3);
   --fp-row-hover: var(--fp-card-2);
-  /* The app ground. base/background is #ffffff now, identical to --card,
-     --popover and both content surfaces, so light has no ground/card fill step
-     at all: a card separates by border and shadow only, and `bg-background` on
-     a card is a zero-pixel change. --fp-surface-base keeps #efefeb and is the
-     only remaining name for the old tinted ground (--rail still uses it). */
-  --background: var(--fp-surface-1b);
+  /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
+     Set to #ffffff it was identical to --card, --popover and both content
+     surfaces, so light had no ground/card step at all: the panel and the
+     content card separated by border and shadow only, and the 52px rail — the
+     one thing still painted --fp-surface-base — read as a stripe drawn ON the
+     page rather than as the page showing through. Dark never had this problem
+     (--background there has always been --fp-surface-base), so light was the
+     odd one out. Now the ground is one tint, the rail disappears into it, and
+     the drawer and the content layer are what float. */
+  --background: var(--fp-surface-base);
   /* base/destructive -> red/500. 3.76:1 as text on white, under the 4.5 AA
      body threshold; accepted as a design decision. Not --fp-danger, which
      --status-failed keeps at 4.83. */

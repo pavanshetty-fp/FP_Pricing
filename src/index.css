@@ -178,6 +178,10 @@
   --color-verified-foreground: var(--verified-foreground);
   --color-fp-banner-foreground: var(--fp-banner-foreground);
   --color-fp-banner-info: var(--fp-banner-info);
+  --color-fp-banner-border-info: var(--fp-banner-border-info);
+  --color-fp-banner-border-caution: var(--fp-banner-border-caution);
+  --color-fp-banner-border-warning: var(--fp-banner-border-warning);
+  --color-fp-banner-border-success: var(--fp-banner-border-success);
   --color-fp-banner-caution: var(--fp-banner-caution);
   --color-fp-banner-warning: var(--fp-banner-warning);
   --color-fp-banner-success: var(--fp-banner-success);
@@ -490,6 +494,14 @@
   --status-processing: #b45309;
   --status-pink: #db2777;
   --verified: #2563eb;
+  /* NO RIM IN LIGHT. The callout is a solid saturated fill here and a border
+     on it would be a second edge on a shape that already has one. The token
+     exists in both themes so the component does not have to ask which it is
+     in — dark is where it carries a colour. */
+  --fp-banner-border-info: transparent;
+  --fp-banner-border-caution: transparent;
+  --fp-banner-border-warning: transparent;
+  --fp-banner-border-success: transparent;
   --fp-banner-info: #3730a3;
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;
@@ -570,10 +582,22 @@
   --status-processing: #f59e0b;
   --status-pink: #ff8080;
   --verified: #3b82f6;
-  --fp-banner-info: #3730a3;
-  --fp-banner-caution: #854d0e;
-  --fp-banner-warning: #991b1b;
-  --fp-banner-success: #166534;
+  /* THE CALLOUT IS A TINTED PANEL IN DARK, NOT A SATURATED BAR — Figma
+     28161:114645. On a dark ground a solid indigo-800 bar was the brightest
+     thing on the page whatever it had to say, so the fill drops to the 950 of
+     its hue and the status moves to a 1px rim in the 500. Same three jobs, an
+     order of magnitude less shouting. Light is unchanged. */
+  --fp-banner-info: #1e1b4b;
+  --fp-banner-caution: #422006;
+  --fp-banner-warning: #450a0a;
+  --fp-banner-success: #052e16;
+  --fp-banner-border-info: #6366f1;
+  --fp-banner-border-caution: #eab308;
+  --fp-banner-border-warning: #ef4444;
+  --fp-banner-border-success: #22c55e;
+  /* The panel's own text, which on a near-black fill is the body colour rather
+     than pure white. */
+  --fp-banner-foreground: #f0f2f5;
   --fp-banner-accent-info: #a5b4fc;
   --fp-banner-accent-caution: #fcd34d;
   --fp-banner-accent-warning: #fca5a5;

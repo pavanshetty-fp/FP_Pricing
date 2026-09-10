@@ -6,9 +6,12 @@ import { cn } from "@/lib/utils";
 /*
   Banners — FP custom component (Figma "Banners" 28149:1712). Two types:
 
-  - BannerCallout (Type 1): a prominent, full-width bar with a solid status
-    fill and white text. Carries an optional CTA (right) OR a dismiss ✕.
-    Used where the action quick-filters a section (e.g. a data table).
+  - BannerCallout (Type 1): a prominent, full-width bar. In LIGHT it is a solid
+    status fill with white text; in DARK it is a near-black tint of the same
+    hue with a 1px rim in the status colour, because a saturated bar on a dark
+    ground is the loudest thing on the page whatever it has to say. Carries an
+    optional CTA (right) OR a dismiss ✕. Used where the action quick-filters a
+    section (e.g. a data table).
   - BannerInline (Type 2): a compact 32px alert on the Card-1 surface; the
     status is carried by the icon + text accent color, with a dismiss ✕.
 
@@ -18,14 +21,17 @@ import { cn } from "@/lib/utils";
 type BannerStatus = "info" | "caution" | "warning" | "success";
 
 const calloutVariants = cva(
-  "flex items-center gap-3 rounded-md px-4 py-3 text-fp-banner-foreground",
+  // THE RIM IS ALWAYS DRAWN, and is transparent in light. A border that
+  // appears only in one theme changes the box's height between them; one that
+  // is always there and only sometimes coloured does not.
+  "flex items-center gap-3 rounded-md border px-4 py-3 text-fp-banner-foreground",
   {
     variants: {
       status: {
-        info: "bg-fp-banner-info",
-        caution: "bg-fp-banner-caution",
-        warning: "bg-fp-banner-warning",
-        success: "bg-fp-banner-success",
+        info: "border-fp-banner-border-info bg-fp-banner-info",
+        caution: "border-fp-banner-border-caution bg-fp-banner-caution",
+        warning: "border-fp-banner-border-warning bg-fp-banner-warning",
+        success: "border-fp-banner-border-success bg-fp-banner-success",
       },
     },
     defaultVariants: { status: "info" },

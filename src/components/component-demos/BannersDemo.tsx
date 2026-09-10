@@ -39,7 +39,9 @@ function CalloutAction() {
 
 /**
  * Banners showcase — Figma "Banners" (28149:1712). Two FP custom components:
- * Type 1 (BannerCallout) is a prominent solid-fill bar with a CTA or dismiss;
+ * Type 1 (BannerCallout) is a prominent status bar with a CTA or dismiss — a
+ * solid fill in light, a near-black tint of the same hue with a coloured rim in
+ * dark;
  * Type 2 (BannerInline) is a compact 32px alert whose status is carried by the
  * icon + text accent. In a screen both sit at the top of the content-layer
  * body, full width, below the page header.
@@ -57,7 +59,7 @@ export function BannersDemo() {
     <Stack space="section" className="max-w-3xl overflow-auto pb-10">
       <p className="text-sm text-muted-foreground">
         Full-width banners for section-level messages. <strong>Type 1</strong>{" "}
-        is a prominent solid-fill callout with an optional CTA (which can
+        is a prominent status callout with an optional CTA (which can
         quick-filter the section) or a dismiss; <strong>Type 2</strong> is a
         compact inline alert whose status shows in the icon + text color.
       </p>
@@ -66,8 +68,11 @@ export function BannersDemo() {
       <Stack space="title">
         <SectionHeading as="h3" title="Type 1 — Callout" />
         <p className="-mt-1 text-xs text-muted-foreground">
-          Solid status fill, white text. With a CTA the action works as a quick
-          filter on the section; without one it’s dismissible.
+          A solid status fill in light; in dark the fill drops to the near-black
+          950 of its hue and the status moves to a 1px rim, because a saturated
+          bar on a dark ground is the loudest thing on the page whatever it has
+          to say. With a CTA the action works as a quick filter on the section;
+          without one it’s dismissible.
         </p>
         <Stack space="body">
           {/* Info — with CTA (2-line message) */}

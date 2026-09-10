@@ -638,7 +638,6 @@ export function BrokerOrdersScreen({
             subtitle: laneCardSubtitle(r),
             units: laneCardUnits(r),
             alert: laneCardAlert(r),
-            detailLabel: "View details",
             footerAction: laneCardInvoice(
               r,
               () => requestInvoice(r.id),

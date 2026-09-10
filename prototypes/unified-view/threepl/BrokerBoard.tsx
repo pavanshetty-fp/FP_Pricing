@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowDownUp, ArrowDown, ArrowUp, Check, ChevronRight, Info } from "lucide-react";
+import { ArrowDownUp, ArrowDown, ArrowUp, Check, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
@@ -190,12 +190,6 @@ export interface BoardCard {
     onAction?: () => void;
   };
   /**
-   * Footer affordance shown when there is NO alert — the card's own click
-   * target, given a visible name. A card that opens a record should say so;
-   * a stage with something outstanding says the more urgent thing instead.
-   */
-  detailLabel?: string;
-  /**
    * The bottom-most row: where one piece of business on this card has got to,
    * named on the left, with whatever moves it on at the right.
    *
@@ -205,8 +199,7 @@ export interface BoardCard {
    * somebody else: there is nothing to press, so there is no button.
    *
    * NOT AN ALERT. An alert reports a condition that has arisen — a credit
-   * hold, a missing acknowledgement. This is a step the stage always has, and
-   * it sits BELOW "View details" because reading the order comes first.
+   * hold, a missing acknowledgement. This is a step the stage always has.
    */
   footerAction?: {
     label: string;
@@ -461,22 +454,12 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         </div>
       ))}
 
-      {card.alert ? (
-        <CardAlert {...card.alert} />
-      ) : (
-        card.detailLabel && (
-          /* Not a control — the CARD is the button, and this names what pressing
-             it does. A second focusable thing doing the same job would give the
-             keyboard two stops for one action. */
-          <div
-            aria-hidden
-            className="flex items-center justify-center gap-1.5 border-t border-fp-outline-1 px-3.5 py-2.5 text-[10px] tracking-[0.1em] text-muted-foreground uppercase"
-          >
-            {card.detailLabel}
-            <ChevronRight className="size-3.5" />
-          </div>
-        )
-      )}
+      {/* NO "VIEW DETAILS" ROW. The whole card opens the order — it is the
+          button — so a strip at the bottom naming that was a label for a thing
+          the reader was already standing on, and it cost every card a rule and
+          25px to say it. What is left in this footer is what the card is
+          waiting on: an alert, or the invoice row. */}
+      {card.alert && <CardAlert {...card.alert} />}
 
       {card.footerAction && (
         <div className="flex items-center justify-between gap-2 border-t border-fp-outline-1 px-3.5 py-2.5">

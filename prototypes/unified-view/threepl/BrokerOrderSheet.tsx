@@ -3,7 +3,6 @@ import {
   Calendar as CalendarIcon,
   Check,
   CircleAlert,
-  Info,
   Layers,
   Copy,
   Download,
@@ -18,6 +17,7 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BannerCallout } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2814,43 +2814,45 @@ export function BrokerOrderSheet({
                 unless it says which it is. It is stated here rather than in the
                 section note because it is not background: it decides whether
                 the subtotal below counts.
+
+                THE DS'S INFO BANNER, not a card of my own. This is exactly what
+                that component is for — a statement about the section, carried
+                by the semantic status colour — and a hand-rolled bordered box
+                said the same thing in a way that would drift from every other
+                banner in the app the first time the token moved.
               */}
-              <div className="flex items-start gap-2.5 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3.5 py-3">
-                <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <span className="flex flex-col gap-0.5 text-xs">
-                  <span className="text-sm font-medium text-foreground">
-                    {hasLoadOrder
-                      ? "Load order created — you supply the product"
-                      : "No load order — the partner supplies the product"}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {hasLoadOrder ? (
-                      <>
-                        The fuel is already yours, so the base price is not
-                        theirs to charge. This quote is{" "}
-                        <span className="text-foreground">
-                          freight, fees and taxes
-                        </span>{" "}
-                        only — the products-level subtotal is shown for
-                        reference and does not count towards the total.
-                      </>
-                    ) : (
-                      <>
-                        They source the fuel as well as move it, so they charge
-                        the{" "}
-                        <span className="text-foreground">
-                          base price — product plus their margin
-                        </span>{" "}
-                        — and then{" "}
-                        <span className="text-foreground">
-                          freight, fees and taxes
-                        </span>{" "}
-                        on top.
-                      </>
-                    )}
-                  </span>
+              <BannerCallout status="info">
+                <span className="block font-medium">
+                  {hasLoadOrder
+                    ? "Load order created — you supply the product"
+                    : "No load order — the partner supplies the product"}
                 </span>
-              </div>
+                <span className="mt-0.5 block text-fp-banner-foreground/85">
+                  {hasLoadOrder ? (
+                    <>
+                      The fuel is already yours, so the base price is not theirs
+                      to charge. This quote is{" "}
+                      <span className="font-medium text-fp-banner-foreground">
+                        freight, fees and taxes
+                      </span>{" "}
+                      only — the base price below is shown for reference and does
+                      not count towards the total.
+                    </>
+                  ) : (
+                    <>
+                      They source the fuel as well as move it, so they charge the{" "}
+                      <span className="font-medium text-fp-banner-foreground">
+                        base price — product plus their margin
+                      </span>{" "}
+                      — and then{" "}
+                      <span className="font-medium text-fp-banner-foreground">
+                        freight, fees and taxes
+                      </span>{" "}
+                      on top.
+                    </>
+                  )}
+                </span>
+              </BannerCallout>
 
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">

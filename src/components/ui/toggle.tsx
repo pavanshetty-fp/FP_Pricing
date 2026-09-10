@@ -6,14 +6,26 @@ import { Toggle as TogglePrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/*
+  HOVER AND CHOSEN ARE DIFFERENT MEANINGS, and they used to be the same colour.
+  Both `hover:` and `data-[state=on]:` resolved to `bg-accent` + `text-accent-
+  foreground`, so a hovered segment and the selected one were pixel-identical —
+  and the fill they shared measured 1.14:1 on the content layer, which is why
+  neither read at all.
+
+  Three steps now, and they cannot collide: rest is bare, hover is the grey
+  that means "the pointer is here", and on is the blue that means "this is the
+  one". The `on` rules carry `hover:` twins so that hovering the selected
+  segment does not drop it back to grey.
+*/
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-accent/50 hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,box-shadow] outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-selected data-[state=on]:text-selected-foreground data-[state=on]:hover:bg-selected data-[state=on]:hover:text-selected-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-transparent",
         outline:
-          "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-transparent shadow-xs data-[state=on]:border-selected-border",
       },
       size: {
         default: "h-9 min-w-9 px-2",

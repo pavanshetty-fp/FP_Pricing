@@ -167,6 +167,9 @@
   --color-fp-table-header: var(--fp-table-header);
   --color-fp-row-hover: var(--fp-row-hover);
   --color-fp-row-selected: var(--fp-row-selected);
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --color-selected-border: var(--selected-border);
   --color-fp-surface-base: var(--fp-surface-base);
   --color-status-foreground: var(--status-foreground);
   --color-status-success: var(--status-success);
@@ -290,7 +293,14 @@
   --fp-ink-3: #596475; /* secondary text */
   --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
   --fp-surface-base: #efefeb; /* the app ground */
-  --fp-surface-1a: #ffffff; /* inner panel */
+  /* THE INNER PANEL IS A STEP, NOT MORE WHITE. It was #ffffff — identical to
+     the content layer it sits on and to --card, which aliases it — so a card
+     had nothing to separate by except its border, and the whole theme read as
+     boxes drawn on paper. It is the same value as --fp-card-2 on purpose: the
+     "inner panel" and "the quieter card step" are one surface with two names,
+     and inventing a fourth near-white between them would only crowd a ladder
+     that is already tight at the top. */
+  --fp-surface-1a: #f4f5f8; /* inner panel — one step under the content layer */
   --fp-surface-1b: #ffffff; /* content layer */
   --fp-card-1: #e9ecf1; /* raised card / inset block */
   --fp-card-2: #f4f5f8; /* the quieter card step (Figma FP/Card 2) */
@@ -301,6 +311,15 @@
      --secondary/--muted on zinc/100, which one primitive cannot hold, hence
      --fp-emphasis-quiet below. In dark both still resolve here. */
   --fp-emphasis: #e5e7eb;
+  /* SELECTION IS A HUE, NOT A GREY. --fp-emphasis on the content layer is
+     1.14:1 — a tint the eye cannot find, which is why every selected row, tab,
+     nav item and segment read as unselected. A tint of a DIFFERENT colour is
+     found instantly at the same luminance, so selection moved to blue.
+     Blue and not the brand orange: amber already means caution in a dispatch
+     UI, and a selected row must never read as a warning. */
+  --fp-selected: #dbeafe;        /* blue/100 — the fill */
+  --fp-selected-strong: #1d4ed8; /* blue/700 — its text, icon and indicator */
+  --fp-selected-border: #93c5fd; /* blue/300 — its rim, where one is drawn */
   /* The quieter half of the emphasis split — base/secondary and base/muted,
      zinc/100. Exists only because light needs two values where dark needs one;
      in dark --secondary re-aliases --fp-emphasis and --muted --fp-card-2. */
@@ -313,7 +332,7 @@
      the opposite way round from --fp-row-hover/--fp-row-selected, which go
      [11,9,7] lighter. Both predate this merge; left as-is rather than inventing
      a value. */
-  --fp-emphasis-hover: #e1e1e1;
+  --fp-emphasis-hover: #eceef2;
   --fp-outline-1: #e2e5ea; /* quiet rim */
   /* STRONGER RIM — and it now actually is stronger.
      It was #ededed, which measured 1.17:1 on white against --fp-outline-1's
@@ -377,20 +396,27 @@
   --muted-foreground: var(--fp-ink-3);
   --accent: var(--fp-emphasis);
   --accent-foreground: var(--fp-ink-2);
+  /* HOVER AND CHOSEN ARE DIFFERENT MEANINGS. They shared --accent, so a
+     hovered segment and the selected one were pixel-identical. --accent stays
+     the grey for "the pointer is here"; --selected is the blue for "this is
+     the one". */
+  --selected: var(--fp-selected);
+  --selected-foreground: var(--fp-selected-strong);
+  --selected-border: var(--fp-selected-border);
 
   --border: var(--fp-stroke-hairline);
   --input: var(--fp-stroke-field);
   --sidebar-foreground: var(--fp-ink-1);
-  --sidebar-accent-foreground: var(--fp-ink-2);
+  --sidebar-accent-foreground: var(--fp-selected-strong);
   --sidebar-accent-hover: var(--fp-emphasis-hover);
   --rail: var(--fp-surface-base);
-  --fp-row-selected: var(--fp-card-1);
+  --fp-row-selected: var(--fp-selected);
   --status-failed: var(--fp-danger);
 
   /* Light-only aliases — these map to a DIFFERENT primitive in dark. */
   --muted: var(--fp-emphasis-quiet);
   --secondary: var(--fp-emphasis-quiet);
-  --sidebar-accent: var(--fp-emphasis);
+  --sidebar-accent: var(--fp-selected);
   --fp-lane: var(--fp-card-2);
   /* A BOARD LANE IS NOT A ROW BAND, and it keeps its own token for that
      reason: `--fp-lane` is the fill behind a grouped table's header row, and
@@ -443,7 +469,11 @@
   --destructive-foreground: #ffffff; /* white in BOTH themes — the button's
      destructive variant points at this token, and on the red fill white
      measures 3.76 against #fef2f2's 3.44. Same rule as --status-foreground. */
-  --ring: #727d8f;
+  /* THE FOCUS RING IS A BRAND MOMENT. It was a neutral #727d8f, which on a
+     theme made of greys was one more grey. Orange is unmistakable, appears
+     only when someone is actually navigating, and is the one place the brand
+     can be loud without competing with meaning. */
+  --ring: var(--brand);
   /* Categorical chart palette. Declared ONCE and deliberately NOT overridden in
      `.dark`, the same rule the pastel pairs follow: a categorical series colour
      has to stay the same colour in both themes or the same series changes
@@ -456,8 +486,13 @@
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
   --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
-  --sidebar-primary: #090c0f;
-  --sidebar-primary-foreground: #f0f2f5;
+  /* THE SECTION MARK CARRIES THE BRAND. A 36px near-black tile on every screen
+     was the largest neutral shape in the shell; in brand orange it is the one
+     large piece of identity a page reliably has. White on #fa6400 measures
+     3.05 — under the text threshold, over the 3:1 one for a graphic, and this
+     only ever holds an icon. */
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
@@ -533,6 +568,9 @@
   --fp-ink-inverse: #090c0f; /* text on the primary fill */
   --fp-surface-base: #080808; /* the app ground */
   --fp-surface-1a: #11161d; /* inner panel */
+  --fp-selected: #172554;        /* blue/950 */
+  --fp-selected-strong: #93c5fd; /* blue/300 */
+  --fp-selected-border: #1d4ed8; /* blue/700 */
   --fp-surface-1b: #1b2028; /* content layer */
   --fp-card-1: #2a2f37; /* raised card / inset block */
   --fp-card-2: #1b2028; /* the quieter card step (Figma FP/Card 2) */
@@ -552,7 +590,7 @@
   /* LAYER 2 — only the tokens whose primitive DIFFERS from light.
      Everything else inherits its alias from `:root` and re-resolves here. */
   --muted: var(--fp-card-2);
-  --sidebar-accent: var(--fp-outline-1);
+  --sidebar-accent: var(--fp-selected);
   --fp-lane: var(--fp-card-1);
   /* Dark keeps the lane exactly where `--accent` had it — only LIGHT was too
      heavy, so only light moves. */
@@ -572,10 +610,12 @@
   /* No family. */
   --primary: #f8fafc;
   --destructive-foreground: #ffffff;
-  --ring: #9ca3af;
+  --ring: var(--brand);
   --sidebar: #11161d;
-  --sidebar-primary: #1d4ed8;
-  --sidebar-primary-foreground: #f0f2f5;
+  /* The section mark is the brand in BOTH themes — an identity that changes
+     colour when you flip the theme is not an identity. */
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-border: #ffffff1a;
   --sidebar-ring: #575757;
   --drawer: #292929;

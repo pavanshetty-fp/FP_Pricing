@@ -60,9 +60,13 @@ export function NavigationDrawer({
 
 function BrandHeader({ brand, collapsed }: { brand: NavBrand; collapsed: boolean }) {
   const tile = (
+    /* THE TILE IS THE TITLE'S OWN LINE BOX — 24px, the height of the 16px name
+       beside it. At 36 it was half again as tall as the word it belongs to and
+       read as a separate object sitting next to the heading rather than as its
+       mark. */
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-lg text-brand-foreground [&_svg]:size-5",
+        "flex size-6 shrink-0 items-center justify-center rounded-md text-brand-foreground [&_svg]:size-3.5",
         brand.iconClassName ?? "bg-brand"
       )}
     >

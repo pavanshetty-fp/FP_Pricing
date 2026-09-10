@@ -178,7 +178,6 @@ export function AssetOrderSheet({
 
         <SheetField
           label="Status"
-          description="An asset order's status is its own lifecycle — nothing else on the record implies it."
         >
           <Combobox
             className="w-full"

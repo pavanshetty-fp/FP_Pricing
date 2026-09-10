@@ -136,7 +136,7 @@ export function AssetSheet({
         </SheetField>
 
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Unique ID" description="8 alphanumeric characters.">
+          <SheetField label="Unique ID">
             <Input
               value={draft.uniqueId}
               placeholder="e.g. AX7K2M91"
@@ -146,7 +146,7 @@ export function AssetSheet({
               }
             />
           </SheetField>
-          <SheetField label="ERP ID" description="16 digits.">
+          <SheetField label="ERP ID">
             <Input
               inputMode="numeric"
               value={draft.erpId}
@@ -161,7 +161,6 @@ export function AssetSheet({
 
         <SheetField
           label="Created On"
-          description="Date of record — set when the asset enters the system."
         >
           <Input
             readOnly
@@ -208,7 +207,6 @@ export function AssetSheet({
       <SheetSection title="Capacity & Compatibility">
         <SheetField
           label="Size (Gal)"
-          description="Total quantity capacity of the asset."
         >
           <Input
             inputMode="numeric"
@@ -225,7 +223,6 @@ export function AssetSheet({
 
         <SheetField
           label="Product Compatibility"
-          description="Every product this asset can hold."
         >
           <MultiSelectList
             options={PRODUCT_COMPATIBILITY}
@@ -261,7 +258,6 @@ export function AssetSheet({
         {draft.tankMonitor && (
           <SheetField
             label="Tank Monitor ID"
-            description="8 alphanumeric characters."
           >
             <Input
               value={draft.tankMonitorId}

@@ -136,7 +136,7 @@ function Item({
           onClick={() => onNavigate?.(item.key)}
           className={cn(
             "flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 outline-none transition-colors hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
-            active && "bg-sidebar-accent text-sidebar-foreground"
+            active && "bg-sidebar-accent text-sidebar-accent-foreground"
           )}
         >
           {item.icon}
@@ -155,7 +155,7 @@ function Item({
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-4 py-1 text-sm font-medium outline-none transition-colors hover:bg-sidebar-accent-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
           active
-            ? "bg-sidebar-accent text-sidebar-foreground"
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-muted-foreground hover:text-sidebar-foreground"
         )}
       >
@@ -181,7 +181,7 @@ function Item({
                   className={cn(
                     "flex w-full items-center rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-sidebar-accent-hover focus-visible:ring-2 focus-visible:ring-ring/50",
                     subActive
-                      ? "bg-sidebar-accent text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:text-sidebar-foreground"
                   )}
                 >

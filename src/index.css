@@ -314,12 +314,18 @@
   /* SELECTION IS A HUE, NOT A GREY. --fp-emphasis on the content layer is
      1.14:1 — a tint the eye cannot find, which is why every selected row, tab,
      nav item and segment read as unselected. A tint of a DIFFERENT colour is
-     found instantly at the same luminance, so selection moved to blue.
-     Blue and not the brand orange: amber already means caution in a dispatch
-     UI, and a selected row must never read as a warning. */
-  --fp-selected: #dbeafe;        /* blue/100 — the fill */
-  --fp-selected-strong: #1d4ed8; /* blue/700 — its text, icon and indicator */
-  --fp-selected-border: #93c5fd; /* blue/300 — its rim, where one is drawn */
+     found instantly at the same luminance.
+
+     THE HUE IS THE BRAND. Every shade here is #fa6400 with the saturation
+     taken out of it, so "this is the one" and "this is FleetPanda" are the
+     same colour said at three volumes — which is what makes a product feel
+     like one product rather than a component library.
+
+     THE STRONG SHADE IS A DARKENED BRAND, not the brand itself: #fa6400 on its
+     own tint measures 2.56, and this shade is the one that has to carry text. */
+  --fp-selected: #fee8d9;        /* the brand at 15% over white — the fill */
+  --fp-selected-strong: #a33f00; /* the brand darkened — text, icon, indicator */
+  --fp-selected-border: #fdb98c; /* the brand at 45% — its rim */
   /* The quieter half of the emphasis split — base/secondary and base/muted,
      zinc/100. Exists only because light needs two values where dark needs one;
      in dark --secondary re-aliases --fp-emphasis and --muted --fp-card-2. */
@@ -568,9 +574,9 @@
   --fp-ink-inverse: #090c0f; /* text on the primary fill */
   --fp-surface-base: #080808; /* the app ground */
   --fp-surface-1a: #11161d; /* inner panel */
-  --fp-selected: #172554;        /* blue/950 */
-  --fp-selected-strong: #93c5fd; /* blue/300 */
-  --fp-selected-border: #1d4ed8; /* blue/700 */
+  --fp-selected: #431407;        /* orange/950 — the brand's own dark end */
+  --fp-selected-strong: #fdba74; /* orange/300 — 8.25 on the fill above */
+  --fp-selected-border: var(--brand);
   --fp-surface-1b: #1b2028; /* content layer */
   --fp-card-1: #2a2f37; /* raised card / inset block */
   --fp-card-2: #1b2028; /* the quieter card step (Figma FP/Card 2) */

@@ -442,12 +442,6 @@ export function FuelOrdersViewBar({
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder="e.g. Unassigned today"
             />
-            {dialog?.mode === "new" && (
-              <p className="text-xs text-muted-foreground">
-                Captures the current search, sort, visible columns, rows per page
-                and delivery date.
-              </p>
-            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>

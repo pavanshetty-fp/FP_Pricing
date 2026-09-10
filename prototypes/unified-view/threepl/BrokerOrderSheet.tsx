@@ -228,7 +228,7 @@ function CustomRecurrenceDialog({
 
           {/* Seven toggles, not a multi-select: the whole week fits on one row,
               so the options are cheaper to show than to hide behind a list. */}
-          <SheetField label="Repeat on" description="Click a day to select or deselect it.">
+          <SheetField label="Repeat on">
             <div className="flex gap-1.5">
               {WEEKDAYS.map((d) => {
                 const on = days.has(d);
@@ -1898,10 +1898,6 @@ export function BrokerOrderSheet({
               <Input value={`${order.movement.capacityGal} gal`} disabled />
             </SheetField>
           </div>
-          <p className="text-xs text-muted-foreground">
-            One asset per movement order, fixed after creation. Peripherals and
-            custom items are not built in this pass.
-          </p>
         </SheetSection>
       )}
 
@@ -2533,11 +2529,8 @@ export function BrokerOrderSheet({
               htmlFor="do-notify"
               className="mt-6 flex cursor-pointer items-center justify-between gap-4"
             >
-              <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 Send email notifications to vendor
-                <span className="text-xs font-normal text-muted-foreground">
-                  Turn off to suppress every email for this order.
-                </span>
               </span>
               <Switch
                 id="do-notify"
@@ -2703,9 +2696,6 @@ export function BrokerOrderSheet({
               >
                 <RadioGroupItem id={`vis-${v}`} value={v} />
                 {v}
-                <span className="text-xs text-muted-foreground">
-                  {v === "Public" ? "— vendor and customer can see it" : "— your team only"}
-                </span>
               </label>
             ))}
           </RadioGroup>
@@ -2717,7 +2707,6 @@ export function BrokerOrderSheet({
           <FileUpload
             variant="field"
             label="Choose a file to upload"
-            note="Note: for best results, use .JPG, .GIF, or .PNG images."
           />
         </SheetField>
         <SheetField label="Delivery Instructions">
@@ -2734,7 +2723,6 @@ export function BrokerOrderSheet({
             can read them, or holding back things the driver needed. */}
         <SheetField
           label="Internal Note"
-          description="Visible only to your team — never sent to the vendor or the customer."
         >
           <Textarea
             value={draft.internalNote}
@@ -3546,7 +3534,6 @@ export function BrokerOrderSheet({
         <SheetField
           label="Email"
           required
-          description="Used for delivery confirmations and signature requests."
         >
           <Input
             type="email"
@@ -3630,7 +3617,7 @@ export function BrokerOrderSheet({
                 onChange={(e) => setRecordEdit((r) => ({ ...r, b: e.target.value }))}
               />
             </SheetField>
-            <SheetField label="Billing email" description="Where invoices go.">
+            <SheetField label="Billing email">
               <Input
                 type="email"
                 value={recordEdit.c}
@@ -3639,7 +3626,6 @@ export function BrokerOrderSheet({
             </SheetField>
             <SheetField
               label="Customer instruction"
-              description="Printed on the dispatch sheet — the driver reads this."
             >
               <Textarea
                 value={recordEdit.d}

@@ -259,7 +259,6 @@ export function OrderSheet({
 
             <SheetField
               label="Driver Selection"
-              description="Clearing the driver leaves the order unassigned."
             >
               <Combobox
                 className="w-full"

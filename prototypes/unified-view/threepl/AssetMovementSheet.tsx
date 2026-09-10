@@ -1164,12 +1164,9 @@ export function AssetMovementSheet({
           htmlFor="mv-notify"
           className="mt-6 flex cursor-pointer items-center justify-between gap-4"
         >
-          <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
-            Send email notifications to vendor
-            <span className="text-xs font-normal text-muted-foreground">
-              Turn off to suppress every email for this order.
-            </span>
-          </span>
+          <span className="text-sm font-medium text-foreground">
+                Send email notifications to vendor
+              </span>
           <Switch
             id="mv-notify"
             checked={draft.notifyVendor}
@@ -1298,7 +1295,6 @@ export function AssetMovementSheet({
             {/* THE NEXT QUESTION, and only now answerable. */}
             <SheetField
               label="Products"
-              description="What this asset will carry. One or more."
             >
               <MultiSelect
                 options={[...PRODUCTS]}
@@ -1612,7 +1608,6 @@ export function AssetMovementSheet({
       <SheetSection title="Additional Details">
         <SheetField
           label="Upload Supporting Documents"
-          description="Note: for best results, use .JPG, .GIF, or .PNG images."
         >
           <FileUpload variant="field" label="Choose a file to upload" note="" />
         </SheetField>
@@ -1635,7 +1630,6 @@ export function AssetMovementSheet({
         </SheetField>
         <SheetField
           label="Internal Note"
-          description="Visible only to your team — never sent to the vendor or the customer."
         >
           <Textarea
             value={draft.internalNote}

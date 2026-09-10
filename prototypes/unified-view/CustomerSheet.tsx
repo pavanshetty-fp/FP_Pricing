@@ -179,7 +179,6 @@ export function CustomerSheet({
       <SheetSection title="Line of Service">
         <SheetField
           label="LOS"
-          description="A customer can carry more than one line of service."
         >
           <MultiSelectList
             options={LINES_OF_SERVICE}
@@ -193,7 +192,6 @@ export function CustomerSheet({
       <SheetSection title="Ship-Tos">
         <SheetField
           label={`Ship-Tos (${draft.shipTos.length})`}
-          description="The list column shows the first plus a +N for the rest."
         >
           <div className="flex flex-col gap-2">
             {draft.shipTos.length > 0 && (

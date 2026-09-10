@@ -52,7 +52,7 @@ export function FieldsDemo() {
               node: (
                 <Input
                   placeholder="Placeholder"
-                  className="border-ring ring-[3px] ring-ring/50"
+                  className="border-ring ring-2 ring-ring/50"
                 />
               ),
             },

@@ -24,7 +24,7 @@ const HOVER: Record<Variant, string> = {
 };
 
 /** The focus-visible ring, forced on. */
-const FOCUS = "border-ring ring-[3px] ring-ring/50";
+const FOCUS = "border-ring ring-2 ring-ring/50";
 
 const STATE_COLS = ["Default", "Hover", "Focus", "Disabled", "Loading"] as const;
 
@@ -100,7 +100,7 @@ export function ButtonDemo() {
         <p className="-mt-1 text-xs text-muted-foreground">
           Every variant across states. Hover/focus are shown statically here;
           on a real button they trigger on interaction. Disabled ={" "}
-          <code>opacity-50</code>; focus = <code>ring-[3px] ring-ring/50</code>.
+          <code>opacity-50</code>; focus = <code>ring-2 ring-ring/50</code>.
         </p>
         <div className="overflow-x-auto rounded-lg border border-fp-outline-1">
           <div className="min-w-[640px]">

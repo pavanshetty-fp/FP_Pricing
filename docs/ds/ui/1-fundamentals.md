@@ -72,7 +72,7 @@ popover.
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
 | `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
-| `bg-fp-table-header` | `#fafafa` | `#11161d` | table header row |
+| `bg-fp-table-header` | `#e9ecf1` | `#2a2f37` | table header row — one clear step from the rows AND from a section card's title band, which a table can now sit flush under |
 | `text-status-success` | `#15803d` | `#22c55e` | success |
 | `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
 | `text-status-processing` | `#b45309` | `#f59e0b` | processing / caution |

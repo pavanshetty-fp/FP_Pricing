@@ -157,7 +157,7 @@ popover.
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
 | `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
-| `bg-fp-table-header` | `#fafafa` | `#11161d` | table header row |
+| `bg-fp-table-header` | `#e9ecf1` | `#2a2f37` | table header row — one clear step from the rows AND from a section card's title band, which a table can now sit flush under |
 | `text-status-success` | `#15803d` | `#22c55e` | success |
 | `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
 | `text-status-processing` | `#b45309` | `#f59e0b` | processing / caution |
@@ -978,10 +978,17 @@ repo's `src/index.css`.
   /* A TABLE HEADER NEEDS ITS OWN GROUND. In dark the panel fill already differs
      from the content layer, so the header reads; in light both are #ffffff and
      the header row had nothing but its hairline — a header that is only a line
-     stops being a header the moment the first row has a line too. This is the
-     faintest step the DS owns, and it sits ABOVE the row hover (--fp-card-2), so
-     hovering a row still darkens against it rather than matching it. */
-  --fp-table-header: var(--fp-card-3);
+     stops being a header the moment the first row has a line too.
+
+     IT MOVED OFF THE FAINTEST STEP ONCE TABLES WENT FLUSH INSIDE A SECTION
+     CARD. At --fp-card-3 (#fafafa light) it was 5/255 off the rows in light and
+     in dark it resolved to the same value as the card's own title band — so a
+     table sitting flush under that band had two header rows running together
+     and neither of them read. --fp-card-1 is one clear step in both themes:
+     distinct from the band above it, distinct from the rows below it, and
+     still distinct from the row hover, which is what the faint value was
+     originally protecting. */
+  --fp-table-header: var(--fp-card-1);
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content
@@ -1176,9 +1183,10 @@ repo's `src/index.css`.
   /* Dark keeps the lane exactly where `--accent` had it — only LIGHT was too
      heavy, so only light moves. */
   --fp-board-lane: var(--fp-card-1);
-  /* Dark already had the differentiation — this is the fill the header has
-     always used, named. */
-  --fp-table-header: var(--fp-surface-1a);
+  /* Dark tracks light onto --fp-card-1. It used to be --fp-surface-1a, which
+     is the same value the section card's title band takes — two bands of one
+     colour stacked, with the table's header invisible under the card's. */
+  --fp-table-header: var(--fp-card-1);
   /* Re-joined here. Light had to break these three out of the shared block —
      --background because base/background went white, --secondary because the
      emphasis family split, --destructive because it left --fp-danger — but dark

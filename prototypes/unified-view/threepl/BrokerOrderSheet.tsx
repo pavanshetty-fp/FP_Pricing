@@ -64,6 +64,7 @@ import {
 import {
   SheetField,
   SheetSection,
+  SheetSectionInset,
   SheetSectionNote,
   SheetSectionRemove,
   SheetSteps,
@@ -2181,6 +2182,10 @@ export function BrokerOrderSheet({
       {!isMovement && (
         <SheetSection
           title="Load Order"
+          /* FLUSH ONLY WHEN IT IS THE TABLE. The other two branches are a CTA
+             panel and an empty state, both of which are their own padded box
+             and would sit on the card's edge without the body's insets. */
+          flush={Boolean(loadRows) && hasAssets}
           /* The DS control — see `SheetSectionRemove` for why it is a minus
              and not a bin. */
           action={
@@ -2224,7 +2229,7 @@ export function BrokerOrderSheet({
               </Button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-md border border-border">
+            <div>
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
                   <col className="w-[44px]" />
@@ -2345,6 +2350,7 @@ export function BrokerOrderSheet({
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection
         title="Vendor"
+        flush
         note={
           <SheetSectionNote label="How inviting vendors works">
             <p className="text-foreground">
@@ -2376,7 +2382,7 @@ export function BrokerOrderSheet({
                 cell is the only one anyone fills; the rest are that partner's
                 own record and arrive with them. */}
             <div>
-              <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+              <div>
                 <table className="w-full table-fixed border-collapse">
                   <colgroup>
                     <col className="w-[44px]" />
@@ -2580,26 +2586,28 @@ export function BrokerOrderSheet({
                   </tbody>
                 </table>
               </div>
-              {/* Attached to the squared corner, where the next row goes. */}
-              <button
-                type="button"
-                disabled={draft.status === "Blocked" || uninvited.length === 0}
-                onClick={addPartnerRow}
-                className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <Plus className="size-4" /> Add vendor
-              </button>
+              {/* The last band of the table, where the next row goes — the
+                  squared-corner chip needs a corner, and flush there is none. */}
+              <div className="border-t border-border px-3 py-2">
+                <button
+                  type="button"
+                  disabled={draft.status === "Blocked" || uninvited.length === 0}
+                  onClick={addPartnerRow}
+                  className="-mx-1 flex h-8 items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Plus className="size-4" /> Add vendor
+                </button>
+              </div>
             </div>
 
             {/* §6's per-order kill switch, the same one the movement sheet
                 carries and the one this sheet was missing. ON by default —
                 suppressing every email is the deliberate act, so it is the one
-                that costs a click. It stands clear of the table by the same
-                40px the next section does: it is a decision about the order,
-                not a field in the list. */}
+                that costs a click. It is not a field in the list, so it takes
+                the card's insets back and the rule that closes the table. */}
             <label
               htmlFor="do-notify"
-              className="mt-6 flex cursor-pointer items-center justify-between gap-4"
+              className="flex cursor-pointer items-center justify-between gap-4 border-t border-border p-4"
             >
               <span className="text-sm font-medium text-foreground">
                 Send email notifications to vendor
@@ -2635,7 +2643,7 @@ export function BrokerOrderSheet({
             {invitedIds.length > 0 && draft.status === "Draft" && (
                 <label
                   htmlFor="quote"
-                  className="flex cursor-pointer items-center justify-between gap-4"
+                  className="flex cursor-pointer items-center justify-between gap-4 border-t border-border p-4"
                 >
                   <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
                     Request a quote
@@ -2661,7 +2669,7 @@ export function BrokerOrderSheet({
                 come from the design system, which is what makes a selection in
                 this sheet feel like a selection anywhere else. The Copy /
                 Delete / More zone is off: this list's actions are fixed. */}
-            <div className="flex justify-center">
+            <div className="flex justify-center p-4 pt-0">
               <BulkActionBar
                 count={selectedRows.length}
                 noun="vendor"
@@ -2696,7 +2704,9 @@ export function BrokerOrderSheet({
         )}
 
         {draft.vendorId && draft.status !== "Assigned" && (
-          <>
+          /* NOT A TABLE — the accepted-partner branch is a card and a field, so
+             it takes the card's insets back. */
+          <SheetSectionInset>
             <div className="flex items-start gap-2 rounded-md border border-fp-outline-1 p-3">
               <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
               <VendorRow id={draft.vendorId} />
@@ -2727,7 +2737,7 @@ export function BrokerOrderSheet({
                 Synced. Every field is locked once an order reaches this stage.
               </p>
             )}
-          </>
+          </SheetSectionInset>
         )}
       </SheetSection>
 
@@ -2836,6 +2846,7 @@ export function BrokerOrderSheet({
             {shownVendorId && (
               <SheetSection
                 title="Vendor Pricing"
+                flush
                 /* WHOSE PRICE THIS IS. One partner needs no control — a select of
                    one is a question with an answer already in it — so it states
                    the name and whether they hold the order. More than one and it
@@ -2910,16 +2921,18 @@ export function BrokerOrderSheet({
                   explain. On the card surface with the status carried by the text
                   colour, it is read once and then sits still.
                 */}
-                <BannerInline
-                  status="info"
-                  title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
-                >
-                  {hasLoadOrder
-                    ? "The vendor charges freight, fees and taxes only — the base price is yours."
-                    : "The charges will be set by the vendor."}
-                </BannerInline>
+                <SheetSectionInset>
+                  <BannerInline
+                    status="info"
+                    title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
+                  >
+                    {hasLoadOrder
+                      ? "The vendor charges freight, fees and taxes only — the base price is yours."
+                      : "The charges will be set by the vendor."}
+                  </BannerInline>
+                </SheetSectionInset>
 
-                <div className="overflow-x-auto rounded-md border border-border">
+                <div className="fp-scrollbar overflow-x-auto border-t border-border">
                   <table className="w-full min-w-[980px] table-fixed border-collapse">
                     <colgroup>
                       <col />
@@ -3109,6 +3122,7 @@ export function BrokerOrderSheet({
 
             <SheetSection
               title="Customer Pricing"
+              flush
               note={
                 <SheetSectionNote label="About customer pricing">
                   What the customer is charged, per line. Delivered gallons are
@@ -3117,7 +3131,7 @@ export function BrokerOrderSheet({
                 </SheetSectionNote>
               }
             >
-              <div className="overflow-x-auto rounded-md border border-border">
+              <div className="fp-scrollbar overflow-x-auto">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">
                   <colgroup>
                     <col />
@@ -3230,6 +3244,7 @@ export function BrokerOrderSheet({
             {shownVendorId && (
               <SheetSection
                 title="Final Calculations"
+                flush
                 note={
                   <SheetSectionNote label="About final calculations">
                     Line by line: what the partner charges to move it, what the
@@ -3251,7 +3266,7 @@ export function BrokerOrderSheet({
                     editable there, which this never was. What only this block
                     says is what is LEFT on each line, and the three totals it
                     adds up to. That is what it says now. */}
-                <dl className="flex flex-col divide-y divide-border rounded-md border border-border">
+                <dl className="flex flex-col divide-y divide-border">
                   {draft.lines.map((l, i) => {
                     const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
                     const cost = ql ? quoteLineTotal(ql, l) : 0;
@@ -3302,7 +3317,7 @@ export function BrokerOrderSheet({
                   </div>
                   {/* THE THREE TOTALS, on the band the table's tfoot used to
                       wear, so the rail still ends where the reading ends. */}
-                  <div className="flex flex-col gap-1.5 rounded-b-md bg-fp-table-header px-3 py-2.5">
+                  <div className="flex flex-col gap-1.5 bg-fp-table-header px-3 py-2.5">
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-xs text-muted-foreground">Vendor TLC</dt>
                       <dd className="text-sm tabular-nums text-foreground">
@@ -3337,16 +3352,20 @@ export function BrokerOrderSheet({
                   </div>
                 </dl>
                 {/* NO "THIS ORDER LOSES MONEY" LINE. The margin cell in the row
-                    above is already red and already the only figure in this sheet
-                    allowed a colour — a sentence under the table restated it in
-                    words and made the one warning look like two. */}
-                <div className="flex flex-col gap-3">
-                  {!shownQuote && (
-                    <p className="text-xs text-muted-foreground">
-                      This partner has not priced the order.
-                    </p>
-                  )}
-                </div>
+                    above is already red and already the only figure in this
+                    sheet allowed a colour — a sentence under the list restated
+                    it in words and made the one warning look like two.
+
+                    Everything from here is not the list, so it takes the card's
+                    insets back and the rule that separates it from the totals
+                    band above. */}
+                {(!shownQuote || draft.vendorId === shownVendorId) && (
+                  <SheetSectionInset className="border-t border-border">
+                    {!shownQuote && (
+                      <p className="text-xs text-muted-foreground">
+                        This partner has not priced the order.
+                      </p>
+                    )}
                 {draft.vendorId === shownVendorId ? (
                   /* THE NEXT MOVE BELONGS HERE. Accepting used to leave you in
                      step 2 with the next CTA back in step 1's partner section —
@@ -3404,6 +3423,8 @@ export function BrokerOrderSheet({
                     )}
                   </div>
                 ) : null}
+                  </SheetSectionInset>
+                )}
               </SheetSection>
             )}
           </aside>

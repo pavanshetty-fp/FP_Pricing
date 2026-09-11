@@ -140,6 +140,28 @@ export function SheetSection({
 }
 
 /**
+ * The card's own insets, given back to one child of a `flush` section.
+ *
+ * A flush section is for a table, and a section is rarely ONLY a table — a
+ * banner above it, a switch below. Those still need the 16px the body gave up,
+ * and they need it individually rather than as a blanket, because the table
+ * between them must keep running to the card's edge. Add `border-t`/`border-b`
+ * at the call site where the inset meets the table: the rule belongs to the
+ * boundary, and only the call site knows which side it is on.
+ */
+export function SheetSectionInset({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col gap-4 p-4", className)}>{children}</div>
+  );
+}
+
+/**
  * The remove control for an OPTIONAL section — the one that takes a section
  * that has been turned on back to its "Add …" box.
  *

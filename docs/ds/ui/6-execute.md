@@ -574,13 +574,18 @@ repo's `src/index.css`.
 
      IT IS A DELIBERATELY QUIET EDGE, and measuring it as a contrast problem
      gets the wrong answer. Three surfaces meet here and two are fixed 12/255
-     apart, so anything that fits between them measures ~1.03:1 against the
-     ground — which is exactly the point: the drawer is meant to belong to the
-     content layer, not to stand off from it. A grey that separates properly
-     (#e5e9f0, 1.11:1, matching dark's own middle rung) was tried and reads as
-     a heavy slab beside white; light's ladder is compressed at the top and the
-     honest response is to let this join rather than to force a step. */
-  --sidebar: #fdfdfd;
+     apart, so anything that fits between them measures ~1.04:1 against the
+     content layer — which is exactly the point: the drawer is meant to belong
+     to the content layer, not to stand off from it. A grey that separates
+     properly (#e5e9f0, 1.11:1 off the ground, matching dark's own middle rung)
+     was tried and reads as a heavy slab beside white; light's ladder is
+     compressed at the top and the honest response is to let this join rather
+     than to force a step.
+
+     It is the same value `--drawer` carries, and not aliased to it: in DARK
+     the two part company (#11161d against #292929), so one following the other
+     would be true in exactly half the app. */
+  --sidebar: #fafbf8;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the

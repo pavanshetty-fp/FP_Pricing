@@ -113,7 +113,7 @@ survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
   chrome, full width above the rail + content. It shares the ground's colour.
-- **Light:** ground `#f3f4f7` → drawer `#fdfdfd` → content layer `#ffffff`, with
+- **Light:** ground `#f3f4f7` → drawer `#fafbf8` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
   the ground's own colour and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
@@ -145,7 +145,7 @@ popover.
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
-| `bg-sidebar` | `#fdfdfd` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating grey (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
+| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating grey (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
 | `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step AWAY from the drawer it sits on (down in light, up in dark), **not** the brand: orange put the product mark twice on one screen. Re-measure whenever `--sidebar` moves |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
@@ -1041,13 +1041,18 @@ repo's `src/index.css`.
 
      IT IS A DELIBERATELY QUIET EDGE, and measuring it as a contrast problem
      gets the wrong answer. Three surfaces meet here and two are fixed 12/255
-     apart, so anything that fits between them measures ~1.03:1 against the
-     ground — which is exactly the point: the drawer is meant to belong to the
-     content layer, not to stand off from it. A grey that separates properly
-     (#e5e9f0, 1.11:1, matching dark's own middle rung) was tried and reads as
-     a heavy slab beside white; light's ladder is compressed at the top and the
-     honest response is to let this join rather than to force a step. */
-  --sidebar: #fdfdfd;
+     apart, so anything that fits between them measures ~1.04:1 against the
+     content layer — which is exactly the point: the drawer is meant to belong
+     to the content layer, not to stand off from it. A grey that separates
+     properly (#e5e9f0, 1.11:1 off the ground, matching dark's own middle rung)
+     was tried and reads as a heavy slab beside white; light's ladder is
+     compressed at the top and the honest response is to let this join rather
+     than to force a step.
+
+     It is the same value `--drawer` carries, and not aliased to it: in DARK
+     the two part company (#11161d against #292929), so one following the other
+     would be true in exactly half the app. */
+  --sidebar: #fafbf8;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the

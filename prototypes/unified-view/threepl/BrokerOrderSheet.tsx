@@ -1318,10 +1318,19 @@ export function BrokerOrderSheet({
         /* WHO HOLDS THIS ORDER, on the sticky bar. Only once one does: before
            that it is a question, and a header is no place for those. */
         draft.vendorId ? (
-          <span className="flex items-center gap-1.5 text-xs text-status-success">
+          /* NOT GREEN. Green is a STATUS colour and this line is not reporting
+             one — the stage bar two inches below already says Accepted, in the
+             one place on the sheet built to say it. A second coloured claim
+             about the same fact reads as a second fact. Muted, it is what it
+             is: a name, on the bar, where the reader can see it from any part
+             of the form. */
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Check className="size-3.5 shrink-0" />
             <span className="truncate">
-              Quote accepted — {vendorById(draft.vendorId)?.name} holds this order.
+              {/* A COLON, NOT A DASH. The dash was joining two halves as
+                  though they were an aside; this is a label and its value. */}
+              Quote accepted: {vendorById(draft.vendorId)?.name} holds this
+              order.
             </span>
           </span>
         ) : undefined
@@ -3014,7 +3023,7 @@ export function BrokerOrderSheet({
                   </SheetSectionNote>
                 }
               >
-                <div className="fp-scrollbar overflow-x-auto">
+                <div className="overflow-x-auto">
                   <table className="w-full min-w-[980px] table-fixed border-collapse">
                     <colgroup>
                       <col />
@@ -3213,7 +3222,7 @@ export function BrokerOrderSheet({
                 </SheetSectionNote>
               }
             >
-              <div className="fp-scrollbar overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] table-fixed border-collapse">
                   <colgroup>
                     <col />

@@ -209,7 +209,7 @@ function KanbanLane({ lane }: { lane: Lane }) {
 
 export function KanbanBoard() {
   return (
-    <div className="fp-scrollbar flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
+    <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
       {LANES.map((lane) => (
         <KanbanLane key={lane.title} lane={lane} />
       ))}

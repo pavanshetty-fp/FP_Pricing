@@ -578,7 +578,7 @@ export function BrokerBoard({
   onToggleLaneSort,
 }: BrokerBoardProps) {
   return (
-    <div className="fp-scrollbar flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
+    <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
       {lanes.map((lane) => (
         <Lane
           key={lane.key}

@@ -49,8 +49,11 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   must carry the fact everybody opens the record to learn — how far along is
   this — and not a table of contents. It scrolls rather than shrinks: a stage
   cut to four characters is worse than one you scroll to, and a chevron clipped
-  mid-word says "there is more" without a scrollbar. It may also be the
-  navigation, where a stage has a screen its work is done on.
+  mid-word says "there is more" without a scrollbar — which is the app-wide
+  rule: **no scroller anywhere shows a bar, on either axis.** A single visible
+  one teaches the reader that the absence of a bar means "this does not
+  scroll". It may also be the navigation, where a stage has a screen its work
+  is done on.
 - **A section is a CARD.** `SheetSection` draws a bordered block with its title
   in a tinted header band, and that is the default — `variant="plain"` (heading
   over fields, no box) is the exception, for a sheet that is one continuous list

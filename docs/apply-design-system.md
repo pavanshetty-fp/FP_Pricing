@@ -1257,7 +1257,12 @@ repo's `src/index.css`.
       that leaves a padded box symmetrical, and the clipped edge of the
       content is what says there is more of it.
 
-      Horizontal strips are the exception and opt back in below.
+      NO EXCEPTIONS. There was one — an opt-in class for the board's lane
+      strip, on the argument that a lane ending flush at the viewport looks
+      like the last lane. It was a bar in an app that had decided against bars,
+      and the inconsistency was more confusing than the overflow ever was: one
+      strip with a visible scrollbar teaches the reader that the absence of one
+      elsewhere means "this does not scroll", which is false.
     */
     scrollbar-width: none;
   }
@@ -1270,44 +1275,6 @@ repo's `src/index.css`.
     margin: 0;
   }
 
-  /*
-    THE ONE PLACE THE BAR EARNS ITS SPACE — the board's lane strip.
-
-    Almost every scroller already says it is scrolling: a card sliced by the
-    bottom of its lane, a table column truncated mid-word at the right edge.
-    Lanes say nothing. They are equal-width blocks with their own borders and
-    nothing clipped, so the eighth one ending flush at the viewport looks
-    exactly like the last one. That is the case the bar is for, and it costs
-    nothing that matters because it runs along the BOTTOM, where a reserved
-    gutter is a margin rather than a lopsided inset.
-
-    `.fp-scrollbar` outranks the `*` rule on specificity alone, so opting in is
-    one class and no `!important`. Reach for it only on a horizontal strip with
-    nothing else to give the overflow away.
-  */
-  .fp-scrollbar {
-    scrollbar-width: thin;
-    /* A shade off the ground, never a shade off the text. The thumb is a hint
-       that the strip moves, not a control anybody aims at. */
-    scrollbar-color: var(--border) transparent;
-  }
-  .fp-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .fp-scrollbar::-webkit-scrollbar-track,
-  .fp-scrollbar::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-  .fp-scrollbar::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  .fp-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: var(--fp-outline-2);
-  }
 }
 ```
 
@@ -1414,8 +1381,11 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   must carry the fact everybody opens the record to learn — how far along is
   this — and not a table of contents. It scrolls rather than shrinks: a stage
   cut to four characters is worse than one you scroll to, and a chevron clipped
-  mid-word says "there is more" without a scrollbar. It may also be the
-  navigation, where a stage has a screen its work is done on.
+  mid-word says "there is more" without a scrollbar — which is the app-wide
+  rule: **no scroller anywhere shows a bar, on either axis.** A single visible
+  one teaches the reader that the absence of a bar means "this does not
+  scroll". It may also be the navigation, where a stage has a screen its work
+  is done on.
 - **A section is a CARD.** `SheetSection` draws a bordered block with its title
   in a tinted header band, and that is the default — `variant="plain"` (heading
   over fields, no box) is the exception, for a sheet that is one continuous list

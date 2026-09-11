@@ -2911,20 +2911,35 @@ export function BrokerOrderSheet({
           figures it exists to explain. `split` holds it to one 32px line — the
           state on the left, what follows from it on the right.
         */}
-        <BannerInline
-          status="info"
-          split
-          /* The sheet body is a flex column: a fixed-height child still gets
-             flex-shrink applied and the 32px bar was rendering at 20. */
-          className="shrink-0"
-          title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
-        >
-          {hasLoadOrder
-            ? "The vendor charges freight, fees and taxes only — the base price is yours."
-            : "The charges will be set by the vendor."}
-        </BannerInline>
-
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* THE BANNER IS IN THE COLUMN, NOT ABOVE THE GRID.
+
+              It governs the two pricing tables, so it takes their width — full
+              bleed it ran on past the rail and read as a page-level notice
+              about the whole order rather than a rule about what follows. In
+              the column it also lets the rail start where the banner does:
+              `items-start` puts both at the grid's top, so the totals sit level
+              with the first thing on the step instead of a banner's height
+              below it.
+
+              gap-4 HERE AND gap-10 INSIDE. The banner is 16px off the section
+              beneath it — the same 16px the sheet body's own padding puts above
+              it, so it sits in an even channel — while the sections keep the
+              40px rhythm they have everywhere else. */}
+          <div className="flex min-w-0 flex-col gap-4">
+            <BannerInline
+              status="info"
+              split
+              /* The column is a flex container: a fixed-height child still gets
+                 flex-shrink applied and the 32px bar was rendering at 20. */
+              className="shrink-0"
+              title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
+            >
+              {hasLoadOrder
+                ? "The vendor charges freight, fees and taxes only — the base price is yours."
+                : "The charges will be set by the vendor."}
+            </BannerInline>
+
           <div className="flex min-w-0 flex-col gap-10">
             {/* ── STEP 2 ────────────────────────────────────────────────────────
                 Three things, in the order each feeds the next: read what the
@@ -3299,6 +3314,7 @@ export function BrokerOrderSheet({
                 </table>
               </div>
             </SheetSection>
+          </div>
           </div>
 
           {/* THE DECISION, and it reads as one: the two totals and what is left

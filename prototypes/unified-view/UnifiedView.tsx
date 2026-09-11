@@ -15,6 +15,8 @@ import {
   Contact,
   Droplet,
   Caravan,
+  TriangleAlert,
+  Clock,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -25,6 +27,12 @@ import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { BannerCallout } from "@/components/ui/banner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Empty,
   EmptyContent,
@@ -398,6 +406,25 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   );
   const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
 
+  /*
+    THE ONE THING ON THIS PAGE THAT CANNOT WAIT. An order planned for the day
+    with nobody on it is not a row to notice among fifty-six others — it is the
+    reason somebody opened the screen. The banner is derived, never seeded: it
+    counts what is actually there on the chosen date, so it cannot go on saying
+    two after a driver is put on one of them, and it is absent on a day that has
+    none.
+
+    NOT A FACET. The filter panel answers "show me the unassigned ones" when you
+    already suspect there are some; this answers "there are some" when you do
+    not.
+  */
+  const unassigned = React.useMemo(
+    () => onDate.filter((r) => r.status === "Unassigned"),
+    [onDate]
+  );
+  const [alertDismissed, setAlertDismissed] = React.useState(false);
+  React.useEffect(() => setAlertDismissed(false), [dateKey]);
+
   /* Grouping — the same hook the other three lists use, so all four behave
      identically. It suspends pagination while grouped, because a group that
      straddles a page boundary cannot have an honest header. */
@@ -713,6 +740,57 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           }}
         />
       </div>
+
+      {unassigned.length > 0 && !alertDismissed && (
+        <BannerCallout
+          status="warning"
+          variant="soft"
+          className="mt-3 shrink-0"
+          icon={<TriangleAlert />}
+          title={`${unassigned.length} ${unassigned.length === 1 ? "order" : "orders"} waiting on a driver`}
+          action={
+            <>
+              {/* SHOW ORDERS IS THE FILTER, not a jump to the first one. The
+                  alert names a SET, so the action has to leave the reader
+                  looking at that set. */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setColScope("status");
+                  setColQuery("Unassigned");
+                  setPage(1);
+                }}
+              >
+                Show orders
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenOrderId(unassigned[0].id)}
+              >
+                Details
+              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Remind me later"
+                    onClick={() => setAlertDismissed(true)}
+                  >
+                    <Clock />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remind me later</TooltipContent>
+              </Tooltip>
+            </>
+          }
+          onDismiss={() => setAlertDismissed(true)}
+        >
+          Planned for this date with nobody assigned.
+        </BannerCallout>
+      )}
 
       {/* Table region — `relative` anchors the floating bulk-action bar. */}
       <div className="relative mt-4 min-h-0 flex-1">

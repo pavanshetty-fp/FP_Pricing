@@ -1,7 +1,8 @@
 import * as React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 import { Stack, SectionHeading } from "@/components/typography";
 import { BannerCallout, BannerInline } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 const MSG =
@@ -48,6 +49,7 @@ function CalloutAction() {
  */
 export function BannersDemo() {
   const [showDismiss, setShowDismiss] = React.useState(true);
+  const [softOpen, setSoftOpen] = React.useState(true);
   const [inlineOpen, setInlineOpen] = React.useState<Record<string, boolean>>({
     default: true,
     caution: true,
@@ -102,6 +104,47 @@ export function BannersDemo() {
             </button>
           )}
         </Stack>
+      </Stack>
+
+      {/* Type 1, soft — the low-volume form */}
+      <Stack space="title">
+        <SectionHeading as="h3" title="Type 1 — Soft callout" />
+        <p className="-mt-1 text-xs text-muted-foreground">
+          The same component at a tenth of the volume: a 10% wash of the status
+          accent with a 30% rim, for a message that sits inside a working screen
+          all day rather than announcing itself once. Takes a bold title, an
+          optional count, actions and a dismiss together.
+        </p>
+        {softOpen ? (
+          <BannerCallout
+            status="warning"
+            variant="soft"
+            icon={<TriangleAlert />}
+            title="3 orders waiting on a driver"
+            count={3}
+            action={
+              <>
+                <Button variant="outline" size="sm">
+                  Show orders
+                </Button>
+                <Button variant="outline" size="sm">
+                  Details
+                </Button>
+              </>
+            }
+            onDismiss={() => setSoftOpen(false)}
+          >
+            Planned for this date with nobody assigned.
+          </BannerCallout>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSoftOpen(true)}
+            className="self-start text-xs text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Restore dismissed banner
+          </button>
+        )}
       </Stack>
 
       {/* Type 2 — Inline alert */}

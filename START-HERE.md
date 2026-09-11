@@ -16,6 +16,12 @@ read the change bulletins, in order:
 3. [`docs/handoff-org-repo-2026-09-11.md`](docs/handoff-org-repo-2026-09-11.md)
    — 8 Sep → 11 Sep 2026. Mostly the light theme: the app ground, the surface
    ladder, selection as a hue, and the shell's shadows coming off.
+4. [`docs/handoff-org-repo-2026-09-11b.md`](docs/handoff-org-repo-2026-09-11b.md)
+   — 11 Sep 2026, later the same day. What came out of USING bulletin #3: no
+   scrollbars anywhere, side-sheet sections as cards, a new `StageBar`, four
+   component behaviours, and token corrections — two of which are bugs
+   (a decimal could not be typed into a pricing cell; the table header was
+   invisible in dark).
 
 `src/` and `docs/` travel. **`prototypes/unified-view/` does not** — it is where patterns get
 proven, not where they live; anything worth keeping from it is already promoted into `src/`.

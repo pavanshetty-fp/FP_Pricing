@@ -27,7 +27,7 @@ import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { BannerCallout } from "@/components/ui/banner";
+import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
 import {
   Tooltip,
   TooltipContent,
@@ -752,10 +752,11 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
             <>
               {/* SHOW ORDERS IS THE FILTER, not a jump to the first one. The
                   alert names a SET, so the action has to leave the reader
-                  looking at that set. */}
+                  looking at that set — the banner IS a quick filter. */}
               <Button
                 variant="outline"
                 size="sm"
+                className={bannerSoftAction}
                 onClick={() => {
                   setColScope("status");
                   setColQuery("Unassigned");
@@ -763,13 +764,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
                 }}
               >
                 Show orders
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOpenOrderId(unassigned[0].id)}
-              >
-                Details
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -787,9 +781,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
             </>
           }
           onDismiss={() => setAlertDismissed(true)}
-        >
-          Planned for this date with nobody assigned.
-        </BannerCallout>
+        />
       )}
 
       {/* Table region — `relative` anchors the floating bulk-action bar. */}

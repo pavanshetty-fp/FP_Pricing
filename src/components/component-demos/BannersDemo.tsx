@@ -1,7 +1,11 @@
 import * as React from "react";
 import { ArrowRight, TriangleAlert } from "lucide-react";
 import { Stack, SectionHeading } from "@/components/typography";
-import { BannerCallout, BannerInline } from "@/components/ui/banner";
+import {
+  BannerCallout,
+  BannerInline,
+  bannerSoftAction,
+} from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
@@ -112,8 +116,9 @@ export function BannersDemo() {
         <p className="-mt-1 text-xs text-muted-foreground">
           The same component at a tenth of the volume: a 10% wash of the status
           accent with a 30% rim, for a message that sits inside a working screen
-          all day rather than announcing itself once. Takes a bold title, an
-          optional count, actions and a dismiss together.
+          all day rather than announcing itself once. One line, everything
+          centred on it, and the action is a raised tile — white in light,
+          near-black in dark — because an outline button vanishes into a wash.
         </p>
         {softOpen ? (
           <BannerCallout
@@ -123,19 +128,12 @@ export function BannersDemo() {
             title="3 orders waiting on a driver"
             count={3}
             action={
-              <>
-                <Button variant="outline" size="sm">
-                  Show orders
-                </Button>
-                <Button variant="outline" size="sm">
-                  Details
-                </Button>
-              </>
+              <Button variant="outline" size="sm" className={bannerSoftAction}>
+                Show orders
+              </Button>
             }
             onDismiss={() => setSoftOpen(false)}
-          >
-            Planned for this date with nobody assigned.
-          </BannerCallout>
+          />
         ) : (
           <button
             type="button"

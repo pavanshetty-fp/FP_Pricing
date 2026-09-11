@@ -24,7 +24,7 @@ const calloutVariants = cva(
   // THE RIM IS ALWAYS DRAWN, and is transparent in light on the solid variant.
   // A border that appears only in one theme changes the box's height between
   // them; one that is always there and only sometimes coloured does not.
-  "flex items-center gap-3 rounded-md border px-4 py-3",
+  "flex items-center rounded-md border",
   {
     variants: {
       status: { info: "", caution: "", warning: "", success: "" },
@@ -37,7 +37,17 @@ const calloutVariants = cva(
         icon and the rim, the title is body text, and the page underneath stays
         readable.
       */
-      variant: { solid: "text-fp-banner-foreground", soft: "" },
+      /*
+        SOFT IS ONE LINE, AND ITS BOX IS SIZED FOR ONE. Solid wraps to two or
+        three — it carries a paragraph — so it keeps the roomier padding and
+        top-aligns its icon and actions against a growing block. Soft never
+        wraps: everything in it is centred on a single baseline and the
+        vertical padding only has to clear the 32px action button.
+      */
+      variant: {
+        solid: "gap-3 px-4 py-3 text-fp-banner-foreground",
+        soft: "gap-2.5 px-3 py-1.5",
+      },
     },
     compoundVariants: [
       { variant: "solid", status: "info", class: "border-fp-banner-border-info bg-fp-banner-info" },
@@ -56,11 +66,32 @@ const calloutVariants = cva(
   }
 );
 
+/**
+ * The fill for an action sitting ON a soft banner.
+ *
+ * An outline button disappears into a tinted wash — its stroke is a neighbour
+ * of the rim around it and its fill is the wash itself, so the one thing the
+ * banner wants you to press is the one thing with no edge. The action is a
+ * RAISED TILE instead: the content layer in light (white) and the app ground
+ * in dark (near-black), i.e. the surface furthest from the wash in each theme.
+ *
+ * Two tokens rather than one because no single surface is white in light AND
+ * black in dark — that inversion is exactly what the two ends of the ladder
+ * are. Exported so every soft banner's action matches without each call site
+ * re-deriving it.
+ */
+export const bannerSoftAction =
+  "bg-fp-surface-1b text-foreground hover:bg-fp-surface-1b/85 dark:bg-fp-surface-base dark:hover:bg-fp-surface-base/80";
+
 export interface BannerCalloutProps
   extends Omit<React.ComponentProps<"div">, "children" | "title">,
     VariantProps<typeof calloutVariants> {
-  /** The banner message. On the soft variant this is the quieter half. */
-  children: React.ReactNode;
+  /**
+   * The banner message. Optional: a soft banner is usually a `title` alone,
+   * and a second clause that only restates it is noise on a bar that sits
+   * above the work all day.
+   */
+  children?: React.ReactNode;
   /**
    * A bold lead before the message, on the same line.
    *
@@ -107,24 +138,30 @@ function BannerCallout({
     >
       <span
         className={cn(
-          "shrink-0 self-start [&_svg]:size-5",
-          soft ? "mt-px" : "mt-0.5 text-fp-banner-foreground/90",
-          soft && inlineAccent({ status })
+          "shrink-0",
+          soft
+            ? cn("[&_svg]:size-4", inlineAccent({ status }))
+            : "mt-0.5 self-start text-fp-banner-foreground/90 [&_svg]:size-5"
         )}
       >
         {icon ?? <Info />}
       </span>
-      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm leading-snug">
+      <p
+        className={cn(
+          "flex min-w-0 flex-1 gap-x-2 text-sm",
+          soft ? "items-center leading-none" : "flex-wrap items-baseline leading-snug"
+        )}
+      >
         {title && (
           <span className={cn("font-medium", soft && "text-foreground")}>{title}</span>
         )}
-        <span className={cn(soft && "text-muted-foreground")}>{children}</span>
+        {children && <span className={cn(soft && "text-muted-foreground")}>{children}</span>}
       </p>
       {count != null && (
         <span
           className={cn(
-            "flex shrink-0 items-center gap-1.5 self-start text-xs tabular-nums",
-            soft ? inlineAccent({ status }) : "text-fp-banner-foreground/80"
+            "flex shrink-0 items-center gap-1.5 text-xs tabular-nums",
+            soft ? inlineAccent({ status }) : "self-start text-fp-banner-foreground/80"
           )}
         >
           <span
@@ -134,14 +171,19 @@ function BannerCallout({
           {count}
         </span>
       )}
-      {action && <div className="flex shrink-0 items-center gap-2 self-start">{action}</div>}
+      {action && (
+        <div className={cn("flex shrink-0 items-center gap-2", !soft && "self-start")}>
+          {action}
+        </div>
+      )}
       {onDismiss && (
         <button
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
           className={cn(
-            "-mr-1 shrink-0 self-start rounded-sm p-1 outline-none transition-colors focus-visible:ring-2",
+            "-mr-1 shrink-0 rounded-sm p-1 outline-none transition-colors focus-visible:ring-2",
+            !soft && "self-start",
             soft
               ? "text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/50"
               : "text-fp-banner-foreground/80 hover:bg-fp-banner-foreground/15 hover:text-fp-banner-foreground focus-visible:ring-fp-banner-foreground/50"

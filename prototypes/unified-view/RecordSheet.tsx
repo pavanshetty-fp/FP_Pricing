@@ -42,11 +42,18 @@ export interface RecordSheetProps {
    * its control. The same rule `BulkEditDialog` follows when its summary step
    * goes from `default` to `lg`.
    *
-   * All three are CAPPED rather than filling the viewport. 60px-from-the-edge is
+   * `xxwide` is 1440px, and exists for exactly one shape: a step that is TWO
+   * COLUMNS — tables on the left, a fixed rail on the right. The rail costs the
+   * tables 320px plus a gap, and at 1120 that came straight out of columns that
+   * were already at their minimum. A sheet does not get this size for being
+   * long; it gets it for being split.
+   *
+   * All four are CAPPED rather than filling the viewport. 60px-from-the-edge is
    * the most a sheet may take, not the width it should be; the viewport clamp
-   * only bites on a narrow screen.
+   * only bites on a narrow screen — which is where the two-column step folds
+   * back to one and stops needing the width at all.
    */
-  size?: "narrow" | "wide" | "xwide";
+  size?: "narrow" | "wide" | "xwide" | "xxwide";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -268,7 +275,9 @@ export function RecordSheet({
         showCloseButton={false}
         className={cn(
           "gap-0 p-0",
-          size === "xwide"
+          size === "xxwide"
+            ? "w-[min(1440px,calc(100vw-60px))] sm:max-w-[min(1440px,calc(100vw-60px))]"
+            : size === "xwide"
             ? "w-[min(1120px,calc(100vw-60px))] sm:max-w-[min(1120px,calc(100vw-60px))]"
             : size === "wide"
               ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"

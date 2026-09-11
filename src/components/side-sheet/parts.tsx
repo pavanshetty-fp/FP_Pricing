@@ -28,6 +28,7 @@ export function SheetSection({
   action,
   note,
   variant = "card",
+  flush = false,
   children,
   className,
 }: {
@@ -43,6 +44,19 @@ export function SheetSection({
    * that are a single continuous list rather than a set of groups.
    */
   variant?: "plain" | "card";
+  /**
+   * Card variant only: drop the body's padding so a single child can run edge
+   * to edge under the header band.
+   *
+   * FOR A SECTION THAT IS ONE TABLE. A table already draws a border, a header
+   * band and a rule between every row; set inside a padded card it became a
+   * box in a box, with 16px of nothing between two lines doing the same job
+   * and the table's own header band sitting a hair inside the card's. Flush,
+   * the card's border IS the table's border and there is one edge instead of
+   * two. The child owns its own insets — anything that is not the table (an
+   * Add row, a footnote) has to bring its own padding and its own top rule.
+   */
+  flush?: boolean;
   /**
    * Controls that act on the SECTION rather than on one field — "Add asset",
    * "Refresh". They sit on the heading row, right-aligned, because a control
@@ -110,7 +124,9 @@ export function SheetSection({
         <div className="border-b border-border bg-fp-surface-1a px-4 py-2.5">
           {heading}
         </div>
-        <div className="flex flex-col gap-4 p-4">{children}</div>
+        <div className={cn("flex flex-col", !flush && "gap-4 p-4")}>
+          {children}
+        </div>
       </section>
     );
   }

@@ -1963,8 +1963,11 @@ export function BrokerOrderSheet({
         </SheetSection>
       )}
 
+      {/* FLUSH — the one section on trial with it. This section IS its table,
+          and inside a padded card the table's own border ran 16px inside the
+          card's, two lines doing one job. See `flush` on `SheetSection`. */}
       {!isMovement && (
-        <SheetSection title="Delivery Order">
+        <SheetSection title="Delivery Order" flush>
           {/* ALWAYS A TABLE, never an empty-state panel standing in for one. An
               empty table with its columns showing tells you what an order line
               is made of and is ready to be typed into; a panel saying "select a
@@ -1974,7 +1977,9 @@ export function BrokerOrderSheet({
               Surface-1a header, cells with no chrome of their own, and the Add
               chip attached to the squared bottom-left corner. */}
           <div>
-            <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+            {/* NO BORDER AND NO RADIUS OF ITS OWN — the card supplies both, and
+                its `overflow-hidden` clips these corners for us. */}
+            <div>
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
                   <col className="w-[92px]" />
@@ -2131,25 +2136,30 @@ export function BrokerOrderSheet({
                 )}
               </table>
             </div>
-            {/* Attached to the table's squared corner — the DS "+ Add more"
-                affordance. It belongs at the END of the rows, because that is
-                where the next row goes. */}
-            {/* THE ADD CHIP AND THE ORDER-WIDE FLAG SHARE A LINE, at opposite
-                ends of it. Winter additive is a property of the LOAD, not of a
-                row — every gallon on the truck is blended or none is — so it
-                cannot live in the table, and a section of its own for one
-                checkbox would be a heading with nothing under it. */}
-            <div className="flex items-center justify-between gap-4">
+            {/* THE ADD ROW IS NOW A STRIP, not a chip hanging off a corner.
+                The DS "+ Add more" attaches to the table's squared bottom-left
+                — which only exists while the table has a corner of its own.
+                Flush against the card there is no corner to hang from, so the
+                affordance becomes the last band of the table: its own rule
+                above it, the same insets as a cell, and still at the END of the
+                rows because that is where the next row goes.
+
+                THE ADD AND THE ORDER-WIDE FLAG SHARE THE LINE, at opposite ends.
+                Winter additive is a property of the LOAD, not of a row — every
+                gallon on the truck is blended or none is — so it cannot live in
+                the table, and a section of its own for one checkbox would be a
+                heading with nothing under it. */}
+            <div className="flex items-center justify-between gap-4 border-t border-border px-3 py-2">
               <button
                 type="button"
                 onClick={addBlankLine}
-                className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="-mx-1 flex h-8 items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <Plus className="size-4" /> Add asset
               </button>
               <label
                 htmlFor="winter-additive"
-                className="flex cursor-pointer items-center gap-2 pr-1 text-sm text-foreground"
+                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
               >
                 <Checkbox
                   id="winter-additive"

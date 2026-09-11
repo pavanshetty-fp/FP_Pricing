@@ -29,7 +29,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
-import { OrderMapView } from "./OrderMapView";
+import { OrderMapView } from "../OrderMapView";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
@@ -1246,7 +1246,17 @@ export function BrokerOrdersScreen({
             /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a
                property of a table; half the day's work missing from a map
                because it fell on page two is a map that lies. */
-            <OrderMapView orders={sorted} onOpenOrder={setOpenId} />
+            <OrderMapView
+              orders={sorted.map((r) => ({
+                id: r.id,
+                orderNo: r.orderNo,
+                site: r.shipTo,
+                subtitle: r.customer.title,
+                status: r.status,
+                tone: BROKER_STATUS_TONE[r.status],
+              }))}
+              onOpenOrder={setOpenId}
+            />
           ) : (
             <ListTable
               rows={pageRows}

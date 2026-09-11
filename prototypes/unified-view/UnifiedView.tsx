@@ -52,7 +52,8 @@ import {
   FuelOrdersToolbar,
   type FuelOrdersView,
 } from "./FuelOrdersToolbar";
-import { FuelOrdersTable } from "./FuelOrdersTable";
+import { FuelOrdersTable, STATUS_TONE } from "./FuelOrdersTable";
+import { OrderMapView } from "./OrderMapView";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
@@ -764,6 +765,8 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           }}
           view={view}
           onViewChange={setView}
+          /* Same switch as 3PL, same order: table, board, map. */
+          mapView
           date={date}
           onDateChange={(d) => {
             setDate(d);
@@ -855,7 +858,23 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       {/* Table region — `relative` anchors the floating bulk-action bar. */}
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {view === "board" ? (
+          {view === "map" ? (
+            /* THE MAP READS THE SAME LIST THE TABLE DOES — `sorted`, so the
+               date, the search and every filter apply to it. A map that quietly
+               showed everything would be answering a different question from
+               the one the toolbar above it says is being asked. */
+            <OrderMapView
+              orders={sorted.map((r) => ({
+                id: r.id,
+                orderNo: r.orderNo,
+                site: r.customer.description,
+                subtitle: r.customer.title,
+                status: r.status,
+                tone: STATUS_TONE[r.status],
+              }))}
+              onOpenOrder={setOpenOrderId}
+            />
+          ) : view === "board" ? (
             /* The DS toolbar unit ships a Table/Board switch, so the control is
                here. The board itself is NOT built for this screen: the DS's
                `data-action-control/BoardView` is bound to that demo's row shape,
@@ -990,7 +1009,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           something that isn't on screen. */}
       {/* No top hairline: the table's own last-row rule already closes the list,
           so a second line here read as a stray divider. */}
-      <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
+      <div className={cn("mt-4 shrink-0", view !== "table" && "hidden")}>
         {g.grouped ? (
           <GroupedListFooter
             groupCount={g.groups.groupCount}

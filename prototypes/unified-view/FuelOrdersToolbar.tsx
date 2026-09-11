@@ -29,6 +29,8 @@ export interface FuelOrdersToolbarProps {
   onColQueryChange: (v: string) => void;
   view: FuelOrdersView;
   onViewChange: (v: FuelOrdersView) => void;
+  /** Show the third switch position. Off unless a screen has a map to show. */
+  mapView?: boolean;
   date: Date;
   onDateChange: (d: Date) => void;
   /** Groupable dimensions for this list, plus the active ordered stack. */

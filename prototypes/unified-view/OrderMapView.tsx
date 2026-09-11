@@ -1,8 +1,8 @@
 import * as React from "react";
 import { MapPin } from "lucide-react";
-import { StatusChip } from "@/components/ui/status-chip";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
-import { BROKER_STATUS_TONE, SHIP_TO_SITES, type BrokerOrder } from "./orders";
+import { SHIP_TO_SITES } from "./threepl/orders";
 
 /*
   Orders on a map — list left, plot right.
@@ -22,7 +22,26 @@ import { BROKER_STATUS_TONE, SHIP_TO_SITES, type BrokerOrder } from "./orders";
 
   THE TWO HALVES ARE ONE SELECTION. Hovering a row lights its pin and hovering
   a pin lights its rows; clicking either opens the order.
+
+  ONE MAP, EVERY ORDERS SCREEN. It takes `MapOrder`, not any module's row type:
+  the four things a pin needs are an id, a number, a SITE and a status, and
+  every orders list in the app can produce those. Forking it per module would
+  mean the same screen behaving differently depending on which rail item you
+  came in through, which is the one thing repeated patterns must not do.
 */
+
+/** The least an order has to say to be a pin. Every orders list can say it. */
+export interface MapOrder {
+  id: string;
+  /** Shown as the row's heading. */
+  orderNo: string;
+  /** Must match a `SHIP_TO_SITES` name, or the order is counted as unmapped. */
+  site: string;
+  /** The quieter second line — whose order this is. */
+  subtitle: string;
+  status: string;
+  tone: StatusTone;
+}
 
 /** A site's own coordinates, parsed from the `lat, lng` its record carries. */
 function siteCoords(shipTo: string) {
@@ -56,7 +75,7 @@ export function OrderMapView({
   orders,
   onOpenOrder,
 }: {
-  orders: BrokerOrder[];
+  orders: MapOrder[];
   onOpenOrder: (id: string) => void;
 }) {
   const [hovered, setHovered] = React.useState<string | null>(null);
@@ -67,16 +86,16 @@ export function OrderMapView({
   const groups = React.useMemo(() => {
     const by = new Map<
       string,
-      { lat: number; lng: number; site: string; city: string; rows: BrokerOrder[] }
+      { lat: number; lng: number; site: string; city: string; rows: MapOrder[] }
     >();
     orders.forEach((o) => {
-      const p = siteCoords(o.shipTo);
+      const p = siteCoords(o.site);
       if (!p) return;
       const g =
-        by.get(o.shipTo) ??
-        { lat: p.lat, lng: p.lng, site: o.shipTo, city: p.city, rows: [] };
+        by.get(o.site) ??
+        { lat: p.lat, lng: p.lng, site: o.site, city: p.city, rows: [] };
       g.rows.push(o);
-      by.set(o.shipTo, g);
+      by.set(o.site, g);
     });
     return [...by.values()];
   }, [orders]);
@@ -108,13 +127,13 @@ export function OrderMapView({
       {/* ── the list ── */}
       <div className="flex min-h-0 w-[340px] shrink-0 flex-col overflow-auto rounded-md border border-border">
         {orders.map((o) => {
-          const on = hovered === o.shipTo;
+          const on = hovered === o.site;
           return (
             <button
               key={o.id}
               type="button"
               onClick={() => onOpenOrder(o.id)}
-              onMouseEnter={() => setHovered(o.shipTo)}
+              onMouseEnter={() => setHovered(o.site)}
               onMouseLeave={() => setHovered(null)}
               className={cn(
                 "flex flex-col gap-1 border-b border-border px-3 py-2.5 text-left outline-none transition-colors last:border-b-0",
@@ -131,16 +150,16 @@ export function OrderMapView({
                 >
                   {o.orderNo}
                 </span>
-                <StatusChip tone={BROKER_STATUS_TONE[o.status]} variant="soft">
+                <StatusChip tone={o.tone} variant="soft">
                   {o.status}
                 </StatusChip>
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {o.customer.title}
+                {o.subtitle}
               </span>
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <MapPin className="size-3 shrink-0" />
-                <span className="truncate">{o.shipTo}</span>
+                <span className="truncate">{o.site}</span>
               </span>
             </button>
           );
@@ -152,7 +171,7 @@ export function OrderMapView({
         {groups.map((g) => {
           const pos = project(g.lat, g.lng, bounds);
           const on = hovered === g.site;
-          const tone = BROKER_STATUS_TONE[g.rows[0].status];
+          const tone = g.rows[0].tone;
           return (
             <button
               key={g.site}

@@ -120,7 +120,7 @@ interface Seed
 const SEED: Seed[] = [
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
+    customer: { title: "Bray, Raymond and Marks", description: "Bray North Yard" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 0,
     plannedTime: "1:35 AM",
@@ -129,7 +129,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
+    customer: { title: "Bray, Raymond and Marks", description: "Bray Depot 2" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 0,
     plannedTime: "12:11 AM",
@@ -138,7 +138,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "E", label: "Extraction" },
-    customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
+    customer: { title: "Bray, Raymond and Marks", description: "Bray North Yard" },
     products: [{ name: "Gas Pr 1", gal: 2000 }],
     dayOffset: 1,
     plannedTime: "12:11 AM",
@@ -147,7 +147,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Bray, Raymond and Marks", description: "Bray, Raymond and Marks" },
+    customer: { title: "Bray, Raymond and Marks", description: "Bray Depot 2" },
     products: [
       { name: "123", gal: 200 },
       { name: "200* Diesel Onroad clear", gal: 300 },
@@ -159,7 +159,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Gonzalez, Palmer and Miller", description: "Gonzalez, Palmer and Miller" },
+    customer: { title: "Gonzalez, Palmer and Miller", description: "GPM Southside" },
     products: [{ name: "123", gal: 300 }],
     dayOffset: -1,
     plannedTime: "11:46 PM",
@@ -168,7 +168,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Gonzalez, Palmer and Miller", description: "Gonzalez, Palmer and Miller" },
+    customer: { title: "Gonzalez, Palmer and Miller", description: "GPM Southside" },
     products: [
       { name: "123", gal: 250 },
       { name: "CLR DSL", gal: 350 },
@@ -180,7 +180,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "E", label: "Extraction" },
-    customer: { title: "Gonzalez, Palmer and Miller", description: "Gonzalez, Palmer and Miller" },
+    customer: { title: "Gonzalez, Palmer and Miller", description: "GPM Southside" },
     products: [
       { name: "123", gal: 250 },
       { name: "CLR DSL", gal: 350 },
@@ -192,7 +192,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Morris Group", description: "Morris Group - 505112" },
+    customer: { title: "Morris Group", description: "Morris Yard 4" },
     products: [
       { name: "Test", gal: 100 },
       { name: "1652", gal: 92 },
@@ -205,7 +205,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Morris Group", description: "Morris Group - 505112" },
+    customer: { title: "Morris Group", description: "Morris Yard 4" },
     products: [
       { name: "Test", gal: 100 },
       { name: "1652", gal: 92 },
@@ -218,7 +218,7 @@ const SEED: Seed[] = [
   },
   {
     type: { code: "D", label: "Delivery" },
-    customer: { title: "Morris Group", description: "Morris Group - 505112" },
+    customer: { title: "Morris Group", description: "Morris Yard 4" },
     products: [
       { name: "200* Diesel Onroad clear", gal: 1800 },
       { name: "Test", gal: 100 },

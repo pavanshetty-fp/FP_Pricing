@@ -64,8 +64,9 @@ const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
   E: "pastel-amber",
 };
 
-/** Order status → colour channel. */
-const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
+/** Order status → colour channel. Exported so the map view reads a status the
+ *  same way the table does rather than keeping a second copy of the mapping. */
+export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
   Assigned: "success",
   Unassigned: "processing",
 };

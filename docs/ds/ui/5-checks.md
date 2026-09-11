@@ -9,7 +9,8 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Component variants follow the data's meaning (semantic).
 - [ ] All icons are Lucide.
 - [ ] Both Light and FP render; FP is default; toggle persists to `fp-theme`.
-- [ ] Surfaces layer correctly (background → sidebar → content; global top bar on `bg-background`) with `shadow-fp-surface` on floating chrome; content layer has no outer border.
+- [ ] Surfaces layer correctly (ground → drawer → content, with cards and fields a step *under* the content layer; global top bar on `bg-background`). Nothing in the shell casts a shadow; the content layer has no outer border.
+- [ ] Hover and selected use different tokens — `--accent` for *the pointer is here*, `--selected` for *this is the one*. They must never resolve to the same fill.
 - [ ] Radii / type / spacing come from the scale, not one-off values.
 - [ ] Text contrast ≥ WCAG AA in both modes.
 
@@ -26,7 +27,8 @@ in Light, not FP-dark:
 | `--muted` | `--fp-surface-1b`, `--popover` | FP-dark, both `#1b2028` |
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
-| `--background` | `--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b` | Light, all `#ffffff` — added by the 2026-08-27 Figma sync |
+| ~~`--background`~~ | ~~`--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b`~~ | Light — **resolved 2026-09-11**: `--background` went back to the tinted Surface Base `#efefeb`, and `--fp-surface-1a` (and so `--card`) moved to the inner-panel step `#f4f5f8`. Only `--popover`/`--fp-surface-1b` are still white together, which is correct — a popover IS the content layer, lifted. |
+| `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in grey, and the grey it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
 | ~~`--fp-outline-2`~~ | ~~`--accent`~~ | Light — **resolved** 2026-08-27, `--accent` moved to `#e5e7eb` |
 
 This family has now caught nine token pairs, eight of them live: the same sync

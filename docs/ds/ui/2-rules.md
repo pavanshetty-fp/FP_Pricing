@@ -64,10 +64,16 @@ mistakes, and Checks derive from these.
   `currentColor` — don't pull another set.
 
 ## Surfaces & elevation
-- The **content layer** is `rounded-md bg-fp-surface-1b shadow-fp-surface` with **no
-  outer border** — it lifts with shadow.
-- Cards use `bg-card` (Surface 1a) + a `border-fp-outline-1` hairline to separate on
-  the content layer.
+- The **content layer** is `rounded-md bg-fp-surface-1b` with **no outer border and
+  no shadow** — the ground beneath it is the tinted Surface Base in both themes, so
+  it separates by value.
+- Cards use `bg-card` (Surface 1a), which is **one step under the content layer**,
+  not equal to it. It carries a `border-fp-outline-1` hairline as well, but the
+  hairline is no longer doing the separating on its own.
+- **Fields are filled, not transparent**, and they are filled `bg-fp-surface-1b` —
+  a white well inside the tinted card they sit in. Transparent meant a field took
+  whatever was behind it and could only be found by its border, which is why the
+  field stroke kept being pushed darker and still measured 1.74:1.
 - Inner cards step up to `bg-fp-card-1`.
 - **A board lane's ground is `bg-fp-board-lane`** — one token, every board (the DS
   Kanban and the 3PL brokerage board both take it, so they move together). It is
@@ -84,8 +90,9 @@ mistakes, and Checks derive from these.
   gets it from the panel fill; in light the layer and the header are both `#ffffff`
   and a header that is only a hairline stops being a header the moment the first
   row has one too.
-- Apply `shadow-fp-surface` to floating chrome (drawer, content layer); the rail gets
-  no shadow.
+- **Nothing in the shell casts a shadow** — not the rail, not the drawer, not the
+  content layer. `shadow-fp-surface` is for things that genuinely float *over*
+  content: a hovered card, a popover.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
   `ux/2-rules` H2, since it's a composition rule; the surface tokens live here.*
 

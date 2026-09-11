@@ -20,51 +20,81 @@ lg 10 · xl 14` (anchored to `--radius`), heading styles `text-heading-sm..xl`
 (24/36/48/60), named spacing. Font: **Geist** (400/500/600). Numbers `tabular-nums`.
 
 ## Surface & elevation stack
-A stack of surfaces that step in lightness and lift with shadow.
+A stack of surfaces that step in lightness. **Nothing in the shell casts a
+shadow** — the ground is the tinted Surface Base in both themes, so each layer
+already reads as a step up from it by value, and a shadow on top of a real value
+step is a second answer to a question already answered. `shadow-fp-surface`
+survives for things that genuinely float *over* content: a hovered card, a
+popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
-  chrome, full width above the rail + content.
-- **Light:** background `#efefeb` → sidebar `#fafbf8` → content layer `#ffffff`. Rail
-  is **flush**; drawer + content **float** with `shadow-fp-surface`.
-- **FP:** background/rail `#080808` → sidebar `#11161d` → content `#1b2028`, cards
-  `#11161d`, inner `#2a2f37`.
+  chrome, full width above the rail + content. It shares the ground's colour.
+- **Light:** ground `#efefeb` → drawer `#fafafa` → content layer `#ffffff`, with
+  cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
+  the ground's own colour and disappears into it.
+- **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
+  `#2a2f37`.
+- **A field is filled, not transparent.** Transparent meant a field took whatever
+  was behind it and could only be found by its border; filled white it is the
+  same object on a card as on the content layer.
 - The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does
   not change on expand). `--drawer` (#292929) and `--fp-lane` are **legacy** — no
   longer bound to the main nav / Kanban lanes.
-- The content layer has **no outer border** — it lifts with shadow.
+- The content layer has **no outer border and no shadow** — it separates by value.
 
 ## Token quick reference (hex, both modes)
-| Utility | Light | FP | Use |
+| Utility | Light | FP (dark) | Use |
 |---|---|---|---|
-| `bg-background` | `#efefeb` | `#080808` | app bg / Surface Base / global top bar |
+| `bg-background` | `#efefeb` | `#080808` | app ground / Surface Base / global top bar — the rail sits flush on it |
 | `text-foreground` | `#030405` | `#f0f2f5` | primary text |
-| `bg-card` | `#ffffff` | `#11161d` | card (Surface 1a) |
-| `bg-popover` | `#ffffff` | `#1b2028` | menus/popovers |
+| `bg-card` | `#f4f5f8` | `#11161d` | card, inner panel and every field (= Surface 1a) |
+| `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
-| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — accent only |
-| `text-muted-foreground` | `#596475` | `#9ca3af` | secondary/label |
-| `bg-accent` | `#cad1db` | `#2a2f37` | hover fill |
-| `bg-destructive` | `#dc2626` | `#f87171` | danger/delete |
-| `border-border` | `#cdd4de` | `#363c45` | default hairline |
-| `ring-ring` | `#727d8f` | `#9ca3af` | focus ring |
-| `bg-rail` | `#efefeb` | `#080808` | tier-1 rail |
-| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay (base/sidebar) |
-| `bg-drawer` | `#fafbf8` | `#292929` | legacy (FP/Drawer) — not currently bound |
-| `bg-fp-surface-1a` | `#ffffff` | `#11161d` | card surface |
-| `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** |
-| `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | inner card / pressed tint |
-| `bg-accent` (Kanban lane) | `#cad1db` | `#2a2f37` | Kanban lane track (lanes bind here now) |
-| `bg-fp-lane` | `#f4f5f8` | `#2a2f37` | legacy — superseded by `bg-accent` for lanes |
-| `border-fp-outline-1` | `#e2e5ea` | `#363c45` | subtle divider |
-| `border-fp-outline-2` | `#cad1db` | `#575757` | stronger outline (available; table stroke now uses `border`) |
-| `text-status-success` | `#16a34a` | `#22c55e` | success |
-| `text-status-processing` | `#d97706` | `#f59e0b` | processing/caution |
+| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the section mark, the focus ring, and light's selection hue |
+| `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
+| `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
+| `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
+| `text-selected-foreground` | `#a33f00` | `#f0f2f5` | its label, icon and indicator |
+| `border-selected-border` | `#fdb98c` | `#575757` | its rim, where one is drawn |
+| `bg-destructive` | `#ef4444` | `#f87171` | danger / delete |
+| `border-border` | `#d4d4d8` | `#363c45` | default hairline |
+| `border-input` | `#c4c4c9` | `#363c45` | field boundary |
+| `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
+| `bg-rail` | `#efefeb` | `#080808` | tier-1 rail (merges into the ground) |
+| `bg-sidebar` | `#fafafa` | `#11161d` | tier-2 drawer + rail hover-overlay |
+| `bg-sidebar-primary` | `#fa6400` | `#fa6400` | the 24px section mark — **brand in both themes** |
+| `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
+| `bg-fp-surface-base` | `#efefeb` | `#080808` | the app ground, by its own name |
+| `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |
+| `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** (and the fill inside a field) |
+| `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | raised inner card / pressed tint |
+| `border-fp-outline-1` | `#e2e5ea` | `#363c45` | a card's own rim |
+| `border-fp-outline-2` | `#c4c4c9` | `#575757` | hover / active rim — **must stay darker than outline-1 in light** |
+| `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
+| `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
+| `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
+| `bg-fp-table-header` | `#fafafa` | `#11161d` | table header row |
+| `text-status-success` | `#15803d` | `#22c55e` | success |
+| `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
+| `text-status-processing` | `#b45309` | `#f59e0b` | processing / caution |
 | `text-status-failed` | `#dc2626` | `#f87171` | failed |
 | `text-verified` | `#2563eb` | `#3b82f6` | verified blue |
-| `shadow-fp-surface` | `0 4px 4px rgb(0 0 0 / .15)` | (same) | surface lift |
+
+### Banners
+The callout is a solid fill with white text in **light**; in **dark** it drops to
+the near-black 950 of its own hue and the status moves to a 1px rim. The rim
+token exists in both themes and is `transparent` in light, so the box does not
+change height between them. The inline banner carries no fill of its own — it
+sits on `bg-fp-card-1` and says its status in the text colour.
+
+| Status | Fill | Rim (dark only) | Inline accent |
+|---|---|---|---|
+| info | `#3730a3` / `#1e1b4b` | `#6366f1` | `#4338ca` / `#a5b4fc` |
+| caution | `#854d0e` / `#422006` | `#eab308` | `#b45309` / `#fcd34d` |
+| warning | `#991b1b` / `#450a0a` | `#ef4444` | `#b91c1c` / `#fca5a5` |
+| success | `#166534` / `#052e16` | `#22c55e` | `#4d7c0f` / `#bef264` |
 
 **Theme-independent palettes** (same in both modes): chart series `chart-1..5`
-(`#fa6400`/`#3b82f6`/`#22c55e`/`#eab308`/`#8b5cf6`); Kanban lane accents
-`bg-fp-lane-*`; banner fills `bg-fp-banner-*` + inline accents
-`text-fp-banner-accent-*`.
+(`#fa6400`/`#3b82f6`/`#22c55e`/`#eab308`/`#8b5cf6`); board lane accents
+`bg-fp-lane-*`; the pastel pairs behind `CodeDisc`.
 
 The full verbatim stylesheet is in [`6-execute.md`](6-execute.md).

@@ -13,6 +13,9 @@ read the change bulletins, in order:
    — through 27 Aug 2026
 2. [`docs/handoff-org-repo-2026-09.md`](docs/handoff-org-repo-2026-09.md)
    — 27 Aug → 8 Sep 2026
+3. [`docs/handoff-org-repo-2026-09-11.md`](docs/handoff-org-repo-2026-09-11.md)
+   — 8 Sep → 11 Sep 2026. Mostly the light theme: the app ground, the surface
+   ladder, selection as a hue, and the shell's shadows coming off.
 
 `src/` and `docs/` travel. **`prototypes/unified-view/` does not** — it is where patterns get
 proven, not where they live; anything worth keeping from it is already promoted into `src/`.

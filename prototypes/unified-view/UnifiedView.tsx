@@ -15,7 +15,6 @@ import {
   Contact,
   Droplet,
   Caravan,
-  TriangleAlert,
   Clock,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -27,6 +26,12 @@ import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
 import {
   Tooltip,
@@ -263,6 +268,24 @@ const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
   label: c.label,
 }));
 
+/**
+ * How long "remind me later" puts the alert away for.
+ *
+ * Hours, not a date picker: the question a dispatcher is answering is "when do
+ * I next want to look at this", and the honest answers are all inside one
+ * shift. "Tomorrow" is the one that leaves the shift, so it is last and it is
+ * the same clock time rather than a fixed hour — snoozing at 6am and snoozing
+ * at 6pm are different asks.
+ */
+const HOUR_MS = 60 * 60 * 1000;
+const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
+  { label: "1 hour", ms: HOUR_MS },
+  { label: "2 hours", ms: 2 * HOUR_MS },
+  { label: "4 hours", ms: 4 * HOUR_MS },
+  { label: "8 hours", ms: 8 * HOUR_MS },
+  { label: "Tomorrow, same time", ms: 24 * HOUR_MS },
+];
+
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
 function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null }) {
   const [rows, setRows] = React.useState(FUEL_ORDERS);
@@ -422,8 +445,32 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     () => onDate.filter((r) => r.status === "Unassigned"),
     [onDate]
   );
+  /*
+    TWO WAYS TO PUT IT AWAY, AND THEY ARE NOT THE SAME PROMISE. The ✕ says "I
+    have seen this" — gone for this date, full stop. Snooze says "not now",
+    which is only honest if it actually comes back, so it is a deadline rather
+    than a flag: the banner is hidden while the clock has not reached it and a
+    timer brings it back at the minute it does. Both reset on a date change,
+    because the next day is a different set of orders making a different claim.
+  */
   const [alertDismissed, setAlertDismissed] = React.useState(false);
-  React.useEffect(() => setAlertDismissed(false), [dateKey]);
+  const [snoozedUntil, setSnoozedUntil] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    setAlertDismissed(false);
+    setSnoozedUntil(null);
+  }, [dateKey]);
+  React.useEffect(() => {
+    if (snoozedUntil == null) return;
+    const ms = snoozedUntil - Date.now();
+    if (ms <= 0) {
+      setSnoozedUntil(null);
+      return;
+    }
+    const t = window.setTimeout(() => setSnoozedUntil(null), ms);
+    return () => window.clearTimeout(t);
+  }, [snoozedUntil]);
+  const alertVisible =
+    unassigned.length > 0 && !alertDismissed && snoozedUntil == null;
 
   /* Grouping — the same hook the other three lists use, so all four behave
      identically. It suspends pagination while grouped, because a group that
@@ -741,12 +788,11 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
         />
       </div>
 
-      {unassigned.length > 0 && !alertDismissed && (
+      {alertVisible && (
         <BannerCallout
-          status="warning"
+          status="info"
           variant="soft"
           className="mt-3 shrink-0"
-          icon={<TriangleAlert />}
           title={`${unassigned.length} ${unassigned.length === 1 ? "order" : "orders"} waiting on a driver`}
           action={
             <>
@@ -765,19 +811,41 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
               >
                 Show orders
               </Button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Remind me later"
-                    onClick={() => setAlertDismissed(true)}
-                  >
-                    <Clock />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remind me later</TooltipContent>
-              </Tooltip>
+              {/* SNOOZE IS A CHOICE OF DEADLINE, not a second dismiss. The
+                  useful question is "how long", and a menu is the cheapest
+                  place to ask it — one click to open, one to answer. */}
+              <DropdownMenu>
+                {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE. Both claim the
+                    button through `asChild`, and only this order composes:
+                    the tooltip's props land on the menu trigger, which is
+                    itself `asChild` and forwards both sets to the Button.
+                    Inverted, the menu trigger's props land on `<Tooltip>` —
+                    a provider, not a DOM node — and are silently dropped. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Remind me later"
+                      >
+                        <Clock />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Remind me later</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  {SNOOZE_OPTIONS.map((o) => (
+                    <DropdownMenuItem
+                      key={o.label}
+                      onSelect={() => setSnoozedUntil(Date.now() + o.ms)}
+                    >
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           }
           onDismiss={() => setAlertDismissed(true)}

@@ -479,12 +479,9 @@ repo's `src/index.css`.
      table row were sharing the selection family, so the rail, the drawer and
      every chosen row spoke with the same orange — and the loudest of the three
      was the one saying the least, since a rail item is simply reporting the
-     page you are already looking at. Navigation state goes neutral, and on a
-     drawer that is itself a grey it goes UP rather than down: the current item
-     is the content layer, white, which is what a raised thing is everywhere
-     else in the DS (1.22:1 on the drawer, against a hover of 1.05:1, so the
-     two cannot be confused). `--selected` stays brand, and now means only "you
-     chose this". */
+     page you are already looking at. Navigation state goes neutral: the
+     emphasis fill one step under the sidebar's own hover, with body ink on it.
+     `--selected` stays brand, and now means only "you chose this". */
   --sidebar-accent-foreground: var(--fp-ink-1);
   --sidebar-accent-hover: var(--fp-emphasis-hover);
   --rail: var(--fp-surface-base);
@@ -494,7 +491,7 @@ repo's `src/index.css`.
   /* Light-only aliases — these map to a DIFFERENT primitive in dark. */
   --muted: var(--fp-emphasis-quiet);
   --secondary: var(--fp-emphasis-quiet);
-  --sidebar-accent: var(--fp-surface-1b);
+  --sidebar-accent: var(--fp-emphasis);
   --fp-lane: var(--fp-card-2);
   /* A BOARD LANE IS NOT A ROW BAND, and it keeps its own token for that
      reason: `--fp-lane` is the fill behind a grouped table's header row, and
@@ -570,26 +567,20 @@ repo's `src/index.css`.
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
-  /* THE DRAWER IS THE THIRD VALUE, and there was never room for it above the
-     ground. Three surfaces meet at this edge — the rail and the app ground on
-     its left at #f3f4f7, the content layer on its right at #ffffff — and two
-     of them are fixed. Every near-white tried for the drawer (#fafafa,
-     #fdfdfd, #f7f7f5) had to fit in the 12/255 between those two and came out
-     at 1.03:1 against the ground: a panel with no edge of its own.
+  /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK — a shade off the
+     #ffffff content layer beside it and up from the #f3f4f7 ground both panels
+     sit on, so the drawer and the work read as one raised pair with a gap
+     between them rather than as a panel pushed behind the page.
 
-     MEASURED AGAINST WHAT DARK ALREADY DOES. There the drawer is the middle
-     rung — 1.10:1 from the ground below it and 1.11:1 from the content layer
-     above — and it reads as a distinct panel because of it. Light cannot go
-     UP from #f3f4f7 and reach that, so it goes down: #e5e9f0 is 1.11:1 from
-     the ground and 1.22:1 from the content layer, which is dark's separation
-     arriving by the only route the light ladder leaves open. Still light —
-     91.5% — and cool, like everything else the shell is cut from.
-
-     WHAT SITS ON IT HAD TO INVERT WITH IT. On a near-white drawer the mark and
-     the selected row were darker than their ground; on this one they are the
-     content layer itself, white, which is also what a raised thing IS
-     everywhere else in the DS. */
-  --sidebar: #e5e9f0;
+     IT IS A DELIBERATELY QUIET EDGE, and measuring it as a contrast problem
+     gets the wrong answer. Three surfaces meet here and two are fixed 12/255
+     apart, so anything that fits between them measures ~1.03:1 against the
+     ground — which is exactly the point: the drawer is meant to belong to the
+     content layer, not to stand off from it. A grey that separates properly
+     (#e5e9f0, 1.11:1, matching dark's own middle rung) was tried and reads as
+     a heavy slab beside white; light's ladder is compressed at the top and the
+     honest response is to let this join rather than to force a step. */
+  --sidebar: #fdfdfd;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the
@@ -599,11 +590,11 @@ repo's `src/index.css`.
 
      ONE STEP AWAY FROM THE DRAWER, whichever way that falls. The distance is
      the rule, not the direction — and not the rung either, because the two
-     ladders are not mirror images. Light takes the content layer (#ffffff,
-     1.22:1 on the drawer), dark takes the raised card (#2a2f37, 1.35:1). It
-     has moved three times now, each time because the drawer did; this is the
-     pair to re-measure whenever `--sidebar` changes. */
-  --sidebar-primary: var(--fp-surface-1b);
+     ladders are not mirror images. On this near-white drawer light goes DOWN a
+     card step (--fp-card-2, #f4f5f8); dark goes UP one (--fp-card-1, #2a2f37,
+     over its near-black drawer). It has moved with `--sidebar` every time
+     `--sidebar` moved; this is the pair to re-measure whenever it does. */
+  --sidebar-primary: var(--fp-card-2);
   --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;

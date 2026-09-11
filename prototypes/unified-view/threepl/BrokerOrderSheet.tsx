@@ -67,8 +67,8 @@ import {
   SheetSectionInset,
   SheetSectionNote,
   SheetSectionRemove,
-  SheetSteps,
 } from "@/components/side-sheet/parts";
+import { StageBar, type Stage } from "@/components/ui/stage-bar";
 import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
@@ -663,6 +663,54 @@ const ORDER_CHARGES = [
   { key: "fees", label: "Fees" },
   { key: "taxes", label: "Taxes" },
 ] as const satisfies readonly { key: keyof Pick<VendorQuote, "freight" | "fees" | "taxes">; label: string }[];
+
+/**
+ * THE ORDER'S LIFECYCLE AS THE BUSINESS SAYS IT, which is not the same list as
+ * `BROKER_STATUSES`.
+ *
+ * Two differences, both deliberate. QUOTATION is not a status — it is
+ * `Assigned` with a quote asked for, and it is a stage anyone watching the
+ * order would name, so the bar derives it rather than pretending the data has
+ * it. PARTIALLY SYNCED is a status but not a board lane, and it sits between
+ * two lanes; on a bar, which is about position rather than about lanes, it has
+ * a place.
+ *
+ * BLOCKED IS NOT HERE. It is a thing that has happened TO an order, not a
+ * place the order has reached — it is stuck at whatever stage it was at. The
+ * header already carries the red chip and the body the reason, so the bar
+ * shows the stage and does not say it twice.
+ */
+const ORDER_STAGES: Stage[] = [
+  { key: "Draft", label: "Draft" },
+  { key: "Assigned", label: "Assigned" },
+  { key: "Quotation", label: "Quotation" },
+  { key: "Accepted", label: "Accepted" },
+  { key: "Completed", label: "Delivery completed" },
+  { key: "Accounting Sync Ready", label: "Account sync ready" },
+  { key: "Partial Accounting Synced", label: "Partially synced" },
+  { key: "Accounting Synced", label: "Account synced" },
+  { key: "Cancelled", label: "Cancelled", ended: true },
+];
+
+/** Which stage an order is standing at. */
+function stageOf(status: BrokerStatus, quoteRequested: boolean): string {
+  if (status === "Blocked") return "Draft";
+  if (status === "Assigned" && quoteRequested) return "Quotation";
+  return status;
+}
+
+/**
+ * The step a stage's work happens on, so the bar can still be the navigation
+ * the two-step strip used to be. Everything from the acceptance onwards is
+ * settled on the pricing step; everything before it is the order itself.
+ */
+function stepOfStage(key: string): "order" | "pricing" {
+  const i = ORDER_STAGES.findIndex((s) => s.key === key);
+  return i >= ORDER_STAGES.findIndex((s) => s.key === "Accepted") &&
+    key !== "Cancelled"
+    ? "pricing"
+    : "order";
+}
 
 export function BrokerOrderSheet({
   order,
@@ -1420,15 +1468,31 @@ export function BrokerOrderSheet({
          partner's numbers arriving would make the sheet refuse to hold a price
          it is perfectly able to take. Before anyone acknowledges there is
          nothing to price against, so there is one step and no strip. */
+      /*
+        THE STRIP SAYS WHERE THE ORDER IS, not which half of the form you are
+        reading. "1 Order, 2 Quotes & pricing" was a table of contents in the
+        one place on the sheet everybody looks first, and the fact it displaced
+        — how far along is this — was only available by reading the chip beside
+        the title and knowing the lifecycle by heart.
+
+        IT IS STILL THE NAVIGATION. The two-step switch was the only way to
+        reach the pricing step, so the bar takes that over: a stage goes to the
+        screen where its work is done, which is the order itself up to the
+        acceptance and the pricing step from there on. Clickable only once
+        there is a pricing step to reach — before a partner acknowledges there
+        is one screen, and a bar that moved nothing would be a lie.
+      */
       steps={
-        quotingPartners.length > 0 ? (
-          <SheetSteps
-            value={step}
-            onValueChange={(v: string) => setStep(v as "order" | "pricing")}
-            steps={[
-              { value: "order", label: "Order" },
-              { value: "pricing", label: "Quotes & pricing" },
-            ]}
+        !creating ? (
+          <StageBar
+            className="-mx-4 px-4 py-2.5"
+            stages={ORDER_STAGES}
+            current={stageOf(draft.status, draft.quoteRequested)}
+            onSelect={
+              quotingPartners.length > 0
+                ? (key) => setStep(stepOfStage(key))
+                : undefined
+            }
           />
         ) : undefined
       }

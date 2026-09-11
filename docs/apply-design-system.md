@@ -1405,6 +1405,17 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
+- **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
+  one line of chevrons, three tones (behind / here / ahead) and a fourth only
+  for a terminal exit. A stepper is a form split into parts you move between; a
+  stage bar is a statement about the record that the reader does not author.
+  Steps are numbered because you take them in order; stages are not, because the
+  record takes them and you are watching. The one place everybody looks first
+  must carry the fact everybody opens the record to learn — how far along is
+  this — and not a table of contents. It scrolls rather than shrinks: a stage
+  cut to four characters is worse than one you scroll to, and a chevron clipped
+  mid-word says "there is more" without a scrollbar. It may also be the
+  navigation, where a stage has a screen its work is done on.
 - **A section is a CARD.** `SheetSection` draws a bordered block with its title
   in a tinted header band, and that is the default — `variant="plain"` (heading
   over fields, no box) is the exception, for a sheet that is one continuous list

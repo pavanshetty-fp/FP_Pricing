@@ -43,6 +43,9 @@ import {
   BROKER_COLUMNS,
   BROKER_LANE_COLOR,
   type BrokerStatus,
+  SERVICE_LINES,
+  lineOfProduct,
+  type ServiceLine,
   BROKER_ORDERS,
   BROKER_SEARCH_FIELDS,
   BROKER_STATUSES,
@@ -525,28 +528,23 @@ export function BrokerOrdersScreen({
   const cq = colQuery.trim().toLowerCase();
 
   /*
-    WHICH LIST THIS IS. A fuel order and an asset movement are two kinds of
-    record, not two filters of one: they take different forms, carry different
-    columns and answer different questions. The scope therefore sits ABOVE
-    every other control on the page — the search, the facets and the lanes all
-    apply within the kind you have chosen, never across both.
+    WHICH LINE THIS IS. Fuel, lubricants and propane are three kinds of work
+    that happen to share a screen — different trucks, different certificates,
+    different customers — not three filters of one list. The scope therefore
+    sits ABOVE every other control on the page: the search, the facets, the
+    lanes and the counts all apply within the line you have chosen.
   */
-  const [kind, setKind] = React.useState<"fuel" | "asset">("fuel");
+  const [line, setLine] = React.useState<ServiceLine>("Fuel");
 
   const onDate = React.useMemo(
     () => {
       const from = dateKeyOf(range.from);
       const to = dateKeyOf(range.to);
       return rows.filter(
-        (r) =>
-          r.dateKey >= from &&
-          r.dateKey <= to &&
-          (kind === "asset"
-            ? r.orderType === "Asset Movement"
-            : r.orderType !== "Asset Movement")
+        (r) => r.dateKey >= from && r.dateKey <= to && r.serviceLine === line
       );
     },
-    [rows, range, kind]
+    [rows, range, line]
   );
   /** Tab counts are computed BEFORE the kind filter, so each tab can show how
    *  many rows it holds rather than only the active one being non-zero. */
@@ -793,6 +791,7 @@ export function BrokerOrdersScreen({
         quotes: [],
         /* A new order has not been delivered, let alone billed. */
         invoiceState: "none",
+        serviceLine: lineOfProduct(draft.lines[0]?.product ?? ""),
         audit: [
           {
             at: new Date().toISOString(),
@@ -889,6 +888,7 @@ export function BrokerOrdersScreen({
         quoteRequested: false,
         quotes: [],
         invoiceState: "none",
+        serviceLine: lineOfProduct(""),
         audit: [
           {
             at: new Date().toISOString(),
@@ -1048,13 +1048,10 @@ export function BrokerOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create Order"
-        segments={[
-          { key: "fuel", label: "Fuel Orders" },
-          { key: "asset", label: "Asset Orders" },
-        ]}
-        segmentValue={kind}
-        onSegmentChange={(k) => {
-          setKind(k as "fuel" | "asset");
+        segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
+        segmentValue={line}
+        onSegmentChange={(l) => {
+          setLine(l as ServiceLine);
           setPage(1);
         }}
         /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; a

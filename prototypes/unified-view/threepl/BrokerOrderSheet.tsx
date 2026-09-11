@@ -373,9 +373,13 @@ function FlagRow({
   );
 }
 
-/** What is being sold. Brokerage buys the haul in; transportation runs it. */
-export const SERVICE_LINES = ["Brokerage", "Transportation"] as const;
-export type ServiceLine = (typeof SERVICE_LINES)[number];
+/* JOB TYPE, NOT SERVICE LINE. It was called `serviceLine` while its label on
+   screen said "Job Type", and the name is needed for the real thing: Fuel,
+   Lubricants and Propane are the service lines this business runs, and they
+   live on `BrokerOrder.serviceLine` in orders.ts. This pair answers a different
+   question — whether the broker buys the haul in or runs it. */
+export const JOB_TYPES = ["Brokerage", "Transportation"] as const;
+export type JobType = (typeof JOB_TYPES)[number];
 
 export interface BrokerOrderDraft {
   customer: string;
@@ -423,7 +427,7 @@ export interface BrokerOrderDraft {
    * decided about an order because it changes who fulfils it. Brokerage puts
    * the load out to a vendor; transportation moves it on our own fleet.
    */
-  serviceLine: ServiceLine;
+  jobType: JobType;
   primaryPoc: string;
   /** A second person to call. Optional — most orders have one. */
   secondaryPoc: string;
@@ -491,7 +495,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     quoteRequested: o.quoteRequested,
     /* An existing order predates the split, so it reads as Brokerage — every
        one of them went out to a vendor. */
-    serviceLine: "Brokerage",
+    jobType: "Brokerage",
     primaryPoc: o.primaryPoc,
     secondaryPoc: "",
     salesperson: o.salesperson,
@@ -554,7 +558,7 @@ function emptyDraft(): BrokerOrderDraft {
     acceptedVendorIds: [],
     quotes: [],
     quoteRequested: false,
-    serviceLine: "Brokerage",
+    jobType: "Brokerage",
     primaryPoc: "",
     secondaryPoc: "",
     salesperson: "",
@@ -1406,10 +1410,10 @@ export function BrokerOrderSheet({
       <SheetSection title="Job Type">
         <RadioGroup
           className="flex gap-6"
-          value={draft.serviceLine}
-          onValueChange={(v) => set("serviceLine", v as ServiceLine)}
+          value={draft.jobType}
+          onValueChange={(v) => set("jobType", v as JobType)}
         >
-          {SERVICE_LINES.map((sl) => (
+          {JOB_TYPES.map((sl) => (
             <label
               key={sl}
               htmlFor={`svc-${sl}`}

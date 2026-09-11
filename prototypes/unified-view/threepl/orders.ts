@@ -343,6 +343,8 @@ export interface BrokerOrder {
    * The second is sharing a quote, which is `quotes` below.
    */
   acceptedVendorIds: string[];
+  /** Which of the three lines this order runs on — see `SERVICE_LINES`. */
+  serviceLine: ServiceLine;
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
@@ -760,7 +762,7 @@ export const SHIP_TO_SITES = [
     latLng: "36.81120, -119.83450",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
-    assets: [{ name: "180 asset", product: "Dyed Diesel", rental: true }, { name: "180 asset", product: "Clear Diesel #2", rental: false }, { name: "Asset 1", product: "Unleaded 87", rental: true }, { name: "VEND TANK", product: "Dyed Diesel", rental: false }],
+    assets: [{ name: "180 asset", product: "Dyed Diesel", rental: true }, { name: "180 asset", product: "Clear Diesel #2", rental: false }, { name: "Asset 1", product: "Unleaded 87", rental: true }, { name: "VEND TANK", product: "Dyed Diesel", rental: false }, { name: "Lube Skid 2", product: "Engine Oil 15W-40", rental: true }, { name: "LP Tank 500", product: "Propane HD-5", rental: true }],
   },
   {
     name: "Bray Depot 2",
@@ -771,7 +773,7 @@ export const SHIP_TO_SITES = [
     latLng: "35.34210, -118.94860",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
-    assets: [{ name: "Asset 1", product: "Clear Diesel #2", rental: true }, { name: "Asset 2", product: "Unleaded 91", rental: false }, { name: "Yard Tank 4", product: "DEF Bulk", rental: false }],
+    assets: [{ name: "Asset 1", product: "Clear Diesel #2", rental: true }, { name: "Asset 2", product: "Unleaded 91", rental: false }, { name: "Yard Tank 4", product: "DEF Bulk", rental: false }, { name: "Lube Drum Rack", product: "Hydraulic Oil AW-46", rental: false }, { name: "LP Tank 1000", product: "Propane Commercial", rental: true }],
   },
   {
     name: "Morris Yard 4",
@@ -782,7 +784,7 @@ export const SHIP_TO_SITES = [
     latLng: "38.60130, -121.48210",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
-    assets: [{ name: "Tank 104", product: "Dyed Diesel", rental: false }, { name: "Tank 105", product: "Clear Diesel #2", rental: false }, { name: "Lube Skid", product: "Hydraulic Oil AW-46", rental: true }],
+    assets: [{ name: "Tank 104", product: "Dyed Diesel", rental: false }, { name: "Tank 105", product: "Clear Diesel #2", rental: false }, { name: "Lube Skid", product: "Hydraulic Oil AW-46", rental: true }, { name: "LP Tank 250", product: "Propane HD-5", rental: true }],
   },
   {
     name: "GPM Southside",
@@ -928,6 +930,52 @@ export const PRODUCTS = [
   "Unleaded 91",
   "DEF Bulk",
   "Hydraulic Oil AW-46",
+  "Engine Oil 15W-40",
+  "Propane HD-5",
+  "Propane Commercial",
+];
+
+/**
+ * THE THREE LINES THIS BUSINESS RUNS. Not a filter of one list — three kinds of
+ * work that happen to share a screen. A propane run and a lube drop are
+ * different trucks, different certificates and different customers, so which
+ * line you are looking at is decided before anything else on the page applies.
+ */
+export const SERVICE_LINES = ["Fuel", "Lubricants", "Propane"] as const;
+export type ServiceLine = (typeof SERVICE_LINES)[number];
+
+/** One product, one line. DEF rides with fuel: it is sold on the same run. */
+const LINE_OF: Record<string, ServiceLine> = {
+  "Dyed Diesel": "Fuel",
+  "Clear Diesel #2": "Fuel",
+  "Unleaded 87": "Fuel",
+  "Unleaded 91": "Fuel",
+  "DEF Bulk": "Fuel",
+  "Hydraulic Oil AW-46": "Lubricants",
+  "Engine Oil 15W-40": "Lubricants",
+  "Propane HD-5": "Propane",
+  "Propane Commercial": "Propane",
+};
+
+export const lineOfProduct = (product: string): ServiceLine =>
+  LINE_OF[product] ?? "Fuel";
+
+/** Everything a line can carry, for a movement order that names no site asset. */
+const LINE_PRODUCTS: Record<ServiceLine, string[]> = {
+  Fuel: PRODUCTS.filter((p) => LINE_OF[p] === "Fuel"),
+  Lubricants: PRODUCTS.filter((p) => LINE_OF[p] === "Lubricants"),
+  Propane: PRODUCTS.filter((p) => LINE_OF[p] === "Propane"),
+};
+
+/** Weighted the way the business is: fuel is most of it. See the seed. */
+const LINE_CYCLE: ServiceLine[] = [
+  "Fuel",
+  "Fuel",
+  "Lubricants",
+  "Fuel",
+  "Propane",
+  "Fuel",
+  "Lubricants",
 ];
 
 export const WINDOWS: { start: string; end: string }[] = [
@@ -1081,20 +1129,43 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
        invented tank names. That is what the sheet does, so the seed has to do
        it too or an existing order shows rows the site does not have and the
        Rental badge never appears on one. */
+    /* AN ORDER BELONGS TO ONE LINE. A propane run and a lube drop are different
+       trucks with different certificates — an order that mixed them would be a
+       row no dispatcher could act on. The line is chosen first and the assets
+       are drawn from the ones that serve it; where the site cannot serve that
+       line at all, it keeps what the site does have and the order's line is
+       read back off the products it actually got.
+
+       Chosen by INDEX on a seven-long cycle, not from the random stream: a draw
+       taken here would shift every value after it and reshuffle the fixture,
+       and seven shares no factor with the 24-row day so one day walks the whole
+       cycle rather than landing on the same line every time. */
+    const wanted = LINE_CYCLE[i % LINE_CYCLE.length];
+    const inLine = site.assets.filter((a) => lineOfProduct(a.product) === wanted);
+    /* The fallback narrows too. Falling back to the site's whole list let one
+       order draw a lube skid and a diesel tank together — a row no dispatcher
+       could act on, and the invariant this block exists to hold. */
+    const fallbackLine = lineOfProduct(
+      site.assets[i % site.assets.length].product
+    );
+    const pool =
+      inLine.length > 0
+        ? inLine
+        : site.assets.filter((a) => lineOfProduct(a.product) === fallbackLine);
     const nLines = isMovement
       ? 1
-      : Math.min(site.assets.length, 1 + Math.floor(pick() * 3));
+      : Math.min(pool.length, 1 + Math.floor(pick() * 3));
     const lines: OrderLine[] = Array.from({ length: nLines }, (_, k) => {
       // Top-off lines exist on ~1 in 6 fuel lines and never on movement orders,
       // which carry an asset rather than a requested volume.
       const topOff = !isMovement && pick() < 0.17;
-      const asset = site.assets[(i + k) % site.assets.length];
+      const asset = pool[(i + k) % pool.length];
       return {
         asset: isMovement
           ? MOVEMENT_ASSET_NAMES[(i + k) % MOVEMENT_ASSET_NAMES.length]
           : asset.name,
         product: isMovement
-          ? PRODUCTS[(i + k) % PRODUCTS.length]
+          ? LINE_PRODUCTS[wanted][(i + k) % LINE_PRODUCTS[wanted].length]
           : asset.product,
         gal: topOff ? null : 150 + Math.floor(pick() * 34) * 50,
         topOff,
@@ -1190,6 +1261,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       quoteRequested,
       quotes,
       invoiceState,
+      serviceLine: lines.length > 0 ? lineOfProduct(lines[0].product) : wanted,
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",

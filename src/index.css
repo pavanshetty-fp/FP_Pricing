@@ -778,3 +778,45 @@
     background-color: var(--fp-outline-2);
   }
 }
+
+/* NOT IN `@layer base`, and that is the whole reason it works. Tailwind's
+   utilities sit in a later cascade layer than `base`, so a `border-input` on
+   the control would beat anything written there. Unlayered rules outrank every
+   layer, which is exactly the authority this needs: it is not a default being
+   set, it is a deliberate override of the control's own skin. */
+/*
+  A RECORD YOU ARE READING UNTIL YOU REACH FOR IT.
+
+  An order that already exists is opened to be LOOKED AT far more often than
+  to be changed, and a wall of drawn input boxes tells you the opposite — it
+  says "fill this in" about forty fields that are already filled in. Inside
+  `[data-quiet-fields]` a control keeps every one of its dimensions and drops
+  only its skin: the border goes transparent, the fill and the shadow go, and
+  what is left is the value as text under its label.
+
+  ONLY THE REST STATE IS WRITTEN. The rule is a `:not()` chain rather than a
+  pair of "hide it / put it back" rules, so hover, focus and an open popover
+  are simply outside its reach and the component's OWN classes apply
+  untouched. Nothing here restates a border colour or a fill, which is why it
+  cannot drift from the control it is quieting and why it needs no dark
+  counterpart — dark's input already knows what dark's input looks like.
+
+  THE BOX NEVER MOVES. The border is still 1px at rest, just invisible, so
+  the value sits at the same pixel in all three states. A field that shifts
+  2px under the cursor makes the whole pattern feel broken, and the cheapest
+  way to never shift is to never change the box.
+
+  Creation is deliberately NOT quieted: an empty form has nothing to read,
+  and there the drawn boxes are the whole instruction.
+*/
+[data-quiet-fields]
+  :is(
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="select-trigger"],
+    [data-slot="multiselect-trigger"]
+  ):not(:hover):not(:focus):not(:focus-within):not([data-state="open"]) {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}

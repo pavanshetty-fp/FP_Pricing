@@ -103,6 +103,7 @@ export function MultiSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
+          data-slot="multiselect-trigger"
           className={cn(
             "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-2 py-2 text-left outline-none transition-colors",
             "hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50",

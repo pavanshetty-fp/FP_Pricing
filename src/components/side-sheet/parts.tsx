@@ -27,10 +27,25 @@ export function SheetSection({
   title,
   action,
   note,
+  variant = "plain",
+  quiet = false,
   children,
   className,
 }: {
   title: string;
+  /**
+   * `card` draws the section as a bordered block with its title in a tinted
+   * header band. Use it where a section is a GROUP OF FACTS being read — the
+   * border is what says "these belong together" once the fields inside have
+   * stopped drawing borders of their own.
+   */
+  variant?: "plain" | "card";
+  /**
+   * Hides the field chrome inside until it is hovered or focused — see
+   * `[data-quiet-fields]` in index.css. For a record that already exists.
+   * Never for creation, where the drawn boxes are the instruction.
+   */
+  quiet?: boolean;
   /**
    * Controls that act on the SECTION rather than on one field — "Add asset",
    * "Refresh". They sit on the heading row, right-aligned, because a control
@@ -61,20 +76,56 @@ export function SheetSection({
      a taller child, which overflows the box without growing it. That holds for
      any control put there — a 32px button, a switch, a picker — so the 16
      cannot drift again the next time a section gains an action. */
-  return (
-    <section className={cn("flex flex-col gap-4", className)}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
-          {/* Sits WITH the heading, not after the content: an explanation of
-              how a section works belongs where the section is named, and on
-              demand rather than as a paragraph everyone reads once. */}
-          {note}
-        </div>
-        {action && (
-          <div className="flex h-5 shrink-0 items-center justify-end">{action}</div>
-        )}
+  const heading = (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        {/* Sits WITH the heading, not after the content: an explanation of
+            how a section works belongs where the section is named, and on
+            demand rather than as a paragraph everyone reads once. */}
+        {note}
       </div>
+      {action && (
+        <div className="flex h-5 shrink-0 items-center justify-end">{action}</div>
+      )}
+    </div>
+  );
+
+  if (variant === "card") {
+    /* THE CARD REPLACES THE BORDERS THE FIELDS GAVE UP. Quiet fields draw
+       nothing of their own, so without this the section would be text floating
+       in the sheet with only a gap holding it together. The heading moves into
+       a tinted band because a title inside a bordered block that shares the
+       block's fill reads as the first row of content.
+
+       The 16px title→content rhythm the plain variant measures so carefully is
+       not needed here: the band's own edge is the separation. */
+    return (
+      <section
+        data-quiet-fields={quiet ? "" : undefined}
+        /* `shrink-0` IS LOAD-BEARING, not tidiness. The sheet body is a flex
+           column, and `overflow-hidden` switches a flex item's automatic
+           minimum size from its content to zero — so without this the whole
+           card collapses to its own 2px of border. */
+        className={cn(
+          "shrink-0 overflow-hidden rounded-lg border border-border",
+          className
+        )}
+      >
+        <div className="border-b border-border bg-fp-surface-1a px-4 py-2.5">
+          {heading}
+        </div>
+        <div className="flex flex-col gap-4 p-4">{children}</div>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      data-quiet-fields={quiet ? "" : undefined}
+      className={cn("flex flex-col gap-4", className)}
+    >
+      {heading}
       {children}
     </section>
   );

@@ -1426,7 +1426,16 @@ export function BrokerOrderSheet({
         </RadioGroup>
       </SheetSection>
 
-      <SheetSection title="Basic Details">
+      {/* FIRST SECTION ON THE READ-FIRST PATTERN — deliberately one section,
+          so the two behaviours can be compared side by side in the same sheet
+          before the rest follow. An existing order gets the card and the quiet
+          fields; creating one keeps the drawn boxes, because an empty form has
+          nothing to read and the boxes are the instruction. */}
+      <SheetSection
+        title="Basic Details"
+        variant={creating ? "plain" : "card"}
+        quiet={!creating}
+      >
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the

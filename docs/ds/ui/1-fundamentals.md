@@ -88,10 +88,24 @@ sits on `bg-fp-card-1` and says its status in the text colour.
 
 | Status | Fill | Rim (dark only) | Inline accent |
 |---|---|---|---|
-| info | `#3730a3` / `#1e1b4b` | `#6366f1` | `#4338ca` / `#a5b4fc` |
+| info | `#1e40af` / `#1e1b4b` | `#6366f1` | `#1d4ed8` / `#a5b4fc` |
 | caution | `#854d0e` / `#422006` | `#eab308` | `#b45309` / `#fcd34d` |
 | warning | `#991b1b` / `#450a0a` | `#ef4444` | `#b91c1c` / `#fca5a5` |
-| success | `#166534` / `#052e16` | `#22c55e` | `#4d7c0f` / `#bef264` |
+| success | `#166534` / `#052e16` | `#22c55e` | `#15803d` / `#bef264` |
+
+In light the four fills are the **800** of their hue and the four accents the
+**700** — one scale step apart, enough to separate a fill from a mark on it and
+close enough that the two never read as two colours. Info is BLUE, not indigo:
+indigo read as purple on the light ground, and purple is not a status anyone
+has been taught.
+
+The callout has a second variant. **`variant="soft"`** is the same anatomy at a
+tenth of the fill — `accent/10` wash, `accent/30` rim, icon in the accent, one
+line with everything centred on it — for a standing condition that sits above
+the work all day instead of announcing itself once. Its wash and rim are alphas
+of the SAME accent the inline banner uses, so the two cannot drift. Its action
+is `bannerSoftAction` (exported from `ui/banner`): a raised tile, white in light
+and near-black in dark, because an outline button vanishes into a wash.
 
 **Theme-independent palettes** (same in both modes): chart series `chart-1..5`
 (`#fa6400`/`#3b82f6`/`#22c55e`/`#eab308`/`#8b5cf6`); board lane accents

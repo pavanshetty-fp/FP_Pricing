@@ -603,19 +603,34 @@ repo's `src/index.css`.
   --fp-banner-border-caution: transparent;
   --fp-banner-border-warning: transparent;
   --fp-banner-border-success: transparent;
-  --fp-banner-info: #3730a3;
+  /* FOUR HUES, ONE STEP APART, AND INFO IS BLUE.
+     Info was indigo (#3730a3 / #4338ca), which on the light ground read as
+     purple — and purple is not a status anybody has been taught. Blue is, and
+     the DS was already using it for `--verified` and `--chart-2`, so the
+     family now says blue in the one theme where it has to be unmistakable.
+
+     The set is one scale step apart by design: the FILL is the 800 of its hue
+     (a solid bar, white text) and the ACCENT is the 700 (the same status said
+     quietly — inline text, the soft banner's icon, and the 10%/30% wash and
+     rim that soft derives from it). One step is enough to separate a fill from
+     a mark on it and close enough that the two never read as two colours. */
+  --fp-banner-info: #1e40af;
   --fp-banner-caution: #854d0e;
   --fp-banner-warning: #991b1b;
   --fp-banner-success: #166534;
   /* THE FOURTH ACCENT, which the family was missing. Caution, warning and
      success each had a text colour for the inline banner and info did not, so
      the one status with no way to say itself quietly had to shout in a solid
-     fill. Same hue as `--fp-banner-info`, two steps lighter — dark enough to
-     read on the card surface, far enough from the body text to be a colour. */
-  --fp-banner-accent-info: #4338ca;
+     fill.
+
+     Success moved off lime (#4d7c0f) onto the green its own fill is cut from.
+     Lime beside `--status-success` (#15803d) put two greens on one screen
+     saying the same thing, and the one carrying LESS meaning was the brighter
+     of the two. */
+  --fp-banner-accent-info: #1d4ed8;
   --fp-banner-accent-caution: #b45309;
   --fp-banner-accent-warning: #b91c1c;
-  --fp-banner-accent-success: #4d7c0f;
+  --fp-banner-accent-success: #15803d;
 }
 
 /*

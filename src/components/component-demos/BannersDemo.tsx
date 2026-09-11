@@ -19,6 +19,15 @@ const CALLOUTS = [
   { status: "success" as const, text: "Make more happen" },
 ];
 
+/* The soft set — one per status, each a single line with one action, which is
+   the shape the variant is actually for. */
+const SOFTS = [
+  { status: "info" as const, title: "11 orders waiting on a driver" },
+  { status: "caution" as const, title: "3 sites below reorder level" },
+  { status: "warning" as const, title: "2 deliveries missed their window" },
+  { status: "success" as const, title: "18 orders invoiced this morning" },
+];
+
 const INLINES = [
   { status: "default" as const },
   { status: "caution" as const },
@@ -119,30 +128,49 @@ export function BannersDemo() {
           all day rather than announcing itself once. One line, everything
           centred on it, and the action is a raised tile — white in light,
           near-black in dark — because an outline button vanishes into a wash.
+          The wash and the rim are alphas of the same accent the inline alert
+          uses, so a soft banner and the inline beside it cannot drift apart.
         </p>
-        {softOpen ? (
-          <BannerCallout
-            status="warning"
-            variant="soft"
-            icon={<TriangleAlert />}
-            title="3 orders waiting on a driver"
-            count={3}
-            action={
-              <Button variant="outline" size="sm" className={bannerSoftAction}>
-                Show orders
-              </Button>
-            }
-            onDismiss={() => setSoftOpen(false)}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setSoftOpen(true)}
-            className="self-start text-xs text-muted-foreground underline-offset-4 hover:underline"
-          >
-            Restore dismissed banner
-          </button>
-        )}
+        <Stack space="body">
+          {SOFTS.map((b) => (
+            <BannerCallout
+              key={b.status}
+              status={b.status}
+              variant="soft"
+              title={b.title}
+              action={
+                <Button variant="outline" size="sm" className={bannerSoftAction}>
+                  Show orders
+                </Button>
+              }
+            />
+          ))}
+          {/* Same anatomy with a count and a dismiss, to show the three
+              trailing slots can hold more than one thing. */}
+          {softOpen ? (
+            <BannerCallout
+              status="warning"
+              variant="soft"
+              icon={<TriangleAlert />}
+              title="2 deliveries missed their window"
+              count={2}
+              action={
+                <Button variant="outline" size="sm" className={bannerSoftAction}>
+                  Show orders
+                </Button>
+              }
+              onDismiss={() => setSoftOpen(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSoftOpen(true)}
+              className="self-start text-xs text-muted-foreground underline-offset-4 hover:underline"
+            >
+              Restore dismissed banner
+            </button>
+          )}
+        </Stack>
       </Stack>
 
       {/* Type 2 — Inline alert */}

@@ -134,9 +134,21 @@ export function FileUpload({
             addFiles(e.dataTransfer.files);
           }}
           className={cn(
-            "flex h-24 w-full items-center justify-center gap-2 rounded-md border bg-fp-surface-1a text-sm outline-none transition-colors",
+            /* TRANSPARENT AT REST — an empty dropzone is a 96px hole in the
+               form, and a filled one made it the largest painted shape on the
+               page for the field least often used. The dashed rim is the whole
+               affordance; the fill was only saying "something goes here" a
+               second time, louder. Transparent also means the zone inherits
+               whatever it is dropped into — the white content layer, a card, a
+               tinted panel — instead of pinning one surface value that is
+               right in exactly one of those places.
+
+               A FILL ON DRAG, though: while a file is over it the zone has to
+               say it will catch it, and that is the one moment the extra
+               weight is information rather than decoration. */
+            "flex h-24 w-full items-center justify-center gap-2 rounded-md border bg-transparent text-sm outline-none transition-colors",
             dragOver
-              ? "border-ring bg-fp-surface-1b"
+              ? "border-ring bg-accent"
               : "border-border hover:border-fp-outline-2",
             "focus-visible:ring-2 focus-visible:ring-ring/50",
           )}

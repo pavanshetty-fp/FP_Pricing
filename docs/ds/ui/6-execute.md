@@ -475,7 +475,14 @@ repo's `src/index.css`.
   --border: var(--fp-stroke-hairline);
   --input: var(--fp-stroke-field);
   --sidebar-foreground: var(--fp-ink-1);
-  --sidebar-accent-foreground: var(--fp-selected-strong);
+  /* WHERE YOU ARE IS NOT WHAT YOU PICKED. The nav's current item and a ticked
+     table row were sharing the selection family, so the rail, the drawer and
+     every chosen row spoke with the same orange — and the loudest of the three
+     was the one saying the least, since a rail item is simply reporting the
+     page you are already looking at. Navigation state goes neutral: the
+     emphasis fill one step under the sidebar's own hover, with body ink on it.
+     `--selected` stays brand, and now means only "you chose this". */
+  --sidebar-accent-foreground: var(--fp-ink-1);
   --sidebar-accent-hover: var(--fp-emphasis-hover);
   --rail: var(--fp-surface-base);
   --fp-row-selected: var(--fp-selected);
@@ -484,7 +491,7 @@ repo's `src/index.css`.
   /* Light-only aliases — these map to a DIFFERENT primitive in dark. */
   --muted: var(--fp-emphasis-quiet);
   --secondary: var(--fp-emphasis-quiet);
-  --sidebar-accent: var(--fp-selected);
+  --sidebar-accent: var(--fp-emphasis);
   --fp-lane: var(--fp-card-2);
   /* A BOARD LANE IS NOT A ROW BAND, and it keeps its own token for that
      reason: `--fp-lane` is the fill behind a grouped table's header row, and

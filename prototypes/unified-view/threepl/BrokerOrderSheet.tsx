@@ -1002,25 +1002,34 @@ export function BrokerOrderSheet({
      settles what the partner charges and what the customer pays; there is
      nothing left to agree, so the order is done as a piece of paperwork
      whatever the truck is doing. */
+  /* THE DRAFT AS IT STANDS ONCE `vendorId` HOLDS THE ORDER — pure, because the
+     footer's Accept has to SAVE the result in the same click and `setDraft`
+     has not run by then. One definition, so the button and the state agree. */
+  const draftAccepting = (
+    d: BrokerOrderDraft,
+    vendorId: string
+  ): BrokerOrderDraft => ({
+    ...d,
+    status: "Completed",
+    vendorId,
+    acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
+      ? d.acceptedVendorIds
+      : [...d.acceptedVendorIds, vendorId],
+  });
+
+  const announceAccepted = (d: BrokerOrderDraft, vendorId: string) => {
+    if (d.status !== "Completed") {
+      toast.success(`Quote accepted — ${vendorById(vendorId)?.name}`, {
+        description: "Pricing is settled. Moved to Completed.",
+      });
+    }
+  };
+
   const acceptFor = (vendorId: string) =>
     setDraft((d) => {
-      if (d && d.status !== "Completed") {
-        toast.success(`Quote accepted — ${vendorById(vendorId)?.name}`, {
-          description: "Pricing is settled. Moved to Completed.",
-        });
-      }
-      return (
-      d
-        ? {
-            ...d,
-            status: "Completed",
-            vendorId,
-            acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
-              ? d.acceptedVendorIds
-              : [...d.acceptedVendorIds, vendorId],
-          }
-        : d
-      );
+      if (!d) return d;
+      announceAccepted(d, vendorId);
+      return draftAccepting(d, vendorId);
     });
 
   /* THE TERMINAL EXIT. Available from any live stage and from none of the dead
@@ -1353,6 +1362,46 @@ export function BrokerOrderSheet({
         if (creating) onCreate?.(draft);
         else if (order) onSave(order, draft);
       }}
+      /*
+        THE MAIN THING TO DO ON STEP 2 IS ACCEPT A PRICE, NOT SAVE A FORM.
+
+        Save Changes is the right primary while the order is being written; on
+        the pricing step the work ends in one decision, and leaving a generic
+        Save in the footer put the sheet's loudest button on the least
+        interesting act available. The Accept moves out of the rail and into
+        the slot that means "the main thing here" — and it COMMITS: it takes
+        the price and saves the order in the same click, which is what Save
+        was doing and why two buttons were never needed.
+
+        `null` once the shown partner already holds the order: there is nothing
+        left to commit from this step, and a disabled Save would be a button
+        explaining itself. The lifecycle moves stay in the rail, where the
+        numbers they follow from are.
+      */
+      footerPrimary={
+        step !== "pricing" ? undefined : shownVendorId &&
+          draft.vendorId !== shownVendorId ? (
+          <>
+            {draft.vendorId && (
+              <span className="max-w-[320px] text-xs text-muted-foreground">
+                {vendorById(draft.vendorId)?.name} goes on hold rather than
+                being cancelled.
+              </span>
+            )}
+            <Button
+              onClick={() => {
+                const next = draftAccepting(draft, shownVendorId);
+                announceAccepted(draft, shownVendorId);
+                setDraft(next);
+                if (order) onSave(order, next);
+                onOpenChange(false);
+              }}
+            >
+              <Check /> Accept quote
+            </Button>
+          </>
+        ) : null
+      }
       /* THE STRIP EXISTS ONCE A PARTNER HAS ACKNOWLEDGED, whoever did the
          acknowledging. Two ways in, and they are the same state: the partner
          accepted the invitation, or the broker recorded that they had —
@@ -3330,19 +3379,7 @@ export function BrokerOrderSheet({
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <Button onClick={() => acceptFor(shownVendorId)}>
-                      <Check /> Accept quote
-                    </Button>
-                    {draft.vendorId && (
-                      <span className="text-xs text-muted-foreground">
-                        Takes this price instead. {vendorById(draft.vendorId)?.name}{" "}
-                        goes on hold rather than being cancelled.
-                      </span>
-                    )}
-                  </div>
-                )}
+                ) : null}
               </SheetSection>
             )}
           </aside>

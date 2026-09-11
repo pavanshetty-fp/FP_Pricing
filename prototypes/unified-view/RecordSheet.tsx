@@ -120,6 +120,16 @@ export interface RecordSheetProps {
   /** Disable submit while the draft is incomplete. */
   canSubmit?: boolean;
   /**
+   * Replaces the footer's primary button — and `null` removes it entirely.
+   *
+   * THE FOOTER'S RIGHT EDGE IS "THE MAIN THING TO DO HERE", and on a
+   * multi-step sheet that is not the same act on every step. A step whose work
+   * ends in a decision — accept this price — has a better claim to that slot
+   * than a generic Save, and a step with nothing left to commit has no claim
+   * at all. Omit the prop for the default Save/Create.
+   */
+  footerPrimary?: React.ReactNode;
+  /**
    * Controls that ride in the footer, left of Cancel/Submit. For decisions
    * taken at the moment of committing rather than while filling the form —
    * they stay in view no matter how far the body has scrolled.
@@ -263,6 +273,7 @@ export function RecordSheet({
   showCancel = true,
   steps,
   canSubmit = true,
+  footerPrimary,
   footerAside,
   onSubmit,
   children,
@@ -322,15 +333,22 @@ export function RecordSheet({
               Cancel
             </Button>
           )}
-          <Button
-            disabled={!canSubmit}
-            onClick={() => {
-              onSubmit();
-              onOpenChange(false);
-            }}
-          >
-            {creating ? createAction : editAction}
-          </Button>
+          {/* `undefined` = the default Save/Create; anything else replaces it,
+              and `null` leaves the slot empty on a step with nothing to
+              commit. */}
+          {footerPrimary !== undefined ? (
+            footerPrimary
+          ) : (
+            <Button
+              disabled={!canSubmit}
+              onClick={() => {
+                onSubmit();
+                onOpenChange(false);
+              }}
+            >
+              {creating ? createAction : editAction}
+            </Button>
+          )}
           </div>
         </div>
       </SheetContent>

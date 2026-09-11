@@ -1563,8 +1563,14 @@ export function BrokerOrderSheet({
       </SheetSection>
 
       {/* The people on the order, together. POC and salesperson were split
-          across two places; they answer the same question — who to call. */}
-      <SheetSection title="POC Details">
+          across two places; they answer the same question — who to call.
+
+          THE SECOND HALF OF THE COMPARISON. This one takes the card and NOT
+          the quiet fields, so the two ideas that arrived together can be
+          judged apart: Basic Details above is card + hidden chrome, this is
+          card + the borders the form has always drawn. Whichever wins, both
+          sections end up on it. */}
+      <SheetSection title="POC Details" variant={creating ? "plain" : "card"}>
         {/* One person per row: name and the two ways to reach them read as a
             single fact, so they sit side by side rather than wrapping over two
             rows with the contact detached from whose it is.

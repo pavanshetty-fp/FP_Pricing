@@ -567,13 +567,14 @@ repo's `src/index.css`.
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
-  /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK. It was zinc/50
-     (#fafafa), a warm near-white left over from before the ground went cool.
-     #fdfdfd is the neutral version of the same idea: a shade off the #ffffff
-     content layer beside it and a clear step up from the #f3f4f7 ground both
-     panels sit on, so the drawer and the work read as one raised pair with a
-     gap between them rather than as a panel pushed behind the page. */
-  --sidebar: #fdfdfd;
+  /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK — a shade off the
+     #ffffff content layer beside it and a clear step up from the #f3f4f7
+     ground both panels sit on, so the drawer and the work read as one raised
+     pair with a gap between them rather than as a panel pushed behind the
+     page. #f7f7f5 puts a little more air between it and the content layer than
+     the near-white it replaced, and is the one surface in the shell allowed a
+     trace of warmth: it is the panel you read FROM rather than write IN. */
+  --sidebar: #f7f7f5;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the
@@ -581,12 +582,14 @@ repo's `src/index.css`.
      to the product, not to "Orders". It takes a card step instead: visible as
      a mark, silent as a colour.
 
-     ONE STEP LIGHTER THAN THE DRAWER IT SITS ON, which is the rule; the rung
-     differs because the two ladders are not mirror images. In light the drawer
-     is #e9ecf3, so --fp-card-1 (#e9ecf1) would be 2/255 away and gone — the
-     mark takes --fp-card-2 (#f4f5f8), 11/255 up. In dark the drawer is #11161d
-     and --fp-card-1 is 25/255 up, which is the clearer of the two there. */
-  --sidebar-primary: var(--fp-card-2);
+     ONE CARD STEP AWAY FROM THE DRAWER, whichever way that falls. The distance
+     is the rule, not the direction — and not the rung either, because the two
+     ladders are not mirror images. Both themes are back on --fp-card-1: in
+     light #e9ecf1 is 14/255 under the #f7f7f5 drawer, in dark #2a2f37 is
+     25/255 over the #11161d one. It has moved twice already, each time because
+     the drawer moved; that is the pair to re-measure whenever `--sidebar`
+     changes. */
+  --sidebar-primary: var(--fp-card-1);
   --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
@@ -734,10 +737,8 @@ repo's `src/index.css`.
   --destructive-foreground: #ffffff;
   --ring: var(--brand);
   --sidebar: #11161d;
-  /* Same pair as light: the mark is the raised-card step with body ink on it,
-     so it keeps one relationship to its surface rather than one colour. */
-  --sidebar-primary: var(--fp-card-1);
-  --sidebar-primary-foreground: var(--fp-ink-1);
+  /* Both themes resolve `--sidebar-primary` from `:root` now that they agree on
+     the rung, so nothing is restated here. */
   --sidebar-border: #ffffff1a;
   --sidebar-ring: #575757;
   --drawer: #292929;

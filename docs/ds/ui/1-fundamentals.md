@@ -28,7 +28,7 @@ survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
   chrome, full width above the rail + content. It shares the ground's colour.
-- **Light:** ground `#efefeb` → drawer `#fafafa` → content layer `#ffffff`, with
+- **Light:** ground `#f3f4f7` → drawer `#fafafa` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
   the ground's own colour and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
@@ -44,7 +44,7 @@ popover.
 ## Token quick reference (hex, both modes)
 | Utility | Light | FP (dark) | Use |
 |---|---|---|---|
-| `bg-background` | `#efefeb` | `#080808` | app ground / Surface Base / global top bar — the rail sits flush on it |
+| `bg-background` | `#f3f4f7` | `#080808` | app ground / Surface Base / global top bar — the rail sits flush on it |
 | `text-foreground` | `#030405` | `#f0f2f5` | primary text |
 | `bg-card` | `#f4f5f8` | `#11161d` | card, inner panel and every field (= Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
@@ -59,11 +59,11 @@ popover.
 | `border-border` | `#d4d4d8` | `#363c45` | default hairline |
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
-| `bg-rail` | `#efefeb` | `#080808` | tier-1 rail (merges into the ground) |
+| `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
 | `bg-sidebar` | `#fafafa` | `#11161d` | tier-2 drawer + rail hover-overlay |
 | `bg-sidebar-primary` | `#fa6400` | `#fa6400` | the 24px section mark — **brand in both themes** |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
-| `bg-fp-surface-base` | `#efefeb` | `#080808` | the app ground, by its own name |
+| `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
 | `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |
 | `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** (and the fill inside a field) |
 | `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | raised inner card / pressed tint |

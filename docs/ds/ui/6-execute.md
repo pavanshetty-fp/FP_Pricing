@@ -348,7 +348,13 @@ repo's `src/index.css`.
   --fp-ink-2: #090c0f; /* text on an emphasis fill */
   --fp-ink-3: #596475; /* secondary text */
   --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
-  --fp-surface-base: #efefeb; /* the app ground */
+  /* THE GROUND IS A COOL GREY, not a warm one. #efefeb carried a yellow cast
+     that fought the neutral greys everything on top of it is cut from — the
+     content layer, the card steps and the strokes are all blue-leaning, so the
+     one surface underneath them was the only warm thing on the page and it
+     read as age rather than as paper. #f3f4f7 is the same lightness in the
+     family the rest of the ladder already belongs to. */
+  --fp-surface-base: #f3f4f7; /* the app ground */
   /* THE INNER PANEL IS A STEP, NOT MORE WHITE. It was #ffffff — identical to
      the content layer it sits on and to --card, which aliases it — so a card
      had nothing to separate by except its border, and the whole theme read as

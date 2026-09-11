@@ -1,7 +1,6 @@
 import * as React from "react";
 import { CalendarOff, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -927,23 +926,20 @@ export function BrokerOrdersScreen({
 
   const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
     switch (key) {
-      case "order": {
-        /* The disc carries its own tooltip and aria-label — the letter is
-           never the only thing holding the meaning. */
-        const c = laneCardCode(row);
+      case "order":
         return (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-sm tabular-nums text-foreground">
-              {row.orderNo}
-            </span>
-            <CodeDisc code={c.text} label={c.label} tone={c.tone} />
-            {row.urgent && (
-              <Badge variant="destructive" className="shrink-0">
-                !
-              </Badge>
-            )}
-          </div>
+          <span className="truncate text-sm tabular-nums text-foreground">
+            {row.orderNo}
+          </span>
         );
+      /* The disc carries its own tooltip and aria-label — the letter is never
+         the only thing holding the meaning. Urgency used to ride here as a
+         second red "!" disc; it is a row-level fact, not a kind of order, and
+         two discs in one cell made the type harder to read than having no
+         column at all. It stays on the board card badge and in the sheet. */
+      case "type": {
+        const c = laneCardCode(row);
+        return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
       }
       case "customer":
         return <TwoLineCell {...row.customer} />;

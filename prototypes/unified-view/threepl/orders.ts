@@ -567,6 +567,7 @@ export function customerTotal(lines: OrderLine[]): number {
 
 export type BrokerColumnKey =
   | "order"
+  | "type"
   | "customer"
   | "shipTo"
   | "date"
@@ -588,12 +589,14 @@ export interface BrokerColumnDef {
 
 /** Widths follow the DS column-frame vocabulary; actions = 44 as everywhere. */
 export const BROKER_COLUMNS: BrokerColumnDef[] = [
-  /* ORDER NUMBER AND TYPE, one column. They are one identity — nobody reads
-     the type without the order it belongs to — and as its own column the disc
-     sat in 74px of otherwise empty width, a rail of single letters with a
-     header nobody needed. It wears the same disc the board card does, in the
-     same place: number first, disc after. */
-  { key: "order", label: "Order #", width: 170, sortable: true },
+  /* TYPE IS ITS OWN COLUMN, and it matches Sales exactly — same header, same
+     70px, same position after the number, same disc. A reader who has learnt
+     one orders table has learnt both; a type folded into the number column
+     here and standing alone there means the same fact lives in two places
+     depending on which module you opened, which is the one thing repeated
+     table patterns must not do. */
+  { key: "order", label: "Order #", width: 120, sortable: true },
+  { key: "type", label: "Type", width: 70 },
   { key: "customer", label: "Customer", width: 230 },
   { key: "shipTo", label: "Ship To", width: 190 },
   { key: "date", label: "Planned Date", width: 165, sortable: true },
@@ -1518,6 +1521,7 @@ export function matchesBrokerOrder(r: BrokerOrder, q: string): boolean {
 
 export const BROKER_SEARCH_FIELDS = [
   { key: "order", label: "Order #", text: (r: BrokerOrder) => r.orderNo },
+  { key: "type", label: "Type", text: (r: BrokerOrder) => r.orderType },
   {
     key: "customer",
     label: "Customer",

@@ -2894,6 +2894,36 @@ export function BrokerOrderSheet({
             sheet size for the same reason. It drops back to one column under
             1024px, where a 320px rail would leave the tables scrolling
             sideways to save a scroll downwards. */}
+        {/*
+          THE RULE, AT THE HEAD OF THE STEP IT GOVERNS.
+
+          An order has two shapes and they price differently, so a table of
+          rates means one thing on a Tuesday and another on a Wednesday unless
+          it says which it is. It used to say so inside Vendor Pricing — but
+          whether a load order exists decides what BOTH tables mean, the
+          partner's base price and therefore the margin, so in there it was
+          explaining one of the two things it governs from under the other's
+          heading. Read once, before either table, is when it is needed.
+
+          THE INLINE BANNER, NOT THE CALLOUT. A solid bar with white text is
+          the DS's loudest voice, and this is a standing condition rather than
+          something that has gone wrong: it was pulling the eye away from the
+          figures it exists to explain. `split` holds it to one 32px line — the
+          state on the left, what follows from it on the right.
+        */}
+        <BannerInline
+          status="info"
+          split
+          /* The sheet body is a flex column: a fixed-height child still gets
+             flex-shrink applied and the 32px bar was rendering at 20. */
+          className="shrink-0"
+          title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
+        >
+          {hasLoadOrder
+            ? "The vendor charges freight, fees and taxes only — the base price is yours."
+            : "The charges will be set by the vendor."}
+        </BannerInline>
+
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex min-w-0 flex-col gap-10">
             {/* ── STEP 2 ────────────────────────────────────────────────────────
@@ -2969,34 +2999,7 @@ export function BrokerOrderSheet({
                   </SheetSectionNote>
                 }
               >
-                {/*
-                  THE RULE, ON THE SECTION IT CHANGES.
-
-                  An order has two shapes and they price differently, so a table
-                  of rates means one thing on a Tuesday and another on a Wednesday
-                  unless it says which it is. It is stated here rather than in the
-                  section note because it is not background: it decides whether
-                  the subtotal below counts.
-
-                  THE INLINE BANNER, NOT THE CALLOUT. A solid indigo bar with
-                  white text is the DS's loudest voice, and this is a standing
-                  condition of the order rather than something that has gone
-                  wrong: it was pulling the eye away from the figures it exists to
-                  explain. On the card surface with the status carried by the text
-                  colour, it is read once and then sits still.
-                */}
-                <SheetSectionInset>
-                  <BannerInline
-                    status="info"
-                    title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
-                  >
-                    {hasLoadOrder
-                      ? "The vendor charges freight, fees and taxes only — the base price is yours."
-                      : "The charges will be set by the vendor."}
-                  </BannerInline>
-                </SheetSectionInset>
-
-                <div className="fp-scrollbar overflow-x-auto border-t border-border">
+                <div className="fp-scrollbar overflow-x-auto">
                   <table className="w-full min-w-[980px] table-fixed border-collapse">
                     <colgroup>
                       <col />

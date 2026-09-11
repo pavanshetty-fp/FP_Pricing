@@ -224,6 +224,18 @@ export interface BannerInlineProps
    * are a heading and a body rather than two sentences of equal weight.
    */
   title?: React.ReactNode;
+  /**
+   * Title and message on ONE line, at opposite ends of it.
+   *
+   * A STATE AND ITS CONSEQUENCE ARE NOT A HEADING AND A BODY when the
+   * consequence is four words long. Stacked, the pair takes 48px and the
+   * second line reads as something further to do; split, it is one 32px line
+   * that says the state on the left and what follows from it on the right,
+   * which is how anyone would say it out loud. Use it when the message is
+   * short and fixed; leave it off when the message can run on, because at the
+   * right-hand end there is nowhere for it to run.
+   */
+  split?: boolean;
   onDismiss?: () => void;
   icon?: React.ReactNode;
 }
@@ -233,17 +245,19 @@ function BannerInline({
   className,
   children,
   title,
+  split = false,
   onDismiss,
   icon,
   ...props
 }: BannerInlineProps) {
+  const stacked = Boolean(title) && !split;
   return (
     <div
       role="status"
       data-status={status}
       className={cn(
         "flex gap-2 rounded-md bg-fp-card-1 px-3",
-        title ? "items-start py-2.5" : "h-8 items-center",
+        stacked ? "items-start py-2.5" : "h-8 items-center",
         className
       )}
       {...props}
@@ -251,13 +265,27 @@ function BannerInline({
       <span
         className={cn(
           "shrink-0 [&_svg]:size-4",
-          title && "mt-px",
+          stacked && "mt-px",
           inlineAccent({ status })
         )}
       >
         {icon ?? <Info />}
       </span>
-      {title ? (
+      {title && split ? (
+        <span className="flex min-w-0 flex-1 items-baseline justify-between gap-4">
+          <span
+            className={cn(
+              "shrink-0 text-sm font-medium",
+              inlineAccent({ status })
+            )}
+          >
+            {title}
+          </span>
+          <span className="truncate text-xs text-muted-foreground">
+            {children}
+          </span>
+        </span>
+      ) : stacked ? (
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className={cn("text-sm font-medium", inlineAccent({ status }))}>
             {title}

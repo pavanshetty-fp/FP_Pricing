@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, ChevronDown, MoreHorizontal, Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -118,6 +119,16 @@ export interface FuelOrdersViewBarProps {
   onRename: (id: string, name: string) => void;
   onUpdate: (id: string) => void;
   onDelete: (id: string) => void;
+  /**
+   * A segmented scope control, seated at the right of this row ahead of the
+   * actions. For a list that holds two KINDS of record rather than two filters
+   * of one — fuel orders and asset orders take different forms and answer
+   * different questions, so which of them you are looking at is a decision made
+   * before anything else on the row applies.
+   */
+  segments?: { key: string; label: string }[];
+  segmentValue?: string;
+  onSegmentChange?: (key: string) => void;
   /** Primary CTA — rendered at the right end of this row. */
   onCreateOrder?: () => void;
   /**
@@ -183,6 +194,9 @@ export function FuelOrdersViewBar({
   onRename,
   onUpdate,
   onDelete,
+  segments,
+  segmentValue,
+  onSegmentChange,
   onCreateOrder,
   createMenu,
   onCreateSelect,
@@ -315,6 +329,41 @@ export function FuelOrdersViewBar({
           bottom instead; 10px of margin plus the row's own 2px of bottom padding
           puts exactly 12px between the button's lower edge and the divider.
         */}
+        {/* THE SCOPE, THEN A RULE, THEN THE ACTIONS. The segments choose WHICH
+            list this is; the buttons act on it. A divider between them says
+            they are not the same kind of control, which a shared row otherwise
+            implies. It takes the `ml-auto` so the whole right cluster sits
+            right; the CTA below no longer needs it. */}
+        {segments && segments.length > 0 && (
+          <>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={segmentValue}
+              /* Radix emits "" when the active item is pressed again. A scope is
+                 never empty — ignore the deselect so one segment stays chosen. */
+              onValueChange={(next) => next && onSegmentChange?.(next)}
+              aria-label="Order kind"
+              className="mb-2 ml-auto h-7 self-end"
+            >
+              {segments.map((seg) => (
+                <ToggleGroupItem
+                  key={seg.key}
+                  value={seg.key}
+                  className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium"
+                >
+                  {seg.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <span
+              aria-hidden
+              className="mx-2 mb-2.5 h-5 w-px shrink-0 self-end bg-border"
+            />
+          </>
+        )}
+
         {/* NO HANDLER, NO BUTTON. A list without a create flow — Vendors, where
             a carrier is onboarded through a contract rather than typed into a
             table — should not carry a CTA that does nothing when pressed. The
@@ -323,7 +372,13 @@ export function FuelOrdersViewBar({
         {createMenu && createMenu.length > 0 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="xs" className="mb-2.5 ml-auto self-end rounded-[4px]">
+              <Button
+                size="xs"
+                className={cn(
+                  "mb-2.5 self-end rounded-[4px]",
+                  !segments?.length && "ml-auto"
+                )}
+              >
                 <Plus />
                 {ctaLabel}
                 <ChevronDown />
@@ -384,7 +439,10 @@ export function FuelOrdersViewBar({
           onCreateOrder && (
             <Button
               size="xs"
-              className="mb-2.5 ml-auto self-end rounded-[4px]"
+              className={cn(
+                "mb-2.5 self-end rounded-[4px]",
+                !segments?.length && "ml-auto"
+              )}
               onClick={onCreateOrder}
             >
               <Plus />
@@ -413,7 +471,7 @@ export function FuelOrdersViewBar({
               className={cn(
                 "mr-1 mb-2.5 self-end",
                 // Takes over pushing the right cluster right when there is no CTA.
-                onCreateOrder || createMenu ? "ml-1.5" : "ml-auto"
+                onCreateOrder || createMenu || segments?.length ? "ml-1.5" : "ml-auto"
               )}
             >
               <Upload />

@@ -113,7 +113,7 @@ survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
   chrome, full width above the rail + content. It shares the ground's colour.
-- **Light:** ground `#f3f4f7` → drawer `#fafbf8` → content layer `#ffffff`, with
+- **Light:** ground `#efefeb` (WARM, under cool paper — the temperature does the separating) → drawer `#fafbf8` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
   the ground's own colour and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
@@ -129,7 +129,7 @@ popover.
 ## Token quick reference (hex, both modes)
 | Utility | Light | FP (dark) | Use |
 |---|---|---|---|
-| `bg-background` | `#f3f4f7` | `#080808` | app ground / Surface Base / global top bar — the rail sits flush on it |
+| `bg-background` | `#efefeb` | `#080808` | app ground / Surface Base / global top bar — the rail sits flush on it |
 | `text-foreground` | `#030405` | `#f0f2f5` | primary text |
 | `bg-card` | `#f4f5f8` | `#11161d` | card, inner panel and every field (= Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
@@ -144,11 +144,11 @@ popover.
 | `border-border` | `#d4d4d8` | `#363c45` | default hairline |
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
-| `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
+| `bg-rail` | `#efefeb` | `#080808` | tier-1 rail (merges into the ground) |
 | `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating grey (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
 | `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step AWAY from the drawer it sits on (down in light, up in dark), **not** the brand: orange put the product mark twice on one screen. Re-measure whenever `--sidebar` moves |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
-| `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
+| `bg-fp-surface-base` | `#efefeb` | `#080808` | the app ground, by its own name |
 | `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |
 | `bg-fp-surface-1b` | `#ffffff` | `#1b2028` | **content layer** (and the fill inside a field) |
 | `bg-fp-card-1` | `#e9ecf1` | `#2a2f37` | raised inner card / pressed tint |
@@ -431,7 +431,7 @@ in Light, not FP-dark:
 | `--muted` | `--fp-surface-1b`, `--popover` | FP-dark, both `#1b2028` |
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
-| ~~`--background`~~ | ~~`--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b`~~ | Light — **resolved 2026-09-11**: `--background` went back to the tinted Surface Base (`#f3f4f7` since 2026-09-11), and `--fp-surface-1a` (and so `--card`) moved to the inner-panel step `#f4f5f8`. Only `--popover`/`--fp-surface-1b` are still white together, which is correct — a popover IS the content layer, lifted. |
+| ~~`--background`~~ | ~~`--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b`~~ | Light — **resolved 2026-09-11**: `--background` went back to the tinted Surface Base (`#efefeb`), and `--fp-surface-1a` (and so `--card`) moved to the inner-panel step `#f4f5f8`. Only `--popover`/`--fp-surface-1b` are still white together, which is correct — a popover IS the content layer, lifted. |
 | `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in grey, and the grey it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
 | ~~`--fp-outline-2`~~ | ~~`--accent`~~ | Light — **resolved** 2026-08-27, `--accent` moved to `#e5e7eb` |
 
@@ -815,13 +815,19 @@ repo's `src/index.css`.
   --fp-ink-2: #090c0f; /* text on an emphasis fill */
   --fp-ink-3: #596475; /* secondary text */
   --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
-  /* THE GROUND IS A COOL GREY, not a warm one. #efefeb carried a yellow cast
-     that fought the neutral greys everything on top of it is cut from — the
-     content layer, the card steps and the strokes are all blue-leaning, so the
-     one surface underneath them was the only warm thing on the page and it
-     read as age rather than as paper. #f3f4f7 is the same lightness in the
-     family the rest of the ladder already belongs to. */
-  --fp-surface-base: #f3f4f7; /* the app ground */
+  /* THE GROUND IS WARM, AND EVERYTHING ON IT IS COOL. That is a deliberate
+     pairing, not a mismatch: the content layer, the card steps and the strokes
+     are all blue-leaning, so a ground from the same family sat at the same
+     temperature as the work and the page had one note. #efefeb is a warm grey
+     underneath cool paper — the ground reads as a surface the work is LAID ON
+     rather than as more of the work.
+
+     It was tried the other way (#f3f4f7, the cool version of the same
+     lightness) and the whole shell flattened. The temperature is doing the
+     separating that the 12/255 of lightness cannot, which is also why the
+     tier-2 drawer beside it can be a near-white and still read as its own
+     panel. */
+  --fp-surface-base: #efefeb; /* the app ground */
   /* THE INNER PANEL IS A STEP, NOT MORE WHITE. It was #ffffff — identical to
      the content layer it sits on and to --card, which aliases it — so a card
      had nothing to separate by except its border, and the whole theme read as
@@ -1035,7 +1041,7 @@ repo's `src/index.css`.
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
   /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK — a shade off the
-     #ffffff content layer beside it and up from the #f3f4f7 ground both panels
+     #ffffff content layer beside it and up from the #efefeb ground both panels
      sit on, so the drawer and the work read as one raised pair with a gap
      between them rather than as a panel pushed behind the page.
 

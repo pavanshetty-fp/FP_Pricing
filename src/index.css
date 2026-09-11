@@ -292,13 +292,19 @@
   --fp-ink-2: #090c0f; /* text on an emphasis fill */
   --fp-ink-3: #596475; /* secondary text */
   --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
-  /* THE GROUND IS A COOL GREY, not a warm one. #efefeb carried a yellow cast
-     that fought the neutral greys everything on top of it is cut from — the
-     content layer, the card steps and the strokes are all blue-leaning, so the
-     one surface underneath them was the only warm thing on the page and it
-     read as age rather than as paper. #f3f4f7 is the same lightness in the
-     family the rest of the ladder already belongs to. */
-  --fp-surface-base: #f3f4f7; /* the app ground */
+  /* THE GROUND IS WARM, AND EVERYTHING ON IT IS COOL. That is a deliberate
+     pairing, not a mismatch: the content layer, the card steps and the strokes
+     are all blue-leaning, so a ground from the same family sat at the same
+     temperature as the work and the page had one note. #efefeb is a warm grey
+     underneath cool paper — the ground reads as a surface the work is LAID ON
+     rather than as more of the work.
+
+     It was tried the other way (#f3f4f7, the cool version of the same
+     lightness) and the whole shell flattened. The temperature is doing the
+     separating that the 12/255 of lightness cannot, which is also why the
+     tier-2 drawer beside it can be a near-white and still read as its own
+     panel. */
+  --fp-surface-base: #efefeb; /* the app ground */
   /* THE INNER PANEL IS A STEP, NOT MORE WHITE. It was #ffffff — identical to
      the content layer it sits on and to --card, which aliases it — so a card
      had nothing to separate by except its border, and the whole theme read as
@@ -512,7 +518,7 @@
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
   /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK — a shade off the
-     #ffffff content layer beside it and up from the #f3f4f7 ground both panels
+     #ffffff content layer beside it and up from the #efefeb ground both panels
      sit on, so the drawer and the work read as one raised pair with a gap
      between them rather than as a panel pushed behind the page.
 

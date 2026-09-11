@@ -691,33 +691,72 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    /* Subtle, low-contrast scrollbars — thin line, transparent track (Firefox). */
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    /*
+      NO SCROLLBAR GUTTER, ANYWHERE, BY DEFAULT.
+
+      A scrollbar is not decoration — it is LAYOUT. `scrollbar-width: thin`
+      reserved 11px inside the padding box of every scroller in the app, which
+      meant a board lane with 12px of padding showed 12px on the left and 1px
+      on the right the moment its cards overflowed. The padding was never
+      wrong; the gutter was eating half of it, and only on the side that
+      happened to be scrolling.
+
+      Browsers give three widths and no more — `auto` (15px), `thin` (11px)
+      and `none` (0). There is no 1px scrollbar to ask for: the `::-webkit-`
+      width is ignored outright once `scrollbar-width` is authored, and
+      unauthored it reserves the platform default. So `none` is the only value
+      that leaves a padded box symmetrical, and the clipped edge of the
+      content is what says there is more of it.
+
+      Horizontal strips are the exception and opt back in below.
+    */
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
   }
 
-  /* WebKit/Blink: a thin, rounded thumb on a transparent track. The 3px
-     transparent border + content-box clip makes the visible thumb read as a
-     hairline; it only firms up on hover. */
-  *::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+  /*
+    THE ONE PLACE THE BAR EARNS ITS SPACE — the board's lane strip.
+
+    Almost every scroller already says it is scrolling: a card sliced by the
+    bottom of its lane, a table column truncated mid-word at the right edge.
+    Lanes say nothing. They are equal-width blocks with their own borders and
+    nothing clipped, so the eighth one ending flush at the viewport looks
+    exactly like the last one. That is the case the bar is for, and it costs
+    nothing that matters because it runs along the BOTTOM, where a reserved
+    gutter is a margin rather than a lopsided inset.
+
+    `.fp-scrollbar` outranks the `*` rule on specificity alone, so opting in is
+    one class and no `!important`. Reach for it only on a horizontal strip with
+    nothing else to give the overflow away.
+  */
+  .fp-scrollbar {
+    scrollbar-width: thin;
+    /* A shade off the ground, never a shade off the text. The thumb is a hint
+       that the strip moves, not a control anybody aims at. */
+    scrollbar-color: var(--border) transparent;
   }
-  *::-webkit-scrollbar-track,
-  *::-webkit-scrollbar-corner {
+  .fp-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .fp-scrollbar::-webkit-scrollbar-track,
+  .fp-scrollbar::-webkit-scrollbar-corner {
     background: transparent;
   }
-  *::-webkit-scrollbar-thumb {
+  .fp-scrollbar::-webkit-scrollbar-thumb {
     background-color: var(--border);
     border-radius: 9999px;
-    border: 3px solid transparent;
+    border: 2px solid transparent;
     background-clip: content-box;
   }
-  *::-webkit-scrollbar-thumb:hover {
+  .fp-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: var(--fp-outline-2);
   }
 }

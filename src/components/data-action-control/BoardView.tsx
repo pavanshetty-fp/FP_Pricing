@@ -49,7 +49,7 @@ export function BoardView({ rows }: BoardViewProps) {
   const lanes = toBoardLanes(rows);
 
   return (
-    <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
+    <div className="fp-scrollbar flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
       {lanes.map((lane) => {
         const shown = lane.rows.slice(0, LANE_CAP);
         const overflow = lane.rows.length - shown.length;

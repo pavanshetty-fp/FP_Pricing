@@ -1400,7 +1400,16 @@ export function BrokerOrderSheet({
               <Check /> Accept quote
             </Button>
           </>
-        ) : null
+        ) : (
+          /* SPENT, NOT ABSENT. Once this partner holds the order there is
+             nothing to accept — but an empty footer reads as a step that
+             forgot its button, and the reader has to work out whether they
+             missed it. Disabled says the same thing in the same place: this is
+             the act, and it is already done. */
+          <Button disabled>
+            <Check /> Accept quote
+          </Button>
+        )
       }
       /* THE STRIP EXISTS ONCE A PARTNER HAS ACKNOWLEDGED, whoever did the
          acknowledging. Two ways in, and they are the same state: the partner
@@ -2984,6 +2993,7 @@ export function BrokerOrderSheet({
                                 value={ql ? String(ql.ratePerGal) : ""}
                                 placeholder="0.000"
                                 numeric
+                                prefix="$"
                                 aria-label={`Vendor rate per gallon for line ${i + 1}`}
                                 onChange={(v) => put({ ratePerGal: num(v) })}
                               />
@@ -2993,6 +3003,7 @@ export function BrokerOrderSheet({
                                 value={ql ? String(ql.surcharge) : ""}
                                 placeholder="0.000"
                                 numeric
+                                prefix="$"
                                 aria-label={`Vendor surcharge for line ${i + 1}`}
                                 onChange={(v) => put({ surcharge: num(v) })}
                               />
@@ -3060,6 +3071,7 @@ export function BrokerOrderSheet({
                               }
                               placeholder="0"
                               numeric
+                              prefix="$"
                               aria-label={`${c.label} charged by the partner`}
                               onChange={(v) =>
                                 setQuoteCharge(shownVendorId, { [c.key]: num(v) })
@@ -3162,6 +3174,7 @@ export function BrokerOrderSheet({
                             value={l.pricePerGal == null ? "" : String(l.pricePerGal)}
                             placeholder="0.00"
                             numeric
+                            prefix="$"
                             aria-label={`Price per gallon for line ${i + 1}`}
                             onChange={(v) => setLine(i, { pricePerGal: num(v) })}
                           />
@@ -3171,6 +3184,7 @@ export function BrokerOrderSheet({
                             value={l.marginPerGal == null ? "" : String(l.marginPerGal)}
                             placeholder="0.00"
                             numeric
+                            prefix="$"
                             aria-label={`Margin per gallon for line ${i + 1}`}
                             onChange={(v) => setLine(i, { marginPerGal: num(v) })}
                           />

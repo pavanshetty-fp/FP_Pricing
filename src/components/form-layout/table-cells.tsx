@@ -160,6 +160,15 @@ export interface TableCellInputProps {
   numeric?: boolean;
   /** Unit shown after the value, e.g. `gal`. Not part of the value. */
   suffix?: string;
+  /**
+   * Unit shown BEFORE the value, e.g. `$`. Not part of the value.
+   *
+   * It pins to the cell's left edge while the figure stays right-aligned,
+   * which is how every ledger prints money: the symbol marks the column, the
+   * digits line up for comparing. Stuck to the number it would move with the
+   * number's length and stop marking anything.
+   */
+  prefix?: string;
   "aria-label"?: string;
 }
 
@@ -171,8 +180,26 @@ export function TableCellInput({
   disabled,
   numeric,
   suffix,
+  prefix,
   "aria-label": ariaLabel,
 }: TableCellInputProps) {
+  /*
+    WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
+
+    These cells are controlled by a NUMBER upstream, and a number cannot hold a
+    half-written one. Typing "1.4" sent "1." to the parent, which parsed it to
+    1 and handed back "1" — so the decimal point was swallowed on every
+    keystroke and no fractional rate could be entered at all. The same is true
+    of a leading "0." or a trailing zero.
+
+    While the cell has focus it shows the literal keystrokes and the parent
+    still receives every one of them; on blur the buffer is dropped and the
+    canonical value comes back, so "1.40" settles to "1.4" and "abc" to
+    whatever the parent made of it. The parent stays the source of truth — this
+    only stops it answering mid-word.
+  */
+  const [typed, setTyped] = React.useState<string | null>(null);
+  const shown = typed ?? value;
   return (
     <label
       className={cn(
@@ -182,10 +209,17 @@ export function TableCellInput({
         disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
       )}
     >
+      {prefix && (
+        <span className="shrink-0 text-sm text-muted-foreground">{prefix}</span>
+      )}
       <input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={shown}
+        onChange={(e) => {
+          setTyped(e.target.value);
+          onChange(e.target.value);
+        }}
+        onBlur={() => setTyped(null)}
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}

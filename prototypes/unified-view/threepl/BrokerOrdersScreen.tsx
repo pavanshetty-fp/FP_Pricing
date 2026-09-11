@@ -30,6 +30,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
+import { OrderMapView } from "./OrderMapView";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
@@ -1206,6 +1207,7 @@ export function BrokerOrdersScreen({
           }}
           view={view}
           onViewChange={setView}
+          mapView
           dateControl={
             <DateRangeFilter
               value={range}
@@ -1244,6 +1246,11 @@ export function BrokerOrdersScreen({
               laneSort={laneSort}
               onToggleLaneSort={toggleLaneSort}
             />
+          ) : view === "map" ? (
+            /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a
+               property of a table; half the day's work missing from a map
+               because it fell on page two is a map that lies. */
+            <OrderMapView orders={sorted} onOpenOrder={setOpenId} />
           ) : (
             <ListTable
               rows={pageRows}
@@ -1301,7 +1308,7 @@ export function BrokerOrdersScreen({
           — but the lane counts have to add up to something, and until now there
           was nothing to add them up to. It states the window as well, because a
           total with no scope is a number you cannot check. */}
-      {view === "board" && sorted.length > 0 && (
+      {view !== "table" && sorted.length > 0 && (
         <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
           <span className="font-medium text-foreground">
             {sorted.length.toLocaleString()}{" "}
@@ -1314,7 +1321,7 @@ export function BrokerOrdersScreen({
         </div>
       )}
 
-      <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
+      <div className={cn("mt-4 shrink-0", view !== "table" && "hidden")}>
         <TablePagination
           className="h-9"
           page={page}

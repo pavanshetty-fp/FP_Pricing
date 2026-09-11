@@ -66,8 +66,8 @@ function BrandHeader({ brand, collapsed }: { brand: NavBrand; collapsed: boolean
        mark. */
     <span
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-md text-brand-foreground [&_svg]:size-3.5",
-        brand.iconClassName ?? "bg-brand"
+        "flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-primary-foreground [&_svg]:size-3.5",
+        brand.iconClassName ?? "bg-sidebar-primary"
       )}
     >
       {brand.icon}

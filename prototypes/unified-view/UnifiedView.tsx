@@ -1307,7 +1307,6 @@ export function UnifiedView() {
               brand={{
                 name: active.label,
                 icon: active.icon,
-                iconClassName: "bg-sidebar-primary",
               }}
               groups={subGroups}
               activeKey={subKey ?? undefined}

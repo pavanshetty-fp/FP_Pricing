@@ -49,7 +49,7 @@ popover.
 | `bg-card` | `#f4f5f8` | `#11161d` | card, inner panel and every field (= Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
-| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the section mark, the focus ring, and light's selection hue |
+| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the product mark, the focus ring, and light's selection hue |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
 | `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
 | `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
@@ -61,7 +61,7 @@ popover.
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
 | `bg-sidebar` | `#fafafa` | `#11161d` | tier-2 drawer + rail hover-overlay |
-| `bg-sidebar-primary` | `#fa6400` | `#fa6400` | the 24px section mark — **brand in both themes** |
+| `bg-sidebar-primary` | `#e9ecf1` | `#2a2f37` | the 24px section mark — the raised-card step, **not** the brand: orange put the product mark twice on one screen |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
 | `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |

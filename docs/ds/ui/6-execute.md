@@ -554,13 +554,15 @@ repo's `src/index.css`.
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
   --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
-  /* THE SECTION MARK CARRIES THE BRAND. A 36px near-black tile on every screen
-     was the largest neutral shape in the shell; in brand orange it is the one
-     large piece of identity a page reliably has. White on #fa6400 measures
-     3.05 — under the text threshold, over the 3:1 one for a graphic, and this
-     only ever holds an icon. */
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #ffffff;
+  /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
+     brand in two places at once — the product mark in the top bar and again
+     24px below it in the drawer — and the drawer one was the louder of the
+     two while naming only the section you happen to be in. The brand belongs
+     to the product, not to "Orders". It takes the raised-card step instead:
+     visible as a mark, silent as a colour, and the same relationship to its
+     surface in both themes. */
+  --sidebar-primary: var(--fp-card-1);
+  --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
@@ -706,10 +708,10 @@ repo's `src/index.css`.
   --destructive-foreground: #ffffff;
   --ring: var(--brand);
   --sidebar: #11161d;
-  /* The section mark is the brand in BOTH themes — an identity that changes
-     colour when you flip the theme is not an identity. */
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #ffffff;
+  /* Same pair as light: the mark is the raised-card step with body ink on it,
+     so it keeps one relationship to its surface rather than one colour. */
+  --sidebar-primary: var(--fp-card-1);
+  --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-border: #ffffff1a;
   --sidebar-ring: #575757;
   --drawer: #292929;

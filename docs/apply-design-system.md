@@ -134,7 +134,7 @@ popover.
 | `bg-card` | `#f4f5f8` | `#11161d` | card, inner panel and every field (= Surface 1a) |
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
-| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the section mark, the focus ring, and light's selection hue |
+| `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the product mark, the focus ring, and light's selection hue |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
 | `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
 | `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
@@ -146,7 +146,7 @@ popover.
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
 | `bg-sidebar` | `#fafafa` | `#11161d` | tier-2 drawer + rail hover-overlay |
-| `bg-sidebar-primary` | `#fa6400` | `#fa6400` | the 24px section mark — **brand in both themes** |
+| `bg-sidebar-primary` | `#e9ecf1` | `#2a2f37` | the 24px section mark — the raised-card step, **not** the brand: orange put the product mark twice on one screen |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
 | `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |
@@ -1021,13 +1021,15 @@ repo's `src/index.css`.
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
   --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
-  /* THE SECTION MARK CARRIES THE BRAND. A 36px near-black tile on every screen
-     was the largest neutral shape in the shell; in brand orange it is the one
-     large piece of identity a page reliably has. White on #fa6400 measures
-     3.05 — under the text threshold, over the 3:1 one for a graphic, and this
-     only ever holds an icon. */
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #ffffff;
+  /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
+     brand in two places at once — the product mark in the top bar and again
+     24px below it in the drawer — and the drawer one was the louder of the
+     two while naming only the section you happen to be in. The brand belongs
+     to the product, not to "Orders". It takes the raised-card step instead:
+     visible as a mark, silent as a colour, and the same relationship to its
+     surface in both themes. */
+  --sidebar-primary: var(--fp-card-1);
+  --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
@@ -1173,10 +1175,10 @@ repo's `src/index.css`.
   --destructive-foreground: #ffffff;
   --ring: var(--brand);
   --sidebar: #11161d;
-  /* The section mark is the brand in BOTH themes — an identity that changes
-     colour when you flip the theme is not an identity. */
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #ffffff;
+  /* Same pair as light: the mark is the raised-card step with body ink on it,
+     so it keeps one relationship to its surface rather than one colour. */
+  --sidebar-primary: var(--fp-card-1);
+  --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-border: #ffffff1a;
   --sidebar-ring: #575757;
   --drawer: #292929;

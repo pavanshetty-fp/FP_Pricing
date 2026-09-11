@@ -729,7 +729,6 @@ export function App() {
             brand={{
               name: screen.drawerTitle ?? screen.label,
               icon: screen.icon,
-              iconClassName: "bg-sidebar-primary",
             }}
             groups={[sidebarNav ?? screen.sidebar]}
             activeKey={subKey}

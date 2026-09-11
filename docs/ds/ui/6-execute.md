@@ -553,14 +553,13 @@ repo's `src/index.css`.
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
-  /* THE TIER-2 DRAWER IS A PANEL, NOT A PAGE. #fafafa (zinc/50) put it 4/255
-     off white while the ground beside it is #f3f4f7 and the content layer to
-     its right is #ffffff — so the drawer read as a piece of the content layer
-     that had drifted left rather than as its own column, and the only thing
-     separating the two was a gap. #e9ecf3 is a step DOWN from the ground, not
-     up toward the layer, which is the honest direction: the drawer is behind
-     the work, not part of it. */
-  --sidebar: #e9ecf3;
+  /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK. It was zinc/50
+     (#fafafa), a warm near-white left over from before the ground went cool.
+     #fdfdfd is the neutral version of the same idea: a shade off the #ffffff
+     content layer beside it and a clear step up from the #f3f4f7 ground both
+     panels sit on, so the drawer and the work read as one raised pair with a
+     gap between them rather than as a panel pushed behind the page. */
+  --sidebar: #fdfdfd;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the

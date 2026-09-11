@@ -28,7 +28,7 @@ survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
   chrome, full width above the rail + content. It shares the ground's colour.
-- **Light:** ground `#f3f4f7` → drawer `#e9ecf3` → content layer `#ffffff`, with
+- **Light:** ground `#f3f4f7` → drawer `#fdfdfd` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
   the ground's own colour and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
@@ -60,7 +60,7 @@ popover.
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
-| `bg-sidebar` | `#e9ecf3` | `#11161d` | tier-2 drawer + rail hover-overlay — a step DOWN from the ground, because the drawer sits behind the work |
+| `bg-sidebar` | `#fdfdfd` | `#11161d` | tier-2 drawer + rail hover-overlay — a shade off the content layer, raised with it above the ground |
 | `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step LIGHTER than the drawer it sits on, **not** the brand: orange put the product mark twice on one screen |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |

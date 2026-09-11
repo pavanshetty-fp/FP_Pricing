@@ -113,7 +113,7 @@ survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
   chrome, full width above the rail + content. It shares the ground's colour.
-- **Light:** ground `#f3f4f7` → drawer `#fafafa` → content layer `#ffffff`, with
+- **Light:** ground `#f3f4f7` → drawer `#e9ecf3` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
   the ground's own colour and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
@@ -145,8 +145,8 @@ popover.
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#f3f4f7` | `#080808` | tier-1 rail (merges into the ground) |
-| `bg-sidebar` | `#fafafa` | `#11161d` | tier-2 drawer + rail hover-overlay |
-| `bg-sidebar-primary` | `#e9ecf1` | `#2a2f37` | the 24px section mark — the raised-card step, **not** the brand: orange put the product mark twice on one screen |
+| `bg-sidebar` | `#e9ecf3` | `#11161d` | tier-2 drawer + rail hover-overlay — a step DOWN from the ground, because the drawer sits behind the work |
+| `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step LIGHTER than the drawer it sits on, **not** the brand: orange put the product mark twice on one screen |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#f3f4f7` | `#080808` | the app ground, by its own name |
 | `bg-fp-surface-1a` | `#f4f5f8` | `#11161d` | inner panel — one step under the content layer |
@@ -1020,15 +1020,27 @@ repo's `src/index.css`.
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
-  --sidebar: #fafafa; /* base/sidebar -> zinc/50 */
+  /* THE TIER-2 DRAWER IS A PANEL, NOT A PAGE. #fafafa (zinc/50) put it 4/255
+     off white while the ground beside it is #f3f4f7 and the content layer to
+     its right is #ffffff — so the drawer read as a piece of the content layer
+     that had drifted left rather than as its own column, and the only thing
+     separating the two was a gap. #e9ecf3 is a step DOWN from the ground, not
+     up toward the layer, which is the honest direction: the drawer is behind
+     the work, not part of it. */
+  --sidebar: #e9ecf3;
   /* THE SECTION MARK IS A QUIET TILE, not a second logo. Orange put the
      brand in two places at once — the product mark in the top bar and again
      24px below it in the drawer — and the drawer one was the louder of the
      two while naming only the section you happen to be in. The brand belongs
-     to the product, not to "Orders". It takes the raised-card step instead:
-     visible as a mark, silent as a colour, and the same relationship to its
-     surface in both themes. */
-  --sidebar-primary: var(--fp-card-1);
+     to the product, not to "Orders". It takes a card step instead: visible as
+     a mark, silent as a colour.
+
+     ONE STEP LIGHTER THAN THE DRAWER IT SITS ON, which is the rule; the rung
+     differs because the two ladders are not mirror images. In light the drawer
+     is #e9ecf3, so --fp-card-1 (#e9ecf1) would be 2/255 away and gone — the
+     mark takes --fp-card-2 (#f4f5f8), 11/255 up. In dark the drawer is #11161d
+     and --fp-card-1 is 25/255 up, which is the clearer of the two there. */
+  --sidebar-primary: var(--fp-card-2);
   --sidebar-primary-foreground: var(--fp-ink-1);
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;

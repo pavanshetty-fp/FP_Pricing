@@ -1426,16 +1426,7 @@ export function BrokerOrderSheet({
         </RadioGroup>
       </SheetSection>
 
-      {/* FIRST SECTION ON THE READ-FIRST PATTERN — deliberately one section,
-          so the two behaviours can be compared side by side in the same sheet
-          before the rest follow. An existing order gets the card and the quiet
-          fields; creating one keeps the drawn boxes, because an empty form has
-          nothing to read and the boxes are the instruction. */}
-      <SheetSection
-        title="Basic Details"
-        variant={creating ? "plain" : "card"}
-        quiet={!creating}
-      >
+      <SheetSection title="Basic Details">
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
@@ -1563,14 +1554,8 @@ export function BrokerOrderSheet({
       </SheetSection>
 
       {/* The people on the order, together. POC and salesperson were split
-          across two places; they answer the same question — who to call.
-
-          THE SECOND HALF OF THE COMPARISON. This one takes the card and NOT
-          the quiet fields, so the two ideas that arrived together can be
-          judged apart: Basic Details above is card + hidden chrome, this is
-          card + the borders the form has always drawn. Whichever wins, both
-          sections end up on it. */}
-      <SheetSection title="POC Details" variant={creating ? "plain" : "card"}>
+          across two places; they answer the same question — who to call. */}
+      <SheetSection title="POC Details">
         {/* One person per row: name and the two ways to reach them read as a
             single fact, so they sit side by side rather than wrapping over two
             rows with the contact detached from whose it is.

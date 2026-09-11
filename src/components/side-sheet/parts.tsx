@@ -27,25 +27,22 @@ export function SheetSection({
   title,
   action,
   note,
-  variant = "plain",
-  quiet = false,
+  variant = "card",
   children,
   className,
 }: {
   title: string;
   /**
-   * `card` draws the section as a bordered block with its title in a tinted
-   * header band. Use it where a section is a GROUP OF FACTS being read — the
-   * border is what says "these belong together" once the fields inside have
-   * stopped drawing borders of their own.
+   * `card` — the default — draws the section as a bordered block with its
+   * title in a tinted header band. A sheet is a stack of questions about
+   * different things, and gaps alone were carrying the whole job of saying
+   * where one subject ended and the next began; at 40px they did it only for
+   * as long as nothing in a section grew. The border says it at any length.
+   *
+   * `plain` is the old heading-over-fields form, for the handful of places
+   * that are a single continuous list rather than a set of groups.
    */
   variant?: "plain" | "card";
-  /**
-   * Hides the field chrome inside until it is hovered or focused — see
-   * `[data-quiet-fields]` in index.css. For a record that already exists.
-   * Never for creation, where the drawn boxes are the instruction.
-   */
-  quiet?: boolean;
   /**
    * Controls that act on the SECTION rather than on one field — "Add asset",
    * "Refresh". They sit on the heading row, right-aligned, because a control
@@ -92,17 +89,15 @@ export function SheetSection({
   );
 
   if (variant === "card") {
-    /* THE CARD REPLACES THE BORDERS THE FIELDS GAVE UP. Quiet fields draw
-       nothing of their own, so without this the section would be text floating
-       in the sheet with only a gap holding it together. The heading moves into
-       a tinted band because a title inside a bordered block that shares the
-       block's fill reads as the first row of content.
+    /* THE HEADING MOVES INTO A BAND, because a title inside a bordered block
+       that shares the block's fill reads as the first row of content rather
+       than as the name of what follows.
 
        The 16px title→content rhythm the plain variant measures so carefully is
-       not needed here: the band's own edge is the separation. */
+       not needed here: the band's own edge is the separation, and it holds at
+       any section length — which is the thing a 40px gap could not do. */
     return (
       <section
-        data-quiet-fields={quiet ? "" : undefined}
         /* `shrink-0` IS LOAD-BEARING, not tidiness. The sheet body is a flex
            column, and `overflow-hidden` switches a flex item's automatic
            minimum size from its content to zero — so without this the whole
@@ -121,10 +116,7 @@ export function SheetSection({
   }
 
   return (
-    <section
-      data-quiet-fields={quiet ? "" : undefined}
-      className={cn("flex flex-col gap-4", className)}
-    >
+    <section className={cn("flex flex-col gap-4", className)}>
       {heading}
       {children}
     </section>

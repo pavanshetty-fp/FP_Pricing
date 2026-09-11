@@ -40,8 +40,23 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
+- **A section is a CARD.** `SheetSection` draws a bordered block with its title
+  in a tinted header band, and that is the default — `variant="plain"` (heading
+  over fields, no box) is the exception, for a sheet that is one continuous list
+  rather than a set of groups. A sheet is a stack of questions about different
+  things, and gaps alone were carrying the whole job of saying where one subject
+  ended and the next began: at 40px they did it only while nothing in a section
+  grew, and a section holding a table or a five-row picker swallowed the
+  boundary. The border says it at any length. The title moves into the band
+  because a heading inside a bordered block that shares the block's fill reads
+  as the first row of content rather than as the name of what follows.
+  **`shrink-0` is load-bearing on the card** — the sheet body is a flex column
+  and `overflow-hidden` switches a flex item's automatic minimum size from its
+  content to zero, so without it the whole card collapses to its 2px of border.
 - **Section rhythm — 40 / 16.** Sections sit **40px** apart (the sheet body's own
-  gap); a section's title sits **16px** from its content (`SheetSection`'s default).
+  gap); on the `plain` variant a section's title sits **16px** from its content.
+  The card variant needs neither number — the band's own edge is the separation
+  — but the 40 between cards is unchanged.
   The outer gap being 2.5x the inner is what makes a heading read as belonging to
   the block beneath it. Measured alternatives: at **20** the title sits almost
   equidistant from the group above and below and stops binding to either; at **12**

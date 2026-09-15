@@ -687,9 +687,13 @@ const ORDER_CHARGES = [
  * then `Quotation` because it was following the STATUS names, where "Assigned"
  * means invitations are out.
  *
- * CANCELLED AND BLOCKED ARE SET APART. Both are places an order can BE and
- * neither is a place it passes through, so they sit after a gap rather than in
- * the sequence — the bar keeps its arrow, and the two exits are still on it.
+ * CANCELLED AND BLOCKED ARE NOT HERE. Neither is a place the order passes
+ * through — one is a way out of the lifecycle and the other is a condition
+ * that holds the order wherever it already stands. The board's swim lanes are
+ * where those belong, because a lane is a bucket and both of them are buckets;
+ * a bar is a direction, and a direction with two dead ends drawn on the end of
+ * it stops being one. The chip beside the title says which, and the banner in
+ * the body says why.
  */
 const ORDER_STAGES: Stage[] = [
   { key: "Draft", label: "Draft" },
@@ -698,8 +702,6 @@ const ORDER_STAGES: Stage[] = [
   { key: "Completed", label: "Completed" },
   { key: "Verified", label: "Verified" },
   { key: "Synced", label: "Synced" },
-  { key: "Cancelled", label: "Cancelled", ended: true },
-  { key: "Blocked", label: "Blocked", ended: true },
 ];
 
 /**
@@ -710,6 +712,11 @@ const ORDER_STAGES: Stage[] = [
  * assigned. `quoteRequested` no longer changes the answer — with `Quoting` a
  * stage of its own, an invitation with no quote asked for is still the order
  * sitting with partners.
+ *
+ * CANCELLED AND BLOCKED RETURN A KEY THAT IS NOT ON THE BAR, deliberately, and
+ * `StageBar` draws every stage as ahead. Standing nowhere is the truth about a
+ * cancelled order, and pretending it is still at the stage it died on would be
+ * the lie the old `Blocked -> Draft` mapping told.
  */
 function stageOf(status: BrokerStatus): string {
   switch (status) {
@@ -730,13 +737,12 @@ function stageOf(status: BrokerStatus): string {
 /**
  * The step a stage's work happens on, so the bar can still be the navigation
  * the two-step strip used to be. Everything from the vendor holding the order
- * onwards is settled on the pricing step; everything before it is the order
- * itself, and a stage that left the line has no pricing to reach.
+ * onwards is settled on the pricing step; everything before it — and anything
+ * that is not on the bar at all — is the order itself.
  */
 function stepOfStage(key: string): "order" | "pricing" {
   const i = ORDER_STAGES.findIndex((s) => s.key === key);
-  return i >= ORDER_STAGES.findIndex((s) => s.key === "Assigned") &&
-    !ORDER_STAGES[i]?.ended
+  return i >= ORDER_STAGES.findIndex((s) => s.key === "Assigned")
     ? "pricing"
     : "order";
 }

@@ -616,11 +616,29 @@ export function BrokerOrdersScreen({
     []
   );
 
-  /** Lanes, in lifecycle order. Lane sort is by window start, which is the only
-   *  ordering a dispatcher asks a lane for. */
+  /**
+   * Lanes, in lifecycle order — with BLOCKED MOVED TO THE END.
+   *
+   * It is not a stage the work passes through on its way anywhere; it is where
+   * orders go to wait for somebody in accounts. Sitting second it interrupted
+   * the one thing a lifecycle board is for — reading left to right and seeing
+   * the work move — and put a lane nobody can act on between the two that are
+   * touched most. At the end it is still on screen and still counted, and the
+   * five lanes that ARE the lifecycle now sit next to each other.
+   *
+   * Lane sort is by window start, which is the only ordering a dispatcher asks
+   * a lane for.
+   */
+  const laneOrder = React.useMemo(
+    () => [
+      ...BROKER_STATUSES.filter((s) => s !== "Blocked"),
+      ...BROKER_STATUSES.filter((s) => s === "Blocked"),
+    ],
+    []
+  );
   const lanes: BoardLane[] = React.useMemo(
     () =>
-      BROKER_STATUSES.map((status) => {
+      laneOrder.map((status) => {
         const dir = laneSort[status];
         /* PARTIAL LIVES IN SYNC READY. It is not a lane of its own — a lane per
            outcome of one step is how a board stops being readable — and it must

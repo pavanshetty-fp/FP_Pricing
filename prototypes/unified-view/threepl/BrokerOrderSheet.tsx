@@ -771,21 +771,63 @@ function useSheetVersion(): [SheetVersion, (v: SheetVersion) => void] {
    knowing which is which.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** A label/value row in a rail card. `value` is a node so a chip can be one. */
+/**
+ * A label/value row in a rail card, and — where there is one — the ARITHMETIC
+ * BEHIND THE FIGURE, on hover.
+ *
+ * A total in a summary is a claim, and the reader's next question is always
+ * the same: made of what? In V1 the answer was a table two sections away, and
+ * comparing the two meant holding one number in your head while you scrolled
+ * to the other. A tooltip puts the working where the claim is. It is NOT a
+ * substitute for the tables — those are where the figures are TYPED — it is
+ * the read-only account of how they add up.
+ */
 function RailRow({
   label,
   value,
+  breakdown,
 }: {
   label: string;
   value: React.ReactNode;
+  /** One line per contribution. Rendered only when there is something to show. */
+  breakdown?: { label: string; value: string }[];
 }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+  const row = (
+    <div
+      className={cn(
+        "flex items-baseline justify-between gap-3 px-4 py-2.5",
+        breakdown?.length && "cursor-help"
+      )}
+    >
       <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 truncate text-sm tabular-nums text-foreground">
+      <dd
+        className={cn(
+          "min-w-0 truncate text-sm tabular-nums text-foreground",
+          /* THE DOTTED RULE IS THE WHOLE AFFORDANCE. A figure that explains
+             itself has to say so without a second control beside it. */
+          breakdown?.length &&
+            "underline decoration-dotted decoration-muted-foreground underline-offset-4"
+        )}
+      >
         {value}
       </dd>
     </div>
+  );
+  if (!breakdown?.length) return row;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{row}</TooltipTrigger>
+      <TooltipContent side="left" className="max-w-xs">
+        <span className="flex flex-col gap-1">
+          {breakdown.map((b) => (
+            <span key={b.label} className="flex items-baseline justify-between gap-4">
+              <span className="min-w-0 truncate">{b.label}</span>
+              <span className="shrink-0 tabular-nums">{b.value}</span>
+            </span>
+          ))}
+        </span>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -1395,9 +1437,6 @@ export function BrokerOrderSheet({
   /* ── V2 — what the order has BECOME, derived once for the rail and the FAB ──
      Both read the same numbers on purpose: a completion meter that disagreed
      with the card beside it would be worse than no meter at all. */
-  const bestQuote = quotes.length
-    ? Math.min(...quotes.map((q) => quoteTotal(q, draft.lines, chargesBase)))
-    : null;
 
   /*
     THERE IS ALWAYS A NEXT ACT, AND THE FOOTER SHOULD NAME IT.
@@ -1469,6 +1508,45 @@ export function BrokerOrderSheet({
   /** Freight + fees + taxes, which belong to no line. */
   const shownCharges = shownQuote ? quoteOrderCharges(shownQuote) : 0;
   const shownMargin = revenue - shownCost;
+
+  /* ── THE WORKING BEHIND EACH SUMMARY FIGURE ──
+     One entry per line, plus the charges that belong to no line. Built from
+     the same functions the two pricing tables use, so the tooltip and the
+     table can never disagree — a breakdown that drifted from the table it
+     explains would be worse than no breakdown. */
+  const perLine = (f: (l: OrderLine) => number) =>
+    draft.lines
+      .filter((l) => f(l) !== 0)
+      .map((l) => ({
+        label: `${l.asset || "—"} · ${billableGal(l).toLocaleString()} gal`,
+        value: money(f(l)),
+      }));
+
+  const vendorBreakdown = shownQuote
+    ? [
+        ...draft.lines
+          .map((l) => {
+            const ql = shownQuote.lines.find((x) => x.asset === l.asset);
+            return ql
+              ? {
+                  label: `${l.asset || "—"} · ${billableGal(l).toLocaleString()} gal @ ${money(ql.ratePerGal + ql.surcharge)}`,
+                  value: money(quoteLineTotal(ql, l)),
+                }
+              : null;
+          })
+          .filter((x): x is { label: string; value: string } => x !== null),
+        { label: "Freight, fees and taxes", value: money(shownCharges) },
+      ]
+    : [];
+  const customerBreakdown = perLine(customerLineTotal);
+  const marginBreakdown =
+    shownQuote && shownVendorId
+      ? [
+          { label: "Customer pricing", value: money(revenue) },
+          { label: "Vendor TLC", value: `− ${money(shownCost)}` },
+        ]
+      : [];
+
   const canSubmit =
     draft.customer.trim() !== "" &&
     draft.shipTo.trim() !== "" &&
@@ -1780,6 +1858,11 @@ export function BrokerOrderSheet({
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
+      {/* AN EVEN CHANNEL ROUND THE BANNER. The body's own 16px sits above it and
+          the section rhythm's 40px below, so it read as attached to the header
+          and detached from the form it is about. `contents` leaves V1 exactly
+          as it was — the wrapper disappears from the layout there. */}
+      <div className={cn(v2 ? "flex flex-col gap-4" : "contents")}>
       {order?.blockedReason && (
         <div className="flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
           <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
@@ -2933,7 +3016,11 @@ export function BrokerOrderSheet({
               <div className="border-t border-border px-3 py-2">
                 <button
                   type="button"
-                  disabled={draft.status === "Blocked" || uninvited.length === 0}
+                  /* A BLOCK STOPS SENDING, NOT BUILDING THE LIST. Lining up
+                     the partners you will ask is exactly the work worth doing
+                     while accounts clear the hold — `sendInvitations` is what
+                     the block gates, and it is gated there. */
+                  disabled={uninvited.length === 0}
                   onClick={addPartnerRow}
                   className="-mx-1 flex h-8 items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
                 >
@@ -3171,6 +3258,12 @@ export function BrokerOrderSheet({
                 the whole card: "yet to receive a quote" explains the em-dash
                 above it instead of standing in for the figures. */}
             <RailCard title="Summary" icon={<Info />}>
+              {/* FOUR FIGURES IN THE ORDER THE MONEY MOVES: what was asked
+                  for, what the partner charges to move it, what the customer
+                  pays, and what is left between the two. Each of the three
+                  money rows carries its own working on hover — the tables are
+                  where the numbers are typed, this is the account of how they
+                  add up. */}
               <dl className="flex flex-col divide-y divide-border">
                 <RailRow
                   label="Requested"
@@ -3181,23 +3274,41 @@ export function BrokerOrderSheet({
                         ? `${gal.toLocaleString()} gal`
                         : "—"
                   }
+                  breakdown={draft.lines
+                    .filter((l) => l.asset)
+                    .map((l) => ({
+                      label: `${l.asset} · ${l.product}`,
+                      value: l.topOff
+                        ? "Top-off"
+                        : `${billableGal(l).toLocaleString()} gal`,
+                    }))}
                 />
                 <RailRow
-                  label="Best quote"
-                  value={bestQuote == null ? "—" : money(bestQuote)}
+                  label={
+                    shownVendorId
+                      ? `Vendor quote — ${vendorById(shownVendorId)?.name ?? "partner"}`
+                      : "Vendor quote"
+                  }
+                  value={shownQuote ? money(shownCost) : "—"}
+                  breakdown={vendorBreakdown}
                 />
-                <RailRow label="Customer total" value={money(revenue)} />
+                <RailRow
+                  label="Customer pricing"
+                  value={money(revenue)}
+                  breakdown={customerBreakdown}
+                />
                 <RailRow
                   label="Margin"
                   value={
-                    bestQuote == null ? (
-                      "—"
-                    ) : (
+                    shownQuote ? (
                       <span className={cn(shownMargin < 0 && "text-destructive")}>
                         {money(shownMargin)}
                       </span>
+                    ) : (
+                      "—"
                     )
                   }
+                  breakdown={marginBreakdown}
                 />
               </dl>
               {quotes.length === 0 && (
@@ -3243,6 +3354,15 @@ export function BrokerOrderSheet({
                   <dd className="truncate text-sm text-foreground">
                     {draft.primaryPoc || "—"}
                   </dd>
+                  {/* THE POINT OF A CONTACT IS BEING CONTACTABLE. A name on its
+                      own sends the reader back into the form to find the number
+                      — which is the one thing this column exists to save. */}
+                  {draft.primaryPoc && POC_DIRECTORY[draft.primaryPoc] && (
+                    <dd className="truncate text-xs text-muted-foreground">
+                      {POC_DIRECTORY[draft.primaryPoc].phone} ·{" "}
+                      {POC_DIRECTORY[draft.primaryPoc].email}
+                    </dd>
+                  )}
                 </div>
               </dl>
               <div className="border-t border-border px-4 py-3">
@@ -3328,6 +3448,7 @@ export function BrokerOrderSheet({
             </RailCard>
           </aside>
         )}
+        </div>
         </div>
         </>
       ) : (

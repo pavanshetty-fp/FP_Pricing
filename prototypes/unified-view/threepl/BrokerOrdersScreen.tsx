@@ -13,8 +13,13 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, type ListView } from "../ListToolbar";
-import { ListFilters } from "../ListFilters";
+import {
+  ListToolbar,
+  ColumnSearchChip,
+  FilterChips,
+  type ListView,
+} from "../ListToolbar";
+import { ListFilters, type ListFacet } from "../ListFilters";
 import { ListTable, TwoLineCell } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import {
@@ -700,6 +705,7 @@ export function BrokerOrdersScreen({
     [filtered, laneSort, requestInvoice, setOpenId]
   );
 
+
   const onSort = (key: BrokerColumnKey) => {
     setSort((prev) => {
       if (prev?.key !== key) return { key, dir: "asc" };
@@ -724,6 +730,81 @@ export function BrokerOrdersScreen({
   /* Every site, not only the ones an order already uses — a new order must be
      able to reach a site nobody has ordered to yet. */
   const shipTos = React.useMemo(() => SHIP_TO_SITES.map((x) => x.name), []);
+
+  /* ONE LIST, READ TWICE — the panel builds its facet menu from it and the
+     chip shelf looks up what a `facetKey:option` id is CALLED. Inline in the
+     panel's props it could only be read by the panel, and the shelf would have
+     carried a second copy of every label. */
+  const ORDER_FACETS: ListFacet[] = React.useMemo(
+    () => [
+
+              {
+                key: "status",
+                label: "Status",
+                // The filter's status list is longer than the board's lanes —
+                // see BROKER_STATUS_FILTERS for why the two are kept apart.
+                options: [...BROKER_STATUS_FILTERS],
+              },
+              {
+                key: "customer",
+                label: "Customer",
+                options: customers,
+                searchable: true,
+              },
+              {
+                key: "shipToAddress",
+                label: "Ship-To Address",
+                /* One facet, three questions. Ship-to name, ZIP and state are
+                   the same address asked at three grains, so they share a
+                   pane instead of eating three rows of the facet menu. Each
+                   site carries its full address, because two sites can share
+                   a name and only the street tells them apart. */
+                sections: [
+                  {
+                    title: "Ship-To Name",
+                    options: SHIP_TO_SITES.map((x) => ({
+                      value: x.name,
+                      description: siteAddress(x),
+                    })),
+                  },
+                  {
+                    title: "Zip Code",
+                    options: [...new Set(SHIP_TO_SITES.map((x) => x.zip))],
+                  },
+                  {
+                    title: "State",
+                    options: [...new Set(SHIP_TO_SITES.map((x) => x.state))],
+                  },
+                ],
+                searchable: true,
+              },
+              {
+                key: "orderTypes",
+                label: "Order Types",
+                options: [...ORDER_TYPE_FILTERS],
+              },
+              {
+                key: "product",
+                label: "Product",
+                options: [...PRODUCTS],
+                searchable: true,
+              },
+              {
+                key: "vendor",
+                label: "Vendors / Common Carriers",
+                options: VENDORS.map((v) => v.name),
+                searchable: true,
+              },
+              {
+                key: "salesperson",
+                label: "Sales Person",
+                options: [...SALESPEOPLE],
+              },
+              { key: "createdBy", label: "Created By", options: [...CREATED_BY] },
+              { key: "tags", label: "Tags", options: [...ORDER_TAGS] },
+                ],
+    [customers]
+  );
 
   /** The draft's fields, folded onto the stored order. Pure, so the save can
    *  diff the before and after without running the mapping twice. */
@@ -1139,80 +1220,12 @@ export function BrokerOrdersScreen({
           searchPlaceholder="Search orders, customers, partners…"
           filters={
             <ListFilters
+              value={facetSel}
               onApply={(sel) => {
                 setFacetSel(sel);
                 setPage(1);
               }}
-              /* Status first — it is the question asked most, and the old
-                 order-kind facet that used to sit here is gone: its three
-                 values were not order types. "Order Types" below now carries
-                 the real ones. */
-              facets={[
-                {
-                  key: "status",
-                  label: "Status",
-                  // The filter's status list is longer than the board's lanes —
-                  // see BROKER_STATUS_FILTERS for why the two are kept apart.
-                  options: [...BROKER_STATUS_FILTERS],
-                },
-                {
-                  key: "customer",
-                  label: "Customer",
-                  options: customers,
-                  searchable: true,
-                },
-                {
-                  key: "shipToAddress",
-                  label: "Ship-To Address",
-                  /* One facet, three questions. Ship-to name, ZIP and state are
-                     the same address asked at three grains, so they share a
-                     pane instead of eating three rows of the facet menu. Each
-                     site carries its full address, because two sites can share
-                     a name and only the street tells them apart. */
-                  sections: [
-                    {
-                      title: "Ship-To Name",
-                      options: SHIP_TO_SITES.map((x) => ({
-                        value: x.name,
-                        description: siteAddress(x),
-                      })),
-                    },
-                    {
-                      title: "Zip Code",
-                      options: [...new Set(SHIP_TO_SITES.map((x) => x.zip))],
-                    },
-                    {
-                      title: "State",
-                      options: [...new Set(SHIP_TO_SITES.map((x) => x.state))],
-                    },
-                  ],
-                  searchable: true,
-                },
-                {
-                  key: "orderTypes",
-                  label: "Order Types",
-                  options: [...ORDER_TYPE_FILTERS],
-                },
-                {
-                  key: "product",
-                  label: "Product",
-                  options: [...PRODUCTS],
-                  searchable: true,
-                },
-                {
-                  key: "vendor",
-                  label: "Vendors / Common Carriers",
-                  options: VENDORS.map((v) => v.name),
-                  searchable: true,
-                },
-                {
-                  key: "salesperson",
-                  label: "Sales Person",
-                  options: [...SALESPEOPLE],
-                },
-                { key: "createdBy", label: "Created By", options: [...CREATED_BY] },
-                { key: "tags", label: "Tags", options: [...ORDER_TAGS] },
-              ]}
+              facets={ORDER_FACETS}
             />
           }
           columns={TOGGLE_COLUMNS}
@@ -1251,15 +1264,29 @@ export function BrokerOrdersScreen({
             />
           }
         />
-        <ColumnSearchChip
-          searchFields={BROKER_SEARCH_FIELDS}
-          colScope={colScope}
-          colQuery={colQuery}
-          onClear={() => {
-            setColQuery("");
+        {/* ONE SHELF FOR EVERY NARROWING THAT IS ON, facets and column search
+            together — they do the same thing to the list, and two rows of
+            chips saying so would cost twice the height to say it less
+            clearly. */}
+        <FilterChips
+          facets={ORDER_FACETS}
+          selected={facetSel}
+          onChange={(next) => {
+            setFacetSel(next);
             setPage(1);
           }}
-        />
+        >
+          <ColumnSearchChip
+            className=""
+            searchFields={BROKER_SEARCH_FIELDS}
+            colScope={colScope}
+            colQuery={colQuery}
+            onClear={() => {
+              setColQuery("");
+              setPage(1);
+            }}
+          />
+        </FilterChips>
       </div>
 
       {/* The order-kind tab row used to sit here. It is gone: All / Regular /

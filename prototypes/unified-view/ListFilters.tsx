@@ -65,9 +65,20 @@ const facetOptions = (f: ListFacet): string[] =>
 
 export function ListFilters({
   facets,
+  value,
   onApply,
 }: {
   facets: ListFacet[];
+  /**
+   * What is actually applied, when the caller keeps it.
+   *
+   * The panel STAGES changes — nothing narrows until Apply — so it holds its
+   * own working copy, and that copy has to be reset to the truth each time the
+   * panel opens or it will re-apply a tick the reader took off somewhere else.
+   * Somewhere else is the chip shelf: take a chip off, open the panel, and
+   * without this the checkbox would still be on.
+   */
+  value?: ReadonlySet<string>;
   /**
    * Fires on Apply and on Clear All with the selected `facetKey:option` ids.
    *
@@ -84,6 +95,7 @@ export function ListFilters({
   const [query, setQuery] = React.useState("");
 
   const facet = facets.find((f) => f.key === facetKey) ?? facets[0];
+  const applied = value ? value.size : checked.size;
 
   const toggle = (key: string) =>
     setChecked((prev) => {
@@ -108,7 +120,13 @@ export function ListFilters({
   const hits = sections.reduce((n, sec) => n + sec.options.length, 0);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next && value) setChecked(new Set(value));
+        setOpen(next);
+      }}
+    >
       {/* `asChild` slots onto exactly ONE child, so this note sits outside the
           trigger — as raw text inside it, React counted it as a second child and
           Radix threw "failed to slot onto its children".
@@ -124,9 +142,15 @@ export function ListFilters({
         <Button variant="outline" size="sm">
           <ListFilter />
           Filters
-          {checked.size > 0 && (
+          {/* THE COUNT IS WHAT IS APPLIED, NOT WHAT IS TICKED. The panel's own
+              ticks are a draft until Apply, and the button is read with the
+              panel shut — a number that moved as you ticked would be counting
+              a narrowing that has not happened. It also has to follow a chip
+              being taken off outside the panel. Falls back to the ticks only
+              where the caller does not keep the applied set. */}
+          {applied > 0 && (
             <span className="ml-1 rounded-full bg-accent px-1.5 text-xs tabular-nums">
-              {checked.size}
+              {applied}
             </span>
           )}
         </Button>

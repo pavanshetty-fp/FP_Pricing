@@ -1,6 +1,5 @@
 import * as React from "react";
-import { Download, Plus, SearchX, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Download, Plus, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -19,7 +18,12 @@ import {
 } from "@/components/tables-layout";
 import { toast } from "sonner";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, type ListView } from "../ListToolbar";
+import {
+  ListToolbar,
+  ColumnSearchChip,
+  FilterChips,
+  type ListView,
+} from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ListTable } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
@@ -139,13 +143,6 @@ interface ViewState {
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({ ...s, hidden: [...s.hidden].sort(), filters: [...s.filters].sort() });
-
-/** `"credit:Approved"` reads as `Credit · Approved` on the chip. */
-function chipLabel(id: string, facets: { key: string; label: string }[]): string {
-  const facet = facets.find((f) => id.startsWith(`${f.key}:`));
-  if (!facet) return id;
-  return `${facet.label}: ${id.slice(facet.key.length + 1)}`;
-}
 
 /**
  * CSV of what is on screen, not of the table.
@@ -388,7 +385,7 @@ export function DirectoryList<Row, K extends string>({
   const clearSelection = () => setSelected(new Set());
   const actions = bulkActions?.(selectedRows, clearSelection) ?? [];
 
-  const chips = applied.map((id) => ({ id, label: chipLabel(id, facets) }));
+  const appliedSet = React.useMemo(() => new Set(applied), [applied]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -412,6 +409,7 @@ export function DirectoryList<Row, K extends string>({
                     options: f.options,
                     searchable: f.searchable,
                   }))}
+                  value={appliedSet}
                   onApply={(ids) => {
                     setApplied([...ids]);
                     setPage(1);
@@ -493,50 +491,32 @@ export function DirectoryList<Row, K extends string>({
         )}
       </div>
 
-      <ColumnSearchChip
-        searchFields={searchFields}
-        colScope={colScope}
-        colQuery={colQuery}
-        onClear={() => {
-          setColQuery("");
+      {/* ACTIVE FILTERS, SAID OUT LOUD, on the same shelf as the column
+          search. The facet panel remembers what was picked, but it is closed —
+          and a list that is quietly narrowed is the single most common way
+          people conclude their data is missing. Shared with the orders board,
+          because a chip row that behaved differently on two lists would be two
+          things to learn for one idea. */}
+      <FilterChips
+        facets={facets}
+        selected={appliedSet}
+        onChange={(next) => {
+          setApplied([...next]);
           setPage(1);
+          reload();
         }}
-      />
-
-      {/* ACTIVE FILTERS, SAID OUT LOUD. The facet panel remembers what was
-          picked, but it is closed — and a list that is quietly narrowed is the
-          single most common way people conclude their data is missing. */}
-      {chips.length > 0 && (
-        <div className="mt-2 flex shrink-0 flex-wrap items-center gap-1.5">
-          {chips.map((c) => (
-            <Badge key={c.id} variant="secondary" className="gap-1 pr-1 font-normal">
-              {c.label}
-              <button
-                type="button"
-                aria-label={`Remove filter ${c.label}`}
-                className="rounded-sm p-0.5 outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-ring/50"
-                onClick={() => {
-                  setApplied((prev) => prev.filter((x) => x !== c.id));
-                  setPage(1);
-                }}
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              setApplied([]);
-              setPage(1);
-              reload();
-            }}
-          >
-            Clear all filters
-          </Button>
-        </div>
-      )}
+      >
+        <ColumnSearchChip
+          className=""
+          searchFields={searchFields}
+          colScope={colScope}
+          colQuery={colQuery}
+          onClear={() => {
+            setColQuery("");
+            setPage(1);
+          }}
+        />
+      </FilterChips>
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

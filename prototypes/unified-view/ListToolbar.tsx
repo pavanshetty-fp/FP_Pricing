@@ -370,16 +370,20 @@ export function ColumnSearchChip({
   colScope,
   colQuery,
   onClear,
+  className = "mt-3",
 }: {
   searchFields: ListSearchField[];
   colScope: string;
   colQuery: string;
   onClear: () => void;
+  /** Overridable so the chip can join a shelf that already has its own top
+   *  margin — see `FilterChips`, which is the other thing on that shelf. */
+  className?: string;
 }) {
   if (!colQuery.trim()) return null;
   const label = searchFields.find((f) => f.key === colScope)?.label ?? "column";
   return (
-    <div className="mt-3 flex shrink-0 items-center gap-2">
+    <div className={cn("flex shrink-0 items-center gap-2", className)}>
       <span className="inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground">
         <Search className="size-3 text-muted-foreground" />
         {label}: “{colQuery}”
@@ -392,6 +396,102 @@ export function ColumnSearchChip({
           <X className="size-3" />
         </button>
       </span>
+    </div>
+  );
+}
+
+/**
+ * THE FILTERS THAT ARE ON, as removable chips under the toolbar.
+ *
+ * A COUNT IS NOT AN ANSWER. "Filters 7" says the list has been narrowed and
+ * refuses to say how — the only way to find out was to open the panel, walk
+ * six facets and read the checkboxes, which is the whole of what the chips do
+ * at a glance. And a narrowing you cannot see is one you forget you applied:
+ * the empty list that follows reads as "no orders" rather than "no orders that
+ * match the six things you asked for".
+ *
+ * ONE LINE, ALWAYS — IT SCROLLS RATHER THAN WRAPS. This shelf sits between the
+ * toolbar and the data and every pixel of it comes out of the data. Wrapped,
+ * its height is a function of how many filters are on and how long their names
+ * are: tick eight vendors and the board loses three rows of card to a list of
+ * what you just did. A capped count would not fix it either — five chips fit
+ * on one line or do not depending on the words in them, and nothing can know
+ * that without measuring. A scroller is one line at every width and every
+ * count, which is the only promise worth making about a strip in this
+ * position, and the same call the stage bar makes for the same reason.
+ *
+ * ONE CHIP PER VALUE, NOT PER FACET. A chip per facet would be shorter and
+ * would only be removable whole — and the reason to look at this row at all is
+ * usually to take ONE thing off.
+ */
+export function FilterChips({
+  facets,
+  selected,
+  onChange,
+  className,
+  children,
+}: {
+  /** Key → label, for naming the facet a value came from. */
+  facets: { key: string; label: string }[];
+  /** Applied ids, as `facetKey:option` — what `ListFilters` emits. */
+  selected: ReadonlySet<string>;
+  onChange: (next: ReadonlySet<string>) => void;
+  className?: string;
+  /** Anything else on the same shelf — the column-search chip, usually. */
+  children?: React.ReactNode;
+}) {
+  const ids = [...selected];
+  if (ids.length === 0) return children ? <>{children}</> : null;
+
+  const labelOf = (key: string) =>
+    facets.find((f) => f.key === key)?.label ?? key;
+
+  return (
+    <div className={cn("mt-3 flex shrink-0 items-center gap-2", className)}>
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+        {ids.map((id) => {
+          /* SPLIT ON THE FIRST COLON ONLY — a ship-to option can hold one. */
+          const at = id.indexOf(":");
+          const facet = labelOf(id.slice(0, at));
+          const value = id.slice(at + 1);
+          return (
+            <span
+              key={id}
+              title={`${facet}: ${value}`}
+              className="inline-flex max-w-[220px] shrink-0 items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground"
+            >
+              <span className="truncate">
+                <span className="text-muted-foreground">{facet}: </span>
+                {value}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove filter ${facet}: ${value}`}
+                onClick={() => {
+                  const next = new Set(selected);
+                  next.delete(id);
+                  onChange(next);
+                }}
+                className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          );
+        })}
+        {children}
+      </div>
+      {/* PINNED OUTSIDE THE SCROLLER, because the way out of a narrowing must
+          not itself be somewhere you have to scroll to. Clear All is in the
+          panel too — this is where you are when you decide you want none of
+          it. */}
+      <button
+        type="button"
+        onClick={() => onChange(new Set())}
+        className="shrink-0 rounded-sm text-[11px] text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        Clear all
+      </button>
     </div>
   );
 }

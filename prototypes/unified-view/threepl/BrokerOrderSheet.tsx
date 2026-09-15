@@ -7,6 +7,9 @@ import {
   Copy,
   Download,
   History as HistoryIcon,
+  Info,
+  Users,
+  ListChecks,
   Ban,
   MoreHorizontal,
   Truck,
@@ -757,6 +760,94 @@ function useSheetVersion(): [SheetVersion, (v: SheetVersion) => void] {
   return [version, set];
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   V2 — the rail, and the pending-steps FAB
+
+   ONE RULE DECIDES WHICH SIDE A CARD IS ON: can you type into it? Everything
+   the order is MADE of goes left, in the order you fill it in. Everything the
+   order HAS BECOME goes right — derived, read-only, and true whether or not
+   anyone is looking. That is why the rail cannot be edited and the left column
+   has no summaries: a number you can change and a number that changes itself
+   look identical once they are in the same column, and the reader stops
+   knowing which is which.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** A label/value row in a rail card. `value` is a node so a chip can be one. */
+function RailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+      <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-sm tabular-nums text-foreground">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * A rail card: the same bordered block `SheetSection` draws, with its own
+ * header band and a flush body — the rail is nothing but read-outs, so every
+ * card in it is a list running edge to edge.
+ */
+function RailCard({
+  title,
+  icon,
+  action,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="shrink-0 overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-fp-surface-1a px-4 py-2.5">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+          {icon && <span className="[&_svg]:size-3.5">{icon}</span>}
+          {title}
+        </h3>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * WHAT AN EMPTY SUMMARY SAYS DEPENDS ON THE STAGE, because "nothing here yet"
+ * and "nothing here, and that is a problem" are different messages and the
+ * order knows which one it is. A card that said "No data" at every stage would
+ * be telling the reader to work out the stage themselves — which is the one
+ * thing the sheet already knows.
+ */
+function summaryEmptyLine(status: BrokerStatus, invited: number): string {
+  if (status === "Cancelled") return "Cancelled — nothing to price.";
+  if (status === "Draft")
+    return invited > 0
+      ? "Invitations are out. Quotes appear here as partners respond."
+      : "Invite a delivery partner to start collecting quotes.";
+  if (status === "Blocked") return "Blocked on credit — no quotes can be collected.";
+  if (status === "Assigned") return "Yet to receive a quote.";
+  return "Yet to review a quote.";
+}
+
+/** One group of fields on the left, and how much of it is filled in. */
+interface StepGroup {
+  key: string;
+  label: string;
+  filled: number;
+  total: number;
+  /** The one thing worth doing about this group right now, if there is one. */
+  cta?: { label: string; onSelect: () => void };
+}
+
 export function BrokerOrderSheet({
   order,
   mode = "edit",
@@ -780,6 +871,7 @@ export function BrokerOrderSheet({
   const [shownQuoteId, setShownQuote] = React.useState<string | null>(null);
   const creating = mode === "create";
   const [version, setVersion] = useSheetVersion();
+  const v2 = version === "v2";
 
   React.useEffect(() => {
     if (!open) return;
@@ -1310,6 +1402,75 @@ export function BrokerOrderSheet({
     return q ? quoteTotal(q, draft.lines, chargesBase) : 0;
   };
   const revenue = customerTotal(draft.lines);
+
+  /* ── V2 — what the order has BECOME, derived once for the rail and the FAB ──
+     Both read the same numbers on purpose: a completion meter that disagreed
+     with the card beside it would be worse than no meter at all. */
+  const bestQuote = quotes.length
+    ? Math.min(...quotes.map((q) => quoteTotal(q, draft.lines, chargesBase)))
+    : null;
+
+  /** A field counts as filled when it holds something a person put there. */
+  const stepGroups: StepGroup[] = [
+    {
+      key: "basic",
+      label: "Basic Details",
+      total: 4,
+      filled: [draft.customer, draft.shipTo, draft.poNumber, draft.orderType].filter(
+        Boolean
+      ).length,
+    },
+    {
+      key: "poc",
+      label: "POC Details",
+      total: 2,
+      filled: [draft.primaryPoc, draft.salesperson].filter(Boolean).length,
+    },
+    {
+      key: "schedule",
+      label: "Schedule Details",
+      total: 2,
+      filled: [draft.plannedDate, draft.windowStart].filter(Boolean).length,
+    },
+    {
+      key: "delivery",
+      label: "Delivery Order",
+      total: 1,
+      filled: hasAssets ? 1 : 0,
+    },
+    {
+      key: "vendor",
+      label: "Vendor",
+      total: 1,
+      filled: invitedIds.length > 0 ? 1 : 0,
+      /* THE ACT THAT IS ACTUALLY AVAILABLE, not the next row in the form. A
+         partner has said yes and nobody has asked them for a price — that is
+         a thing to do, and it is three sections away from where the reader
+         would be looking for it. */
+      cta:
+        quotingPartners.length > 0 && !draft.quoteRequested
+          ? {
+              label: "Request a quote",
+              onSelect: () => set("quoteRequested", true),
+            }
+          : uninvited.length > 0 && invitedIds.length === 0
+            ? { label: "Invite a partner", onSelect: addPartnerRow }
+            : undefined,
+    },
+    {
+      key: "pricing",
+      label: "Quotes & pricing",
+      total: 1,
+      filled: draft.vendorId ? 1 : 0,
+      cta:
+        quotes.length > 0 && !draft.vendorId
+          ? { label: "Review quotes", onSelect: () => setStep("pricing") }
+          : undefined,
+    },
+  ];
+  const groupsDone = stepGroups.filter((g) => g.filled >= g.total).length;
+  const pctOf = (g: StepGroup) =>
+    g.total === 0 ? 100 : Math.round((g.filled / g.total) * 100);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
   /** The base on its own, so the table can show it whether or not it counts. */
   const shownBase = shownQuote ? quoteBaseTotal(shownQuote, draft.lines) : 0;
@@ -1327,7 +1488,10 @@ export function BrokerOrderSheet({
          columns and reads well at 864; step 2's is eight, and at 864 its
          headers wrapped onto two lines and stopped lining up with the figures
          under them. A sheet is only as wide as what is currently in it. */
-      size={step === "pricing" ? "xxwide" : "wide"}
+      /* WIDTH IS PER STEP, AND NOW PER VERSION. V2's order step is two columns
+         for the same reason step 2 is: a rail costs the form 340px plus a gap,
+         and at 864 that comes straight out of two-column field pairs. */
+      size={step === "pricing" || v2 ? "xxwide" : "wide"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -1358,6 +1522,81 @@ export function BrokerOrderSheet({
             },
           ]}
         />
+        {/* ── V2 — PENDING STEPS ───────────────────────────────────────────
+            A LONG FORM DOES NOT SAY HOW MUCH OF IT IS LEFT. The sheet knows —
+            it knows which groups are empty, which are half done, and which of
+            them has something that can be acted on right now — and in V1 the
+            only way to find out was to scroll it all and remember.
+
+            IT CARRIES ACTIONS, NOT JUST A SCORE. A meter that only counts is a
+            progress bar; what makes this worth opening is that the one act
+            actually available — a partner has said yes and nobody has asked
+            them for a price — is offered HERE, beside the group it belongs to,
+            three sections from where the reader would have gone looking.
+
+            IN THE FOOTER, NOT FLOATING OVER THE BODY. The footer is already
+            the bar that does not scroll, and a circle hovering over a form
+            covers the last field on every screen size nobody tested. */}
+        {v2 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <ListChecks />
+                {groupsDone} of {stepGroups.length} groups done
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" side="top" className="w-80 p-0">
+              <ul className="flex flex-col divide-y divide-border">
+                {stepGroups.map((g) => {
+                  const pct = pctOf(g);
+                  const done = pct === 100;
+                  return (
+                    <li key={g.key} className="flex flex-col gap-2 px-3 py-2.5">
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="truncate text-sm text-foreground">
+                          {g.label}
+                        </span>
+                        {/* PER CENT AND THE COUNT IT CAME FROM. "50%" alone
+                            makes the reader guess how much work that is; "2 of
+                            4" alone makes them do the arithmetic. */}
+                        <span
+                          className={cn(
+                            "shrink-0 text-xs tabular-nums",
+                            done ? "text-status-success" : "text-muted-foreground"
+                          )}
+                        >
+                          {done ? "Done" : `${pct}% · ${g.filled} of ${g.total}`}
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden
+                        className="h-1 w-full overflow-hidden rounded-full bg-accent"
+                      >
+                        <span
+                          className={cn(
+                            "block h-full rounded-full transition-[width]",
+                            done ? "bg-status-success" : "bg-brand"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </span>
+                      {g.cta && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="self-start"
+                          onClick={g.cta.onSelect}
+                        >
+                          {g.cta.label}
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </PopoverContent>
+          </Popover>
+        )}
         </div>
       }
       headerSubtitle={
@@ -1511,8 +1750,17 @@ export function BrokerOrderSheet({
         explaining itself. The lifecycle moves stay in the rail, where the
         numbers they follow from are.
       */
+      /* V2 SAVES ITSELF. The header already says "Draft saved" as you type, and
+         a Save button beside a line claiming the work is already kept is the
+         sheet arguing with itself — one of the two has to be wrong and the
+         reader cannot tell which. On the order step V2 has no primary at all;
+         the acts that ARE available live in the pending-steps panel, beside the
+         group they belong to. Step 2 keeps Accept quote: that is not a save,
+         it is the decision the step exists for. */
       footerPrimary={
-        step !== "pricing" ? undefined : shownVendorId &&
+        v2 && step !== "pricing"
+          ? null
+          : step !== "pricing" ? undefined : shownVendorId &&
           draft.vendorId !== shownVendorId ? (
           <>
             {draft.vendorId && (
@@ -1583,6 +1831,23 @@ export function BrokerOrderSheet({
     >
       {step === "order" ? (
         <>
+        {/* ── V2 — TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ──────
+            One rule decides which side a card is on: can you type into it?
+            The order's parts go left, in the sequence you fill them. What the
+            order HAS BECOME goes right — derived, read-only, true whether or
+            not anyone is looking. Once an editable number and a computed one
+            share a column they look identical, and the reader stops knowing
+            which is which.
+
+            V1 IS THE SAME CONTENT IN ONE COLUMN. Nothing is duplicated: the
+            left column is V1's body verbatim, and the rail is the only thing
+            V2 adds. That is what keeps both versions honest to compare. */}
+        <div
+          className={cn(
+            v2 && "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"
+          )}
+        >
+        <div className={cn(v2 && "flex min-w-0 flex-col gap-10")}>
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
@@ -2961,6 +3226,166 @@ export function BrokerOrderSheet({
           />
         </SheetField>
       </SheetSection>
+        </div>
+
+        {v2 && (
+          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            {/* ── SUMMARY ── */}
+            <RailCard title="Summary" icon={<Info />}>
+              {quotes.length === 0 ? (
+                /* WHAT "EMPTY" MEANS DEPENDS ON THE STAGE. "No data" at every
+                   stage makes the reader work out the stage themselves, which
+                   is the one thing the sheet already knows. */
+                <p className="px-4 py-3 text-sm text-muted-foreground">
+                  {summaryEmptyLine(draft.status, invitedIds.length)}
+                </p>
+              ) : (
+                <dl className="flex flex-col divide-y divide-border">
+                  <RailRow
+                    label="Requested"
+                    value={
+                      isAllTopOff(draft.lines)
+                        ? "Top-off"
+                        : `${gal.toLocaleString()} gal`
+                    }
+                  />
+                  <RailRow
+                    label="Best quote"
+                    value={bestQuote == null ? "—" : money(bestQuote)}
+                  />
+                  <RailRow label="Customer total" value={money(revenue)} />
+                  <RailRow
+                    label="Margin"
+                    value={
+                      <span
+                        className={cn(
+                          shownMargin < 0 && "text-destructive"
+                        )}
+                      >
+                        {money(shownMargin)}
+                      </span>
+                    }
+                  />
+                </dl>
+              )}
+            </RailCard>
+
+            {/* ── ASSOCIATED RECORDS ──
+                THE ORDER POINTS AT FOUR OTHER RECORDS and in V1 you learn that
+                by reading four different sections. Here they are the list they
+                always were: who it is for, where it goes, and every partner
+                with where that partner has got to. */}
+            <RailCard title="Associated records" icon={<Users />}>
+              <div className="flex flex-col divide-y divide-border">
+                <div className="flex flex-col gap-0.5 px-4 py-2.5">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {draft.customer || "—"}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    Customer{draft.erpId ? ` · ${draft.erpId}` : ""}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5 px-4 py-2.5">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {draft.shipTo || "—"}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    Ship-to{site ? ` · ${site.city}, ${site.state}` : ""}
+                  </span>
+                </div>
+                {draft.primaryPoc && (
+                  <div className="flex flex-col gap-0.5 px-4 py-2.5">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {draft.primaryPoc}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Primary POC
+                    </span>
+                  </div>
+                )}
+                {invitedIds.length === 0 ? (
+                  <p className="px-4 py-2.5 text-sm text-muted-foreground">
+                    No delivery partner yet.
+                  </p>
+                ) : (
+                  invitedIds.map((id) => (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {vendorById(id)?.name ?? id}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          Partner
+                        </span>
+                      </span>
+                      <StatusChip
+                        tone={
+                          draft.vendorId === id
+                            ? "success"
+                            : quotes.some((q) => q.vendorId === id)
+                              ? "processing"
+                              : "neutral"
+                        }
+                        variant="soft"
+                      >
+                        {draft.vendorId === id
+                          ? "Holds order"
+                          : quotes.some((q) => q.vendorId === id)
+                            ? "Quoted"
+                            : draft.acceptedVendorIds.includes(id)
+                              ? "Accepted"
+                              : "Invited"}
+                      </StatusChip>
+                    </div>
+                  ))
+                )}
+              </div>
+            </RailCard>
+
+            {/* ── ACTIVITY, LAST ──
+                It is the longest block and the one read least often, which is
+                exactly why it goes at the foot of the rail rather than behind
+                the header icon: in a column that scrolls with the form, "last"
+                costs nothing, and a drawer costs a click every time. */}
+            <RailCard title="Activity" icon={<HistoryIcon />}>
+              {!order || order.audit.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-muted-foreground">
+                  Nothing has changed yet.
+                </p>
+              ) : (
+                <ol className="flex flex-col divide-y divide-border">
+                  {[...order.audit]
+                    .reverse()
+                    .slice(0, 6)
+                    .map((e, i) => (
+                      <li
+                        key={`${e.at}-${i}`}
+                        className="flex flex-col gap-1 px-4 py-2.5"
+                      >
+                        <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                          <span className="font-medium text-foreground">
+                            {e.by}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {AUDIT_FMT.format(new Date(e.at))}
+                          </span>
+                        </span>
+                        {e.changes.map((c) => (
+                          <span key={c} className="text-sm text-foreground">
+                            {c}
+                          </span>
+                        ))}
+                      </li>
+                    ))}
+                </ol>
+              )}
+            </RailCard>
+          </aside>
+        )}
+        </div>
         </>
       ) : (
         <>

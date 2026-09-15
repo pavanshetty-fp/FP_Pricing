@@ -1858,13 +1858,20 @@ export function BrokerOrderSheet({
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
-      {/* AN EVEN CHANNEL ROUND THE BANNER. The body's own 16px sits above it and
-          the section rhythm's 40px below, so it read as attached to the header
-          and detached from the form it is about. `contents` leaves V1 exactly
-          as it was — the wrapper disappears from the layout there. */}
-      <div className={cn(v2 ? "flex flex-col gap-4" : "contents")}>
       {order?.blockedReason && (
-        <div className="flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
+        /* AN EVEN CHANNEL ROUND THE BANNER. The column's 40px rhythm below it
+           and the body's own 16px above made it read as attached to the header
+           and detached from the form it is about; the negative margin pulls the
+           gap below back to the 16 above it. A WRAPPER WOULD NOT DO — it has to
+           be a sibling of the sections to sit in their column at all, and a
+           wrapper round the banner alone changes nothing about the gap after
+           it. V1 keeps the 40, where the banner is not in a column. */
+        <div
+          className={cn(
+            "flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3",
+            v2 && "-mb-6"
+          )}
+        >
           <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-foreground">
@@ -3448,7 +3455,6 @@ export function BrokerOrderSheet({
             </RailCard>
           </aside>
         )}
-        </div>
         </div>
         </>
       ) : (

@@ -1469,6 +1469,71 @@ export function BrokerOrderSheet({
     },
   ];
   const groupsDone = stepGroups.filter((g) => g.filled >= g.total).length;
+
+  /*
+    THERE IS ALWAYS A NEXT ACT, AND THE FOOTER SHOULD NAME IT.
+
+    V2's footer started empty on the order step because nothing had to be
+    SAVED — but "nothing to save" is not "nothing to do", and a bar with no
+    button reads as a screen that has finished with you. The order knows
+    exactly what comes next at every stage; it was just never asked.
+
+    ONE LADDER, IN THE ORDER THE WORK HAPPENS. The first rung that is not yet
+    done is the act. Blocked does not change WHICH act is next — it changes
+    whether it can be taken, so the button stays and goes disabled with the
+    reason on it, the same call the spent Accept quote makes.
+  */
+  const nextAct: { label: string; onSelect: () => void; why?: string } = !hasAssets
+    ? { label: "Add an asset", onSelect: addBlankLine }
+    : invitedIds.length === 0
+      ? { label: "Invite a partner", onSelect: addPartnerRow }
+      : sentIds.length === 0
+        ? {
+            label: "Send invitations",
+            onSelect: () => sendInvitations(invitedIds),
+          }
+        : quotingPartners.length > 0 && !draft.quoteRequested
+          ? {
+              label: "Request a quote",
+              onSelect: () => set("quoteRequested", true),
+            }
+          : quotes.length > 0 && !draft.vendorId
+            ? { label: "Review quotes", onSelect: () => setStep("pricing") }
+            : !draft.vendorId
+              ? {
+                  /* THE LABEL IS THE ACT, NEVER THE STATE. "Waiting on
+                     partners" on a button asks the reader to press a fact.
+                     The act is still requesting a quote; what has not
+                     happened yet is somebody accepting the invitation, and
+                     that belongs in the line beside the button, not on it. */
+                  label: "Request a quote",
+                  onSelect: () => set("quoteRequested", true),
+                  why: "Waiting on a partner to acknowledge.",
+                }
+              : draft.status === "Completed"
+                ? {
+                    label: "Move to Accounting Sync Ready",
+                    onSelect: () => advance("Accounting Sync Ready"),
+                  }
+                : draft.status === "Accounting Sync Ready" ||
+                    draft.status === "Partial Accounting Synced"
+                  ? {
+                      label: "Mark accounting synced",
+                      onSelect: () => advance("Accounting Synced"),
+                    }
+                  : {
+                      label: "Push to dispatch",
+                      onSelect: () =>
+                        toast.success("Pushed to dispatch", {
+                          description: "The order is on the dispatch board.",
+                        }),
+                    };
+  const nextActBlocked =
+    draft.status === "Blocked"
+      ? "Blocked on credit"
+      : draft.status === "Cancelled"
+        ? "Order cancelled"
+        : nextAct.why;
   const pctOf = (g: StepGroup) =>
     g.total === 0 ? 100 : Math.round((g.filled / g.total) * 100);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
@@ -1522,81 +1587,6 @@ export function BrokerOrderSheet({
             },
           ]}
         />
-        {/* ── V2 — PENDING STEPS ───────────────────────────────────────────
-            A LONG FORM DOES NOT SAY HOW MUCH OF IT IS LEFT. The sheet knows —
-            it knows which groups are empty, which are half done, and which of
-            them has something that can be acted on right now — and in V1 the
-            only way to find out was to scroll it all and remember.
-
-            IT CARRIES ACTIONS, NOT JUST A SCORE. A meter that only counts is a
-            progress bar; what makes this worth opening is that the one act
-            actually available — a partner has said yes and nobody has asked
-            them for a price — is offered HERE, beside the group it belongs to,
-            three sections from where the reader would have gone looking.
-
-            IN THE FOOTER, NOT FLOATING OVER THE BODY. The footer is already
-            the bar that does not scroll, and a circle hovering over a form
-            covers the last field on every screen size nobody tested. */}
-        {v2 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ListChecks />
-                {groupsDone} of {stepGroups.length} groups done
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" side="top" className="w-80 p-0">
-              <ul className="flex flex-col divide-y divide-border">
-                {stepGroups.map((g) => {
-                  const pct = pctOf(g);
-                  const done = pct === 100;
-                  return (
-                    <li key={g.key} className="flex flex-col gap-2 px-3 py-2.5">
-                      <span className="flex items-baseline justify-between gap-3">
-                        <span className="truncate text-sm text-foreground">
-                          {g.label}
-                        </span>
-                        {/* PER CENT AND THE COUNT IT CAME FROM. "50%" alone
-                            makes the reader guess how much work that is; "2 of
-                            4" alone makes them do the arithmetic. */}
-                        <span
-                          className={cn(
-                            "shrink-0 text-xs tabular-nums",
-                            done ? "text-status-success" : "text-muted-foreground"
-                          )}
-                        >
-                          {done ? "Done" : `${pct}% · ${g.filled} of ${g.total}`}
-                        </span>
-                      </span>
-                      <span
-                        aria-hidden
-                        className="h-1 w-full overflow-hidden rounded-full bg-accent"
-                      >
-                        <span
-                          className={cn(
-                            "block h-full rounded-full transition-[width]",
-                            done ? "bg-status-success" : "bg-brand"
-                          )}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </span>
-                      {g.cta && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="self-start"
-                          onClick={g.cta.onSelect}
-                        >
-                          {g.cta.label}
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </PopoverContent>
-          </Popover>
-        )}
         </div>
       }
       headerSubtitle={
@@ -1758,9 +1748,21 @@ export function BrokerOrderSheet({
          group they belong to. Step 2 keeps Accept quote: that is not a save,
          it is the decision the step exists for. */
       footerPrimary={
-        v2 && step !== "pricing"
-          ? null
-          : step !== "pricing" ? undefined : shownVendorId &&
+        v2 && step !== "pricing" ? (
+          <>
+            {nextActBlocked && (
+              <span className="max-w-[280px] text-xs text-muted-foreground">
+                {nextActBlocked}
+              </span>
+            )}
+            <Button
+              disabled={Boolean(nextActBlocked)}
+              onClick={nextAct.onSelect}
+            >
+              {nextAct.label}
+            </Button>
+          </>
+        ) : step !== "pricing" ? undefined : shownVendorId &&
           draft.vendorId !== shownVendorId ? (
           <>
             {draft.vendorId && (
@@ -3230,117 +3232,131 @@ export function BrokerOrderSheet({
 
         {v2 && (
           <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
-            {/* ── SUMMARY ── */}
+            {/* ── SUMMARY ──
+                IT SHOWS ITS FIGURES WHETHER OR NOT ANYBODY HAS QUOTED. Three
+                of the four are known from the moment the order has lines —
+                what was asked for, what the customer pays, and therefore what
+                is left — and hiding them behind "no quotes yet" made the card
+                a sentence where a summary should be. Only the partner's number
+                is genuinely unknown, so only that one reads as unknown.
+
+                THE STAGE LINE STAYS, at the foot, as a caption rather than as
+                the whole card: "yet to receive a quote" explains the em-dash
+                above it instead of standing in for the figures. */}
             <RailCard title="Summary" icon={<Info />}>
-              {quotes.length === 0 ? (
-                /* WHAT "EMPTY" MEANS DEPENDS ON THE STAGE. "No data" at every
-                   stage makes the reader work out the stage themselves, which
-                   is the one thing the sheet already knows. */
-                <p className="px-4 py-3 text-sm text-muted-foreground">
-                  {summaryEmptyLine(draft.status, invitedIds.length)}
-                </p>
-              ) : (
-                <dl className="flex flex-col divide-y divide-border">
-                  <RailRow
-                    label="Requested"
-                    value={
-                      isAllTopOff(draft.lines)
-                        ? "Top-off"
-                        : `${gal.toLocaleString()} gal`
-                    }
-                  />
-                  <RailRow
-                    label="Best quote"
-                    value={bestQuote == null ? "—" : money(bestQuote)}
-                  />
-                  <RailRow label="Customer total" value={money(revenue)} />
-                  <RailRow
-                    label="Margin"
-                    value={
-                      <span
-                        className={cn(
-                          shownMargin < 0 && "text-destructive"
-                        )}
-                      >
+              <dl className="flex flex-col divide-y divide-border">
+                <RailRow
+                  label="Requested"
+                  value={
+                    isAllTopOff(draft.lines)
+                      ? "Top-off"
+                      : gal > 0
+                        ? `${gal.toLocaleString()} gal`
+                        : "—"
+                  }
+                />
+                <RailRow
+                  label="Best quote"
+                  value={bestQuote == null ? "—" : money(bestQuote)}
+                />
+                <RailRow label="Customer total" value={money(revenue)} />
+                <RailRow
+                  label="Margin"
+                  value={
+                    bestQuote == null ? (
+                      "—"
+                    ) : (
+                      <span className={cn(shownMargin < 0 && "text-destructive")}>
                         {money(shownMargin)}
                       </span>
-                    }
-                  />
-                </dl>
+                    )
+                  }
+                />
+              </dl>
+              {quotes.length === 0 && (
+                <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                  {summaryEmptyLine(draft.status, invitedIds.length)}
+                </p>
               )}
             </RailCard>
 
             {/* ── ASSOCIATED RECORDS ──
-                THE ORDER POINTS AT FOUR OTHER RECORDS and in V1 you learn that
-                by reading four different sections. Here they are the list they
-                always were: who it is for, where it goes, and every partner
-                with where that partner has got to. */}
+                NO RULE BETWEEN EVERY ROW. Five hairlines made five unrelated
+                things where there are two kinds of thing: the records the order
+                POINTS AT — who it is for, where it goes, who to call — and the
+                partners, which are a list and change as the order moves. The
+                first three are label-over-value pairs with nothing between
+                them but space; the partners get the one rule in the card,
+                because that is the only boundary that means anything. */}
             <RailCard title="Associated records" icon={<Users />}>
-              <div className="flex flex-col divide-y divide-border">
-                <div className="flex flex-col gap-0.5 px-4 py-2.5">
-                  <span className="truncate text-sm font-medium text-foreground">
+              <dl className="flex flex-col gap-3 px-4 py-3">
+                <div className="flex flex-col">
+                  <dt className="text-xs text-muted-foreground">Customer</dt>
+                  <dd className="truncate text-sm text-foreground">
                     {draft.customer || "—"}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Customer{draft.erpId ? ` · ${draft.erpId}` : ""}
-                  </span>
+                    {draft.erpId && (
+                      <span className="text-muted-foreground"> · {draft.erpId}</span>
+                    )}
+                  </dd>
                 </div>
-                <div className="flex flex-col gap-0.5 px-4 py-2.5">
-                  <span className="truncate text-sm font-medium text-foreground">
+                <div className="flex flex-col">
+                  <dt className="text-xs text-muted-foreground">Ship-to</dt>
+                  <dd className="truncate text-sm text-foreground">
                     {draft.shipTo || "—"}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Ship-to{site ? ` · ${site.city}, ${site.state}` : ""}
-                  </span>
+                    {site && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {site.city}, {site.state}
+                      </span>
+                    )}
+                  </dd>
                 </div>
-                {draft.primaryPoc && (
-                  <div className="flex flex-col gap-0.5 px-4 py-2.5">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {draft.primaryPoc}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      Primary POC
-                    </span>
-                  </div>
-                )}
+                <div className="flex flex-col">
+                  <dt className="text-xs text-muted-foreground">Primary POC</dt>
+                  <dd className="truncate text-sm text-foreground">
+                    {draft.primaryPoc || "—"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  Partners{invitedIds.length > 0 && ` · ${invitedIds.length}`}
+                </p>
                 {invitedIds.length === 0 ? (
-                  <p className="px-4 py-2.5 text-sm text-muted-foreground">
-                    No delivery partner yet.
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    None invited yet.
                   </p>
                 ) : (
-                  invitedIds.map((id) => (
-                    <div
-                      key={id}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5"
-                    >
-                      <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="truncate text-sm font-medium text-foreground">
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {invitedIds.map((id) => (
+                      <li
+                        key={id}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="truncate text-sm text-foreground">
                           {vendorById(id)?.name ?? id}
                         </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          Partner
-                        </span>
-                      </span>
-                      <StatusChip
-                        tone={
-                          draft.vendorId === id
-                            ? "success"
+                        <StatusChip
+                          tone={
+                            draft.vendorId === id
+                              ? "success"
+                              : quotes.some((q) => q.vendorId === id)
+                                ? "processing"
+                                : "neutral"
+                          }
+                          variant="soft"
+                        >
+                          {draft.vendorId === id
+                            ? "Holds order"
                             : quotes.some((q) => q.vendorId === id)
-                              ? "processing"
-                              : "neutral"
-                        }
-                        variant="soft"
-                      >
-                        {draft.vendorId === id
-                          ? "Holds order"
-                          : quotes.some((q) => q.vendorId === id)
-                            ? "Quoted"
-                            : draft.acceptedVendorIds.includes(id)
-                              ? "Accepted"
-                              : "Invited"}
-                      </StatusChip>
-                    </div>
-                  ))
+                              ? "Quoted"
+                              : draft.acceptedVendorIds.includes(id)
+                                ? "Accepted"
+                                : "Invited"}
+                        </StatusChip>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </RailCard>
@@ -3383,6 +3399,83 @@ export function BrokerOrderSheet({
                 </ol>
               )}
             </RailCard>
+            {/* ── V2 — PENDING STEPS ───────────────────────────────────────────
+                A LONG FORM DOES NOT SAY HOW MUCH OF IT IS LEFT. The sheet knows —
+                it knows which groups are empty, which are half done, and which of
+                them has something that can be acted on right now — and in V1 the
+                only way to find out was to scroll it all and remember.
+
+                IT CARRIES ACTIONS, NOT JUST A SCORE. A meter that only counts is a
+                progress bar; what makes this worth opening is that the one act
+                actually available — a partner has said yes and nobody has asked
+                them for a price — is offered HERE, beside the group it belongs to,
+                three sections from where the reader would have gone looking.
+
+                AT THE FOOT OF THE RAIL, NOT FLOATING OVER THE BODY. It belongs to
+                the derived column — it is a read-out of the form, not part of
+                it — and a circle hovering over a form covers the last field at
+                every size nobody tested. Last in the rail because it is the
+                thing you reach for when you have run out of what to read. */}
+            {v2 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <ListChecks />
+                    {groupsDone} of {stepGroups.length} groups done
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="top" className="w-80 p-0">
+                  <ul className="flex flex-col divide-y divide-border">
+                    {stepGroups.map((g) => {
+                      const pct = pctOf(g);
+                      const done = pct === 100;
+                      return (
+                        <li key={g.key} className="flex flex-col gap-2 px-3 py-2.5">
+                          <span className="flex items-baseline justify-between gap-3">
+                            <span className="truncate text-sm text-foreground">
+                              {g.label}
+                            </span>
+                            {/* PER CENT AND THE COUNT IT CAME FROM. "50%" alone
+                                makes the reader guess how much work that is; "2 of
+                                4" alone makes them do the arithmetic. */}
+                            <span
+                              className={cn(
+                                "shrink-0 text-xs tabular-nums",
+                                done ? "text-status-success" : "text-muted-foreground"
+                              )}
+                            >
+                              {done ? "Done" : `${pct}% · ${g.filled} of ${g.total}`}
+                            </span>
+                          </span>
+                          <span
+                            aria-hidden
+                            className="h-1 w-full overflow-hidden rounded-full bg-accent"
+                          >
+                            <span
+                              className={cn(
+                                "block h-full rounded-full transition-[width]",
+                                done ? "bg-status-success" : "bg-brand"
+                              )}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </span>
+                          {g.cta && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="self-start"
+                              onClick={g.cta.onSelect}
+                            >
+                              {g.cta.label}
+                            </Button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </PopoverContent>
+              </Popover>
+            )}
           </aside>
         )}
         </div>

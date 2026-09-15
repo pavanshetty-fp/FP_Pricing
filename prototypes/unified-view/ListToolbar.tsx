@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -401,28 +406,37 @@ export function ColumnSearchChip({
 }
 
 /**
- * THE FILTERS THAT ARE ON, as removable chips under the toolbar.
+ * THE FILTERS THAT ARE ON, as one chip per facet under the toolbar.
  *
  * A COUNT IS NOT AN ANSWER. "Filters 7" says the list has been narrowed and
  * refuses to say how — the only way to find out was to open the panel, walk
- * six facets and read the checkboxes, which is the whole of what the chips do
- * at a glance. And a narrowing you cannot see is one you forget you applied:
- * the empty list that follows reads as "no orders" rather than "no orders that
- * match the six things you asked for".
+ * six facets and read the checkboxes, which is the whole of what this shelf
+ * does at a glance. And a narrowing you cannot see is one you forget you
+ * applied: the short list that follows reads as "no customers" rather than "no
+ * customers that match the seven things you asked for".
+ *
+ * ONE CHIP PER FACET, NOT PER VALUE. Per value, three cities were three chips
+ * that said "City" three times to say one thing — and the row grew with the
+ * TICKS rather than with the questions, so picking six cities buried the one
+ * status filter that was also on. Grouped, the shelf is as long as the number
+ * of QUESTIONS you have asked, which is a small number and a stable one, and
+ * the shape of the narrowing is legible from across the room: Status, City,
+ * Vendor.
+ *
+ * ONE VALUE SHOWS ITSELF; SEVERAL SHOW A COUNT. "City: Bakersfield" is shorter
+ * than "City 1" and says more, so a lone value is never hidden behind a digit.
+ * Past one there is no width to say them all and no honest way to pick which
+ * one to print, so the chip says how many and the hover card says which —
+ * WITH their own crosses, because the reason to look at this row is usually to
+ * take ONE thing off, and a group that could only be removed whole would send
+ * you back to the panel to do it.
  *
  * ONE LINE, ALWAYS — IT SCROLLS RATHER THAN WRAPS. This shelf sits between the
  * toolbar and the data and every pixel of it comes out of the data. Wrapped,
  * its height is a function of how many filters are on and how long their names
- * are: tick eight vendors and the board loses three rows of card to a list of
- * what you just did. A capped count would not fix it either — five chips fit
- * on one line or do not depending on the words in them, and nothing can know
- * that without measuring. A scroller is one line at every width and every
- * count, which is the only promise worth making about a strip in this
- * position, and the same call the stage bar makes for the same reason.
- *
- * ONE CHIP PER VALUE, NOT PER FACET. A chip per facet would be shorter and
- * would only be removable whole — and the reason to look at this row at all is
- * usually to take ONE thing off.
+ * are. Grouping makes a second line unlikely; the scroller makes it
+ * impossible, which is the only promise worth making about a strip in this
+ * position.
  */
 export function FilterChips({
   facets,
@@ -431,7 +445,7 @@ export function FilterChips({
   className,
   children,
 }: {
-  /** Key → label, for naming the facet a value came from. */
+  /** Key → label, in the order the panel lists them. */
   facets: { key: string; label: string }[];
   /** Applied ids, as `facetKey:option` — what `ListFilters` emits. */
   selected: ReadonlySet<string>;
@@ -443,40 +457,106 @@ export function FilterChips({
   const ids = [...selected];
   if (ids.length === 0) return children ? <>{children}</> : null;
 
-  const labelOf = (key: string) =>
-    facets.find((f) => f.key === key)?.label ?? key;
+  const drop = (gone: string[]) => {
+    const next = new Set(selected);
+    for (const id of gone) next.delete(id);
+    onChange(next);
+  };
+
+  /* GROUPED IN THE PANEL'S OWN ORDER, so the shelf and the facet menu read the
+     same way round. Ids whose facet is not declared keep their raw key and go
+     last rather than disappearing. */
+  const groups: { key: string; label: string; ids: string[] }[] = [];
+  const bucket = (key: string, label: string) => {
+    let g = groups.find((x) => x.key === key);
+    if (!g) groups.push((g = { key, label, ids: [] }));
+    return g;
+  };
+  for (const f of facets) {
+    const mine = ids.filter((id) => id.startsWith(`${f.key}:`));
+    if (mine.length) bucket(f.key, f.label).ids.push(...mine);
+  }
+  for (const id of ids) {
+    /* SPLIT ON THE FIRST COLON ONLY — a ship-to option can hold one. */
+    const key = id.slice(0, id.indexOf(":"));
+    if (!facets.some((f) => f.key === key)) bucket(key, key).ids.push(id);
+  }
+
+  const valueOf = (id: string) => id.slice(id.indexOf(":") + 1);
 
   return (
     <div className={cn("mt-3 flex shrink-0 items-center gap-2", className)}>
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-        {ids.map((id) => {
-          /* SPLIT ON THE FIRST COLON ONLY — a ship-to option can hold one. */
-          const at = id.indexOf(":");
-          const facet = labelOf(id.slice(0, at));
-          const value = id.slice(at + 1);
-          return (
+        {groups.map((g) => {
+          const one = g.ids.length === 1;
+          const chip = (
             <span
-              key={id}
-              title={`${facet}: ${value}`}
-              className="inline-flex max-w-[220px] shrink-0 items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground"
+              className={cn(
+                "inline-flex max-w-[240px] shrink-0 items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground",
+                !one && "cursor-default"
+              )}
             >
               <span className="truncate">
-                <span className="text-muted-foreground">{facet}: </span>
-                {value}
+                <span className="text-muted-foreground">
+                  {g.label}
+                  {one ? ": " : " "}
+                </span>
+                {one ? valueOf(g.ids[0]) : null}
               </span>
+              {!one && (
+                <span className="shrink-0 rounded-full bg-accent px-1.5 tabular-nums">
+                  {g.ids.length}
+                </span>
+              )}
               <button
                 type="button"
-                aria-label={`Remove filter ${facet}: ${value}`}
-                onClick={() => {
-                  const next = new Set(selected);
-                  next.delete(id);
-                  onChange(next);
-                }}
+                aria-label={
+                  one
+                    ? `Remove filter ${g.label}: ${valueOf(g.ids[0])}`
+                    : `Remove all ${g.ids.length} ${g.label} filters`
+                }
+                onClick={() => drop(g.ids)}
                 className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <X className="size-3" />
               </button>
             </span>
+          );
+
+          if (one) return <React.Fragment key={g.key}>{chip}</React.Fragment>;
+
+          return (
+            <HoverCard key={g.key} openDelay={120} closeDelay={120}>
+              <HoverCardTrigger asChild>{chip}</HoverCardTrigger>
+              <HoverCardContent
+                align="start"
+                className="w-auto max-w-[280px] min-w-[180px] p-1.5"
+              >
+                <p className="px-1.5 pb-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  {g.label}
+                </p>
+                <ul className="flex flex-col">
+                  {g.ids.map((id) => (
+                    <li
+                      key={id}
+                      className="flex items-center gap-2 rounded-sm py-0.5 pr-0.5 pl-1.5 hover:bg-accent/60"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                        {valueOf(id)}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Remove filter ${g.label}: ${valueOf(id)}`}
+                        onClick={() => drop([id])}
+                        className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </HoverCardContent>
+            </HoverCard>
           );
         })}
         {children}

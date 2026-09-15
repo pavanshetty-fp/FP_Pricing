@@ -73,7 +73,6 @@ import {
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { StageBar, type Stage } from "@/components/ui/stage-bar";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
@@ -415,7 +414,8 @@ export interface BrokerOrderDraft {
   /** Partners that accepted the invitation — see `BrokerOrder`. */
   acceptedVendorIds: string[];
   /**
-   * The partners' prices. ON THE DRAFT because step 2 lets them be TYPED: a
+   * The partners' prices. ON THE DRAFT because the pricing tables let them be
+   * TYPED: a
    * partner that gave its price on the phone still has a price, and an order
    * that could only hold a quote the partner had entered itself would have
    * nowhere to put it.
@@ -734,65 +734,8 @@ function stageOf(status: BrokerStatus): string {
   }
 }
 
-/**
- * The step a stage's work happens on, so the bar can still be the navigation
- * the two-step strip used to be. Everything from the vendor holding the order
- * onwards is settled on the pricing step; everything before it — and anything
- * that is not on the bar at all — is the order itself.
- */
-function stepOfStage(key: string): "order" | "pricing" {
-  const i = ORDER_STAGES.findIndex((s) => s.key === key);
-  return i >= ORDER_STAGES.findIndex((s) => s.key === "Assigned")
-    ? "pricing"
-    : "order";
-}
-
-/**
- * TWO VERSIONS OF THIS SHEET, SIDE BY SIDE IN ONE BUILD.
- *
- * V2 is a redesign of the order sheet that has not been designed yet. Doing it
- * on a branch would mean one of the two is always the one nobody can open;
- * doing it in place would mean the version that WORKS stops existing the moment
- * the first change lands. A switch in the header keeps both reachable from the
- * same build — open an order, flip it, compare, flip back.
- *
- * IT STARTS IDENTICAL AND DIVERGES. Nothing about V1 is copied or forked: the
- * two share every line until a piece of the sheet is deliberately branched on
- * `version`, which is how the diff stays readable and how V1 keeps working
- * without being maintained twice.
- *
- * It persists like `fp-theme` and `fp-module`: a reviewer who flips to V2 and
- * opens the next order should still be in V2.
- */
-export type SheetVersion = "v1" | "v2";
-
-const SHEET_VERSION_KEY = "fp-order-sheet-version";
-
-function readStoredVersion(): SheetVersion {
-  try {
-    if (typeof localStorage === "undefined") return "v1";
-    return localStorage.getItem(SHEET_VERSION_KEY) === "v2" ? "v2" : "v1";
-  } catch {
-    return "v1";
-  }
-}
-
-function useSheetVersion(): [SheetVersion, (v: SheetVersion) => void] {
-  const [version, setVersion] = React.useState<SheetVersion>(readStoredVersion);
-  const set = (v: SheetVersion) => {
-    setVersion(v);
-    try {
-      localStorage.setItem(SHEET_VERSION_KEY, v);
-    } catch {
-      /* A file:// open with storage blocked still switches, just not across
-         reloads — the same guard the theme and module toggles use. */
-    }
-  };
-  return [version, set];
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
-   V2 — the rail, and the pending-steps FAB
+   The rail, and the pending-steps FAB
 
    ONE RULE DECIDES WHICH SIDE A CARD IS ON: can you type into it? Everything
    the order is MADE of goes left, in the order you fill it in. Everything the
@@ -847,8 +790,8 @@ function auditMark(text: string): { icon: React.ReactNode; tone: string } {
  * BEHIND THE FIGURE, on hover.
  *
  * A total in a summary is a claim, and the reader's next question is always
- * the same: made of what? In V1 the answer was a table two sections away, and
- * comparing the two meant holding one number in your head while you scrolled
+ * the same: made of what? Without it the answer is a table two sections away,
+ * and comparing the two means holding one number in your head while you scroll
  * to the other. A tooltip puts the working where the claim is. It is NOT a
  * substitute for the tables — those are where the figures are TYPED — it is
  * the read-only account of how they add up.
@@ -964,36 +907,20 @@ export function BrokerOrderSheet({
   /** Ticked partner rows. UI state, not the order's — see `selectedRows`. */
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [customOpen, setCustomOpen] = React.useState(false);
-  /* ── STEP 2 ──────────────────────────────────────────────────────────────
-     It exists once a partner has ACCEPTED AND PRICED. Accepting the invitation
-     is the first notification and only moves the order into this lane; the
-     quote is the second, and it is the one there is something to do about.
-     Declared here, above the early return, because a hook cannot be. */
-  const [step, setStep] = React.useState<"order" | "pricing">("order");
+  /** Declared above the early return, because a hook cannot be conditional. */
   const [shownQuoteId, setShownQuote] = React.useState<string | null>(null);
   const creating = mode === "create";
-  const [version, setVersion] = useSheetVersion();
-  const v2 = version === "v2";
 
   React.useEffect(() => {
     if (!open) return;
     setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
     setSelected(new Set());
-    /* AN ACCEPTED ORDER OPENS ON STEP 2. It is the only reason to open one: the
-       order itself was settled before it was ever sent out, and what is waiting
-       in that lane is a price to agree. Every other stage opens on the order. */
-    /* V2 IS ONE PAGE, so there is no second step to open on. */
-    setStep(
-      readStoredVersion() === "v1" && order?.status === "Accepted"
-        ? "pricing"
-        : "order"
-    );
     setShownQuote(null);
   }, [open, creating, order]);
 
   /*
     ALL OF THE BELOW SIT ABOVE THE EARLY RETURN, because a hook cannot be
-    conditional — the same reason `step` and `shownQuoteId` are already here.
+    conditional — the same reason `shownQuoteId` is already here.
     They read `draft` defensively rather than assuming it exists.
   */
   /** The linked record open for editing, or none. */
@@ -1375,12 +1302,11 @@ export function BrokerOrderSheet({
     });
 
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
-     It also opens step 2, because the numbers are the reason anyone does this
-     and step 1 has nowhere to put them. */
+     It shows that partner's quote, because the numbers are the reason anyone
+     does this. */
   const acknowledgeAndAccept = (vendorId: string) => {
     acceptFor(vendorId);
     setShownQuote(vendorId);
-    setStep("pricing");
   };
   const advance = (status: BrokerStatus) =>
     setDraft((d) => {
@@ -1510,14 +1436,14 @@ export function BrokerOrderSheet({
   };
   const revenue = customerTotal(draft.lines);
 
-  /* ── V2 — what the order has BECOME, derived once for the rail and the FAB ──
+  /* ── WHAT THE ORDER HAS BECOME, derived once for the rail and the FAB ──
      Both read the same numbers on purpose: a completion meter that disagreed
      with the card beside it would be worse than no meter at all. */
 
   /*
     THERE IS ALWAYS A NEXT ACT, AND THE FOOTER SHOULD NAME IT.
 
-    V2's footer started empty on the order step because nothing had to be
+    The footer started out empty, because nothing had to be
     SAVED — but "nothing to save" is not "nothing to do", and a bar with no
     button reads as a screen that has finished with you. The order knows
     exactly what comes next at every stage; it was just never asked.
@@ -1666,9 +1592,9 @@ export function BrokerOrderSheet({
   /*
     THE TWO PRICING TABLES, LIFTED OUT OF THE RENDER.
 
-    V1 shows them on a second step; V2 shows them at the foot of one page. One
-    definition, used from both places — a second copy would be two tables that
-    are the same table until somebody edits one of them.
+    They sit at the foot of the left column, a long way below the block that
+    computes the figures they show. Defined next to that arithmetic, they can
+    be read against it.
   */
   const pricingSections = (
     <>
@@ -2051,14 +1977,11 @@ export function BrokerOrderSheet({
 
   return (
     <RecordSheet
-      /* WIDTH FOLLOWS THE STEP, not the sheet. Step 1's widest table is five
-         columns and reads well at 864; step 2's is eight, and at 864 its
-         headers wrapped onto two lines and stopped lining up with the figures
-         under them. A sheet is only as wide as what is currently in it. */
-      /* WIDTH IS PER STEP, AND NOW PER VERSION. V2's order step is two columns
-         for the same reason step 2 is: a rail costs the form 340px plus a gap,
-         and at 864 that comes straight out of two-column field pairs. */
-      size={step === "pricing" || v2 ? "xxwide" : "wide"}
+      /* ONE WIDTH, BECAUSE THERE IS ONE PAGE. The rail costs the form 340px
+         plus a gap, and the pricing tables at the foot of it run to eight
+         columns — at anything narrower their headers wrap onto two lines and
+         stop lining up with the figures under them. */
+      size="xxwide"
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -2122,35 +2045,6 @@ export function BrokerOrderSheet({
             saveState={saveState}
           />
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
-          {/* NEXT TO THE ORDER NUMBER, because it is a fact about what you are
-              LOOKING AT rather than about the order — the same shelf the status
-              chip sits on, and the only one that never scrolls away. It is a
-              review control and will come out when V2 lands; it is here, in the
-              open, rather than behind a key combination nobody would find. */}
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            value={version}
-            /* Radix emits "" when the active item is pressed again; a version
-               is never empty, so the deselect is ignored. */
-            onValueChange={(next) => next && setVersion(next as SheetVersion)}
-            aria-label="Sheet version"
-            className="h-6"
-          >
-            <ToggleGroupItem
-              value="v1"
-              className="h-6 px-2 text-[11px] font-normal data-[state=on]:font-medium"
-            >
-              V1
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="v2"
-              className="h-6 px-2 text-[11px] font-normal data-[state=on]:font-medium"
-            >
-              V2
-            </ToggleGroupItem>
-          </ToggleGroup>
         </div>
       }
       /* ACTS ON THE ORDER, not part of filling it in. Deleting is the only one
@@ -2201,7 +2095,7 @@ export function BrokerOrderSheet({
          order and the one read least often, and at the foot of the body it
          pushed the vendor table and the additional details behind a wall of
          "field changed" lines. The icon also makes it reachable without
-         scrolling, which on a two-step sheet matters more, not less. */
+         scrolling, which on a sheet this long matters more, not less. */
       headerActions={
         order && order.audit.length > 0 ? (
           <Tooltip>
@@ -2226,84 +2120,23 @@ export function BrokerOrderSheet({
         if (creating) onCreate?.(draft);
         else if (order) onSave(order, draft);
       }}
-      /*
-        THE MAIN THING TO DO ON STEP 2 IS ACCEPT A PRICE, NOT SAVE A FORM.
-
-        Save Changes is the right primary while the order is being written; on
-        the pricing step the work ends in one decision, and leaving a generic
-        Save in the footer put the sheet's loudest button on the least
-        interesting act available. The Accept moves out of the rail and into
-        the slot that means "the main thing here" — and it COMMITS: it takes
-        the price and saves the order in the same click, which is what Save
-        was doing and why two buttons were never needed.
-
-        `null` once the shown partner already holds the order: there is nothing
-        left to commit from this step, and a disabled Save would be a button
-        explaining itself. The lifecycle moves stay in the rail, where the
-        numbers they follow from are.
-      */
-      /* V2 SAVES ITSELF. The header already says "Draft saved" as you type, and
-         a Save button beside a line claiming the work is already kept is the
-         sheet arguing with itself — one of the two has to be wrong and the
-         reader cannot tell which. On the order step V2 has no primary at all;
-         the acts that ARE available live in the pending-steps panel, beside the
-         group they belong to. Step 2 keeps Accept quote: that is not a save,
-         it is the decision the step exists for. */
+      /* THE SHEET SAVES ITSELF. The header already says "Draft saved" as you
+         type, and a Save button beside a line claiming the work is already kept
+         is the sheet arguing with itself — one of the two has to be wrong and
+         the reader cannot tell which. What the footer carries instead is the
+         one act that actually moves the order on from where it is. */
       footerPrimary={
-        v2 && step !== "pricing" ? (
-          <>
-            {nextActBlocked && (
-              <span className="max-w-[280px] text-xs text-muted-foreground">
-                {nextActBlocked}
-              </span>
-            )}
-            <Button
-              disabled={Boolean(nextActBlocked)}
-              onClick={nextAct.onSelect}
-            >
-              {nextAct.label}
-            </Button>
-          </>
-        ) : step !== "pricing" ? undefined : shownVendorId &&
-          draft.vendorId !== shownVendorId ? (
-          <>
-            {draft.vendorId && (
-              <span className="max-w-[320px] text-xs text-muted-foreground">
-                {vendorById(draft.vendorId)?.name} goes on hold rather than
-                being cancelled.
-              </span>
-            )}
-            <Button
-              onClick={() => {
-                const next = draftAccepting(draft, shownVendorId);
-                announceAccepted(draft, shownVendorId);
-                setDraft(next);
-                if (order) onSave(order, next);
-                onOpenChange(false);
-              }}
-            >
-              <Check /> Accept quote
-            </Button>
-          </>
-        ) : (
-          /* SPENT, NOT ABSENT. Once this partner holds the order there is
-             nothing to accept — but an empty footer reads as a step that
-             forgot its button, and the reader has to work out whether they
-             missed it. Disabled says the same thing in the same place: this is
-             the act, and it is already done. */
-          <Button disabled>
-            <Check /> Accept quote
+        <>
+          {nextActBlocked && (
+            <span className="max-w-[280px] text-xs text-muted-foreground">
+              {nextActBlocked}
+            </span>
+          )}
+          <Button disabled={Boolean(nextActBlocked)} onClick={nextAct.onSelect}>
+            {nextAct.label}
           </Button>
-        )
+        </>
       }
-      /* THE STRIP EXISTS ONCE A PARTNER HAS ACKNOWLEDGED, whoever did the
-         acknowledging. Two ways in, and they are the same state: the partner
-         accepted the invitation, or the broker recorded that they had —
-         "acknowledge and accept quote", for the price that came off a call.
-         Pricing is work the broker can do either way, so gating the step on the
-         partner's numbers arriving would make the sheet refuse to hold a price
-         it is perfectly able to take. Before anyone acknowledges there is
-         nothing to price against, so there is one step and no strip. */
       /*
         THE STRIP SAYS WHERE THE ORDER IS, not which half of the form you are
         reading. "1 Order, 2 Quotes & pricing" was a table of contents in the
@@ -2311,12 +2144,9 @@ export function BrokerOrderSheet({
         — how far along is this — was only available by reading the chip beside
         the title and knowing the lifecycle by heart.
 
-        IT IS STILL THE NAVIGATION. The two-step switch was the only way to
-        reach the pricing step, so the bar takes that over: a stage goes to the
-        screen where its work is done, which is the order itself up to the
-        acceptance and the pricing step from there on. Clickable only once
-        there is a pricing step to reach — before a partner acknowledges there
-        is one screen, and a bar that moved nothing would be a lie.
+        IT DOES NOT NAVIGATE. One page means a stage has no screen of its own
+        to open, and a bar that looked pressable and moved nothing would be
+        worse than one that plainly does not.
       */
       steps={
         !creating ? (
@@ -2324,37 +2154,19 @@ export function BrokerOrderSheet({
             className="-mx-4 px-4 py-2.5"
             stages={ORDER_STAGES}
             current={stageOf(draft.status)}
-            /* NOT NAVIGATION IN V2. One page means a stage has no screen of
-               its own to open, and a bar that looked pressable and moved
-               nothing would be worse than one that plainly does not. */
-            onSelect={
-              !v2 && quotingPartners.length > 0
-                ? (key) => setStep(stepOfStage(key))
-                : undefined
-            }
           />
         ) : undefined
       }
     >
-      {step === "order" ? (
-        <>
-        {/* ── V2 — TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ──────
+        {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────
             One rule decides which side a card is on: can you type into it?
             The order's parts go left, in the sequence you fill them. What the
             order HAS BECOME goes right — derived, read-only, true whether or
             not anyone is looking. Once an editable number and a computed one
             share a column they look identical, and the reader stops knowing
-            which is which.
-
-            V1 IS THE SAME CONTENT IN ONE COLUMN. Nothing is duplicated: the
-            left column is V1's body verbatim, and the rail is the only thing
-            V2 adds. That is what keeps both versions honest to compare. */}
-        <div
-          className={cn(
-            v2 && "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"
-          )}
-        >
-        <div className={cn(v2 && "flex min-w-0 flex-col gap-10")}>
+            which is which. */}
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-10">
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
@@ -2365,13 +2177,8 @@ export function BrokerOrderSheet({
            gap below back to the 16 above it. A WRAPPER WOULD NOT DO — it has to
            be a sibling of the sections to sit in their column at all, and a
            wrapper round the banner alone changes nothing about the gap after
-           it. V1 keeps the 40, where the banner is not in a column. */
-        <div
-          className={cn(
-            "flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3",
-            v2 && "-mb-6"
-          )}
-        >
+           it. */
+        <div className="-mb-6 flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
           <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-foreground">
@@ -3488,8 +3295,9 @@ export function BrokerOrderSheet({
                                   {/* ONE ITEM, NOT TWO. Doing this on a partner's
                                       behalf is one act with one reason: the
                                       price was agreed on a call and someone is
-                                      writing it down. It opens step 2, which is
-                                      where the numbers go. */}
+                                      writing it down. It also shows that
+                                      partner's quote, which is where the
+                                      numbers go. */}
                                   <DropdownMenuItem
                                     onSelect={() => acknowledgeAndAccept(id)}
                                   >
@@ -3616,7 +3424,8 @@ export function BrokerOrderSheet({
                        act, and several partners saying yes is the normal
                        outcome of inviting several — it was only ever the
                        BROKER'S choice of whose price to take that had to be
-                       one, and that is a different control in step 2. */
+                       one, and that is a different control, on the Vendor
+                       Pricing heading. */
                     key: "ack",
                     label: "Acknowledge for them",
                     icon: <Check />,
@@ -3665,9 +3474,8 @@ export function BrokerOrderSheet({
                 </SheetField>
               );
             })()}
-            {/* THE STAGE CTAs LIVE IN STEP 2, under the acceptance that earns
-                them — see "Final Calculations". Repeating them here would be
-                two places to move one order on. */}
+            {/* THE STAGE CTAs LIVE IN THE FOOTER, on the next-act ladder.
+                Repeating them here would be two places to move one order on. */}
             {draft.status === "Accounting Synced" && (
               <p className="text-xs text-muted-foreground">
                 Synced. Every field is locked once an order reaches this stage.
@@ -3750,14 +3558,14 @@ export function BrokerOrderSheet({
         </SheetField>
       </SheetSection>
 
-      {/* ── V2 IS ONE PAGE ──
-          THE SPLIT EXISTED TO KEEP THE SHEET READABLE, and the rail is what
-          made it unnecessary: everything step 2 used to put in front of you —
-          the totals, whose quote it is, what is left — now sits in a column
-          that never leaves. What remains of step 2 is two tables you TYPE
-          into, which is what the left column is for, so they go at the foot of
-          it in the order the money moves: what the partner charges, then what
-          the customer pays.
+      {/* ── ONE PAGE ──
+          THE SHEET USED TO BE SPLIT IN TWO, and the split was there to keep it
+          readable. The rail is what made it unnecessary: everything the pricing
+          step used to put in front of you — the totals, whose quote it is, what
+          is left — now sits in a column that never leaves. What remains of that
+          step is two tables you TYPE into, which is what the left column is
+          for, so they go at the foot of it in the order the money moves: what
+          the partner charges, then what the customer pays.
 
           FINAL CALCULATIONS DOES NOT COME WITH THEM. It was the summary of
           these two tables on a screen that had no other summary; here the
@@ -3765,11 +3573,10 @@ export function BrokerOrderSheet({
           time, with the working on hover. Two of them would be one figure in
           two places, and the first to drift would be the one nobody was
           looking at. */}
-      {v2 && pricingSections}
+      {pricingSections}
         </div>
 
-        {v2 && (
-          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
             {/* ── SUMMARY ──
                 IT SHOWS ITS FIGURES WHETHER OR NOT ANYBODY HAS QUOTED. Three
                 of the four are known from the moment the order has lines —
@@ -3992,311 +3799,24 @@ export function BrokerOrderSheet({
               )}
             </RailCard>
           </aside>
-        )}
         </div>
-        </>
-      ) : (
-        <>
-        {/* ── STEP 2 IS TWO COLUMNS ─────────────────────────────────────────
-            THE TOTALS HAVE TO STAY VISIBLE WHILE THE NUMBERS THAT FEED THEM
-            ARE BEING TYPED. Stacked, Final Calculations sat below two tables
-            that can each run to a dozen rows, so setting a customer price
-            meant typing, scrolling, reading the margin, scrolling back, and
-            holding the figure in your head across the trip. It is the one
-            block on this step that is READ rather than filled in, and the one
-            the decision turns on.
-
-            THE RAIL IS FIXED-WIDTH AND THE MAIN COLUMN TAKES THE REST, so the
-            pricing tables keep the width they need; the step is on the widest
-            sheet size for the same reason. It drops back to one column under
-            1024px, where a 320px rail would leave the tables scrolling
-            sideways to save a scroll downwards. */}
-        {/*
-          THE RULE, AT THE HEAD OF THE STEP IT GOVERNS.
-
-          An order has two shapes and they price differently, so a table of
-          rates means one thing on a Tuesday and another on a Wednesday unless
-          it says which it is. It used to say so inside Vendor Pricing — but
-          whether a load order exists decides what BOTH tables mean, the
-          partner's base price and therefore the margin, so in there it was
-          explaining one of the two things it governs from under the other's
-          heading. Read once, before either table, is when it is needed.
-
-          THE INLINE BANNER, NOT THE CALLOUT. A solid bar with white text is
-          the DS's loudest voice, and this is a standing condition rather than
-          something that has gone wrong: it was pulling the eye away from the
-          figures it exists to explain. `split` holds it to one 32px line — the
-          state on the left, what follows from it on the right.
-        */}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          {/* THE BANNER IS IN THE COLUMN, NOT ABOVE THE GRID.
-
-              It governs the two pricing tables, so it takes their width — full
-              bleed it ran on past the rail and read as a page-level notice
-              about the whole order rather than a rule about what follows. In
-              the column it also lets the rail start where the banner does:
-              `items-start` puts both at the grid's top, so the totals sit level
-              with the first thing on the step instead of a banner's height
-              below it.
-
-              gap-4 HERE AND gap-10 INSIDE. The banner is 16px off the section
-              beneath it — the same 16px the sheet body's own padding puts above
-              it, so it sits in an even channel — while the sections keep the
-              40px rhythm they have everywhere else. */}
-          <div className="flex min-w-0 flex-col gap-4">
-
-
-          <div className="flex min-w-0 flex-col gap-10">
-            {/* ── STEP 2 ────────────────────────────────────────────────────────
-                Three things, in the order each feeds the next: read what the
-                vendor charges, set what the customer pays, then decide whether
-                the difference is worth taking.
-
-                NO SUMMARY TABLE ON TOP. It listed the partners with their totals
-                and their margins — every figure of which the two tables below it
-                already carry, and the totals row of Final Calculations carries
-                again. WHICH vendor you are reading is the only thing it did that
-                nothing else does, and that is a choice, not a table: it sits on
-                the Vendor Pricing heading, which is the section it changes. */}
-            {pricingSections}
-          </div>
-          </div>
-
-          {/* THE DECISION, and it reads as one: the two totals and what is left
-              between them, then the button. Accepting is not reversible from
-              here, so the number it turns on is stated beside it rather than
-              two sections up — and now beside it wherever the tables have been
-              scrolled to, because `top-0` sticks it to the sheet body, which is
-              the scroll container. */}
-          <aside className="min-w-0 lg:sticky lg:top-0">
-            {shownVendorId && (
-              <SheetSection
-                title="Final Calculations"
-                flush
-                note={
-                  <SheetSectionNote label="About final calculations">
-                    Line by line: what the partner charges to move it, what the
-                    customer pays, and what is left. Both figures come from the
-                    two tables beside it — this is where they meet.
-                  </SheetSectionNote>
-                }
-              >
-                {/* PER LINE, BECAUSE THE MARGIN IS NOT EVENLY SPREAD. One thin
-                    product inside a healthy order is invisible in a single
-                    total, and it is the line you would have repriced if you
-                    had seen it.
-
-                    A LIST, NOT THE FIVE-COLUMN TABLE IT WAS. In a 320px rail
-                    five columns is four too many — and three of them were
-                    repeats: the vendor's figure per line is the Vendor Pricing
-                    table's own column and the customer's is Customer Pricing's,
-                    both of them a few inches to the left and both of them
-                    editable there, which this never was. What only this block
-                    says is what is LEFT on each line, and the three totals it
-                    adds up to. That is what it says now. */}
-                <dl className="flex flex-col divide-y divide-border">
-                  {draft.lines.map((l, i) => {
-                    const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
-                    const cost = ql ? quoteLineTotal(ql, l) : 0;
-                    const sell = customerLineTotal(l);
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-baseline justify-between gap-3 px-3 py-2.5"
-                      >
-                        <dt className="flex min-w-0 flex-col">
-                          <span className="truncate text-sm text-foreground">
-                            {l.asset || "—"}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {l.product} · {billableGal(l).toLocaleString()} gal
-                          </span>
-                        </dt>
-                        <dd
-                          className={cn(
-                            "shrink-0 text-sm font-medium tabular-nums",
-                            sell - cost < 0 ? "text-destructive" : "text-foreground"
-                          )}
-                        >
-                          {money(sell - cost)}
-                        </dd>
-                      </div>
-                    );
-                  })}
-                  {/* THE CHARGES THAT BELONG TO NO LINE. Without a row of their
-                      own the column stopped adding up to its own total —
-                      freight is charged once for the run, so there is no line
-                      to put it on and no honest way to spread it. */}
-                  <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
-                    <dt className="flex min-w-0 flex-col">
-                      <span className="truncate text-sm text-foreground">
-                        Order-level charges
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        Freight, fees and taxes
-                      </span>
-                    </dt>
-                    {/* `-0` IS NOT A NUMBER ANYBODY WROTE. Negating a zero
-                        gives one, and `Intl` prints it as "$-0.00" — which in a
-                        column of money reads as a figure someone entered. */}
-                    <dd className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                      {money(shownCharges === 0 ? 0 : -shownCharges)}
-                    </dd>
-                  </div>
-                  {/* THE THREE TOTALS, on the band the table's tfoot used to
-                      wear, so the rail still ends where the reading ends. */}
-                  <div className="flex flex-col gap-1.5 bg-fp-table-header px-3 py-2.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-xs text-muted-foreground">Vendor TLC</dt>
-                      <dd className="text-sm tabular-nums text-foreground">
-                        {money(shownCost)}
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-xs text-muted-foreground">
-                        Customer pricing
-                      </dt>
-                      <dd className="text-sm tabular-nums text-foreground">
-                        {money(revenue)}
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1.5">
-                      <dt className="text-xs text-muted-foreground">
-                        Margin — {vendorById(shownVendorId)?.name ?? "partner"}
-                      </dt>
-                      {/* THE NUMBER THE DECISION TURNS ON, and the only figure
-                          in this sheet allowed a colour: a margin that has gone
-                          negative is the one thing here that must not be read
-                          past. */}
-                      <dd
-                        className={cn(
-                          "text-sm font-semibold tabular-nums",
-                          shownMargin < 0 ? "text-destructive" : "text-foreground"
-                        )}
-                      >
-                        {money(shownMargin)}
-                      </dd>
-                    </div>
-                  </div>
-                </dl>
-                {/* NO "THIS ORDER LOSES MONEY" LINE. The margin cell in the row
-                    above is already red and already the only figure in this
-                    sheet allowed a colour — a sentence under the list restated
-                    it in words and made the one warning look like two.
-
-                    Everything from here is not the list, so it takes the card's
-                    insets back and the rule that separates it from the totals
-                    band above. */}
-                {(!shownQuote || draft.vendorId === shownVendorId) && (
-                  <SheetSectionInset className="border-t border-border">
-                    {!shownQuote && (
-                      <p className="text-xs text-muted-foreground">
-                        This partner has not priced the order.
-                      </p>
-                    )}
-                {draft.vendorId === shownVendorId ? (
-                  /* THE NEXT MOVE BELONGS HERE. Accepting used to leave you in
-                     step 2 with the next CTA back in step 1's partner section —
-                     an order that had just been agreed looked finished, and the
-                     thing that carried it forward was on another screen.
-
-                     THE ACCEPTANCE ITSELF IS IN THE HEADER, not here: who holds
-                     the order is a fact about the order, true on every step, and
-                     at the foot of a long one it was only visible where nobody
-                     was looking. What is left here is what accepting made
-                     possible. */
-                  <div className="flex flex-col gap-3">
-                    {draft.status === "Completed" && (
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => advance("Accounting Sync Ready")}
-                        >
-                          Move to Accounting Sync Ready
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                          Hands the finished pricing to accounting.
-                        </span>
-                      </div>
-                    )}
-                    {/* TWO OUTCOMES AND A THIRD THAT IS DOING NOTHING. Some of an
-                        order can reach the ledger and some can be rejected, so
-                        "synced" is not the only way out of this stage — and a
-                        stage whose only button is the happy path is one people
-                        press to get rid of. Leaving it alone is the third, and it
-                        needs no button. */}
-                    {(draft.status === "Accounting Sync Ready" ||
-                      draft.status === "Partial Accounting Synced") && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => advance("Accounting Synced")}
-                        >
-                          Mark accounting synced
-                        </Button>
-                        {draft.status !== "Partial Accounting Synced" && (
-                          <Button
-                            variant="outline"
-                            onClick={() => advance("Partial Accounting Synced")}
-                          >
-                            Mark partially synced
-                          </Button>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {draft.status === "Partial Accounting Synced"
-                            ? "Part of this order is still to reach accounting."
-                            : "Or leave it here until accounting has taken it."}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-                  </SheetSectionInset>
-                )}
-              </SheetSection>
-            )}
-          </aside>
-        </div>
-        </>
-      )}
       {/*
-        THREE ACTS ON A SAVED ORDER, side by side at the end of the form.
+        THE SPARE ACTS ON A SAVED ORDER, side by side at the end of the form.
 
         They were behind a "More actions" menu in the sticky footer, which put
-        them beside Save Changes — three things you do to an order sharing a
-        bar with the one thing you do to the FORM. Out here they are what they
-        are: the next steps once the order itself is settled, in the order
-        somebody takes them — dispatch it, copy it, print it.
+        them beside Save Changes — things you do to an order sharing a bar with
+        the one thing you do to the FORM. Out here they are what they are: what
+        is left to do once the order itself is settled — copy it, print it.
 
         Not in the footer, because the footer is for committing the sheet.
       */}
       {!creating && order && (
         <div className="flex flex-wrap items-center gap-3 border-t border-fp-outline-1 pt-6">
-          {/* NOT IN V2 — the footer's CTA ladder ends on this same act, and a
-              button that appears twice on one screen makes the reader wonder
-              which one is the real one. Duplicate and Download stay: neither is
-              ever the next act, so neither is ever in the footer. */}
-          {!v2 && (
-          <Button
-            variant="outline"
-            disabled={draft.status === "Draft" || draft.status === "Blocked"}
-            title={
-              draft.status === "Draft"
-                ? "Send the order to a vendor first"
-                : draft.status === "Blocked"
-                  ? "A blocked order cannot be dispatched"
-                  : undefined
-            }
-            onClick={() =>
-              toast.success("Pushed to dispatch", {
-                description: `${order.orderNo} is on the dispatch board.`,
-              })
-            }
-          >
-            <Truck />
-            Push to dispatch
-          </Button>
-          )}
+          {/* NO PUSH TO DISPATCH HERE — the footer's CTA ladder ends on that
+              same act, and a button that appears twice on one screen makes the
+              reader wonder which one is the real one. Duplicate and Download
+              stay: neither is ever the next act, so neither is ever in the
+              footer. */}
           <Button
             variant="outline"
             onClick={() =>

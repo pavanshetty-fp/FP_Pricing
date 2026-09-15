@@ -275,6 +275,7 @@ another.
 | `BrokerOrdersScreen.tsx` | the dashboard — view bar, action bar, tabs, board/table, pagination |
 | `BrokerBoard.tsx` | **forked** from the DS `KanbanBoard`; see its header |
 | `BrokerOrderSheet.tsx` | the order sheet and the vendor workflow |
+| — | the sheet's retired V1 layout is written up in [`docs/order-sheet-v1-retired-2026-09-15.md`](../../../docs/order-sheet-v1-retired-2026-09-15.md) |
 | `directoryCore.ts` | the vocabulary the four record types share — audit events, attachments, contacts, ship-tos, the seeded generators, and the two kinds of missing value |
 | `directory.ts` | Customers, Products and Rental Assets: the full field sets, the hand-written core records, the generators that take them to volume, and the asset conflict rules |
 | `directoryLinks.ts` | the cross-references between the four entities, made in one place because the import graph will not carry them |

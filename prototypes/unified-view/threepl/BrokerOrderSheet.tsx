@@ -838,8 +838,11 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
   return "Yet to review a quote.";
 }
 
-/** One group of fields on the left, and how much of it is filled in. */
-interface StepGroup {
+/** One UNIT of fields on the left, and how much of it is filled in.
+ *  "Unit" is what every other part of this app calls a bordered block of
+ *  fields, and the panel says it on screen — the type should not be the one
+ *  place it is called something else. */
+interface StepUnit {
   key: string;
   label: string;
   filled: number;
@@ -1411,7 +1414,7 @@ export function BrokerOrderSheet({
     : null;
 
   /** A field counts as filled when it holds something a person put there. */
-  const stepGroups: StepGroup[] = [
+  const stepUnits: StepUnit[] = [
     {
       key: "basic",
       label: "Basic Details",
@@ -1468,7 +1471,7 @@ export function BrokerOrderSheet({
           : undefined,
     },
   ];
-  const groupsDone = stepGroups.filter((g) => g.filled >= g.total).length;
+  const unitsDone = stepUnits.filter((g) => g.filled >= g.total).length;
 
   /*
     THERE IS ALWAYS A NEXT ACT, AND THE FOOTER SHOULD NAME IT.
@@ -1534,7 +1537,7 @@ export function BrokerOrderSheet({
       : draft.status === "Cancelled"
         ? "Order cancelled"
         : nextAct.why;
-  const pctOf = (g: StepGroup) =>
+  const pctOf = (g: StepUnit) =>
     g.total === 0 ? 100 : Math.round((g.filled / g.total) * 100);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
   /** The base on its own, so the table can show it whether or not it counts. */
@@ -1747,6 +1750,28 @@ export function BrokerOrderSheet({
          the acts that ARE available live in the pending-steps panel, beside the
          group they belong to. Step 2 keeps Accept quote: that is not a save,
          it is the decision the step exists for. */
+      /* THE BAR SAYS THE ONE THING THERE IS TO SAY. A blocked order cannot be
+         sent, so the flags and the CTA are all describing acts that are not
+         available — greying one of them leaves four things on a bar with one
+         thing to report. It replaces the banner that used to lead the body
+         too: the body scrolls, and a blocked order is blocked at the bottom of
+         the form as much as at the top. */
+      footerBanner={
+        v2 && draft.status === "Blocked" && order?.blockedReason ? (
+          <div className="flex w-full items-start gap-2 bg-status-failed/10 p-4">
+            <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-sm font-medium text-foreground">
+                Blocked on credit — {order.blockedReason}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Clear the credit hold in Settings, then invite a delivery
+                partner.
+              </span>
+            </div>
+          </div>
+        ) : undefined
+      }
       footerPrimary={
         v2 && step !== "pricing" ? (
           <>
@@ -1853,7 +1878,7 @@ export function BrokerOrderSheet({
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
-      {order?.blockedReason && (
+      {order?.blockedReason && !v2 && (
         <div className="flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
           <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
           <div className="flex flex-col gap-0.5">
@@ -3421,12 +3446,12 @@ export function BrokerOrderSheet({
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full justify-start">
                     <ListChecks />
-                    {groupsDone} of {stepGroups.length} groups done
+                    {unitsDone} of {stepUnits.length} units complete
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" side="top" className="w-80 p-0">
                   <ul className="flex flex-col divide-y divide-border">
-                    {stepGroups.map((g) => {
+                    {stepUnits.map((g) => {
                       const pct = pctOf(g);
                       const done = pct === 100;
                       return (

@@ -48,7 +48,6 @@ import {
   type ServiceLine,
   BROKER_ORDERS,
   BROKER_SEARCH_FIELDS,
-  BROKER_STATUSES,
   BROKER_STATUS_FILTERS,
   BROKER_STATUS_TONE,
   CREATED_BY,
@@ -256,9 +255,16 @@ function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "n
   if (r.status === "Draft") {
     out.push({ label: isOrderReady(r) ? "Ready" : "Draft" });
   }
-  /* Some of it reached accounting and some did not — the lane is still Sync
-     Ready because there is work left, and the badge is what says which. */
-  if (r.status === "Partial Accounting Synced") out.push({ label: "Partial" });
+  /* WHERE IN SYNCED. One lane holds the three ways the accounting hand-off can
+     stand, so the card is what says which — and it has to say it in words the
+     lane's own name does not already imply. "Partially Synced" is the one with
+     work left; "Completed" is the one with none. The third, ready but not yet
+     exported, already says so in the footer note under the card, which is a
+     louder place than a chip and the only one of the three with anything to
+     do. */
+  if (r.status === "Partial Accounting Synced")
+    out.push({ label: "Partially Synced" });
+  if (r.status === "Accounting Synced") out.push({ label: "Completed" });
   return out;
 }
 
@@ -336,16 +342,54 @@ function laneCardInvoice(
 const INVOICE_LANES = new Set<BrokerStatus>(["Accepted"]);
 
 /**
- * What a lane is CALLED, where that differs from the status it holds.
+ * THE LANES, AND WHICH STATUSES EACH ONE HOLDS.
  *
+ * A LANE IS A BUCKET, NOT A STATUS. The two were the same list until the
+ * accounting end of the board grew three of them — sync ready, partially
+ * synced, synced — which is one piece of work reported three ways. Three lanes
+ * for it made the last third of the board wider than the part where anything
+ * is decided, and every card in it was in the right lane and still needed
+ * reading to find out what was actually true. One `Synced` lane, and the card
+ * says where in that it stands.
+ *
+ * A LANE IS CALLED WHAT IT HOLDS, which is not always the status's own name.
  * "Completed" answers "completed what?" — an order is completed several times
- * over on its way through this board, and the one this lane means is the
- * delivery. The status itself is unchanged: it is what the record, the filter
- * and the chip all say, and renaming it would rename them too.
+ * over on its way through this board, and the one that lane means is the
+ * delivery. The statuses themselves are unchanged: they are what the record,
+ * the filter and the chip all say.
+ *
+ * THE LAST TWO ARE NOT THE LIFECYCLE. Cancelled is a way out of it and Blocked
+ * is a condition that holds an order wherever it already stands — neither is
+ * somewhere the work moves THROUGH, and reading left to right past them tells
+ * you nothing. `apart` puts a rule before Cancelled so the eye stops at the end
+ * of the line rather than carrying on into two lanes that are not on it. It is
+ * also why Blocked is here and not second, where it used to sit: it put a lane
+ * nobody can act on between the two that are touched most.
+ *
+ * A LANE TAKES THE COLOUR OF THE STATUS IT ENDS ON, so a bucket of several is
+ * the colour of the one that finishes it.
  */
-const LANE_TITLE: Partial<Record<BrokerStatus, string>> = {
-  Completed: "Delivery Completed",
-};
+const BOARD_LANES: {
+  key: string;
+  title?: string;
+  statuses: BrokerStatus[];
+  apart?: boolean;
+}[] = [
+  { key: "Draft", statuses: ["Draft"] },
+  { key: "Assigned", statuses: ["Assigned"] },
+  { key: "Accepted", statuses: ["Accepted"] },
+  { key: "Completed", title: "Delivery Completed", statuses: ["Completed"] },
+  {
+    key: "Synced",
+    statuses: [
+      "Accounting Sync Ready",
+      "Partial Accounting Synced",
+      "Accounting Synced",
+    ],
+  },
+  { key: "Cancelled", statuses: ["Cancelled"], apart: true },
+  { key: "Blocked", statuses: ["Blocked"] },
+];
 
 function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
   if (r.status === "Blocked") {
@@ -616,51 +660,26 @@ export function BrokerOrdersScreen({
     []
   );
 
-  /**
-   * Lanes, in lifecycle order — with BLOCKED MOVED TO THE END.
-   *
-   * It is not a stage the work passes through on its way anywhere; it is where
-   * orders go to wait for somebody in accounts. Sitting second it interrupted
-   * the one thing a lifecycle board is for — reading left to right and seeing
-   * the work move — and put a lane nobody can act on between the two that are
-   * touched most. At the end it is still on screen and still counted, and the
-   * five lanes that ARE the lifecycle now sit next to each other.
-   *
-   * Lane sort is by window start, which is the only ordering a dispatcher asks
-   * a lane for.
-   */
-  const laneOrder = React.useMemo(
-    () => [
-      ...BROKER_STATUSES.filter((s) => s !== "Blocked"),
-      ...BROKER_STATUSES.filter((s) => s === "Blocked"),
-    ],
-    []
-  );
+  /** Lane sort is by window start, which is the only ordering a dispatcher
+   *  asks a lane for. See `BOARD_LANES` for what the lanes are. */
   const lanes: BoardLane[] = React.useMemo(
     () =>
-      laneOrder.map((status) => {
-        const dir = laneSort[status];
-        /* PARTIAL LIVES IN SYNC READY. It is not a lane of its own — a lane per
-           outcome of one step is how a board stops being readable — and it must
-           not vanish from the board either, so it sits in the lane whose work
-           is not finished, wearing a badge. */
-        let cards = filtered.filter(
-          (r) =>
-            r.status === status ||
-            (status === "Accounting Sync Ready" &&
-              r.status === "Partial Accounting Synced")
-        );
+      BOARD_LANES.map((lane) => {
+        const dir = laneSort[lane.key];
+        const held = new Set<BrokerStatus>(lane.statuses);
+        let cards = filtered.filter((r) => held.has(r.status));
         if (dir) {
           cards = [...cards].sort((a, b) => {
             const d = timeToMinutes(a.window.start) - timeToMinutes(b.window.start);
             return dir === "asc" ? d : -d;
           });
         }
-        const title = LANE_TITLE[status] ?? status;
+        const title = lane.title ?? lane.key;
         return {
-          key: status,
+          key: lane.key,
           title,
-          color: BROKER_LANE_COLOR[status],
+          color: BROKER_LANE_COLOR[lane.statuses[lane.statuses.length - 1]],
+          apart: lane.apart,
           emptyLabel: `No orders in ${title.toLowerCase()}`,
           cards: cards.map((r) => ({
             id: r.id,

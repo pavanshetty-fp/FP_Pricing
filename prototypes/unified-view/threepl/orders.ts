@@ -1339,6 +1339,26 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       if (k % 3 === 0) r.urgent = true;
     });
 
+  /* SO DOES PARTIALLY SYNCED, and for the same reason: it is not in the status
+     rotation the generator walks, so without this the badge that distinguishes
+     it inside the Synced lane would never appear on the board. Every third
+     order that reached accounting stops half way — which is roughly how often
+     it happens, and often enough to land on most days. */
+  rows
+    .filter((r) => r.status === "Accounting Synced")
+    .forEach((r, k) => {
+      if (k % 3 !== 1) return;
+      r.status = "Partial Accounting Synced";
+      r.audit = [
+        ...r.audit,
+        {
+          at: new Date(Date.now() - 1_800_000).toISOString(),
+          by: CREATED_BY[k % CREATED_BY.length],
+          changes: ["Status: Accounting Synced → Partial Accounting Synced"],
+        },
+      ];
+    });
+
   /* CANCELLED HAS TO EXIST TO BE SEEN. It is a terminal exit rather than a
      stage, so it is not in the status rotation the generator walks — without
      this the lane would ship permanently empty, which teaches nothing about

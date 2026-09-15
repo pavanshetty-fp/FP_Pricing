@@ -219,6 +219,16 @@ export interface BoardLane {
   cards: BoardCard[];
   /** Shown in place of the card stack when the lane is empty. */
   emptyLabel?: string;
+  /**
+   * Starts a new group: a rule is drawn before this lane.
+   *
+   * A BOARD IS READ LEFT TO RIGHT, and that reading is a claim — that each
+   * lane follows from the one before it. Where that stops being true the board
+   * has to say so, or the lanes after the break are read as the end of the
+   * line rather than as somewhere else entirely. A gap alone does not do it:
+   * lanes are already separated by one, so a wider one reads as a mistake.
+   */
+  apart?: boolean;
 }
 
 export interface BrokerBoardProps {
@@ -580,13 +590,23 @@ export function BrokerBoard({
   return (
     <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
       {lanes.map((lane) => (
-        <Lane
-          key={lane.key}
-          lane={lane}
-          onOpenCard={onOpenCard}
-          sortDir={laneSort?.[lane.key]}
-          onToggleSort={onToggleLaneSort ? () => onToggleLaneSort(lane.key) : undefined}
-        />
+        <React.Fragment key={lane.key}>
+          {/* THE RULE IS THE BREAK, and the air around it is what makes it one:
+              8px either side on top of the row's own 16px gap, so the two
+              groups are 49px apart where lanes within a group are 16. It runs
+              the full height of the board rather than the height of a lane,
+              because it divides the BOARD — a rule that stopped where the
+              tallest lane did would read as a border on the lane beside it. */}
+          {lane.apart && (
+            <div className="mx-2 w-px shrink-0 self-stretch bg-fp-outline-1" aria-hidden />
+          )}
+          <Lane
+            lane={lane}
+            onOpenCard={onOpenCard}
+            sortDir={laneSort?.[lane.key]}
+            onToggleSort={onToggleLaneSort ? () => onToggleLaneSort(lane.key) : undefined}
+          />
+        </React.Fragment>
       ))}
     </div>
   );

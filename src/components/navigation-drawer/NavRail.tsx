@@ -15,6 +15,18 @@ export interface NavRailProps {
    */
   activeModule?: string;
   onModuleChange?: (key: string) => void;
+  /**
+   * Whether hovering the rail expands it to the 256px labelled panel.
+   *
+   * OFF WHERE A TIER-2 DRAWER ANSWERS THE SAME GESTURE. Two overlays that both
+   * open on "pointer goes left", both 256px wide, and both land on the same
+   * strip of screen is one gesture with two answers — the second one drawn on
+   * top of the first. Where the area has a second nav level, the DRAWER is the
+   * thing that comes out: it carries the labels the expanded rail would have
+   * shown, and the level below them. The rail stays 52px and stays legible
+   * underneath.
+   */
+  expandOnHover?: boolean;
 }
 
 /**
@@ -32,6 +44,7 @@ export function NavRail({
   onNavigate,
   activeModule,
   onModuleChange,
+  expandOnHover = true,
 }: NavRailProps) {
   const [moduleOpen, setModuleOpen] = React.useState(false);
   return (
@@ -43,7 +56,7 @@ export function NavRail({
         className={cn(
           "group absolute inset-y-0 left-0 z-30 flex w-[52px] flex-col overflow-hidden",
           "bg-rail py-3 shadow-none transition-[width,box-shadow] duration-200 ease-out",
-          "hover:w-64 hover:shadow-xl",
+          expandOnHover && "hover:w-64 hover:shadow-xl",
           "data-[expanded=true]:w-64 data-[expanded=true]:shadow-xl"
         )}
       >

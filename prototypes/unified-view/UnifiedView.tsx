@@ -1308,6 +1308,10 @@ export function UnifiedView() {
         }
         rail={
           <NavRail
+            /* The drawer answers the hover where there is one — see
+               `expandOnHover`. Sales has no second level, so its rail keeps the
+               expand it has always had. */
+            expandOnHover={!subGroups}
             groups={[{ items: navItems }]}
             activeKey={active?.key}
             onNavigate={goToArea}
@@ -1319,6 +1323,11 @@ export function UnifiedView() {
            nav level. Sales has none, so its content layer still takes the full
            width; 3PL's areas each have one. The panel classes are the shell
            rule's, verbatim, and are the same ones the DS gallery uses. */
+        /* AND IT PARKS ITSELF. Every screen in this app is a table or a board,
+           which is to say every screen wants the width — and the drawer's job
+           is done the moment you have picked the list you are working in. See
+           `sidebarAutoHide`. */
+        sidebarAutoHide
         sidebar={
           subGroups && active ? (
             <NavigationDrawer

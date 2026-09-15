@@ -9,6 +9,30 @@ export interface AppShellProps {
   /** Tier-2 contextual sidebar (256px). Optional. Self-contained. */
   sidebar?: React.ReactNode;
   /**
+   * PUT THE TIER-2 DRAWER AWAY UNTIL IT IS WANTED.
+   *
+   * A second nav level is READ ONCE — you pick the list you are working in and
+   * then you work in it — and it charges 264px of every screen after that for
+   * the privilege of having been read. On a table that is two columns; on a
+   * board it is most of a lane. Parked, it costs nothing and comes back on a
+   * gesture nobody has to learn: move left, towards where the nav has always
+   * been.
+   *
+   * IT FLOATS RATHER THAN PUSHES. Reflowing the content layer every time the
+   * pointer crossed the rail would make the thing you are reading move while
+   * you read it — and the drawer's whole argument is that the content should
+   * have the width. Over the top, the table underneath keeps its columns and
+   * its scroll position.
+   *
+   * IT LEAVES ON ITS OWN, and not the instant you step off it: a pointer on
+   * its way from the rail to a row crosses the gap, and a drawer that shut on
+   * that would be a drawer you had to chase. It waits — see `PEEK_HIDE_MS`.
+   *
+   * The Tier-1 rail is untouched by any of this. It is four items you aim at
+   * by muscle memory, and it is 52px.
+   */
+  sidebarAutoHide?: boolean;
+  /**
    * Fixed page header at the top of the content layer — the name of the selected
    * menu (from the sub-nav drawer or the main nav). A string renders the 24px
    * semibold title; pass a node for custom header content.
@@ -45,10 +69,14 @@ export interface AppShellProps {
  * is a distinct FP/Surface-1b panel (#1b2028, rounded-md) with a fixed 48px
  * page-header at its top (1px #363c45 bottom divider) showing the selected menu.
  */
+/** How long the drawer stays out after the pointer leaves it. */
+const PEEK_HIDE_MS = 2000;
+
 export function AppShell({
   topBar,
   rail,
   sidebar,
+  sidebarAutoHide = false,
   title,
   breadcrumb,
   headerAction,
@@ -67,6 +95,32 @@ export function AppShell({
       title
     );
   const hasHeader = title != null || headerAction != null || breadcrumb != null;
+
+  const peeking = sidebarAutoHide && sidebar != null;
+  const [peek, setPeek] = React.useState(false);
+  const hideAt = React.useRef<number | undefined>(undefined);
+  const hold = React.useCallback(() => {
+    window.clearTimeout(hideAt.current);
+    setPeek(true);
+  }, []);
+  const release = React.useCallback(() => {
+    window.clearTimeout(hideAt.current);
+    hideAt.current = window.setTimeout(() => setPeek(false), PEEK_HIDE_MS);
+  }, []);
+  React.useEffect(() => () => window.clearTimeout(hideAt.current), []);
+
+  /* THE RAIL OPENS IT TOO, because "where is the rest of the nav" is a
+     question you ask with the pointer already on the nav. Wrapping it costs
+     nothing: the wrapper is a flex box round a fixed-width child. */
+  const railEl =
+    peeking && rail ? (
+      <div className="flex shrink-0" onMouseEnter={hold} onMouseLeave={release}>
+        {rail}
+      </div>
+    ) : (
+      rail
+    );
+
   return (
     <div
       className={cn(
@@ -79,12 +133,54 @@ export function AppShell({
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Tier-1 rail: flush left, full height (outside the padded region). */}
-        {rail}
+        {railEl}
 
         {/* Padded region: p-2 = 8px outer margin (top/right/bottom) + 8px gap from
             the rail; gap-2 = 8px between the sidebar and the content layer. */}
-        <div className="flex min-w-0 flex-1 gap-2 p-2">
-          {sidebar}
+        {/* `overflow-hidden` ONLY WHEN THE DRAWER PARKS, and it is what the
+            parking is: the drawer slides out to the left of this box and the
+            box clips it, so it reads as going back in behind the rail rather
+            than as sliding over it. Overlays are portalled, so nothing that
+            needs to escape this box is inside it. */}
+        <div
+          className={cn(
+            "relative flex min-w-0 flex-1 gap-2 p-2",
+            peeking && "overflow-hidden"
+          )}
+        >
+          {peeking ? (
+            <>
+              {/* THE EDGE IS THE HANDLE. No button, because a button for this
+                  would be a control that exists to reveal a control — and the
+                  8px channel between the rail and the content is already the
+                  place the pointer passes through on its way to the nav. */}
+              <div
+                aria-hidden
+                className="absolute inset-y-2 left-0 z-20 w-3"
+                onMouseEnter={hold}
+              />
+              {/* `pointer-events-none` while parked so the parked drawer does
+                  not eat clicks on the column it is sitting over. Focus still
+                  reaches it — tabbing in opens it, which is the keyboard's
+                  version of moving left. */}
+              <div
+                className={cn(
+                  "absolute inset-y-2 left-2 z-30 rounded-lg shadow-fp-surface transition-transform duration-200 ease-out",
+                  peek
+                    ? "translate-x-0"
+                    : "pointer-events-none -translate-x-[calc(100%+0.75rem)]"
+                )}
+                onMouseEnter={hold}
+                onMouseLeave={release}
+                onFocusCapture={hold}
+                onBlurCapture={release}
+              >
+                {sidebar}
+              </div>
+            </>
+          ) : (
+            sidebar
+          )}
         {/* Content Layer: FP/Surface 1b, rounded-md, no outer border and NO
             SHADOW. The shadow existed to lift it off a ground it was the same
             colour as; now that the app ground is the tinted surface-base, the

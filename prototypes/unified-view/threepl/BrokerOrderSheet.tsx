@@ -69,6 +69,7 @@ import {
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { StageBar, type Stage } from "@/components/ui/stage-bar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
@@ -712,6 +713,50 @@ function stepOfStage(key: string): "order" | "pricing" {
     : "order";
 }
 
+/**
+ * TWO VERSIONS OF THIS SHEET, SIDE BY SIDE IN ONE BUILD.
+ *
+ * V2 is a redesign of the order sheet that has not been designed yet. Doing it
+ * on a branch would mean one of the two is always the one nobody can open;
+ * doing it in place would mean the version that WORKS stops existing the moment
+ * the first change lands. A switch in the header keeps both reachable from the
+ * same build — open an order, flip it, compare, flip back.
+ *
+ * IT STARTS IDENTICAL AND DIVERGES. Nothing about V1 is copied or forked: the
+ * two share every line until a piece of the sheet is deliberately branched on
+ * `version`, which is how the diff stays readable and how V1 keeps working
+ * without being maintained twice.
+ *
+ * It persists like `fp-theme` and `fp-module`: a reviewer who flips to V2 and
+ * opens the next order should still be in V2.
+ */
+export type SheetVersion = "v1" | "v2";
+
+const SHEET_VERSION_KEY = "fp-order-sheet-version";
+
+function readStoredVersion(): SheetVersion {
+  try {
+    if (typeof localStorage === "undefined") return "v1";
+    return localStorage.getItem(SHEET_VERSION_KEY) === "v2" ? "v2" : "v1";
+  } catch {
+    return "v1";
+  }
+}
+
+function useSheetVersion(): [SheetVersion, (v: SheetVersion) => void] {
+  const [version, setVersion] = React.useState<SheetVersion>(readStoredVersion);
+  const set = (v: SheetVersion) => {
+    setVersion(v);
+    try {
+      localStorage.setItem(SHEET_VERSION_KEY, v);
+    } catch {
+      /* A file:// open with storage blocked still switches, just not across
+         reloads — the same guard the theme and module toggles use. */
+    }
+  };
+  return [version, set];
+}
+
 export function BrokerOrderSheet({
   order,
   mode = "edit",
@@ -734,6 +779,7 @@ export function BrokerOrderSheet({
   const [step, setStep] = React.useState<"order" | "pricing">("order");
   const [shownQuoteId, setShownQuote] = React.useState<string | null>(null);
   const creating = mode === "create";
+  const [version, setVersion] = useSheetVersion();
 
   React.useEffect(() => {
     if (!open) return;
@@ -1345,6 +1391,35 @@ export function BrokerOrderSheet({
             saveState={saveState}
           />
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
+          {/* NEXT TO THE ORDER NUMBER, because it is a fact about what you are
+              LOOKING AT rather than about the order — the same shelf the status
+              chip sits on, and the only one that never scrolls away. It is a
+              review control and will come out when V2 lands; it is here, in the
+              open, rather than behind a key combination nobody would find. */}
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={version}
+            /* Radix emits "" when the active item is pressed again; a version
+               is never empty, so the deselect is ignored. */
+            onValueChange={(next) => next && setVersion(next as SheetVersion)}
+            aria-label="Sheet version"
+            className="h-6"
+          >
+            <ToggleGroupItem
+              value="v1"
+              className="h-6 px-2 text-[11px] font-normal data-[state=on]:font-medium"
+            >
+              V1
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="v2"
+              className="h-6 px-2 text-[11px] font-normal data-[state=on]:font-medium"
+            >
+              V2
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       }
       /* ACTS ON THE ORDER, not part of filling it in. Deleting is the only one

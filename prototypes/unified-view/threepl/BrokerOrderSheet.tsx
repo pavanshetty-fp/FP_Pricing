@@ -9,7 +9,6 @@ import {
   History as HistoryIcon,
   Info,
   Users,
-  ListChecks,
   Ban,
   MoreHorizontal,
   Truck,
@@ -838,19 +837,6 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
   return "Yet to review a quote.";
 }
 
-/** One UNIT of fields on the left, and how much of it is filled in.
- *  "Unit" is what every other part of this app calls a bordered block of
- *  fields, and the panel says it on screen — the type should not be the one
- *  place it is called something else. */
-interface StepUnit {
-  key: string;
-  label: string;
-  filled: number;
-  total: number;
-  /** The one thing worth doing about this group right now, if there is one. */
-  cta?: { label: string; onSelect: () => void };
-}
-
 export function BrokerOrderSheet({
   order,
   mode = "edit",
@@ -1413,66 +1399,6 @@ export function BrokerOrderSheet({
     ? Math.min(...quotes.map((q) => quoteTotal(q, draft.lines, chargesBase)))
     : null;
 
-  /** A field counts as filled when it holds something a person put there. */
-  const stepUnits: StepUnit[] = [
-    {
-      key: "basic",
-      label: "Basic Details",
-      total: 4,
-      filled: [draft.customer, draft.shipTo, draft.poNumber, draft.orderType].filter(
-        Boolean
-      ).length,
-    },
-    {
-      key: "poc",
-      label: "POC Details",
-      total: 2,
-      filled: [draft.primaryPoc, draft.salesperson].filter(Boolean).length,
-    },
-    {
-      key: "schedule",
-      label: "Schedule Details",
-      total: 2,
-      filled: [draft.plannedDate, draft.windowStart].filter(Boolean).length,
-    },
-    {
-      key: "delivery",
-      label: "Delivery Order",
-      total: 1,
-      filled: hasAssets ? 1 : 0,
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      total: 1,
-      filled: invitedIds.length > 0 ? 1 : 0,
-      /* THE ACT THAT IS ACTUALLY AVAILABLE, not the next row in the form. A
-         partner has said yes and nobody has asked them for a price — that is
-         a thing to do, and it is three sections away from where the reader
-         would be looking for it. */
-      cta:
-        quotingPartners.length > 0 && !draft.quoteRequested
-          ? {
-              label: "Request a quote",
-              onSelect: () => set("quoteRequested", true),
-            }
-          : uninvited.length > 0 && invitedIds.length === 0
-            ? { label: "Invite a partner", onSelect: addPartnerRow }
-            : undefined,
-    },
-    {
-      key: "pricing",
-      label: "Quotes & pricing",
-      total: 1,
-      filled: draft.vendorId ? 1 : 0,
-      cta:
-        quotes.length > 0 && !draft.vendorId
-          ? { label: "Review quotes", onSelect: () => setStep("pricing") }
-          : undefined,
-    },
-  ];
-  const unitsDone = stepUnits.filter((g) => g.filled >= g.total).length;
-
   /*
     THERE IS ALWAYS A NEXT ACT, AND THE FOOTER SHOULD NAME IT.
 
@@ -1537,8 +1463,6 @@ export function BrokerOrderSheet({
       : draft.status === "Cancelled"
         ? "Order cancelled"
         : nextAct.why;
-  const pctOf = (g: StepUnit) =>
-    g.total === 0 ? 100 : Math.round((g.filled / g.total) * 100);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
   /** The base on its own, so the table can show it whether or not it counts. */
   const shownBase = shownQuote ? quoteBaseTotal(shownQuote, draft.lines) : 0;
@@ -3424,83 +3348,6 @@ export function BrokerOrderSheet({
                 </ol>
               )}
             </RailCard>
-            {/* ── V2 — PENDING STEPS ───────────────────────────────────────────
-                A LONG FORM DOES NOT SAY HOW MUCH OF IT IS LEFT. The sheet knows —
-                it knows which groups are empty, which are half done, and which of
-                them has something that can be acted on right now — and in V1 the
-                only way to find out was to scroll it all and remember.
-
-                IT CARRIES ACTIONS, NOT JUST A SCORE. A meter that only counts is a
-                progress bar; what makes this worth opening is that the one act
-                actually available — a partner has said yes and nobody has asked
-                them for a price — is offered HERE, beside the group it belongs to,
-                three sections from where the reader would have gone looking.
-
-                AT THE FOOT OF THE RAIL, NOT FLOATING OVER THE BODY. It belongs to
-                the derived column — it is a read-out of the form, not part of
-                it — and a circle hovering over a form covers the last field at
-                every size nobody tested. Last in the rail because it is the
-                thing you reach for when you have run out of what to read. */}
-            {v2 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <ListChecks />
-                    {unitsDone} of {stepUnits.length} units complete
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" side="top" className="w-80 p-0">
-                  <ul className="flex flex-col divide-y divide-border">
-                    {stepUnits.map((g) => {
-                      const pct = pctOf(g);
-                      const done = pct === 100;
-                      return (
-                        <li key={g.key} className="flex flex-col gap-2 px-3 py-2.5">
-                          <span className="flex items-baseline justify-between gap-3">
-                            <span className="truncate text-sm text-foreground">
-                              {g.label}
-                            </span>
-                            {/* PER CENT AND THE COUNT IT CAME FROM. "50%" alone
-                                makes the reader guess how much work that is; "2 of
-                                4" alone makes them do the arithmetic. */}
-                            <span
-                              className={cn(
-                                "shrink-0 text-xs tabular-nums",
-                                done ? "text-status-success" : "text-muted-foreground"
-                              )}
-                            >
-                              {done ? "Done" : `${pct}% · ${g.filled} of ${g.total}`}
-                            </span>
-                          </span>
-                          <span
-                            aria-hidden
-                            className="h-1 w-full overflow-hidden rounded-full bg-accent"
-                          >
-                            <span
-                              className={cn(
-                                "block h-full rounded-full transition-[width]",
-                                done ? "bg-status-success" : "bg-brand"
-                              )}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </span>
-                          {g.cta && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="self-start"
-                              onClick={g.cta.onSelect}
-                            >
-                              {g.cta.label}
-                            </Button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </PopoverContent>
-              </Popover>
-            )}
           </aside>
         )}
         </div>

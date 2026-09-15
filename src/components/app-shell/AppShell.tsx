@@ -28,8 +28,15 @@ export interface AppShellProps {
    * its way from the rail to a row crosses the gap, and a drawer that shut on
    * that would be a drawer you had to chase. It waits — see `PEEK_HIDE_MS`.
    *
-   * The Tier-1 rail is untouched by any of this. It is four items you aim at
-   * by muscle memory, and it is 52px.
+   * THE RAIL IS NOT THE HANDLE, AND THAT IS THE WHOLE OF WHY THIS WORKS. The
+   * rail has its own hover — it expands to 256px and shows its labels — so
+   * hanging the drawer off the same hover would be one gesture with two
+   * answers, two 256px overlays landing on the same strip of screen. The
+   * handle is the channel just to the RIGHT of the rail instead, which the
+   * expanded rail sits on top of: while the rail is out it eats the pointer,
+   * so leaving the rail rightwards can never trip the drawer. Arriving at that
+   * channel from the content is the only way in, and it is the gesture the
+   * drawer is for.
    */
   sidebarAutoHide?: boolean;
   /**
@@ -71,6 +78,15 @@ export interface AppShellProps {
  */
 /** How long the drawer stays out after the pointer leaves it. */
 const PEEK_HIDE_MS = 2000;
+/**
+ * How long the pointer has to REST on the channel before the drawer comes out.
+ *
+ * Without it, every trip from the content to a rail icon opens a drawer on the
+ * way past — the channel is between the two, and crossing it is not asking for
+ * anything. A quarter of a second is longer than a crossing and shorter than a
+ * decision.
+ */
+const PEEK_SHOW_MS = 250;
 
 export function AppShell({
   topBar,
@@ -99,27 +115,48 @@ export function AppShell({
   const peeking = sidebarAutoHide && sidebar != null;
   const [peek, setPeek] = React.useState(false);
   const hideAt = React.useRef<number | undefined>(undefined);
-  const hold = React.useCallback(() => {
-    window.clearTimeout(hideAt.current);
-    setPeek(true);
-  }, []);
+  const showAt = React.useRef<number | undefined>(undefined);
+  /**
+   * Arm the retreat. Called when the pointer leaves the drawer AND at the
+   * moment it opens — which is the part that is not belt-and-braces.
+   *
+   * THE DRAWER OPENS UNDERNEATH A POINTER THAT IS NOT MOVING, and a browser
+   * does not fire `mouseenter` for an element that arrives under a stationary
+   * cursor. No enter means no LEAVE either, so a close hung only on leaving
+   * never came: the drawer stood open until something else happened to it.
+   * Arming at open time makes the two seconds a promise the drawer keeps on
+   * its own; touching it is what postpones them.
+   */
   const release = React.useCallback(() => {
+    window.clearTimeout(showAt.current);
     window.clearTimeout(hideAt.current);
     hideAt.current = window.setTimeout(() => setPeek(false), PEEK_HIDE_MS);
   }, []);
-  React.useEffect(() => () => window.clearTimeout(hideAt.current), []);
-
-  /* THE RAIL OPENS IT TOO, because "where is the rest of the nav" is a
-     question you ask with the pointer already on the nav. Wrapping it costs
-     nothing: the wrapper is a flex box round a fixed-width child. */
-  const railEl =
-    peeking && rail ? (
-      <div className="flex shrink-0" onMouseEnter={hold} onMouseLeave={release}>
-        {rail}
-      </div>
-    ) : (
-      rail
-    );
+  /** Pointer is on the drawer: it stays out for as long as that is true. */
+  const hold = React.useCallback(() => {
+    window.clearTimeout(hideAt.current);
+    window.clearTimeout(showAt.current);
+    setPeek(true);
+  }, []);
+  /** The channel's own opener: a dwell, not a crossing. */
+  const dwell = React.useCallback(() => {
+    window.clearTimeout(hideAt.current);
+    window.clearTimeout(showAt.current);
+    showAt.current = window.setTimeout(() => {
+      setPeek(true);
+      release();
+    }, PEEK_SHOW_MS);
+  }, [release]);
+  const abandon = React.useCallback(() => {
+    window.clearTimeout(showAt.current);
+  }, []);
+  React.useEffect(
+    () => () => {
+      window.clearTimeout(hideAt.current);
+      window.clearTimeout(showAt.current);
+    },
+    []
+  );
 
   return (
     <div
@@ -133,7 +170,7 @@ export function AppShell({
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Tier-1 rail: flush left, full height (outside the padded region). */}
-        {railEl}
+        {rail}
 
         {/* Padded region: p-2 = 8px outer margin (top/right/bottom) + 8px gap from
             the rail; gap-2 = 8px between the sidebar and the content layer. */}
@@ -150,14 +187,15 @@ export function AppShell({
         >
           {peeking ? (
             <>
-              {/* THE EDGE IS THE HANDLE. No button, because a button for this
-                  would be a control that exists to reveal a control — and the
-                  8px channel between the rail and the content is already the
-                  place the pointer passes through on its way to the nav. */}
+              {/* THE CHANNEL IS THE HANDLE. No button, because a button for
+                  this would be a control that exists to reveal a control. It
+                  sits under the rail's own expanded footprint on purpose —
+                  see the note on `sidebarAutoHide`. */}
               <div
                 aria-hidden
-                className="absolute inset-y-2 left-0 z-20 w-3"
-                onMouseEnter={hold}
+                className="absolute inset-y-2 left-0 z-20 w-6"
+                onMouseEnter={dwell}
+                onMouseLeave={abandon}
               />
               {/* `pointer-events-none` while parked so the parked drawer does
                   not eat clicks on the column it is sitting over. Focus still
@@ -170,7 +208,12 @@ export function AppShell({
                     ? "translate-x-0"
                     : "pointer-events-none -translate-x-[calc(100%+0.75rem)]"
                 )}
+                /* `onMouseMove` AS WELL AS `onMouseEnter`: when the drawer
+                   arrives under a cursor that is already there, the enter
+                   never fires and the first flicker of movement is the only
+                   signal that anybody is using it. */
                 onMouseEnter={hold}
+                onMouseMove={hold}
                 onMouseLeave={release}
                 onFocusCapture={hold}
                 onBlurCapture={release}

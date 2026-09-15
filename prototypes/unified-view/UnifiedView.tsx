@@ -1308,10 +1308,6 @@ export function UnifiedView() {
         }
         rail={
           <NavRail
-            /* The drawer answers the hover where there is one — see
-               `expandOnHover`. Sales has no second level, so its rail keeps the
-               expand it has always had. */
-            expandOnHover={!subGroups}
             groups={[{ items: navItems }]}
             activeKey={active?.key}
             onNavigate={goToArea}

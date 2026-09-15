@@ -135,18 +135,6 @@ export interface RecordSheetProps {
    * they stay in view no matter how far the body has scrolled.
    */
   footerAside?: React.ReactNode;
-  /**
-   * Replaces the ENTIRE footer — flags, aside and primary — with one
-   * full-width element.
-   *
-   * FOR A STATE THAT MAKES THE FOOTER MOOT. A blocked order cannot be sent,
-   * so the bar's flags and its CTA are all describing acts that are not
-   * available; leaving them there and greying one of them tells the reader
-   * four things when there is one thing to say. The bar is the only strip that
-   * never scrolls, which makes it the right place to say the one thing — and
-   * the wrong place to keep three that do not apply.
-   */
-  footerBanner?: React.ReactNode;
   onSubmit: () => void;
   children: React.ReactNode;
 }
@@ -287,7 +275,6 @@ export function RecordSheet({
   canSubmit = true,
   footerPrimary,
   footerAside,
-  footerBanner,
   onSubmit,
   children,
 }: RecordSheetProps) {
@@ -336,16 +323,7 @@ export function RecordSheet({
           {children}
         </div>
 
-        <div
-          className={cn(
-            "flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border",
-            /* The banner brings its own fill to the edges of the bar; the
-               normal footer keeps the 16px the controls need. */
-            footerBanner ? "p-0" : "p-4"
-          )}
-        >
-          {footerBanner ?? (
-            <>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-4">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             {footerAside}
           </div>
@@ -372,8 +350,6 @@ export function RecordSheet({
             </Button>
           )}
           </div>
-            </>
-          )}
         </div>
       </SheetContent>
     </Sheet>

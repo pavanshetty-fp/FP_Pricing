@@ -7,6 +7,8 @@ import {
   Copy,
   Download,
   History as HistoryIcon,
+  DollarSign,
+  Mail,
   Info,
   Users,
   Ban,
@@ -772,6 +774,45 @@ function useSheetVersion(): [SheetVersion, (v: SheetVersion) => void] {
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**
+ * WHAT AN ACTIVITY ENTRY IS ABOUT, from what it says.
+ *
+ * The audit trail is one line of prose per change, which is the right thing to
+ * store and the wrong thing to scan: six lines of identical grey text hide the
+ * one that matters. A mark gives each entry a kind at a glance — money, a
+ * message that left the building, something added, something that moved
+ * backwards — and money and creation get a tint, because those are the two the
+ * eye should catch on the way past.
+ */
+function auditMark(text: string): { icon: React.ReactNode; tone: string } {
+  const t = text.toLowerCase();
+  if (/\bquote|price|\$|margin|rate/.test(t))
+    return {
+      icon: <DollarSign />,
+      tone: "border-status-success/30 bg-status-success/10 text-status-success",
+    };
+  if (/invit|sent|notif|email|acknowled/.test(t))
+    return {
+      icon: <Mail />,
+      tone: "border-fp-banner-accent-info/30 bg-fp-banner-accent-info/10 text-fp-banner-accent-info",
+    };
+  if (/created/.test(t))
+    return {
+      icon: <Plus />,
+      tone: "border-status-success/30 bg-status-success/10 text-status-success",
+    };
+  if (/cancel|remov|delet|block/.test(t))
+    return {
+      icon: <Ban />,
+      tone: "border-status-failed/30 bg-status-failed/10 text-status-failed",
+    };
+  if (/load order|terminal|supplier/.test(t))
+    return { icon: <Layers />, tone: "border-border bg-card text-muted-foreground" };
+  if (/asset|product|gal/.test(t))
+    return { icon: <Truck />, tone: "border-border bg-card text-muted-foreground" };
+  return { icon: <Pencil />, tone: "border-border bg-card text-muted-foreground" };
+}
+
+/**
  * A label/value row in a rail card, and — where there is one — the ARITHMETIC
  * BEHIND THE FIGURE, on hover.
  *
@@ -911,7 +952,12 @@ export function BrokerOrderSheet({
     /* AN ACCEPTED ORDER OPENS ON STEP 2. It is the only reason to open one: the
        order itself was settled before it was ever sent out, and what is waiting
        in that lane is a price to agree. Every other stage opens on the order. */
-    setStep(order?.status === "Accepted" ? "pricing" : "order");
+    /* V2 IS ONE PAGE, so there is no second step to open on. */
+    setStep(
+      readStoredVersion() === "v1" && order?.status === "Accepted"
+        ? "pricing"
+        : "order"
+    );
     setShownQuote(null);
   }, [open, creating, order]);
 
@@ -1460,13 +1506,48 @@ export function BrokerOrderSheet({
             label: "Send invitations",
             onSelect: () => sendInvitations(invitedIds),
           }
-        : quotingPartners.length > 0 && !draft.quoteRequested
+        : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
+             accepted order was being offered "Request a quote" because the
+             ladder asked about quoting before it asked whether the quoting was
+             over. The lifecycle rungs below already handle it — this just lets
+             them be reached. */
+          draft.vendorId
+          ? draft.status === "Completed"
+            ? {
+                label: "Move to Accounting Sync Ready",
+                onSelect: () => advance("Accounting Sync Ready"),
+              }
+            : draft.status === "Accounting Sync Ready" ||
+                draft.status === "Partial Accounting Synced"
+              ? {
+                  label: "Mark accounting synced",
+                  onSelect: () => advance("Accounting Synced"),
+                }
+              : {
+                  label: "Push to dispatch",
+                  onSelect: () =>
+                    toast.success("Pushed to dispatch", {
+                      description: "The order is on the dispatch board.",
+                    }),
+                }
+          : quotingPartners.length > 0 && !draft.quoteRequested
           ? {
               label: "Request a quote",
               onSelect: () => set("quoteRequested", true),
             }
-          : quotes.length > 0 && !draft.vendorId
-            ? { label: "Review quotes", onSelect: () => setStep("pricing") }
+          : quotes.length > 0 && !draft.vendorId && shownVendorId
+            ? {
+                /* ACCEPT, NOT "REVIEW". On one page the quote is already in
+                   front of you — sending the reader to look at what they are
+                   looking at is not an act. */
+                label: "Accept quote",
+                onSelect: () => {
+                  const next = draftAccepting(draft, shownVendorId);
+                  announceAccepted(draft, shownVendorId);
+                  setDraft(next);
+                  if (order) onSave(order, next);
+                },
+              }
             : !draft.vendorId
               ? {
                   /* THE LABEL IS THE ACT, NEVER THE STATE. "Waiting on
@@ -1551,6 +1632,392 @@ export function BrokerOrderSheet({
     draft.customer.trim() !== "" &&
     draft.shipTo.trim() !== "" &&
     draft.plannedDate !== null;
+
+  /*
+    THE TWO PRICING TABLES, LIFTED OUT OF THE RENDER.
+
+    V1 shows them on a second step; V2 shows them at the foot of one page. One
+    definition, used from both places — a second copy would be two tables that
+    are the same table until somebody edits one of them.
+  */
+  const pricingSections = (
+    <>
+      <BannerInline
+        status="info"
+        split
+        /* The column is a flex container: a fixed-height child still gets
+           flex-shrink applied and the 32px bar was rendering at 20. */
+        className="shrink-0"
+        title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
+      >
+        {hasLoadOrder
+          ? "The vendor charges freight, fees and taxes only — the base price is yours."
+          : "The charges will be set by the vendor."}
+      </BannerInline>
+      {shownVendorId && (
+        <SheetSection
+          title="Vendor Pricing"
+          flush
+          /* WHOSE PRICE THIS IS. One partner needs no control — a select of
+             one is a question with an answer already in it — so it states
+             the name and whether they hold the order. More than one and it
+             becomes a picker, because the table below can only show one. */
+          /* IT SAYS WHAT THE LIST IS. A bare dropdown of company names on a
+             heading row is a question nobody asked: these are the delivery
+             partners that said yes to this order, and the control picks
+             whose price the table below shows. Unlabelled, the only way to
+             find that out was to open it. */
+          action={
+            quotingPartners.length > 1 ? (
+              <span className="flex items-center gap-2">
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  Quote from
+                </span>
+              <Combobox
+                className="h-8 w-64"
+                value={shownVendorId}
+                onValueChange={setShownQuote}
+                options={quotingPartners.map((vid) => ({
+                  value: vid,
+                  label: vendorById(vid)?.name ?? vid,
+                  description:
+                    draft.vendorId === vid
+                      ? "Holds this order"
+                      : draft.vendorId
+                        ? "On hold"
+                        : quoteOf(vid)
+                          ? "Priced"
+                          : "Not priced",
+                }))}
+                searchPlaceholder="Search vendors…"
+              />
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Quote from{" "}
+                <span className="text-foreground">
+                  {vendorById(shownVendorId)?.name}
+                </span>
+                {draft.vendorId === shownVendorId && " · holds this order"}
+              </span>
+            )
+          }
+          note={
+            <SheetSectionNote label="About vendor pricing">
+              What {vendorById(shownVendorId)?.name ?? "the partner"} charges
+              to move this order. TLC is the total landing cost — delivered
+              gallons times rate plus surcharge — because a low rate with a
+              high surcharge is not a cheap quote.
+              <span className="mt-1.5 block">
+                Typed here as well as received: a partner that gave its price
+                on a call still has a price. Delivered gallons are the
+                exception — typed once, in Customer Pricing below.
+              </span>
+            </SheetSectionNote>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] table-fixed border-collapse">
+              <colgroup>
+                <col />
+                <col className="w-[22%]" />
+                <col className="w-[112px]" />
+                <col className="w-[132px]" />
+                <col className="w-[124px]" />
+                <col className="w-[128px]" />
+                <col className="w-[140px]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border bg-fp-table-header">
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Asset name</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Product</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-right">
+                    <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-right">
+                    <TableRequiredLabel>Delivered gal (D)</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-right">
+                    <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
+                  </th>
+                  <th className="px-3 py-2.5 text-right">
+                    <TableRequiredLabel>Surcharge (C)</TableRequiredLabel>
+                  </th>
+                  <th
+                    className="px-3 py-2.5 text-right"
+                    title="Total landing cost — delivered gallons x (rate + surcharge)"
+                  >
+                    <TableRequiredLabel>TLC D×(B+C)</TableRequiredLabel>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {draft.lines.map((l, i) => {
+                  const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
+                  const put = (patch: Partial<QuoteLine>) =>
+                    setQuoteLine(shownVendorId, l.asset, patch);
+                  return (
+                    <tr
+                      key={i}
+                      className="h-12 border-b border-border last:border-b-0"
+                    >
+                      <td className="truncate px-3 text-sm text-foreground">
+                        {l.asset || "—"}
+                      </td>
+                      <td className="truncate px-3 text-sm text-muted-foreground">
+                        {l.product}
+                      </td>
+                      <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                        {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
+                      </td>
+                      {/* READ-ONLY HERE. The same figure is typed in the
+                          customer table below — one editable place, so the
+                          two tables cannot come to disagree about how much
+                          went in. Until it is typed the requested figure is
+                          what the TLC uses, so that is what this cell shows,
+                          dimmed, because it is an assumption. */}
+                      <td
+                        className={cn(
+                          "px-3 text-right text-sm tabular-nums",
+                          l.deliveredGal == null
+                            ? "text-muted-foreground/60"
+                            : "text-muted-foreground"
+                        )}
+                        title={
+                          l.deliveredGal == null
+                            ? "Not delivered yet — priced on the requested quantity"
+                            : undefined
+                        }
+                      >
+                        {billableGal(l).toLocaleString()}
+                      </td>
+                      <td className="relative p-0">
+                        <TableCellInput
+                          value={ql ? String(ql.ratePerGal) : ""}
+                          placeholder="0.000"
+                          numeric
+                          prefix="$"
+                          aria-label={`Vendor rate per gallon for line ${i + 1}`}
+                          onChange={(v) => put({ ratePerGal: num(v) })}
+                        />
+                      </td>
+                      <td className="relative p-0">
+                        <TableCellInput
+                          value={ql ? String(ql.surcharge) : ""}
+                          placeholder="0.000"
+                          numeric
+                          prefix="$"
+                          aria-label={`Vendor surcharge for line ${i + 1}`}
+                          onChange={(v) => put({ surcharge: num(v) })}
+                        />
+                      </td>
+                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                        {ql ? money(quoteLineTotal(ql, l)) : money(0)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/*
+                THE BASE, THEN WHAT IS ADDED TO IT, THEN THE TOTAL.
+
+                Freight, fees and taxes are charged once for the run, not
+                per gallon, so they cannot be columns — a per-line freight
+                would have to be divided by somebody and the division would
+                be invented. They are rows under the table, which is also
+                where the reader is already looking for a total.
+              */}
+              <tfoot>
+                <tr className="h-11 border-t border-border">
+                  {/* LEFT, NOT RIGHT. The table is 980px wide and scrolls;
+                      a label right-aligned against its figure means both
+                      are off-screen together, and the reader scrolls to
+                      find out what the number is called. */}
+                  <td
+                    colSpan={6}
+                    className="px-3 text-sm text-muted-foreground"
+                  >
+                    Base price — product + margin
+                  </td>
+                  <td
+                    className={cn(
+                      "px-3 text-right text-sm tabular-nums",
+                      /* STATED, NOT HIDDEN. The figure is what the partner
+                         would have charged; striking it says the quote was
+                         read and the base was set aside, where an absent
+                         row would look like nobody priced it. */
+                      chargesBase
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground/60 line-through"
+                    )}
+                    title={
+                      chargesBase
+                        ? undefined
+                        : "Not charged — the load order makes the product yours"
+                    }
+                  >
+                    {money(shownBase)}
+                  </td>
+                </tr>
+                {ORDER_CHARGES.map((c) => (
+                  <tr key={c.key} className="h-11 border-t border-border">
+                    <td
+                      colSpan={6}
+                      className="px-3 text-sm text-muted-foreground"
+                    >
+                      {c.label}
+                    </td>
+                    <td className="relative p-0">
+                      <TableCellInput
+                        value={
+                          shownQuote ? String(shownQuote[c.key] ?? 0) : ""
+                        }
+                        placeholder="0"
+                        numeric
+                        prefix="$"
+                        aria-label={`${c.label} charged by the partner`}
+                        onChange={(v) =>
+                          setQuoteCharge(shownVendorId, { [c.key]: num(v) })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+                <tr className="h-11 border-t border-border bg-fp-table-header">
+                  <td
+                    colSpan={6}
+                    className="px-3 text-sm text-muted-foreground"
+                  >
+                    Vendor total
+                  </td>
+                  <td className="px-3 text-right text-sm font-semibold tabular-nums text-foreground">
+                    {money(shownCost)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </SheetSection>
+      )}
+
+      <SheetSection
+        title="Customer Pricing"
+        flush
+        note={
+          <SheetSectionNote label="About customer pricing">
+            What the customer is charged, per line. Delivered gallons are
+            typed once here and read by the partner's table above. Margin is
+            per gallon, on top of your price — the line total is A × (B + C).
+          </SheetSectionNote>
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] table-fixed border-collapse">
+            <colgroup>
+              <col />
+              <col className="w-[22%]" />
+              <col className="w-[124px]" />
+              <col className="w-[132px]" />
+              <col className="w-[124px]" />
+              <col className="w-[124px]" />
+              <col className="w-[140px]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border bg-fp-table-header">
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Asset name</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Product</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Requested gal</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Delivered gal (A)</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Price/gal (B)</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Margin (C)</TableRequiredLabel>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Total A×(B+C)</TableRequiredLabel>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {draft.lines.map((l, i) => (
+                <tr key={i} className="h-12 border-b border-border last:border-b-0">
+                  <td className="truncate px-3 text-sm text-foreground">
+                    {l.asset || "—"}
+                  </td>
+                  <td className="truncate px-3 text-sm text-muted-foreground">
+                    {l.product}
+                  </td>
+                  <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                    {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
+                  </td>
+                  <td className="relative p-0">
+                    <TableCellInput
+                      value={l.deliveredGal == null ? "" : String(l.deliveredGal)}
+                      placeholder={l.topOff ? "0" : String(l.gal ?? 0)}
+                      numeric
+                      suffix="gal"
+                      aria-label={`Delivered gallons for line ${i + 1}`}
+                      onChange={(v) =>
+                        setLine(i, {
+                          deliveredGal: v.trim() === "" ? null : num(v),
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="relative p-0">
+                    <TableCellInput
+                      value={l.pricePerGal == null ? "" : String(l.pricePerGal)}
+                      placeholder="0.00"
+                      numeric
+                      prefix="$"
+                      aria-label={`Price per gallon for line ${i + 1}`}
+                      onChange={(v) => setLine(i, { pricePerGal: num(v) })}
+                    />
+                  </td>
+                  <td className="relative p-0">
+                    <TableCellInput
+                      value={l.marginPerGal == null ? "" : String(l.marginPerGal)}
+                      placeholder="0.00"
+                      numeric
+                      prefix="$"
+                      aria-label={`Margin per gallon for line ${i + 1}`}
+                      onChange={(v) => setLine(i, { marginPerGal: num(v) })}
+                    />
+                  </td>
+                  <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                    {money(customerLineTotal(l))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="h-11 border-t border-border bg-fp-table-header">
+                <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
+                  Products-level subtotal
+                </td>
+                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                  {money(revenue)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </SheetSection>
+    </>
+  );
 
   return (
     <RecordSheet
@@ -1827,8 +2294,11 @@ export function BrokerOrderSheet({
             className="-mx-4 px-4 py-2.5"
             stages={ORDER_STAGES}
             current={stageOf(draft.status, draft.quoteRequested)}
+            /* NOT NAVIGATION IN V2. One page means a stage has no screen of
+               its own to open, and a bar that looked pressable and moved
+               nothing would be worse than one that plainly does not. */
             onSelect={
-              quotingPartners.length > 0
+              !v2 && quotingPartners.length > 0
                 ? (key) => setStep(stepOfStage(key))
                 : undefined
             }
@@ -3249,6 +3719,23 @@ export function BrokerOrderSheet({
           />
         </SheetField>
       </SheetSection>
+
+      {/* ── V2 IS ONE PAGE ──
+          THE SPLIT EXISTED TO KEEP THE SHEET READABLE, and the rail is what
+          made it unnecessary: everything step 2 used to put in front of you —
+          the totals, whose quote it is, what is left — now sits in a column
+          that never leaves. What remains of step 2 is two tables you TYPE
+          into, which is what the left column is for, so they go at the foot of
+          it in the order the money moves: what the partner charges, then what
+          the customer pays.
+
+          FINAL CALCULATIONS DOES NOT COME WITH THEM. It was the summary of
+          these two tables on a screen that had no other summary; here the
+          Summary card IS that, three inches to the right and visible the whole
+          time, with the working on hover. Two of them would be one figure in
+          two places, and the first to drift would be the one nobody was
+          looking at. */}
+      {v2 && pricingSections}
         </div>
 
         {v2 && (
@@ -3426,30 +3913,51 @@ export function BrokerOrderSheet({
                   Nothing has changed yet.
                 </p>
               ) : (
-                <ol className="flex flex-col divide-y divide-border">
+                /* A TIMELINE, NOT A LIST OF RULED ROWS. Six entries separated
+                   by hairlines is a table of one column; a line running down
+                   the marks says the obvious thing about an audit trail —
+                   these happened in an order, most recent first — without a
+                   word of chrome.
+
+                   WHAT CHANGED LEADS, WHO AND WHEN FOLLOWS. The reader is
+                   looking for the event; the name and the timestamp are what
+                   they check once they have found it. */
+                <ol className="flex flex-col px-4 py-3">
                   {[...order.audit]
                     .reverse()
                     .slice(0, 6)
-                    .map((e, i) => (
-                      <li
-                        key={`${e.at}-${i}`}
-                        className="flex flex-col gap-1 px-4 py-2.5"
-                      >
-                        <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                          <span className="font-medium text-foreground">
-                            {e.by}
+                    .flatMap((e, i) =>
+                      e.changes.map((c, j) => ({ e, c, key: `${e.at}-${i}-${j}` }))
+                    )
+                    .map(({ e, c, key }, idx, all) => {
+                      const mark = auditMark(c);
+                      return (
+                        <li key={key} className="relative flex gap-3 pb-4 last:pb-0">
+                          {/* The connector stops at the last mark rather than
+                              running off the end of the list. */}
+                          {idx < all.length - 1 && (
+                            <span
+                              aria-hidden
+                              className="absolute top-7 bottom-0 left-[13px] w-px bg-border"
+                            />
+                          )}
+                          <span
+                            className={cn(
+                              "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border [&_svg]:size-3.5",
+                              mark.tone
+                            )}
+                          >
+                            {mark.icon}
                           </span>
-                          <span className="text-muted-foreground">
-                            {AUDIT_FMT.format(new Date(e.at))}
+                          <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
+                            <span className="text-sm text-foreground">{c}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {AUDIT_FMT.format(new Date(e.at))} · {e.by}
+                            </span>
                           </span>
-                        </span>
-                        {e.changes.map((c) => (
-                          <span key={c} className="text-sm text-foreground">
-                            {c}
-                          </span>
-                        ))}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                 </ol>
               )}
             </RailCard>
@@ -3506,18 +4014,7 @@ export function BrokerOrderSheet({
               it, so it sits in an even channel — while the sections keep the
               40px rhythm they have everywhere else. */}
           <div className="flex min-w-0 flex-col gap-4">
-            <BannerInline
-              status="info"
-              split
-              /* The column is a flex container: a fixed-height child still gets
-                 flex-shrink applied and the 32px bar was rendering at 20. */
-              className="shrink-0"
-              title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
-            >
-              {hasLoadOrder
-                ? "The vendor charges freight, fees and taxes only — the base price is yours."
-                : "The charges will be set by the vendor."}
-            </BannerInline>
+
 
           <div className="flex min-w-0 flex-col gap-10">
             {/* ── STEP 2 ────────────────────────────────────────────────────────
@@ -3531,368 +4028,7 @@ export function BrokerOrderSheet({
                 again. WHICH vendor you are reading is the only thing it did that
                 nothing else does, and that is a choice, not a table: it sits on
                 the Vendor Pricing heading, which is the section it changes. */}
-            {shownVendorId && (
-              <SheetSection
-                title="Vendor Pricing"
-                flush
-                /* WHOSE PRICE THIS IS. One partner needs no control — a select of
-                   one is a question with an answer already in it — so it states
-                   the name and whether they hold the order. More than one and it
-                   becomes a picker, because the table below can only show one. */
-                /* IT SAYS WHAT THE LIST IS. A bare dropdown of company names on a
-                   heading row is a question nobody asked: these are the delivery
-                   partners that said yes to this order, and the control picks
-                   whose price the table below shows. Unlabelled, the only way to
-                   find that out was to open it. */
-                action={
-                  quotingPartners.length > 1 ? (
-                    <span className="flex items-center gap-2">
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        Quote from
-                      </span>
-                    <Combobox
-                      className="h-8 w-64"
-                      value={shownVendorId}
-                      onValueChange={setShownQuote}
-                      options={quotingPartners.map((vid) => ({
-                        value: vid,
-                        label: vendorById(vid)?.name ?? vid,
-                        description:
-                          draft.vendorId === vid
-                            ? "Holds this order"
-                            : draft.vendorId
-                              ? "On hold"
-                              : quoteOf(vid)
-                                ? "Priced"
-                                : "Not priced",
-                      }))}
-                      searchPlaceholder="Search vendors…"
-                    />
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      Quote from{" "}
-                      <span className="text-foreground">
-                        {vendorById(shownVendorId)?.name}
-                      </span>
-                      {draft.vendorId === shownVendorId && " · holds this order"}
-                    </span>
-                  )
-                }
-                note={
-                  <SheetSectionNote label="About vendor pricing">
-                    What {vendorById(shownVendorId)?.name ?? "the partner"} charges
-                    to move this order. TLC is the total landing cost — delivered
-                    gallons times rate plus surcharge — because a low rate with a
-                    high surcharge is not a cheap quote.
-                    <span className="mt-1.5 block">
-                      Typed here as well as received: a partner that gave its price
-                      on a call still has a price. Delivered gallons are the
-                      exception — typed once, in Customer Pricing below.
-                    </span>
-                  </SheetSectionNote>
-                }
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[980px] table-fixed border-collapse">
-                    <colgroup>
-                      <col />
-                      <col className="w-[22%]" />
-                      <col className="w-[112px]" />
-                      <col className="w-[132px]" />
-                      <col className="w-[124px]" />
-                      <col className="w-[128px]" />
-                      <col className="w-[140px]" />
-                    </colgroup>
-                    <thead>
-                      <tr className="border-b border-border bg-fp-table-header">
-                        <th className="px-3 py-2.5 text-left">
-                          <TableRequiredLabel>Asset name</TableRequiredLabel>
-                        </th>
-                        <th className="px-3 py-2.5 text-left">
-                          <TableRequiredLabel>Product</TableRequiredLabel>
-                        </th>
-                        <th className="px-3 py-2.5 text-right">
-                          <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
-                        </th>
-                        <th className="px-3 py-2.5 text-right">
-                          <TableRequiredLabel>Delivered gal (D)</TableRequiredLabel>
-                        </th>
-                        <th className="px-3 py-2.5 text-right">
-                          <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
-                        </th>
-                        <th className="px-3 py-2.5 text-right">
-                          <TableRequiredLabel>Surcharge (C)</TableRequiredLabel>
-                        </th>
-                        <th
-                          className="px-3 py-2.5 text-right"
-                          title="Total landing cost — delivered gallons x (rate + surcharge)"
-                        >
-                          <TableRequiredLabel>TLC D×(B+C)</TableRequiredLabel>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draft.lines.map((l, i) => {
-                        const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
-                        const put = (patch: Partial<QuoteLine>) =>
-                          setQuoteLine(shownVendorId, l.asset, patch);
-                        return (
-                          <tr
-                            key={i}
-                            className="h-12 border-b border-border last:border-b-0"
-                          >
-                            <td className="truncate px-3 text-sm text-foreground">
-                              {l.asset || "—"}
-                            </td>
-                            <td className="truncate px-3 text-sm text-muted-foreground">
-                              {l.product}
-                            </td>
-                            <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                              {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
-                            </td>
-                            {/* READ-ONLY HERE. The same figure is typed in the
-                                customer table below — one editable place, so the
-                                two tables cannot come to disagree about how much
-                                went in. Until it is typed the requested figure is
-                                what the TLC uses, so that is what this cell shows,
-                                dimmed, because it is an assumption. */}
-                            <td
-                              className={cn(
-                                "px-3 text-right text-sm tabular-nums",
-                                l.deliveredGal == null
-                                  ? "text-muted-foreground/60"
-                                  : "text-muted-foreground"
-                              )}
-                              title={
-                                l.deliveredGal == null
-                                  ? "Not delivered yet — priced on the requested quantity"
-                                  : undefined
-                              }
-                            >
-                              {billableGal(l).toLocaleString()}
-                            </td>
-                            <td className="relative p-0">
-                              <TableCellInput
-                                value={ql ? String(ql.ratePerGal) : ""}
-                                placeholder="0.000"
-                                numeric
-                                prefix="$"
-                                aria-label={`Vendor rate per gallon for line ${i + 1}`}
-                                onChange={(v) => put({ ratePerGal: num(v) })}
-                              />
-                            </td>
-                            <td className="relative p-0">
-                              <TableCellInput
-                                value={ql ? String(ql.surcharge) : ""}
-                                placeholder="0.000"
-                                numeric
-                                prefix="$"
-                                aria-label={`Vendor surcharge for line ${i + 1}`}
-                                onChange={(v) => put({ surcharge: num(v) })}
-                              />
-                            </td>
-                            <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                              {ql ? money(quoteLineTotal(ql, l)) : money(0)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    {/*
-                      THE BASE, THEN WHAT IS ADDED TO IT, THEN THE TOTAL.
-
-                      Freight, fees and taxes are charged once for the run, not
-                      per gallon, so they cannot be columns — a per-line freight
-                      would have to be divided by somebody and the division would
-                      be invented. They are rows under the table, which is also
-                      where the reader is already looking for a total.
-                    */}
-                    <tfoot>
-                      <tr className="h-11 border-t border-border">
-                        {/* LEFT, NOT RIGHT. The table is 980px wide and scrolls;
-                            a label right-aligned against its figure means both
-                            are off-screen together, and the reader scrolls to
-                            find out what the number is called. */}
-                        <td
-                          colSpan={6}
-                          className="px-3 text-sm text-muted-foreground"
-                        >
-                          Base price — product + margin
-                        </td>
-                        <td
-                          className={cn(
-                            "px-3 text-right text-sm tabular-nums",
-                            /* STATED, NOT HIDDEN. The figure is what the partner
-                               would have charged; striking it says the quote was
-                               read and the base was set aside, where an absent
-                               row would look like nobody priced it. */
-                            chargesBase
-                              ? "font-medium text-foreground"
-                              : "text-muted-foreground/60 line-through"
-                          )}
-                          title={
-                            chargesBase
-                              ? undefined
-                              : "Not charged — the load order makes the product yours"
-                          }
-                        >
-                          {money(shownBase)}
-                        </td>
-                      </tr>
-                      {ORDER_CHARGES.map((c) => (
-                        <tr key={c.key} className="h-11 border-t border-border">
-                          <td
-                            colSpan={6}
-                            className="px-3 text-sm text-muted-foreground"
-                          >
-                            {c.label}
-                          </td>
-                          <td className="relative p-0">
-                            <TableCellInput
-                              value={
-                                shownQuote ? String(shownQuote[c.key] ?? 0) : ""
-                              }
-                              placeholder="0"
-                              numeric
-                              prefix="$"
-                              aria-label={`${c.label} charged by the partner`}
-                              onChange={(v) =>
-                                setQuoteCharge(shownVendorId, { [c.key]: num(v) })
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="h-11 border-t border-border bg-fp-table-header">
-                        <td
-                          colSpan={6}
-                          className="px-3 text-sm text-muted-foreground"
-                        >
-                          Vendor total
-                        </td>
-                        <td className="px-3 text-right text-sm font-semibold tabular-nums text-foreground">
-                          {money(shownCost)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </SheetSection>
-            )}
-
-            <SheetSection
-              title="Customer Pricing"
-              flush
-              note={
-                <SheetSectionNote label="About customer pricing">
-                  What the customer is charged, per line. Delivered gallons are
-                  typed once here and read by the partner's table above. Margin is
-                  per gallon, on top of your price — the line total is A × (B + C).
-                </SheetSectionNote>
-              }
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] table-fixed border-collapse">
-                  <colgroup>
-                    <col />
-                    <col className="w-[22%]" />
-                    <col className="w-[124px]" />
-                    <col className="w-[132px]" />
-                    <col className="w-[124px]" />
-                    <col className="w-[124px]" />
-                    <col className="w-[140px]" />
-                  </colgroup>
-                  <thead>
-                    <tr className="border-b border-border bg-fp-table-header">
-                      <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Asset name</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Product</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Requested gal</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Delivered gal (A)</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Price/gal (B)</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Margin (C)</TableRequiredLabel>
-                      </th>
-                      <th className="px-3 py-2.5 text-right">
-                        <TableRequiredLabel>Total A×(B+C)</TableRequiredLabel>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {draft.lines.map((l, i) => (
-                      <tr key={i} className="h-12 border-b border-border last:border-b-0">
-                        <td className="truncate px-3 text-sm text-foreground">
-                          {l.asset || "—"}
-                        </td>
-                        <td className="truncate px-3 text-sm text-muted-foreground">
-                          {l.product}
-                        </td>
-                        <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                          {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellInput
-                            value={l.deliveredGal == null ? "" : String(l.deliveredGal)}
-                            placeholder={l.topOff ? "0" : String(l.gal ?? 0)}
-                            numeric
-                            suffix="gal"
-                            aria-label={`Delivered gallons for line ${i + 1}`}
-                            onChange={(v) =>
-                              setLine(i, {
-                                deliveredGal: v.trim() === "" ? null : num(v),
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellInput
-                            value={l.pricePerGal == null ? "" : String(l.pricePerGal)}
-                            placeholder="0.00"
-                            numeric
-                            prefix="$"
-                            aria-label={`Price per gallon for line ${i + 1}`}
-                            onChange={(v) => setLine(i, { pricePerGal: num(v) })}
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellInput
-                            value={l.marginPerGal == null ? "" : String(l.marginPerGal)}
-                            placeholder="0.00"
-                            numeric
-                            prefix="$"
-                            aria-label={`Margin per gallon for line ${i + 1}`}
-                            onChange={(v) => setLine(i, { marginPerGal: num(v) })}
-                          />
-                        </td>
-                        <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                          {money(customerLineTotal(l))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-table-header">
-                      <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
-                        Products-level subtotal
-                      </td>
-                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                        {money(revenue)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </SheetSection>
+            {pricingSections}
           </div>
           </div>
 
@@ -4106,6 +4242,11 @@ export function BrokerOrderSheet({
       */}
       {!creating && order && (
         <div className="flex flex-wrap items-center gap-3 border-t border-fp-outline-1 pt-6">
+          {/* NOT IN V2 — the footer's CTA ladder ends on this same act, and a
+              button that appears twice on one screen makes the reader wonder
+              which one is the real one. Duplicate and Download stay: neither is
+              ever the next act, so neither is ever in the footer. */}
+          {!v2 && (
           <Button
             variant="outline"
             disabled={draft.status === "Draft" || draft.status === "Blocked"}
@@ -4125,6 +4266,7 @@ export function BrokerOrderSheet({
             <Truck />
             Push to dispatch
           </Button>
+          )}
           <Button
             variant="outline"
             onClick={() =>

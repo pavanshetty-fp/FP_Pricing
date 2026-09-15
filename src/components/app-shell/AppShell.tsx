@@ -6,39 +6,46 @@ export interface AppShellProps {
   topBar?: React.ReactNode;
   /** Tier-1 icon rail (52px, flush, full height). Self-contained (owns its surface). */
   rail?: React.ReactNode;
-  /** Tier-2 contextual sidebar (256px). Optional. Self-contained. */
-  sidebar?: React.ReactNode;
   /**
-   * PUT THE TIER-2 DRAWER AWAY UNTIL IT IS WANTED.
+   * Tier-2 contextual sidebar (256px). Optional. Self-contained.
+   *
+   * Pass a FUNCTION to get `collapsible` behaviour: it is called with whether
+   * the drawer is currently expanded, so the caller can hand its own drawer
+   * component the `collapsed` prop it already understands.
+   */
+  sidebar?: React.ReactNode | ((state: { expanded: boolean }) => React.ReactNode);
+  /**
+   * THE TIER-2 DRAWER RESTS AS A 52px RAIL AND OPENS ON ITS OWN HOVER.
    *
    * A second nav level is READ ONCE — you pick the list you are working in and
-   * then you work in it — and it charges 264px of every screen after that for
-   * the privilege of having been read. On a table that is two columns; on a
-   * board it is most of a lane. Parked, it costs nothing and comes back on a
-   * gesture nobody has to learn: move left, towards where the nav has always
-   * been.
+   * then you work in it — and at full width it charges 264px of every screen
+   * after that for having been read. On a table that is two columns; on a
+   * board it is most of a lane. Collapsed it costs 60, and it is still THERE:
+   * a drawer that disappears entirely is one nobody finds, and the icons are
+   * the handle.
    *
    * IT FLOATS RATHER THAN PUSHES. Reflowing the content layer every time the
-   * pointer crossed the rail would make the thing you are reading move while
-   * you read it — and the drawer's whole argument is that the content should
-   * have the width. Over the top, the table underneath keeps its columns and
-   * its scroll position.
+   * pointer crossed it would make the thing you are reading move while you
+   * read it — and the drawer's whole argument is that the content should have
+   * the width. Over the top, the table underneath keeps its columns and its
+   * scroll position. The same call the Tier-1 rail already makes.
    *
-   * IT LEAVES ON ITS OWN, and not the instant you step off it: a pointer on
-   * its way from the rail to a row crosses the gap, and a drawer that shut on
-   * that would be a drawer you had to chase. It waits — see `PEEK_HIDE_MS`.
+   * THE TWO ARE PARENT AND CHILD, AND THAT DECIDES THE EDGE CASES.
+   *   · Each opens on its own hover — one gesture, whichever one you are on.
+   *   · The expanded rail lies OVER the expanded drawer, because the rail is
+   *     the level above: you went left to get to it, and the thing you went
+   *     past should not be drawn on top of where you arrived.
+   *   · Moving from the child onto the PARENT does not shut the child. Going
+   *     up a level to check where you are is not leaving, and a sub-menu that
+   *     vanished the moment you looked at its parent would make you do the
+   *     whole trip again to get back. Only leaving BOTH starts the clock.
+   *   · The parent never opens the child. "Remain" is not "appear".
    *
-   * THE RAIL IS NOT THE HANDLE, AND THAT IS THE WHOLE OF WHY THIS WORKS. The
-   * rail has its own hover — it expands to 256px and shows its labels — so
-   * hanging the drawer off the same hover would be one gesture with two
-   * answers, two 256px overlays landing on the same strip of screen. The
-   * handle is the channel just to the RIGHT of the rail instead, which the
-   * expanded rail sits on top of: while the rail is out it eats the pointer,
-   * so leaving the rail rightwards can never trip the drawer. Arriving at that
-   * channel from the content is the only way in, and it is the gesture the
-   * drawer is for.
+   * IT LEAVES ON ITS OWN, and not the instant you step off: a pointer on its
+   * way to a row crosses the gap, and a drawer that shut on that would be a
+   * drawer you had to chase. See `PEEK_HIDE_MS`.
    */
-  sidebarAutoHide?: boolean;
+  sidebarCollapsible?: boolean;
   /**
    * Fixed page header at the top of the content layer — the name of the selected
    * menu (from the sub-nav drawer or the main nav). A string renders the 24px
@@ -76,23 +83,14 @@ export interface AppShellProps {
  * is a distinct FP/Surface-1b panel (#1b2028, rounded-md) with a fixed 48px
  * page-header at its top (1px #363c45 bottom divider) showing the selected menu.
  */
-/** How long the drawer stays out after the pointer leaves it. */
+/** How long the drawer stays open after the pointer leaves the rail and it. */
 const PEEK_HIDE_MS = 2000;
-/**
- * How long the pointer has to REST on the channel before the drawer comes out.
- *
- * Without it, every trip from the content to a rail icon opens a drawer on the
- * way past — the channel is between the two, and crossing it is not asking for
- * anything. A quarter of a second is longer than a crossing and shorter than a
- * decision.
- */
-const PEEK_SHOW_MS = 250;
 
 export function AppShell({
   topBar,
   rail,
   sidebar,
-  sidebarAutoHide = false,
+  sidebarCollapsible = false,
   title,
   breadcrumb,
   headerAction,
@@ -112,51 +110,46 @@ export function AppShell({
     );
   const hasHeader = title != null || headerAction != null || breadcrumb != null;
 
-  const peeking = sidebarAutoHide && sidebar != null;
-  const [peek, setPeek] = React.useState(false);
+  const collapsible = sidebarCollapsible && sidebar != null;
+  const [expanded, setExpanded] = React.useState(false);
   const hideAt = React.useRef<number | undefined>(undefined);
-  const showAt = React.useRef<number | undefined>(undefined);
   /**
-   * Arm the retreat. Called when the pointer leaves the drawer AND at the
-   * moment it opens — which is the part that is not belt-and-braces.
+   * Arm the retreat. Called when the pointer leaves the pair AND at the moment
+   * the drawer opens — which is the part that is not belt-and-braces.
    *
-   * THE DRAWER OPENS UNDERNEATH A POINTER THAT IS NOT MOVING, and a browser
-   * does not fire `mouseenter` for an element that arrives under a stationary
+   * A DRAWER CAN OPEN UNDERNEATH A POINTER THAT IS NOT MOVING, and a browser
+   * fires no `mouseenter` for an element that arrives under a stationary
    * cursor. No enter means no LEAVE either, so a close hung only on leaving
    * never came: the drawer stood open until something else happened to it.
-   * Arming at open time makes the two seconds a promise the drawer keeps on
-   * its own; touching it is what postpones them.
    */
   const release = React.useCallback(() => {
-    window.clearTimeout(showAt.current);
     window.clearTimeout(hideAt.current);
-    hideAt.current = window.setTimeout(() => setPeek(false), PEEK_HIDE_MS);
+    hideAt.current = window.setTimeout(() => setExpanded(false), PEEK_HIDE_MS);
   }, []);
-  /** Pointer is on the drawer: it stays out for as long as that is true. */
-  const hold = React.useCallback(() => {
+  /** Pointer is on the drawer: open, and stay open while that is true. */
+  const open = React.useCallback(() => {
     window.clearTimeout(hideAt.current);
-    window.clearTimeout(showAt.current);
-    setPeek(true);
+    setExpanded(true);
   }, []);
-  /** The channel's own opener: a dwell, not a crossing. */
-  const dwell = React.useCallback(() => {
+  /** Pointer is on the RAIL: hold whatever the drawer is doing, open nothing. */
+  const keep = React.useCallback(() => {
     window.clearTimeout(hideAt.current);
-    window.clearTimeout(showAt.current);
-    showAt.current = window.setTimeout(() => {
-      setPeek(true);
-      release();
-    }, PEEK_SHOW_MS);
-  }, [release]);
-  const abandon = React.useCallback(() => {
-    window.clearTimeout(showAt.current);
   }, []);
-  React.useEffect(
-    () => () => {
-      window.clearTimeout(hideAt.current);
-      window.clearTimeout(showAt.current);
-    },
-    []
-  );
+  React.useEffect(() => () => window.clearTimeout(hideAt.current), []);
+
+  const sidebarEl =
+    typeof sidebar === "function" ? sidebar({ expanded: collapsible ? expanded : true }) : sidebar;
+
+  /* THE RAIL IS WRAPPED ONLY TO BE LISTENED TO — the wrapper is a flex box
+     round a fixed-width child and changes no geometry. */
+  const railEl =
+    collapsible && rail ? (
+      <div className="flex shrink-0" onMouseEnter={keep} onMouseLeave={release}>
+        {rail}
+      </div>
+    ) : (
+      rail
+    );
 
   return (
     <div
@@ -170,59 +163,39 @@ export function AppShell({
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Tier-1 rail: flush left, full height (outside the padded region). */}
-        {rail}
+        {railEl}
 
         {/* Padded region: p-2 = 8px outer margin (top/right/bottom) + 8px gap from
             the rail; gap-2 = 8px between the sidebar and the content layer. */}
-        {/* `overflow-hidden` ONLY WHEN THE DRAWER PARKS, and it is what the
-            parking is: the drawer slides out to the left of this box and the
-            box clips it, so it reads as going back in behind the rail rather
-            than as sliding over it. Overlays are portalled, so nothing that
-            needs to escape this box is inside it. */}
-        <div
-          className={cn(
-            "relative flex min-w-0 flex-1 gap-2 p-2",
-            peeking && "overflow-hidden"
-          )}
-        >
-          {peeking ? (
-            <>
-              {/* THE CHANNEL IS THE HANDLE. No button, because a button for
-                  this would be a control that exists to reveal a control. It
-                  sits under the rail's own expanded footprint on purpose —
-                  see the note on `sidebarAutoHide`. */}
-              <div
-                aria-hidden
-                className="absolute inset-y-2 left-0 z-20 w-6"
-                onMouseEnter={dwell}
-                onMouseLeave={abandon}
-              />
-              {/* `pointer-events-none` while parked so the parked drawer does
-                  not eat clicks on the column it is sitting over. Focus still
-                  reaches it — tabbing in opens it, which is the keyboard's
-                  version of moving left. */}
+        <div className="relative flex min-w-0 flex-1 gap-2 p-2">
+          {collapsible ? (
+            /* THE COLLAPSED FOOTPRINT IS WHAT THE LAYOUT PAYS — 52px, held
+               open whatever the drawer is doing, so nothing reflows when it
+               expands. Same trick the rail plays one level up. */
+            <div
+              className="relative w-[52px] shrink-0"
+              onMouseEnter={open}
+              /* `onMouseMove` AS WELL: when a drawer arrives under a cursor
+                 that is already there the enter never fires, and the first
+                 flicker of movement is the only signal anybody is using it. */
+              onMouseMove={open}
+              onMouseLeave={release}
+              onFocusCapture={open}
+              onBlurCapture={release}
+            >
+              {/* z-20, one BELOW the rail's z-30, which is what puts the
+                  expanded parent over the expanded child. */}
               <div
                 className={cn(
-                  "absolute inset-y-2 left-2 z-30 rounded-lg shadow-fp-surface transition-transform duration-200 ease-out",
-                  peek
-                    ? "translate-x-0"
-                    : "pointer-events-none -translate-x-[calc(100%+0.75rem)]"
+                  "absolute inset-y-0 left-0 z-20",
+                  expanded && "shadow-xl"
                 )}
-                /* `onMouseMove` AS WELL AS `onMouseEnter`: when the drawer
-                   arrives under a cursor that is already there, the enter
-                   never fires and the first flicker of movement is the only
-                   signal that anybody is using it. */
-                onMouseEnter={hold}
-                onMouseMove={hold}
-                onMouseLeave={release}
-                onFocusCapture={hold}
-                onBlurCapture={release}
               >
-                {sidebar}
+                {sidebarEl}
               </div>
-            </>
+            </div>
           ) : (
-            sidebar
+            sidebarEl
           )}
         {/* Content Layer: FP/Surface 1b, rounded-md, no outer border and NO
             SHADOW. The shadow existed to lift it off a ground it was the same

@@ -1319,24 +1319,32 @@ export function UnifiedView() {
            nav level. Sales has none, so its content layer still takes the full
            width; 3PL's areas each have one. The panel classes are the shell
            rule's, verbatim, and are the same ones the DS gallery uses. */
-        /* AND IT PARKS ITSELF. Every screen in this app is a table or a board,
-           which is to say every screen wants the width — and the drawer's job
-           is done the moment you have picked the list you are working in. See
-           `sidebarAutoHide`. */
-        sidebarAutoHide
+        /* AND IT RESTS AS A RAIL. Every screen in this app is a table or a
+           board, which is to say every screen wants the width — and the
+           drawer's job is done the moment you have picked the list you are
+           working in. Collapsed it still shows its icons, so it is still the
+           handle. See `sidebarCollapsible`. */
+        sidebarCollapsible
         sidebar={
-          subGroups && active ? (
-            <NavigationDrawer
-              className="rounded-lg bg-sidebar"
-              brand={{
-                name: active.label,
-                icon: active.icon,
-              }}
-              groups={subGroups}
-              activeKey={subKey ?? undefined}
-              onNavigate={setSubKey}
-            />
-          ) : undefined
+          subGroups && active
+            ? ({ expanded }) => (
+                <NavigationDrawer
+                  /* The width transition is here rather than in the DS
+                     component because it is this shell's behaviour, not the
+                     drawer's: the same curve the rail uses one level up, so
+                     the two levels move alike. */
+                  className="rounded-lg bg-sidebar transition-[width] duration-200 ease-out"
+                  collapsed={!expanded}
+                  brand={{
+                    name: active.label,
+                    icon: active.icon,
+                  }}
+                  groups={subGroups}
+                  activeKey={subKey ?? undefined}
+                  onNavigate={setSubKey}
+                />
+              )
+            : undefined
         }
         /* Export moved onto the preset-view row next to Create Order, so the
            page header carries only the theme toggle. */

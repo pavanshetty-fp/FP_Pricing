@@ -673,46 +673,70 @@ const ORDER_CHARGES = [
  * THE ORDER'S LIFECYCLE AS THE BUSINESS SAYS IT, which is not the same list as
  * `BROKER_STATUSES`.
  *
- * Two differences, both deliberate. QUOTATION is not a status — it is
- * `Assigned` with a quote asked for, and it is a stage anyone watching the
- * order would name, so the bar derives it rather than pretending the data has
- * it. PARTIALLY SYNCED is a status but not a board lane, and it sits between
- * two lanes; on a bar, which is about position rather than about lanes, it has
- * a place.
+ * SIX STAGES, NOT NINE. The status field splits the end of the order's life
+ * four ways — sync ready, partially synced, synced — because accounting cares
+ * about the difference. Nobody opening the sheet does: they want to know
+ * whether the numbers have been checked and whether they have left the
+ * building, which is two stages, and the chip beside the title still carries
+ * the exact status for anyone who needs it. A bar that spells out every state
+ * the data can hold is a list of states, not a position.
  *
- * BLOCKED IS NOT HERE. It is a thing that has happened TO an order, not a
- * place the order has reached — it is stuck at whatever stage it was at. The
- * header already carries the red chip and the body the reason, so the bar
- * shows the stage and does not say it twice.
+ * QUOTING COMES BEFORE ASSIGNED, which is the opposite of the old order and
+ * matches what actually happens: partners are invited and priced first, and
+ * one of them ends up holding the order second. The old list read `Assigned`
+ * then `Quotation` because it was following the STATUS names, where "Assigned"
+ * means invitations are out.
+ *
+ * CANCELLED AND BLOCKED ARE SET APART. Both are places an order can BE and
+ * neither is a place it passes through, so they sit after a gap rather than in
+ * the sequence — the bar keeps its arrow, and the two exits are still on it.
  */
 const ORDER_STAGES: Stage[] = [
   { key: "Draft", label: "Draft" },
+  { key: "Quoting", label: "Quoting" },
   { key: "Assigned", label: "Assigned" },
-  { key: "Quotation", label: "Quotation" },
-  { key: "Accepted", label: "Accepted" },
-  { key: "Completed", label: "Delivery completed" },
-  { key: "Accounting Sync Ready", label: "Account sync ready" },
-  { key: "Partial Accounting Synced", label: "Partially synced" },
-  { key: "Accounting Synced", label: "Account synced" },
+  { key: "Completed", label: "Completed" },
+  { key: "Verified", label: "Verified" },
+  { key: "Synced", label: "Synced" },
   { key: "Cancelled", label: "Cancelled", ended: true },
+  { key: "Blocked", label: "Blocked", ended: true },
 ];
 
-/** Which stage an order is standing at. */
-function stageOf(status: BrokerStatus, quoteRequested: boolean): string {
-  if (status === "Blocked") return "Draft";
-  if (status === "Assigned" && quoteRequested) return "Quotation";
-  return status;
+/**
+ * Which stage an order is standing at.
+ *
+ * Four statuses collapse into two stages at the accounting end, and the two
+ * middle ones swap sense: a vendor INVITED is quoting, a vendor ACCEPTED is
+ * assigned. `quoteRequested` no longer changes the answer — with `Quoting` a
+ * stage of its own, an invitation with no quote asked for is still the order
+ * sitting with partners.
+ */
+function stageOf(status: BrokerStatus): string {
+  switch (status) {
+    case "Assigned":
+      return "Quoting";
+    case "Accepted":
+      return "Assigned";
+    case "Accounting Sync Ready":
+      return "Verified";
+    case "Partial Accounting Synced":
+    case "Accounting Synced":
+      return "Synced";
+    default:
+      return status;
+  }
 }
 
 /**
  * The step a stage's work happens on, so the bar can still be the navigation
- * the two-step strip used to be. Everything from the acceptance onwards is
- * settled on the pricing step; everything before it is the order itself.
+ * the two-step strip used to be. Everything from the vendor holding the order
+ * onwards is settled on the pricing step; everything before it is the order
+ * itself, and a stage that left the line has no pricing to reach.
  */
 function stepOfStage(key: string): "order" | "pricing" {
   const i = ORDER_STAGES.findIndex((s) => s.key === key);
-  return i >= ORDER_STAGES.findIndex((s) => s.key === "Accepted") &&
-    key !== "Cancelled"
+  return i >= ORDER_STAGES.findIndex((s) => s.key === "Assigned") &&
+    !ORDER_STAGES[i]?.ended
     ? "pricing"
     : "order";
 }
@@ -2293,7 +2317,7 @@ export function BrokerOrderSheet({
           <StageBar
             className="-mx-4 px-4 py-2.5"
             stages={ORDER_STAGES}
-            current={stageOf(draft.status, draft.quoteRequested)}
+            current={stageOf(draft.status)}
             /* NOT NAVIGATION IN V2. One page means a stage has no screen of
                its own to open, and a bar that looked pressable and moved
                nothing would be worse than one that plainly does not. */

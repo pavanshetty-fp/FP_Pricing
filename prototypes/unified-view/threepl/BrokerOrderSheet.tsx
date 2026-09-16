@@ -91,7 +91,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
-import { EditDrawer, ReadDrawer } from "./DirectoryRecordSheet";
+import { EditDrawer } from "./DirectoryRecordSheet";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT } from "../data";
 import {
@@ -931,7 +931,6 @@ export function BrokerOrderSheet({
   /** Which POC's contact details are open for editing, or none. */
   const [editingPoc, setEditingPoc] = React.useState<"primary" | "secondary" | null>(null);
   /** The order's history, in the header's drawer. */
-  const [activityOpen, setActivityOpen] = React.useState(false);
   /** The salesperson's contact, open for editing. */
   const [editingSales, setEditingSales] = React.useState(false);
   const [salesEdit, setSalesEdit] = React.useState("");
@@ -2090,32 +2089,13 @@ export function BrokerOrderSheet({
           </DropdownMenu>
         ) : undefined
       }
-      /* ACTIVITY IS A DRAWER, not a section — the same call the Directory
-         records make, and for the same reason: it is the longest block on the
-         order and the one read least often, and at the foot of the body it
-         pushed the vendor table and the additional details behind a wall of
-         "field changed" lines. The icon also makes it reachable without
-         scrolling, which on a sheet this long matters more, not less. */
-      headerActions={
-        order && order.audit.length > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Activity (${order.audit.length} ${order.audit.length === 1 ? "entry" : "entries"})`}
-                onClick={() => setActivityOpen(true)}
-              >
-                <HistoryIcon />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Activity · {order.audit.length}{" "}
-              {order.audit.length === 1 ? "entry" : "entries"}
-            </TooltipContent>
-          </Tooltip>
-        ) : undefined
-      }
+      /* NO ACTIVITY ICON, AND NO DRAWER BEHIND IT. Activity was a drawer
+         because it is the longest block on the order and the one read least
+         often, and at the foot of the body it pushed everything else behind a
+         wall of "field changed" lines. The rail card answered that: the
+         history is in the column that never leaves, beside the summary, where
+         it is read without being opened. A button that opened a second copy of
+         what is already on screen is a control whose only outcome is a copy. */
       onSubmit={() => {
         if (creating) onCreate?.(draft);
         else if (order) onSave(order, draft);
@@ -3887,38 +3867,6 @@ export function BrokerOrderSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {order && order.audit.length > 0 && (
-        <ReadDrawer
-          open={activityOpen}
-          onOpenChange={setActivityOpen}
-          title="Activity"
-          subtitle={`${order.orderNo} · ${order.audit.length} ${order.audit.length === 1 ? "entry" : "entries"}`}
-        >
-          <ol className="flex flex-col gap-4">
-            {[...order.audit].reverse().map((e, i) => (
-              <li
-                key={`${e.at}-${i}`}
-                className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3"
-              >
-                <span className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                  <span className="font-medium text-foreground">{e.by}</span>
-                  <span className="text-muted-foreground">
-                    {AUDIT_FMT.format(new Date(e.at))}
-                  </span>
-                </span>
-                {/* ONE LINE PER THING THAT CHANGED, old value and new. "Status
-                    changed" only proves somebody was here. */}
-                {e.changes.map((c) => (
-                  <span key={c} className="text-sm text-foreground">
-                    {c}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ol>
-        </ReadDrawer>
-      )}
 
       {/* ── linked-record editing ─────────────────────────────────────────
           Both drawers stack a layer above the order sheet, so the draft behind

@@ -289,10 +289,32 @@ export function ListTable<Row, K extends string>({
                 onToggle={() => onToggleGroupCollapse?.(node.id)}
               />
             ) : (
+            /* THE WHOLE ROW OPENS THE RECORD.
+               The chevron stays — it is where the eye goes to learn that a row
+               CAN be opened, and it is the only part of a 1,400px row a
+               keyboard can reach. But making it the only target means a reader
+               who has just finished reading a row at the far left has to travel
+               the width of the table to act on what they read, and clicking the
+               row is what everybody tries first anyway.
+
+               CLICKS THAT LAND ON SOMETHING ELSE ARE NOT ROW CLICKS. A
+               checkbox, the chevron, a link inside a cell — each is its own
+               act, and an ancestor handler that fired as well would make one
+               press do two things. `closest` on the real target is how the row
+               tells the difference; a text selection dragged across a cell is
+               not a click either. */
             <TableRow
               key={node.id}
-              className="group/row h-14"
+              className={cn("group/row h-14", onOpenRow && "cursor-pointer")}
               data-state={selectedIds?.has(node.id) ? "selected" : undefined}
+              onClick={(e) => {
+                if (!onOpenRow) return;
+                const t = e.target as HTMLElement | null;
+                if (t?.closest("button,a,input,label,[role='checkbox'],[data-no-row-open]"))
+                  return;
+                if (window.getSelection()?.toString()) return;
+                onOpenRow(node.row);
+              }}
             >
               {selectable && (
                 <TableCell className="px-3">

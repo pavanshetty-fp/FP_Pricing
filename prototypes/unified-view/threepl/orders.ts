@@ -345,6 +345,12 @@ export interface BrokerOrder {
   acceptedVendorIds: string[];
   /** Which of the three lines this order runs on — see `SERVICE_LINES`. */
   serviceLine: ServiceLine;
+  /**
+   * Which business inside that line — see `LINE_BUSINESSES`. `null` on the
+   * lines whose businesses have not been written down yet, which is honest
+   * rather than provisional: there is no default to fall back to.
+   */
+  business: string | null;
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
@@ -577,6 +583,16 @@ export type BrokerColumnKey =
   | "vendor"
   | "status"
   | "createdBy"
+  /* OFF BY DEFAULT. Eleven columns is what fits and what most people want; the
+     rest are real fields that some readers need and most do not, so they wait
+     in the column menu rather than in the table. A list that shipped every
+     field it HAS would be a list nobody could read. */
+  | "business"
+  | "orderType"
+  | "poNumber"
+  | "hub"
+  | "salesperson"
+  | "tags"
   | "actions";
 
 export interface BrokerColumnDef {
@@ -595,18 +611,41 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
      here and standing alone there means the same fact lives in two places
      depending on which module you opened, which is the one thing repeated
      table patterns must not do. */
+  /* EVERY COLUMN SORTS. Half of them did, and which half was not a rule
+     anybody could state — it was whichever ones somebody had needed so far.
+     A header that sorts on one column and not the next teaches the reader to
+     stop trying, and the ones left out were the text columns, which are
+     exactly where "show me these together" is asked most. See `sortValue` for
+     what each one sorts BY, which is the part that is worth deciding. */
   { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 70 },
-  { key: "customer", label: "Customer", width: 230 },
-  { key: "shipTo", label: "Ship To", width: 190 },
+  { key: "type", label: "Type", width: 70, sortable: true },
+  { key: "customer", label: "Customer", width: 230, sortable: true },
+  { key: "shipTo", label: "Ship To", width: 190, sortable: true },
   { key: "date", label: "Planned Date", width: 165, sortable: true },
-  { key: "window", label: "Delivery Window", width: 160 },
-  { key: "products", label: "Products", width: 230 },
+  { key: "window", label: "Delivery Window", width: 160, sortable: true },
+  { key: "products", label: "Products", width: 230, sortable: true },
   { key: "qty", label: "Qty (Gal)", width: 110, sortable: true, align: "right" },
-  { key: "vendor", label: "Vendor", width: 210 },
+  { key: "vendor", label: "Vendor", width: 210, sortable: true },
   { key: "status", label: "Status", width: 200, sortable: true },
-  { key: "createdBy", label: "Created By", width: 170 },
+  { key: "createdBy", label: "Created By", width: 170, sortable: true },
+  /* ── Available, not shown. See `BROKER_HIDDEN_BY_DEFAULT`. ── */
+  { key: "business", label: "Business", width: 140, sortable: true },
+  { key: "orderType", label: "Order Type", width: 140, sortable: true },
+  { key: "poNumber", label: "PO Number", width: 140, sortable: true },
+  { key: "hub", label: "Hub", width: 160, sortable: true },
+  { key: "salesperson", label: "Sales Person", width: 170, sortable: true },
+  { key: "tags", label: "Tags", width: 160, sortable: true },
   { key: "actions", label: "", width: 44 },
+];
+
+/** The columns the table opens without. Everything else is on. */
+export const BROKER_HIDDEN_BY_DEFAULT: BrokerColumnKey[] = [
+  "business",
+  "orderType",
+  "poNumber",
+  "hub",
+  "salesperson",
+  "tags",
 ];
 
 export const HUBS = ["Fresno Hub", "Bakersfield Hub", "Sacramento Hub"];
@@ -947,6 +986,42 @@ export const PRODUCTS = [
 export const SERVICE_LINES = ["Fuel", "Lubricants", "Propane"] as const;
 export type ServiceLine = (typeof SERVICE_LINES)[number];
 
+/**
+ * THE BUSINESSES INSIDE A LINE.
+ *
+ * A line of service is not one business. Fuel runs two: TRANSPORT — a full
+ * trailer from a terminal into somebody's bulk storage — and TANK WAGON, the
+ * bobtail drops that fill the tanks at a site. Different trucks, different
+ * loads, different people scheduling them; the only thing they share is the
+ * product in the tank. A broker works one of them at a time, so it is a
+ * standing narrowing of the list rather than a filter to be re-applied, which
+ * is why these ride on the preset-view row beside Default.
+ *
+ * Lubricants and Propane have theirs, and they are not written down yet. An
+ * empty list is the honest way to say so: the row shows Default alone rather
+ * than inventing names nobody asked for.
+ */
+export const LINE_BUSINESSES: Record<ServiceLine, string[]> = {
+  Fuel: ["Transport", "Tank Wagon"],
+  Lubricants: [],
+  Propane: [],
+};
+
+/**
+ * WHICH OF THEM AN ORDER IS — a stored field, like `serviceLine` and for the
+ * same reason.
+ *
+ * It was briefly derived from the gallons, on the argument that a trailer load
+ * is a transport and a bobtail drop is a tank wagon. That is true of the real
+ * world and false of this one: the fixture's quantities top out around 3,000,
+ * so every threshold either put two orders in Transport or most of them there,
+ * and the tab would have been teaching a rule the data does not follow. A
+ * business is a fact about how the job was sold, not an arithmetic result.
+ */
+export function businessOf(r: BrokerOrder): string | null {
+  return r.business;
+}
+
 /** One product, one line. DEF rides with fuel: it is sold on the same run. */
 const LINE_OF: Record<string, ServiceLine> = {
   "Dyed Diesel": "Fuel",
@@ -1265,6 +1340,16 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       quotes,
       invoiceState,
       serviceLine: lines.length > 0 ? lineOfProduct(lines[0].product) : wanted,
+      /* BY INDEX, NOT FROM THE RANDOM STREAM — a draw here would shift every
+         value after it and reshuffle the whole fixture. Two in five are
+         transports, which is roughly the mix and enough of both to see each
+         tab do something. */
+      business: (() => {
+        const options = LINE_BUSINESSES[
+          lines.length > 0 ? lineOfProduct(lines[0].product) : wanted
+        ];
+        return options.length === 0 ? null : options[i % 5 < 2 ? 0 : 1];
+      })(),
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",
@@ -1498,6 +1583,31 @@ function sortValue(r: BrokerOrder, key: BrokerColumnKey): string | number {
       // Lifecycle order, not alphabetical — sorting by status means "how far
       // along is this", and A-Z would put Accounting Synced before Draft.
       return BROKER_STATUSES.indexOf(r.status);
+    case "type":
+      // The disc's letter is a shorthand for the order type, so sort by the
+      // thing it is short FOR rather than by the letter.
+      return r.orderType.toLowerCase();
+    case "products":
+      // The first product is what the cell shows; the "+2" is a count of what
+      // it could not. Sorting by what is written is the only honest option.
+      return (r.lines[0]?.product ?? "").toLowerCase();
+    case "createdBy":
+      return r.createdBy.toLowerCase();
+    case "business":
+      return businessOf(r) ?? "";
+    case "orderType":
+      return r.orderType.toLowerCase();
+    case "poNumber":
+      // BLANKS LAST, both ways round. A PO number is a thing an order either
+      // has or has not, and sorting the empty ones to the top on one press
+      // buries every row that answers the question.
+      return r.poNumber ? r.poNumber.toLowerCase() : "\uffff";
+    case "hub":
+      return r.hub.toLowerCase();
+    case "salesperson":
+      return r.salesperson.toLowerCase();
+    case "tags":
+      return r.tags.length ? r.tags.join(", ").toLowerCase() : "\uffff";
     default:
       return "";
   }

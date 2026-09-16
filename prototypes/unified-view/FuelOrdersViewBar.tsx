@@ -109,6 +109,23 @@ export interface FuelOrdersViewBarProps {
    * their own state shapes.
    */
   views: { id: string; name: string }[];
+  /**
+   * BUILT-IN VIEWS, sitting between Default and the saved ones.
+   *
+   * A saved view is something a reader MADE; a preset is something the business
+   * already is. The businesses inside a line of service — fuel's transport and
+   * tank wagon — are the second kind: a broker works one of them, all day, and
+   * would otherwise rebuild the same filter every morning and save it under the
+   * name it already has.
+   *
+   * They carry no `⋯` menu, because there is nothing to rename, update or
+   * delete about a fact. Picking one is picking Default AND that narrowing, so
+   * the two selections are one control and only one tab is ever underlined.
+   */
+  presets?: { key: string; label: string }[];
+  /** `null` = no preset; the Default tab owns the underline. */
+  presetKey?: string | null;
+  onPresetChange?: (key: string) => void;
   /** `null` = the Default view is active. */
   activeId: string | null;
   /** Current state differs from the active view (or from default). */
@@ -190,6 +207,9 @@ export function FuelOrdersViewBar({
   dirty,
   onApply,
   onResetToDefault,
+  presets,
+  presetKey = null,
+  onPresetChange,
   onCreate,
   onRename,
   onUpdate,
@@ -237,14 +257,32 @@ export function FuelOrdersViewBar({
           type="button"
           onClick={onResetToDefault}
           className={cn(
-            tabCls(activeId === null),
+            tabCls(activeId === null && presetKey === null),
             "border-b-2",
-            activeId === null ? "border-foreground" : "border-transparent"
+            activeId === null && presetKey === null
+              ? "border-foreground"
+              : "border-transparent"
           )}
         >
           Default
-          {activeId === null && dirty && <DirtyDot />}
+          {activeId === null && presetKey === null && dirty && <DirtyDot />}
         </button>
+
+        {activeId === null &&
+          presets?.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => onPresetChange?.(p.key)}
+              className={cn(
+                tabCls(presetKey === p.key),
+                "border-b-2",
+                presetKey === p.key ? "border-foreground" : "border-transparent"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
 
         {views.map((v) => {
           const isActive = v.id === activeId;

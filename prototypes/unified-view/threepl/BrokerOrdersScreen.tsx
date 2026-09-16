@@ -46,7 +46,10 @@ import { DateRangeFilter, type DateRange } from "./DateRangeFilter";
 import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
+  BROKER_HIDDEN_BY_DEFAULT,
   BROKER_LANE_COLOR,
+  businessOf,
+  LINE_BUSINESSES,
   type BrokerStatus,
   SERVICE_LINES,
   lineOfProduct,
@@ -117,7 +120,7 @@ import { RENTAL_ASSETS } from "./directory";
  * the tanks and what goes in each; a movement lists the one asset, its type and
  * its capacity — same three columns, so the eye lands in the same place.
  */
-function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
+function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[] {
   const site = SHIP_TO_SITES.find((x) => x.name === r.shipTo);
   const vendor = r.vendorId ? vendorById(r.vendorId) : undefined;
 
@@ -163,7 +166,7 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
         total: showTotal ? `${totalGal(r.lines).toLocaleString()} gal` : undefined,
       };
 
-  return [
+  const units: BoardCardUnit[] = [
     {
       kind: "stack",
       key: "customer",
@@ -211,6 +214,7 @@ function laneCardUnits(r: BrokerOrder): BoardCardUnit[] {
           ],
     },
   ];
+  return units.filter((u) => !off.has(u.key));
 }
 
 /**
@@ -444,6 +448,25 @@ const TOGGLE_COLUMNS = BROKER_COLUMNS.filter((c) => c.label).map((c) => ({
   label: c.label,
 }));
 
+/**
+ * WHAT A BOARD CARD CAN SHOW, and therefore what the column control offers
+ * while the board is up.
+ *
+ * The control was handing the board the TABLE's columns, which is the right
+ * control pointed at the wrong thing: a card has no columns, it has units, and
+ * turning off "Qty (Gal)" did nothing to a card that never had a Qty row. §5.2
+ * says the card's field set is the reader's to choose — these are the choices.
+ *
+ * The heading and the number are not in the list, because a card with no
+ * number is not a card you can act on.
+ */
+const CARD_UNITS: { key: string; label: string }[] = [
+  { key: "customer", label: "Customer Details" },
+  { key: "schedule", label: "Schedule" },
+  { key: "product", label: "Delivery Product Details" },
+  { key: "partner", label: "Vendor" },
+];
+
 /** What a saved view captures. `kind` is here because the tab IS part of the
  *  view a broker builds — a view that forgot it was the Movement tab would
  *  restore the wrong list. */
@@ -486,7 +509,13 @@ export function BrokerOrdersScreen({
   const [sort, setSort] = React.useState<BrokerSortState | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [hidden, setHidden] = React.useState<Set<BrokerColumnKey>>(new Set());
+  const [hidden, setHidden] = React.useState<Set<BrokerColumnKey>>(
+    () => new Set(BROKER_HIDDEN_BY_DEFAULT)
+  );
+  /* THE BOARD KEEPS ITS OWN SET, because the two controls narrow different
+     things and share one button. Folding them together would mean turning
+     Vendor off on a card also took the Vendor column out of the table. */
+  const [cardOff, setCardOff] = React.useState<Set<string>>(new Set());
   /* Empty = the table's declared order; the table fills in anything a saved
      order does not mention, so a stale view never costs a column. */
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -502,6 +531,8 @@ export function BrokerOrdersScreen({
   // Board-first, per §5.2. This is the one list in the prototype that does not
   // open as a table.
   const [view, setView] = React.useState<ListView>("board");
+  /** Which view the column control is speaking for. */
+  const board = view === "board";
   /* The filter panel's selection, as `facetKey:option` ids. This is what the
      order-kind tab row turned into — plus every other facet, which used to be
      decorative. */
@@ -616,6 +647,9 @@ export function BrokerOrdersScreen({
     empties the list rather than being quietly ignored. "Created / Draft" is the
     filter's label for the `Draft` lane.
   */
+  /** Which business inside the line, or none — see `LINE_BUSINESSES`. */
+  const [business, setBusiness] = React.useState<string | null>(null);
+
   const filtered = React.useMemo(() => {
     if (facetSel.size === 0) return searched;
     const on = (facet: string, value: string) => facetSel.has(`${facet}:${value}`);
@@ -649,7 +683,20 @@ export function BrokerOrdersScreen({
       ].every(Boolean)
     );
   }, [searched, facetSel]);
-  const sorted = React.useMemo(() => sortBrokerOrders(filtered, sort), [filtered, sort]);
+  /* THE PRESET NARROWS AFTER THE FACETS AND BEFORE THE SORT, because it is not
+     one of them: the facets are questions asked of a list, and the business is
+     which list you are looking at. */
+  const inBusiness = React.useMemo(
+    () =>
+      business === null
+        ? filtered
+        : filtered.filter((r) => businessOf(r) === business),
+    [filtered, business]
+  );
+  const sorted = React.useMemo(
+    () => sortBrokerOrders(inBusiness, sort),
+    [inBusiness, sort]
+  );
   const pageRows = React.useMemo(
     () => sorted.slice((page - 1) * pageSize, page * pageSize),
     [sorted, page, pageSize]
@@ -692,7 +739,7 @@ export function BrokerOrdersScreen({
             badges: laneCardBadges(r),
             code: laneCardCode(r),
             subtitle: laneCardSubtitle(r),
-            units: laneCardUnits(r),
+            units: laneCardUnits(r, cardOff),
             alert: laneCardAlert(r),
             footerAction: laneCardInvoice(
               r,
@@ -702,7 +749,7 @@ export function BrokerOrdersScreen({
           })),
         };
       }),
-    [filtered, laneSort, requestInvoice, setOpenId]
+    [filtered, laneSort, requestInvoice, setOpenId, cardOff]
   );
 
 
@@ -910,6 +957,15 @@ export function BrokerOrdersScreen({
         /* A new order has not been delivered, let alone billed. */
         invoiceState: "none",
         serviceLine: lineOfProduct(draft.lines[0]?.product ?? ""),
+        /* A NEW ORDER TAKES THE BUSINESS THE READER IS STANDING IN. They
+           picked Transport before pressing Create; landing the order in Tank
+           Wagon would hide it behind the tab they are looking at. On Default
+           it is the line's first business, which is the one the form's
+           defaults describe. */
+        business:
+          business ??
+          LINE_BUSINESSES[lineOfProduct(draft.lines[0]?.product ?? "")][0] ??
+          null,
         audit: [
           {
             at: new Date().toISOString(),
@@ -1007,6 +1063,7 @@ export function BrokerOrdersScreen({
         quotes: [],
         invoiceState: "none",
         serviceLine: lineOfProduct(""),
+        business: null,
         audit: [
           {
             at: new Date().toISOString(),
@@ -1112,10 +1169,50 @@ export function BrokerOrdersScreen({
           <span className="text-sm text-muted-foreground">—</span>
         );
       case "status":
+        /* A BADGE, NOT A DOT AND A WORD. Down a column of twenty, a coloured
+           dot beside plain text is a bullet list that happens to be tinted —
+           the eye reads the words in order to find the one it wants. A filled
+           pill has an edge, so the column becomes a set of shapes you can
+           scan past without reading, which is the whole reason a status is a
+           chip rather than a sentence. */
         return (
-          <StatusChip tone={BROKER_STATUS_TONE[row.status]} variant="text">
+          <StatusChip tone={BROKER_STATUS_TONE[row.status]} variant="soft">
             {row.status}
           </StatusChip>
+        );
+      case "business": {
+        const b = businessOf(row);
+        return b ? (
+          <span className="truncate text-sm text-foreground">{b}</span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      }
+      case "orderType":
+        return (
+          <span className="truncate text-sm text-foreground">{row.orderType}</span>
+        );
+      case "poNumber":
+        return row.poNumber ? (
+          <span className="truncate text-sm tabular-nums text-foreground">
+            {row.poNumber}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      case "hub":
+        return <span className="truncate text-sm text-foreground">{row.hub}</span>;
+      case "salesperson":
+        return (
+          <span className="truncate text-sm text-foreground">{row.salesperson}</span>
+        );
+      case "tags":
+        return row.tags.length ? (
+          <span className="truncate text-sm text-foreground">
+            {row.tags.join(", ")}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
         );
       default:
         return null;
@@ -1167,6 +1264,19 @@ export function BrokerOrdersScreen({
         segmentValue={line}
         onSegmentChange={(l) => {
           setLine(l as ServiceLine);
+          /* THE BUSINESS BELONGS TO THE LINE. Tank Wagon is a fuel word;
+             carrying it across to Propane would leave a tab underlined that
+             narrows by something the new line has never heard of. */
+          setBusiness(null);
+          setPage(1);
+        }}
+        /* THE BUSINESSES INSIDE THE LINE, as tabs beside Default. Fuel has two
+           and the other lines have none yet, so the row shows what is true
+           rather than placeholders. */
+        presets={LINE_BUSINESSES[line].map((b) => ({ key: b, label: b }))}
+        presetKey={business}
+        onPresetChange={(b) => {
+          setBusiness((prev) => (prev === b ? null : b));
           setPage(1);
         }}
         /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; a
@@ -1228,18 +1338,30 @@ export function BrokerOrdersScreen({
               facets={ORDER_FACETS}
             />
           }
-          columns={TOGGLE_COLUMNS}
-          hiddenColumns={hidden}
-          onToggleColumn={(k) =>
-            setHidden((prev) => {
+          /* ONE CONTROL, TWO SUBJECTS. On the board it offers the card's units;
+             in the table it offers the table's columns. Same button in the same
+             place, because the question is the same one — what do you want to
+             see — and only the answer's vocabulary changes with the view. */
+          columns={board ? CARD_UNITS : TOGGLE_COLUMNS}
+          hiddenColumns={board ? cardOff : hidden}
+          onToggleColumn={(k) => {
+            const flip = (prev: Set<string>) => {
               const next = new Set(prev);
               if (next.has(k)) next.delete(k);
               else next.add(k);
               return next;
-            })
+            };
+            if (board) setCardOff(flip);
+            else setHidden((prev) => flip(prev) as Set<BrokerColumnKey>);
+          }}
+          onShowAllColumns={() =>
+            board ? setCardOff(new Set()) : setHidden(new Set())
           }
-          onShowAllColumns={() => setHidden(new Set())}
-          onHideAllColumns={() => setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))}
+          onHideAllColumns={() =>
+            board
+              ? setCardOff(new Set(CARD_UNITS.map((c) => c.key)))
+              : setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))
+          }
           searchFields={BROKER_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {

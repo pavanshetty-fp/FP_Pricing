@@ -240,7 +240,17 @@ export function AppShell({
             step in value does that job on its own — and a shadow on top of a
             real value step is a second answer to a question already answered.
             (28679:1109 drew it when light's ground was #ffffff.) */}
-        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
+        {/* `isolate` — THE CONTENT LAYER STACKS INSIDE ITSELF.
+            Without it the layer is `relative` at `z-auto`, which makes no
+            stacking context of its own, so every z-index inside it competes
+            directly with the shell's: the data table's sticky header is `z-20`,
+            the drawer is `z-20`, the table comes later in the document, and a
+            column header painted over a navigation drawer. Neither number was
+            wrong — they were never meant to be in the same conversation. A
+            stacking context puts the whole layer at one depth and settles it
+            for everything that will ever be built inside it. Overlays that must
+            escape are portalled to the body and are not affected. */}
+        <section className="relative isolate flex min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-fp-surface-1b">
           {/* Page header. Title row (48px when alone); the optional breadcrumb
               sits directly beneath the title text, inside the header unit, above
               the divider. */}

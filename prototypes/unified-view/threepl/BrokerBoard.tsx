@@ -640,21 +640,28 @@ export function BrokerBoard({
   laneSort,
   onLaneSortChange,
 }: BrokerBoardProps) {
-  /* THE LANES, CUT INTO RUNS. A lane marked `apart` starts a new one — see
-     `BoardLane.apart`. Everything before the first such lane is the lifecycle;
-     what follows is not, and gets a rule and a ground of its own. */
-  const groups: BoardLane[][] = [];
-  for (const lane of lanes) {
-    if (groups.length === 0 || lane.apart) groups.push([lane]);
-    else groups[groups.length - 1].push(lane);
-  }
-
   return (
     <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
-      {groups.map((group, gi) => {
-        const laneEls = group.map((lane) => (
+      {lanes.map((lane) => (
+        <React.Fragment key={lane.key}>
+          {/* THE RULE IS THE BREAK, and the air around it is what makes it one:
+              8px either side on top of the row's own 16px gap, so the two
+              groups are 49px apart where lanes within a group are 16. It runs
+              the full height of the board rather than the height of a lane,
+              because it divides the BOARD — a rule that stopped where the
+              tallest lane did would read as a border on the lane beside it. */}
+          {lane.apart && (
+            /* 3px AND THE STRONGER OUTLINE. A hairline is what separates two
+               things of the same kind — a column from a column, a row from a
+               row — and this separates two KINDS, so at 1px it read as a lane
+               border somebody had left on. It is the only vertical rule on the
+               board, so it can afford to be the heaviest thing on it. */
+            <div
+              className="mx-3 w-[3px] shrink-0 self-stretch rounded-full bg-fp-outline-2"
+              aria-hidden
+            />
+          )}
           <Lane
-            key={lane.key}
             lane={lane}
             onOpenCard={onOpenCard}
             sortOptions={laneSortOptions?.(lane.key)}
@@ -663,33 +670,8 @@ export function BrokerBoard({
               onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
             }
           />
-        ));
-        if (gi === 0) return <React.Fragment key="line">{laneEls}</React.Fragment>;
-        return (
-          <React.Fragment key={group[0].key}>
-            {/* THE RULE IS THE BREAK, and the air around it is what makes it
-                one. 3px and the stronger outline: a hairline separates two
-                things of the same kind — a column from a column — and this
-                separates two KINDS, so at 1px it read as a lane border
-                somebody had left on. It runs the full height of the board
-                rather than of a lane, because it divides the BOARD. */}
-            <div
-              className="ml-3 w-[3px] shrink-0 self-stretch rounded-full bg-fp-outline-2"
-              aria-hidden
-            />
-            {/* AND A GROUND UNDER THE GROUP. The rule says where the lifecycle
-                stops; the tray says that what follows is somewhere else. It is
-                the APP's own ground — a step back from the lane fill in both
-                themes — so the lanes go on reading as raised objects and what
-                is behind them reads as floor rather than as another lane.
-                Horizontal padding only, so the lane tops stay level with the
-                ones across the rule. */}
-            <div className="flex h-full shrink-0 gap-4 rounded-lg bg-fp-surface-base px-3">
-              {laneEls}
-            </div>
-          </React.Fragment>
-        );
-      })}
+        </React.Fragment>
+      ))}
     </div>
   );
 }

@@ -149,6 +149,17 @@ export interface ListToolbarProps<K extends string> {
     value: string[];
     onChange: (next: string[]) => void;
   };
+  /**
+   * OFF WHERE THE VIEW IS ALREADY GROUPED.
+   *
+   * Grouping cuts a flat list into headed sections. A board has no flat list to
+   * cut: it is already sections, one per lane, and that grouping is the view
+   * itself rather than a setting on it. A second dimension over the top would
+   * have to nest — groups inside lanes, or lanes inside groups — and neither is
+   * a board any more. The control stayed on screen doing nothing, which is
+   * worse than not offering it.
+   */
+  showGroupBy?: boolean;
 }
 
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
@@ -209,6 +220,7 @@ export function ListToolbar<K extends string>({
   dateScope,
   dateControl,
   groupBy,
+  showGroupBy = true,
 }: ListToolbarProps<K>) {
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
@@ -281,15 +293,16 @@ export function ListToolbar<K extends string>({
           )}
         </div>
         {filters}
-        {groupBy ? (
-          <GroupByMenu
-            dimensions={groupBy.dimensions}
-            value={groupBy.value}
-            onChange={groupBy.onChange}
-          />
-        ) : (
-          <GroupByMenu />
-        )}
+        {showGroupBy &&
+          (groupBy ? (
+            <GroupByMenu
+              dimensions={groupBy.dimensions}
+              value={groupBy.value}
+              onChange={groupBy.onChange}
+            />
+          ) : (
+            <GroupByMenu />
+          ))}
       </div>
 
       {/* RIGHT — [date] │ view switch │ column tools */}

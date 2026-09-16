@@ -1523,6 +1523,9 @@ export function BrokerOrdersScreen({
             setPage(1);
           }}
           searchPlaceholder="Search orders, customers, partners…"
+          /* NOT ON THE BOARD, which is already grouped — by lane. See
+             `showGroupBy`. */
+          showGroupBy={!board}
           filters={
             <ListFilters
               value={facetSel}

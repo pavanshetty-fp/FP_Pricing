@@ -267,15 +267,21 @@ export function ListTable<Row, K extends string>({
             /* THE SECOND HEADER ROW, not a first body row: it scrolls and
                sticks with the headers it belongs to, and the table's own
                `<thead>` is what tells a screen reader these are not records. */
+            /* THE BAND IS QUIETER THAN THE HEADER IT SITS UNDER. At the same
+               fill the two read as one 80px header, and the boxes looked like
+               part of the column names rather than something you do to them.
+               On the content layer's own surface the strip recedes and the
+               inputs are the only thing in it with an edge — which is right,
+               because they are the only thing in it you can touch. */
             <TableRow className="h-11 hover:bg-transparent">
               {selectable && (
-                <TableHead className="border-b border-fp-outline-1 bg-fp-table-header px-3" />
+                <TableHead className="border-b border-fp-outline-1 bg-fp-surface-1b px-3" />
               )}
               {visible.map((col) => (
                 <TableHead
                   key={col.key}
                   className={cn(
-                    "border-b border-fp-outline-1 bg-fp-table-header px-2",
+                    "border-b border-fp-outline-1 bg-fp-surface-1b px-2",
                     col.key === actionsKey && "sticky right-0 z-30"
                   )}
                 >
@@ -292,7 +298,11 @@ export function ListTable<Row, K extends string>({
                       /* `data-no-row-open` keeps a click in the box from being
                          read as a click on the row it sits above. */
                       data-no-row-open
-                      className="h-7 rounded-full px-2.5 text-xs"
+                      /* `rounded-md` and no shadow — the DS's field shape.
+                         A pill is the chip vocabulary, and a raised field in a
+                         strip of fields lifts a row of boxes off a surface
+                         they belong to. */
+                      className="h-7 rounded-md px-2.5 text-xs shadow-none"
                     />
                   ) : null}
                 </TableHead>

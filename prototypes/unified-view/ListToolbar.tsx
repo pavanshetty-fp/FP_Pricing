@@ -75,11 +75,20 @@ export interface ListToolbarProps<K extends string> {
   searchPlaceholder: string;
   /** The screen's facet panel — a `Filters` trigger plus its popover. */
   filters: React.ReactNode;
-  columns: { key: K; label: string }[];
+  /**
+   * `group` makes an entry a CHILD of the entry with that key — one level, no
+   * deeper. A board card is not a flat list of fields: "Customer Details" is a
+   * heading with three lines under it, and a reader who wants the account but
+   * not the street address had no way to say so while the unit was one switch.
+   *
+   * Turning a parent off takes its children with it, because the heading is
+   * the only thing holding them together; turning the last child off leaves a
+   * heading with nothing under it, so it takes the parent too.
+   */
+  columns: { key: K; label: string; group?: K }[];
   hiddenColumns: Set<K>;
   onToggleColumn: (key: K) => void;
   onShowAllColumns: () => void;
-  onHideAllColumns: () => void;
   /** Columns the "Search by column" tool can be pointed at. */
   searchFields: ListSearchField[];
   colScope: string;
@@ -152,7 +161,6 @@ export function ListToolbar<K extends string>({
   hiddenColumns,
   onToggleColumn,
   onShowAllColumns,
-  onHideAllColumns,
   searchFields,
   colScope,
   onColScopeChange,
@@ -327,11 +335,18 @@ export function ListToolbar<K extends string>({
                 {shown}/{columns.length}
               </span>
             </div>
-            <div className="max-h-56 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto">
               {columns.map((c) => (
                 <label
                   key={c.key}
-                  className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent",
+                    /* THE INDENT IS THE ONLY THING SAYING "UNDER". A child at
+                       the parent's left edge is a sibling with a smaller
+                       label; 20px and the lighter weight say which heading it
+                       belongs to without a line or a disclosure arrow. */
+                    c.group ? "pl-7 text-[13px] text-muted-foreground" : "pl-2"
+                  )}
                 >
                   <Checkbox
                     checked={!hiddenColumns.has(c.key)}
@@ -342,24 +357,20 @@ export function ListToolbar<K extends string>({
               ))}
             </div>
             <Separator className="my-1" />
-            <div className="flex gap-1">
+            {/* SHOW ALL, AND NOTHING FACING IT. Hide all emptied the table —
+                a control whose only outcome is a screen with no data in it,
+                sitting one slip of the hand from the one people actually use.
+                Show all is a way BACK from a narrowing, which is the only one
+                of the two anybody was reaching for; alone, it goes to the
+                right, where the act in a footer belongs. */}
+            <div className="flex justify-end">
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1"
                 disabled={hiddenColumns.size === 0}
                 onClick={onShowAllColumns}
               >
                 Show all
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1"
-                disabled={hiddenColumns.size === columns.length}
-                onClick={onHideAllColumns}
-              >
-                Hide all
               </Button>
             </div>
           </PopoverContent>

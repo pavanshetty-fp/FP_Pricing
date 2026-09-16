@@ -159,11 +159,22 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         heading: "Delivery Product Details",
         rows: r.lines.map((l) => ({
           asset: l.asset || "No asset",
-          product: l.product,
-          qty: l.topOff ? "Top-off" : `${(l.gal ?? 0).toLocaleString()} gal`,
+          /* THE ASSET NAME IS THE ROW, so it is not a switch. Turn off the
+             product and the quantity and you still have a list of what is
+             being filled; turn off the name and the columns beside it have
+             nothing to belong to. */
+          product: off.has("product.product") ? "" : l.product,
+          qty: off.has("product.qty")
+            ? ""
+            : l.topOff
+              ? "Top-off"
+              : `${(l.gal ?? 0).toLocaleString()} gal`,
           qtySoft: l.topOff,
         })),
-        total: showTotal ? `${totalGal(r.lines).toLocaleString()} gal` : undefined,
+        total:
+          showTotal && !off.has("product.total")
+            ? `${totalGal(r.lines).toLocaleString()} gal`
+            : undefined,
       };
 
   const units: BoardCardUnit[] = [
@@ -172,9 +183,13 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       key: "customer",
       heading: "Customer Details",
       lines: [
-        { text: r.customer.title, level: 1 },
-        { text: r.shipTo, level: 2 },
-        ...(site ? [{ text: siteAddress(site), level: 3 as const }] : []),
+        ...(off.has("customer.account")
+          ? []
+          : [{ text: r.customer.title, level: 1 as const }]),
+        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
+        ...(site && !off.has("customer.address")
+          ? [{ text: siteAddress(site), level: 3 as const }]
+          : []),
       ],
     },
     {
@@ -182,10 +197,14 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       key: "schedule",
       heading: "Schedule",
       parts: [
-        `${r.window.start} – ${r.window.end}`,
+        ...(off.has("schedule.window")
+          ? []
+          : [`${r.window.start} – ${r.window.end}`]),
         /* A recurring order's cadence beats its date: the board is already
            scoped to one day, so the date says nothing the column has not. */
-        r.recurrence ? r.recurrence.frequency : r.date.title,
+        ...(off.has("schedule.when")
+          ? []
+          : [r.recurrence ? r.recurrence.frequency : r.date.title]),
       ],
     },
     productUnit,
@@ -195,11 +214,17 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       heading: "Vendor",
       lines: vendor
         ? [
-            { text: vendor.name, level: 1 },
-            {
-              text: `${vendor.base} · Safety ${vendor.safetyScore} · ${vendor.distanceMi} mi`,
-              level: 3 as const,
-            },
+            ...(off.has("partner.name")
+              ? []
+              : [{ text: vendor.name, level: 1 as const }]),
+            ...(off.has("partner.detail")
+              ? []
+              : [
+                  {
+                    text: `${vendor.base} · Safety ${vendor.safetyScore} · ${vendor.distanceMi} mi`,
+                    level: 3 as const,
+                  },
+                ]),
           ]
         : [
             {
@@ -214,7 +239,15 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           ],
     },
   ];
-  return units.filter((u) => !off.has(u.key));
+  /* A HEADING WITH NOTHING UNDER IT IS NOT A UNIT. Switching off every line
+     inside one leaves the label sitting on a rule, which reads as a failure to
+     load rather than as a choice somebody made. */
+  return units.filter((u) => {
+    if (off.has(u.key)) return false;
+    if (u.kind === "stack") return u.lines.length > 0;
+    if (u.kind === "inline") return u.parts.length > 0;
+    return true;
+  });
 }
 
 /**
@@ -460,12 +493,108 @@ const TOGGLE_COLUMNS = BROKER_COLUMNS.filter((c) => c.label).map((c) => ({
  * The heading and the number are not in the list, because a card with no
  * number is not a card you can act on.
  */
-const CARD_UNITS: { key: string; label: string }[] = [
+const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "customer", label: "Customer Details" },
+  { key: "customer.account", label: "Account", group: "customer" },
+  { key: "customer.site", label: "Ship-to site", group: "customer" },
+  { key: "customer.address", label: "Address", group: "customer" },
   { key: "schedule", label: "Schedule" },
+  { key: "schedule.window", label: "Delivery window", group: "schedule" },
+  { key: "schedule.when", label: "Date or cadence", group: "schedule" },
   { key: "product", label: "Delivery Product Details" },
+  { key: "product.product", label: "Product", group: "product" },
+  { key: "product.qty", label: "Quantity", group: "product" },
+  { key: "product.total", label: "Total", group: "product" },
   { key: "partner", label: "Vendor" },
+  { key: "partner.name", label: "Partner name", group: "partner" },
+  { key: "partner.detail", label: "Base · safety · distance", group: "partner" },
 ];
+
+/**
+ * THE WAYS A LANE CAN BE ORDERED, NAMED — see `BrokerBoardProps.laneSortOptions`.
+ *
+ * FOUR THAT APPLY EVERYWHERE, because a queue is a queue: when it is happening,
+ * how big it is, who it is for, and which order it is. Each is offered in BOTH
+ * directions, written as what you would get rather than as "ascending" —
+ * "Earliest first" is a sentence about the work; "asc" is a sentence about the
+ * sort.
+ *
+ * AND ONE THAT BELONGS TO THE LANE. What is worth ordering Draft by is not
+ * what is worth ordering Accepted by: a draft is waiting on somebody here to
+ * finish it, and an accepted order is waiting on a price. Those are in
+ * `LANE_EXTRA_SORTS`, and a lane with nothing of its own gets the four.
+ */
+const LANE_SORTS: Record<
+  string,
+  { label: string; compare: (a: BrokerOrder, b: BrokerOrder) => number }
+> = {
+  "time-asc": {
+    label: "Schedule time — earliest first",
+    compare: (a, b) => timeToMinutes(a.window.start) - timeToMinutes(b.window.start),
+  },
+  "time-desc": {
+    label: "Schedule time — latest first",
+    compare: (a, b) => timeToMinutes(b.window.start) - timeToMinutes(a.window.start),
+  },
+  "qty-desc": {
+    label: "Quantity — largest first",
+    compare: (a, b) => totalGal(b.lines) - totalGal(a.lines),
+  },
+  "qty-asc": {
+    label: "Quantity — smallest first",
+    compare: (a, b) => totalGal(a.lines) - totalGal(b.lines),
+  },
+  "customer-asc": {
+    label: "Customer — A to Z",
+    compare: (a, b) => a.customer.title.localeCompare(b.customer.title),
+  },
+  "order-desc": {
+    label: "Order # — newest first",
+    compare: (a, b) => Number(b.orderNo.slice(2)) - Number(a.orderNo.slice(2)),
+  },
+  "ready-first": {
+    label: "Ready to send first",
+    compare: (a, b) => Number(isOrderReady(b)) - Number(isOrderReady(a)),
+  },
+  "invited-desc": {
+    label: "Most partners invited first",
+    compare: (a, b) => b.invitedVendorIds.length - a.invitedVendorIds.length,
+  },
+  "quotes-desc": {
+    label: "Most quotes in first",
+    compare: (a, b) => b.quotes.length - a.quotes.length,
+  },
+  "urgent-first": {
+    label: "Urgent first",
+    compare: (a, b) => Number(b.urgent) - Number(a.urgent),
+  },
+};
+
+const COMMON_LANE_SORTS = [
+  "time-asc",
+  "time-desc",
+  "qty-desc",
+  "qty-asc",
+  "customer-asc",
+  "order-desc",
+];
+
+/** The one extra each lane earns from the thing it is waiting on. */
+const LANE_EXTRA_SORTS: Record<string, string> = {
+  Draft: "ready-first",
+  Assigned: "invited-desc",
+  Accepted: "quotes-desc",
+  Completed: "urgent-first",
+  Blocked: "urgent-first",
+};
+
+function laneSortOptions(laneKey: string) {
+  const extra = LANE_EXTRA_SORTS[laneKey];
+  return [...(extra ? [extra] : []), ...COMMON_LANE_SORTS].map((k) => ({
+    key: k,
+    label: LANE_SORTS[k].label,
+  }));
+}
 
 /** What a saved view captures. `kind` is here because the tab IS part of the
  *  view a broker builds — a view that forgot it was the Movement tab would
@@ -537,9 +666,9 @@ export function BrokerOrdersScreen({
      order-kind tab row turned into — plus every other facet, which used to be
      decorative. */
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
-  const [laneSort, setLaneSort] = React.useState<
-    Record<string, "asc" | "desc" | undefined>
-  >({});
+  const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>(
+    {}
+  );
 
   const current: ViewState = {
     search,
@@ -712,20 +841,13 @@ export function BrokerOrdersScreen({
     []
   );
 
-  /** Lane sort is by window start, which is the only ordering a dispatcher
-   *  asks a lane for. See `BOARD_LANES` for what the lanes are. */
   const lanes: BoardLane[] = React.useMemo(
     () =>
       BOARD_LANES.map((lane) => {
-        const dir = laneSort[lane.key];
         const held = new Set<BrokerStatus>(lane.statuses);
         let cards = filtered.filter((r) => held.has(r.status));
-        if (dir) {
-          cards = [...cards].sort((a, b) => {
-            const d = timeToMinutes(a.window.start) - timeToMinutes(b.window.start);
-            return dir === "asc" ? d : -d;
-          });
-        }
+        const cmp = LANE_SORTS[laneSort[lane.key] ?? ""]?.compare;
+        if (cmp) cards = [...cards].sort(cmp);
         const title = lane.title ?? lane.key;
         return {
           key: lane.key,
@@ -762,13 +884,8 @@ export function BrokerOrdersScreen({
     setPage(1);
   };
 
-  const toggleLaneSort = (laneKey: string) =>
-    setLaneSort((prev) => ({
-      ...prev,
-      // asc -> desc -> off, the same three-step cycle the table headers use.
-      [laneKey]:
-        prev[laneKey] === "asc" ? "desc" : prev[laneKey] === "desc" ? undefined : "asc",
-    }));
+  const setLaneSortKey = (laneKey: string, option: string | null) =>
+    setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }));
 
   const customers = React.useMemo(
     () => Array.from(new Set(BROKER_ORDERS.map((r) => r.customer.title))),
@@ -1259,6 +1376,16 @@ export function BrokerOrdersScreen({
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
+        /* DEFAULT MEANS NOTHING IS APPLIED, and that has to include the
+           business. `useSavedViews` restores the saved state — search, sort,
+           columns, facets — and knows nothing about the preset row, so
+           pressing Default while Transport was underlined cleared everything
+           the reader could see and left the one narrowing they could not.
+           Default is the tab that says "all of it", so it has to mean it. */
+        onResetToDefault={() => {
+          setBusiness(null);
+          savedViews.onResetToDefault();
+        }}
         ctaLabel="Create Order"
         segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
@@ -1345,22 +1472,49 @@ export function BrokerOrdersScreen({
           columns={board ? CARD_UNITS : TOGGLE_COLUMNS}
           hiddenColumns={board ? cardOff : hidden}
           onToggleColumn={(k) => {
-            const flip = (prev: Set<string>) => {
+            if (!board) {
+              const col = k as BrokerColumnKey;
+              setHidden((prev) => {
+                const next = new Set(prev);
+                if (next.has(col)) next.delete(col);
+                else next.add(col);
+                return next;
+              });
+              return;
+            }
+            /* A PARENT CARRIES ITS CHILDREN. Turning the heading off takes the
+               lines with it, because the heading is what holds them together;
+               turning it back on brings them all back, which is what "show me
+               Customer Details" means. The last child going off takes the
+               parent, since a heading with nothing under it is not a unit. */
+            setCardOff((prev) => {
               const next = new Set(prev);
-              if (next.has(k)) next.delete(k);
-              else next.add(k);
+              const kids = CARD_UNITS.filter((c) => c.group === k).map((c) => c.key);
+              if (next.has(k)) {
+                next.delete(k);
+                for (const c of kids) next.delete(c);
+              } else if (kids.length > 0) {
+                next.add(k);
+                for (const c of kids) next.add(c);
+              } else {
+                const entry = CARD_UNITS.find((c) => c.key === k);
+                next.add(k);
+                if (entry?.group) {
+                  const siblings = CARD_UNITS.filter(
+                    (c) => c.group === entry.group
+                  ).map((c) => c.key);
+                  if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
+                }
+              }
+              /* Switching a child back on switches its heading back on too —
+                 otherwise the line you just asked for is still not drawn. */
+              const entry = CARD_UNITS.find((c) => c.key === k);
+              if (!next.has(k) && entry?.group) next.delete(entry.group);
               return next;
-            };
-            if (board) setCardOff(flip);
-            else setHidden((prev) => flip(prev) as Set<BrokerColumnKey>);
+            });
           }}
           onShowAllColumns={() =>
             board ? setCardOff(new Set()) : setHidden(new Set())
-          }
-          onHideAllColumns={() =>
-            board
-              ? setCardOff(new Set(CARD_UNITS.map((c) => c.key)))
-              : setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))
           }
           searchFields={BROKER_SEARCH_FIELDS}
           colScope={colScope}
@@ -1425,8 +1579,9 @@ export function BrokerOrdersScreen({
             <BrokerBoard
               lanes={lanes}
               onOpenCard={setOpenId}
+              laneSortOptions={laneSortOptions}
               laneSort={laneSort}
-              onToggleLaneSort={toggleLaneSort}
+              onLaneSortChange={setLaneSortKey}
             />
           ) : view === "map" ? (
             /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a

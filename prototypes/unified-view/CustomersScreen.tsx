@@ -243,7 +243,6 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
             })
           }
           onShowAllColumns={() => setHidden(new Set())}
-          onHideAllColumns={() => setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))}
           searchFields={CUSTOMER_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {

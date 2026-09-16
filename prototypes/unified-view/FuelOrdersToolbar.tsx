@@ -22,7 +22,6 @@ export interface FuelOrdersToolbarProps {
   hiddenColumns: Set<FuelOrderColumnKey>;
   onToggleColumn: (key: FuelOrderColumnKey) => void;
   onShowAllColumns: () => void;
-  onHideAllColumns: () => void;
   colScope: string;
   onColScopeChange: (v: string) => void;
   colQuery: string;

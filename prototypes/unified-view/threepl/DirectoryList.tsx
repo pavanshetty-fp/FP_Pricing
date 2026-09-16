@@ -437,7 +437,6 @@ export function DirectoryList<Row, K extends string>({
               })
             }
             onShowAllColumns={() => setHidden(new Set())}
-            onHideAllColumns={() => setHidden(new Set(toggleColumns.map((c) => c.key)))}
             searchFields={searchFields}
             colScope={colScope}
             onColScopeChange={(v) => {

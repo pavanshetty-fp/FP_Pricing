@@ -750,9 +750,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           hiddenColumns={hiddenColumns}
           onToggleColumn={toggleColumn}
           onShowAllColumns={() => setHiddenColumns(new Set())}
-          onHideAllColumns={() =>
-            setHiddenColumns(new Set(TOGGLE_COLUMNS.map((c) => c.key)))
-          }
           colScope={colScope}
           onColScopeChange={(v) => {
             setColScope(v);

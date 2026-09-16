@@ -288,7 +288,6 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
             })
           }
           onShowAllColumns={() => setHidden(new Set())}
-          onHideAllColumns={() => setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))}
           searchFields={ASSET_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {

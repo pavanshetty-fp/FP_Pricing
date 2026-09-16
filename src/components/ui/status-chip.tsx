@@ -123,15 +123,23 @@ export function StatusChip({
       )}
       {...props}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          // `text` and `soft` colour the whole chip, so one class drives the
-          // dot too; `dot` keeps a neutral label and needs the token directly.
-          variant === "dot" ? TONE_DOT[tone] : "bg-current"
-        )}
-      />
+      {/* NO DOT ON THE FILLED PILL. The dot exists to carry the tone where the
+          label cannot — beside plain text, it is the only coloured thing in
+          the chip. `soft` tints the whole shape, so a dot of the same colour
+          inside it says the tone a second time and eats 12px of a chip whose
+          whole job is to be small. `dot` and `text` keep it, because there the
+          dot IS the tone. */}
+      {!isSoft && (
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            // `text` colours the whole chip, so one class drives the dot too;
+            // `dot` keeps a neutral label and needs the token directly.
+            variant === "dot" ? TONE_DOT[tone] : "bg-current"
+          )}
+        />
+      )}
       {children}
     </span>
   );

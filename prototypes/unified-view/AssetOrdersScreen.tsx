@@ -321,7 +321,6 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
             })
           }
           onShowAllColumns={() => setHidden(new Set())}
-          onHideAllColumns={() => setHidden(new Set(TOGGLE_COLUMNS.map((c) => c.key)))}
           searchFields={ASSET_ORDER_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {

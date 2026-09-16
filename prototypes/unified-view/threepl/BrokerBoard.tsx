@@ -1,5 +1,13 @@
 import * as React from "react";
-import { ArrowDownUp, ArrowDown, ArrowUp, Check, Info } from "lucide-react";
+import { ArrowDownUp, Check, Info } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
@@ -231,12 +239,32 @@ export interface BoardLane {
   apart?: boolean;
 }
 
+/** One named way to order a lane — see `BrokerBoardProps.laneSortOptions`. */
+export interface LaneSortOption {
+  key: string;
+  label: string;
+}
+
 export interface BrokerBoardProps {
   lanes: BoardLane[];
   onOpenCard?: (id: string) => void;
-  /** Per-lane sort direction, keyed by lane key. Absent = unsorted. */
-  laneSort?: Record<string, "asc" | "desc" | undefined>;
-  onToggleLaneSort?: (laneKey: string) => void;
+  /**
+   * THE WAYS THIS LANE CAN BE ORDERED, NAMED.
+   *
+   * The control was a three-state icon that cycled earliest / latest / off on
+   * one hidden key, planned time — a button that changed the order of the work
+   * without ever saying by what, and whose third press was a state nobody
+   * could see they had reached. A lane is a queue, and which end of a queue you
+   * work from is a decision with a reason: earliest first while you are
+   * dispatching, largest first while you are pricing. The reason is the label.
+   *
+   * The options are the CALLER'S, because they belong to the lane: what you
+   * would sort Draft by is not what you would sort Accepted by.
+   */
+  laneSortOptions?: (laneKey: string) => LaneSortOption[];
+  /** Chosen option per lane key. Absent = the lane's own order. */
+  laneSort?: Record<string, string | undefined>;
+  onLaneSortChange?: (laneKey: string, option: string | null) => void;
 }
 
 /** The unit heading — the only label left on the card. */
@@ -509,15 +537,17 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
 function Lane({
   lane,
   onOpenCard,
-  sortDir,
-  onToggleSort,
+  sortOptions,
+  sortKey,
+  onSortChange,
 }: {
   lane: BoardLane;
   onOpenCard?: (id: string) => void;
-  sortDir?: "asc" | "desc";
-  onToggleSort?: () => void;
+  sortOptions?: LaneSortOption[];
+  sortKey?: string;
+  onSortChange?: (option: string | null) => void;
 }) {
-  const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowDownUp;
+  const chosen = sortOptions?.find((o) => o.key === sortKey);
   return (
     /* 400px, not the DS's 340. The card's product unit is three columns —
        asset, product, quantity — and at 340 the first two truncated on any
@@ -550,20 +580,42 @@ function Lane({
           {lane.cards.length}
         </span>
         <span className="sr-only">{lane.cards.length} orders</span>
-        {onToggleSort && (
-          <button
-            type="button"
-            aria-label={`Sort ${lane.title} by planned time${
-              sortDir ? ` (currently ${sortDir === "asc" ? "earliest" : "latest"} first)` : ""
-            }`}
-            onClick={onToggleSort}
-            className={cn(
-              "ml-auto shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
-              sortDir ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            <SortIcon className="size-4" />
-          </button>
+        {sortOptions && sortOptions.length > 0 && onSortChange && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Sort ${lane.title}${chosen ? ` — ${chosen.label}` : ""}`}
+                className={cn(
+                  "ml-auto shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground",
+                  chosen ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <ArrowDownUp className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
+                Sort {lane.title.toLowerCase()} by
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={sortKey ?? ""}
+                onValueChange={(v) => onSortChange(v === "" ? null : v)}
+              >
+                {/* THE LANE'S OWN ORDER IS ONE OF THE CHOICES, not the absence
+                    of one. A sort you can turn on and cannot name your way out
+                    of is a sort you are stuck with. */}
+                <DropdownMenuRadioItem value="">
+                  Lane order
+                </DropdownMenuRadioItem>
+                {sortOptions.map((o) => (
+                  <DropdownMenuRadioItem key={o.key} value={o.key}>
+                    {o.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
@@ -584,8 +636,9 @@ function Lane({
 export function BrokerBoard({
   lanes,
   onOpenCard,
+  laneSortOptions,
   laneSort,
-  onToggleLaneSort,
+  onLaneSortChange,
 }: BrokerBoardProps) {
   return (
     <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
@@ -598,13 +651,24 @@ export function BrokerBoard({
               because it divides the BOARD — a rule that stopped where the
               tallest lane did would read as a border on the lane beside it. */}
           {lane.apart && (
-            <div className="mx-2 w-px shrink-0 self-stretch bg-fp-outline-1" aria-hidden />
+            /* 3px AND THE STRONGER OUTLINE. A hairline is what separates two
+               things of the same kind — a column from a column, a row from a
+               row — and this separates two KINDS, so at 1px it read as a lane
+               border somebody had left on. It is the only vertical rule on the
+               board, so it can afford to be the heaviest thing on it. */
+            <div
+              className="mx-3 w-[3px] shrink-0 self-stretch rounded-full bg-fp-outline-2"
+              aria-hidden
+            />
           )}
           <Lane
             lane={lane}
             onOpenCard={onOpenCard}
-            sortDir={laneSort?.[lane.key]}
-            onToggleSort={onToggleLaneSort ? () => onToggleLaneSort(lane.key) : undefined}
+            sortOptions={laneSortOptions?.(lane.key)}
+            sortKey={laneSort?.[lane.key]}
+            onSortChange={
+              onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
+            }
           />
         </React.Fragment>
       ))}

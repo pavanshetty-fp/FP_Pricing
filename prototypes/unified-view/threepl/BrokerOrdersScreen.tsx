@@ -1544,6 +1544,11 @@ export function BrokerOrdersScreen({
              see — and only the answer's vocabulary changes with the view. */
           columns={board ? CARD_UNITS : TOGGLE_COLUMNS}
           hiddenColumns={board ? cardOff : hidden}
+          /* THE TABLE'S ORDER ONLY. A card's units read top to bottom in the
+             order the work happens — who it is for, when, what, and who is
+             taking it — which is not a preference. */
+          columnOrder={board ? undefined : columnOrder}
+          onReorderColumns={board ? undefined : setColumnOrder}
           onToggleColumn={(k) => {
             if (!board) {
               const col = k as BrokerColumnKey;

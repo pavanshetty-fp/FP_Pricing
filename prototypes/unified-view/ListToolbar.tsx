@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Map as MapIcon,
   Columns3,
+  GripVertical,
   KanbanSquare,
   Search,
   Table2,
@@ -86,6 +87,19 @@ export interface ListToolbarProps<K extends string> {
    * heading with nothing under it, so it takes the parent too.
    */
   columns: { key: K; label: string; group?: K }[];
+  /**
+   * THE SAME ORDER THE TABLE IS IN, EDITABLE HERE TOO.
+   *
+   * Dragging a header is the direct way to move a column and it is only
+   * available to columns you can SEE — the one you want is usually the one
+   * scrolled off the right edge, which is why you opened this menu. The list
+   * is already every column in the table, in order; a grip makes it the place
+   * you arrange them as well as the place you choose them.
+   *
+   * Supply both to turn it on. Left off, the list is still a list.
+   */
+  columnOrder?: string[];
+  onReorderColumns?: (next: string[]) => void;
   hiddenColumns: Set<K>;
   onToggleColumn: (key: K) => void;
   onShowAllColumns: () => void;
@@ -187,6 +201,8 @@ export function ListToolbar<K extends string>({
   columnFiltersOpen,
   onToggleColumnFilters,
   columnFilterCount = 0,
+  columnOrder,
+  onReorderColumns,
   view,
   onViewChange,
   mapView = false,
@@ -197,6 +213,47 @@ export function ListToolbar<K extends string>({
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
   const shown = columns.filter((c) => !hiddenColumns.has(c.key)).length;
+
+  /* THE LIST FOLLOWS THE TABLE. Reading them in a different sequence from the
+     columns they stand for would make the menu a second opinion about the
+     order rather than a view of it. Keys the order has not heard of keep their
+     declared place, which is how a saved view survives a new column. */
+  const reorderable = Boolean(columnOrder && onReorderColumns);
+  const ordered = React.useMemo(() => {
+    if (!columnOrder) return columns;
+    const rank = new Map(columnOrder.map((k, i) => [k, i]));
+    return [...columns].sort((a, b) => {
+      const ai = rank.get(a.key) ?? columns.findIndex((c) => c.key === a.key);
+      const bi = rank.get(b.key) ?? columns.findIndex((c) => c.key === b.key);
+      return ai - bi;
+    });
+  }, [columns, columnOrder]);
+
+  const [dragKey, setDragKey] = React.useState<string | null>(null);
+  const [overKey, setOverKey] = React.useState<string | null>(null);
+  /** Puts `key` where `target` sits. */
+  const moveColumn = (key: string, target: string) => {
+    if (!onReorderColumns || key === target) return;
+    const keys = ordered.map((c) => c.key as string);
+    const next = keys.filter((k) => k !== key);
+    next.splice(next.indexOf(target), 0, key);
+    onReorderColumns(next);
+  };
+  /** One step up or down — the keyboard's version of the same move. */
+  const nudgeColumn = (key: string, delta: -1 | 1) => {
+    const keys = ordered.map((c) => c.key as string);
+    const at = keys.indexOf(key);
+    const to = at + delta;
+    if (at === -1 || to < 0 || to >= keys.length) return;
+    onReorderColumns?.(
+      (() => {
+        const next = [...keys];
+        next.splice(at, 1);
+        next.splice(to, 0, key);
+        return next;
+      })()
+    );
+  };
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -380,25 +437,105 @@ export function ListToolbar<K extends string>({
               </span>
             </div>
             <div className="max-h-64 overflow-y-auto">
-              {columns.map((c) => (
-                <label
-                  key={c.key}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent",
-                    /* THE INDENT IS THE ONLY THING SAYING "UNDER". A child at
-                       the parent's left edge is a sibling with a smaller
-                       label; 20px and the lighter weight say which heading it
-                       belongs to without a line or a disclosure arrow. */
-                    c.group ? "pl-7 text-[13px] text-muted-foreground" : "pl-2"
-                  )}
-                >
-                  <Checkbox
-                    checked={!hiddenColumns.has(c.key)}
-                    onCheckedChange={() => onToggleColumn(c.key)}
-                  />
-                  <span className="flex-1 truncate">{c.label}</span>
-                </label>
-              ))}
+              {ordered.map((c) => {
+                const draggable = reorderable && !c.group;
+                return (
+                  <div
+                    key={c.key}
+                    draggable={draggable}
+                    onDragStart={
+                      draggable
+                        ? (e) => {
+                            setDragKey(c.key);
+                            e.dataTransfer.effectAllowed = "move";
+                            /* Firefox starts no drag without payload. */
+                            e.dataTransfer.setData("text/plain", c.key);
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      draggable
+                        ? (e) => {
+                            if (!dragKey || dragKey === c.key) return;
+                            e.preventDefault();
+                            setOverKey(c.key);
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      draggable
+                        ? (e) => {
+                            e.preventDefault();
+                            if (dragKey) moveColumn(dragKey, c.key);
+                            setDragKey(null);
+                            setOverKey(null);
+                          }
+                        : undefined
+                    }
+                    onDragEnd={() => {
+                      setDragKey(null);
+                      setOverKey(null);
+                    }}
+                    className={cn(
+                      "flex items-center rounded-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent",
+                      dragKey === c.key && "opacity-40",
+                      /* WHERE IT WILL LAND, on the row it will land on. A line
+                         between rows would need to know which side of the gap
+                         the pointer is on; tinting the target says the same
+                         thing and cannot be off by one. */
+                      overKey === c.key && dragKey && "bg-accent"
+                    )}
+                  >
+                    {reorderable && (
+                      <span
+                        className={cn(
+                          "flex w-5 shrink-0 items-center justify-center self-stretch",
+                          draggable
+                            ? "cursor-grab text-muted-foreground active:cursor-grabbing"
+                            : "opacity-0"
+                        )}
+                        aria-hidden={!draggable}
+                      >
+                        {draggable && <GripVertical className="size-3.5" />}
+                      </span>
+                    )}
+                    <label
+                      className={cn(
+                        "flex flex-1 cursor-pointer items-center gap-2 py-1.5 pr-2 text-sm",
+                        /* THE INDENT IS THE ONLY THING SAYING "UNDER". A child
+                           at the parent's left edge is a sibling with a smaller
+                           label; the offset and the lighter weight say which
+                           heading it belongs to without a line or a disclosure
+                           arrow. */
+                        c.group
+                          ? "pl-5 text-[13px] text-muted-foreground"
+                          : reorderable
+                            ? "pl-0"
+                            : "pl-2"
+                      )}
+                      /* THE KEYBOARD MOVES IT TOO. A grip nobody can reach
+                         without a mouse is an ordering only some readers get
+                         to change. */
+                      onKeyDown={
+                        draggable
+                          ? (e) => {
+                              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                                e.preventDefault();
+                                nudgeColumn(c.key, e.key === "ArrowUp" ? -1 : 1);
+                              }
+                            }
+                          : undefined
+                      }
+                    >
+                      <Checkbox
+                        checked={!hiddenColumns.has(c.key)}
+                        onCheckedChange={() => onToggleColumn(c.key)}
+                      />
+                      <span className="flex-1 truncate">{c.label}</span>
+                    </label>
+                  </div>
+                );
+              })}
             </div>
             <Separator className="my-1" />
             {/* SHOW ALL, AND NOTHING FACING IT. Hide all emptied the table —

@@ -13,8 +13,7 @@ import { VENDORS } from "./vendors";
 
     • The seven-stage lifecycle and its exact order (§5.2 "Order Stages"), with
       the core progression stated as
-        Draft -> Assigned -> Accepted -> Completed -> Accounting Sync Ready
-        -> Accounting Synced
+        Draft -> Quoting -> Assigned -> Completed -> Verified -> Synced
       and BLOCKED positioned between Created and Assigned ("Order is blocked due
       to a customer credit issue").
     • The order-type filter tabs All / Regular / Recurring / Movement (§5.2
@@ -50,16 +49,16 @@ import { VENDORS } from "./vendors";
 export type BrokerStatus =
   | "Draft"
   | "Blocked"
+  | "Quoting"
   | "Assigned"
-  | "Accepted"
   | "Completed"
-  | "Accounting Sync Ready"
+  | "Verified"
   /* PARTIAL IS A STATUS BUT NOT A LANE. Some of the order reached accounting
      and some did not, so there is work left — it sits in the Sync Ready lane
      with a badge rather than getting a lane of its own. A lane per outcome of
      one step is how a board grows past being readable. */
-  | "Partial Accounting Synced"
-  | "Accounting Synced"
+  | "Partially Synced"
+  | "Synced"
   /* THE TERMINAL EXIT. Not a stage of the work — a way out of it — which is
      why it is last in the lane order rather than in sequence with the rest. */
   | "Cancelled";
@@ -68,11 +67,11 @@ export type BrokerStatus =
 export const BROKER_STATUSES: BrokerStatus[] = [
   "Draft",
   "Blocked",
+  "Quoting",
   "Assigned",
-  "Accepted",
   "Completed",
-  "Accounting Sync Ready",
-  "Accounting Synced",
+  "Verified",
+  "Synced",
   "Cancelled",
 ];
 
@@ -339,7 +338,7 @@ export interface BrokerOrder {
   invitedVendorIds: string[];
   /**
    * Partners that ACCEPTED THE INVITATION. This is what moves an order out of
-   * Assigned and into Accepted — the first of the two things a partner does.
+   * Quoting and into Assigned — the first of the two things a partner does.
    * The second is sharing a quote, which is `quotes` below.
    */
   acceptedVendorIds: string[];
@@ -448,7 +447,7 @@ export function isOrderReady(r: BrokerOrder): boolean {
  * WHAT CHANGED, IN WORDS — the diff that becomes one audit entry.
  *
  * It reads fields, not objects, and it says the OLD value as well as the new
- * one: "Status Assigned -> Accepted" answers the question the trail is opened
+ * one: "Status Quoting -> Assigned" answers the question the trail is opened
  * to answer, where "Status changed" only proves someone was here. Fields
  * nobody would ask about later are left out on purpose — a trail that logs
  * everything is one nobody reads.
@@ -760,21 +759,21 @@ export const YARDS = YARD_SITES.map((y) => y.name);
  * Statuses the FILTER offers, which is a longer list than the board's lanes.
  *
  * `BROKER_STATUSES` above is the LIFECYCLE — the lanes the board renders, in
- * order. Overdue, Cancelled and Partial Accounting Synced are filterable states
+ * order. Overdue, Cancelled and Partially Synced are filterable states
  * that are not lanes: Overdue is a derived condition rather than a stage,
- * Cancelled is a terminal exit, and Partial Accounting Synced sits between two
+ * Cancelled is a terminal exit, and Partially Synced sits between two
  * lanes. Keeping the two lists apart means adding a filter option never
  * silently adds a board lane.
  */
 export const BROKER_STATUS_FILTERS = [
   "Overdue",
   "Created / Draft",
+  "Quoting",
   "Assigned",
-  "Accepted",
   "Completed",
-  "Accounting Sync Ready",
-  "Partial Accounting Synced",
-  "Accounting Synced",
+  "Verified",
+  "Partially Synced",
+  "Synced",
   "Cancelled",
   "Blocked",
 ];
@@ -1099,7 +1098,7 @@ function rng(seed: number) {
 
 /**
  * Which vendor fields a status implies. Encoded once so a seed cannot produce an
- * order that is `Accepted` with nobody assigned, or `Draft` with three invites
+ * order that is `Assigned` with nobody holding it, or `Draft` with three invites
  * out — the exact class of contradiction `HANDOFF.md` open question 1 is about.
  */
 function vendorStateFor(
@@ -1140,7 +1139,7 @@ function vendorStateFor(
     v.businessLines.some((b) => b === needs)
   ).map((v) => v.id);
   const first = pool[Math.floor(pick() * pool.length)];
-  if (status === "Assigned") {
+  if (status === "Quoting") {
     /* OUT FOR ACKNOWLEDGEMENT and nobody has said yes yet — that is what
        Assigned means. Sometimes one invite, sometimes several; both are normal,
        and the difference is what the rejection rule turns on. */
@@ -1154,7 +1153,7 @@ function vendorStateFor(
   }
   const alsoInvited = pool.filter((id) => id !== first).slice(0, pick() < 0.4 ? 1 : 0);
   const invited = [first, ...alsoInvited];
-  if (status === "Accepted") {
+  if (status === "Assigned") {
     /* ACCEPTED IS THE PARTNER'S ACT, NOT THE BROKER'S. At least one partner has
        said yes; whether the broker has taken anyone's quote is the next
        question, and on roughly half of these it has not been answered yet —
@@ -1259,7 +1258,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     });
 
     /* Past the delivery, the gallons are a fact and the pricing is settled —
-       an order in Accounting Sync Ready with no numbers on it could not have
+       an order in Verified with no numbers on it could not have
        been invoiced. */
     if (status === "Completed" || status.startsWith("Accounting")) {
       for (const l of lines) {
@@ -1285,7 +1284,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       quoteRequested && acceptedVendorIds.length > 0
         ? acceptedVendorIds
             .filter((_, k) => k === 0 || pick() < 0.6)
-            .filter(() => (status === "Accepted" ? pick() < 0.7 : true))
+            .filter(() => (status === "Assigned" ? pick() < 0.7 : true))
             .map((vid) => ({
               vendorId: vid,
               lines: lines.map((l) => ({
@@ -1430,16 +1429,16 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
      order that reached accounting stops half way — which is roughly how often
      it happens, and often enough to land on most days. */
   rows
-    .filter((r) => r.status === "Accounting Synced")
+    .filter((r) => r.status === "Synced")
     .forEach((r, k) => {
       if (k % 3 !== 1) return;
-      r.status = "Partial Accounting Synced";
+      r.status = "Partially Synced";
       r.audit = [
         ...r.audit,
         {
           at: new Date(Date.now() - 1_800_000).toISOString(),
           by: CREATED_BY[k % CREATED_BY.length],
-          changes: ["Status: Accounting Synced → Partial Accounting Synced"],
+          changes: ["Status: Synced → Partially Synced"],
         },
       ];
     });
@@ -1459,7 +1458,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       {
         at: new Date(Date.now() - 3_600_000).toISOString(),
         by: CREATED_BY[k % CREATED_BY.length],
-        changes: ["Status: Assigned → Cancelled", "Cancelled by customer"],
+        changes: ["Status: Quoting → Cancelled", "Cancelled by customer"],
       },
     ];
   });
@@ -1494,22 +1493,22 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
       problems.push(`${r.orderNo}: ${r.status} cannot have an accepted partner`);
     }
     /* THE TWO ACTS ARE SEPARATE and the lanes turn on the first of them.
-       Assigned = invited, nobody has said yes. Accepted = somebody has. Whether
+       Quoting = invited, nobody has said yes. Assigned = somebody has. Whether
        the BROKER has taken a quote is a third thing, and only the stages past
        the delivery require it. */
-    if (r.status === "Assigned" && r.acceptedVendorIds.length) {
+    if (r.status === "Quoting" && r.acceptedVendorIds.length) {
       problems.push(`${r.orderNo}: Assigned means invited, not accepted`);
     }
-    if (r.status === "Assigned" && r.vendorId) {
+    if (r.status === "Quoting" && r.vendorId) {
       problems.push(`${r.orderNo}: Assigned cannot already have a partner`);
     }
-    if (r.status === "Assigned" && r.invitedVendorIds.length === 0) {
+    if (r.status === "Quoting" && r.invitedVendorIds.length === 0) {
       problems.push(`${r.orderNo}: Assigned with nobody invited`);
     }
-    if (!preVendor && r.status !== "Assigned" && r.acceptedVendorIds.length === 0) {
+    if (!preVendor && r.status !== "Quoting" && r.acceptedVendorIds.length === 0) {
       problems.push(`${r.orderNo}: ${r.status} with nobody having accepted`);
     }
-    if (!preVendor && r.status !== "Assigned" && r.status !== "Accepted" && !r.vendorId) {
+    if (!preVendor && r.status !== "Quoting" && r.status !== "Assigned" && !r.vendorId) {
       problems.push(`${r.orderNo}: ${r.status} with no partner holding the order`);
     }
     for (const id of r.acceptedVendorIds) {
@@ -1581,7 +1580,7 @@ function sortValue(r: BrokerOrder, key: BrokerColumnKey): string | number {
       return (VENDORS.find((v) => v.id === r.vendorId)?.name ?? "").toLowerCase();
     case "status":
       // Lifecycle order, not alphabetical — sorting by status means "how far
-      // along is this", and A-Z would put Accounting Synced before Draft.
+      // along is this", and A-Z would put Synced before Draft.
       return BROKER_STATUSES.indexOf(r.status);
     case "type":
       // The disc's letter is a shorthand for the order type, so sort by the
@@ -1747,12 +1746,12 @@ export function matchesBrokerOrderIn(
 export const BROKER_LANE_COLOR: Record<BrokerStatus, LaneColorName> = {
   Draft: "grey",
   Blocked: "red",
-  Assigned: "blue",
-  Accepted: "cyan",
+  Quoting: "blue",
+  Assigned: "cyan",
   Completed: "green",
-  "Accounting Sync Ready": "yellow",
-  "Partial Accounting Synced": "yellow",
-  "Accounting Synced": "purple",
+  Verified: "yellow",
+  "Partially Synced": "yellow",
+  Synced: "purple",
   Cancelled: "grey",
 };
 
@@ -1773,9 +1772,9 @@ type LaneColorName =
 /**
  * Chip tones. The DS ships four channels and this lifecycle has seven stages, so
  * three of them share `processing` — which is correct rather than a compromise:
- * Assigned, Accepted and Accounting Sync Ready are all "in flight", and the DS's
- * rule is that colour is never the only carrier of meaning. The label spells the
- * stage out in every case.
+ * Quoting, Assigned and Verified are all "in flight", and the DS's rule is that
+ * colour is never the only carrier of meaning. The label spells the stage out in
+ * every case.
  */
 export const BROKER_STATUS_TONE: Record<
   BrokerStatus,
@@ -1783,12 +1782,12 @@ export const BROKER_STATUS_TONE: Record<
 > = {
   Draft: "neutral",
   Blocked: "failed",
+  Quoting: "processing",
   Assigned: "processing",
-  Accepted: "processing",
   Completed: "success",
-  "Accounting Sync Ready": "processing",
-  "Partial Accounting Synced": "processing",
-  "Accounting Synced": "success",
+  Verified: "processing",
+  "Partially Synced": "processing",
+  Synced: "success",
   Cancelled: "neutral",
 };
 

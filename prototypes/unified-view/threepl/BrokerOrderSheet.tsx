@@ -148,10 +148,10 @@ import {
  *
  * The transitions offered are exactly the spec's (§5.6–5.11, §5.17):
  *   Draft/Blocked   -> invite one or more vendors                  -> Assigned
- *   Assigned        -> acknowledge on the vendor's behalf           -> Accepted
- *                   -> accept a submitted quote                    -> Accepted
+ *   Quoting         -> acknowledge on the vendor's behalf           -> Assigned
+ *                   -> accept a submitted quote                    -> Assigned
  *                   -> cancel the invitation                       -> Draft
- *   Accepted        -> submit delivery details on vendor's behalf   -> Completed
+ *   Assigned        -> submit delivery details on vendor's behalf   -> Completed
  *   Completed       -> mark ready for accounting                    -> Sync Ready
  *   Sync Ready      -> sync to accounting                           -> Synced
  *
@@ -670,30 +670,24 @@ const ORDER_CHARGES = [
 ] as const satisfies readonly { key: keyof Pick<VendorQuote, "freight" | "fees" | "taxes">; label: string }[];
 
 /**
- * THE ORDER'S LIFECYCLE AS THE BUSINESS SAYS IT, which is not the same list as
- * `BROKER_STATUSES`.
+ * THE ORDER'S LIFECYCLE, WHICH IS NOW ALSO THE STATUS LIST.
  *
- * SIX STAGES, NOT NINE. The status field splits the end of the order's life
- * four ways — sync ready, partially synced, synced — because accounting cares
- * about the difference. Nobody opening the sheet does: they want to know
- * whether the numbers have been checked and whether they have left the
- * building, which is two stages, and the chip beside the title still carries
- * the exact status for anyone who needs it. A bar that spells out every state
- * the data can hold is a list of states, not a position.
+ * These were two vocabularies for one thing. The bar said Quoting where the
+ * status field said Assigned, and Assigned where the field said Accepted — so
+ * a row could read "Accepted" in the Status column under a bar that said
+ * "Assigned", and both were right. The statuses have been renamed to what the
+ * business calls the stages, and what is left of the difference is this list:
+ * the order they happen in, and the two exits that are not stages at all.
  *
- * QUOTING COMES BEFORE ASSIGNED, which is the opposite of the old order and
- * matches what actually happens: partners are invited and priced first, and
- * one of them ends up holding the order second. The old list read `Assigned`
- * then `Quotation` because it was following the STATUS names, where "Assigned"
- * means invitations are out.
+ * PARTIALLY SYNCED IS STILL NOT A STAGE. It is a status — some of the order
+ * reached accounting and some did not — and it stands at the same place on the
+ * bar as Synced, because a bar is about position and there is one position to
+ * be in. `stageOf` is the whole of what is left between the two lists.
  *
  * CANCELLED AND BLOCKED ARE NOT HERE. Neither is a place the order passes
- * through — one is a way out of the lifecycle and the other is a condition
- * that holds the order wherever it already stands. The board's swim lanes are
- * where those belong, because a lane is a bucket and both of them are buckets;
- * a bar is a direction, and a direction with two dead ends drawn on the end of
- * it stops being one. The chip beside the title says which, and the banner in
- * the body says why.
+ * through — one is a way out of the lifecycle and the other a condition that
+ * holds it wherever it already stands. The board's lanes are where those
+ * belong; the chip beside the title says which, and the banner says why.
  */
 const ORDER_STAGES: Stage[] = [
   { key: "Draft", label: "Draft" },
@@ -704,34 +698,9 @@ const ORDER_STAGES: Stage[] = [
   { key: "Synced", label: "Synced" },
 ];
 
-/**
- * Which stage an order is standing at.
- *
- * Four statuses collapse into two stages at the accounting end, and the two
- * middle ones swap sense: a vendor INVITED is quoting, a vendor ACCEPTED is
- * assigned. `quoteRequested` no longer changes the answer — with `Quoting` a
- * stage of its own, an invitation with no quote asked for is still the order
- * sitting with partners.
- *
- * CANCELLED AND BLOCKED RETURN A KEY THAT IS NOT ON THE BAR, deliberately, and
- * `StageBar` draws every stage as ahead. Standing nowhere is the truth about a
- * cancelled order, and pretending it is still at the stage it died on would be
- * the lie the old `Blocked -> Draft` mapping told.
- */
+/** Which stage an order is standing at. One status is not one — see above. */
 function stageOf(status: BrokerStatus): string {
-  switch (status) {
-    case "Assigned":
-      return "Quoting";
-    case "Accepted":
-      return "Assigned";
-    case "Accounting Sync Ready":
-      return "Verified";
-    case "Partial Accounting Synced":
-    case "Accounting Synced":
-      return "Synced";
-    default:
-      return status;
-  }
+  return status === "Partially Synced" ? "Synced" : status;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -889,7 +858,7 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
       ? "Invitations are out. Quotes appear here as partners respond."
       : "Invite a delivery partner to start collecting quotes.";
   if (status === "Blocked") return "Blocked on credit — no quotes can be collected.";
-  if (status === "Assigned") return "Yet to receive a quote.";
+  if (status === "Quoting") return "Yet to receive a quote.";
   return "Yet to review a quote.";
 }
 
@@ -1196,7 +1165,7 @@ export function BrokerOrderSheet({
 
      ACKNOWLEDGE is the partner's: they have agreed to take the order if it is
      theirs. Several partners can do it — that is the point of inviting several
-     — and it is what moves the order into the Accepted lane. The broker can do
+     — and it is what moves the order into the Assigned lane. The broker can do
      it FOR them, because most of this is settled on the phone and the sheet is
      a record of what happened, not the place it happens.
 
@@ -1213,9 +1182,9 @@ export function BrokerOrderSheet({
         real.length === 1
           ? `${vendorById(real[0])?.name ?? "Vendor"} acknowledged`
           : `${real.length} vendors acknowledged`,
-        { description: "Moved to Accepted." }
+        { description: "Moved to Assigned." }
       );
-      return { ...d, acceptedVendorIds: next, status: "Accepted" };
+      return { ...d, acceptedVendorIds: next, status: "Assigned" };
     });
 
   /* COMPLETED IS THE COMMERCIAL END, NOT THE PHYSICAL ONE. Taking a price
@@ -1257,7 +1226,7 @@ export function BrokerOrderSheet({
      left to cancel. It is confirmed because it cannot be walked back here. */
   const cancellable =
     draft.status !== "Cancelled" &&
-    draft.status !== "Accounting Synced" &&
+    draft.status !== "Synced" &&
     !creating;
   const cancelOrder = () =>
     setDraft((d) => {
@@ -1296,7 +1265,7 @@ export function BrokerOrderSheet({
       return {
         ...d,
         sentVendorIds: [...d.sentVendorIds, ...fresh],
-        status: d.status === "Draft" ? "Assigned" : d.status,
+        status: d.status === "Draft" ? "Quoting" : d.status,
       };
     });
 
@@ -1334,7 +1303,7 @@ export function BrokerOrderSheet({
   const selectAllPartners = (on: boolean) =>
     setSelected(on ? new Set(invitedIds) : new Set());
   /** Pricing only exists once it has been asked for and sent out. */
-  const showQuoteCol = draft.quoteRequested && draft.status === "Assigned";
+  const showQuoteCol = draft.quoteRequested && draft.status === "Quoting";
 
   /* Inviting stays available until somebody has ACCEPTED — that is the point
      at which the order has a partner and more invitations mean nothing. */
@@ -1469,14 +1438,14 @@ export function BrokerOrderSheet({
           draft.vendorId
           ? draft.status === "Completed"
             ? {
-                label: "Move to Accounting Sync Ready",
-                onSelect: () => advance("Accounting Sync Ready"),
+                label: "Move to Verified",
+                onSelect: () => advance("Verified"),
               }
-            : draft.status === "Accounting Sync Ready" ||
-                draft.status === "Partial Accounting Synced"
+            : draft.status === "Verified" ||
+                draft.status === "Partially Synced"
               ? {
                   label: "Mark accounting synced",
-                  onSelect: () => advance("Accounting Synced"),
+                  onSelect: () => advance("Synced"),
                 }
               : {
                   label: "Push to dispatch",
@@ -1516,14 +1485,14 @@ export function BrokerOrderSheet({
                 }
               : draft.status === "Completed"
                 ? {
-                    label: "Move to Accounting Sync Ready",
-                    onSelect: () => advance("Accounting Sync Ready"),
+                    label: "Move to Verified",
+                    onSelect: () => advance("Verified"),
                   }
-                : draft.status === "Accounting Sync Ready" ||
-                    draft.status === "Partial Accounting Synced"
+                : draft.status === "Verified" ||
+                    draft.status === "Partially Synced"
                   ? {
                       label: "Mark accounting synced",
-                      onSelect: () => advance("Accounting Synced"),
+                      onSelect: () => advance("Synced"),
                     }
                   : {
                       label: "Push to dispatch",
@@ -2018,7 +1987,7 @@ export function BrokerOrderSheet({
            that it is a question, and a header is no place for those. */
         draft.vendorId ? (
           /* NOT GREEN. Green is a STATUS colour and this line is not reporting
-             one — the stage bar two inches below already says Accepted, in the
+             one — the stage bar two inches below already says Assigned, in the
              one place on the sheet built to say it. A second coloured claim
              about the same fact reads as a second fact. Muted, it is what it
              is: a name, on the bar, where the reader can see it from any part
@@ -3428,7 +3397,7 @@ export function BrokerOrderSheet({
           </>
         )}
 
-        {draft.vendorId && draft.status !== "Assigned" && (
+        {draft.vendorId && draft.status !== "Quoting" && (
           /* NOT A TABLE — the accepted-partner branch is a card and a field, so
              it takes the card's insets back. */
           <SheetSectionInset>
@@ -3456,7 +3425,7 @@ export function BrokerOrderSheet({
             })()}
             {/* THE STAGE CTAs LIVE IN THE FOOTER, on the next-act ladder.
                 Repeating them here would be two places to move one order on. */}
-            {draft.status === "Accounting Synced" && (
+            {draft.status === "Synced" && (
               <p className="text-xs text-muted-foreground">
                 Synced. Every field is locked once an order reaches this stage.
               </p>

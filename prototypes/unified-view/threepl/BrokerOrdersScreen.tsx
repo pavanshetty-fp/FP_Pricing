@@ -298,16 +298,12 @@ function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "n
   if (r.status === "Draft") {
     out.push({ label: isOrderReady(r) ? "Ready" : "Draft" });
   }
-  /* WHERE IN SYNCED. One lane holds the three ways the accounting hand-off can
-     stand, so the card is what says which — and it has to say it in words the
-     lane's own name does not already imply. "Partially Synced" is the one with
-     work left; "Completed" is the one with none. The third, ready but not yet
-     exported, already says so in the footer note under the card, which is a
-     louder place than a chip and the only one of the three with anything to
-     do. */
-  if (r.status === "Partial Accounting Synced")
-    out.push({ label: "Partially Synced" });
-  if (r.status === "Accounting Synced") out.push({ label: "Completed" });
+  /* WHERE IN SYNCED. The Synced lane is the one that still holds two statuses
+     — fully and partly — so the card is what says which. Only the partial one
+     gets a badge: on a lane called Synced, a card saying "Synced" is a label
+     repeating its own heading, and what the reader is looking for is the
+     exception. */
+  if (r.status === "Partially Synced") out.push({ label: "Partially Synced" });
   return out;
 }
 
@@ -337,7 +333,7 @@ function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
  * A card's footer alert, or nothing.
  *
  * Only stages with something OUTSTANDING get one. An alert on every card is not
- * an alert, it is a border — so Draft, Accepted, Completed and Synced carry none.
+ * an alert, it is a border — so Draft, Assigned, Completed and Synced carry none.
  */
 /**
  * The invoice row: where the vendor's bill has got to, in one line.
@@ -382,7 +378,7 @@ function laneCardInvoice(
 
 /** Where a bill is worth chasing: the partner is committed and the price is
  *  settled, so there is somebody to ask and an amount to expect. */
-const INVOICE_LANES = new Set<BrokerStatus>(["Accepted"]);
+const INVOICE_LANES = new Set<BrokerStatus>(["Assigned"]);
 
 /**
  * THE LANES, AND WHICH STATUSES EACH ONE HOLDS.
@@ -419,17 +415,16 @@ const BOARD_LANES: {
   apart?: boolean;
 }[] = [
   { key: "Draft", statuses: ["Draft"] },
+  { key: "Quoting", statuses: ["Quoting"] },
   { key: "Assigned", statuses: ["Assigned"] },
-  { key: "Accepted", statuses: ["Accepted"] },
-  { key: "Completed", title: "Delivery Completed", statuses: ["Completed"] },
-  {
-    key: "Synced",
-    statuses: [
-      "Accounting Sync Ready",
-      "Partial Accounting Synced",
-      "Accounting Synced",
-    ],
-  },
+  { key: "Completed", statuses: ["Completed"] },
+  { key: "Verified", statuses: ["Verified"] },
+  /* PARTIALLY SYNCED RIDES WITH SYNCED, and it is the one place a lane still
+     holds two statuses. It is not a stage of its own — some of the order
+     reached accounting and some did not, which is a fact about the hand-off
+     rather than a place in the lifecycle — and the card's badge is what says
+     which of the two a row is. */
+  { key: "Synced", statuses: ["Partially Synced", "Synced"] },
   { key: "Cancelled", statuses: ["Cancelled"], apart: true },
   { key: "Blocked", statuses: ["Blocked"] },
 ];
@@ -442,7 +437,7 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
       actionLabel: "Review",
     };
   }
-  if (r.status === "Assigned") {
+  if (r.status === "Quoting") {
     /* NOBODY HAS SAID YES YET — that is the whole of what Assigned means. */
     const n = r.invitedVendorIds.length;
     return {
@@ -454,7 +449,7 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
      invitation is the first and moves the order into this lane; the quote is
      the second, and it is the one that has something to be done about — so it
      is the one that carries the action. */
-  if (r.status === "Accepted" && !r.vendorId) {
+  if (r.status === "Assigned" && !r.vendorId) {
     const priced = r.quotes.length;
     if (priced > 0) {
       return {
@@ -471,7 +466,7 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
         : `${n === 1 ? "A partner" : `${n} partners`} accepted`,
     };
   }
-  if (r.status === "Accounting Sync Ready") {
+  if (r.status === "Verified") {
     return { status: "default", text: "Ready to export" };
   }
   return undefined;
@@ -521,7 +516,7 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
  * sort.
  *
  * AND ONE THAT BELONGS TO THE LANE. What is worth ordering Draft by is not
- * what is worth ordering Accepted by: a draft is waiting on somebody here to
+ * what is worth ordering Assigned by: a draft is waiting on somebody here to
  * finish it, and an accepted order is waiting on a price. Those are in
  * `LANE_EXTRA_SORTS`, and a lane with nothing of its own gets the four.
  */
@@ -583,8 +578,8 @@ const COMMON_LANE_SORTS = [
 /** The one extra each lane earns from the thing it is waiting on. */
 const LANE_EXTRA_SORTS: Record<string, string> = {
   Draft: "ready-first",
-  Assigned: "invited-desc",
-  Accepted: "quotes-desc",
+  Quoting: "invited-desc",
+  Assigned: "quotes-desc",
   Completed: "urgent-first",
   Blocked: "urgent-first",
 };
@@ -787,7 +782,7 @@ export function BrokerOrdersScreen({
     Facet application. Every facet is AND-ed with the others and OR-ed within
     itself, which is what a checkbox list means.
 
-    Three Status options — Overdue, Cancelled, Partial Accounting Synced — are
+    Three Status options — Overdue, Cancelled, Partially Synced — are
     filterable states the seed data has no rows for, so selecting one correctly
     empties the list rather than being quietly ignored. "Created / Draft" is the
     filter's label for the `Draft` lane.

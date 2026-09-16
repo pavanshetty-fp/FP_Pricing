@@ -309,7 +309,7 @@ export function customerConfig(
         valueOf: (c) => {
           const orders = ordersForCustomer(c.name);
           const out: string[] = [];
-          if (orders.some((o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status))) {
+          if (orders.some((o) => !["Completed", "Synced", "Cancelled"].includes(o.status))) {
             out.push("Has active orders");
           }
           if (orders.some((o) => o.kind === "Recurring")) out.push("Has recurring orders");
@@ -943,7 +943,7 @@ export function productConfig(
         valueOf: (p) => {
           const orders = BROKER_PRODUCTS.length > 0 ? ordersUsing(p.name) : [];
           const out: string[] = [];
-          if (orders.some((o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status))) {
+          if (orders.some((o) => !["Completed", "Synced", "Cancelled"].includes(o.status))) {
             out.push("Used in active orders");
           }
           if (orders.some((o) => o.kind === "Recurring")) out.push("Used in recurring orders");

@@ -99,7 +99,7 @@ function link(): void {
   });
 
   /* ── live order counts, so the Vendors list can carry a real column ── */
-  const LIVE = new Set(["Assigned", "Accepted", "Completed", "Accounting Sync Ready", "Partial Accounting Synced"]);
+  const LIVE = new Set(["Quoting", "Assigned", "Completed", "Verified", "Partially Synced"]);
   const counts: Record<string, number> = {};
   BROKER_ORDERS.forEach((o) => {
     if (!LIVE.has(o.status)) return;

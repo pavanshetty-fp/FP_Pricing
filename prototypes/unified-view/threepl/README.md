@@ -83,12 +83,12 @@ The most important design decision here, and it cuts against both Sales sheets:
 
 ```
 Draft / Blocked  --invite one or more partners-->  Assigned
-Assigned         --acknowledge on their behalf-->  Accepted
-                 --accept a submitted quote----->  Accepted
+Quoting          --acknowledge on their behalf-->  Assigned
+                 --accept a submitted quote----->  Assigned
                  --cancel the invitation-------->  Draft
-Accepted         --submit details for them------>  Completed
-Completed        --mark ready for accounting---->  Accounting Sync Ready
-Sync Ready       --sync to accounting----------->  Accounting Synced
+Assigned         --submit details for them------>  Completed
+Completed        --mark ready for accounting---->  Verified
+Verified         --sync to accounting----------->  Synced
 ```
 
 A status picker would let the status disagree with the vendor fields beside it.
@@ -213,8 +213,8 @@ another.
 ## Open questions — do not silently decide these
 
 1. **Three stages share one chip colour.** The DS ships four `StatusTone`
-   channels and this lifecycle has seven stages, so Assigned, Accepted and
-   Accounting Sync Ready all render `processing`/amber. That is defensible — all
+   channels and this lifecycle has seven stages, so Quoting, Assigned and
+   Verified all render `processing`/amber. That is defensible — all
    three are "in flight", and the DS's rule is that colour is never the only
    carrier of meaning — but on the table three identical amber chips in one column
    do less work than they could. Either the DS gains a fifth channel or 3PL

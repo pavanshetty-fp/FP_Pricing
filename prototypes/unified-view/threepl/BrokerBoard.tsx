@@ -259,7 +259,7 @@ export interface BrokerBoardProps {
    * dispatching, largest first while you are pricing. The reason is the label.
    *
    * The options are the CALLER'S, because they belong to the lane: what you
-   * would sort Draft by is not what you would sort Accepted by.
+   * would sort Draft by is not what you would sort Assigned by.
    */
   laneSortOptions?: (laneKey: string) => LaneSortOption[];
   /** Chosen option per lane key. Absent = the lane's own order. */

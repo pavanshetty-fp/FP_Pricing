@@ -78,10 +78,10 @@ export function vendorHeaderAside(v: Vendor) {
 export function vendorReadSections(v: Vendor): RecordReadSection[] {
   const orders = ordersForVendor(v.id);
   const live = orders.filter(
-    (o) => !["Completed", "Accounting Synced", "Cancelled"].includes(o.status)
+    (o) => !["Completed", "Synced", "Cancelled"].includes(o.status)
   );
   const history = orders.filter((o) =>
-    ["Completed", "Accounting Synced", "Cancelled"].includes(o.status)
+    ["Completed", "Synced", "Cancelled"].includes(o.status)
   );
   const products = BROKER_PRODUCTS.filter((p) => v.supportedProductIds.includes(p.id));
   const days = daysFromToday(v.complianceValidTo);

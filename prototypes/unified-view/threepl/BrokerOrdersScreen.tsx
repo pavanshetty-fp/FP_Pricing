@@ -20,7 +20,7 @@ import {
   type ListView,
 } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
-import { ListTable, TwoLineCell } from "../ListTable";
+import { Hit, ListTable, TwoLineCell } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import {
   DATE_FMT,
@@ -1233,11 +1233,14 @@ export function BrokerOrdersScreen({
   };
 
   const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
+    /* What this column's filter box holds, so the cell can mark the run that
+       answered it. Empty when the row is closed — see `colFiltersOpen`. */
+    const f = colFilters[key];
     switch (key) {
       case "order":
         return (
           <span className="truncate text-sm tabular-nums text-foreground">
-            {row.orderNo}
+            <Hit text={row.orderNo} q={f} />
           </span>
         );
       /* The disc carries its own tooltip and aria-label — the letter is never
@@ -1250,21 +1253,32 @@ export function BrokerOrdersScreen({
         return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
       }
       case "customer":
-        return <TwoLineCell {...row.customer} />;
+        return <TwoLineCell {...row.customer} q={f} />;
       case "shipTo":
-        return <span className="truncate text-sm text-foreground">{row.shipTo}</span>;
+        return (
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.shipTo} q={f} />
+          </span>
+        );
       case "date":
-        return <TwoLineCell {...row.date} />;
+        return <TwoLineCell {...row.date} q={f} />;
       case "window":
         return (
           <span className="truncate text-sm text-foreground">
-            {row.window.start} – {row.window.end}
+            <Hit text={`${row.window.start} – ${row.window.end}`} q={f} />
           </span>
         );
       case "qty":
         return (
           <span className="text-sm tabular-nums text-foreground">
-            {isAllTopOff(row.lines) ? "Top-off" : totalGal(row.lines).toLocaleString()}
+            <Hit
+              text={
+                isAllTopOff(row.lines)
+                  ? "Top-off"
+                  : totalGal(row.lines).toLocaleString()
+              }
+              q={f}
+            />
           </span>
         );
       /* PRODUCTS, NOT PRODUCT. An order carries several and the list is what
@@ -1289,7 +1303,7 @@ export function BrokerOrdersScreen({
         }
         return (
           <span className="truncate text-sm text-foreground" title={names.join(", ")}>
-            {names[0] ?? "—"}
+            {names[0] ? <Hit text={names[0]} q={f} /> : "—"}
             {names.length > 1 && (
               <span className="text-muted-foreground"> +{names.length - 1}</span>
             )}
@@ -1299,7 +1313,7 @@ export function BrokerOrdersScreen({
       case "createdBy":
         return (
           <span className="truncate text-sm text-muted-foreground">
-            {row.createdBy}
+            <Hit text={row.createdBy} q={f} />
           </span>
         );
       case "vendor":
@@ -1307,7 +1321,7 @@ export function BrokerOrdersScreen({
         // one a broker acts on: nobody invited, invited but unaccepted, accepted.
         return row.vendorId ? (
           <span className="truncate text-sm text-foreground">
-            {vendorName(row.vendorId)}
+            <Hit text={vendorName(row.vendorId)} q={f} />
           </span>
         ) : row.invitedVendorIds.length > 0 ? (
           <span className="truncate text-sm text-muted-foreground">
@@ -1325,34 +1339,44 @@ export function BrokerOrdersScreen({
            chip rather than a sentence. */
         return (
           <StatusChip tone={BROKER_STATUS_TONE[row.status]} variant="soft">
-            {row.status}
+            <Hit text={row.status} q={f} />
           </StatusChip>
         );
       case "business": {
         const b = businessOf(row);
         return b ? (
-          <span className="truncate text-sm text-foreground">{b}</span>
+          <span className="truncate text-sm text-foreground">
+            <Hit text={b} q={f} />
+          </span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         );
       }
       case "orderType":
         return (
-          <span className="truncate text-sm text-foreground">{row.orderType}</span>
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.orderType} q={f} />
+          </span>
         );
       case "poNumber":
         return row.poNumber ? (
           <span className="truncate text-sm tabular-nums text-foreground">
-            {row.poNumber}
+            <Hit text={row.poNumber} q={f} />
           </span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         );
       case "hub":
-        return <span className="truncate text-sm text-foreground">{row.hub}</span>;
+        return (
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.hub} q={f} />
+          </span>
+        );
       case "salesperson":
         return (
-          <span className="truncate text-sm text-foreground">{row.salesperson}</span>
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.salesperson} q={f} />
+          </span>
         );
       case "tags": {
         /* Same rule as Products: the matched tag comes first, so a row never
@@ -1366,7 +1390,7 @@ export function BrokerOrdersScreen({
           : row.tags;
         return tags.length ? (
           <span className="truncate text-sm text-foreground">
-            {tags.join(", ")}
+            <Hit text={tags.join(", ")} q={f} />
           </span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
@@ -1573,7 +1597,22 @@ export function BrokerOrdersScreen({
              row of boxes above cards that have no columns. */
           columnFiltersOpen={!board && colFiltersOpen}
           onToggleColumnFilters={
-            board ? undefined : () => setColFiltersOpen((v) => !v)
+            board
+              ? undefined
+              : () =>
+                  setColFiltersOpen((open) => {
+                    /* CLOSING THE ROW PUTS THE TABLE BACK. The boxes go away
+                       when you close it, so leaving what was typed in them
+                       applying would be a narrowing with nothing on screen
+                       saying so — the reader would be looking at 33 of 44
+                       orders with no way to find out why. Hiding the control
+                       is the same act as being finished with it. */
+                    if (open) {
+                      setColFilters({});
+                      setPage(1);
+                    }
+                    return !open;
+                  })
           }
           columnFilterCount={activeColFilters.length}
           view={view}

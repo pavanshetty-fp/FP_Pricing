@@ -431,17 +431,62 @@ export function ListTable<Row, K extends string>({
 }
 
 /** Primary over a muted secondary — the DS two-line cell. */
+/**
+ * THE PART OF THE CELL THAT ANSWERED THE FILTER, marked.
+ *
+ * Reordering the cell so the matched value comes first says WHICH value; this
+ * says which part of it. On a column of near-identical names — Clear Diesel #2
+ * beside Dyed Diesel — "dies" fetches both and the eye still has to work out
+ * what it typed. A mark puts the answer where the question was asked.
+ *
+ * THE BRAND, AT A QUARTER. The DS binds no meaning to a colour until a usage
+ * rule does, and this is the rule: brand is already "the thing you have
+ * pointed at" — the active tab, the primary act — and a search match is the
+ * same claim about a word. A quarter keeps it a tint under body text rather
+ * than a block of fill with letters on top.
+ */
+export function Hit({ text, q }: { text: string; q?: string }) {
+  const needle = q?.trim().toLowerCase();
+  if (!needle) return <>{text}</>;
+  const parts: React.ReactNode[] = [];
+  const hay = text.toLowerCase();
+  let at = 0;
+  let found = hay.indexOf(needle);
+  while (found !== -1) {
+    if (found > at) parts.push(text.slice(at, found));
+    parts.push(
+      <mark
+        key={`${found}-${parts.length}`}
+        className="rounded-[2px] bg-brand/25 font-medium text-foreground"
+      >
+        {text.slice(found, found + needle.length)}
+      </mark>
+    );
+    at = found + needle.length;
+    found = hay.indexOf(needle, at);
+  }
+  if (at < text.length) parts.push(text.slice(at));
+  return <>{parts}</>;
+}
+
 export function TwoLineCell({
   title,
   description,
+  q,
 }: {
   title: string;
   description: string;
+  /** Filter text for this column — the matched run is marked. */
+  q?: string;
 }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <span className="truncate text-sm text-foreground">{title}</span>
-      <span className="truncate text-xs text-muted-foreground">{description}</span>
+      <span className="truncate text-sm text-foreground">
+        <Hit text={title} q={q} />
+      </span>
+      <span className="truncate text-xs text-muted-foreground">
+        <Hit text={description} q={q} />
+      </span>
     </div>
   );
 }

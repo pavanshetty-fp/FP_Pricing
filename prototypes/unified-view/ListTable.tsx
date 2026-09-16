@@ -445,25 +445,58 @@ export function ListTable<Row, K extends string>({
  * same claim about a word. A quarter keeps it a tint under body text rather
  * than a block of fill with letters on top.
  */
-export function Hit({ text, q }: { text: string; q?: string }) {
-  const needle = q?.trim().toLowerCase();
-  if (!needle) return <>{text}</>;
-  const parts: React.ReactNode[] = [];
+export function Hit({
+  text,
+  q,
+}: {
+  text: string;
+  /**
+   * One needle or several. The list search and a column's own filter box are
+   * both live at once and both narrowed this row, so both are marked: a reader
+   * who typed in two places should see both answers, not whichever the cell
+   * happened to be told about.
+   */
+  q?: string | (string | undefined)[];
+}) {
+  const needles = (Array.isArray(q) ? q : [q])
+    .map((n) => n?.trim().toLowerCase())
+    .filter((n): n is string => Boolean(n));
+  if (needles.length === 0) return <>{text}</>;
+
+  /* EVERY RUN ANY NEEDLE HITS, merged. Two needles that overlap — "diesel" in
+     the search box and "dies" in the column — would otherwise mark the same
+     letters twice and split the word into fragments. */
   const hay = text.toLowerCase();
+  const spans: [number, number][] = [];
+  for (const n of needles) {
+    let at = hay.indexOf(n);
+    while (at !== -1) {
+      spans.push([at, at + n.length]);
+      at = hay.indexOf(n, at + 1);
+    }
+  }
+  if (spans.length === 0) return <>{text}</>;
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [from, to] of spans) {
+    const last = merged[merged.length - 1];
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+    else merged.push([from, to]);
+  }
+
+  const parts: React.ReactNode[] = [];
   let at = 0;
-  let found = hay.indexOf(needle);
-  while (found !== -1) {
-    if (found > at) parts.push(text.slice(at, found));
+  for (const [from, to] of merged) {
+    if (from > at) parts.push(text.slice(at, from));
     parts.push(
       <mark
-        key={`${found}-${parts.length}`}
+        key={`${from}-${to}`}
         className="rounded-[2px] bg-brand/25 font-medium text-foreground"
       >
-        {text.slice(found, found + needle.length)}
+        {text.slice(from, to)}
       </mark>
     );
-    at = found + needle.length;
-    found = hay.indexOf(needle, at);
+    at = to;
   }
   if (at < text.length) parts.push(text.slice(at));
   return <>{parts}</>;
@@ -477,7 +510,7 @@ export function TwoLineCell({
   title: string;
   description: string;
   /** Filter text for this column — the matched run is marked. */
-  q?: string;
+  q?: string | (string | undefined)[];
 }) {
   return (
     <div className="flex min-w-0 flex-col">

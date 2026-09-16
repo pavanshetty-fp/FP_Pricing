@@ -1233,9 +1233,12 @@ export function BrokerOrdersScreen({
   };
 
   const renderCell = (row: BrokerOrder, key: BrokerColumnKey) => {
-    /* What this column's filter box holds, so the cell can mark the run that
-       answered it. Empty when the row is closed — see `colFiltersOpen`. */
-    const f = colFilters[key];
+    /* WHAT NARROWED THIS ROW, so the cell can mark the run that answered it.
+       Two sources, both live at once: the column's own filter box, and the
+       list search — which is the one that reaches every column, and the one
+       that was doing its work invisibly. Typing "dyed diesel" cut 44 rows to
+       22 and left the reader to take the count's word for it. */
+    const f = [colFilters[key], search];
     switch (key) {
       case "order":
         return (
@@ -1296,9 +1299,13 @@ export function BrokerOrdersScreen({
            them agree, and the wrong one: an order whose second line is dyed
            diesel really does have dyed diesel on it. So the row stays and the
            cell leads with the line that earned it. */
-        const q = colFilters.products?.trim().toLowerCase();
-        if (q) {
-          const hit = names.filter((n) => n.toLowerCase().includes(q));
+        const needles = [colFilters.products, search]
+          .map((n) => n?.trim().toLowerCase())
+          .filter((n): n is string => Boolean(n));
+        if (needles.length) {
+          const hit = names.filter((n) =>
+            needles.some((needle) => n.toLowerCase().includes(needle))
+          );
           names = [...hit, ...names.filter((n) => !hit.includes(n))];
         }
         return (
@@ -1381,12 +1388,13 @@ export function BrokerOrdersScreen({
       case "tags": {
         /* Same rule as Products: the matched tag comes first, so a row never
            reads as an answer to a word it does not appear to contain. */
-        const q = colFilters.tags?.trim().toLowerCase();
-        const tags = q
-          ? [
-              ...row.tags.filter((t) => t.toLowerCase().includes(q)),
-              ...row.tags.filter((t) => !t.toLowerCase().includes(q)),
-            ]
+        const needles = [colFilters.tags, search]
+          .map((n) => n?.trim().toLowerCase())
+          .filter((n): n is string => Boolean(n));
+        const matched = (t: string) =>
+          needles.some((needle) => t.toLowerCase().includes(needle));
+        const tags = needles.length
+          ? [...row.tags.filter(matched), ...row.tags.filter((t) => !matched(t))]
           : row.tags;
         return tags.length ? (
           <span className="truncate text-sm text-foreground">

@@ -1271,7 +1271,22 @@ export function BrokerOrdersScreen({
          someone scans to find the one they are thinking of; the count carries
          the rest rather than a name that happens to be first. */
       case "products": {
-        const names = [...new Set(row.lines.map((l) => l.product))];
+        let names = [...new Set(row.lines.map((l) => l.product))];
+        /* THE CELL SHOWS THE ONE THAT MATCHED.
+           An order carries several products and the column has room for one,
+           so it prints the first and counts the rest. Filter the column on
+           "dyed" and half the rows came back reading "Clear Diesel #2 +1" —
+           every one of them a true match, and every one of them looking like a
+           mistake, because the word that fetched the row was inside the +1.
+           Matching only the printed name would have been the other way to make
+           them agree, and the wrong one: an order whose second line is dyed
+           diesel really does have dyed diesel on it. So the row stays and the
+           cell leads with the line that earned it. */
+        const q = colFilters.products?.trim().toLowerCase();
+        if (q) {
+          const hit = names.filter((n) => n.toLowerCase().includes(q));
+          names = [...hit, ...names.filter((n) => !hit.includes(n))];
+        }
         return (
           <span className="truncate text-sm text-foreground" title={names.join(", ")}>
             {names[0] ?? "—"}
@@ -1339,14 +1354,24 @@ export function BrokerOrdersScreen({
         return (
           <span className="truncate text-sm text-foreground">{row.salesperson}</span>
         );
-      case "tags":
-        return row.tags.length ? (
+      case "tags": {
+        /* Same rule as Products: the matched tag comes first, so a row never
+           reads as an answer to a word it does not appear to contain. */
+        const q = colFilters.tags?.trim().toLowerCase();
+        const tags = q
+          ? [
+              ...row.tags.filter((t) => t.toLowerCase().includes(q)),
+              ...row.tags.filter((t) => !t.toLowerCase().includes(q)),
+            ]
+          : row.tags;
+        return tags.length ? (
           <span className="truncate text-sm text-foreground">
-            {row.tags.join(", ")}
+            {tags.join(", ")}
           </span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         );
+      }
       default:
         return null;
     }

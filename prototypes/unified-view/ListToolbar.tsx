@@ -95,6 +95,24 @@ export interface ListToolbarProps<K extends string> {
   onColScopeChange: (v: string) => void;
   colQuery: string;
   onColQueryChange: (v: string) => void;
+  /**
+   * A FILTER ROW IN THE TABLE, INSTEAD OF A POPOVER THAT SEARCHES ONE COLUMN.
+   *
+   * The popover asked you to name a column and then type in it — two controls
+   * and a menu to do what a box under the header does by sitting there. It
+   * also only ever held ONE column at a time, so "Halvorsen, in Fresno" was
+   * two searches and the memory of the first. A row of boxes is the same
+   * question asked of every column at once, and the answer is where the column
+   * is.
+   *
+   * Supply this and the button becomes a toggle for that row. Leave it off and
+   * the popover stays — a table that has not grown the row yet still needs a
+   * way to search a column.
+   */
+  columnFiltersOpen?: boolean;
+  onToggleColumnFilters?: () => void;
+  /** How many of the row's boxes have something in them. */
+  columnFilterCount?: number;
   view: ListView;
   onViewChange: (v: ListView) => void;
   /** Offer the map view. Off unless the records are geographic. */
@@ -166,6 +184,9 @@ export function ListToolbar<K extends string>({
   onColScopeChange,
   colQuery,
   onColQueryChange,
+  columnFiltersOpen,
+  onToggleColumnFilters,
+  columnFilterCount = 0,
   view,
   onViewChange,
   mapView = false,
@@ -254,7 +275,29 @@ export function ListToolbar<K extends string>({
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-        {/* Search by column */}
+        {/* Search by column — the row, where the table has one. */}
+        {onToggleColumnFilters ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Search by column"
+                aria-pressed={columnFiltersOpen}
+                onClick={onToggleColumnFilters}
+                className={cn(
+                  (columnFiltersOpen || columnFilterCount > 0) &&
+                    "bg-accent text-foreground"
+                )}
+              >
+                <TextSearch />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {columnFiltersOpen ? "Hide column search" : "Search by column"}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
         <Popover>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -309,6 +352,7 @@ export function ListToolbar<K extends string>({
             </div>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Show/Hide columns */}
         <Popover>

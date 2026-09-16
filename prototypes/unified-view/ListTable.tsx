@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   HoverCard,
@@ -114,6 +115,23 @@ export interface ListTableProps<Row, K extends string> {
   nodes?: GroupNode<Row>[];
   collapsedGroups?: ReadonlySet<string>;
   onToggleGroupCollapse?: (id: string) => void;
+  /**
+   * A BOX PER COLUMN, UNDER THE HEADERS.
+   *
+   * The question "where is the Halvorsen order" is asked OF a column, so it is
+   * answered at the column. A single search box asks it of the whole row and
+   * brings back everything that mentions the word anywhere; a popover that
+   * searches one named column asks it properly but only once, so two
+   * conditions meant two searches and remembering the first.
+   *
+   * The boxes are AND-ed, because that is what typing in two of them looks
+   * like it should do. The row only exists while the reader has asked for it —
+   * see `ListToolbarProps.onToggleColumnFilters` — because 40px of empty
+   * inputs above every table is a permanent cost for an occasional question.
+   */
+  columnFilters?: Record<string, string>;
+  onColumnFilterChange?: (key: K, value: string) => void;
+  showColumnFilters?: boolean;
   /** What one record is called in a group header — "asset", "account". */
   groupNoun?: string;
   /** Unit for the summed measure the headers carry, e.g. `gal`. */
@@ -145,6 +163,9 @@ export function ListTable<Row, K extends string>({
   onReorderColumns,
   columnWidths,
   onResizeColumns,
+  columnFilters,
+  onColumnFilterChange,
+  showColumnFilters = false,
 }: ListTableProps<Row, K>) {
   /* THE PINNED CHEVRON IS THE FRAME, not a column: it is how a row is opened
      and it is stuck to the right edge so it survives a sideways scroll. It
@@ -242,6 +263,42 @@ export function ListTable<Row, K extends string>({
               );
             })}
           </TableRow>
+          {showColumnFilters && onColumnFilterChange && (
+            /* THE SECOND HEADER ROW, not a first body row: it scrolls and
+               sticks with the headers it belongs to, and the table's own
+               `<thead>` is what tells a screen reader these are not records. */
+            <TableRow className="h-11 hover:bg-transparent">
+              {selectable && (
+                <TableHead className="border-b border-fp-outline-1 bg-fp-table-header px-3" />
+              )}
+              {visible.map((col) => (
+                <TableHead
+                  key={col.key}
+                  className={cn(
+                    "border-b border-fp-outline-1 bg-fp-table-header px-2",
+                    col.key === actionsKey && "sticky right-0 z-30"
+                  )}
+                >
+                  {col.label ? (
+                    <Input
+                      value={columnFilters?.[col.key] ?? ""}
+                      onChange={(e) => onColumnFilterChange(col.key, e.target.value)}
+                      /* THE PLACEHOLDER GOES WHERE IT WOULD BE CUT. A column
+                         narrow enough to clip the word shows an empty box
+                         instead — "Filte" reads as a bug, and the row of
+                         identical boxes has already said what they are. */
+                      placeholder={(columnWidths?.[col.key] ?? col.width) >= 96 ? "Filter…" : ""}
+                      aria-label={`Filter by ${col.label}`}
+                      /* `data-no-row-open` keeps a click in the box from being
+                         read as a click on the row it sits above. */
+                      data-no-row-open
+                      className="h-7 rounded-full px-2.5 text-xs"
+                    />
+                  ) : null}
+                </TableHead>
+              ))}
+            </TableRow>
+          )}
         </TableHeader>
         <TableBody>
           {loading

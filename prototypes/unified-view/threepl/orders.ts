@@ -1668,6 +1668,61 @@ export const BROKER_SEARCH_FIELDS = [
   { key: "poNumber", label: "PO Number", text: (r: BrokerOrder) => r.poNumber },
 ];
 
+/**
+ * THE TEXT A COLUMN SHOWS, for the filter box that sits under it.
+ *
+ * `BROKER_SEARCH_FIELDS` is a different list on purpose: it is what the global
+ * search looks INTO, which includes things no column draws. A box under a
+ * header has to match what is written above the rows beneath it — filtering
+ * "Vendor" on a name the Vendor cell does not print would hide rows for a
+ * reason nobody could see.
+ */
+export function brokerColumnText(r: BrokerOrder, key: BrokerColumnKey): string {
+  switch (key) {
+    case "order":
+      return r.orderNo;
+    case "type":
+      return r.orderType;
+    case "customer":
+      return `${r.customer.title} ${r.customer.description}`;
+    case "shipTo":
+      return r.shipTo;
+    case "date":
+      return `${r.date.title} ${r.date.description ?? ""}`;
+    case "window":
+      return `${r.window.start} ${r.window.end}`;
+    case "products":
+      return r.lines.map((l) => l.product).join(" ");
+    case "qty": {
+      const g = totalGal(r.lines);
+      return isAllTopOff(r.lines) ? "Top-off" : g ? g.toLocaleString() : "";
+    }
+    case "vendor":
+      return (
+        VENDORS.find((v) => v.id === r.vendorId)?.name ??
+        (r.invitedVendorIds.length ? `${r.invitedVendorIds.length} invited` : "")
+      );
+    case "status":
+      return r.status;
+    case "createdBy":
+      return r.createdBy;
+    case "business":
+      return r.business ?? "";
+    case "orderType":
+      return r.orderType;
+    case "poNumber":
+      return r.poNumber;
+    case "hub":
+      return r.hub;
+    case "salesperson":
+      return r.salesperson;
+    case "tags":
+      return r.tags.join(" ");
+    default:
+      return "";
+  }
+}
+
 export function matchesBrokerOrderIn(
   r: BrokerOrder,
   q: string,

@@ -58,6 +58,7 @@ import {
   BROKER_SEARCH_FIELDS,
   BROKER_STATUS_FILTERS,
   BROKER_STATUS_TONE,
+  brokerColumnText,
   CREATED_BY,
   ORDER_TAGS,
   PRODUCTS,
@@ -669,6 +670,13 @@ export function BrokerOrdersScreen({
   const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>(
     {}
   );
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
 
   const current: ViewState = {
     search,
@@ -762,9 +770,17 @@ export function BrokerOrdersScreen({
       onDate.filter(
         (r) =>
           (!q || matchesBrokerOrder(r, q)) &&
-          (!cq || matchesBrokerOrderIn(r, cq, colScope))
+          (!cq || matchesBrokerOrderIn(r, cq, colScope)) &&
+          /* AND, because that is what typing in two boxes looks like it should
+             do. Each box matches the text its own column PRINTS — see
+             `brokerColumnText`. */
+          activeColFilters.every(([key, value]) =>
+            brokerColumnText(r, key as BrokerColumnKey)
+              .toLowerCase()
+              .includes(value.trim().toLowerCase())
+          )
       ),
-    [onDate, q, cq, colScope]
+    [onDate, q, cq, colScope, activeColFilters]
   );
 
   /*
@@ -1527,6 +1543,14 @@ export function BrokerOrdersScreen({
             setColQuery(v);
             setPage(1);
           }}
+          /* THE ROW, NOT THE POPOVER. It only makes sense over a table, so the
+             board keeps the button pointed at nothing rather than opening a
+             row of boxes above cards that have no columns. */
+          columnFiltersOpen={!board && colFiltersOpen}
+          onToggleColumnFilters={
+            board ? undefined : () => setColFiltersOpen((v) => !v)
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
           mapView
@@ -1614,6 +1638,12 @@ export function BrokerOrdersScreen({
               onResizeColumns={setColumnWidths}
               openLabel={(r) => `Open order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

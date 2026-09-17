@@ -3082,30 +3082,36 @@ export function BrokerOrderSheet({
               "No" is a real answer, which is why it is an option rather than an
               unticked box: an empty checkbox and a deliberate "not recurring"
               look identical and are not the same thing. */}
-          <SheetField label="Recurring Order" required className="col-span-4">
-            <Combobox
-              className="w-full"
-              value={draft.recurring ? "Yes" : "No"}
-              onValueChange={(v) => {
-                const on = v === "Yes";
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        recurring: on,
-                        recurrenceFrequency: on
-                          ? d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0]
-                          : d.recurrenceFrequency,
-                      }
-                    : d
-                );
-              }}
-              options={["No", "Yes"]}
-              /* The one place the search box is suppressed: a binary is not a
-                 list to be searched, and "Search…" over "No / Yes" is a control
-                 asking you to narrow two things down to one. */
-              searchThreshold={3}
-            />
+          {/* A CHECKBOX, NOT A YES/NO LIST (Pavan, 2026-09-17). Opening a menu
+              to choose between Yes and No is two gestures to say one thing, and
+              the field had to carry a label as well as the word "No" to be read
+              at all. Ticked or not is the whole question.
+
+              THE LABEL IS THE CONTROL'S, so the field carries none — and no
+              asterisk: a box that is off is answered, not empty. The 26px lifts
+              it onto the line of the inputs beside it (label 20 + the field
+              gap), so a row of controls still reads as one row. */}
+          <SheetField className="col-span-4">
+            <label className="mt-[26px] flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
+              <Checkbox
+                checked={draft.recurring}
+                onCheckedChange={(v) => {
+                  const on = v === true;
+                  setDraft((d) =>
+                    d
+                      ? {
+                          ...d,
+                          recurring: on,
+                          recurrenceFrequency: on
+                            ? d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0]
+                            : d.recurrenceFrequency,
+                        }
+                      : d
+                  );
+                }}
+              />
+              Recurring Order
+            </label>
           </SheetField>
 
           {/* Revealed by the field beside it, IN THE ROW IT ANSWERS. A cadence

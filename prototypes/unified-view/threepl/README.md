@@ -547,7 +547,10 @@ the seed and both pricing tables. Not done; ask before it is.
    have to mean "acknowledge on the vendor's behalf" — a real decision, not a
    gesture. Left out deliberately.
 5. ~~**Recurring orders have no recurrence UI.**~~ **Built.** The order sheet
-   carries a Recurring Order field (Yes/No) beside the delivery window, revealing
+   carries a Recurring Order **checkbox** beside the delivery window (a Yes/No
+   list until 2026-09-17: opening a menu to choose between two words is two
+   gestures to say one thing, and the field needed a label as well as the word
+   "No" to be read at all), revealing
    a Frequency list whose "Custom" opens a rule builder — repeat every N units, a
    row of weekday toggles, ends never/on/after N — that returns a SENTENCE, which
    is the only form anyone checks a schedule in. Still open: the recurrence's

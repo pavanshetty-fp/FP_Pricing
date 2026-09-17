@@ -37,6 +37,12 @@ export interface AppShellProps {
    * IT LEAVES ON ITS OWN, and not the instant you step off: a pointer on its
    * way to a row crosses the drawer, and one that shut on that would be a
    * drawer you had to chase. See `PEEK_HIDE_MS`.
+   *
+   * A PRESS OUTSIDE BOTH PANELS CLOSES THEM AT ONCE. The clock is grace for a
+   * pointer that may come back; pressing on the work behind the panels is not
+   * wandering past, it is saying the nav is finished with. Waiting the second
+   * out there would leave two panels sitting over the thing the reader just
+   * pressed.
    */
   sidebarPeek?: boolean;
   /**
@@ -170,11 +176,27 @@ export function AppShell({
     const out = (e: MouseEvent) => {
       if (!e.relatedTarget) arm();
     };
+    /* A CLICK OUTSIDE IS A DECISION, AND IT DOES NOT WAIT.
+       The clock is for a pointer that has wandered off and may come back —
+       one second of grace on the way past. Pressing on the work behind the
+       panels is not wandering: it says the reader is done with the nav and is
+       somewhere else now, and holding two panels over what they just pressed
+       for another second is the shell arguing with them. Outside both boxes,
+       it goes straight away. */
+    const dismiss = (e: PointerEvent) => {
+      if (within(railBox.current, e.target) || within(drawerBox.current, e.target)) {
+        return;
+      }
+      stay();
+      setExpanded(false);
+    };
     document.addEventListener("pointermove", move, true);
     document.addEventListener("mouseout", out, true);
+    document.addEventListener("pointerdown", dismiss, true);
     return () => {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("mouseout", out, true);
+      document.removeEventListener("pointerdown", dismiss, true);
     };
   }, [peeking]);
 

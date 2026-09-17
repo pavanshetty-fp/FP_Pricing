@@ -403,6 +403,36 @@ Halvorsen Fuel Co. was never credit-approved. The four assets flagged
 sites, so an asset cannot be out at a customer on one screen and in the yard on
 another.
 
+### A draft is a real order from the first thing typed into it
+
+Decided 2026-09-17, with Pavan: *"in the draft they are adding all the required
+details, but it is created when vendors are added and invitations are sent —
+that is when it will move to Quoting. Till then, everything is in draft mode."*
+
+- **There is no Create button, because there is no commit at the end.** The
+  first change that makes the draft anything other than the blank one creates
+  the record, in the Draft lane, and the sheet hands itself over to it — same
+  sheet, same scroll, now with a number and a stage bar. The old footer had a
+  Create button nobody could reach (the next-act ladder replaced it), so a new
+  Delivery Order could not be saved at all.
+- **Sending the invitations is the moment it becomes an order** in the business
+  sense: status goes to Quoting, the card moves lane, and the toast says both
+  — *"Redline Carriers invited · D-105376 moved to Quoting"* — because naming
+  only the first leaves the reader looking in the lane they left it in.
+- **The sheet now keeps what it says it keeps.** "Draft saving… / Draft saved"
+  described a hook that only WATCHED the draft; nothing wrote it anywhere, so
+  ticking Urgent or adding an asset was gone on close. Every change is
+  debounced 600ms and saved, and the draft it last handed over is remembered so
+  the rebuilt row coming back does not start the next save.
+- **`applyDraft` carries the whole sheet now.** It was keeping the customer and
+  the lines and dropping the acceptances, the quotes, the delivery fee, the
+  recurrence, the load order and the tags — the entire right-hand half of the
+  work.
+- **A draft being filled in writes no history.** The audit trail is what
+  happened to a live order; on a draft nobody has sent anywhere, every field is
+  being typed for the first time. Past Draft, every save that changed something
+  earns its line. The acts announce themselves either way.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

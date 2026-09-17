@@ -1064,6 +1064,44 @@ export function BrokerOrdersScreen({
               primaryPoc: draft.primaryPoc,
               salesperson: draft.salesperson,
               instructions: draft.instructions,
+              /* EVERYTHING THE SHEET COLLECTS AND THE ORDER MODELS. These six
+                 were missing, so a save kept the customer and the lines and
+                 quietly dropped the acceptances, the prices, the delivery fee,
+                 the recurrence and the load order — the whole right-hand half
+                 of the work. */
+              acceptedVendorIds: draft.acceptedVendorIds,
+              quotes: draft.quotes,
+              customerCharges: draft.customerCharges,
+              tags: draft.tags,
+              /* A MOVEMENT STAYS A MOVEMENT. Its kind is a fact about what the
+                 record IS — one asset, no quantity, an M prefix `orders.ts`
+                 asserts on — and the recurring switch is not on its sheet. */
+              kind:
+                r.kind === "Movement"
+                  ? r.kind
+                  : draft.recurring
+                    ? "Recurring"
+                    : "Regular",
+              recurrence: draft.recurring
+                ? {
+                    fromDateKey: dateKeyOf(
+                      draft.recurrenceFrom ?? draft.plannedDate ?? new Date()
+                    ),
+                    frequency: draft.recurrenceFrequency,
+                  }
+                : null,
+              /* Only rows anyone actually completed — a half-filled load row
+                 would read as a loading plan that does not exist. */
+              loadOrder:
+                draft.loadRows
+                  ?.filter((x) => x.terminal && x.supplier && x.loadingAccount)
+                  .map((x) => ({
+                    product: x.product,
+                    terminal: x.terminal!,
+                    supplier: x.supplier!,
+                    loadingAccount: x.loadingAccount!,
+                    ...(x.excluded ? { excluded: true } : {}),
+                  })) ?? null,
               // Leaving Blocked clears the reason, so the two can never disagree
               // — the same invariant `assertConsistent` checks on the seeds.
               blockedReason: draft.status === "Blocked" ? r.blockedReason : null,
@@ -1085,37 +1123,60 @@ export function BrokerOrdersScreen({
                 : {}),
 });
 
-  /** Save, then write what the save changed and say so out loud. */
-  const saveOrderAndAudit = (order: BrokerOrder, draft: BrokerOrderDraft) => {
+  /**
+   * THE SHEET'S SAVE, AND IT IS QUIET.
+   *
+   * It is called by the sheet's autosave — every change, debounced — so it
+   * cannot announce itself: a toast per pause while somebody fills in a form
+   * is the app narrating typing. The ACTS announce themselves (invitations
+   * sent, partner awarded, order confirmed), which is what a reader needs
+   * told, and each of those is a change this then keeps.
+   *
+   * A DRAFT BEING FILLED IN WRITES NO HISTORY. The audit trail is a record of
+   * what happened to a live order; on a draft nobody has sent anywhere, every
+   * field is "being typed for the first time" and an entry per pause would
+   * bury the entries that matter under the making of the thing. Past Draft,
+   * every save that changed something earns its line.
+   */
+  const saveOrder = (order: BrokerOrder, draft: BrokerOrderDraft) => {
     setRows((prev) => {
       const saved = prev.map((r) => (r.id === order.id ? applyDraft(r, draft) : r));
       const before = prev.find((r) => r.id === order.id);
       const after = saved.find((r) => r.id === order.id);
       if (!before || !after) return saved;
+      if (after.status === "Draft" && before.status === "Draft") return saved;
       const changes = diffOrder(before, after);
       if (changes.length === 0) return saved;
-      const entry = {
-        at: new Date().toISOString(),
-        by: "Dana Whitfield",
-        changes,
-      };
-      /* THE MOVE IS THE HEADLINE. Four edits and a lane change is, to anyone
-         watching the board, a lane change — so that is what the toast says,
-         and the rest is a count. */
-      const moved = changes.find((c: string) => c.startsWith("Status:"));
-      toast.success(moved ? moved.replace("Status: ", `${after.orderNo}: `) : `${after.orderNo} updated`, {
-        description:
-          changes.length > 1
-            ? `${changes.length} changes saved`
-            : undefined,
-      });
       return saved.map((r) =>
-        r.id === order.id ? { ...r, audit: [...r.audit, entry] } : r
+        r.id === order.id
+          ? {
+              ...r,
+              audit: [
+                ...r.audit,
+                { at: new Date().toISOString(), by: "Dana Whitfield", changes },
+              ],
+            }
+          : r
       );
     });
   };
 
   /** New orders continue the D- series in steps of 7, as the seeds do. */
+  /**
+   * A DRAFT IS A REAL ORDER FROM THE FIRST THING TYPED INTO IT.
+   *
+   * Pavan, 2026-09-17: "in the draft they are adding all the required details,
+   * but it is created when vendors are added and invitations are sent — that
+   * is when it will move to Quoting. Till then, everything is in draft mode."
+   * So this is not the commit at the end of a form; it is the moment the
+   * record starts existing, in the Draft lane, where it can be left and come
+   * back to. What USED to be here — a Create button nobody could reach,
+   * because the footer's ladder replaced it — kept nothing at all.
+   *
+   * The sheet is handed over to the saved order as it returns: same sheet,
+   * same scroll, but now with a number, a stage bar and somewhere for the
+   * next keystroke to go.
+   */
   const createOrder = (draft: BrokerOrderDraft) => {
     const when = draft.plannedDate ?? range.from;
     const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
@@ -1203,6 +1264,8 @@ export function BrokerOrdersScreen({
       ...prev,
     ]);
     setPage(1);
+    setCreating(false);
+    setOpenId(`bo-new-${nextNo}`);
   };
 
   /* A MOVEMENT ORDER IS A DIFFERENT RECORD, not a delivery with a flag: it
@@ -1950,7 +2013,7 @@ export function BrokerOrdersScreen({
           setOpenId(null);
           setSheetFocus(null);
         }}
-        onSave={saveOrderAndAudit}
+        onSave={saveOrder}
         onCreate={createOrder}
         customers={customers}
         shipTos={shipTos}

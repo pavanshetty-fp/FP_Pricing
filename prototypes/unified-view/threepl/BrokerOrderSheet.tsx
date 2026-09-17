@@ -1031,12 +1031,78 @@ export function BrokerOrderSheet({
     };
   }, [open, focus, order?.id]);
 
+  /**
+   * BUILD THE DRAFT ONCE PER RECORD, NOT ONCE PER SAVE.
+   *
+   * It used to depend on the `order` OBJECT, so every autosave handed back a
+   * new row, rebuilt the draft from it and cleared the ticked rows and the
+   * open quote with it — the sheet resetting itself under the person typing.
+   * Keyed on the id, it rebuilds when the sheet is pointed at a different
+   * record and not otherwise.
+   *
+   * THE CREATE HANDOVER IS NOT A NEW RECORD. When the first keystroke commits
+   * a draft, this effect sees the key change from "create" to the new id; the
+   * draft in hand IS that order, so it is kept rather than reloaded.
+   */
+  const builtFor = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (!open) return;
-    setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
+    if (!open) {
+      builtFor.current = null;
+      return;
+    }
+    const key = creating ? "create" : (order?.id ?? null);
+    if (builtFor.current === key) return;
+    const handover = builtFor.current === "create" && key !== null;
+    builtFor.current = key;
+    if (handover) return;
+    const built = creating ? emptyDraft() : order ? draftFrom(order) : null;
+    /* Opening a record is not a change to it. */
+    lastSaved.current = built ? JSON.stringify(built) : null;
+    setDraft(built);
     setSelected(new Set());
     setShownQuote(null);
-  }, [open, creating, order]);
+  }, [open, creating, order?.id, order]);
+
+  /**
+   * THE DRAFT IS KEPT, NOT JUST ANNOUNCED.
+   *
+   * The header has said "Draft saving… / Draft saved" since the sheet was
+   * built, and it was describing a hook that only WATCHES the draft — nothing
+   * wrote it anywhere. Ticking Urgent, adding an asset, inviting a partner:
+   * all of it was gone on close. This is the write that line was always
+   * claiming.
+   *
+   * CREATING IS THE SAME LOOP, one step earlier. A new order has nothing to
+   * save into, so the first change that makes the draft anything other than
+   * the blank one creates the record — in Draft, on the board, where it can be
+   * left and come back to. Everything after that is an ordinary save.
+   *
+   * It debounces, because the unit of a save is a pause in the work and not a
+   * keystroke.
+   */
+  /* WHAT WAS LAST HANDED OVER. The save returns a rebuilt row, which arrives
+     as a new `order` object and would start the next save — a write every
+     600ms for as long as the sheet is open. Remembering the draft that went
+     out is what stops the loop: nothing goes out twice. */
+  const lastSaved = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!open || !draft) return;
+    const shape = JSON.stringify(draft);
+    if (lastSaved.current === shape) return;
+    const t = window.setTimeout(() => {
+      lastSaved.current = shape;
+      if (creating) {
+        /* A SHEET OPENED AND CLOSED AGAIN IS NOT AN ORDER. The blank draft is
+           deterministic, so anything that differs from it is something a
+           person did. */
+        if (JSON.stringify(draft) === JSON.stringify(emptyDraft())) return;
+        onCreate?.(draft);
+      } else if (order) {
+        onSave(order, draft);
+      }
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, open, creating, order, onCreate, onSave]);
 
   /*
     ALL OF THE BELOW SIT ABOVE THE EARLY RETURN, because a hook cannot be
@@ -1457,11 +1523,20 @@ export function BrokerOrderSheet({
       /* SAY IT OUT LOUD. Sending is the first act on this order that reaches
          somebody outside the building; a status chip quietly changing three
          sections up is not an acknowledgement that it happened. */
+      /* IT SAYS BOTH THINGS, because sending is also the moment the order
+         becomes one: the invitations went, and the card the reader left in
+         Draft is now in Quoting. Naming only the first leaves them looking for
+         it in the lane they put it in. */
+      const moving = d.status === "Draft";
       toast.success(
         fresh.length === 1
-          ? `Invitation sent to ${names[0]}`
-          : `Invitation sent to ${fresh.length} vendors`,
-        { description: "Waiting on acknowledgement." }
+          ? `${names[0]} invited`
+          : `${fresh.length} partners invited`,
+        {
+          description: moving
+            ? `${order?.orderNo ?? "The order"} moved to Quoting.`
+            : "Waiting on acknowledgement.",
+        }
       );
       return {
         ...d,

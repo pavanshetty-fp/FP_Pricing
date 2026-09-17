@@ -74,7 +74,6 @@ import {
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { StageBar, type Stage } from "@/components/ui/stage-bar";
-import { BulkActionBar } from "@/components/tables-layout";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
   TimeWindowSlider,
@@ -508,7 +507,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     secondaryPoc: "",
     salesperson: o.salesperson,
     tags: [],
-    notifyVendor: true,
+    notifyVendor: false,
     internalNote: "",
     winterAdditive: false,
     instructions: o.instructions,
@@ -571,9 +570,12 @@ function emptyDraft(): BrokerOrderDraft {
     secondaryPoc: "",
     salesperson: "",
     tags: [],
-    /* ON by default — suppressing every email is the deliberate act, so it is
-       the one that costs a click. Same rule the movement sheet follows. */
-    notifyVendor: true,
+    /* OFF BY DEFAULT (Pavan, 2026-09-17). It was on, on the argument that
+       suppressing every email should be the deliberate act. The other way
+       round is the safer one: this switch mails people outside the building,
+       and a draft being assembled should not be one stray click away from
+       doing that. Sending is turned ON when you mean to send. */
+    notifyVendor: false,
     internalNote: "",
     winterAdditive: false,
     instructions: "",
@@ -1319,7 +1321,13 @@ export function BrokerOrderSheet({
      same shape the Delivery Order uses for a blank asset line. It keeps "what
      is on the table" and "who is invited" as one list rather than two that can
      disagree. */
-  const partnerRows = draft.invitedVendorIds;
+  /* AN EMPTY ROW IS THE UNIT'S RESTING STATE (Pavan, 2026-09-17). A table
+     whose body says "No vendor yet" and a separate Add vendor button underneath
+     are two ways of saying the same nothing, and the reader has to press one of
+     them before the table will let them do the only thing it is for. The blank
+     row IS the invitation to fill it in. */
+  const partnerRows =
+    draft.invitedVendorIds.length > 0 ? draft.invitedVendorIds : [""];
   const invitedIds = partnerRows.filter(Boolean);
   /** Rows the invitation has actually gone to. */
   const sentIds = draft.sentVendorIds;
@@ -1345,6 +1353,39 @@ export function BrokerOrderSheet({
     setDraft((d) =>
       d ? { ...d, invitedVendorIds: [...d.invitedVendorIds, ""] } : d
     );
+
+  /* SEVERAL AT ONCE, from one open of the list. Picking five partners was five
+     rounds of "add a row, open it, choose, close"; the row's picker takes ticks
+     and an Apply now, and the first choice lands in the row that was opened
+     while the rest arrive as rows after it — so the order of the list is the
+     order they were ticked in. */
+  const applyPartnersAt = (i: number, ids: string[]) =>
+    setDraft((d) => {
+      if (!d || ids.length === 0) return d;
+      const rows = d.invitedVendorIds.length > 0 ? [...d.invitedVendorIds] : [""];
+      rows.splice(i, 1, ...ids);
+      return { ...d, invitedVendorIds: rows, vendorId: null };
+    });
+
+  /** Every row's partner off the order, back to the one blank row. */
+  const removeAllPartners = () =>
+    setDraft((d) => {
+      if (!d) return d;
+      const gone = d.invitedVendorIds.filter(Boolean).length;
+      if (gone === 0) return d;
+      toast.success(
+        gone === 1 ? "Vendor removed" : `${gone} vendors removed`,
+        { description: "Nobody is invited to this order." }
+      );
+      return {
+        ...d,
+        invitedVendorIds: [],
+        sentVendorIds: [],
+        acceptedVendorIds: [],
+        quotes: [],
+        vendorId: null,
+      };
+    });
 
   /* Naming the partner in a row is the whole of adding it: every other column
      is that partner's own record, so it follows rather than being typed. */
@@ -1712,11 +1753,34 @@ export function BrokerOrderSheet({
   const nextAct: { label: string; onSelect: () => void; why?: string } = !hasAssets
     ? { label: "Add an asset", onSelect: addBlankLine }
     : invitedIds.length === 0
-      ? { label: "Invite a partner", onSelect: addPartnerRow }
+      ? {
+          /* THE ROW IS ALREADY THERE, so "Invite a partner" would add a second
+             blank one — an act whose only outcome is another empty row. The
+             partner is picked IN the table; until one is, this names what
+             pressing it will do and says what it is waiting for. */
+          label: "Send invitations",
+          onSelect: () => {},
+          why: "Add a partner in the table above.",
+        }
       : sentIds.length === 0
         ? {
-            label: "Send invitations",
-            onSelect: () => sendInvitations(invitedIds),
+            /* THE FOOTER SPEAKS FOR THE SELECTION. The floating bulk bar used
+               to sit in the middle of the section carrying the acts for the
+               ticked rows, three inches above a footer whose whole job is the
+               next act — two places to press for one decision. Ticked rows
+               change what this button sends to, and its label says so. */
+            label:
+              selectedRows.length === 1
+                ? "Send invitation"
+                : selectedRows.length > 1
+                  ? "Send invitations to all"
+                  : "Send invitations",
+            onSelect: () =>
+              sendInvitations(
+                selectedRows.length > 0
+                  ? selectedRows.map((i) => partnerRows[i])
+                  : invitedIds
+              ),
           }
         : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
              accepted order was being offered "Request a quote" because the
@@ -2380,6 +2444,53 @@ export function BrokerOrderSheet({
          one act that actually moves the order on from where it is. */
       footerPrimary={
         <>
+          {/* THE SPARE ACTS ON THE PARTNER LIST, beside the act that uses it.
+              Acknowledging on a partner's behalf and clearing the list are
+              both things you do TO the rows, and they were the floating bar's
+              reason to exist; behind a ··· next to the send button they are
+              where a reader looks for a second act on what they have ticked,
+              without a bar appearing over the table to offer them. Grey and
+              small: it is not the act, it is the alternative to it. */}
+          {invitedIds.length > 0 && !confirmed && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="More partner actions"
+                  className="text-muted-foreground"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" className="w-64">
+                {/* THE TICKED ROWS, OR ALL OF THEM. A menu that did nothing
+                    because nothing was ticked would be a control whose
+                    precondition is invisible. */}
+                <DropdownMenuItem
+                  onSelect={() =>
+                    acknowledgeFor(
+                      selectedRows.length > 0
+                        ? selectedRows.map((i) => partnerRows[i])
+                        : invitedIds
+                    )
+                  }
+                >
+                  <Check />
+                  {selectedRows.length === 1
+                    ? "Acknowledge for them"
+                    : selectedRows.length > 1
+                      ? `Acknowledge for ${selectedRows.length}`
+                      : "Acknowledge for them all"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={removeAllPartners}>
+                  <ThumbsDown />
+                  Remove all vendors
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {nextActBlocked && (
             <span className="max-w-[280px] text-xs text-muted-foreground">
               {nextActBlocked}
@@ -3552,6 +3663,30 @@ export function BrokerOrderSheet({
                                   const picked = eligible.find((x) => x.name === name);
                                   if (picked) setPartnerAt(i, picked.id);
                                 }}
+                                /* SEVERAL AT ONCE, BUT ONLY FROM A BLANK ROW.
+                                   On an empty row "these five" is a sensible
+                                   thing to say and it fills five rows. On a row
+                                   that already names a partner the question is
+                                   "which one instead", and a list that could
+                                   answer it with three would be replacing one
+                                   row with three under a reader who asked to
+                                   change one. */
+                                multiple={
+                                  v
+                                    ? undefined
+                                    : {
+                                        onApply: (names) =>
+                                          applyPartnersAt(
+                                            i,
+                                            names
+                                              .map(
+                                                (n) =>
+                                                  eligible.find((x) => x.name === n)?.id
+                                              )
+                                              .filter((x): x is string => Boolean(x))
+                                          ),
+                                      }
+                                }
                               />
                             </td>
                             <td className="truncate px-3 text-sm text-muted-foreground">
@@ -3831,53 +3966,6 @@ export function BrokerOrderSheet({
                 </label>
               )}
 
-            {/* THE DS BAR, not a second one. It comes LAST in the section
-                because it is about the rows someone has just ticked — it
-                appears and disappears, and anything below it would jump. Above
-                it sit the things that are always true of the round. What can be done to a selection is
-                a property of the records, so the verbs are passed in; the count
-                chip, the spacing, the hairlines and confirm-on-destructive all
-                come from the design system, which is what makes a selection in
-                this sheet feel like a selection anywhere else. The Copy /
-                Delete / More zone is off: this list's actions are fixed. */}
-            {/* THE WRAPPER GOES WITH THE BAR. `BulkActionBar` returns null
-                below one selected row, but its padding box did not — so with
-                nothing ticked the section carried 16px of empty div under the
-                email switch, and that row looked bottom-heavy however its own
-                padding was set. */}
-            {selectedRows.length > 0 && (
-            <div className="flex justify-center p-4 pt-0">
-              <BulkActionBar
-                count={selectedRows.length}
-                noun="vendor"
-                onClear={() => selectAllPartners(false)}
-                actions={[
-                  {
-                    /* AS MANY AS ARE TICKED. Acknowledging is the partner's
-                       act, and several partners saying yes is the normal
-                       outcome of inviting several — it was only ever the
-                       BROKER'S choice of whose price to take that had to be
-                       one, and that is a different control, on the Vendor
-                       Pricing heading. */
-                    key: "ack",
-                    label: "Acknowledge for them",
-                    icon: <Check />,
-                    onSelect: () => {
-                      acknowledgeFor(selectedRows.map((i) => partnerRows[i]));
-                      selectAllPartners(false);
-                    },
-                  },
-                  {
-                    key: "remove",
-                    label: "Remove vendor",
-                    icon: <ThumbsDown />,
-                    destructive: true,
-                    onSelect: () => removePartnerRows(selectedRows),
-                  },
-                ]}
-              />
-            </div>
-            )}
           </>
         )}
 

@@ -151,6 +151,31 @@ Dispatch and 3PL"*.
   → **Accepted** → **Quotation shared**, tones climbing neutral → processing →
   success — **words, with no dot beside them** (`docs/ds/ui/2-rules.md` §11). The rail's Partners list uses the same four words, plus **Holds
   order** once one is awarded.
+- **The vendor unit rests as one empty row.** Decided 2026-09-17. "No vendor
+  yet" in the body with an Add vendor button under it were two ways of saying
+  the same nothing, and the reader had to press one before the table would let
+  them do the only thing it is for. The blank row IS the invitation to fill it.
+  The footer's old *Invite a partner* rung went with it — it would have added a
+  second empty row — and reads *Send invitations*, disabled, *"add a partner in
+  the table above"*, until one is named.
+- **Several partners from one open of the list.** The row's picker takes ticks
+  and an **Apply** (`TableCellSelect.multiple`, a DS addition): the first
+  choice lands in the row that was opened and the rest arrive as rows after it.
+  Only on a BLANK row — on a row that already names a partner the question is
+  "which one instead", and answering it with three would replace one row with
+  three under a reader who asked to change one.
+- **Send email notifications is OFF by default.** It was on, on the argument
+  that suppressing every email should be the deliberate act. The other way
+  round is safer: the switch mails people outside the building, and a draft
+  being assembled should not be one stray click from doing that.
+- **The footer speaks for the selection, and the floating bulk bar is gone.**
+  It sat in the middle of the section carrying the acts for the ticked rows,
+  three inches above a footer whose whole job is the next act — two places to
+  press for one decision. Ticking rows now changes what the footer sends to and
+  what it says: *Send invitation* for one, *Send invitations to all* for more,
+  *Send invitations* for none. Beside it, a small grey **···** holds the two
+  spare acts on the list — *Acknowledge for them* (the ticked rows, or all of
+  them) and *Remove all vendors*.
 - **Award is the row's one act, in a column with no heading.** Beside Status,
   on every row that has priced the order: Status is a fact the row reports,
   Award is the act it offers, and a heading over a column of buttons would be

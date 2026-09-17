@@ -14,6 +14,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /*
   Editable table cells — Figma "Input / Dropdown Tables Layout"
@@ -70,6 +72,24 @@ export interface TableCellSelectProps {
   searchThreshold?: number;
   onChange: (v: string) => void;
   "aria-label"?: string;
+  /**
+   * PICK SEVERAL AT ONCE, AND APPLY THEM.
+   *
+   * A list of rows you fill one at a time asks for the same three gestures per
+   * row — open, choose, open the next — when the thing being said is "these
+   * five". With this the options carry checkboxes and the list keeps a footer
+   * with Apply: one open, one Apply, and the caller decides what several
+   * choices mean (here: fill this row and add a row per extra).
+   *
+   * Pass it only where a row can legitimately become many. Left off, the cell
+   * writes one value and closes, which is what a cell replacing its own
+   * contents should do.
+   */
+  multiple?: {
+    /** Already chosen elsewhere in the list — shown ticked and read-only. */
+    taken?: string[];
+    onApply: (picked: string[]) => void;
+  };
 }
 
 /**
@@ -89,9 +109,21 @@ export function TableCellSelect({
   searchThreshold = 1,
   onChange,
   "aria-label": ariaLabel,
+  multiple,
 }: TableCellSelectProps) {
   const [open, setOpen] = React.useState(false);
   const showSearch = options.length >= searchThreshold;
+  /* THE TICKS ARE THE POPOVER'S, not the record's. Nothing is written until
+     Apply, so closing the list without pressing it changes nothing — which is
+     the difference between choosing and having chosen. */
+  const [picked, setPicked] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    if (!open) setPicked([]);
+  }, [open]);
+  const toggle = (opt: string) =>
+    setPicked((prev) =>
+      prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt]
+    );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -136,15 +168,49 @@ export function TableCellSelect({
                   key={opt}
                   value={opt}
                   onSelect={() => {
+                    if (multiple) {
+                      toggle(opt);
+                      return;
+                    }
                     onChange(opt);
                     setOpen(false);
                   }}
                 >
+                  {multiple && (
+                    <Checkbox
+                      checked={picked.includes(opt)}
+                      /* The row is the control; the box reports it. */
+                      tabIndex={-1}
+                      aria-hidden
+                      className="pointer-events-none"
+                    />
+                  )}
                   {opt}
                 </CommandItem>
               ))}
             </CommandGroup>
           </CommandList>
+          {multiple && (
+            /* THE COUNT AND THE ACT, on one line. Apply is disabled with
+               nothing ticked rather than hidden: a footer that appears and
+               disappears makes the list jump as you choose. */
+            <div className="flex items-center justify-between gap-2 border-t border-border p-1 pl-2.5">
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {picked.length} selected
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={picked.length === 0}
+                onClick={() => {
+                  multiple.onApply(picked);
+                  setOpen(false);
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

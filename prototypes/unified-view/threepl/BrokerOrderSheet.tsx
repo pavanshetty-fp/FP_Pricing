@@ -654,6 +654,61 @@ function VendorRow({ id }: { id: string }) {
 
 /** The Vendor section's anchor — see `focus` below. */
 const VENDOR_SECTION_ID = "broker-order-vendor-section";
+/** The Pricing section's anchor. Same job, for the stage after Quoting. */
+const PRICING_SECTION_ID = "broker-order-pricing-section";
+
+/**
+ * WHERE EACH STAGE'S WORK LIVES.
+ *
+ * The sheet is four screens long and only one part of it is live at a time:
+ * in Quoting the work is the partner table, and the moment a partner is
+ * awarded it is the pricing. A stage that moves and leaves the reader looking
+ * at the same paragraph has told them something happened and not where.
+ *
+ * The stages with nothing waiting on them are absent on purpose — Draft is
+ * filled from the top, and past Assigned the order is being read rather than
+ * worked on.
+ */
+const STAGE_SECTION: Partial<Record<BrokerStatus, string>> = {
+  Quoting: VENDOR_SECTION_ID,
+  Assigned: PRICING_SECTION_ID,
+};
+
+/**
+ * Scroll a section of the sheet into view once it exists.
+ *
+ * IT WAITS FOR THE SECTION TO ARRIVE. The sheet mounts into a portal and the
+ * draft is built in an effect of its own, so on the commit this first runs
+ * there may be nothing on screen to scroll to.
+ *
+ * THE TRAVEL IS THE POINT. Landing on a section with no move makes the sheet
+ * look like it opens at a strange place, and the reader has to work out what
+ * they are looking at and what is above it. Scrolling there says both: this is
+ * an order, and the part that matters is here. The wait lets whatever the
+ * sheet is doing of its own — opening, or redrawing a stage — finish first;
+ * two animations at once read as one thing stuttering.
+ */
+function scrollToSection(id: string, settleMs: number): () => void {
+  let tries = 0;
+  let settle = 0;
+  const timer = window.setInterval(() => {
+    const el = document.getElementById(id);
+    if (el) {
+      window.clearInterval(timer);
+      settle = window.setTimeout(() => {
+        /* The SECTION, not the sheet's top, so the heading lands under the
+           stage bar rather than behind it. */
+        el.scrollIntoView({ block: "start", behavior: "smooth" });
+      }, settleMs);
+    } else if (tries++ > 40) {
+      window.clearInterval(timer);
+    }
+  }, 25);
+  return () => {
+    window.clearInterval(timer);
+    window.clearTimeout(settle);
+  };
+}
 
 export interface BrokerOrderSheetProps {
   order: BrokerOrder | null;
@@ -1101,39 +1156,46 @@ export function BrokerOrderSheet({
   } | null>(null);
   const creating = mode === "create";
 
-  /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. It waits a
-     frame because the section does not exist until the sheet has rendered, and
-     it scrolls the SECTION rather than the sheet's top so the heading lands
-     under the stage bar rather than behind it. */
+  /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. A card's
+     "review pricing" names the vendor table; landing at the top of a sheet
+     four screens long and leaving them to find it answers a different
+     request. 260ms lets the sheet's own opening finish first. */
   React.useEffect(() => {
     if (!open || focus !== "vendor") return;
-    /* IT WAITS FOR THE SECTION TO ARRIVE. The sheet mounts into a portal and
-       the draft is built in an effect of its own, so on the commit this first
-       runs there is nothing on screen to scroll to. */
-    let tries = 0;
-    let settle = 0;
-    const timer = window.setInterval(() => {
-      const el = document.getElementById(VENDOR_SECTION_ID);
-      if (el) {
-        window.clearInterval(timer);
-        /* THE TRAVEL IS THE POINT. Landing on the vendor table with no move
-           makes the sheet look like it opens at a strange place, and the
-           reader has to work out what they are looking at and what is above
-           it. Scrolling there says both: this is an order, and the part you
-           asked for is here. The wait lets the sheet's own opening finish
-           first — two animations at once read as one thing stuttering. */
-        settle = window.setTimeout(() => {
-          el.scrollIntoView({ block: "start", behavior: "smooth" });
-        }, 260);
-      } else if (tries++ > 40) {
-        window.clearInterval(timer);
-      }
-    }, 25);
-    return () => {
-      window.clearInterval(timer);
-      window.clearTimeout(settle);
-    };
+    return scrollToSection(VENDOR_SECTION_ID, 260);
   }, [open, focus, order?.id]);
+
+  /**
+   * THE STAGE MOVES, AND THE SHEET FOLLOWS IT.
+   *
+   * Advancing a stage changes where the work is, and the reader is left
+   * looking at whatever they were reading when they pressed. Sending the round
+   * out puts the partner table in front of them; awarding one puts the pricing
+   * there. The sheet says what happened AND where, in one move.
+   *
+   * ONLY ON A CHANGE, never on open. Opening an order is not a claim that
+   * anything just happened, and a sheet that jumps every time it is opened
+   * takes away the reader's own place in it. The first render records the
+   * stage and scrolls nowhere.
+   */
+  const lastStage = React.useRef<BrokerStatus | null>(null);
+  React.useEffect(() => {
+    if (!open) {
+      lastStage.current = null;
+      return;
+    }
+    const stage = draft?.status;
+    if (!stage) return;
+    const before = lastStage.current;
+    lastStage.current = stage;
+    if (before === null || before === stage) return;
+    const section = STAGE_SECTION[stage];
+    if (!section) return;
+    /* Longer than the sheet's own opening: the stage bar redraws and the
+       footer's act swaps under the reader's cursor, and moving the page out
+       from under both reads as a glitch. */
+    return scrollToSection(section, 360);
+  }, [open, draft?.status]);
 
   /**
    * BUILD THE DRAFT ONCE PER RECORD, NOT ONCE PER SAVE.
@@ -2182,6 +2244,7 @@ export function BrokerOrderSheet({
 
   const pricingSections = (
     <SheetSection
+      id={PRICING_SECTION_ID}
       title="Pricing"
       note={
         <SheetSectionNote label="About pricing">

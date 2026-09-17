@@ -547,6 +547,28 @@ that is when it will move to Quoting. Till then, everything is in draft mode."*
   being typed for the first time. Past Draft, every save that changed something
   earns its line. The acts announce themselves either way.
 
+### The stage moves, and the sheet follows it
+
+Decided 2026-09-17. The sheet is four screens long and only one part of it is
+live at a time. In **Quoting** the work is the partner table; the moment a
+partner is **Awarded** it is the pricing. A stage that moves and leaves the
+reader looking at the same paragraph has told them something happened and not
+where — so advancing a stage scrolls the sheet to the section that stage's work
+lives in.
+
+- `STAGE_SECTION` maps only the two stages that have something waiting on them.
+  Draft is filled from the top, and past Assigned the order is being read rather
+  than worked on, so both are absent on purpose.
+- **Only on a CHANGE, never on open.** Opening an order is not a claim that
+  anything just happened, and a sheet that jumps every time it is opened takes
+  away the reader's own place in it. The first render records the stage and
+  scrolls nowhere. The one exception is the board card's *review pricing*, which
+  is the reader asking for the partner table by name — that is the existing
+  `focus` prop and it is unchanged.
+- The wait before the scroll is longer than the sheet's own opening (360ms vs
+  260ms): the stage bar redraws and the footer's act swaps under the cursor, and
+  moving the page out from under both reads as a glitch.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

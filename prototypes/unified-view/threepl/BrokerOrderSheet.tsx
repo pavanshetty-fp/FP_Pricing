@@ -1801,6 +1801,21 @@ export function BrokerOrderSheet({
   const selectedRows = partnerRows
     .map((id, i) => (id && selected.has(id) ? i : -1))
     .filter((i) => i !== -1);
+  /**
+   * WHAT AN INVITED PARTNER IS DOING, IN ONE WORD.
+   *
+   * "Invited" is what you have done to them; once the order is out for quotes
+   * it is the wrong half of the story — the reader is not checking whether the
+   * invitation was sent, they are waiting for a price. Past Draft, a row that
+   * has been asked and has not answered says **Awaiting quote** (Pavan,
+   * 2026-09-17).
+   *
+   * In DRAFT it stays "Invited": the round has not gone out, so nothing is
+   * late and nothing is being waited on yet.
+   */
+  const invitedWord = draft.status === "Draft" ? "Invited" : "Awaiting quote";
+  const invitedTone = draft.status === "Draft" ? "neutral" : "processing";
+
   /* WHAT A SEND WOULD ACTUALLY DO. Ticked rows that have not been asked, or —
      with nothing ticked — every row that has not. A partner already invited is
      never re-sent by either. */
@@ -3858,7 +3873,9 @@ export function BrokerOrderSheet({
                                 things the partner did, reported back.
 
                                 THE TONES CLIMB. Invited is neutral because
-                                nothing has happened yet; Accepted is in flight;
+                                nothing has happened yet — and past Draft it is
+                                not "Invited" any more but "Awaiting quote",
+                                which IS in flight; Accepted is in flight;
                                 a shared quotation is the one state that hands
                                 the reader something to act on. Three chips that
                                 all read "in progress" ranked nothing. */}
@@ -3883,8 +3900,8 @@ export function BrokerOrderSheet({
                                   Accepted
                                 </StatusChip>
                               ) : sentIds.includes(id) ? (
-                                <StatusChip tone="neutral" variant="text">
-                                  Invited
+                                <StatusChip tone={invitedTone} variant="text">
+                                  {invitedWord}
                                 </StatusChip>
                               ) : (
                                 /* TWO WAYS TO ASK, AND THE SECOND IS NOT A
@@ -4410,7 +4427,7 @@ export function BrokerOrderSheet({
                               ? "success"
                               : quotes.some((q) => q.vendorId === id)
                                 ? "processing"
-                                : "neutral"
+                                : invitedTone
                           }
                           variant="soft"
                         >
@@ -4424,7 +4441,7 @@ export function BrokerOrderSheet({
                               ? "Quotation shared"
                               : draft.acceptedVendorIds.includes(id)
                                 ? "Accepted"
-                                : "Invited"}
+                                : invitedWord}
                         </StatusChip>
                       </li>
                     ))}

@@ -149,7 +149,12 @@ Dispatch and 3PL"*.
   quotation* tooltip until the partner prices the order. Status is a four-rung
   ladder, and only the first rung is an action: `Invite` (button) → **Invited**
   → **Accepted** → **Quotation shared**, tones climbing neutral → processing →
-  success — **words, with no dot beside them** (`docs/ds/ui/2-rules.md` §11). The rail's Partners list uses the same four words, plus **Holds
+  success — **words, with no dot beside them** (`docs/ds/ui/2-rules.md` §11).
+  Past Draft the second rung reads **Awaiting quote** instead of Invited, in
+  the tone to match: "Invited" is what you have DONE to them, and once the
+  round is out the reader is not checking whether the invitation went, they are
+  waiting for a price. In Draft it stays Invited — nothing is late yet. The
+  rail's Partners list uses the same word, as it does for the rest of them. The rail's Partners list uses the same four words, plus **Holds
   order** once one is awarded.
 - **The vendor unit rests as one empty row.** Decided 2026-09-17. "No vendor
   yet" in the body with an Add vendor button under it were two ways of saying

@@ -82,6 +82,10 @@ import {
   type BrokerOrder,
   type BrokerOrderType,
   type BrokerSortState,
+  MOVEMENT_DETAIL,
+  MOVEMENT_DIRECTIONS,
+  MOVEMENT_LABEL,
+  MOVEMENT_ROUTE,
   type MovementDirection,
 } from "./orders";
 import { RENTAL_ASSETS } from "./directory";
@@ -434,11 +438,11 @@ function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "n
  */
 function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
   if (!r.movement) return undefined;
-  const out = r.movement.direction === "Asset Delivery";
+  /* THE ROUTE IS STORED, so the card reads it rather than reconstructing it
+     from a direction and one yard — which only worked while there were two
+     routes and one of the ends was always the same kind of place. */
   return [
-    `${out ? r.movement.yard : r.shipTo} → ${out ? r.shipTo : r.movement.yard} (${
-      out ? "Out to site" : "Back to yard"
-    })`,
+    `${r.movement.from} → ${r.movement.to} (${r.movement.direction})`,
   ];
 }
 
@@ -1569,7 +1573,16 @@ export function BrokerOrdersScreen({
      asserts on. `assertConsistent` fails the build if any of that drifts. */
   const createMovement = (draft: AssetMovementDraft) => {
     const when = draft.plannedDate ?? range.from;
-    const chosenSite = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
+    /* THE ROUTE SAYS WHICH END IS WHICH PLACE. The order's own customer and
+       ship-to are the CUSTOMER end of it — the destination when there is a
+       choice, because that is where the asset ends up and where the board's
+       Ship-to facets should find it. A relocate has neither, and says so. */
+    const route = MOVEMENT_ROUTE[draft.direction];
+    const custPoint =
+      route.to === "site" ? draft.to : route.from === "site" ? draft.from : null;
+    const chosenSite = SHIP_TO_SITES.find((x) => x.name === custPoint?.shipTo);
+    const endName = (step: "from" | "to") =>
+      route[step] === "yard" ? draft[step].yard : draft[step].shipTo;
     const nextNo = Math.max(...rows.map((r) => Number(r.orderNo.slice(2)))) + 7;
     const offset = Math.round(
       (when.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
@@ -1581,8 +1594,8 @@ export function BrokerOrdersScreen({
         orderNo: `M-${nextNo}`,
         kind: "Movement",
         orderType: "Asset Movement",
-        customer: { title: draft.customer, description: "" },
-        shipTo: draft.shipTo,
+        customer: { title: custPoint?.customer ?? "", description: "" },
+        shipTo: custPoint?.shipTo ?? "",
         date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
         dateKey: dateKeyOf(when),
         window: { start: "8:00 AM", end: "12:00 PM" },
@@ -1652,7 +1665,8 @@ export function BrokerOrdersScreen({
         blockedReason: null,
         movement: {
           direction: draft.direction,
-          yard: draft.yard,
+          from: endName("from"),
+          to: endName("to"),
           /* Both are the ASSET's facts now — the sheet no longer asks for
              them, it shows the ones that arrived with the tank. */
           tankType: asset?.assetType ?? "",
@@ -2007,16 +2021,18 @@ export function BrokerOrdersScreen({
           setBusiness((prev) => (prev === b ? null : b));
           setPage(1);
         }}
-        /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; a
-           movement has one asset and a yard — different forms, so the choice
-           comes before the form rather than as a Type field inside it.
+        /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; an
+           asset order has one asset and a route — different forms, so the
+           choice comes before the form rather than as a Type field inside it.
 
-           A MOVEMENT'S DIRECTION IS NOT A THIRD FORM, so it is not a third
-           sibling item. It is a radio UNDER Movement Order: the two read as
-           variants of one thing rather than as two more kinds of order, and the
-           selected one says which way you are about to go before you commit —
-           "Asset Delivery" and "Asset Pickup" are one word apart and opposite,
-           the easiest pair in this product to misread. */
+           THE ROUTE IS NOT A THIRD FORM, so the four are not four sibling
+           items. They are radios UNDER "Asset Orders": they read as variants
+           of one thing rather than as four more kinds of order, and the
+           selected one says where the asset is going before you commit to a
+           form. Each is labelled by its ROUTE with the verb in brackets —
+           "Delivery" and "Pickup" are one word apart and opposite, and
+           "Transfer" and "Relocate" say nothing at all on their own about
+           which two places are involved. */
         createMenu={[
           {
             key: "delivery-order",
@@ -2025,21 +2041,14 @@ export function BrokerOrdersScreen({
           },
           {
             key: "movement-order",
-            label: "Movement Order",
-            detail: "Move a tank or asset to or from a customer site",
-            defaultChoice: "Asset Delivery",
-            choices: [
-              {
-                key: "Asset Delivery",
-                label: "Asset Delivery",
-                detail: "Move a tank or asset to a customer site",
-              },
-              {
-                key: "Asset Pickup",
-                label: "Asset Pickup",
-                detail: "Retrieve a tank or asset from a customer site",
-              },
-            ],
+            label: "Asset Orders",
+            detail: "Move a tank or asset between yards and customer sites",
+            defaultChoice: MOVEMENT_DIRECTIONS[0],
+            choices: MOVEMENT_DIRECTIONS.map((d) => ({
+              key: d,
+              label: MOVEMENT_LABEL[d],
+              detail: MOVEMENT_DETAIL[d],
+            })),
           },
         ]}
         onCreateSelect={(key) => {

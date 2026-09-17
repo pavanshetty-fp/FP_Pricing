@@ -110,8 +110,59 @@ export type BrokerOrderType =
   | "Pump Out"
   | "Transport";
 
-/** §5.20 — a movement order runs in one of two directions. */
-export type MovementDirection = "Asset Delivery" | "Asset Pickup";
+/**
+ * §5.20 — AN ASSET ORDER IS A ROUTE BETWEEN TWO PLACES, and there are only two
+ * kinds of place: one of our yards, or a customer's site. Four routes exhaust
+ * the combinations, and each has a name the trade already uses.
+ *
+ * NAMED BY THE VERB, LABELLED BY THE ROUTE. Stored as what happened —
+ * "Transfer" — and offered as "Ship-to to Ship-to (Transfer)", because the
+ * menu is where someone is deciding and the route is the thing they are
+ * deciding between; afterwards the one word is enough.
+ */
+export type MovementDirection = "Delivery" | "Pickup" | "Transfer" | "Relocate";
+
+/** Which kind of place an end of the route is. */
+export type MovementEnd = "yard" | "site";
+
+/**
+ * THE ROUTE IS THE DEFINITION, not a label on it. Every difference between the
+ * four — which section comes first, which assets can be moved, what the form
+ * asks for at each end — is read off this table rather than written out four
+ * times, so a fifth route would be one line here.
+ */
+export const MOVEMENT_ROUTE: Record<
+  MovementDirection,
+  { from: MovementEnd; to: MovementEnd }
+> = {
+  Delivery: { from: "yard", to: "site" },
+  Pickup: { from: "site", to: "yard" },
+  Transfer: { from: "site", to: "site" },
+  Relocate: { from: "yard", to: "yard" },
+};
+
+/** What the Create menu offers: the route, with the verb in brackets. */
+export const MOVEMENT_LABEL: Record<MovementDirection, string> = {
+  Delivery: "Yard to Ship-to (Delivery)",
+  Pickup: "Ship-to to Yard (Pickup)",
+  Transfer: "Ship-to to Ship-to (Transfer)",
+  Relocate: "Yard to Yard (Relocate)",
+};
+
+/** The one-line gloss under each, in the menu. */
+export const MOVEMENT_DETAIL: Record<MovementDirection, string> = {
+  Delivery: "Send an asset out to a customer site",
+  Pickup: "Bring an asset back from a customer site",
+  Transfer: "Move an asset straight from one customer site to another",
+  Relocate: "Move an asset between our own yards",
+};
+
+export const MOVEMENT_DIRECTIONS: MovementDirection[] = [
+  "Delivery",
+  "Pickup",
+  "Transfer",
+  "Relocate",
+];
 
 /**
  * One asset/product line. `topOff` is the spec's per-line-item toggle: an asset
@@ -488,7 +539,11 @@ export interface BrokerOrder {
   /** Movement orders only. */
   movement: {
     direction: MovementDirection;
-    yard: string;
+    /* THE TWO ENDS, AS THEY WILL BE READ. A single `yard` could describe the
+       two routes that have one; a transfer has none and a relocate has two,
+       so the field that survives all four is the route itself. */
+    from: string;
+    to: string;
     tankType: string;
     capacityGal: number;
   } | null;
@@ -1648,12 +1703,35 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       blockedReason:
         status === "Blocked" ? CREDIT_REASONS[i % CREDIT_REASONS.length] : null,
       movement: isMovement
-        ? {
-            direction: i % 22 === 0 ? "Asset Pickup" : "Asset Delivery",
-            yard: YARDS[i % YARDS.length],
+        ? (() => {
+            /* ALL FOUR ROUTES IN THE FIXTURE. Deliveries are the common case
+               and stay the common case; the other three are seeded on strides
+               that do not divide each other, so every one of them lands
+               somewhere in the set instead of the board only ever showing the
+               route that happens to be first. */
+            const direction: MovementDirection =
+              i % 22 === 0
+                ? "Pickup"
+                : i % 17 === 0
+                  ? "Transfer"
+                  : i % 13 === 0
+                    ? "Relocate"
+                    : "Delivery";
+            const route = MOVEMENT_ROUTE[direction];
+            const endName = (end: MovementEnd, k: number) =>
+              end === "yard"
+                ? YARDS[k % YARDS.length]
+                : SHIP_TO_SITES[k % SHIP_TO_SITES.length].name;
+            return {
+            direction,
+            from: endName(route.from, i),
+            /* A ROUTE CANNOT END WHERE IT STARTED, and the two same-kind
+               routes are the ones where it could. */
+            to: endName(route.to, route.from === route.to ? i + 1 : i),
             tankType: TANK_TYPES[i % TANK_TYPES.length],
             capacityGal: [250, 500, 1000, 2000][i % 4],
-          }
+            };
+          })()
         : null,
     });
     void gal;

@@ -539,16 +539,19 @@ function CardQuotes({
               {q.vendor}
             </span>
           )}
-          <span
-            className={cn(
-              "truncate text-[11px]",
-              q.rank === 1
-                ? "font-medium text-fp-banner-accent-success"
-                : "text-muted-foreground"
-            )}
+          {/* THE PLACING IS A CHIP, not a caption. It is a verdict on the
+              figure beside it — the one thing on the unit that says whether
+              this price is the one to take — and as loose text under the
+              carrier's name it read as a second line of the name. Green for
+              the cheapest, because that is the only placing anyone acts on;
+              the rest are neutral, so a board of chips does not turn into a
+              ranking nobody asked to see. */}
+          <Badge
+            variant={q.rank === 1 ? "pastel-green" : "secondary"}
+            className="max-w-full truncate text-[11px]"
           >
             {rankLabel(q.rank)}
-          </span>
+          </Badge>
         </span>
         {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
             these cards get opened, and at 13px it was the same size as an

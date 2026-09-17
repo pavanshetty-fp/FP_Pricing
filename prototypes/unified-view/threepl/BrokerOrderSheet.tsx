@@ -3295,8 +3295,11 @@ export function BrokerOrderSheet({
             <SheetField label="Direction">
               <Input value={order.movement.direction} disabled />
             </SheetField>
-            <SheetField label="Yard">
-              <Input value={order.movement.yard} disabled />
+            <SheetField label="From">
+              <Input value={order.movement.from} disabled />
+            </SheetField>
+            <SheetField label="To">
+              <Input value={order.movement.to} disabled />
             </SheetField>
             <SheetField label="Tank Type">
               <Input value={order.movement.tankType} disabled />

@@ -644,6 +644,51 @@ stage, and cleared if the order goes backwards out of them.
   is worse than a shorter menu. The full list is there under All lanes, which
   is a setting about the board rather than about one card.
 
+### An asset order is a route between two places
+
+Renamed and widened 2026-09-17. "Movement Order" is **Asset Orders**, and the
+two directions are **four routes**.
+
+There are only two kinds of place an asset can be — one of our yards, or a
+customer's site — and four routes exhaust the combinations:
+
+| Route | Stored as |
+|---|---|
+| Yard to Ship-to (Delivery) | `Delivery` |
+| Ship-to to Yard (Pickup) | `Pickup` |
+| Ship-to to Ship-to (Transfer) | `Transfer` |
+| Yard to Yard (Relocate) | `Relocate` |
+
+- **Named by the verb, labelled by the route.** Stored as what happened —
+  "Transfer" — and offered as "Ship-to to Ship-to (Transfer)", because the menu
+  is where someone is deciding and the route is what they are deciding between.
+  "Delivery" and "Pickup" are one word apart and opposite; "Transfer" and
+  "Relocate" say nothing at all on their own about which two places are
+  involved.
+- **`MOVEMENT_ROUTE` is the definition, not a label on it.** Which section
+  comes first, which assets can be moved, what each end of the form asks for —
+  all of it is read off that table rather than written out four times, so a
+  fifth route would be one line.
+- **The order stores the route, not a yard.** `movement.yard` could describe
+  the two routes that have one; a transfer has none and a relocate has two. It
+  is `from` and `to` now, and the card reads them straight instead of
+  reconstructing the route from a direction.
+- **The sheet is a from and a to**, each rendering the yard block or the
+  customer block by what kind of place that end is. The assets offered are
+  always the ORIGIN's — what is sitting in that yard, or what is on rent at
+  that site — which is one rule that happens to answer all four.
+- **A route cannot end where it started.** On the two same-kind routes the far
+  end's list drops whatever this end has taken.
+- **The customer notes follow the customer end**, preferring the destination
+  when both ends are customer sites. A relocate has no customer at either end.
+
+### The quote's placing is a chip
+
+"Best price" was loose text under the carrier's name, where it read as a second
+line of the name. It is a badge: green for the cheapest, because that is the
+only placing anyone acts on, and neutral for the rest so a board of chips does
+not turn into a ranking nobody asked to see.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

@@ -56,7 +56,10 @@ import {
   YARDS,
   YARD_SITES,
   siteAddress,
+  MOVEMENT_LABEL,
+  MOVEMENT_ROUTE,
   type MovementDirection,
+  type MovementEnd,
 } from "./orders";
 
 /**
@@ -576,11 +579,24 @@ export interface CustomItem {
 
 const UNITS = ["ea", "ft", "gal", "kit"];
 
-export interface AssetMovementDraft {
-  direction: MovementDirection;
+/**
+ * ONE END OF THE ROUTE. A yard end uses `yard`; a customer end uses `customer`
+ * and `shipTo`. Both sets are on the record so switching a route does not have
+ * to throw away what was already typed at the other kind of end.
+ */
+export interface MovementPoint {
   yard: string;
   customer: string;
   shipTo: string;
+}
+
+export interface AssetMovementDraft {
+  direction: MovementDirection;
+  /* THE FORM IS A FROM AND A TO, whatever kind of place each turns out to be.
+     A single `yard` + `shipTo` pair could describe the two routes with one of
+     each; a transfer has two customer sites and a relocate has two yards. */
+  from: MovementPoint;
+  to: MovementPoint;
   primaryPoc: string;
   secondaryPocs: string[];
   salesperson: string;
@@ -604,12 +620,13 @@ export interface AssetMovementDraft {
   internalNote: string;
 }
 
+const blankPoint = (): MovementPoint => ({ yard: "", customer: "", shipTo: "" });
+
 function emptyDraft(direction: MovementDirection): AssetMovementDraft {
   return {
     direction,
-    yard: "",
-    customer: "",
-    shipTo: "",
+    from: blankPoint(),
+    to: blankPoint(),
     primaryPoc: "",
     secondaryPocs: [],
     salesperson: "",
@@ -737,34 +754,46 @@ export function AssetMovementSheet({
     value: AssetMovementDraft[K]
   ) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const isDelivery = direction === "Asset Delivery";
-  const site = SHIP_TO_SITES.find((s) => s.name === draft.shipTo);
-  const yard = YARD_SITES.find((y) => y.name === draft.yard);
+  /* THE ROUTE IS THE ONLY THING THAT DIFFERS between the four, so everything
+     below is read off it rather than written out four times. */
+  const route = MOVEMENT_ROUTE[direction];
   const poc = POC_DIRECTORY[draft.primaryPoc];
   const shipTos = SHIP_TO_SITES.map((s) => s.name);
 
-  /* WHERE THE ASSETS COME FROM is the direction's doing. A delivery sends what
-     is in the yard; a pickup collects what is out at the ship-to. Neither list
-     is filtered by hand at the call site — the same expression answers both. */
-  const sourceChosen = isDelivery ? Boolean(draft.yard) : Boolean(draft.shipTo);
-  const pool: RentalAsset[] = !sourceChosen
-    ? []
-    : isDelivery
-      ? RENTAL_ASSETS.filter((a) => a.availabilityStatus === "Available")
-      : RENTAL_ASSETS.filter((a) => a.shipTo === draft.shipTo);
+  /** What a given end resolves to, once it has been chosen. */
+  const nameOf = (p: MovementPoint, kind: MovementEnd) =>
+    kind === "yard" ? p.yard : p.shipTo;
 
-  const available = pool;
+  /* WHERE THE ASSETS COME FROM IS ALWAYS THE ORIGIN. From a yard, what is
+     sitting in it; from a customer site, what is on rent there. One rule, and
+     it happens to answer all four routes. */
+  const fromName = nameOf(draft.from, route.from);
+  const available: RentalAsset[] = !fromName
+    ? []
+    : route.from === "yard"
+      ? RENTAL_ASSETS.filter((a) => a.availabilityStatus === "Available")
+      : RENTAL_ASSETS.filter((a) => a.shipTo === draft.from.shipTo);
+
   const asset = RENTAL_ASSETS.find((a) => a.id === draft.assetId);
 
-  const gate = isDelivery
-    ? "Choose a yard first — the assets offered are the ones sitting in it."
-    : "Choose a ship-to first — the assets offered are the ones on rent there.";
+  const gate =
+    route.from === "yard"
+      ? "Choose a yard first — the assets offered are the ones sitting in it."
+      : "Choose a ship-to first — the assets offered are the ones on rent there.";
 
   /* Where the list came from, said once — the empty state's count and the
      picker's subtitle are the same sentence about the same set. */
-  const sourceLabel = isDelivery
-    ? `in ${draft.yard}`
-    : `on rent at ${draft.shipTo}`;
+  const sourceLabel =
+    route.from === "yard" ? `in ${fromName}` : `on rent at ${fromName}`;
+
+  /* WHOSE NOTES THE FORM SHOWS: the customer end of the route, preferring the
+     destination when both ends are customer sites — a transfer's notes are
+     read before the drop, not after the collection. */
+  const notePoint =
+    route.to === "site" ? draft.to : route.from === "site" ? draft.from : null;
+  const noteSite = notePoint
+    ? SHIP_TO_SITES.find((x) => x.name === notePoint.shipTo)
+    : undefined;
 
   /** The asset table, on top of the form. Closed until asked for. */
   const [pickerOpen, setPickerOpen] = React.useState(false);
@@ -782,18 +811,26 @@ export function AssetMovementSheet({
     }));
 
   const canSubmit =
-    Boolean(draft.yard) &&
-    Boolean(draft.customer) &&
-    Boolean(draft.shipTo) &&
+    Boolean(fromName) &&
+    Boolean(nameOf(draft.to, route.to)) &&
+    /* A customer end needs the account as well as the site. */
+    (route.from !== "site" || Boolean(draft.from.customer)) &&
+    (route.to !== "site" || Boolean(draft.to.customer)) &&
     Boolean(draft.assetId) &&
     draft.plannedDate !== null;
 
-  /* ── The two location blocks, written once and ordered by direction. ──── */
+  /* ── One block per end, written once and pointed at either end. ────────── */
 
-  const yardBlock = (
+  const setPoint = (step: "from" | "to", patch: Partial<MovementPoint>) =>
+    setDraft((d) => ({ ...d, [step]: { ...d[step], ...patch } }));
+
+  const yardBlock = (step: "from" | "to") => {
+    const point = draft[step];
+    const yard = YARD_SITES.find((y) => y.name === point.yard);
+    return (
     <SheetSection
-      key="yard"
-      title={isDelivery ? "Pickup Location" : "Drop-off Location"}
+      key={step}
+      title={step === "from" ? "Pickup Location" : "Drop-off Location"}
     >
       {/* THE SAME GRID AS THE CUSTOMER BLOCK. A yard and a customer are the two
           ends of one journey and are asked for in the same way, so a select
@@ -804,13 +841,19 @@ export function AssetMovementSheet({
         <SheetField label="Yard" required>
           <Combobox
             className="w-full"
-            value={draft.yard}
+            value={point.yard}
             onValueChange={(v) => {
-              set("yard", v);
-              // The asset came from the old yard; it cannot come from this one.
-              if (isDelivery) set("assetId", "");
+              setPoint(step, { yard: v });
+              // The asset came from the old origin; it cannot come from this one.
+              if (step === "from") set("assetId", "");
             }}
-            options={YARDS}
+            /* A ROUTE CANNOT END WHERE IT STARTED. On a relocate both ends are
+               yards, so the far end drops whichever one this end has taken. */
+            options={YARDS.filter(
+              (y) =>
+                route.from !== route.to ||
+                y !== draft[step === "from" ? "to" : "from"].yard
+            )}
             placeholder="Select Yard"
             searchPlaceholder="Search yards…"
           />
@@ -829,18 +872,22 @@ export function AssetMovementSheet({
             </span>
           ) : (
             <span className="truncate text-sm text-muted-foreground">
-              Select a Yard to see its coordinates and address.
+              Select a Yard to see its address.
             </span>
           )}
         </div>
       </div>
     </SheetSection>
-  );
+    );
+  };
 
-  const customerBlock = (
+  const customerBlock = (step: "from" | "to") => {
+    const point = draft[step];
+    const site = SHIP_TO_SITES.find((x) => x.name === point.shipTo);
+    return (
     <SheetSection
-      key="customer"
-      title={isDelivery ? "Drop-off Location" : "Pickup Location"}
+      key={step}
+      title={step === "from" ? "Pickup Location" : "Drop-off Location"}
     >
       {/* THE CARD IS THE ROW'S THIRD UNIT, not a note under it. Customer, Ship
           To and the address they resolve to are three parts of one answer, so
@@ -851,8 +898,8 @@ export function AssetMovementSheet({
           <SheetField label="Customer" required>
             <Combobox
               className="w-full"
-              value={draft.customer}
-              onValueChange={(v) => set("customer", v)}
+              value={point.customer}
+              onValueChange={(v) => setPoint(step, { customer: v })}
               options={customers}
               placeholder="Select Customer"
               searchPlaceholder="Search customers…"
@@ -862,12 +909,18 @@ export function AssetMovementSheet({
           <SheetField label="Ship To" required>
             <Combobox
               className="w-full"
-              value={draft.shipTo}
+              value={point.shipTo}
               onValueChange={(v) => {
-                set("shipTo", v);
-                if (!isDelivery) set("assetId", "");
+                setPoint(step, { shipTo: v });
+                if (step === "from") set("assetId", "");
               }}
-              options={shipTos}
+              /* A transfer's two ends are both customer sites, so the far end
+                 drops whichever site this end has taken. */
+              options={shipTos.filter(
+                (x) =>
+                  route.from !== route.to ||
+                  x !== draft[step === "from" ? "to" : "from"].shipTo
+              )}
               placeholder="Select Ship To"
               searchPlaceholder="Search ship-tos…"
               emptyText="No ship-to found."
@@ -895,7 +948,11 @@ export function AssetMovementSheet({
         </div>
       </div>
     </SheetSection>
-  );
+    );
+  };
+
+  const blockFor = (step: "from" | "to") =>
+    route[step] === "yard" ? yardBlock(step) : customerBlock(step);
 
   /* Same autosave feedback as the delivery order sheet. */
   const saveState = useDraftSaveState(draft, open);
@@ -907,17 +964,18 @@ export function AssetMovementSheet({
       onOpenChange={onOpenChange}
       mode="create"
       showCancel={false}
-      editTitle="Movement Order"
-      createTitle="Movement Order"
+      editTitle="Asset Order"
+      createTitle="Asset Order"
       createAction="Create Order"
-      /* THE CHIP CARRIES THE DIRECTION, not the type — the title already says
-         "Movement Order", and the direction is the one thing settled in the
-         menu that the form itself never states. Without it the only evidence of
-         which way this order runs is which end happens to ask for a yard.
-         Violet either way: on the board, both are an M. */
+      /* THE CHIP CARRIES THE ROUTE, not the type — the title already says
+         "Asset Order", and the route is the one thing settled in the menu that
+         the form itself never states. Without it the only evidence of which
+         way this order runs is which end happens to ask for a yard, and on two
+         of the four routes both ends ask for the same kind of place. Violet on
+         all four: on the board, every one of them is an M. */
       headerAside={
         <span className="flex items-center gap-2">
-          <Badge variant="pastel-violet">{direction}</Badge>
+          <Badge variant="pastel-violet">{MOVEMENT_LABEL[direction]}</Badge>
           {saveState !== "idle" && (
             <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
           )}
@@ -947,12 +1005,12 @@ export function AssetMovementSheet({
       }
     >
       {/* A ROUTE IS READ FROM WHERE IT STARTS, so the origin is always the top
-          section — the yard on a delivery, the customer on a pickup. */}
+          section — and what KIND of place each end is comes off the route. */}
       <RouteStep key="from" step="from">
-        {isDelivery ? yardBlock : customerBlock}
+        {blockFor("from")}
       </RouteStep>
       <RouteStep key="to" step="to">
-        {isDelivery ? customerBlock : yardBlock}
+        {blockFor("to")}
       </RouteStep>
 
       <SheetSection
@@ -1211,7 +1269,7 @@ export function AssetMovementSheet({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!sourceChosen}
+                disabled={!fromName}
                 onClick={() => setPickerOpen(true)}
               >
                 <Plus /> Select asset
@@ -1224,10 +1282,10 @@ export function AssetMovementSheet({
             <p
               className={cn(
                 "text-xs",
-                sourceChosen ? "text-muted-foreground" : "text-destructive"
+                fromName ? "text-muted-foreground" : "text-destructive"
               )}
             >
-              {sourceChosen
+              {fromName
                 ? `${available.length} ${available.length === 1 ? "asset" : "assets"} ${sourceLabel}.`
                 : gate}
             </p>
@@ -1642,17 +1700,21 @@ export function AssetMovementSheet({
             above, not to this order — editing them here would change something
             the person did not come to change. Text, not a disabled field. */}
         <div className="grid grid-cols-2 gap-4">
+          {/* THE NOTES BELONG TO THE CUSTOMER END. A relocate has no customer
+              at either end, so there is no account whose note this could be —
+              the pair is absent rather than sitting there saying "select a
+              customer" next to a form that will never ask for one. */}
           <SheetField label="Customer Note">
             <div className="min-h-9 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2 text-sm text-muted-foreground">
-              {draft.customer ? "No note on this account." : "Select a customer."}
+              {notePoint?.customer ? "No note on this account." : "Select a customer."}
             </div>
           </SheetField>
           <SheetField label="ShipTo Note">
             <div className={cn(
               "min-h-9 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2 text-sm",
-              site ? "text-foreground" : "text-muted-foreground"
+              noteSite ? "text-foreground" : "text-muted-foreground"
             )}>
-              {site
+              {noteSite
                 ? "Gate code 4417. Tanks are behind the shop, back in from the north side."
                 : "Select a ship-to."}
             </div>

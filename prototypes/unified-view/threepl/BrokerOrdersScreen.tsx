@@ -194,6 +194,28 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         }))
         .sort((a, b) => a.total - b.total);
 
+  /*
+    ONCE A PARTNER IS ON THE ORDER, THE PRODUCT LIST IS A RECEIPT.
+
+    While the order is out for pricing the tanks and the gallons are what the
+    quotes are being read against, so they stay on the face of the card. The
+    moment one partner holds it the comparison is over: the list has stopped
+    being a question and become the thing the figure is FOR. It goes behind the
+    figure — the price gains an underline and gives the rows back on a press —
+    and the card comes back to five units from six.
+
+    Honouring the reader's own switch: a product unit they have turned off is
+    not offered behind the price either.
+  */
+  const foldProduct =
+    r.status === "Assigned" &&
+    !off.has("product") &&
+    /* AND ONLY WHEN THERE IS A PRICE TO FOLD IT BEHIND. An Assigned order
+       whose partner has not priced shows the fallback partner line instead of
+       the quote stepper — folding there would take the tanks off the card and
+       leave nothing to press for them. */
+    ranked.length > 0;
+
   const units: BoardCardUnit[] = [
     {
       kind: "stack",
@@ -224,7 +246,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           : [r.recurrence ? r.recurrence.frequency : r.date.title]),
       ],
     },
-    productUnit,
+    ...(foldProduct ? [] : [productUnit]),
     /* WHAT THE PARTNERS HAVE QUOTED beats what they have agreed to. Until one
        of them holds the order, the card's Vendor unit is about the PRICES that
        have come back: it said "2 accepted — no quote taken yet" while two
@@ -242,6 +264,10 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
             total: money(q.total, true),
             rank: i + 1,
           })),
+          breakdown:
+            foldProduct && productUnit.kind === "rows"
+              ? { rows: productUnit.rows, total: productUnit.total }
+              : undefined,
         }
       : {
       kind: "stack",

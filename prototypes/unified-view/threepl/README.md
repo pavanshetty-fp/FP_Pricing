@@ -569,6 +569,30 @@ lives in.
   260ms): the stage bar redraws and the footer's act swaps under the cursor, and
   moving the page out from under both reads as a glitch.
 
+### The price is the biggest thing on a card, and the product list hides behind it
+
+Decided 2026-09-17, from a marked-up board screenshot.
+
+- **The quoted figure is `text-lg`.** It was `text-[13px]` — the same size as an
+  asset name, on a card whose whole reason for being opened is the money. The
+  nearest step on the scale is 18px, ~138% of what it was.
+- **Past Quoting the product list stops being a question.** While the order is
+  out for pricing, the tanks and the gallons are what the quotes are read
+  AGAINST, so the unit stays on the face of the card. The moment one partner
+  holds it the comparison is over and the list has become the thing the figure
+  is FOR — so it folds behind the figure. An Assigned card is five units, not
+  six.
+- **The fold is what gives the price its underline.** Dotted, so it does not
+  read as a link to somewhere else, and it appears ONLY where something is
+  actually hidden: on a Quoting card the unit is still on the face, so the
+  figure is plain text and presses nothing. The underline is a promise there is
+  more, and it is never made falsely.
+- **It is a press, not a hover.** A hover card on a board of forty cards fires
+  on the way past; the reader asks for this one.
+- Two conditions hold the fold back: a product unit the reader has switched off
+  is not offered behind the price either, and an Assigned order whose partner
+  has not priced keeps its unit — there would be no figure to fold it behind.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

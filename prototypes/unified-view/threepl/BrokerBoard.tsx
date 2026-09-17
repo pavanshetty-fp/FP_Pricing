@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
 
@@ -168,6 +173,15 @@ export type BoardCardUnit =
       quotes: BoardCardQuote[];
       /** Hide the carrier's name, when the reader has switched it off. */
       nameOff?: boolean;
+      /**
+       * WHAT THE PRICE IS FOR, folded behind the price itself.
+       *
+       * Once a partner has been picked the product list has stopped being a
+       * question — it is the receipt for a figure, not something the reader is
+       * weighing. Set it here and the unit above disappears from the card: the
+       * price gains an underline and gives the rows back on a press.
+       */
+      breakdown?: { rows: BoardCardRow[]; total?: string };
     };
 
 /** One partner's price for the order: who, how much, and where that places them. */
@@ -439,10 +453,12 @@ function CardQuotes({
   heading,
   quotes,
   nameOff,
+  breakdown,
 }: {
   heading: string;
   quotes: BoardCardQuote[];
   nameOff?: boolean;
+  breakdown?: { rows: BoardCardRow[]; total?: string };
 }) {
   const [i, setI] = React.useState(0);
   const at = Math.min(i, quotes.length - 1);
@@ -510,9 +526,43 @@ function CardQuotes({
             {rankLabel(q.rank)}
           </span>
         </span>
-        <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap text-foreground">
-          {q.total}
-        </span>
+        {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
+            these cards get opened, and at 13px it was the same size as an
+            asset name. `text-lg` is the nearest step on the scale. */}
+        {breakdown ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                /* THE CARD IS THE BUTTON, so this one has to say so and stop —
+                   without it, asking what the price is for opens the order. */
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                aria-label={`${q.total} — what this is for`}
+                className="rounded-sm text-lg font-semibold tabular-nums whitespace-nowrap text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                {q.total}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-72 p-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* THE UNIT'S OWN HEADING COMES WITH IT. Opened from a figure
+                  with no name on it, a bare list of tanks is three numbers
+                  belonging to nothing. */}
+              <UnitHeading>Delivery Product Details</UnitHeading>
+              <div className="mt-2">
+                <CardRows rows={breakdown.rows} total={breakdown.total} />
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <span className="text-lg font-semibold tabular-nums whitespace-nowrap text-foreground">
+            {q.total}
+          </span>
+        )}
       </div>
     </>
   );
@@ -628,7 +678,12 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           {/* The quotes unit draws its own heading row — the stepper sits
               on the line with the label, where a unit's controls belong. */}
           {u.kind === "quotes" ? (
-            <CardQuotes heading={u.heading} quotes={u.quotes} nameOff={u.nameOff} />
+            <CardQuotes
+              heading={u.heading}
+              quotes={u.quotes}
+              nameOff={u.nameOff}
+              breakdown={u.breakdown}
+            />
           ) : (
             <>
               <UnitHeading>{u.heading}</UnitHeading>

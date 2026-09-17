@@ -164,6 +164,14 @@ Dispatch and 3PL"*.
   Only on a BLANK row — on a row that already names a partner the question is
   "which one instead", and answering it with three would replace one row with
   three under a reader who asked to change one.
+- **The table's closing band carries the two switches.** *Send email
+  notifications* and *Request a quote* were two full-width rows under the
+  table, where they read as two more things to fill in. Both are settings for
+  the ROUND rather than for a partner, so they sit on the band that closes the
+  table, opposite Add vendor — the rows it adds are on the left, the settings
+  for them on the right. Request a quote lost its explainer sentence with the
+  full-width row: on a band beside three other controls a sentence is the
+  loudest thing there.
 - **Send email notifications is OFF by default.** It was on, on the argument
   that suppressing every email should be the deliberate act. The other way
   round is safer: the switch mails people outside the building, and a draft
@@ -440,10 +448,21 @@ that is when it will move to Quoting. Till then, everything is in draft mode."*
   sheet, same scroll, now with a number and a stage bar. The old footer had a
   Create button nobody could reach (the next-act ladder replaced it), so a new
   Delivery Order could not be saved at all.
-- **Sending the invitations is the moment it becomes an order** in the business
-  sense: status goes to Quoting, the card moves lane, and the toast says both
-  — *"Redline Carriers invited · D-105376 moved to Quoting"* — because naming
-  only the first leaves the reader looking in the lane they left it in.
+- **Sending is the precondition; Proceed is the transition.** Sending an
+  invitation used to move the order to Quoting by itself, which made one act do
+  two things — a broker who asked one carrier while still weighing the rest
+  found the order had left Draft underneath them. The footer's **Proceed**
+  is the moment they say the round is out, and it needs **one invitation
+  actually sent**: an order in Quoting that nobody has been asked for is a lane
+  telling a lie. (Revised with Pavan the same day, after the first reading.)
+- **`sentVendorIds` is a stored field.** It was derived — "an order past Draft
+  had its invitations sent" — which cannot describe the draft that now matters:
+  five carriers listed, three of them asked. Deriving it forgot exactly that on
+  close. `assertConsistent` keeps it a subset of the invited.
+- **More partners can join a round that is already out.** Ticking a row that
+  has not been asked puts *Send invitation* back in the footer at any stage, so
+  a broker chasing a quote on Thursday can add two more carriers without the
+  order going backwards. Rows already sent are never re-sent.
 - **The sheet now keeps what it says it keeps.** "Draft saving… / Draft saved"
   described a hook that only WATCHED the draft; nothing wrote it anywhere, so
   ticking Urgent or adding an asset was gone on close. Every change is

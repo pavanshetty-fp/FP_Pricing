@@ -406,6 +406,10 @@ export const vendorById = (id: string | null) =>
 
 export const vendorName = (id: string | null) => vendorById(id)?.name ?? "—";
 
+/** The other direction, for a control whose value is the name on screen. */
+export const vendorByName = (name: string) =>
+  VENDORS.find((v) => v.name === name);
+
 /**
  * WHY A VENDOR CANNOT TAKE THIS ORDER — the reason, or null when it can.
  *

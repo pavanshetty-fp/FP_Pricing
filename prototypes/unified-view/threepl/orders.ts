@@ -359,6 +359,18 @@ export interface BrokerOrder {
   /** Every vendor invited. More than one is normal. */
   invitedVendorIds: string[];
   /**
+   * WHICH OF THEM THE INVITATION ACTUALLY WENT TO.
+   *
+   * Listing a partner and asking them are two acts, and a draft is exactly
+   * where the gap between them lives: the broker lines up five carriers and
+   * sends to three of them today. It used to be DERIVED — "an order past Draft
+   * had its invitations sent" — which cannot describe that draft at all, so
+   * closing the sheet forgot who had been asked.
+   *
+   * Always a subset of `invitedVendorIds`; `assertConsistent` says so.
+   */
+  sentVendorIds: string[];
+  /**
    * Partners that ACCEPTED THE INVITATION. This is what moves an order out of
    * Quoting and into Assigned — the first of the two things a partner does.
    * The second is sharing a quote, which is `quotes` below.
@@ -1452,6 +1464,9 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       status,
       vendorId,
       invitedVendorIds,
+      /* A SEEDED ORDER PAST DRAFT HAS BEEN ASKED — that is what leaving Draft
+         meant before the field existed. A seeded Draft has not. */
+      sentVendorIds: status === "Draft" ? [] : [...invitedVendorIds],
       acceptedVendorIds,
       quoteRequested,
       quotes,

@@ -97,6 +97,7 @@ import { DATE_FMT } from "../data";
 import {
   VENDORS,
   vendorById,
+  vendorByName,
   vendorBlockedReason,
   type BusinessLine,
 } from "./vendors";
@@ -492,9 +493,10 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     status: o.status,
     vendorId: o.vendorId,
     invitedVendorIds: [...o.invitedVendorIds],
-    /* An order that already left Draft had its invitations sent — that is what
-       leaving Draft meant. */
-    sentVendorIds: o.status === "Draft" ? [] : [...o.invitedVendorIds],
+    /* A STORED FIELD NOW, not derived from the status. A draft can have three
+       of its five partners asked, and deriving it from "past Draft" forgot
+       exactly that on close. */
+    sentVendorIds: [...o.sentVendorIds],
     acceptedVendorIds: [...o.acceptedVendorIds],
     // Copied deeply — editing a quote line must not mutate the row behind it.
     quotes: o.quotes.map((q) => ({ ...q, lines: q.lines.map((l) => ({ ...l })) })),
@@ -1564,26 +1566,18 @@ export function BrokerOrderSheet({
       /* SAY IT OUT LOUD. Sending is the first act on this order that reaches
          somebody outside the building; a status chip quietly changing three
          sections up is not an acknowledgement that it happened. */
-      /* IT SAYS BOTH THINGS, because sending is also the moment the order
-         becomes one: the invitations went, and the card the reader left in
-         Draft is now in Quoting. Naming only the first leaves them looking for
-         it in the lane they put it in. */
-      const moving = d.status === "Draft";
+      /* SENDING NO LONGER MOVES THE ORDER (Pavan, 2026-09-17). It did, which
+         made the first invitation both an act and a stage change — so a broker
+         who sent to one carrier while still deciding on the rest had the order
+         leave Draft underneath them. Sending is now the PRECONDITION and
+         Proceed is the transition: one invitation out is what unlocks it. */
       toast.success(
         fresh.length === 1
           ? `${names[0]} invited`
           : `${fresh.length} partners invited`,
-        {
-          description: moving
-            ? `${order?.orderNo ?? "The order"} moved to Quoting.`
-            : "Waiting on acknowledgement.",
-        }
+        { description: "Waiting on acknowledgement." }
       );
-      return {
-        ...d,
-        sentVendorIds: [...d.sentVendorIds, ...fresh],
-        status: d.status === "Draft" ? "Quoting" : d.status,
-      };
+      return { ...d, sentVendorIds: [...d.sentVendorIds, ...fresh] };
     });
 
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
@@ -1646,6 +1640,24 @@ export function BrokerOrderSheet({
       description: "They stay on the order and can send another.",
     });
   };
+  /**
+   * DRAFT → QUOTING, AND IT IS A DECISION.
+   *
+   * Sending an invitation used to move the order on its own, which made one
+   * act do two things: a broker who asked one carrier while still weighing the
+   * rest found the order had left Draft. Proceed is the moment they say the
+   * round is out — and it needs one invitation actually sent, because an order
+   * in Quoting that nobody has been asked for is a lane telling a lie.
+   */
+  const proceedToQuoting = () =>
+    setDraft((d) => {
+      if (!d || d.status !== "Draft") return d;
+      toast.success(`${order?.orderNo ?? "Order"} moved to Quoting`, {
+        description: "Waiting on the partners to acknowledge.",
+      });
+      return { ...d, status: "Quoting" };
+    });
+
   const advance = (status: BrokerStatus) =>
     setDraft((d) => {
       if (!d) return d;
@@ -1664,6 +1676,10 @@ export function BrokerOrderSheet({
   const selectedRows = partnerRows
     .map((id, i) => (id && selected.has(id) ? i : -1))
     .filter((i) => i !== -1);
+  /* Ticked rows that have not been asked yet — what a send would actually do. */
+  const unsentTicked = selectedRows
+    .map((i) => partnerRows[i])
+    .filter((id) => id && !sentIds.includes(id));
   const headerChecked: boolean | "indeterminate" =
     invitedIds.length > 0 && selectedRows.length === invitedIds.length
       ? true
@@ -1752,36 +1768,42 @@ export function BrokerOrderSheet({
   */
   const nextAct: { label: string; onSelect: () => void; why?: string } = !hasAssets
     ? { label: "Add an asset", onSelect: addBlankLine }
-    : invitedIds.length === 0
+    /* TICKED AND NOT YET ASKED — the one case where sending is the next act,
+       and it holds at EVERY stage. More partners can be brought into a round
+       that is already out: a broker chasing a quote adds two more carriers on
+       Thursday, and the footer has to be able to send to them without the
+       order going backwards. The ticked rows already sent are not re-sent. */
+    : unsentTicked.length > 0
       ? {
-          /* THE ROW IS ALREADY THERE, so "Invite a partner" would add a second
-             blank one — an act whose only outcome is another empty row. The
-             partner is picked IN the table; until one is, this names what
-             pressing it will do and says what it is waiting for. */
-          label: "Send invitations",
-          onSelect: () => {},
-          why: "Add a partner in the table above.",
+          label:
+            unsentTicked.length === 1
+              ? "Send invitation"
+              : "Send invitations to all",
+          onSelect: () => sendInvitations(unsentTicked),
         }
-      : sentIds.length === 0
+      : invitedIds.length === 0
         ? {
-            /* THE FOOTER SPEAKS FOR THE SELECTION. The floating bulk bar used
-               to sit in the middle of the section carrying the acts for the
-               ticked rows, three inches above a footer whose whole job is the
-               next act — two places to press for one decision. Ticked rows
-               change what this button sends to, and its label says so. */
-            label:
-              selectedRows.length === 1
-                ? "Send invitation"
-                : selectedRows.length > 1
-                  ? "Send invitations to all"
-                  : "Send invitations",
-            onSelect: () =>
-              sendInvitations(
-                selectedRows.length > 0
-                  ? selectedRows.map((i) => partnerRows[i])
-                  : invitedIds
-              ),
+            /* ONE CTA THAT DOES NOT CHANGE ITS NAME UNDER THE READER. What is
+               missing goes in the line beside it, not on it. */
+            label: "Proceed",
+            onSelect: () => {},
+            why: "Add a partner in the table above.",
           }
+        : sentIds.length === 0
+          ? {
+              label: "Proceed",
+              onSelect: () => {},
+              why: "Send an invitation first.",
+            }
+          : draft.status === "Draft"
+            ? {
+                /* ONE INVITATION OUT IS ENOUGH TO PROCEED. The rest can be
+                   sent from Quoting — waiting for every carrier to be asked
+                   before the order may move is the broker's own pace, not a
+                   rule. */
+                label: "Proceed",
+                onSelect: proceedToQuoting,
+              }
         : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
              accepted order was being offered "Request a quote" because the
              ladder asked about quoting before it asked whether the quoting was
@@ -3675,14 +3697,16 @@ export function BrokerOrderSheet({
                                   v
                                     ? undefined
                                     : {
+                                        /* Looked up across every partner, not
+                                           just the eligible ones: the list can
+                                           only offer names it was given, and a
+                                           lookup narrower than the list is how
+                                           a pick silently resolves to nothing. */
                                         onApply: (names) =>
                                           applyPartnersAt(
                                             i,
                                             names
-                                              .map(
-                                                (n) =>
-                                                  eligible.find((x) => x.name === n)?.id
-                                              )
+                                              .map((n) => vendorByName(n)?.id)
                                               .filter((x): x is string => Boolean(x))
                                           ),
                                       }
@@ -3883,9 +3907,14 @@ export function BrokerOrderSheet({
                   </tbody>
                 </table>
               </div>
-              {/* The last band of the table, where the next row goes — the
-                  squared-corner chip needs a corner, and flush there is none. */}
-              <div className="border-t border-border px-3 py-2">
+              {/* THE LAST BAND CARRIES THE TWO SWITCHES AS WELL.
+                  (Pavan, 2026-09-17 — they were two full-width rows of their
+                  own under the table.) Both are settings for the ROUND rather
+                  than for a partner, so they belong on the table's own closing
+                  band and not as two more rows below it, where they read as
+                  two more things to fill in. Add vendor keeps the left, where
+                  the rows it adds are; the settings take the right. */}
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border px-3 py-2">
                 <button
                   type="button"
                   /* A BLOCK STOPS SENDING, NOT BUILDING THE LIST. Lining up
@@ -3898,73 +3927,42 @@ export function BrokerOrderSheet({
                 >
                   <Plus className="size-4" /> Add vendor
                 </button>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  {/* §6's per-order kill switch. OFF by default — it mails
+                      people outside the building. */}
+                  <label
+                    htmlFor="do-notify"
+                    className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+                  >
+                    Send email notifications
+                    <Switch
+                      id="do-notify"
+                      checked={draft.notifyVendor}
+                      onCheckedChange={(v) => set("notifyVendor", v)}
+                    />
+                  </label>
+                  {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this stated
+                      what had been asked for weeks ago, in the place a control
+                      used to be. THE EXPLAINER IS GONE with the full-width
+                      row: on a band beside three other controls a sentence is
+                      the loudest thing there, and what it explained is in the
+                      section's own note. */}
+                  {invitedIds.length > 0 && draft.status === "Draft" && (
+                    <label
+                      htmlFor="quote"
+                      className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+                    >
+                      Request a quote
+                      <Switch
+                        id="quote"
+                        checked={draft.quoteRequested}
+                        onCheckedChange={(v) => set("quoteRequested", v)}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* §6's per-order kill switch, the same one the movement sheet
-                carries and the one this sheet was missing. ON by default —
-                suppressing every email is the deliberate act, so it is the one
-                that costs a click. It is not a field in the list, so it takes
-                the card's insets back and the rule that closes the table. */}
-            <label
-              htmlFor="do-notify"
-              /* 12px TOP AND BOTTOM, and the same 12 on both. At `p-4` the
-                 row read as heavier underneath than above, because the band
-                 above it closes at 8 and the card's edge is directly below —
-                 the eye compares this row's gaps with its neighbours, not with
-                 each other. */
-              className="flex cursor-pointer items-center justify-between gap-4 border-t border-border px-4 py-3"
-            >
-              <span className="text-sm font-medium text-foreground">
-                Send email notifications to vendor
-              </span>
-              <Switch
-                id="do-notify"
-                checked={draft.notifyVendor}
-                onCheckedChange={(v) => set("notifyVendor", v)}
-              />
-            </label>
-
-            {/* BULK. The same checked rows the quote switch reads — one
-                selection, not a second one that can disagree with it. Only one
-                partner can take the order, so acknowledging is a one-row
-                action; cancelling is not. */}
-            {/* A PROPERTY OF THE ROUND, not of a selection. Everyone invited is
-                asked, or nobody is — binding it to the ticked rows made two
-                unrelated decisions share one control, and left the switch
-                describing a selection that now starts empty. It sits directly
-                under the table it applies to, above anything that acts on a
-                selection. */}
-
-            {/* IT IS ASKED ONCE, BEFORE ANYONE IS ASKED ANYTHING. What was
-                requested of the partners is a fact about the round the moment
-                it goes out; a switch afterwards offers to change a question
-                that has already been put — and turning it off would not take
-                the quotes back. Editable while the order is a Draft, stated
-                from then on. */}
-            {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this said what had
-                been asked for weeks ago — a sentence nobody could act on, in
-                the place a control used to be. What was requested is in the
-                activity trail, where the rest of the order's history is. */}
-            {invitedIds.length > 0 && draft.status === "Draft" && (
-                <label
-                  htmlFor="quote"
-                  className="flex cursor-pointer items-center justify-between gap-4 border-t border-border p-4"
-                >
-                  <span className="flex flex-col gap-1 text-sm font-medium text-foreground">
-                    Request a quote
-                    <span className="text-xs font-normal text-muted-foreground">
-                      Every invited partner submits pricing instead of a plain
-                      acknowledgement.
-                    </span>
-                  </span>
-                  <Switch
-                    id="quote"
-                    checked={draft.quoteRequested}
-                    onCheckedChange={(v) => set("quoteRequested", v)}
-                  />
-                </label>
-              )}
 
           </>
         )}

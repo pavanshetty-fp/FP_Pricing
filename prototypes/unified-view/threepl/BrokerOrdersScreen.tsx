@@ -20,6 +20,7 @@ import {
   type ListView,
 } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
+import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { Hit, ListTable, TwoLineCell } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import {
@@ -73,6 +74,7 @@ import {
   matchesBrokerOrder,
   matchesBrokerOrderIn,
   sortBrokerOrders,
+  quoteTotal,
   timeToMinutes,
   totalGal,
   type BrokerColumnKey,
@@ -82,6 +84,7 @@ import {
   type MovementDirection,
 } from "./orders";
 import { RENTAL_ASSETS } from "./directory";
+import { money } from "./directoryCore";
 
 /**
  * 3PL Order Dashboard — the broker's main screen.
@@ -178,6 +181,19 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
             : undefined,
       };
 
+  /* CHEAPEST FIRST, and the total is the SAME arithmetic the sheet's Carrier
+     cost column does — including the load-order rule, which strikes the
+     product from what the partner may charge. Two figures for one quote is
+     how a card comes to disagree with the order it stands for. */
+  const ranked = vendor
+    ? []
+    : r.quotes
+        .map((q) => ({
+          vendorId: q.vendorId,
+          total: quoteTotal(q, r.lines, !r.loadOrder),
+        }))
+        .sort((a, b) => a.total - b.total);
+
   const units: BoardCardUnit[] = [
     {
       kind: "stack",
@@ -209,7 +225,25 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       ],
     },
     productUnit,
-    {
+    /* WHAT THE PARTNERS HAVE QUOTED beats what they have agreed to. Until one
+       of them holds the order, the card's Vendor unit is about the PRICES that
+       have come back: it said "2 accepted — no quote taken yet" while two
+       priced quotes sat in the order, which is the card contradicting the
+       sheet. With prices in, the unit becomes the quote stepper; with none, it
+       falls back to saying where the invitations have got to. */
+    ranked.length > 0
+      ? {
+          kind: "quotes" as const,
+          key: "partner",
+          heading: "Vendor",
+          nameOff: off.has("partner.name"),
+          quotes: ranked.map((q, i) => ({
+            vendor: vendorName(q.vendorId),
+            total: money(q.total, true),
+            rank: i + 1,
+          })),
+        }
+      : {
       kind: "stack",
       key: "partner",
       heading: "Vendor",
@@ -355,7 +389,8 @@ function laneCardInvoice(
 ): BoardLane["cards"][number]["footerAction"] {
   if (!INVOICE_LANES.has(r.status)) return undefined;
   if (!r.vendorId) return undefined;
-  if (laneCardAlert(r)) return undefined;
+  /* An alert already owns the footer; the invoice row is what is left. */
+  if (laneCardAlert(r, onOpen)) return undefined;
 
   if (r.invoiceState === "requested") {
     return { label: "Invoice requested", waiting: true };
@@ -429,7 +464,10 @@ const BOARD_LANES: {
   { key: "Blocked", statuses: ["Blocked"] },
 ];
 
-function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
+function laneCardAlert(
+  r: BrokerOrder,
+  onOpen: () => void
+): BoardLane["cards"][number]["alert"] {
   if (r.status === "Blocked") {
     return {
       status: "warning",
@@ -438,8 +476,21 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
     };
   }
   if (r.status === "Quoting") {
-    /* NOBODY HAS SAID YES YET — that is the whole of what Assigned means. */
     const n = r.invitedVendorIds.length;
+    /* PRICES BEAT SILENCE. An order with two quotes in it was still being
+       announced as awaiting acknowledgement, because this branch only ever
+       counted invitations — so the footer denied what the card above it was
+       showing. Once anything has been priced, the count that matters is how
+       many of the invitations have come back with a figure. */
+    const priced = r.quotes.length;
+    if (priced > 0) {
+      return {
+        status: "caution",
+        text: `${priced} of ${n} ${priced === 1 ? "quote" : "quotes"} in — review pricing`,
+        actionLabel: "Review",
+        onAction: onOpen,
+      };
+    }
     return {
       status: "caution",
       text: `Awaiting acknowledgement — ${n} invited`,
@@ -456,6 +507,9 @@ function laneCardAlert(r: BrokerOrder): BoardLane["cards"][number]["alert"] {
         status: "caution",
         text: `${priced} ${priced === 1 ? "quote" : "quotes"} in — review pricing`,
         actionLabel: "Review",
+        /* THE BUTTON OPENS THE ORDER. It carried no handler at all, so the one
+           thing on the card asking to be pressed did nothing when it was. */
+        onAction: onOpen,
       };
     }
     const n = r.acceptedVendorIds.length;
@@ -625,6 +679,10 @@ export function BrokerOrdersScreen({
 }: { focus?: { id: string; n: number } | null } = {}) {
   const [rows, setRows] = React.useState<BrokerOrder[]>(BROKER_ORDERS);
   const [openId, setOpenId] = React.useState<string | null>(null);
+  /* WHICH PART OF THE SHEET THE READER ASKED FOR. A card's "review pricing"
+     names the vendor table; opening at the top and leaving them to scroll is
+     answering a different request. Cleared when the sheet closes. */
+  const [sheetFocus, setSheetFocus] = React.useState<"vendor" | null>(null);
   const [creating, setCreating] = React.useState(false);
   /* §5.20 — Create means three DIFFERENT records, so the choice is made before
      a form opens rather than by a Type field inside one. `null` is "no movement
@@ -668,6 +726,7 @@ export function BrokerOrdersScreen({
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
@@ -873,7 +932,11 @@ export function BrokerOrdersScreen({
             code: laneCardCode(r),
             subtitle: laneCardSubtitle(r),
             units: laneCardUnits(r, cardOff),
-            alert: laneCardAlert(r),
+            /* REVIEW PRICING OPENS AT THE PRICING. */
+            alert: laneCardAlert(r, () => {
+              setSheetFocus("vendor");
+              setOpenId(r.id);
+            }),
             footerAction: laneCardInvoice(
               r,
               () => requestInvoice(r.id),
@@ -1082,6 +1145,7 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
         quotes: [],
+        customerCharges: { deliveryFee: 0 },
         /* A new order has not been delivered, let alone billed. */
         invoiceState: "none",
         serviceLine: lineOfProduct(draft.lines[0]?.product ?? ""),
@@ -1189,6 +1253,7 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: [],
         quoteRequested: false,
         quotes: [],
+        customerCharges: { deliveryFee: 0 },
         invoiceState: "none",
         serviceLine: lineOfProduct(""),
         business: null,
@@ -1410,6 +1475,101 @@ export function BrokerOrdersScreen({
       ? formatFullDate(range.from)
       : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`;
 
+  /* EVERY NARROWING THAT IS ON, for the export sheet to list. Each one drops
+     the same narrowing the toolbar's own chip drops — they write to the
+     screen's state, so taking one off in the sheet is visibly the same act as
+     taking it off out there.
+
+     THE SERVICE LINE IS NOT IN HERE. It is not a question asked of a list, it
+     is WHICH LIST this is, and a Remove on it would have to mean "export fuel,
+     lubricants and propane together" — a different export, not a filter being
+     cleared. The line stays where it is chosen, above everything. */
+  const dropFacets = (gone: string[]) => {
+    const next = new Set(facetSel);
+    for (const id of gone) next.delete(id);
+    setFacetSel(next);
+    setPage(1);
+  };
+
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "business",
+      label: "Business",
+      values: business
+        ? [
+            {
+              value: business,
+              onRemove: () => {
+                setBusiness(null);
+                setPage(1);
+              },
+            },
+          ]
+        : [],
+    },
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim()
+        ? [
+            {
+              value: search.trim(),
+              onRemove: () => {
+                setSearch("");
+                setPage(1);
+              },
+            },
+          ]
+        : [],
+    },
+    {
+      /* The column search reads as the COLUMN it is scoped to, not as
+         "column search" — that is what the chip on the shelf says too. */
+      key: "colSearch",
+      label:
+        BROKER_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim()
+        ? [
+            {
+              value: colQuery.trim(),
+              onRemove: () => {
+                setColQuery("");
+                setPage(1);
+              },
+            },
+          ]
+        : [],
+    },
+    /* One row per header box that has something typed in it. */
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: BROKER_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
+            setPage(1);
+          },
+        },
+      ],
+    })),
+    /* The facets, in the panel's own order so the sheet and the facet menu
+       read the same way round — the rule `FilterChips` already follows. */
+    ...ORDER_FACETS.map((f) => {
+      const mine = [...facetSel].filter((id) => id.startsWith(`${f.key}:`));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(id.indexOf(":") + 1),
+          onRemove: () => dropFacets([id]),
+        })),
+        onRemoveAll: () => dropFacets(mine),
+      };
+    }),
+  ];
+
   const emptyBody = (
     <Empty className="h-full">
       <EmptyHeader>
@@ -1513,6 +1673,7 @@ export function BrokerOrdersScreen({
           if (key === "delivery-order") setCreating(true);
           else setMovement(key as MovementDirection);
         }}
+        onExport={() => setExporting(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -1536,62 +1697,67 @@ export function BrokerOrdersScreen({
               facets={ORDER_FACETS}
             />
           }
-          /* ONE CONTROL, TWO SUBJECTS. On the board it offers the card's units;
-             in the table it offers the table's columns. Same button in the same
-             place, because the question is the same one — what do you want to
-             see — and only the answer's vocabulary changes with the view. */
-          columns={board ? CARD_UNITS : TOGGLE_COLUMNS}
-          hiddenColumns={board ? cardOff : hidden}
-          /* THE TABLE'S ORDER ONLY. A card's units read top to bottom in the
-             order the work happens — who it is for, when, what, and who is
-             taking it — which is not a preference. */
-          columnOrder={board ? undefined : columnOrder}
-          onReorderColumns={board ? undefined : setColumnOrder}
+          /* THE TABLE'S COLUMNS, AND ONLY THE TABLE'S. This used to be one
+             control with two subjects — the card's units on the board, the
+             table's columns in the table — which is one icon meaning two
+             things with nothing on screen to say which. The card's units now
+             have their own control (`cardFields` below), so each of the two
+             menus has one subject and says which (`docs/ds/ui/2-rules.md`
+             §10). */
+          columns={TOGGLE_COLUMNS}
+          hiddenColumns={hidden}
+          columnOrder={columnOrder}
+          onReorderColumns={setColumnOrder}
           onToggleColumn={(k) => {
-            if (!board) {
-              const col = k as BrokerColumnKey;
-              setHidden((prev) => {
-                const next = new Set(prev);
-                if (next.has(col)) next.delete(col);
-                else next.add(col);
-                return next;
-              });
-              return;
-            }
+            const col = k as BrokerColumnKey;
+            setHidden((prev) => {
+              const next = new Set(prev);
+              if (next.has(col)) next.delete(col);
+              else next.add(col);
+              return next;
+            });
+          }}
+          onShowAllColumns={() => setHidden(new Set())}
+          /* WHAT IS ON THE CARD. `ListToolbar` shows this on the board only. */
+          cardFields={{
+            units: CARD_UNITS,
+            hidden: cardOff,
+            onShowAll: () => setCardOff(new Set()),
             /* A PARENT CARRIES ITS CHILDREN. Turning the heading off takes the
                lines with it, because the heading is what holds them together;
                turning it back on brings them all back, which is what "show me
                Customer Details" means. The last child going off takes the
                parent, since a heading with nothing under it is not a unit. */
-            setCardOff((prev) => {
-              const next = new Set(prev);
-              const kids = CARD_UNITS.filter((c) => c.group === k).map((c) => c.key);
-              if (next.has(k)) {
-                next.delete(k);
-                for (const c of kids) next.delete(c);
-              } else if (kids.length > 0) {
-                next.add(k);
-                for (const c of kids) next.add(c);
-              } else {
-                const entry = CARD_UNITS.find((c) => c.key === k);
-                next.add(k);
-                if (entry?.group) {
-                  const siblings = CARD_UNITS.filter(
-                    (c) => c.group === entry.group
-                  ).map((c) => c.key);
-                  if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
+            onToggle: (k) =>
+              setCardOff((prev) => {
+                const next = new Set(prev);
+                const kids = CARD_UNITS.filter((c) => c.group === k).map(
+                  (c) => c.key
+                );
+                if (next.has(k)) {
+                  next.delete(k);
+                  for (const c of kids) next.delete(c);
+                } else if (kids.length > 0) {
+                  next.add(k);
+                  for (const c of kids) next.add(c);
+                } else {
+                  const entry = CARD_UNITS.find((c) => c.key === k);
+                  next.add(k);
+                  if (entry?.group) {
+                    const siblings = CARD_UNITS.filter(
+                      (c) => c.group === entry.group
+                    ).map((c) => c.key);
+                    if (siblings.every((sib) => next.has(sib)))
+                      next.add(entry.group);
+                  }
                 }
-              }
-              /* Switching a child back on switches its heading back on too —
-                 otherwise the line you just asked for is still not drawn. */
-              const entry = CARD_UNITS.find((c) => c.key === k);
-              if (!next.has(k) && entry?.group) next.delete(entry.group);
-              return next;
-            });
+                /* Switching a child back on switches its heading back on too —
+                   otherwise the line you just asked for is still not drawn. */
+                const entry = CARD_UNITS.find((c) => c.key === k);
+                if (!next.has(k) && entry?.group) next.delete(entry.group);
+                return next;
+              }),
           }}
-          onShowAllColumns={() =>
-            board ? setCardOff(new Set()) : setHidden(new Set())
-          }
           searchFields={BROKER_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {
@@ -1724,6 +1890,56 @@ export function BrokerOrdersScreen({
         </div>
       </div>
 
+      {/* EXPORT ASKS BEFORE IT ACTS. What leaves is `sorted` — the whole
+          narrowed set, not the page: a page boundary is a property of a table
+          and has no business deciding what ends up in a file. */}
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Orders"
+        noun="orders"
+        nounOne="order"
+        count={sorted.length}
+        /* THE SAME CONTROL AS THE TOOLBAR'S, not a second way of asking. The
+           sheet used to lay the whole picker out flat — toggle, calendar,
+           presets — which made the date the biggest thing on a sheet that is
+           mostly about filters, and taught a different interaction from the one
+           the reader already knows from the board. Arrows to step, the date to
+           open; everything else is behind the click, exactly as it is outside. */
+        date={
+          <DateRangeFilter
+            value={range}
+            onChange={(next) => {
+              setRange(next);
+              setPage(1);
+            }}
+            fullWidth
+          />
+        }
+        /* THE SCREEN'S OWN FILTER PANEL, staging until Apply exactly as it
+           does on the toolbar. The sheet laid it out flat for a while; behind
+           the button it matches the date control beside it and the board
+           behind it, which is one interaction to learn instead of three. */
+        filtersControl={
+          <ListFilters
+            value={facetSel}
+            onApply={(sel) => {
+              setFacetSel(sel);
+              setPage(1);
+            }}
+            facets={ORDER_FACETS}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          toast.success(
+            `Exporting ${sorted.length} order${sorted.length === 1 ? "" : "s"} as .${format}`
+          );
+        }}
+      />
+
       <BrokerOrderSheet
         order={rows.find((r) => r.id === openId) ?? null}
         mode={creating ? "create" : "edit"}
@@ -1732,11 +1948,13 @@ export function BrokerOrdersScreen({
           if (o) return;
           setCreating(false);
           setOpenId(null);
+          setSheetFocus(null);
         }}
         onSave={saveOrderAndAudit}
         onCreate={createOrder}
         customers={customers}
         shipTos={shipTos}
+        focus={sheetFocus}
       />
 
       {/* ONE SHEET, TWO DIRECTIONS — see `AssetMovementSheet`. Mounted only

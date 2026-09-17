@@ -63,15 +63,207 @@ Dispatch and 3PL"*.
   Partner** section that drives the lifecycle.
 - **Movement orders** render an **Asset** section instead of product lines, with
   the asset read-only (fixed at creation, per §5.20) and pricing as Fee + Tax.
-
-The rail's other three destinations — Vendors, Customers, Assets — show the
-honest not-built state, naming what exists instead. That is the same shape the
-Sales rail had while only Fuel Orders was built.
-
-### Status is advanced, not chosen
-
-The most important design decision here, and it cuts against both Sales sheets:
-
+- **The date control asks for a day or a span.** `DateRangeFilter.tsx` opens on
+  a Single date / Date range toggle. A single date has **no presets** — the
+  calendar above already marks today, and Yesterday / Today / Tomorrow were
+  three buttons for three clicks that saved nobody anything. A span gets Next 7
+  / Next 30 / This month, and **Custom range**, which opens two typed date boxes
+  seeded with the current window for dates read off an email rather than paged
+  to in a calendar; it applies on a button, not per keystroke, and refuses a
+  backwards range. The arrows still step by the length of the window you are on.
+- **Pricing is one unit, full width, three columns.** It sits below the form and
+  the rail rather than inside the form column — it needs the whole sheet, and the
+  rail was taking 340 of it. The rail's three cards therefore end above it, so
+  scrolling into the pricing scrolls them away: their job is to keep the totals
+  in view while you fill the form, and once you are *in* the pricing the totals
+  are in front of you at full size.
+  - **Order details · Customer billing · Carrier cost**, left to right in the
+    order the money goes, with a **rule between them** — three columns of rows
+    that all look alike need saying apart, and the gutter is split either side
+    of the line so it sits in the middle rather than hugging the column to its
+    right. The rules are `lg` only: stacked, a vertical rule would point at
+    nothing. Each column totals itself and the totals are pinned to one line by
+    `mt-auto`, however uneven the rows above. Under all three, a strip of **four
+    figures and nothing else** — Product · Customer billing · Carrier cost ·
+    **Expected profit** — in the order of the columns above, the profit last
+    because it is the only one that is no column's own. It was a banner with a
+    sentence and a percentage in it; at that point the reader wants a row of
+    numbers, not a paragraph. **Equal quarters, edge to edge**: they no longer
+    try to sit UNDER the three columns, which are different widths, so four
+    figures could only line up with them by being four different widths
+    themselves — and the last one's figure is flush right, so the row spans the
+    strip instead of trailing off before it does. **The profit is coloured by
+    its sign** — green when there is one, red when the order costs money to
+    run, neither at exactly zero — and the rail's Margin row, which is the same
+    number, is coloured the same way.
+  - **The product is stated once, in the first column** — product, requested
+    gallons, and the rate, typed there. It is neither side's; the same gallons
+    at the same rate whoever carries them, and stating it in both of the columns
+    beside it is how two columns come to disagree.
+  - **Customer billing is the editable one** — margin per gallon per line, and
+    order-level charges (delivery fee first; more expected, which is why
+    `CustomerCharges` is a record). Labels sit in a fixed 148px box so every
+    field in the column starts on one edge; read-only rows skip the box, because
+    they have no field to line up and a long working squeezed their label away.
+  - **Carrier cost is read-only**, with the standing chip — Awarded / Not
+    awarded / **Pending award** — *inside* the partner field, between the name
+    and the chevron. The standing is a fact about *that partner*, not about
+    carrier cost in general, so it lives in the box that names them and changes
+    when the picker does. (`Combobox` gained a `trailing` slot for it; a single
+    partner gets the same box without the control.) The total reads *Estimated*
+    until one is awarded.
+  - **Whoever holds the load order pays its fees and taxes.** With a load order
+    the product is already the broker's, so the partner's product row goes and
+    its fees and taxes move to the customer column marked *On the load order* —
+    read-only there, and out of the partner's total so the same money is not
+    claimed twice.
+  - **The service charge survives a load order.** It used to be folded into the
+    base price and struck with it; the broker owning the fuel does not stop the
+    partner charging for wait time and tolls to haul it. `quoteTotal` now splits
+    `quoteProductTotal` from `quoteServiceTotal` and only the product is
+    conditional.
+  - The rail's Summary shows the same three figures as the unit.
+- **Two sections at the tail, side by side at 1:3.** **Upload Supporting
+  Image** and **Notes** are separate units — a file and a note are different
+  kinds of thing, one evidence and one instruction, and a single "Additional
+  Details" over them named neither — but neither needs a row of its own. The
+  upload takes the quarter because it is one target; the notes take the rest
+  because they are the only thing here anyone writes more than a line into.
+  Notes holds its two boxes side by side too: one is read by a driver at a gate
+  and the other by nobody outside the building, and stacked they read as a first
+  and second note rather than as two audiences. Both sit after the pricing, so
+  the tail of the sheet stops pushing the money below the fold.
+- **Visibility is gone.** It was a Public/Private radio governing the upload and
+  nothing in the product read it: every file on an order is the order's, and the
+  one genuinely private thing here has its own field and always had. A control
+  that decides nothing is worse than no control, because somebody sets it and
+  expects it to hold.
+- **Duplicate order and Download tickets live behind the ···.** They were two
+  outline buttons at the foot of the form, in the reading path of somebody
+  filling it in. Neither is ever the next act, so neither belongs in the flow or
+  in the footer — behind the menu is where a reader looks for a spare act on the
+  record, beside Cancel and Delete.
+- **The Vendor table reports a status and a cost.** Columns are Vendor · Address
+  · Products · **TLC** · **Status** · the unheaded Award column. The cost column is always there — it says
+  what the table is for — and reads **NA**, disabled, with an *Awaiting
+  quotation* tooltip until the partner prices the order. Status is a four-rung
+  ladder, and only the first rung is an action: `Invite` (button) → **Invited**
+  → **Accepted** → **Quotation shared**, tones climbing neutral → processing →
+  success — **words, with no dot beside them** (`docs/ds/ui/2-rules.md` §11). The rail's Partners list uses the same four words, plus **Holds
+  order** once one is awarded.
+- **Award is the row's one act, in a column with no heading.** Beside Status,
+  on every row that has priced the order: Status is a fact the row reports,
+  Award is the act it offers, and a heading over a column of buttons would be
+  the word twice. Awarding sets who holds the order and moves a Quoting order
+  into **Assigned** — and stops there. The awarded row says *Awarded*; every
+  other priced row keeps its button, so the choice can be changed right up
+  until it is confirmed.
+- **A quote goes stale when the order grows.** A quote prices the lines it was
+  sent; add an asset afterwards and its figure answers a different question.
+  Any order line with no line in a partner's quote (matched on the asset, which
+  is what a quote line is keyed on) puts that row on **Products updated** and
+  swaps its Award for **Resend invite** — awarding a price that does not cover
+  the order is buying the wrong thing. The quote itself stays on the row, since
+  taking it away would leave no record of what the partner had said. A soft
+  caution banner under the section's name carries the reason, because nothing
+  on a row can explain something that happened to the ORDER three sections up.
+  It is **flush** — square, edge to edge, one rule against the table's header —
+  because inset and rounded it was a card inside a card, held 16px away from
+  the edges its message is about. Resending is a notification, not a state
+  change.
+- **"Accept and draft quote" only where there is no quote.** Writing down a
+  price given on a call is a real act for a partner who has not sent one; on a
+  row that has already shared a quotation it offered to draft a quote that
+  exists.
+- **Awarded is not confirmed, and the footer is the difference.** The footer's
+  act reads **Confirmed** and is disabled — with *Award a partner in the table
+  above* beside it — until one row is awarded. Pressing it settles the pricing
+  and moves the order to Completed, which is what the old **Accept quote** did
+  in the same click as the award. Splitting them is what creates a state where
+  a choice has been made and can still be taken back; it also stops the footer
+  deciding for the reader, which is what accepting "whichever quote the sheet
+  is showing" did the moment two partners had priced.
+- **The vendor table stays until the order is confirmed.** It used to disappear
+  the instant `vendorId` was set, which under the split would hide the table on
+  the click that awards.
+- **Review on the board card opens the sheet and SCROLLS to the vendor table**
+  (`focus="vendor"`, `SheetSection id`). A footer action that names the pricing
+  and then lands four screens above it is answering a different request — but
+  arriving already at the table is not the answer either: the sheet then looks
+  like it opened somewhere strange, with no way to tell what sits above. It
+  opens at the top, waits out its own opening, and travels down. The travel is
+  what says *this is the order, and the part you asked for is here*.
+- **The TLC opens the quote.** Priced, the figure is underlined and opens
+  `VendorQuoteSheet` — a second sheet over the order, because a quote belongs to
+  a partner and there are as many as there are rows. It carries the working: a
+  rate and a surcharge on every line, `TLC = A×(B+C)` on **requested** gallons
+  (nothing is delivered yet), then freight / fees / taxes, then the total. No
+  base-price subtotal: it was the sum of the column directly above it, under a
+  different name. Below the table, one group — **Supporting documents and
+  notes** — for everything the partner sent with the price; when they sent
+  nothing, one line says so instead of two empty cards.
+- **Two modes, one layout.** `review` is the partner's own quote: read-only,
+  **Reject** or **Accept**. `draft` is the broker writing one down after a call
+  — the row menu's **Accept and draft quote** — where every cell is a
+  `TableCellInput` and there is no Reject, because you cannot turn down a quote
+  you are still typing. Accepting from either awards the order, the same act the
+  row menu used to perform blind. **Accept fills green and Reject is outlined
+  in the destructive colour** — this pair is the one place where the decision is
+  the whole of the screen, so the buttons carry the outcome rather than the
+  usual primary/secondary weight. The green fill is the first outside
+  `docs/ds/ui/2-rules.md` §9's brand-only rule; the rule needs amending or the
+  pair needs a token.
+- **The view bar puts the businesses first.** `Transport · Tank Wagon │ Default ·
+  <saved views> · + View` — facts about the work on one side of a rule, things a
+  reader made on the other. Default still holds the underline at rest, and a
+  business and a saved view are mutually exclusive: exactly one tab is ever
+  underlined, and picking either drops the other. See `docs/ds/ui/2-rules.md` §10.
+- **The column tools are the table's tools.** Search by column and Show/Hide
+  columns render only in table view — a board shows cards and a map shows pins,
+  and neither has a column to type under or take away. The board's Show/Hide
+  used to re-aim itself at the card's units, which was one icon with two
+  meanings; it is gone. The rule lives in `ListToolbar`, so every screen
+  inherits it — `docs/ds/ui/2-rules.md` §10.
+- **The card carries the quotes, not a count of acceptances.** While no partner
+  holds the order, the card's Vendor unit shows what has been *priced*: the
+  carrier on the left with its placing under it — **Best price**, then *2nd
+  best*, *3rd best* — and the **TLC on the right**, cheapest first. More than
+  one quote gets a pair of very small chevrons and an `n/m` on the heading line
+  to step through them; the card still opens on click, so the stepper stops the
+  event. The figure is `quoteTotal` with the order's own load-order rule, which
+  is the same arithmetic the sheet's Carrier cost column does — two sums for one
+  quote is how a card comes to disagree with the order it stands for. The
+  footer follows: once anything is priced it reads *2 of 3 quotes in — review
+  pricing* instead of *Awaiting acknowledgement*, and its **Review** opens the
+  order (it carried no handler at all before). With nothing priced the unit
+  falls back to where the invitations have got to, and once a partner holds the
+  order it is that partner's name and detail as before.
+- **The board has its own control: Card fields.** Same slot the column tools
+  vacate, its own icon, its own heading, shown only on the board. It is not a
+  flat list, because a card is not a row: `CARD_UNITS` nests one level, so
+  *Customer Details* is a heading with Account, Ship-to site and Address under
+  it and a reader who wants the account but not the street can say so. A parent
+  carries its children both ways; the last child going off takes its heading;
+  a heading left with nothing under it is not drawn. There is **no ordering**
+  here — a card's units read in the order the work happens, which is the card's
+  design rather than a preference.
+- **Export states what it is about to export.** The toolbar's Export opens a side
+  sheet (`ExportSheet.tsx`) carrying the narrowing itself, not a summary of it.
+  It uses **the screen's own two controls**, each stretched across a row of its
+  own under a plain heading: the date stepper — arrows to step, the date to open
+  the picker — and the `Filters` button with its count, staging until Apply
+  exactly as it does on the toolbar. One interaction to learn, not three.
+  48px below them is the part the sheet adds: **every applied narrowing as a
+  removable chip**, because the facet panel shows one facet at a time and cannot
+  answer "what am I exporting" on its own — and the answer includes narrowings
+  that are not facets at all, the search and the column boxes. The sheet is
+  **510 wide**, short of the DS narrow's 560: it holds controls, not a
+  two-column form. The footer carries the count on the left, and the **file
+  format** (`.csv` by default, `.pdf`, `.doc`) 12px off Export on the right —
+  the format is part of the act, not a fact about the list. **No Cancel**: this
+  sheet commits nothing on its way through, because the narrowings it edits are
+  the list's own and are already applied behind it, which is also why the count
+  in the footer is the count on the board.
 - `AssetOrderSheet` gives status a **Select**, because an asset order's status is
   its own free-standing lifecycle.
 - `OrderSheet` (fuel) offers **no status control**, because status is *derived*
@@ -211,6 +403,14 @@ sites, so an asset cannot be out at a customer on one screen and in the yard on
 another.
 
 ## Open questions — do not silently decide these
+
+**Two order lines can share an asset name, and a quote cannot tell them apart.**
+`QuoteLine.asset` matches `OrderLine.asset`, so on an order with two lines
+against the same tank — "180 asset · Dyed Diesel" and "180 asset · Clear Diesel
+#2" — typing a rate on one writes it to both. It is visible in the new quote
+sheet and was already true of Vendor Pricing. The fix is to key quote lines on
+the order line's position rather than its asset name, which touches the model,
+the seed and both pricing tables. Not done; ask before it is.
 
 1. **Three stages share one chip colour.** The DS ships four `StatusTone`
    channels and this lifecycle has seven stages, so Quoting, Assigned and

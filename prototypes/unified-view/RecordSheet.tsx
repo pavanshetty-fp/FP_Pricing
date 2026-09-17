@@ -53,7 +53,7 @@ export interface RecordSheetProps {
    * only bites on a narrow screen — which is where the two-column step folds
    * back to one and stops needing the width at all.
    */
-  size?: "narrow" | "wide" | "xwide" | "xxwide";
+  size?: "compact" | "narrow" | "wide" | "xwide" | "xxwide";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -292,7 +292,13 @@ export function RecordSheet({
             ? "w-[min(1120px,calc(100vw-60px))] sm:max-w-[min(1120px,calc(100vw-60px))]"
             : size === "wide"
               ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"
-              : "w-[560px] sm:max-w-[560px]"
+              : size === "compact"
+                ? /* 510 — between the DS narrow and nothing. For a sheet that
+                     is CONTROLS rather than a form: a facet list has a natural
+                     width of its own, and the 560 a two-column form needs left
+                     it swimming. */
+                  "w-[510px] sm:max-w-[510px]"
+                : "w-[560px] sm:max-w-[560px]"
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">

@@ -67,8 +67,11 @@ export function ListFilters({
   facets,
   value,
   onApply,
+  fullWidth = false,
 }: {
   facets: ListFacet[];
+  /** Stretch the trigger to its container — for a row of its own, in a sheet. */
+  fullWidth?: boolean;
   /**
    * What is actually applied, when the caller keeps it.
    *
@@ -90,11 +93,8 @@ export function ListFilters({
   onApply?: (selected: ReadonlySet<string>) => void;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [facetKey, setFacetKey] = React.useState(facets[0]?.key ?? "");
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
-  const [query, setQuery] = React.useState("");
 
-  const facet = facets.find((f) => f.key === facetKey) ?? facets[0];
   const applied = value ? value.size : checked.size;
 
   const toggle = (key: string) =>
@@ -104,20 +104,6 @@ export function ListFilters({
       else next.add(key);
       return next;
     });
-
-  const q = query.toLowerCase();
-  /* Search matches the description as well as the value: on a ship-to facet the
-     address IS what people search by — a city or a state, not the site name. */
-  const match = (o: ListOption) =>
-    optionValue(o).toLowerCase().includes(q) ||
-    (optionDescription(o) ?? "").toLowerCase().includes(q);
-  /** One shape for both facet kinds: an unlabelled section is a flat list. */
-  const sections: ListFacetSection[] = facet
-    ? (facet.sections ?? [{ title: "", options: facet.options ?? [] }]).map(
-        (sec) => ({ ...sec, options: sec.options.filter(match) })
-      )
-    : [];
-  const hits = sections.reduce((n, sec) => n + sec.options.length, 0);
 
   return (
     <Popover
@@ -139,7 +125,11 @@ export function ListFilters({
           `--border` in light but ALREADY uses `--input` in dark, so light was the
           odd one out and the button read a shade lighter than the input. */}
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(fullWidth && "h-8 w-full justify-start")}
+        >
           <ListFilter />
           Filters
           {/* THE COUNT IS WHAT IS APPLIED, NOT WHAT IS TICKED. The panel's own
@@ -156,105 +146,13 @@ export function ListFilters({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[600px] overflow-hidden p-0">
-        <div className="flex h-[264px]">
-          <div className="flex w-[200px] shrink-0 flex-col gap-1 overflow-auto border-r border-border p-2">
-            {facets.map((f) => {
-              const n = facetOptions(f).filter((o) =>
-                checked.has(`${f.key}:${o}`)
-              ).length;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => {
-                    setFacetKey(f.key);
-                    setQuery("");
-                  }}
-                  className={cn(
-                    "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50",
-                    facetKey === f.key
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span className="flex-1 truncate">{f.label}</span>
-                  {n > 0 && (
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {n}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            {facet?.searchable && (
-              <div className="p-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={`Search ${facet.label.toLowerCase()}…`}
-                    className="h-8 pl-8"
-                  />
-                </div>
-              </div>
-            )}
-            <div
-              className={cn(
-                "min-h-0 flex-1 overflow-auto px-2 pb-2",
-                !facet?.searchable && "pt-2"
-              )}
-            >
-              {sections.map((sec) =>
-                sec.options.length === 0 ? null : (
-                  <div key={sec.title || "flat"} className="flex flex-col">
-                    {sec.title && (
-                      <p className="px-0.5 pt-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        {sec.title}
-                      </p>
-                    )}
-                    {sec.options.map((opt) => {
-                      const value = optionValue(opt);
-                      const description = optionDescription(opt);
-                      const id = `${facet.key}:${value}`;
-                      return (
-                        <label
-                          key={id}
-                          className="flex min-h-8 cursor-pointer items-start gap-2 py-1"
-                        >
-                          <Checkbox
-                            checked={checked.has(id)}
-                            onCheckedChange={() => toggle(id)}
-                            aria-label={value}
-                            /* Nudged down so it centres on the FIRST line, not
-                               on the two-line block. */
-                            className="mt-0.5"
-                          />
-                          <span className="flex min-w-0 flex-col">
-                            <span className="text-sm">{value}</span>
-                            {description && (
-                              <span className="text-xs text-muted-foreground">
-                                {description}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )
-              )}
-              {hits === 0 && (
-                <p className="px-2 py-1 text-sm text-muted-foreground">
-                  No matches.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <ListFilterPanel
+          facets={facets}
+          checked={checked}
+          onToggle={toggle}
+          menuWidth={200}
+          height={264}
+        />
 
         <div className="flex h-16 items-center justify-between border-t border-border px-4">
           <Button
@@ -280,5 +178,171 @@ export function ListFilters({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * The panel's BODY — facet menu, options pane — with no chrome of its own.
+ *
+ * Split out so the same two panes can be a popover on a toolbar and a plain
+ * block inside a sheet. The export sheet takes the second form: a panel that
+ * opens another floating panel on top of itself is two layers deep for one
+ * question, and the reader loses sight of the count they are deciding about.
+ *
+ * IT DOES NOT OWN WHAT IS TICKED. The popover stages its ticks until Apply and
+ * the sheet applies them as they happen, and that difference belongs to the
+ * caller — this renders a set and reports toggles.
+ */
+export function ListFilterPanel({
+  facets,
+  checked,
+  onToggle,
+  menuWidth = 200,
+  height,
+  className,
+}: {
+  facets: ListFacet[];
+  /** Ticked ids, as `facetKey:option`. */
+  checked: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+  /** The facet column's width. Narrower inside a sheet than in the popover. */
+  menuWidth?: number;
+  /**
+   * Fix the panes' height and let them scroll inside it.
+   *
+   * FOR A POPOVER, which cannot grow past the window it floats in. Left out —
+   * the sheet — the panel is as tall as its longest pane and nothing scrolls:
+   * a facet list in a column with room to spare does not need a viewport of its
+   * own, and a scroller hides how much there is to read.
+   */
+  height?: number;
+  className?: string;
+}) {
+  const [facetKey, setFacetKey] = React.useState(facets[0]?.key ?? "");
+  const [query, setQuery] = React.useState("");
+
+  const facet = facets.find((f) => f.key === facetKey) ?? facets[0];
+
+  const q = query.toLowerCase();
+  /* Search matches the description as well as the value: on a ship-to facet the
+     address IS what people search by — a city or a state, not the site name. */
+  const match = (o: ListOption) =>
+    optionValue(o).toLowerCase().includes(q) ||
+    (optionDescription(o) ?? "").toLowerCase().includes(q);
+  /** One shape for both facet kinds: an unlabelled section is a flat list. */
+  const sections: ListFacetSection[] = facet
+    ? (facet.sections ?? [{ title: "", options: facet.options ?? [] }]).map(
+        (sec) => ({ ...sec, options: sec.options.filter(match) })
+      )
+    : [];
+  const hits = sections.reduce((n, sec) => n + sec.options.length, 0);
+
+  const scrolls = height !== undefined;
+
+  return (
+    <div className={cn("flex", className)} style={height ? { height } : undefined}>
+      <div
+        className={cn(
+          "flex shrink-0 flex-col gap-1 border-r border-border p-2",
+          scrolls && "overflow-auto"
+        )}
+        style={{ width: menuWidth }}
+      >
+        {facets.map((f) => {
+          const n = facetOptions(f).filter((o) =>
+            checked.has(`${f.key}:${o}`)
+          ).length;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => {
+                setFacetKey(f.key);
+                setQuery("");
+              }}
+              className={cn(
+                "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50",
+                facetKey === f.key
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className="flex-1 truncate">{f.label}</span>
+              {n > 0 && (
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {n}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {facet?.searchable && (
+          <div className="p-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={`Search ${facet.label.toLowerCase()}…`}
+                className="h-8 pl-8"
+              />
+            </div>
+          </div>
+        )}
+        <div
+          className={cn(
+            "flex-1 px-2 pb-2",
+            scrolls && "min-h-0 overflow-auto",
+            !facet?.searchable && "pt-2"
+          )}
+        >
+          {sections.map((sec) =>
+            sec.options.length === 0 ? null : (
+              <div key={sec.title || "flat"} className="flex flex-col">
+                {sec.title && (
+                  <p className="px-0.5 pt-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    {sec.title}
+                  </p>
+                )}
+                {sec.options.map((opt) => {
+                  const value = optionValue(opt);
+                  const description = optionDescription(opt);
+                  const id = `${facet.key}:${value}`;
+                  return (
+                    <label
+                      key={id}
+                      className="flex min-h-8 cursor-pointer items-start gap-2 py-1"
+                    >
+                      <Checkbox
+                        checked={checked.has(id)}
+                        onCheckedChange={() => onToggle(id)}
+                        aria-label={value}
+                        /* Nudged down so it centres on the FIRST line, not on
+                           the two-line block. */
+                        className="mt-0.5"
+                      />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="text-sm">{value}</span>
+                        {description && (
+                          <span className="text-xs text-muted-foreground">
+                            {description}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )
+          )}
+          {hits === 0 && (
+            <p className="px-2 py-1 text-sm text-muted-foreground">No matches.</p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

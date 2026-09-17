@@ -13,12 +13,12 @@ export type StatusTone = "success" | "processing" | "failed" | "neutral";
 
 /**
  * Which of the three status treatments to render.
- *   dot  — token-coloured dot, neutral label. The quietest; use in dense grids
- *          where many rows show a status and colour would shout.
- *   text — dot AND label both take the tone colour, on no fill. Use where the
- *          status is the point of the row.
+ *   text — the DEFAULT: the label alone, in the tone colour, on no fill.
  *   soft — soft tinted pill (`/10` fill + tone text). The DS's canonical
  *          treatment for states that need to be noticed, e.g. errors.
+ *   dot  — token-coloured dot BESIDE a neutral label. Asked for by name and
+ *          never arrived at by default: for a dense grid where many rows show
+ *          a status and a column of coloured words would shout.
  */
 export type StatusChipVariant = "dot" | "text" | "soft";
 
@@ -60,9 +60,9 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  * spells the status out.
  *
  * ```tsx
- * <StatusChip tone="success">Success</StatusChip>                  // dot
- * <StatusChip tone="failed" variant="text">Failed</StatusChip>     // dot + label
+ * <StatusChip tone="success">Success</StatusChip>                  // the word, in tone
  * <StatusChip tone="failed" variant="soft">Failed</StatusChip>     // tinted pill
+ * <StatusChip tone="neutral" variant="dot">Queued</StatusChip>     // dot + neutral word
  * ```
  *
  * CONTRAST — measured label-vs-fill ratios, both themes. `dot` keeps a
@@ -99,7 +99,7 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  */
 export function StatusChip({
   tone = "neutral",
-  variant = "dot",
+  variant = "text",
   className,
   children,
   ...props
@@ -123,21 +123,19 @@ export function StatusChip({
       )}
       {...props}
     >
-      {/* NO DOT ON THE FILLED PILL. The dot exists to carry the tone where the
-          label cannot — beside plain text, it is the only coloured thing in
-          the chip. `soft` tints the whole shape, so a dot of the same colour
-          inside it says the tone a second time and eats 12px of a chip whose
-          whole job is to be small. `dot` and `text` keep it, because there the
-          dot IS the tone. */}
-      {!isSoft && (
+      {/* A STATUS IS ITS WORD. The dot now renders for the `dot` variant and
+          nowhere else, because that variant is the one place it is the ONLY
+          thing carrying the tone — its label is deliberately neutral.
+
+          `soft` tints the whole shape and `text` colours the whole label, so
+          in both a dot of the same colour said the tone a second time and ate
+          12px of a chip whose whole job is to be small. Nothing is added to a
+          status that the status has not been asked for: see
+          `docs/ds/ui/2-rules.md` §11. */}
+      {variant === "dot" && (
         <span
           aria-hidden
-          className={cn(
-            "size-1.5 shrink-0 rounded-full",
-            // `text` colours the whole chip, so one class drives the dot too;
-            // `dot` keeps a neutral label and needs the token directly.
-            variant === "dot" ? TONE_DOT[tone] : "bg-current"
-          )}
+          className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT[tone])}
         />
       )}
       {children}

@@ -273,6 +273,28 @@ export interface VendorQuote {
   freight: number;
   fees: number;
   taxes: number;
+  /**
+   * WHAT THE PARTNER SAID WITH THE PRICE, and what they sent with it.
+   *
+   * A quote is rarely only numbers: it expires, or it assumes a wait-time cap,
+   * or it comes off a rate sheet that has to be read before anyone accepts it.
+   * Both are the partner's, so both are read-only in the review sheet and typed
+   * by the broker in the draft one.
+   */
+  note?: string;
+  attachments?: string[];
+}
+
+/**
+ * ORDER-LEVEL CHARGES ON THE CUSTOMER'S SIDE.
+ *
+ * The partner's quote has its own three (freight, fees, taxes); these are what
+ * the BROKER adds on top when it bills the customer, and they are charged once
+ * for the run rather than per gallon. A delivery fee is the first of them —
+ * more are expected, which is why it is a record rather than a field.
+ */
+export interface CustomerCharges {
+  deliveryFee: number;
 }
 
 /**
@@ -353,6 +375,8 @@ export interface BrokerOrder {
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
+  /** What the broker adds to the customer's bill for the run — see the type. */
+  customerCharges: CustomerCharges;
   /**
    * Where the vendor's BILL has got to. Three states, one at a time:
    *
@@ -534,6 +558,29 @@ export function quoteBaseTotal(q: VendorQuote, lines: OrderLine[]): number {
   }, 0);
 }
 
+/** (B) alone — the product at the partner's rate, without their per-gallon add-on. */
+export function quoteProductTotal(q: VendorQuote, lines: OrderLine[]): number {
+  return q.lines.reduce((sum, ql) => {
+    const l = lines.find((x) => x.asset === ql.asset);
+    return sum + (l ? billableGal(l) * ql.ratePerGal : 0);
+  }, 0);
+}
+
+/**
+ * (C) alone — the SERVICE CHARGE, and it is always the partner's to charge.
+ *
+ * It was folded into the base price, which meant a load order struck it along
+ * with the product: the broker owning the fuel does not stop the partner
+ * charging for wait time and tolls to haul it. Split out, the base is the
+ * product and only the product, and this stands whoever bought the fuel.
+ */
+export function quoteServiceTotal(q: VendorQuote, lines: OrderLine[]): number {
+  return q.lines.reduce((sum, ql) => {
+    const l = lines.find((x) => x.asset === ql.asset);
+    return sum + (l ? billableGal(l) * ql.surcharge : 0);
+  }, 0);
+}
+
 /** Freight, fees and taxes — charged on every order, whoever brings the fuel. */
 export function quoteOrderCharges(q: VendorQuote): number {
   return q.freight + q.fees + q.taxes;
@@ -557,7 +604,11 @@ export function quoteTotal(
   lines: OrderLine[],
   chargesBase = true
 ): number {
-  return (chargesBase ? quoteBaseTotal(q, lines) : 0) + quoteOrderCharges(q);
+  return (
+    (chargesBase ? quoteProductTotal(q, lines) : 0) +
+    quoteServiceTotal(q, lines) +
+    quoteOrderCharges(q)
+  );
 }
 
 /** One line's revenue: A x (B + C) — the customer-pricing table's last column. */
@@ -566,8 +617,25 @@ export function customerLineTotal(l: OrderLine): number {
 }
 
 /** What the customer pays for the whole order. */
-export function customerTotal(lines: OrderLine[]): number {
-  return lines.reduce((sum, l) => sum + customerLineTotal(l), 0);
+export function customerTotal(
+  lines: OrderLine[],
+  charges?: CustomerCharges,
+  /**
+   * The partner's fees and taxes, when they are the customer's to pay.
+   *
+   * WHOEVER HOLDS THE LOAD ORDER PAYS THEM. With a load order the product is
+   * already the broker's and the partner only hauls it, so the fees and taxes
+   * on the load are billed through to the customer rather than sitting in the
+   * partner's total. The split is stated in one place — here — so the two
+   * columns of the pricing unit cannot both claim the same money.
+   */
+  passedThrough = 0
+): number {
+  return (
+    lines.reduce((sum, l) => sum + customerLineTotal(l), 0) +
+    (charges?.deliveryFee ?? 0) +
+    passedThrough
+  );
 }
 
 export type BrokerColumnKey =
@@ -1102,6 +1170,7 @@ function rng(seed: number) {
  * out — the exact class of contradiction `HANDOFF.md` open question 1 is about.
  */
 function vendorStateFor(
+  i: number,
   status: BrokerStatus,
   kind: OrderKind,
   pick: () => number
@@ -1140,15 +1209,36 @@ function vendorStateFor(
   ).map((v) => v.id);
   const first = pool[Math.floor(pick() * pool.length)];
   if (status === "Quoting") {
-    /* OUT FOR ACKNOWLEDGEMENT and nobody has said yes yet — that is what
-       Assigned means. Sometimes one invite, sometimes several; both are normal,
+    /* OUT FOR ACKNOWLEDGEMENT, and nobody has been AWARDED yet — that is what
+       Quoting means. Sometimes one invite, sometimes several; both are normal,
        and the difference is what the rejection rule turns on. */
     const extra = pool.filter((id) => id !== first);
     const n = pick() < 0.45 ? 1 + Math.floor(pick() * 2) : 0;
+    /* AT LEAST TWO ON EVERY OTHER ORDER. Both draws above are still taken, so
+       the stream is unchanged — this only raises the floor, and it is what
+       gives the pricing unit's partner picker two quotes to sit between. A
+       broker comparing prices is the whole of this stage; one invitee on most
+       of them made that impossible to see. */
+    const invited = [first, ...extra.slice(0, Math.max(n, i % 2 === 0 ? 1 : 0))];
+    /* SOME OF THEM HAVE ALREADY ANSWERED. Quoting used to seed no acceptances
+       at all, and a quote can only follow one — so the stage whose entire job
+       is comparing prices could never show a price. Every other order accepts
+       its first invitee, which puts both halves of the stage on the board: the
+       ones still waiting and the ones with a number to compare.
+
+       BY INDEX, NOT BY `pick()`. Every draw taken from the generator shifts
+       every value after it, so seeding this from the random stream would have
+       reshuffled the whole fixture — different vendors, different quotes,
+       different lanes. Same reason `invoiceState` cycles. */
+    /* SOMETIMES TWO HAVE ANSWERED, so the pricing unit's partner picker has
+       something to pick between — comparing quotes is the whole of what this
+       stage is for, and with one quote everywhere the control was a select of
+       one on every order. */
+    const answered = i % 2 === 0 ? invited.slice(0, 2) : [];
     return {
       vendorId: null,
-      invitedVendorIds: [first, ...extra.slice(0, n)],
-      acceptedVendorIds: [],
+      invitedVendorIds: invited,
+      acceptedVendorIds: answered,
     };
   }
   const alsoInvited = pool.filter((id) => id !== first).slice(0, pick() < 0.4 ? 1 : 0);
@@ -1269,12 +1359,20 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     }
 
     const { vendorId, invitedVendorIds, acceptedVendorIds } = vendorStateFor(
+      i,
       status,
       kind,
       pick
     );
-    // Movement orders always run the quote flow (§5.20); fuel orders sometimes.
-    const quoteRequested = isMovement || pick() < 0.25;
+    /* Movement orders always run the quote flow (§5.20); fuel orders sometimes
+       — and an order sitting in the Quoting stage always has, because that is
+       what the stage is.
+
+       THE DRAW IS TAKEN EITHER WAY. `||` short-circuits, so reading the stage
+       first would have skipped the `pick()` on those orders and shifted every
+       value after it. */
+    const quoteDraw = pick() < 0.25;
+    const quoteRequested = isMovement || status === "Quoting" || quoteDraw;
     const gal = totalGal(lines);
     /* A QUOTE FOLLOWS AN ACCEPTANCE — a partner cannot price an order it has
        not agreed to take, so only `acceptedVendorIds` can appear here. Not all
@@ -1283,7 +1381,11 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     const quotes: VendorQuote[] =
       quoteRequested && acceptedVendorIds.length > 0
         ? acceptedVendorIds
-            .filter((_, k) => k === 0 || pick() < 0.6)
+            /* THE FIRST TWO ALWAYS PRICE IT, so an order with two partners on
+               it has two quotes to compare. The draw is still taken for every
+               index past the first, so the random stream — and the rest of the
+               fixture — is unchanged. */
+            .filter((_, k) => (k === 0 ? true : pick() < 0.6 || k === 1))
             .filter(() => (status === "Assigned" ? pick() < 0.7 : true))
             .map((vid) => ({
               vendorId: vid,
@@ -1296,6 +1398,16 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
               freight: Math.round(180 + pick() * 320),
               fees: Math.round(25 + pick() * 90),
               taxes: Math.round(40 + pick() * 160),
+              /* BY INDEX, so the two states — a quote with a covering note and
+                 one without — are both on the board without taking a draw. */
+              note:
+                i % 3 === 0
+                  ? "Rate holds for 48 hours. Two hours' wait included; anything beyond is billed at the detention rate on our rate sheet."
+                  : undefined,
+              attachments:
+                i % 3 === 0
+                  ? ["Rate sheet.pdf", "Fuel supply agreement.pdf"]
+                  : undefined,
             }))
         : [];
 
@@ -1337,6 +1449,9 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       acceptedVendorIds,
       quoteRequested,
       quotes,
+      /* SEEDED BY INDEX, so both states — a fee charged and none — are on the
+         board without taking a draw from the generator. */
+      customerCharges: { deliveryFee: i % 3 === 0 ? 125 : 0 },
       invoiceState,
       serviceLine: lines.length > 0 ? lineOfProduct(lines[0].product) : wanted,
       /* BY INDEX, NOT FROM THE RANDOM STREAM — a draw here would shift every

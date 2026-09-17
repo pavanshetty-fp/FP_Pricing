@@ -31,6 +31,7 @@ export function SheetSection({
   flush = false,
   children,
   className,
+  id,
 }: {
   title: string;
   /**
@@ -67,6 +68,11 @@ export function SheetSection({
   note?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /**
+   * An anchor on the section, for a caller that has to bring one section into
+   * view — a list's footer action that opens a record AT the part it is about.
+   */
+  id?: string;
 }) {
   /* SECTION RHYTHM — 40 / 16. The gap between sections is 40px (owned by the
      sheet body); the gap between a section's title and its content is 16px. The
@@ -112,6 +118,7 @@ export function SheetSection({
        any section length — which is the thing a 40px gap could not do. */
     return (
       <section
+        id={id}
         /* `shrink-0` IS LOAD-BEARING, not tidiness. The sheet body is a flex
            column, and `overflow-hidden` switches a flex item's automatic
            minimum size from its content to zero — so without this the whole
@@ -132,7 +139,7 @@ export function SheetSection({
   }
 
   return (
-    <section className={cn("flex flex-col gap-4", className)}>
+    <section id={id} className={cn("flex flex-col gap-4", className)}>
       {heading}
       {children}
     </section>

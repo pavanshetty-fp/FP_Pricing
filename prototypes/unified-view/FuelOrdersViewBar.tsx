@@ -110,7 +110,7 @@ export interface FuelOrdersViewBarProps {
    */
   views: { id: string; name: string }[];
   /**
-   * BUILT-IN VIEWS, sitting between Default and the saved ones.
+   * BUILT-IN VIEWS, sitting FIRST, ruled off from Default and the saved ones.
    *
    * A saved view is something a reader MADE; a preset is something the business
    * already is. The businesses inside a line of service — fuel's transport and
@@ -120,12 +120,14 @@ export interface FuelOrdersViewBarProps {
    *
    * They carry no `⋯` menu, because there is nothing to rename, update or
    * delete about a fact. Picking one is picking Default AND that narrowing, so
-   * the two selections are one control and only one tab is ever underlined.
+   * the two selections are one control and only one tab is ever underlined —
+   * and picking one from inside a saved view drops that view.
    */
   presets?: { key: string; label: string }[];
   /** `null` = no preset; the Default tab owns the underline. */
   presetKey?: string | null;
-  onPresetChange?: (key: string) => void;
+  /** `null` clears the preset — the row sends it when a view takes over. */
+  onPresetChange?: (key: string | null) => void;
   /** `null` = the Default view is active. */
   activeId: string | null;
   /** Current state differs from the active view (or from default). */
@@ -185,7 +187,12 @@ export interface FuelOrdersViewBarProps {
 
 const tabCls = (isActive: boolean) =>
   cn(
-    "px-3 py-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+    /* `self-end` IS THE WHOLE POINT OF THE ACTIVE RULE. The row is
+       `items-center` and its height is set by the taller right cluster, so a
+       centred tab floated a couple of pixels clear of the hairline and its 2px
+       underline read as a second, parallel line. Bottom-aligned, the two meet:
+       the tab's rule lands on the divider with nothing between them. */
+    "self-end px-3 py-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
     isActive
       ? "font-medium text-foreground"
       : "text-muted-foreground hover:text-foreground"
@@ -243,7 +250,12 @@ export function FuelOrdersViewBar({
     if (!dialog) return;
     const name = dialog.name.trim();
     if (!name) return;
-    if (dialog.mode === "new") onCreate(name);
+    /* Creating activates the new view, so it clears the business for the same
+       reason applying one does. */
+    if (dialog.mode === "new") {
+      onPresetChange?.(null);
+      onCreate(name);
+    }
     else if (dialog.id) onRename(dialog.id, name);
     setDialog(null);
   };
@@ -252,7 +264,53 @@ export function FuelOrdersViewBar({
     <>
       {/* -mx-4 -mt-4 cancels the content layer's 16px inset so the hairline spans
           the full panel width, as it does on the DS screen. */}
-      <div className="-mx-4 -mt-4 flex shrink-0 items-center gap-1 border-b border-border px-3 py-0.5">
+      {/* NO BOTTOM PADDING. The active tab's 2px rule has to LAND ON the row's
+          hairline — that is what makes it read as a tab and not as an underline
+          floating above a line. The row used to keep 2px under the tabs, which
+          left a hairline gap between the two rules and made the whole tab strip
+          look one notch high. Everything on the right measures its own distance
+          from the divider with `self-end` + a margin, so those margins carry
+          the 2px that came out of here. */}
+      <div className="-mx-4 -mt-4 flex shrink-0 items-center gap-1 border-b border-border px-3 pt-0.5">
+        {/* THE BUSINESSES COME FIRST, then a rule, then the views.
+
+            They are two different kinds of thing and the row was reading as one
+            list of six. A preset is WHICH BUSINESS this is — a fact about the
+            work, true before anyone opened the screen; a view is a narrowing
+            somebody MADE and can rename or delete. Ordering the facts first and
+            ruling them off says which half of the row you are in, and puts the
+            thing a broker changes least often where it is easiest to find.
+
+            DEFAULT IS STILL THE RESTING STATE — it holds the underline when no
+            business and no view is on, and it is the first thing after the
+            rule, which is where the reader's eye lands once they are past the
+            facts. */}
+        {presets?.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            /* A PRESET IS DEFAULT PLUS A NARROWING, so picking one from inside
+               a saved view drops the view as well. The row used to hide the
+               presets while a view was active rather than answer this; hidden
+               controls are a worse answer than a stated rule. */
+            onClick={() => {
+              if (activeId !== null) onResetToDefault();
+              onPresetChange?.(p.key);
+            }}
+            className={cn(
+              tabCls(presetKey === p.key),
+              "border-b-2",
+              presetKey === p.key ? "border-foreground" : "border-transparent"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+
+        {presets && presets.length > 0 && (
+          <span aria-hidden className="mx-2 mb-2 h-5 w-px shrink-0 self-end bg-border" />
+        )}
+
         <button
           type="button"
           onClick={onResetToDefault}
@@ -268,29 +326,24 @@ export function FuelOrdersViewBar({
           {activeId === null && presetKey === null && dirty && <DirtyDot />}
         </button>
 
-        {activeId === null &&
-          presets?.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => onPresetChange?.(p.key)}
-              className={cn(
-                tabCls(presetKey === p.key),
-                "border-b-2",
-                presetKey === p.key ? "border-foreground" : "border-transparent"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-
         {views.map((v) => {
           const isActive = v.id === activeId;
           return (
-            <div key={v.id} className="group/tab flex items-center pr-1">
+            /* The wrapper is the flex child, so the alignment lives here —
+               `tabCls`'s own `self-end` cannot reach past it. */
+            <div key={v.id} className="group/tab flex items-end self-end pr-1">
               <button
                 type="button"
-                onClick={() => onApply(v.id)}
+                /* A VIEW AND A BUSINESS ARE MUTUALLY EXCLUSIVE, because only
+                   one tab in this row can hold the underline and a narrowing
+                   nobody can see is the thing Default exists to prevent. A
+                   saved view does not capture the business — `ViewState` has no
+                   field for it — so taking a view means leaving the business,
+                   the same way picking a business leaves the view. */
+                onClick={() => {
+                  onPresetChange?.(null);
+                  onApply(v.id);
+                }}
                 className={cn(
                   tabCls(isActive),
                   "border-b-2",
@@ -338,7 +391,9 @@ export function FuelOrdersViewBar({
         <button
           type="button"
           onClick={() => setDialog({ mode: "new", name: "" })}
-          className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          /* Not a tab — it has no rule to land, so it keeps 4px off the
+             hairline rather than sitting on it. */
+          className="mb-1 ml-1 inline-flex items-center gap-1 self-end rounded-md px-2 py-1 text-xs text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <Plus className="size-4" /> View
         </button>
@@ -362,10 +417,12 @@ export function FuelOrdersViewBar({
           panel, which would leave the button 4px further right than the toolbar
           controls below it. The extra 4px puts both right edges on the same line.
 
-          `self-end mb-2.5` sets the gap to the hairline. The row is
+          `self-end mb-3` sets the gap to the hairline. The row is
           `items-center`, so the button opts out of centring and measures from the
-          bottom instead; 10px of margin plus the row's own 2px of bottom padding
-          puts exactly 12px between the button's lower edge and the divider.
+          bottom instead; 12px of margin puts exactly 12px between the button's
+          lower edge and the divider. (It was 10 + the row's own 2px of bottom
+          padding, until the tabs took that padding away so their rule could land
+          on the hairline.)
         */}
         {/* THE SCOPE, THEN A RULE, THEN THE ACTIONS. The segments choose WHICH
             list this is; the buttons act on it. A divider between them says
@@ -383,7 +440,7 @@ export function FuelOrdersViewBar({
                  never empty — ignore the deselect so one segment stays chosen. */
               onValueChange={(next) => next && onSegmentChange?.(next)}
               aria-label="Order kind"
-              className="mb-2 ml-auto h-7 self-end"
+              className="mb-2.5 ml-auto h-7 self-end"
             >
               {segments.map((seg) => (
                 <ToggleGroupItem
@@ -397,7 +454,7 @@ export function FuelOrdersViewBar({
             </ToggleGroup>
             <span
               aria-hidden
-              className="mx-2 mb-2.5 h-5 w-px shrink-0 self-end bg-border"
+              className="mx-2 mb-3 h-5 w-px shrink-0 self-end bg-border"
             />
           </>
         )}
@@ -413,7 +470,7 @@ export function FuelOrdersViewBar({
               <Button
                 size="xs"
                 className={cn(
-                  "mb-2.5 self-end rounded-[4px]",
+                  "mb-3 self-end rounded-[4px]",
                   !segments?.length && "ml-auto"
                 )}
               >
@@ -478,7 +535,7 @@ export function FuelOrdersViewBar({
             <Button
               size="xs"
               className={cn(
-                "mb-2.5 self-end rounded-[4px]",
+                "mb-3 self-end rounded-[4px]",
                 !segments?.length && "ml-auto"
               )}
               onClick={onCreateOrder}
@@ -492,7 +549,7 @@ export function FuelOrdersViewBar({
         {/*
           Export, moved down from the page header so both actions for this list
           sit together. `icon-xs` (24px) matches the CTA's height, and the same
-          self-end/mb-2.5 puts them on one baseline.
+          self-end/mb-3 puts them on one baseline.
 
           It is the rightmost item, so it carries the `mr-1` that keeps this row
           aligned with the toolbar below: the row cancels the content layer's
@@ -507,7 +564,7 @@ export function FuelOrdersViewBar({
               aria-label="Export"
               onClick={onExport}
               className={cn(
-                "mr-1 mb-2.5 self-end",
+                "mr-1 mb-3 self-end",
                 // Takes over pushing the right cluster right when there is no CTA.
                 onCreateOrder || createMenu || segments?.length ? "ml-1.5" : "ml-auto"
               )}

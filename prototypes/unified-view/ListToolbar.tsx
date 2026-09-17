@@ -4,6 +4,7 @@ import {
   Columns3,
   GripVertical,
   KanbanSquare,
+  LayoutList,
   Search,
   Table2,
   TextSearch,
@@ -41,6 +42,7 @@ import { DateFilter } from "./DateFilter";
  *
  *   LEFT   320px search (leading glyph, trailing clear ×) · Filters · Group By
  *   RIGHT  [date scope] │ view switch │ search-by-column · show/hide columns
+ *          (on the board that last pair is replaced by the card-fields menu)
  *
  * Both dividers, `gap-3` left / `gap-1` right, the 32px control height, the
  * ghost `icon-sm` tools with tooltips and the `bg-accent` active state on the
@@ -160,6 +162,29 @@ export interface ListToolbarProps<K extends string> {
    * worse than not offering it.
    */
   showGroupBy?: boolean;
+  /**
+   * WHAT IS ON THE CARD — the board's own version of the column menu.
+   *
+   * A card is not a table row: the reader is not choosing columns, they are
+   * choosing which UNITS of the record the card carries, and those units nest.
+   * "Customer Details" is a heading with three lines under it, and somebody who
+   * wants the account but not the street address has to be able to say so.
+   *
+   * It is a SEPARATE control rather than the column menu re-aimed, because one
+   * icon that changes its subject with the view is one icon nobody can read
+   * (`docs/ds/ui/2-rules.md` §10). This one is named for the card, carries its
+   * own icon, and appears only on the board.
+   *
+   * NO ORDERING HERE. A card's units read top to bottom in the order the work
+   * happens — who it is for, when, what, and who is taking it — which is the
+   * card's design, not a preference.
+   */
+  cardFields?: {
+    units: { key: string; label: string; group?: string }[];
+    hidden: Set<string>;
+    onToggle: (key: string) => void;
+    onShowAll: () => void;
+  };
 }
 
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
@@ -221,10 +246,14 @@ export function ListToolbar<K extends string>({
   dateControl,
   groupBy,
   showGroupBy = true,
+  cardFields,
 }: ListToolbarProps<K>) {
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
   const shown = columns.filter((c) => !hiddenColumns.has(c.key)).length;
+  const cardShown = cardFields
+    ? cardFields.units.filter((u) => !cardFields.hidden.has(u.key)).length
+    : 0;
 
   /* THE LIST FOLLOWS THE TABLE. Reading them in a different sequence from the
      columns they stand for would make the menu a second opinion about the
@@ -343,6 +372,22 @@ export function ListToolbar<K extends string>({
           </IconTool>
         )}
 
+        {/* COLUMN TOOLS ARE A TABLE'S TOOLS, AND ONLY A TABLE'S.
+
+            Search by column and Show/Hide columns both name a thing the reader
+            can see: a header to type under, a column to take away. On a board
+            or a map there are no columns on screen, so the controls were either
+            doing nothing or — worse, on the board — quietly redefining
+            themselves to mean the card's units, which is a second meaning for
+            one button that nobody could guess from the icon.
+
+            The board's units did not go away with the button: they have their
+            own control below, named for the card and shown only on the board.
+
+            THIS IS A LIST RULE, NOT A 3PL ONE: it lives here so every screen
+            using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */}
+        {view === "table" && (
+          <>
         <div className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         {/* Search by column — the row, where the table has one. */}
@@ -569,6 +614,80 @@ export function ListToolbar<K extends string>({
             </div>
           </PopoverContent>
         </Popover>
+          </>
+        )}
+
+        {/* WHAT IS ON THE CARD — the board's own control, in the slot the
+            column tools vacate. Same place, different subject, and the subject
+            is written at the top of the menu and spoken by the icon, so the
+            two can never be mistaken for one control that moved. */}
+        {view === "board" && cardFields && (
+          <>
+            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+            <Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Card fields"
+                    >
+                      <LayoutList />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Card fields</TooltipContent>
+              </Tooltip>
+              <PopoverContent align="end" className="w-56 p-1">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Card fields
+                  </span>
+                  <span className="rounded bg-fp-card-1 px-1.5 text-[11px] tabular-nums text-muted-foreground">
+                    {cardShown}/{cardFields.units.length}
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {cardFields.units.map((u) => (
+                    <div
+                      key={u.key}
+                      className="flex items-center rounded-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                    >
+                      <label
+                        className={cn(
+                          "flex flex-1 cursor-pointer items-center gap-2 py-1.5 pr-2 text-sm",
+                          /* THE INDENT IS THE ONLY THING SAYING "UNDER" — same
+                             as the column menu, for the same reason. */
+                          u.group
+                            ? "pl-5 text-[13px] text-muted-foreground"
+                            : "pl-2"
+                        )}
+                      >
+                        <Checkbox
+                          checked={!cardFields.hidden.has(u.key)}
+                          onCheckedChange={() => cardFields.onToggle(u.key)}
+                        />
+                        <span className="flex-1 truncate">{u.label}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <Separator className="my-1" />
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={cardFields.hidden.size === 0}
+                    onClick={cardFields.onShowAll}
+                  >
+                    Show all
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </>
+        )}
       </div>
     </div>
   );

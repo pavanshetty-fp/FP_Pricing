@@ -89,6 +89,18 @@ export interface ComboboxProps {
    * handler stops the event before Command sees it.
    */
   optionAction?: (value: string) => React.ReactNode;
+  /**
+   * A node in the TRIGGER, between the selected value and the chevron.
+   *
+   * For something true of the thing currently chosen rather than of the control
+   * — a status chip on the selected record. It sits inside the field because
+   * that is what it is about: outside, beside the field, it reads as a fact
+   * about the control and stops changing meaning when the selection does.
+   *
+   * It does not shrink, and the value truncates before it, so a long name never
+   * pushes it out of the box.
+   */
+  trailing?: React.ReactNode;
   /** Trigger classes — width lives here, as it does on `SelectTrigger`. */
   className?: string;
   contentClassName?: string;
@@ -114,6 +126,7 @@ export function Combobox({
   onCreate,
   createLabel = (q) => `Create “${q}”`,
   optionAction,
+  trailing,
   className,
   contentClassName,
   align = "start",
@@ -159,6 +172,7 @@ export function Combobox({
           className={cn(selectTriggerClasses, className)}
         >
           <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+          {trailing && <span className="shrink-0">{trailing}</span>}
           <ChevronDownIcon className="size-4 opacity-50" />
         </button>
       </PopoverTrigger>

@@ -141,3 +141,70 @@ ribbons and accents, but **color usage is governed, not free**.
   references for *structure* and *behavior* is encouraged; copying their
   color choices is not.
 - When in doubt: **render neutral, flag a usage-rule gap.** Do not invent.
+
+---
+
+## 10. Lists — a control belongs to the view it acts on
+
+Added 2026-09-16, from the 3PL orders toolbar. Enforced in `ListToolbar`, so
+every screen that uses it inherits the rule rather than restating it.
+
+- **Search by column and Show/Hide columns render only in TABLE view.** Both
+  name something the reader can see — a header to type under, a column to take
+  away. A board shows cards and a map shows pins; neither has a column on
+  screen, so the controls were pointing at nothing.
+- **A control does not quietly change its subject to stay useful.** The orders
+  board had Show/Hide columns re-aiming itself at the *card's units* when the
+  board was active: one icon, two meanings, and no way to tell from the icon
+  which one was live. Hide the control instead. If the other view needs the
+  same kind of choice, it gets its own control, named for its own subject.
+- **The other view usually does need it, so give it its own.** The orders board
+  has **Card fields** (`ListToolbarProps.cardFields`) — same slot, own icon, own
+  heading, board only. Two controls each with one subject, never one control
+  with two. A card's units nest one level, because a card is a heading with
+  lines under it rather than a flat row, and they carry no ordering: the order
+  is the card's design.
+- **The same test for anything else in a list's toolbar.** Group By already
+  follows it — off on the board, because a board is already grouped, by lane
+  (`ListToolbarProps.showGroupBy`). Ask what the control acts on; if the current
+  view does not show that thing, the control is not offered.
+- **Not a disabled state.** A control that is on screen and does nothing teaches
+  people to stop reaching for it. It goes away and comes back with its view.
+
+### Presets before views, in the view bar
+
+Added 2026-09-16. Enforced in `FuelOrdersViewBar`, shared by every list that has
+saved views.
+
+- **Business presets come first, then a rule, then Default and the saved views.**
+  They are two kinds of thing in one row: a preset is *which business this is* —
+  a fact about the work, true before anyone opened the screen — and a view is a
+  narrowing somebody **made** and can rename, update or delete. Ordering the
+  facts first and ruling them off says which half of the row you are in.
+- **Default keeps the underline at rest**, and sits immediately after the rule.
+- **A preset and a saved view are mutually exclusive.** Only one tab in the row
+  is ever underlined, so picking a business drops the active view and applying a
+  view drops the business. A saved view does not capture the business — there is
+  no field for it in the captured state — so the two cannot both be true and
+  only one can be shown.
+
+---
+
+## 11. A status is its word
+
+Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
+
+- **No dot beside a status label.** `text` (now the default) colours the label
+  itself and `soft` tints the whole pill, so in both the dot repeated a tone the
+  chip was already carrying and spent 12px of a control whose whole job is to be
+  small. The word is the status; the colour is a second channel on the same
+  word, not a third element beside it.
+- **The dot is asked for by name, never arrived at.** `variant="dot"` still
+  exists, for the one case where the dot IS the tone — a dense grid where the
+  label stays neutral and a column of coloured words would shout. It is opt-in:
+  nothing renders a dot unless a call site names that variant.
+- **The general form of the rule: nothing is added to a status that the status
+  was not asked for.** Same test as §10 — a control or an ornament that repeats
+  what is already on screen is not neutral, it costs room and reading. If a
+  status needs more emphasis, change the treatment it is rendered in rather than
+  hanging something off it.

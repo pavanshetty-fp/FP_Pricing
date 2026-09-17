@@ -1,5 +1,11 @@
 import * as React from "react";
-import { ArrowDownUp, Check, Info } from "lucide-react";
+import {
+  ArrowDownUp,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -153,7 +159,25 @@ export type BoardCardUnit =
       rows: BoardCardRow[];
       /** Only when more than one row states a number — see `CardRows`. */
       total?: string;
+    }
+  | {
+      kind: "quotes";
+      key: string;
+      heading: string;
+      /** CHEAPEST FIRST — the order is the ranking. See `CardQuotes`. */
+      quotes: BoardCardQuote[];
+      /** Hide the carrier's name, when the reader has switched it off. */
+      nameOff?: boolean;
     };
+
+/** One partner's price for the order: who, how much, and where that places them. */
+export interface BoardCardQuote {
+  vendor: string;
+  /** The total landed cost, already formatted. */
+  total: string;
+  /** 1 is the cheapest. */
+  rank: number;
+}
 
 export interface BoardCardBadge {
   label: string;
@@ -378,6 +402,122 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
   );
 }
 
+/**
+ * WHAT THE PARTNERS HAVE QUOTED, one at a time.
+ *
+ * A card that said "2 accepted — no quote taken yet" while two prices were
+ * sitting in the order was not summarising the order, it was contradicting it.
+ * The prices are the reason anyone opens these cards, so they go ON the card.
+ *
+ * ONE AT A TIME, CHEAPEST FIRST. Every quote stacked would be three rows of
+ * money on a card whose other four units get one apiece, and the answer to
+ * "what will this cost" is a single figure — the best one. The others are a
+ * step away rather than a scroll away, so the reader chooses to compare rather
+ * than being made to.
+ *
+ * THE PLACE IS SPELLED OUT, not left to the order of a list nobody can see the
+ * whole of: on the second card the figure alone cannot say whether it is the
+ * cheap one or the dear one, and "2nd best" can.
+ */
+function rankLabel(rank: number): string {
+  if (rank === 1) return "Best price";
+  const n = rank % 100;
+  const suffix =
+    n >= 11 && n <= 13
+      ? "th"
+      : rank % 10 === 1
+        ? "st"
+        : rank % 10 === 2
+          ? "nd"
+          : rank % 10 === 3
+            ? "rd"
+            : "th";
+  return `${rank}${suffix} best`;
+}
+
+function CardQuotes({
+  heading,
+  quotes,
+  nameOff,
+}: {
+  heading: string;
+  quotes: BoardCardQuote[];
+  nameOff?: boolean;
+}) {
+  const [i, setI] = React.useState(0);
+  const at = Math.min(i, quotes.length - 1);
+  const q = quotes[at];
+  /* THE CARD IS THE BUTTON, so every control on it has to say so and stop.
+     Without this, stepping to the next quote opens the order. */
+  const step = (e: React.SyntheticEvent, d: number) => {
+    e.stopPropagation();
+    setI((v) => Math.max(0, Math.min(quotes.length - 1, v + d)));
+  };
+  const chevron =
+    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <UnitHeading>{heading}</UnitHeading>
+        {quotes.length > 1 && (
+          <span
+            className="flex items-center gap-0.5 text-[10px] tabular-nums text-muted-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="Previous quote"
+              disabled={at === 0}
+              onClick={(e) => step(e, -1)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className={chevron}
+            >
+              <ChevronLeft className="size-3" />
+            </button>
+            {at + 1}/{quotes.length}
+            <button
+              type="button"
+              aria-label="Next quote"
+              disabled={at === quotes.length - 1}
+              onClick={(e) => step(e, 1)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className={chevron}
+            >
+              <ChevronRight className="size-3" />
+            </button>
+          </span>
+        )}
+      </div>
+      {/* THE NAME AND THE FIGURE ON ONE LINE, the placing under the name —
+          the two things being compared sit at the two edges, and the label
+          that qualifies the name hangs off it rather than off the money. */}
+      <div className="flex min-w-0 items-start justify-between gap-2.5">
+        <span className="flex min-w-0 flex-col gap-0.5">
+          {!nameOff && (
+            <span className="truncate text-sm font-semibold text-foreground" title={q.vendor}>
+              {q.vendor}
+            </span>
+          )}
+          <span
+            className={cn(
+              "truncate text-[11px]",
+              q.rank === 1
+                ? "font-medium text-fp-banner-accent-success"
+                : "text-muted-foreground"
+            )}
+          >
+            {rankLabel(q.rank)}
+          </span>
+        </span>
+        <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap text-foreground">
+          {q.total}
+        </span>
+      </div>
+    </>
+  );
+}
+
 function CardAlert({
   status,
   text,
@@ -485,10 +625,18 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           key={u.key}
           className="flex flex-col gap-1.5 border-t border-fp-outline-1 p-3.5"
         >
-          <UnitHeading>{u.heading}</UnitHeading>
-          {u.kind === "stack" && <CardStack lines={u.lines} />}
-          {u.kind === "inline" && <CardInline parts={u.parts} />}
-          {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
+          {/* The quotes unit draws its own heading row — the stepper sits
+              on the line with the label, where a unit's controls belong. */}
+          {u.kind === "quotes" ? (
+            <CardQuotes heading={u.heading} quotes={u.quotes} nameOff={u.nameOff} />
+          ) : (
+            <>
+              <UnitHeading>{u.heading}</UnitHeading>
+              {u.kind === "stack" && <CardStack lines={u.lines} />}
+              {u.kind === "inline" && <CardInline parts={u.parts} />}
+              {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
+            </>
+          )}
         </div>
       ))}
 

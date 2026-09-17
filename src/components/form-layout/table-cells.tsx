@@ -200,10 +200,26 @@ export function TableCellInput({
   */
   const [typed, setTyped] = React.useState<string | null>(null);
   const shown = typed ?? value;
+  /*
+    A CURRENCY MARK BELONGS TO ITS NUMBER, not to the cell.
+
+    A numeric cell right-aligns its figure and the prefix was pinned to the left
+    edge, so "$" and "3.57" sat at opposite ends of a 132px column with nothing
+    between them — the mark read as a column header for the cell rather than as
+    part of the amount. Right-align the pair instead and close the gap to 4px:
+    the "$" travels with the first digit however long the number gets.
+
+    `field-sizing-content` is what lets the input shrink to its own text so the
+    prefix can sit against it; the LABEL is still the full-cell click target, so
+    nothing is harder to hit. Only `numeric` cells with a prefix change — a text
+    cell's input still fills the width, which is where typing should start.
+  */
+  const moneyish = Boolean(numeric && prefix);
   return (
     <label
       className={cn(
-        "absolute inset-0 flex cursor-text items-center gap-1.5 px-3 transition-colors",
+        "absolute inset-0 flex cursor-text items-center px-3 transition-colors",
+        moneyish ? "justify-end gap-1" : "gap-1.5",
         "hover:bg-accent",
         "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
         disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
@@ -224,9 +240,10 @@ export function TableCellInput({
         disabled={disabled}
         aria-label={ariaLabel}
         className={cn(
-          "h-full w-full min-w-0 bg-transparent text-sm text-foreground outline-none",
+          "h-full min-w-0 bg-transparent text-sm text-foreground outline-none",
           "placeholder:text-muted-foreground disabled:cursor-not-allowed",
-          numeric && "text-right tabular-nums"
+          numeric && "text-right tabular-nums",
+          moneyish ? "w-auto field-sizing-content" : "w-full"
         )}
       />
       {suffix && (

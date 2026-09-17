@@ -21,7 +21,7 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { BannerInline } from "@/components/ui/banner";
+import { BannerCallout } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +54,7 @@ import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { VendorQuoteSheet } from "./VendorQuoteSheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -114,7 +115,6 @@ import {
   SHIP_TO_SITES,
   loadOptions,
   isAllTopOff,
-  quoteBaseTotal,
   quoteOrderCharges,
   quoteTotal,
   quoteLineTotal,
@@ -124,7 +124,7 @@ import {
   totalGal,
   type BrokerOrder,
   type VendorQuote,
-  type QuoteLine,
+  type CustomerCharges,
   type BrokerOrderType,
   type BrokerStatus,
   type OrderLine,
@@ -421,6 +421,8 @@ export interface BrokerOrderDraft {
    * nowhere to put it.
    */
   quotes: VendorQuote[];
+  /** Order-level charges the broker bills the customer — see `CustomerCharges`. */
+  customerCharges: CustomerCharges;
   quoteRequested: boolean;
   /**
    * Which INVITED partners are being asked for a price. Selection, not the
@@ -442,7 +444,6 @@ export interface BrokerOrderDraft {
   /** §6's per-order kill switch for vendor email. */
   notifyVendor: boolean;
   /** Who may read the attachments and notes on this order. */
-  visibility: "Public" | "Private";
   /** Never sent to the vendor or the customer. */
   internalNote: string;
   /** The whole load is a winter blend — one flag for the order, not per line. */
@@ -498,6 +499,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     acceptedVendorIds: [...o.acceptedVendorIds],
     // Copied deeply — editing a quote line must not mutate the row behind it.
     quotes: o.quotes.map((q) => ({ ...q, lines: q.lines.map((l) => ({ ...l })) })),
+    customerCharges: { ...o.customerCharges },
     quoteRequested: o.quoteRequested,
     /* An existing order predates the split, so it reads as Brokerage — every
        one of them went out to a vendor. */
@@ -507,7 +509,6 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     salesperson: o.salesperson,
     tags: [],
     notifyVendor: true,
-    visibility: "Public",
     internalNote: "",
     winterAdditive: false,
     instructions: o.instructions,
@@ -563,6 +564,7 @@ function emptyDraft(): BrokerOrderDraft {
     sentVendorIds: [],
     acceptedVendorIds: [],
     quotes: [],
+    customerCharges: { deliveryFee: 0 },
     quoteRequested: false,
     jobType: "Brokerage",
     primaryPoc: "",
@@ -572,7 +574,6 @@ function emptyDraft(): BrokerOrderDraft {
     /* ON by default — suppressing every email is the deliberate act, so it is
        the one that costs a click. Same rule the movement sheet follows. */
     notifyVendor: true,
-    visibility: "Public",
     internalNote: "",
     winterAdditive: false,
     instructions: "",
@@ -645,6 +646,9 @@ function VendorRow({ id }: { id: string }) {
   );
 }
 
+/** The Vendor section's anchor — see `focus` below. */
+const VENDOR_SECTION_ID = "broker-order-vendor-section";
+
 export interface BrokerOrderSheetProps {
   order: BrokerOrder | null;
   mode?: "edit" | "create";
@@ -654,6 +658,12 @@ export interface BrokerOrderSheetProps {
   onCreate?: (draft: BrokerOrderDraft) => void;
   customers: string[];
   shipTos: string[];
+  /**
+   * OPEN IT AT THE PART THE READER PRESSED. A card's "review pricing" names the
+   * vendor table; landing at the top of a sheet that is four screens long and
+   * leaving them to find it is answering a different request.
+   */
+  focus?: "vendor" | null;
 }
 
 /**
@@ -663,6 +673,103 @@ export interface BrokerOrderSheetProps {
  * same way and explained by the same sentence — written out three times, the
  * next one added would have been three edits and the one after that four.
  */
+/**
+ * A MONEY FIELD THAT LOOKS LIKE A FIELD.
+ *
+ * The pricing unit's editable figures sit in running text — "1,050 gal × $3.205
+ * /gal" — and an underline alone was not enough to say they could be typed in.
+ * A bordered box is the DS's own answer for that, and it is the same box the
+ * tables use, so a reader who has met one has met all of them.
+ *
+ * It sizes to its content rather than to a column: the row is a sentence, and a
+ * 120px field with four characters in it puts a hole in the middle of it.
+ */
+function BoxMoney({
+  value,
+  onChange,
+  dp = 2,
+  "aria-label": ariaLabel,
+}: {
+  value: number | undefined;
+  onChange: (v: number) => void;
+  /** Decimal places the placeholder suggests — 3 for a per-gallon rate. */
+  dp?: number;
+  "aria-label": string;
+}) {
+  const [typed, setTyped] = React.useState<string | null>(null);
+  return (
+    <label className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-input bg-transparent px-2 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
+      <span className="text-xs text-muted-foreground">$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={ariaLabel}
+        value={typed ?? (value == null ? "" : String(value))}
+        placeholder={(0).toFixed(dp)}
+        onChange={(e) => {
+          setTyped(e.target.value);
+          onChange(num(e.target.value));
+        }}
+        onBlur={() => setTyped(null)}
+        className="w-auto min-w-10 bg-transparent text-sm tabular-nums text-foreground outline-none field-sizing-content placeholder:text-muted-foreground"
+      />
+    </label>
+  );
+}
+
+/**
+ * ONE ROW OF A PRICING COLUMN: what it is, how it was worked out, what it comes
+ * to. The middle is either a typed field or the sum stated in words, and the
+ * amount is always last — so the two columns' amounts line up down one edge
+ * whether the row is editable or not.
+ */
+function ChargeRow({
+  label,
+  hint,
+  total,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  total: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    /* A FIXED LABEL COLUMN, so every field in the column starts on one edge.
+       Label and hint are different lengths on every row — "Margin · 1,050 gal ×"
+       against "Delivery fee" — and left to themselves the boxes stepped in and
+       out down the column, which is the one thing a column of fields must not
+       do. The pair is boxed at a fixed width and the field begins after it.
+
+       NO RULE UNDER THE LAST ROW. The column's total draws its own `border-t`
+       directly beneath, so the two stacked into a double line at the foot of
+       both columns — the one thing on this unit that was drawn twice. */
+    <div className="flex items-center gap-2 border-b border-border py-2.5 last:border-b-0">
+      {/* THE FIXED BOX IS ONLY FOR ROWS THAT HAVE A FIELD. Its whole job is to
+          start every input on one edge, and a read-only row has no input to
+          line up — boxed anyway, a long working ("1,050 gal × $3.205 /gal")
+          squeezed the label next to it down to "P…". */}
+      <span
+        className={cn(
+          "flex items-baseline gap-1.5",
+          children ? "w-[148px] shrink-0" : "min-w-0"
+        )}
+      >
+        <dt className="min-w-0 truncate text-sm text-foreground">{label}</dt>
+        {hint && (
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {hint}
+          </span>
+        )}
+      </span>
+      {children}
+      <dd className="ml-auto pl-2 text-sm tabular-nums text-foreground">
+        {total}
+      </dd>
+    </div>
+  );
+}
+
 const ORDER_CHARGES = [
   { key: "freight", label: "Freight" },
   { key: "fees", label: "Fees" },
@@ -871,6 +978,7 @@ export function BrokerOrderSheet({
   onCreate,
   customers,
   shipTos,
+  focus,
 }: BrokerOrderSheetProps) {
   const [draft, setDraft] = React.useState<BrokerOrderDraft | null>(null);
   /** Ticked partner rows. UI state, not the order's — see `selectedRows`. */
@@ -878,7 +986,50 @@ export function BrokerOrderSheet({
   const [customOpen, setCustomOpen] = React.useState(false);
   /** Declared above the early return, because a hook cannot be conditional. */
   const [shownQuoteId, setShownQuote] = React.useState<string | null>(null);
+  /* THE QUOTE SHEET'S SUBJECT, and whether the reader is reading one or
+     writing one. `review` is the partner's own quote; `draft` is the broker
+     writing it down after a call, which is the only way a price gets in here
+     without the partner's app. Up here with the other sheet state, because the
+     component returns early below and a hook cannot sit past that. */
+  const [quoteSheet, setQuoteSheet] = React.useState<{
+    vendorId: string;
+    mode: "review" | "draft";
+  } | null>(null);
   const creating = mode === "create";
+
+  /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. It waits a
+     frame because the section does not exist until the sheet has rendered, and
+     it scrolls the SECTION rather than the sheet's top so the heading lands
+     under the stage bar rather than behind it. */
+  React.useEffect(() => {
+    if (!open || focus !== "vendor") return;
+    /* IT WAITS FOR THE SECTION TO ARRIVE. The sheet mounts into a portal and
+       the draft is built in an effect of its own, so on the commit this first
+       runs there is nothing on screen to scroll to. */
+    let tries = 0;
+    let settle = 0;
+    const timer = window.setInterval(() => {
+      const el = document.getElementById(VENDOR_SECTION_ID);
+      if (el) {
+        window.clearInterval(timer);
+        /* THE TRAVEL IS THE POINT. Landing on the vendor table with no move
+           makes the sheet look like it opens at a strange place, and the
+           reader has to work out what they are looking at and what is above
+           it. Scrolling there says both: this is an order, and the part you
+           asked for is here. The wait lets the sheet's own opening finish
+           first — two animations at once read as one thing stuttering. */
+        settle = window.setTimeout(() => {
+          el.scrollIntoView({ block: "start", behavior: "smooth" });
+        }, 260);
+      } else if (tries++ > 40) {
+        window.clearInterval(timer);
+      }
+    }, 25);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(settle);
+    };
+  }, [open, focus, order?.id]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1208,7 +1359,7 @@ export function BrokerOrderSheet({
 
   const announceAccepted = (d: BrokerOrderDraft, vendorId: string) => {
     if (d.status !== "Completed") {
-      toast.success(`Quote accepted — ${vendorById(vendorId)?.name}`, {
+      toast.success(`Order confirmed — ${vendorById(vendorId)?.name}`, {
         description: "Pricing is settled. Moved to Completed.",
       });
     }
@@ -1220,6 +1371,56 @@ export function BrokerOrderSheet({
       announceAccepted(d, vendorId);
       return draftAccepting(d, vendorId);
     });
+
+  /* AWARDING THE ORDER TO ONE PARTNER, from that partner's own row.
+     It sets who holds the order and moves a quoting order into Assigned —
+     somebody is now carrying it — and it stops there. What it does NOT do is
+     settle the pricing: that is the footer's Confirmed, and keeping the two
+     apart is what lets a broker award, look again, and award someone else. */
+  const awardFor = (vendorId: string) =>
+    setDraft((d) => {
+      if (!d) return d;
+      if (d.vendorId === vendorId) return d;
+      toast.success(`${vendorById(vendorId)?.name ?? "Vendor"} awarded`, {
+        description: "Confirm the order to settle the pricing.",
+      });
+      return {
+        ...d,
+        vendorId,
+        status: d.status === "Quoting" ? "Assigned" : d.status,
+        acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
+          ? d.acceptedVendorIds
+          : [...d.acceptedVendorIds, vendorId],
+      };
+    });
+
+  /* A QUOTE PRICES THE ORDER IT WAS SENT. Add an asset after the partners have
+     replied and their figures are answers to a different question — the lines
+     they priced are not the lines that will be delivered. The comparison is by
+     asset, because that is what a quote line is keyed on: an order line with no
+     line in the quote is a line nobody has been asked about.
+
+     IT IS NOT AN ERROR STATE. Nothing is wrong with the quote; it is simply out
+     of date, and the only thing that fixes it is the partner being told. */
+  const quoteCoversOrder = (q: VendorQuote) =>
+    !draft.lines.some(
+      (l) => l.asset && !q.lines.some((ql) => ql.asset === l.asset)
+    );
+  const staleQuoteIds = quotes
+    .filter((q) => !quoteCoversOrder(q))
+    .map((q) => q.vendorId);
+  const hasStaleQuotes = staleQuoteIds.length > 0;
+
+  /* RESENDING IS A NOTIFICATION, NOT A STATE CHANGE. The invitation already
+     went and was already accepted; what has changed is the order, so what goes
+     out is the order again. The quote stays on the row until a new one
+     replaces it — taking it away would leave the reader with no idea what the
+     partner had said before the change. */
+  const resendInvitation = (vendorId: string) =>
+    toast.success(
+      `Updated details sent to ${vendorById(vendorId)?.name ?? "vendor"}`,
+      { description: "Waiting on a revised quotation." }
+    );
 
   /* THE TERMINAL EXIT. Available from any live stage and from none of the dead
      ones — an order already cancelled or already through accounting has nothing
@@ -1272,9 +1473,62 @@ export function BrokerOrderSheet({
   /* ACKNOWLEDGE AND ACCEPT IN ONE, for the partner whose price came off a call.
      It shows that partner's quote, because the numbers are the reason anyone
      does this. */
-  const acknowledgeAndAccept = (vendorId: string) => {
+  /** Opens the sheet in draft, seeding an empty quote if there is none yet. */
+  const openQuoteDraft = (vendorId: string) => {
+    setDraft((d) => {
+      if (!d || d.quotes.some((q) => q.vendorId === vendorId)) return d;
+      return {
+        ...d,
+        /* A PARTNER HAS TO HAVE TAKEN THE ORDER TO PRICE IT, and writing the
+           price down on its behalf is the broker saying it did. */
+        acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
+          ? d.acceptedVendorIds
+          : [...d.acceptedVendorIds, vendorId],
+        quotes: [
+          ...d.quotes,
+          {
+            vendorId,
+            lines: d.lines
+              .filter((l) => l.asset)
+              .map((l) => ({ asset: l.asset, ratePerGal: 0, surcharge: 0 })),
+            freight: 0,
+            fees: 0,
+            taxes: 0,
+          },
+        ],
+      };
+    });
+    setQuoteSheet({ vendorId, mode: "draft" });
+  };
+
+  const putQuote = (next: VendorQuote) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            quotes: d.quotes.map((q) =>
+              q.vendorId === next.vendorId ? next : q
+            ),
+          }
+        : d
+    );
+
+  /** Accepting from the quote sheet is accepting the order — same act. */
+  const acceptFromQuoteSheet = (vendorId: string) => {
     acceptFor(vendorId);
     setShownQuote(vendorId);
+    setQuoteSheet(null);
+  };
+
+  /** Rejecting drops the partner's price and leaves them on the order. */
+  const rejectQuote = (vendorId: string) => {
+    setDraft((d) =>
+      d ? { ...d, quotes: d.quotes.filter((q) => q.vendorId !== vendorId) } : d
+    );
+    setQuoteSheet(null);
+    toast.success(`Quote rejected — ${vendorById(vendorId)?.name}`, {
+      description: "They stay on the order and can send another.",
+    });
   };
   const advance = (status: BrokerStatus) =>
     setDraft((d) => {
@@ -1302,70 +1556,29 @@ export function BrokerOrderSheet({
         : false;
   const selectAllPartners = (on: boolean) =>
     setSelected(on ? new Set(invitedIds) : new Set());
-  /** Pricing only exists once it has been asked for and sent out. */
-  const showQuoteCol = draft.quoteRequested && draft.status === "Quoting";
+  /* `showQuoteCol` is gone. The cost column used to appear only while the
+     order was in Quoting with a quote requested, so the table changed shape
+     under the reader as partners replied. It is always a column now; the cell
+     is an em-dash until the partner prices it. */
 
   /* Inviting stays available until somebody has ACCEPTED — that is the point
      at which the order has a partner and more invitations mean nothing. */
-  const accepted = Boolean(draft.vendorId);
+  /* AWARDED IS NOT CONFIRMED. Awarding is the broker choosing which partner
+     takes the order — one click on that partner's row; confirming is settling
+     it, which is the footer's act. They used to be the same click, so there
+     was no state in which a choice had been made and could still be changed. */
+  const awarded = Boolean(draft.vendorId);
+  const confirmed =
+    awarded && draft.status !== "Quoting" && draft.status !== "Assigned";
 
   /* TYPING INTO AN EMPTY QUOTE CREATES IT. A partner that has accepted but not
      priced still has a row to fill in — the broker takes the price off a call
      and types it — so the first keystroke makes the quote and the line it lands
      on rather than requiring an "add quote" step first. */
-  /** A quote that exists but says nothing yet — every figure zero, not absent,
-   *  so a typed freight does not have to invent the rest of the shape. */
-  const blankQuote = (vendorId: string): VendorQuote => ({
-    vendorId,
-    lines: [],
-    freight: 0,
-    fees: 0,
-    taxes: 0,
-  });
-
-  /** Freight, fees and taxes — one set per quote, not per line. */
-  const setQuoteCharge = (
-    vendorId: string,
-    patch: Partial<Pick<VendorQuote, "freight" | "fees" | "taxes">>
-  ) =>
-    setDraft((d) => {
-      if (!d) return d;
-      const has = d.quotes.some((q) => q.vendorId === vendorId);
-      const quotes = has ? d.quotes : [...d.quotes, blankQuote(vendorId)];
-      return {
-        ...d,
-        quotes: quotes.map((q) =>
-          q.vendorId === vendorId ? { ...q, ...patch } : q
-        ),
-      };
-    });
-
-  const setQuoteLine = (vendorId: string, asset: string, patch: Partial<QuoteLine>) =>
-    setDraft((d) => {
-      if (!d) return d;
-      const blank = (a: string): QuoteLine => ({
-        asset: a,
-        ratePerGal: 0,
-        surcharge: 0,
-      });
-      const has = d.quotes.some((q) => q.vendorId === vendorId);
-      const quotes = has
-        ? d.quotes
-        : [...d.quotes, blankQuote(vendorId)];
-      return {
-        ...d,
-        quotes: quotes.map((q) =>
-          q.vendorId !== vendorId
-            ? q
-            : {
-                ...q,
-                lines: q.lines.some((l) => l.asset === asset)
-                  ? q.lines.map((l) => (l.asset === asset ? { ...l, ...patch } : l))
-                  : [...q.lines, { ...blank(asset), ...patch }],
-              }
-        ),
-      };
-    });
+  /* THE QUOTE IS THE PARTNER'S, AND IS EDITED IN ITS OWN SHEET. `blankQuote`,
+     `setQuoteCharge` and `setQuoteLine` lived here to serve an editable Vendor
+     Pricing table; that table is gone, and `VendorQuoteSheet` owns writing a
+     quote now — one place a price can be typed, so two cannot disagree. */
 
   /* EVERY PARTNER THAT ACCEPTED gets a row, priced or not — the table is the
      list of who could take this order, and a partner missing from it because it
@@ -1436,7 +1649,21 @@ export function BrokerOrderSheet({
              over. The lifecycle rungs below already handle it — this just lets
              them be reached. */
           draft.vendorId
-          ? draft.status === "Completed"
+          ? /* AWARDED, NOT YET SETTLED. The award named the partner; this
+               settles what they charge and what the customer pays, which is
+               what used to happen in the same click as the award. */
+            !confirmed
+            ? {
+                label: "Confirmed",
+                onSelect: () => {
+                  const id = draft.vendorId!;
+                  const next = draftAccepting(draft, id);
+                  announceAccepted(draft, id);
+                  setDraft(next);
+                  if (order) onSave(order, next);
+                },
+              }
+            : draft.status === "Completed"
             ? {
                 label: "Move to Verified",
                 onSelect: () => advance("Verified"),
@@ -1459,18 +1686,17 @@ export function BrokerOrderSheet({
               label: "Request a quote",
               onSelect: () => set("quoteRequested", true),
             }
-          : quotes.length > 0 && !draft.vendorId && shownVendorId
+          : quotes.length > 0 && !draft.vendorId
             ? {
-                /* ACCEPT, NOT "REVIEW". On one page the quote is already in
-                   front of you — sending the reader to look at what they are
-                   looking at is not an act. */
-                label: "Accept quote",
-                onSelect: () => {
-                  const next = draftAccepting(draft, shownVendorId);
-                  announceAccepted(draft, shownVendorId);
-                  setDraft(next);
-                  if (order) onSave(order, next);
-                },
+                /* THE SAME BUTTON, WAITING FOR THE CHOICE. It used to accept
+                   whichever quote the sheet happened to be showing, which made
+                   the footer decide something the reader had not — with two
+                   prices in, the footer picked one. The choice is a click on a
+                   partner's own row now, and until it is made this names what
+                   pressing it will do and says why it cannot yet. */
+                label: "Confirmed",
+                onSelect: () => {},
+                why: "Award a partner in the table above.",
               }
             : !draft.vendorId
               ? {
@@ -1509,10 +1735,8 @@ export function BrokerOrderSheet({
         : nextAct.why;
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
   /** The base on its own, so the table can show it whether or not it counts. */
-  const shownBase = shownQuote ? quoteBaseTotal(shownQuote, draft.lines) : 0;
   /** Freight + fees + taxes, which belong to no line. */
   const shownCharges = shownQuote ? quoteOrderCharges(shownQuote) : 0;
-  const shownMargin = revenue - shownCost;
 
   /* ── THE WORKING BEHIND EACH SUMMARY FIGURE ──
      One entry per line, plus the charges that belong to no line. Built from
@@ -1564,41 +1788,214 @@ export function BrokerOrderSheet({
     computes the figures they show. Defined next to that arithmetic, they can
     be read against it.
   */
+  /* WHO PAYS THE LOAD'S FEES AND TAXES depends on who bought the product.
+     With a load order it is already the broker's, so the partner only hauls it
+     and those two are billed through to the customer; without one the partner
+     sourced it and they are the partner's own. Stated once, here, so the two
+     columns cannot both claim the same money. */
+  const passThrough = hasLoadOrder && shownQuote
+    ? shownQuote.fees + shownQuote.taxes
+    : 0;
+  const carrierCharges = ORDER_CHARGES.filter(
+    (c) => !(hasLoadOrder && (c.key === "fees" || c.key === "taxes"))
+  );
+  const productTotal = draft.lines.reduce(
+    (sum, l) => sum + billableGal(l) * (l.pricePerGal ?? 0),
+    0
+  );
+  const carrierTotal = shownCost - passThrough;
+  const billed = customerTotal(draft.lines, draft.customerCharges, passThrough);
+  const margin = billed - carrierTotal;
+
+  /** Where the order stands with the partner whose cost is on screen. */
+  const partnerStanding = (
+    <StatusChip
+      tone={
+        draft.vendorId === shownVendorId
+          ? "success"
+          : draft.vendorId
+            ? "neutral"
+            : "processing"
+      }
+      variant="soft"
+    >
+      {draft.vendorId === shownVendorId
+        ? "Awarded"
+        : draft.vendorId
+          ? "Not awarded"
+          : "Pending award"}
+    </StatusChip>
+  );
+
+  const setCharge = (patch: Partial<CustomerCharges>) =>
+    setDraft((d) =>
+      d ? { ...d, customerCharges: { ...d.customerCharges, ...patch } } : d
+    );
+
   const pricingSections = (
-    <>
-      <BannerInline
-        status="info"
-        split
-        /* The column is a flex container: a fixed-height child still gets
-           flex-shrink applied and the 32px bar was rendering at 20. */
-        className="shrink-0"
-        title={hasLoadOrder ? "Load Order Created" : "No Load Order"}
-      >
-        {hasLoadOrder
-          ? "The vendor charges freight, fees and taxes only — the base price is yours."
-          : "The charges will be set by the vendor."}
-      </BannerInline>
-      {shownVendorId && (
-        <SheetSection
-          title="Vendor Pricing"
-          flush
-          /* WHOSE PRICE THIS IS. One partner needs no control — a select of
-             one is a question with an answer already in it — so it states
-             the name and whether they hold the order. More than one and it
-             becomes a picker, because the table below can only show one. */
-          /* IT SAYS WHAT THE LIST IS. A bare dropdown of company names on a
-             heading row is a question nobody asked: these are the delivery
-             partners that said yes to this order, and the control picks
-             whose price the table below shows. Unlabelled, the only way to
-             find that out was to open it. */
-          action={
-            quotingPartners.length > 1 ? (
-              <span className="flex items-center gap-2">
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  Quote from
-                </span>
+    <SheetSection
+      title="Pricing"
+      note={
+        <SheetSectionNote label="About pricing">
+          The product runs across the top — it is the same gallons at the same
+          rate whoever carries them. Under it, what the broker adds to the
+          customer's bill on the left and what the partner charges on the right,
+          with the margin between them underneath.
+          <span className="mt-1.5 block">
+            {hasLoadOrder
+              ? "This order has a load order, so the product is the broker's: the partner charges freight only, and the load's fees and taxes are billed through to the customer."
+              : "With no load order the partner sources the product too, so its fees and taxes are its own."}
+          </span>
+        </SheetSectionNote>
+      }
+    >
+      {/* THREE COLUMNS, ONE UNIT: what was ordered, what the customer is
+          billed for it, what the partner charges to move it — left to right in
+          the order the money goes. The billing and the cost were two stacked
+          tables a screen apart, and the only question anyone asks of them — is
+          there anything left between the two — could not be asked without
+          scrolling between them.
+
+          `items-stretch` + `mt-auto` on each total is what puts the totals on
+          ONE LINE however uneven the rows above them are: a total that floats
+          halfway up its column is a total of nothing in particular. */}
+      {/* A RULE BETWEEN THE COLUMNS, not a gap alone. Three columns of rows
+          that all look alike need saying apart, and at the widths this unit now
+          has the eye was reading straight across from one column's label to the
+          next column's figure. The gutter is split either side of the line —
+          24px, rule, 24px — so the rule sits in the middle of the space rather
+          than hugging the column to its right.
+
+          ONLY WHERE THERE ARE COLUMNS. Below `lg` the three stack, and a
+          vertical rule between blocks that are one above the other would be
+          pointing at nothing; the row gap does that job there. */}
+      <div className="grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-3">
+        {/* ── ORDER DETAILS ────────────────────────────────────────────── */}
+        <div className="flex min-w-0 flex-col lg:pr-6">
+          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Order details
+          </p>
+          <dl className="flex flex-col">
+            {draft.lines.filter((l) => l.asset).length === 0 && (
+              <p className="py-2.5 text-sm text-muted-foreground">
+                No lines on this order yet.
+              </p>
+            )}
+            {/* THE PRODUCT IS NEITHER SIDE'S — the same gallons at the same
+                rate whoever carries them — so it is stated once, here, rather
+                than in both of the columns beside it where the two could come
+                to disagree. The rate is typed here for the same reason: one
+                place, and both totals read from it. */}
+            {draft.lines.map((l, i) =>
+              !l.asset ? null : (
+                <ChargeRow
+                  key={i}
+                  label={l.product}
+                  hint={`${billableGal(l).toLocaleString()} gal ×`}
+                  total={money(billableGal(l) * (l.pricePerGal ?? 0))}
+                >
+                  <BoxMoney
+                    value={l.pricePerGal}
+                    dp={3}
+                    aria-label={`Product rate per gallon for ${l.asset}`}
+                    onChange={(v) => setLine(i, { pricePerGal: v })}
+                  />
+                </ChargeRow>
+              )
+            )}
+          </dl>
+          <div className="mt-auto flex items-baseline justify-between gap-3 border-t border-border pt-3">
+            <span className="text-sm font-medium text-foreground">Product</span>
+            <span className="text-base font-semibold tabular-nums text-foreground">
+              {money(productTotal)}
+            </span>
+          </div>
+        </div>
+
+        {/* ── CUSTOMER BILLING ─────────────────────────────────────────── */}
+        <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:px-6">
+          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Customer billing
+          </p>
+          <dl className="flex flex-col">
+            {/* MARGIN IS PER GALLON AND PER LINE, because it is a markup on
+                the product; the fees under it are charged once for the run. */}
+            {draft.lines.map((l, i) =>
+              !l.asset ? null : (
+                <ChargeRow
+                  key={i}
+                  label={
+                    draft.lines.filter((x) => x.asset).length > 1
+                      ? `Margin — ${l.product}`
+                      : "Margin"
+                  }
+                  hint={`${billableGal(l).toLocaleString()} gal × `}
+                  total={money(billableGal(l) * (l.marginPerGal ?? 0))}
+                >
+                  <BoxMoney
+                    value={l.marginPerGal}
+                    dp={3}
+                    aria-label={`Margin per gallon for ${l.asset}`}
+                    onChange={(v) => setLine(i, { marginPerGal: v })}
+                  />
+                </ChargeRow>
+              )
+            )}
+            <ChargeRow
+              label="Delivery fee"
+              total={money(draft.customerCharges.deliveryFee)}
+            >
+              <BoxMoney
+                value={draft.customerCharges.deliveryFee}
+                aria-label="Delivery fee"
+                onChange={(v) => setCharge({ deliveryFee: v })}
+              />
+            </ChargeRow>
+            {/* PASSED THROUGH, NOT RE-TYPED. These are the partner's own
+                figures, moved to this side because the load order is the
+                broker's — so they are read-only here and absent from the
+                partner's total, rather than charged twice. */}
+            {hasLoadOrder &&
+              shownQuote &&
+              ORDER_CHARGES.filter(
+                (c) => c.key === "fees" || c.key === "taxes"
+              ).map((c) => (
+                <ChargeRow
+                  key={c.key}
+                  label={c.label}
+                  hint="On the load order"
+                  total={money(shownQuote[c.key])}
+                />
+              ))}
+          </dl>
+          <div className="mt-auto flex items-baseline justify-between gap-3 border-t border-border pt-3">
+            <span className="text-sm font-medium text-foreground">
+              Customer total
+            </span>
+            <span className="text-base font-semibold tabular-nums text-foreground">
+              {money(billed)}
+            </span>
+          </div>
+        </div>
+
+        {/* ── CARRIER COST ─────────────────────────────────────────────── */}
+        <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:pl-6">
+          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Carrier cost
+          </p>
+
+          {/* WHOSE PRICE THIS IS, and the way to read another. One partner
+              needs no control — a select of one is a question with its answer
+              already in it — so it states the name instead. */}
+          {/* THE STANDING RIDES INSIDE THE FIELD, next to the name. It was a
+              chip on the column's heading row, which read as a fact about
+              "carrier cost" in general; it is a fact about THIS PARTNER — a
+              cost from someone unawarded is an estimate — so it belongs in the
+              box that names them, and it changes when the picker does. */}
+          <div className="mb-3">
+            {quotingPartners.length > 1 ? (
               <Combobox
-                className="h-8 w-64"
+                className="h-8 w-full"
                 value={shownVendorId}
                 onValueChange={setShownQuote}
                 options={quotingPartners.map((vid) => ({
@@ -1608,339 +2005,141 @@ export function BrokerOrderSheet({
                     draft.vendorId === vid
                       ? "Holds this order"
                       : draft.vendorId
-                        ? "On hold"
+                        ? "Not awarded"
                         : quoteOf(vid)
-                          ? "Priced"
-                          : "Not priced",
+                          ? "Quotation shared"
+                          : "No quotation",
                 }))}
-                searchPlaceholder="Search vendors…"
+                searchPlaceholder="Search partners…"
+                trailing={partnerStanding}
               />
-              </span>
             ) : (
-              <span className="text-xs text-muted-foreground">
-                Quote from{" "}
-                <span className="text-foreground">
-                  {vendorById(shownVendorId)?.name}
+              /* ONE PARTNER NEEDS NO PICKER — a select of one is a question
+                 with its answer already in it — but it still needs the box, so
+                 the standing sits where it does on every other order. */
+              <div className="flex h-8 w-full items-center gap-2 rounded-md border border-input px-3">
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                  {vendorById(shownVendorId)?.name ?? "No partner yet"}
                 </span>
-                {draft.vendorId === shownVendorId && " · holds this order"}
-              </span>
-            )
-          }
-          note={
-            <SheetSectionNote label="About vendor pricing">
-              What {vendorById(shownVendorId)?.name ?? "the partner"} charges
-              to move this order. TLC is the total landing cost — delivered
-              gallons times rate plus surcharge — because a low rate with a
-              high surcharge is not a cheap quote.
-              <span className="mt-1.5 block">
-                Typed here as well as received: a partner that gave its price
-                on a call still has a price. Delivered gallons are the
-                exception — typed once, in Customer Pricing below.
-              </span>
-            </SheetSectionNote>
-          }
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] table-fixed border-collapse">
-              <colgroup>
-                <col />
-                <col className="w-[22%]" />
-                <col className="w-[112px]" />
-                <col className="w-[132px]" />
-                <col className="w-[124px]" />
-                <col className="w-[128px]" />
-                <col className="w-[140px]" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-border bg-fp-table-header">
-                  <th className="px-3 py-2.5 text-left">
-                    <TableRequiredLabel>Asset name</TableRequiredLabel>
-                  </th>
-                  <th className="px-3 py-2.5 text-left">
-                    <TableRequiredLabel>Product</TableRequiredLabel>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <TableRequiredLabel>Delivered gal (D)</TableRequiredLabel>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <TableRequiredLabel>Surcharge (C)</TableRequiredLabel>
-                  </th>
-                  <th
-                    className="px-3 py-2.5 text-right"
-                    title="Total landing cost — delivered gallons x (rate + surcharge)"
-                  >
-                    <TableRequiredLabel>TLC D×(B+C)</TableRequiredLabel>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.lines.map((l, i) => {
-                  const ql = shownQuote?.lines.find((x) => x.asset === l.asset);
-                  const put = (patch: Partial<QuoteLine>) =>
-                    setQuoteLine(shownVendorId, l.asset, patch);
-                  return (
-                    <tr
-                      key={i}
-                      className="h-12 border-b border-border last:border-b-0"
-                    >
-                      <td className="truncate px-3 text-sm text-foreground">
-                        {l.asset || "—"}
-                      </td>
-                      <td className="truncate px-3 text-sm text-muted-foreground">
-                        {l.product}
-                      </td>
-                      <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                        {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
-                      </td>
-                      {/* READ-ONLY HERE. The same figure is typed in the
-                          customer table below — one editable place, so the
-                          two tables cannot come to disagree about how much
-                          went in. Until it is typed the requested figure is
-                          what the TLC uses, so that is what this cell shows,
-                          dimmed, because it is an assumption. */}
-                      <td
-                        className={cn(
-                          "px-3 text-right text-sm tabular-nums",
-                          l.deliveredGal == null
-                            ? "text-muted-foreground/60"
-                            : "text-muted-foreground"
-                        )}
-                        title={
-                          l.deliveredGal == null
-                            ? "Not delivered yet — priced on the requested quantity"
-                            : undefined
+                {partnerStanding}
+              </div>
+            )}
+          </div>
+
+          {!shownQuote ? (
+            <p className="py-3 text-sm text-muted-foreground">
+              {summaryEmptyLine(draft.status, invitedIds.length)}
+            </p>
+          ) : (
+            <>
+              <dl className="flex flex-col">
+                {!hasLoadOrder &&
+                  draft.lines.map((l, i) => {
+                    const ql = shownQuote.lines.find((x) => x.asset === l.asset);
+                    if (!l.asset || !ql) return null;
+                    return (
+                      <ChargeRow
+                        key={i}
+                        label={
+                          draft.lines.filter((x) => x.asset).length > 1
+                            ? `Product — ${l.product}`
+                            : "Product"
                         }
-                      >
-                        {billableGal(l).toLocaleString()}
-                      </td>
-                      <td className="relative p-0">
-                        <TableCellInput
-                          value={ql ? String(ql.ratePerGal) : ""}
-                          placeholder="0.000"
-                          numeric
-                          prefix="$"
-                          aria-label={`Vendor rate per gallon for line ${i + 1}`}
-                          onChange={(v) => put({ ratePerGal: num(v) })}
-                        />
-                      </td>
-                      <td className="relative p-0">
-                        <TableCellInput
-                          value={ql ? String(ql.surcharge) : ""}
-                          placeholder="0.000"
-                          numeric
-                          prefix="$"
-                          aria-label={`Vendor surcharge for line ${i + 1}`}
-                          onChange={(v) => put({ surcharge: num(v) })}
-                        />
-                      </td>
-                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                        {ql ? money(quoteLineTotal(ql, l)) : money(0)}
-                      </td>
-                    </tr>
+                        hint={`${billableGal(l).toLocaleString()} gal × ${money(ql.ratePerGal, 3)} /gal`}
+                        total={money(billableGal(l) * ql.ratePerGal)}
+                      />
+                    );
+                  })}
+                {draft.lines.map((l, i) => {
+                  const ql = shownQuote.lines.find((x) => x.asset === l.asset);
+                  if (!l.asset || !ql || ql.surcharge === 0) return null;
+                  return (
+                    <ChargeRow
+                      key={`sc-${i}`}
+                      label="Service charge"
+                      hint={`${billableGal(l).toLocaleString()} gal × ${money(ql.surcharge, 3)} /gal`}
+                      total={money(billableGal(l) * ql.surcharge)}
+                    />
                   );
                 })}
-              </tbody>
-              {/*
-                THE BASE, THEN WHAT IS ADDED TO IT, THEN THE TOTAL.
-
-                Freight, fees and taxes are charged once for the run, not
-                per gallon, so they cannot be columns — a per-line freight
-                would have to be divided by somebody and the division would
-                be invented. They are rows under the table, which is also
-                where the reader is already looking for a total.
-              */}
-              <tfoot>
-                <tr className="h-11 border-t border-border">
-                  {/* LEFT, NOT RIGHT. The table is 980px wide and scrolls;
-                      a label right-aligned against its figure means both
-                      are off-screen together, and the reader scrolls to
-                      find out what the number is called. */}
-                  <td
-                    colSpan={6}
-                    className="px-3 text-sm text-muted-foreground"
-                  >
-                    Base price — product + margin
-                  </td>
-                  <td
-                    className={cn(
-                      "px-3 text-right text-sm tabular-nums",
-                      /* STATED, NOT HIDDEN. The figure is what the partner
-                         would have charged; striking it says the quote was
-                         read and the base was set aside, where an absent
-                         row would look like nobody priced it. */
-                      chargesBase
-                        ? "font-medium text-foreground"
-                        : "text-muted-foreground/60 line-through"
-                    )}
-                    title={
-                      chargesBase
-                        ? undefined
-                        : "Not charged — the load order makes the product yours"
-                    }
-                  >
-                    {money(shownBase)}
-                  </td>
-                </tr>
-                {ORDER_CHARGES.map((c) => (
-                  <tr key={c.key} className="h-11 border-t border-border">
-                    <td
-                      colSpan={6}
-                      className="px-3 text-sm text-muted-foreground"
-                    >
-                      {c.label}
-                    </td>
-                    <td className="relative p-0">
-                      <TableCellInput
-                        value={
-                          shownQuote ? String(shownQuote[c.key] ?? 0) : ""
-                        }
-                        placeholder="0"
-                        numeric
-                        prefix="$"
-                        aria-label={`${c.label} charged by the partner`}
-                        onChange={(v) =>
-                          setQuoteCharge(shownVendorId, { [c.key]: num(v) })
-                        }
-                      />
-                    </td>
-                  </tr>
+                {carrierCharges.map((c) => (
+                  <ChargeRow
+                    key={c.key}
+                    label={c.label}
+                    total={money(shownQuote[c.key])}
+                  />
                 ))}
-                <tr className="h-11 border-t border-border bg-fp-table-header">
-                  <td
-                    colSpan={6}
-                    className="px-3 text-sm text-muted-foreground"
-                  >
-                    Vendor total
-                  </td>
-                  <td className="px-3 text-right text-sm font-semibold tabular-nums text-foreground">
-                    {money(shownCost)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </SheetSection>
-      )}
-
-      <SheetSection
-        title="Customer Pricing"
-        flush
-        note={
-          <SheetSectionNote label="About customer pricing">
-            What the customer is charged, per line. Delivered gallons are
-            typed once here and read by the partner's table above. Margin is
-            per gallon, on top of your price — the line total is A × (B + C).
-          </SheetSectionNote>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] table-fixed border-collapse">
-            <colgroup>
-              <col />
-              <col className="w-[22%]" />
-              <col className="w-[124px]" />
-              <col className="w-[132px]" />
-              <col className="w-[124px]" />
-              <col className="w-[124px]" />
-              <col className="w-[140px]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border bg-fp-table-header">
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel>Asset name</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel>Product</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Requested gal</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Delivered gal (A)</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Price/gal (B)</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Margin (C)</TableRequiredLabel>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Total A×(B+C)</TableRequiredLabel>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {draft.lines.map((l, i) => (
-                <tr key={i} className="h-12 border-b border-border last:border-b-0">
-                  <td className="truncate px-3 text-sm text-foreground">
-                    {l.asset || "—"}
-                  </td>
-                  <td className="truncate px-3 text-sm text-muted-foreground">
-                    {l.product}
-                  </td>
-                  <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                    {l.topOff ? "Top-off" : (l.gal ?? 0).toLocaleString()}
-                  </td>
-                  <td className="relative p-0">
-                    <TableCellInput
-                      value={l.deliveredGal == null ? "" : String(l.deliveredGal)}
-                      placeholder={l.topOff ? "0" : String(l.gal ?? 0)}
-                      numeric
-                      suffix="gal"
-                      aria-label={`Delivered gallons for line ${i + 1}`}
-                      onChange={(v) =>
-                        setLine(i, {
-                          deliveredGal: v.trim() === "" ? null : num(v),
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="relative p-0">
-                    <TableCellInput
-                      value={l.pricePerGal == null ? "" : String(l.pricePerGal)}
-                      placeholder="0.00"
-                      numeric
-                      prefix="$"
-                      aria-label={`Price per gallon for line ${i + 1}`}
-                      onChange={(v) => setLine(i, { pricePerGal: num(v) })}
-                    />
-                  </td>
-                  <td className="relative p-0">
-                    <TableCellInput
-                      value={l.marginPerGal == null ? "" : String(l.marginPerGal)}
-                      placeholder="0.00"
-                      numeric
-                      prefix="$"
-                      aria-label={`Margin per gallon for line ${i + 1}`}
-                      onChange={(v) => setLine(i, { marginPerGal: num(v) })}
-                    />
-                  </td>
-                  <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                    {money(customerLineTotal(l))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="h-11 border-t border-border bg-fp-table-header">
-                <td colSpan={6} className="px-3 text-right text-sm text-muted-foreground">
-                  Products-level subtotal
-                </td>
-                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                  {money(revenue)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+              </dl>
+              <div className="mt-auto flex items-baseline justify-between gap-3 border-t border-border pt-3">
+                <span className="text-sm font-medium text-foreground">
+                  {draft.vendorId === shownVendorId
+                    ? "Carrier total"
+                    : "Estimated carrier total"}
+                </span>
+                <span className="text-base font-semibold tabular-nums text-foreground">
+                  {money(carrierTotal)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
-      </SheetSection>
-    </>
+      </div>
+
+      {/* THE THREE TOTALS AND WHAT IS LEFT, on one line under the columns.
+
+          FIGURES ONLY. It was a banner with a sentence and a percentage in it,
+          which is a paragraph where a reader wants a row of numbers: the whole
+          question at this point is what the order is worth, and the three
+          totals plus the difference answer it without a word.
+
+          EVENLY ACROSS THE STRIP, EDGE TO EDGE. They are in the order of the
+          columns above — product, what the customer pays, what the partner
+          charges, and the profit last because it is the only one that is no
+          column's own — but they no longer try to sit UNDER those columns: the
+          three above are different widths, so four figures could only line up
+          with them by being four different widths themselves. Equal quarters,
+          with the last one's figure flush to the right edge so the row spans
+          the whole strip instead of trailing off before it does. */}
+      {shownQuote && (
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-lg bg-fp-surface-1a px-4 py-3 lg:grid-cols-4">
+          {[
+            { label: "Product", value: productTotal },
+            { label: "Customer billing", value: billed },
+            { label: "Carrier cost", value: carrierTotal },
+          ].map((f) => (
+            <div key={f.label} className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{f.label}</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">
+                {money(f.value)}
+              </span>
+            </div>
+          ))}
+          <div className="flex flex-col gap-0.5 lg:items-end lg:text-right">
+            <span className="text-xs text-muted-foreground">
+              Expected profit
+            </span>
+            {/* THE SIGN IS THE COLOUR. This is the one figure on the strip that
+                can be bad news, and "bad" here is not a shade of the same
+                thing — a negative expected profit is the order costing money
+                to run. Green says the deal is worth doing, red says it is not;
+                the number says by how much. Exactly zero takes neither, since
+                it is neither. */}
+            <span
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                margin < 0
+                  ? "text-destructive"
+                  : margin > 0
+                    ? "text-status-success"
+                    : "text-foreground"
+              )}
+            >
+              {money(margin)}
+            </span>
+          </div>
+        </div>
+      )}
+    </SheetSection>
   );
 
   return (
@@ -1997,8 +2196,11 @@ export function BrokerOrderSheet({
             <span className="truncate">
               {/* A COLON, NOT A DASH. The dash was joining two halves as
                   though they were an aside; this is a label and its value. */}
-              Quote accepted: {vendorById(draft.vendorId)?.name} holds this
-              order.
+              {/* AWARDED, THEN CONFIRMED — the bar says which of the two
+                  this order has reached, because between them the choice can
+                  still be changed. */}
+              {confirmed ? "Confirmed" : "Awarded"}:{" "}
+              {vendorById(draft.vendorId)?.name} holds this order.
             </span>
           </span>
         ) : undefined
@@ -2027,6 +2229,33 @@ export function BrokerOrderSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              {/* COPY IT, PRINT IT — what is left to do once the order itself
+                  is settled. They were two outline buttons at the foot of the
+                  form, which put them in the reading path of somebody filling
+                  it in; neither is ever the next act, so neither belongs in the
+                  flow OR in the footer. Behind the ··· they are where a reader
+                  goes looking for a spare act on the record. */}
+              <DropdownMenuItem
+                onSelect={() =>
+                  toast.success("Order duplicated", {
+                    description: "A copy has been created as a Draft.",
+                  })
+                }
+              >
+                <Copy />
+                Duplicate order
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  toast.success("Tickets downloading", {
+                    description: `Delivery tickets for ${order.orderNo}.`,
+                  })
+                }
+              >
+                <Download />
+                Download tickets
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               {/* CANCELLING AND DELETING ARE THE TWO WAYS AN ORDER ENDS, so
                   they sit together — and together is the only place the
                   difference between them is legible. "Cancel order" spent its
@@ -3037,6 +3266,7 @@ export function BrokerOrderSheet({
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection
+        id={VENDOR_SECTION_ID}
         title="Vendor"
         flush
         note={
@@ -3058,8 +3288,39 @@ export function BrokerOrderSheet({
           </SheetSectionNote>
         }
       >
-        {!accepted && (
+        {!confirmed && (
           <>
+            {/* WHAT CHANGED, ABOVE THE TABLE IT CHANGED. The quotes on the
+                rows below were given for a shorter order, and nothing on a row
+                can say why on its own — the reason is something that happened
+                to the ORDER, three sections up. It sits directly under the
+                section's name because that is the first thing read on the way
+                into the table, and it is tinted because a line of text at the
+                top of a card is otherwise read as a caption.
+
+                Soft, not solid: nothing is wrong and nothing is blocked. The
+                partners simply have to be told. */}
+            {hasStaleQuotes && (
+              /* FLUSH, LIKE THE TABLE UNDER IT. Inset and rounded, it was a
+                 card inside a card — a second box with its own corners sitting
+                 in a section that already has them, and 16px of nothing
+                 holding it away from the edges its message is about. Square
+                 and edge to edge it is a BAND of the unit: the section's own
+                 border is its left and right, and its one remaining rule is
+                 the boundary with the table's header. Same 16px inset as the
+                 rows below, so the icon starts on the column the checkboxes
+                 do. */
+              <BannerCallout
+                variant="soft"
+                status="caution"
+                title="New products added"
+                className="rounded-none border-x-0 border-t-0 px-4 py-2.5"
+              >
+                Share the updated details with the partners so they can revise
+                and resend their quotations.
+              </BannerCallout>
+            )}
+
             {/* A TABLE, not a list of cards. A delivery partner is compared
                 against the others on the same handful of attributes — where
                 they are, how safe, how far, what they run — and comparing is
@@ -3077,8 +3338,12 @@ export function BrokerOrderSheet({
                     <col className="w-[25%]" />
                     <col className="w-[18%]" />
                     <col />
+                    <col className="w-[150px]" />
+                    {/* 132, not 148: the status lost its dot and the 14px it
+                        stood in, and Products is the column that pays for
+                        every fixed one beside it. */}
                     <col className="w-[132px]" />
-                    {showQuoteCol && <col className="w-[124px]" />}
+                    <col className="w-[96px]" />
                     <col className="w-[52px]" />
                   </colgroup>
                   <thead>
@@ -3105,19 +3370,53 @@ export function BrokerOrderSheet({
                       <th className="px-3 py-2.5 text-left">
                         <TableRequiredLabel>Products</TableRequiredLabel>
                       </th>
-                      {/* INVITING IS PER ROW. It was one button under the table
-                          that sent to everybody at once, which is wrong the
-                          moment two vendors are listed and only one is ready —
-                          and it disappeared entirely once the order left Draft,
-                          taking the ability to add a vendor later with it. */}
-                      <th className="px-3 py-2.5 text-left">
-                        <TableRequiredLabel>Invite</TableRequiredLabel>
+                      {/* TOTAL LANDING COST, ALWAYS A COLUMN — the reason the
+                          reader is looking at this table at all. It is what
+                          the partner would charge to land this order: the
+                          quote's base plus freight, fees and taxes, the same
+                          figure `Vendor Pricing` totals further down.
+
+                          THE COLUMN IS THERE BEFORE THE NUMBER IS. It used to
+                          appear only while the order was in Quoting and a quote
+                          had been asked for, so the table changed shape under
+                          the reader as partners replied. A column that is
+                          always present says what this table is FOR, and an
+                          em-dash says the partner has not priced it yet. */}
+                      {/* LEFT, LIKE EVERY OTHER COLUMN HERE. A money column
+                          usually right-aligns so the decimal points stack and
+                          the figures can be scanned against each other — but
+                          this table's other five columns are left-aligned text,
+                          and one column setting its own rule broke the line the
+                          eye follows down the table. It is a handful of rows,
+                          not a ledger; reading WITH the row beats comparing
+                          down it. */}
+                      <th
+                        className="px-3 py-2.5 text-left"
+                        title="Total landing cost — what this partner would charge to land the order"
+                      >
+                        <TableRequiredLabel>TLC</TableRequiredLabel>
                       </th>
-                      {showQuoteCol && (
-                        <th className="px-3 py-2.5 text-right">
-                          <TableRequiredLabel>Quote</TableRequiredLabel>
-                        </th>
-                      )}
+                      {/* STATUS, NOT "INVITE". The column started as one button
+                          per row and grew a ladder behind it — invited,
+                          accepted, priced — so it is a state the row reports,
+                          and only the first rung is an action. Naming it for
+                          the action described one quarter of what it shows.
+
+                          INVITING IS STILL PER ROW. It was one button under the
+                          table that sent to everybody at once, which is wrong
+                          the moment two vendors are listed and only one is
+                          ready — and it disappeared entirely once the order
+                          left Draft, taking the ability to add a vendor later
+                          with it. */}
+                      <th className="px-3 py-2.5 text-left">
+                        <TableRequiredLabel>Status</TableRequiredLabel>
+                      </th>
+                      {/* AWARD HAS NO HEADING. A column of buttons is named by
+                          the buttons in it, and "Award" over Award is the word
+                          twice. Status is a fact the row reports; this is the
+                          one act the row offers, which is why it is beside it
+                          rather than in it. */}
+                      <th aria-hidden />
                       <th aria-hidden />
                     </tr>
                   </thead>
@@ -3125,7 +3424,7 @@ export function BrokerOrderSheet({
                     {partnerRows.length === 0 ? (
                       <tr className="h-11">
                         <td
-                          colSpan={showQuoteCol ? 7 : 6}
+                          colSpan={8}
                           className="px-3 text-sm text-muted-foreground"
                         >
                           No vendor yet.
@@ -3186,17 +3485,73 @@ export function BrokerOrderSheet({
                             <td className="truncate px-3 text-sm text-muted-foreground">
                               {v ? v.businessLines.join(" · ") : "—"}
                             </td>
-                            {/* THREE STATES, and the row says which: not asked
-                                yet, asked, or already back with an answer. */}
+                            {/* THE COST ARRIVES LAST. A partner has to take the
+                                order before it can price it, so until then the
+                                cell is NA — not a dash, which reads as "none",
+                                and not "$0.00", which reads as free. Disabled
+                                text, because there is nothing here to act on
+                                yet; the tooltip says what it is waiting for.
+
+                                PRICED, IT IS A DOOR. The figure is one number
+                                standing for a rate and a surcharge on every
+                                line plus the charges on the run — enough to
+                                compare partners on and not enough to accept
+                                one on, so it is underlined and opens the
+                                working. */}
+                            <td className="px-3 text-left text-sm tabular-nums">
+                              {quote ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setQuoteSheet({ vendorId: id, mode: "review" })
+                                  }
+                                  className="rounded-sm text-foreground underline decoration-border underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                                >
+                                  {money(quoteTotal(quote, draft.lines, chargesBase))}
+                                </button>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-default text-muted-foreground/60">
+                                      NA
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Awaiting quotation</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </td>
+                            {/* FOUR RUNGS, and the row says which it is on: no
+                                partner yet, not asked, asked, taken, priced.
+                                Only the first rung is an action — the rest are
+                                things the partner did, reported back.
+
+                                THE TONES CLIMB. Invited is neutral because
+                                nothing has happened yet; Accepted is in flight;
+                                a shared quotation is the one state that hands
+                                the reader something to act on. Three chips that
+                                all read "in progress" ranked nothing. */}
                             <td className="px-3">
                               {!id ? (
                                 <span className="text-sm text-muted-foreground">—</span>
-                              ) : draft.acceptedVendorIds.includes(id) ? (
+                              ) : quote && !quoteCoversOrder(quote) ? (
+                                /* THE ROW SAYS THE QUOTE IS BEHIND THE ORDER.
+                                   "Quotation shared" is still true and is now
+                                   the wrong thing to say: what the reader has
+                                   to know is that it prices lines the order no
+                                   longer only has. */
+                                <StatusChip tone="processing" variant="text">
+                                  Products updated
+                                </StatusChip>
+                              ) : quote ? (
                                 <StatusChip tone="success" variant="text">
+                                  Quotation shared
+                                </StatusChip>
+                              ) : draft.acceptedVendorIds.includes(id) ? (
+                                <StatusChip tone="processing" variant="text">
                                   Accepted
                                 </StatusChip>
                               ) : sentIds.includes(id) ? (
-                                <StatusChip tone="processing" variant="text">
+                                <StatusChip tone="neutral" variant="text">
                                   Invited
                                 </StatusChip>
                               ) : (
@@ -3215,19 +3570,49 @@ export function BrokerOrderSheet({
                                 </Button>
                               )}
                             </td>
-                            {showQuoteCol && (
-                              <td className="px-3 text-right text-sm tabular-nums">
-                                {quote ? (
-                                  <span className="text-foreground">
-                                    ${quoteTotal(quote, draft.lines, chargesBase).toLocaleString(undefined, {
-                                      maximumFractionDigits: 2,
-                                    })}
-                                  </span>
+                            {/* AWARDING IS A PRICED PARTNER'S ROW ONLY. The
+                                award is the broker taking one of the prices in
+                                front of them; a partner that has not sent one
+                                has nothing to be taken. The awarded row states
+                                it instead of offering it, and every other
+                                priced row keeps its button, so the choice can
+                                be changed right up until it is confirmed. */}
+                            <td className="px-3">
+                              {id && quote && !quoteCoversOrder(quote) ? (
+                                /* NOT AWARD. Awarding a price that does not
+                                   cover the order is buying the wrong thing;
+                                   the act here is telling the partner what
+                                   changed so they can price it again. */
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  disabled={draft.status === "Blocked"}
+                                  onClick={() => resendInvitation(id)}
+                                >
+                                  Resend invite
+                                </Button>
+                              ) : id && quote ? (
+                                draft.vendorId === id ? (
+                                  <StatusChip tone="success" variant="soft">
+                                    Awarded
+                                  </StatusChip>
                                 ) : (
-                                  <span className="text-muted-foreground">Pending</span>
-                                )}
-                              </td>
-                            )}
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    disabled={draft.status === "Blocked"}
+                                    title={
+                                      draft.status === "Blocked"
+                                        ? "A blocked order cannot be awarded"
+                                        : undefined
+                                    }
+                                    onClick={() => awardFor(id)}
+                                  >
+                                    Award
+                                  </Button>
+                                )
+                              ) : null}
+                            </td>
                             <td className="p-0 text-center">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild disabled={!id}>
@@ -3241,19 +3626,32 @@ export function BrokerOrderSheet({
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-72">
-                                  {/* ONE ITEM, NOT TWO. Doing this on a partner's
-                                      behalf is one act with one reason: the
-                                      price was agreed on a call and someone is
-                                      writing it down. It also shows that
-                                      partner's quote, which is where the
-                                      numbers go. */}
-                                  <DropdownMenuItem
-                                    onSelect={() => acknowledgeAndAccept(id)}
-                                  >
-                                    <Check />
-                                    Acknowledge and accept quote
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
+                                  {/* "ACCEPT AND DRAFT", because that is both
+                                      halves of what it does: it says the
+                                      partner took the order, and it opens the
+                                      quote sheet for the broker to write the
+                                      price the partner gave on a call. It used
+                                      to say "acknowledge and accept quote" and
+                                      then accept a quote that did not exist. */}
+                                  {/* ONLY WHERE THERE IS NO QUOTE. Writing
+                                      down a price the partner gave on a call
+                                      is a real act — for a partner who has not
+                                      sent one. On a row that has already
+                                      shared a quotation it offered to accept
+                                      and then draft a quote that exists, which
+                                      is two words of nonsense over a menu item
+                                      nobody could want. */}
+                                  {!quote && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onSelect={() => openQuoteDraft(id)}
+                                      >
+                                        <Check />
+                                        Accept and draft quote
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
+                                  )}
                                   {/* NOT "CANCEL INVITATION". Before it is sent
                                       there is nothing to cancel, and after it is
                                       sent this is still a removal — one label
@@ -3300,7 +3698,12 @@ export function BrokerOrderSheet({
                 the card's insets back and the rule that closes the table. */}
             <label
               htmlFor="do-notify"
-              className="flex cursor-pointer items-center justify-between gap-4 border-t border-border p-4"
+              /* 12px TOP AND BOTTOM, and the same 12 on both. At `p-4` the
+                 row read as heavier underneath than above, because the band
+                 above it closes at 8 and the card's edge is directly below —
+                 the eye compares this row's gaps with its neighbours, not with
+                 each other. */
+              className="flex cursor-pointer items-center justify-between gap-4 border-t border-border px-4 py-3"
             >
               <span className="text-sm font-medium text-foreground">
                 Send email notifications to vendor
@@ -3362,6 +3765,12 @@ export function BrokerOrderSheet({
                 come from the design system, which is what makes a selection in
                 this sheet feel like a selection anywhere else. The Copy /
                 Delete / More zone is off: this list's actions are fixed. */}
+            {/* THE WRAPPER GOES WITH THE BAR. `BulkActionBar` returns null
+                below one selected row, but its padding box did not — so with
+                nothing ticked the section carried 16px of empty div under the
+                email switch, and that row looked bottom-heavy however its own
+                padding was set. */}
+            {selectedRows.length > 0 && (
             <div className="flex justify-center p-4 pt-0">
               <BulkActionBar
                 count={selectedRows.length}
@@ -3393,11 +3802,11 @@ export function BrokerOrderSheet({
                 ]}
               />
             </div>
-
+            )}
           </>
         )}
 
-        {draft.vendorId && draft.status !== "Quoting" && (
+        {confirmed && draft.vendorId && (
           /* NOT A TABLE — the accepted-partner branch is a card and a field, so
              it takes the card's insets back. */
           <SheetSectionInset>
@@ -3449,63 +3858,6 @@ export function BrokerOrderSheet({
 
       {/* LAST IN THE SHEET, and it belongs here: everything above is what the
           order IS, and this is what is attached to it. Nothing after it. */}
-      <SheetSection title="Additional Details">
-        {/*
-          WHO MAY SEE WHAT IS ATTACHED HERE. Public travels with the order —
-          the vendor and the customer see it. Private stays inside the
-          building. It leads the section because it governs everything under
-          it, and a file uploaded before the choice is made is a file uploaded
-          under an assumption.
-        */}
-        <SheetField label="Visibility" required>
-          <RadioGroup
-            className="flex gap-6"
-            value={draft.visibility}
-            onValueChange={(v) => set("visibility", v as "Public" | "Private")}
-          >
-            {(["Public", "Private"] as const).map((v) => (
-              <label
-                key={v}
-                htmlFor={`vis-${v}`}
-                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
-              >
-                <RadioGroupItem id={`vis-${v}`} value={v} />
-                {v}
-              </label>
-            ))}
-          </RadioGroup>
-        </SheetField>
-        <SheetField label="Upload Supporting Image">
-          {/* The DS control in its `field` variant — dropzone, note, and only
-              the files actually added. The showcase variant's seeded chips and
-              permanent "Uploading 2 of 3" block belong to the gallery. */}
-          <FileUpload
-            variant="field"
-            label="Choose a file to upload"
-          />
-        </SheetField>
-        <SheetField label="Delivery Instructions">
-          <Textarea
-            value={draft.instructions}
-            placeholder="Enter any delivery instructions here"
-            onChange={(e) => set("instructions", e.target.value)}
-          />
-        </SheetField>
-        {/* SEPARATE FROM THE INSTRUCTIONS ABOVE, and the description is the
-            whole reason it is its own field: one of these is read by a driver
-            at a gate, the other by nobody outside the building. A single
-            "Notes" box would have people writing gate codes where the vendor
-            can read them, or holding back things the driver needed. */}
-        <SheetField
-          label="Internal Note"
-        >
-          <Textarea
-            value={draft.internalNote}
-            placeholder="Add an internal note"
-            onChange={(e) => set("internalNote", e.target.value)}
-          />
-        </SheetField>
-      </SheetSection>
 
       {/* ── ONE PAGE ──
           THE SHEET USED TO BE SPLIT IN TWO, and the split was there to keep it
@@ -3522,7 +3874,6 @@ export function BrokerOrderSheet({
           time, with the working on hover. Two of them would be one figure in
           two places, and the first to drift would be the one nobody was
           looking at. */}
-      {pricingSections}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
@@ -3569,20 +3920,37 @@ export function BrokerOrderSheet({
                       ? `Vendor quote — ${vendorById(shownVendorId)?.name ?? "partner"}`
                       : "Vendor quote"
                   }
-                  value={shownQuote ? money(shownCost) : "—"}
+                  /* THE SAME FIGURE THE PRICING UNIT SHOWS — what this
+                     partner is actually owed, with anything billed through to
+                     the customer taken out. The rail was quoting the whole
+                     quote while the column beside it quoted the net, and two
+                     numbers for one thing is how a reader stops trusting
+                     either. */
+                  value={shownQuote ? money(carrierTotal) : "—"}
                   breakdown={vendorBreakdown}
                 />
                 <RailRow
                   label="Customer pricing"
-                  value={money(revenue)}
+                  value={money(billed)}
                   breakdown={customerBreakdown}
                 />
                 <RailRow
                   label="Margin"
                   value={
+                    /* THE SAME FIGURE AS THE STRIP'S, so the same colour — one
+                       number that reads two ways in two places is worse than a
+                       number with no colour at all. */
                     shownQuote ? (
-                      <span className={cn(shownMargin < 0 && "text-destructive")}>
-                        {money(shownMargin)}
+                      <span
+                        className={cn(
+                          margin < 0
+                            ? "text-destructive"
+                            : margin > 0
+                              ? "text-status-success"
+                              : undefined
+                        )}
+                      >
+                        {money(margin)}
                       </span>
                     ) : (
                       "—"
@@ -3673,10 +4041,14 @@ export function BrokerOrderSheet({
                           }
                           variant="soft"
                         >
+                          {/* THE SAME FOUR WORDS THE VENDOR TABLE USES. The
+                              rail said "Quoted" where the table says
+                              "Quotation shared"; one fact, two vocabularies,
+                              on one screen. */}
                           {draft.vendorId === id
                             ? "Holds order"
                             : quotes.some((q) => q.vendorId === id)
-                              ? "Quoted"
+                              ? "Quotation shared"
                               : draft.acceptedVendorIds.includes(id)
                                 ? "Accepted"
                                 : "Invited"}
@@ -3749,46 +4121,101 @@ export function BrokerOrderSheet({
             </RailCard>
           </aside>
         </div>
-      {/*
-        THE SPARE ACTS ON A SAVED ORDER, side by side at the end of the form.
 
-        They were behind a "More actions" menu in the sticky footer, which put
-        them beside Save Changes — things you do to an order sharing a bar with
-        the one thing you do to the FORM. Out here they are what they are: what
-        is left to do once the order itself is settled — copy it, print it.
+      {/* ── PRICING, FULL WIDTH, UNDER BOTH COLUMNS ──────────────────────
+          It is three columns of its own and the rail was taking 340 of them.
+          Out here it has the whole sheet, and the rail's three cards end above
+          it — so scrolling down to the pricing scrolls them away, which is the
+          right trade: their job is to keep the totals in view while you fill
+          the form, and once you are IN the pricing the totals are in front of
+          you at full size. */}
+      {pricingSections}
 
-        Not in the footer, because the footer is for committing the sheet.
-      */}
-      {!creating && order && (
-        <div className="flex flex-wrap items-center gap-3 border-t border-fp-outline-1 pt-6">
-          {/* NO PUSH TO DISPATCH HERE — the footer's CTA ladder ends on that
-              same act, and a button that appears twice on one screen makes the
-              reader wonder which one is the real one. Duplicate and Download
-              stay: neither is ever the next act, so neither is ever in the
-              footer. */}
-          <Button
-            variant="outline"
-            onClick={() =>
-              toast.success("Order duplicated", {
-                description: "A copy has been created as a Draft.",
-              })
-            }
-          >
-            <Copy />
-            Duplicate order
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() =>
-              toast.success("Tickets downloading", {
-                description: `Delivery tickets for ${order.orderNo}.`,
-              })
-            }
-          >
-            <Download />
-            Download tickets
-          </Button>
+      {/* ── WHAT TRAVELS WITH THE ORDER ──────────────────────────────────
+          Two sections, not one "Additional Details" holding both. A file and a
+          note are different kinds of thing — one is evidence, the other is an
+          instruction — and a single heading over them named neither.
+
+          VISIBILITY IS GONE. It was a Public/Private radio governing the
+          upload, and nothing in the product read it: every file on an order is
+          the order's, and the one genuinely private thing here has its own
+          field below and always has. A control that decides nothing is worse
+          than no control, because somebody sets it and expects it to hold. */}
+      {/* SIDE BY SIDE, AT 1:3. Two separate units still — a file and a note are
+          different kinds of thing — but neither needs a row of its own: the
+          dropzone is one control and the notes are two boxes, and stacked they
+          were 500px of sheet saying what fits in 200. The upload takes the
+          quarter because it is one target; the notes take the rest because they
+          are the only thing here anyone writes more than a line into. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
+      <SheetSection title="Upload Supporting Image" className="lg:col-span-1">
+        {/* The DS control in its `field` variant — dropzone, note, and only the
+            files actually added. The showcase variant's seeded chips and
+            permanent "Uploading 2 of 3" block belong to the gallery. */}
+        <FileUpload variant="field" label="Choose a file to upload" />
+      </SheetSection>
+
+      <SheetSection title="Notes" className="lg:col-span-3">
+        {/* TWO BOXES, SIDE BY SIDE, because the separation is the whole point:
+            one of these is read by a driver at a gate and the other by nobody
+            outside the building. Stacked they read as a first and second note;
+            beside each other they are plainly two audiences, and nobody writes
+            a gate code where the vendor can see it. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SheetField label="Delivery Instructions">
+            <Textarea
+              value={draft.instructions}
+              placeholder="Enter any delivery instructions here"
+              onChange={(e) => set("instructions", e.target.value)}
+              className="min-h-32"
+            />
+          </SheetField>
+          <SheetField label="Internal Note">
+            <Textarea
+              value={draft.internalNote}
+              placeholder="Add an internal note"
+              onChange={(e) => set("internalNote", e.target.value)}
+              className="min-h-32"
+            />
+          </SheetField>
         </div>
+      </SheetSection>
+      </div>
+
+      {/* ONE PARTNER'S QUOTE, OVER THE ORDER. A second sheet rather than a
+          section in this one: it belongs to a partner, not to the order, and
+          there are as many of them as there are rows in the table.
+
+          MOUNTED ONLY WHILE OPEN, so it re-reads the quote each time — the
+          broker can draft, close, and reopen the same row. */}
+      {quoteSheet && (
+        <VendorQuoteSheet
+          open
+          onOpenChange={(o) => !o && setQuoteSheet(null)}
+          vendorName={vendorById(quoteSheet.vendorId)?.name ?? "Partner"}
+          mode={quoteSheet.mode}
+          lines={draft.lines.filter((l) => l.asset)}
+          quote={
+            draft.quotes.find((q) => q.vendorId === quoteSheet.vendorId) ?? null
+          }
+          onQuoteChange={putQuote}
+          chargesBase={chargesBase}
+          notes={
+            draft.quotes.find((q) => q.vendorId === quoteSheet.vendorId)?.note
+          }
+          onNotesChange={(v) => {
+            const q = draft.quotes.find(
+              (x) => x.vendorId === quoteSheet.vendorId
+            );
+            if (q) putQuote({ ...q, note: v });
+          }}
+          attachments={(
+            draft.quotes.find((q) => q.vendorId === quoteSheet.vendorId)
+              ?.attachments ?? []
+          ).map((name) => ({ name }))}
+          onAccept={() => acceptFromQuoteSheet(quoteSheet.vendorId)}
+          onReject={() => rejectQuote(quoteSheet.vendorId)}
+        />
       )}
 
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>

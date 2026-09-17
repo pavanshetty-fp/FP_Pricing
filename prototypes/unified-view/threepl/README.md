@@ -516,6 +516,32 @@ that is when it will move to Quoting. Till then, everything is in draft mode."*
   the lines and dropping the acceptances, the quotes, the delivery fee, the
   recurrence, the load order and the tags — the entire right-hand half of the
   work.
+- **THE SHEET'S LAST FIVE ORPHANS NOW HAVE A HOME (2026-09-17).** Job type, the
+  second contact, the internal note, the winter blend and the partner-email
+  switch were collected by the sheet and modelled nowhere: every save threw the
+  answer away and the next open read back the default. They are fields on
+  `BrokerOrder` now, seeded, carried by `draftFrom` / `applyDraft` /
+  `createOrder` / `createMovement`, and written into the audit trail. Two things
+  came out of it:
+  - **The second contact is a LIST on the order**, `secondaryPocs`. The order
+    sheet collects one and the movement sheet collects several, so storing the
+    singular would have thrown away the second and third the moment a movement
+    was created. The order sheet edits the first and keeps the rest.
+  - **`tags` was being dropped the other way** — `applyDraft` wrote them and
+    `draftFrom` read back `[]`, so reopening an order emptied its own tag row.
+- **A NEW ORDER LANDS WHERE THE READER IS LOOKING (2026-09-17).** The board is
+  scoped to a date range and one service line, and a new order defaults to
+  TOMORROW — so the commonest act on this screen was creating an order and
+  watching it not appear. The window is WIDENED to take the new date in, never
+  moved: jumping to the new order's day would take away whatever was being
+  watched to make room for the thing just made. The same applies while a sheet
+  is open, so an order cannot slip out from behind its own sheet when its
+  product or its date changes.
+- **The service line follows the product, always.** It was set once at creation
+  and never again, so a draft that started on the default fuel and ended up a
+  lubricants order stayed on the Fuel board with lubricants written on its own
+  sheet. Moving line takes the business with it — a business belongs to one
+  line, so the old one cannot survive the move.
 - **A draft being filled in writes no history.** The audit trail is what
   happened to a live order; on a draft nobody has sent anywhere, every field is
   being typed for the first time. Past Draft, every save that changed something

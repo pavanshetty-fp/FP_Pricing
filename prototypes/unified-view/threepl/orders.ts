@@ -432,9 +432,31 @@ export interface BrokerOrder {
       }[]
     | null;
   hub: string;
+  /**
+   * WHETHER THE HAUL IS BOUGHT IN OR RUN ON OUR OWN FLEET. The first thing
+   * decided about an order, because it changes who fulfils it. Every seeded
+   * order is Brokerage — all of them went out to a partner.
+   */
+  jobType: JobType;
   primaryPoc: string;
+  /**
+   * MORE PEOPLE TO CALL. A LIST, because the movement sheet already collects
+   * several and the order sheet collects one — storing the singular would
+   * throw away the second and third the moment a movement was created.
+   * Empty when the primary is the only contact.
+   */
+  secondaryPocs: string[];
   salesperson: string;
   instructions: string;
+  /** Never sent to the partner or the customer. `""` when nobody wrote one. */
+  internalNote: string;
+  /** The whole load is a winter blend — one flag for the order, not per line. */
+  winterAdditive: boolean;
+  /**
+   * The per-order kill switch for partner email. OFF by default: this switch
+   * mails people outside the building, so sending is the deliberate act.
+   */
+  notifyVendor: boolean;
   /** Only ever set on `Blocked` — the credit reason shown on the card. */
   blockedReason: string | null;
   /** Movement orders only. */
@@ -506,10 +528,24 @@ export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
   say("Order type", a.orderType, b.orderType);
   say("PO number", a.poNumber, b.poNumber);
   say("POC", a.primaryPoc, b.primaryPoc);
+  say("Second contact", a.secondaryPocs.join(", "), b.secondaryPocs.join(", "));
   say("Sales person", a.salesperson, b.salesperson);
+  say("Job type", a.jobType, b.jobType);
   say("Urgent", a.urgent ? "yes" : "no", b.urgent ? "yes" : "no");
+  say("Winter additive", a.winterAdditive ? "yes" : "no", b.winterAdditive ? "yes" : "no");
+  say("Partner email", a.notifyVendor ? "on" : "off", b.notifyVendor ? "on" : "off");
   say("Tags", a.tags.join(", "), b.tags.join(", "));
   say("Instructions", a.instructions, b.instructions);
+  /* THE NOTE IS RECORDED, NOT REPRINTED. A trail that quotes both halves of a
+     paragraph every time somebody fixes a typo buries the entries that matter,
+     and the note itself is one scroll away on the sheet. */
+  if (a.internalNote !== b.internalNote) {
+    out.push(
+      `Internal note: ${
+        !a.internalNote ? "added" : !b.internalNote ? "cleared" : "edited"
+      }`
+    );
+  }
 
   const names = (ids: string[]) =>
     ids.filter(Boolean).map((id) => VENDORS.find((v) => v.id === id)?.name ?? id);
@@ -1066,6 +1102,15 @@ export const SERVICE_LINES = ["Fuel", "Lubricants", "Propane"] as const;
 export type ServiceLine = (typeof SERVICE_LINES)[number];
 
 /**
+ * JOB TYPE, NOT SERVICE LINE. The pair answers a different question from
+ * `ServiceLine`: whether the broker buys the haul in or runs it on our own
+ * fleet. It lived in the sheet while the order it describes had no field for
+ * it, so every save threw the answer away; the model owns it now.
+ */
+export const JOB_TYPES = ["Brokerage", "Transportation"] as const;
+export type JobType = (typeof JOB_TYPES)[number];
+
+/**
  * THE BUSINESSES INSIDE A LINE.
  *
  * A line of service is not one business. Fuel runs two: TRANSPORT — a full
@@ -1160,6 +1205,17 @@ const INSTRUCTIONS = [
   "Gate code 4417. Tanks are behind the shop, back in from the north side.",
   "Call the POC 30 minutes out. No entry before 7am.",
   "Fill both saddle tanks. Do not top the day tank.",
+  "",
+];
+
+/* NEVER LEAVES THE BUILDING. Mostly empty, because most orders have nothing
+   anyone needed to say twice. */
+const INTERNAL_NOTES = [
+  "Customer disputed the last delivery fee. Confirm the rate before invoicing.",
+  "Site contact changes at the end of the month — check before the next run.",
+  "",
+  "",
+  "",
   "",
 ];
 
@@ -1530,9 +1586,23 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
             }
           : null,
       hub: HUBS[i % HUBS.length],
+      /* EVERY SEEDED ORDER IS BROKERAGE. All of them were put out to a
+         partner, and the transportation path — our own fleet, no vendor
+         table — is not built, so seeding one would be seeding a screen that
+         does not exist. */
+      jobType: "Brokerage",
       primaryPoc: POCS[i % POCS.length],
+      /* Every fifth order names a second person, and never the same one as the
+         primary — a fallback contact that is the contact is not a fallback. */
+      secondaryPocs: i % 5 === 0 ? [POCS[(i + 2) % POCS.length]] : [],
       salesperson: SALESPEOPLE[i % SALESPEOPLE.length],
       instructions: INSTRUCTIONS[i % INSTRUCTIONS.length],
+      internalNote: INTERNAL_NOTES[i % INTERNAL_NOTES.length],
+      /* A WINTER BLEND IS A FUEL THING. Lubricants and propane have no
+         additive, so flagging one would read as a spec nobody can supply. */
+      winterAdditive: lineOfProduct(lines[0]?.product ?? "") === "Fuel" && i % 7 === 0,
+      /* Off on every seed, as it is on every new order. */
+      notifyVendor: false,
       blockedReason:
         status === "Blocked" ? CREDIT_REASONS[i % CREDIT_REASONS.length] : null,
       movement: isMovement
@@ -1677,6 +1747,20 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     }
     if ((r.status === "Blocked") !== (r.blockedReason !== null)) {
       problems.push(`${r.orderNo}: blocked reason and status disagree`);
+    }
+    /* A FALLBACK CONTACT THAT IS THE CONTACT IS NOT A FALLBACK, and a blank
+       row in the list is not a person — both come from a form that lets you
+       add a row before choosing who goes in it. */
+    if (r.secondaryPocs.includes(r.primaryPoc)) {
+      problems.push(`${r.orderNo}: the primary POC is also listed as a second contact`);
+    }
+    if (r.secondaryPocs.some((p) => p === "")) {
+      problems.push(`${r.orderNo}: an empty second contact`);
+    }
+    /* A WINTER BLEND IS A FUEL THING — lubricants and propane have no
+       additive, so the flag would describe a spec nobody can supply. */
+    if (r.winterAdditive && r.serviceLine !== "Fuel") {
+      problems.push(`${r.orderNo}: winter additive on a ${r.serviceLine} order`);
     }
     for (const l of r.lines) {
       if (l.topOff && l.gal !== null) {

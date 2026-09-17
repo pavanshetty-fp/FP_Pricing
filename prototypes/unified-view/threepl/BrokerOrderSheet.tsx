@@ -108,6 +108,7 @@ import {
 import {
   BROKER_STATUS_TONE,
   HUBS,
+  JOB_TYPES,
   LISTING_TYPES,
   ORDER_TAGS,
   POCS,
@@ -127,6 +128,7 @@ import {
   customerLineTotal,
   totalGal,
   type BrokerOrder,
+  type JobType,
   type VendorQuote,
   type CustomerCharges,
   type BrokerOrderType,
@@ -382,13 +384,6 @@ function FlagRow({
   );
 }
 
-/* JOB TYPE, NOT SERVICE LINE. It was called `serviceLine` while its label on
-   screen said "Job Type", and the name is needed for the real thing: Fuel,
-   Lubricants and Propane are the service lines this business runs, and they
-   live on `BrokerOrder.serviceLine` in orders.ts. This pair answers a different
-   question — whether the broker buys the haul in or runs it. */
-export const JOB_TYPES = ["Brokerage", "Transportation"] as const;
-export type JobType = (typeof JOB_TYPES)[number];
 
 export interface BrokerOrderDraft {
   customer: string;
@@ -506,16 +501,19 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     quotes: o.quotes.map((q) => ({ ...q, lines: q.lines.map((l) => ({ ...l })) })),
     customerCharges: { ...o.customerCharges },
     quoteRequested: o.quoteRequested,
-    /* An existing order predates the split, so it reads as Brokerage — every
-       one of them went out to a vendor. */
-    jobType: "Brokerage",
+    /* READ OFF THE ORDER, NOT INVENTED. These five were hardcoded here and
+       missing from `applyDraft`, so the sheet showed a default, took what was
+       typed, and handed back the default again on the next open. */
+    jobType: o.jobType,
     primaryPoc: o.primaryPoc,
-    secondaryPoc: "",
+    /* The sheet collects ONE second contact; the order stores a list, because
+       the movement sheet collects several. The rest are kept, not shown. */
+    secondaryPoc: o.secondaryPocs[0] ?? "",
     salesperson: o.salesperson,
-    tags: [],
-    notifyVendor: false,
-    internalNote: "",
-    winterAdditive: false,
+    tags: [...o.tags],
+    notifyVendor: o.notifyVendor,
+    internalNote: o.internalNote,
+    winterAdditive: o.winterAdditive,
     instructions: o.instructions,
     recurring: o.kind === "Recurring",
     recurrenceFrom: o.recurrence

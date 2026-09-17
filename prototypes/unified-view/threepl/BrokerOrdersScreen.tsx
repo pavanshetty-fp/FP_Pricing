@@ -1057,14 +1057,45 @@ export function BrokerOrdersScreen({
               urgent: draft.urgent,
               signatureOnDelivery: draft.signatureOnDelivery,
               lines: draft.lines,
+              /* THE LINE FOLLOWS THE PRODUCT, ALWAYS. It was set once at
+                 creation and never again, so a draft that started on the
+                 default fuel and ended up a lubricants order stayed on the
+                 Fuel board with lubricants written on its own sheet. */
+              ...(() => {
+                const sl = lineOfProduct(draft.lines[0]?.product ?? "");
+                if (sl === r.serviceLine) return {};
+                const options = LINE_BUSINESSES[sl];
+                return {
+                  serviceLine: sl,
+                  /* A business belongs to ONE line, so the old one cannot
+                     survive the move. Propane declares none, hence null. */
+                  business:
+                    r.business && options.includes(r.business)
+                      ? r.business
+                      : (options[0] ?? null),
+                };
+              })(),
               status: draft.status,
               vendorId: draft.vendorId,
               invitedVendorIds: draft.invitedVendorIds,
               sentVendorIds: draft.sentVendorIds,
               quoteRequested: draft.quoteRequested,
+              jobType: draft.jobType,
               primaryPoc: draft.primaryPoc,
+              /* THE FIVE THAT HAD NO HOME. Job type, the second contact, the
+                 internal note, the winter blend and the email switch were
+                 collected by the sheet and modelled nowhere, so every one of
+                 them was thrown away on save and read back as its default.
+                 The rest of the secondary list is kept — this sheet edits the
+                 first, the movement sheet writes several. */
+              secondaryPocs: draft.secondaryPoc
+                ? [draft.secondaryPoc, ...r.secondaryPocs.slice(1)]
+                : r.secondaryPocs.slice(1),
               salesperson: draft.salesperson,
               instructions: draft.instructions,
+              internalNote: draft.internalNote,
+              winterAdditive: draft.winterAdditive,
+              notifyVendor: draft.notifyVendor,
               /* EVERYTHING THE SHEET COLLECTS AND THE ORDER MODELS. These six
                  were missing, so a save kept the customer and the lines and
                  quietly dropped the acceptances, the prices, the delivery fee,
@@ -1140,6 +1171,14 @@ export function BrokerOrdersScreen({
    * every save that changed something earns its line.
    */
   const saveOrder = (order: BrokerOrder, draft: BrokerOrderDraft) => {
+    /* AN ORDER BEING EDITED DOES NOT SLIP OUT FROM BEHIND ITS OWN SHEET.
+       Changing the product to a lubricant, or the planned date to next week,
+       moves the row off a board scoped to Fuel and to today — the sheet stays
+       open over a list the row has left, and closing it looks like the edit
+       was lost. Same widening as a new order gets. */
+    if (draft.plannedDate) {
+      revealOn(draft.plannedDate, lineOfProduct(draft.lines[0]?.product ?? ""));
+    }
     setRows((prev) => {
       const saved = prev.map((r) => (r.id === order.id ? applyDraft(r, draft) : r));
       const before = prev.find((r) => r.id === order.id);
@@ -1160,6 +1199,35 @@ export function BrokerOrdersScreen({
           : r
       );
     });
+  };
+
+  /**
+   * A NEW ORDER HAS TO BE WHERE THE READER IS LOOKING.
+   *
+   * The board is scoped to a date range and to one service line, and a new
+   * order defaults to TOMORROW — so the commonest thing anyone could do here
+   * was create an order and watch it not appear. The same happened to a
+   * lubricants order booked from the Fuel tab.
+   *
+   * The window is WIDENED rather than moved. Jumping the board to the new
+   * order's day would take away whatever the reader was watching to make room
+   * for the thing they just made; today–tomorrow shows both, and the date
+   * label says so.
+   *
+   * Search and the filter panel are left alone: those are narrowings the
+   * reader typed, and undoing them is a bigger liberty than widening a window
+   * that was never chosen.
+   */
+  const revealOn = (when: Date, serviceLine: ServiceLine) => {
+    setRange((r) => {
+      const day = startOfDay(when);
+      if (day >= startOfDay(r.from) && day <= startOfDay(r.to)) return r;
+      return {
+        from: day < startOfDay(r.from) ? day : r.from,
+        to: day > startOfDay(r.to) ? day : r.to,
+      };
+    });
+    setLine(serviceLine);
   };
 
   /** New orders continue the D- series in steps of 7, as the seeds do. */
@@ -1257,14 +1325,20 @@ export function BrokerOrdersScreen({
             }
           : null,
         hub: draft.hub,
+        jobType: draft.jobType,
         primaryPoc: draft.primaryPoc,
+        secondaryPocs: draft.secondaryPoc ? [draft.secondaryPoc] : [],
         salesperson: draft.salesperson,
         instructions: draft.instructions,
+        internalNote: draft.internalNote,
+        winterAdditive: draft.winterAdditive,
+        notifyVendor: draft.notifyVendor,
         blockedReason: null,
         movement: null,
       },
       ...prev,
     ]);
+    revealOn(when, lineOfProduct(draft.lines[0]?.product ?? ""));
     setPage(1);
     setCreating(false);
     setOpenId(`bo-new-${nextNo}`);
@@ -1340,9 +1414,20 @@ export function BrokerOrdersScreen({
         loadOrder: null,
         recurrence: null,
         hub: HUBS[0],
+        /* A MOVEMENT RUNS ON OUR OWN FLEET. This sheet has no partner table
+           and no quotes, so there is nobody to buy the haul from. */
+        jobType: "Transportation",
         primaryPoc: draft.primaryPoc,
+        /* The movement sheet collects SEVERAL second contacts, which is why
+           the order stores a list. Blanks are dropped — an unfilled row is
+           not a person. */
+        secondaryPocs: draft.secondaryPocs.filter((p) => p !== ""),
         salesperson: draft.salesperson,
         instructions: draft.instructions,
+        internalNote: draft.internalNote,
+        /* No fuel on a movement, so no blend to specify. */
+        winterAdditive: false,
+        notifyVendor: draft.notifyVendor,
         blockedReason: null,
         movement: {
           direction: draft.direction,
@@ -1355,6 +1440,7 @@ export function BrokerOrdersScreen({
       },
       ...prev,
     ]);
+    revealOn(when, lineOfProduct(""));
     setPage(1);
   };
 

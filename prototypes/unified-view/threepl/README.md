@@ -213,9 +213,10 @@ Dispatch and 3PL"*.
   usual primary/secondary weight. The green fill is the first outside
   `docs/ds/ui/2-rules.md` §9's brand-only rule; the rule needs amending or the
   pair needs a token.
-- **The view bar puts the businesses first.** `Transport · Tank Wagon │ Default ·
-  <saved views> · + View` — facts about the work on one side of a rule, things a
-  reader made on the other. Default still holds the underline at rest, and a
+- **The view bar puts the businesses first.** On Fuel `Transport · Tank Wagon │
+  Default · <saved views> · + View`; on Lubricants `Packaged Goods · Lubes │ …`.
+  Propane has none declared yet, so its row is Default alone. Facts about the
+  work sit on one side of a rule, things a reader made on the other. Default still holds the underline at rest, and a
   business and a saved view are mutually exclusive: exactly one tab is ever
   underlined, and picking either drops the other. See `docs/ds/ui/2-rules.md` §10.
 - **The column tools are the table's tools.** Search by column and Show/Hide

@@ -1064,13 +1064,19 @@ export type ServiceLine = (typeof SERVICE_LINES)[number];
  * standing narrowing of the list rather than a filter to be re-applied, which
  * is why these ride on the preset-view row beside Default.
  *
- * Lubricants and Propane have theirs, and they are not written down yet. An
- * empty list is the honest way to say so: the row shows Default alone rather
- * than inventing names nobody asked for.
+ * LUBRICANTS RUNS TWO AS WELL (Pavan, 2026-09-17): PACKAGED GOODS — drums,
+ * pails and cases, sold and delivered as units — and LUBES, the bulk oil that
+ * goes into a tank the way fuel does. The same split Fuel has, for the same
+ * reason: different trucks, different loads, different people scheduling
+ * them.
+ *
+ * Propane's are still not written down. An empty list is the honest way to
+ * say so: the row shows Default alone rather than inventing names nobody
+ * asked for.
  */
 export const LINE_BUSINESSES: Record<ServiceLine, string[]> = {
   Fuel: ["Transport", "Tank Wagon"],
-  Lubricants: [],
+  Lubricants: ["Packaged Goods", "Lubes"],
   Propane: [],
 };
 

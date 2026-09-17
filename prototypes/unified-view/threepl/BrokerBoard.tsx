@@ -155,7 +155,19 @@ export interface BoardCardRow {
   columns, so the eye lands in the same place either way.
 */
 export type BoardCardUnit =
-  | { kind: "stack"; key: string; heading: string; lines: BoardCardLine[] }
+  | {
+      kind: "stack";
+      key: string;
+      heading: string;
+      lines: BoardCardLine[];
+      /**
+       * A figure that belongs to the unit rather than to one of its lines —
+       * what the awarded partner is charging, beside the partner's name. Set
+       * in the same size as a quote's price, because on a finished card it is
+       * the same fact arriving one stage later.
+       */
+      figure?: string;
+    }
   | { kind: "inline"; key: string; heading: string; parts: string[] }
   | {
       kind: "rows";
@@ -321,14 +333,26 @@ const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
 };
 
 /** Lines at three levels. Hierarchy does the work a field label used to. */
-function CardStack({ lines }: { lines: BoardCardLine[] }) {
-  return (
+function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string }) {
+  const stack = (
     <div className="flex min-w-0 flex-col">
       {lines.map((l) => (
         <span key={l.text} className={cn("truncate", LEVEL_CLASS[l.level ?? 1])} title={l.text}>
           {l.text}
         </span>
       ))}
+    </div>
+  );
+  if (!figure) return stack;
+  /* THE NAME AND THE FIGURE AT THE TWO EDGES, exactly as the quote unit sets
+     them — a finished order's price is the same fact as a quote's, one stage
+     on, and it would be strange for it to sit somewhere else on the card. */
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-2.5">
+      {stack}
+      <span className="text-lg font-semibold tabular-nums whitespace-nowrap text-foreground">
+        {figure}
+      </span>
     </div>
   );
 }
@@ -687,7 +711,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           ) : (
             <>
               <UnitHeading>{u.heading}</UnitHeading>
-              {u.kind === "stack" && <CardStack lines={u.lines} />}
+              {u.kind === "stack" && <CardStack lines={u.lines} figure={u.figure} />}
               {u.kind === "inline" && <CardInline parts={u.parts} />}
               {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
             </>

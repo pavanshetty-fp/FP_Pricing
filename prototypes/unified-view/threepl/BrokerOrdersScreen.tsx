@@ -70,6 +70,7 @@ import {
   siteAddress,
   diffOrder,
   isAllTopOff,
+  isDelivered,
   isOrderReady,
   matchesBrokerOrder,
   matchesBrokerOrderIn,
@@ -124,6 +125,24 @@ import { money } from "./directoryCore";
  * the tanks and what goes in each; a movement lists the one asset, its type and
  * its capacity — same three columns, so the eye lands in the same place.
  */
+/**
+ * "Sep 17, 2026 · 9:07 AM" — the date and the time, in that order.
+ *
+ * THE TIME IS THE HALF THAT IS NEW. The board is already scoped to a day, so
+ * on most cards the date is a confirmation and the clock is the answer; the
+ * date stays because a delivery that ran the day after it was planned is
+ * exactly the case this unit exists to show.
+ */
+const COMPLETED_TIME_FMT = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function completedLabel(iso: string): string {
+  const at = new Date(iso);
+  return `${DATE_FMT.format(at)} · ${COMPLETED_TIME_FMT.format(at)}`;
+}
+
 function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[] {
   const site = SHIP_TO_SITES.find((x) => x.name === r.shipTo);
   const vendor = r.vendorId ? vendorById(r.vendorId) : undefined;
@@ -185,6 +204,9 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
      cost column does — including the load-order rule, which strikes the
      product from what the partner may charge. Two figures for one quote is
      how a card comes to disagree with the order it stands for. */
+  const heldQuote = vendor
+    ? r.quotes.find((q) => q.vendorId === vendor.id)
+    : undefined;
   const ranked = vendor
     ? []
     : r.quotes
@@ -246,6 +268,25 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           : [r.recurrence ? r.recurrence.frequency : r.date.title]),
       ],
     },
+    /* WHAT A FINISHED ORDER IS ASKED IS WHEN IT WAS DONE, not when it was
+       meant to be. The plan and the fact are two different questions, so this
+       is its own unit rather than the Schedule wearing a second name — on a
+       card where the run went out late, both being readable at once is the
+       whole point. Empty before the delivery, so the "a heading with nothing
+       under it is not a unit" filter takes it off every earlier card. */
+    {
+      kind: "inline" as const,
+      key: "completed",
+      heading: "Completed on",
+      parts: r.completedAt
+        ? [
+            ...(off.has("completed.when") ? [] : [completedLabel(r.completedAt)]),
+            ...(off.has("completed.cadence") || !r.recurrence
+              ? []
+              : [r.recurrence.frequency]),
+          ]
+        : [],
+    },
     ...(foldProduct ? [] : [productUnit]),
     /* WHAT THE PARTNERS HAVE QUOTED beats what they have agreed to. Until one
        of them holds the order, the card's Vendor unit is about the PRICES that
@@ -273,6 +314,14 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       kind: "stack",
       key: "partner",
       heading: "Vendor",
+      /* WHAT THE ORDER COST, once one partner holds it. The quote stepper
+         carries a figure per partner while the round is open; after the award
+         there is one, and a finished card that shows who ran the job and not
+         what it came to is half an answer. */
+      figure:
+        vendor && !off.has("partner.price") && heldQuote
+          ? money(quoteTotal(heldQuote, r.lines, !r.loadOrder), true)
+          : undefined,
       lines: vendor
         ? [
             ...(off.has("partner.name")
@@ -349,7 +398,11 @@ function laneCardCode(r: BrokerOrder) {
  */
 function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "neutral" }[] {
   const out: { label: string; tone?: "critical" | "neutral" }[] = [];
-  if (r.urgent) out.push({ label: "Urgent", tone: "critical" });
+  /* URGENT IS ABOUT GETTING IT DONE, so it stops meaning anything once it is.
+     On a delivered card it is a red chip asking for a hurry nobody can supply,
+     competing with the chips that still matter. Recurrence is not like that —
+     it says what KIND of order this is, and a finished one is still one. */
+  if (r.urgent && !isDelivered(r.status)) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
   /* DRAFT OR READY. A draft that has everything it needs and a draft that is
      half typed look identical in a lane of eight, and the difference is the
@@ -577,6 +630,12 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "schedule", label: "Schedule" },
   { key: "schedule.window", label: "Delivery window", group: "schedule" },
   { key: "schedule.when", label: "Date or cadence", group: "schedule" },
+  /* WHEN IT ACTUALLY RAN, which only a delivered order has. A field of its own
+     rather than a second face for Schedule, so the two can be read together on
+     a card where the difference between planned and actual is the point. */
+  { key: "completed", label: "Completed on" },
+  { key: "completed.when", label: "Date and time", group: "completed" },
+  { key: "completed.cadence", label: "Cadence", group: "completed" },
   { key: "product", label: "Delivery Product Details" },
   { key: "product.product", label: "Product", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },
@@ -584,7 +643,110 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "partner", label: "Vendor" },
   { key: "partner.name", label: "Partner name", group: "partner" },
   { key: "partner.detail", label: "Base · safety · distance", group: "partner" },
+  /* What the partner holding the order is charging. Before the award there is
+     no single figure — the quote stepper carries one per partner — so this is
+     a delivered order's line. */
+  { key: "partner.price", label: "Price", group: "partner" },
 ];
+
+/**
+ * WHICH FIELDS A LANE CAN ACTUALLY SHOW.
+ *
+ * A card in Quoting has no completion time and no settled price, so offering
+ * those two in that lane's field list would be two switches that do nothing —
+ * and a menu whose ticks do not describe the card is worse than a shorter
+ * menu. With the scope on All lanes the full list is offered, because that
+ * setting is about the board rather than about one card.
+ */
+function fieldsForLane(laneKey: string | null) {
+  if (!laneKey) return CARD_UNITS;
+  const delivered = DELIVERED_LANE_KEYS.has(laneKey);
+  return CARD_UNITS.filter((u) =>
+    delivered
+      ? true
+      : !u.key.startsWith("completed") && u.key !== "partner.price"
+  );
+}
+
+const DELIVERED_LANE_KEYS = new Set(["Completed", "Verified", "Synced"]);
+
+/** One shared empty set, so a lane with nothing hidden does not allocate. */
+const EMPTY_SET: ReadonlySet<string> = new Set<string>();
+
+/** Which lanes one press in the menu writes to. */
+function lanesInScope(scope: string | null): string[] {
+  return scope ? [scope] : BOARD_LANES.map((l) => l.key);
+}
+
+/**
+ * One field on or off in one lane's set, with the parent/child rule applied.
+ *
+ * `turningOff` is passed in rather than read off this set, because on All
+ * lanes the press has ONE meaning for every lane — see the caller.
+ */
+function toggleField(
+  current: ReadonlySet<string>,
+  key: string,
+  turningOff: boolean
+): Set<string> {
+  const next = new Set(current);
+  const kids = CARD_UNITS.filter((c) => c.group === key).map((c) => c.key);
+  const entry = CARD_UNITS.find((c) => c.key === key);
+  if (!turningOff) {
+    next.delete(key);
+    for (const c of kids) next.delete(c);
+    /* Switching a child back on switches its heading back on too — otherwise
+       the line you just asked for is still not drawn. */
+    if (entry?.group) next.delete(entry.group);
+    return next;
+  }
+  next.add(key);
+  for (const c of kids) next.add(c);
+  /* The last child going off takes the parent, since a heading with nothing
+     under it is not a unit. */
+  if (entry?.group) {
+    const siblings = CARD_UNITS.filter((c) => c.group === entry.group).map(
+      (c) => c.key
+    );
+    if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
+  }
+  return next;
+}
+
+/**
+ * WHAT EACH LANE STARTS WITH.
+ *
+ * A card is not one design repeated eight times — the question it answers
+ * changes as the order moves, and the default set has to move with it.
+ *
+ *  - **From Quoting on, the schedule goes.** The board is already scoped to a
+ *    day and the window is on the order; what the reader is doing in these
+ *    lanes is comparing partners and prices, and a delivery window between the
+ *    customer and the quotes is a line they read past every time.
+ *  - **Past the delivery, "Completed on" takes its place.** A finished order is
+ *    asked when it RAN, not when it was meant to.
+ *
+ * These are defaults, not rules. Every one of them is a tick in the Card
+ * fields menu, per lane, and turning the schedule back on in Quoting is one
+ * click.
+ */
+const SCHEDULE_FIELDS = ["schedule", "schedule.window", "schedule.when"];
+
+const LANE_FIELD_DEFAULTS: Record<string, string[]> = {
+  Quoting: SCHEDULE_FIELDS,
+  Assigned: SCHEDULE_FIELDS,
+  Completed: SCHEDULE_FIELDS,
+  Verified: SCHEDULE_FIELDS,
+  Synced: SCHEDULE_FIELDS,
+};
+
+function initialCardOff(): Record<string, Set<string>> {
+  const out: Record<string, Set<string>> = {};
+  for (const lane of BOARD_LANES) {
+    out[lane.key] = new Set(LANE_FIELD_DEFAULTS[lane.key] ?? []);
+  }
+  return out;
+}
 
 /**
  * THE WAYS A LANE CAN BE ORDERED, NAMED — see `BrokerBoardProps.laneSortOptions`.
@@ -724,7 +886,29 @@ export function BrokerOrdersScreen({
   /* THE BOARD KEEPS ITS OWN SET, because the two controls narrow different
      things and share one button. Folding them together would mean turning
      Vendor off on a card also took the Vendor column out of the table. */
-  const [cardOff, setCardOff] = React.useState<Set<string>>(new Set());
+  /* A SET PER LANE, not one for the board. What a Quoting card should say is
+     not what a Completed one should, so a single switch list could only ever
+     be right for one lane at a time. The menu's scope control is what picks
+     which set is being edited; "All lanes" writes to every one of them. */
+  const [cardOff, setCardOff] = React.useState<Record<string, Set<string>>>(
+    initialCardOff
+  );
+  /** `null` = the menu is speaking for every lane at once. */
+  const [cardScope, setCardScope] = React.useState<string | null>(null);
+
+  /* WHAT THE MENU'S TICKS SAY, for whichever scope it is speaking for. On one
+     lane it is that lane's set; on All lanes a field counts as hidden unless
+     it is showing in every lane, so a tick always describes every card the
+     scope covers. */
+  const scopedHidden = React.useMemo<ReadonlySet<string>>(() => {
+    if (cardScope) return cardOff[cardScope] ?? EMPTY_SET;
+    const out = new Set<string>();
+    for (const u of CARD_UNITS) {
+      if (BOARD_LANES.some((l) => (cardOff[l.key] ?? EMPTY_SET).has(u.key)))
+        out.add(u.key);
+    }
+    return out;
+  }, [cardOff, cardScope]);
   /* Empty = the table's declared order; the table fills in anything a saved
      order does not mention, so a stale view never costs a column. */
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -957,7 +1141,7 @@ export function BrokerOrdersScreen({
             badges: laneCardBadges(r),
             code: laneCardCode(r),
             subtitle: laneCardSubtitle(r),
-            units: laneCardUnits(r, cardOff),
+            units: laneCardUnits(r, cardOff[lane.key] ?? EMPTY_SET),
             /* REVIEW PRICING OPENS AT THE PRICING. */
             alert: laneCardAlert(r, () => {
               setSheetFocus("vendor");
@@ -1160,6 +1344,14 @@ export function BrokerOrdersScreen({
                     loadingAccount: x.loadingAccount!,
                     ...(x.excluded ? { excluded: true } : {}),
                   })) ?? null,
+              /* STAMPED ONCE, WHEN THE RUN IS FIRST CALLED DONE. Re-stamping
+                 on every later save would make Verified and Synced rewrite the
+                 delivery's own time; going backwards out of the delivered
+                 stages clears it, because an order being worked on again has
+                 not been delivered. */
+              completedAt: isDelivered(draft.status)
+                ? (r.completedAt ?? new Date().toISOString())
+                : null,
               // Leaving Blocked clears the reason, so the two can never disagree
               // — the same invariant `assertConsistent` checks on the seeds.
               blockedReason: draft.status === "Blocked" ? r.blockedReason : null,
@@ -1359,6 +1551,8 @@ export function BrokerOrdersScreen({
         internalNote: draft.internalNote,
         winterAdditive: draft.winterAdditive,
         notifyVendor: draft.notifyVendor,
+        /* A new order has not run yet, whatever stage it is created into. */
+        completedAt: null,
         blockedReason: null,
         movement: null,
       },
@@ -1454,6 +1648,7 @@ export function BrokerOrdersScreen({
         /* No fuel on a movement, so no blend to specify. */
         winterAdditive: false,
         notifyVendor: draft.notifyVendor,
+        completedAt: null,
         blockedReason: null,
         movement: {
           direction: draft.direction,
@@ -1896,11 +2091,27 @@ export function BrokerOrdersScreen({
             });
           }}
           onShowAllColumns={() => setHidden(new Set())}
-          /* WHAT IS ON THE CARD. `ListToolbar` shows this on the board only. */
+          /* WHAT IS ON THE CARD, PER LANE. `ListToolbar` shows this on the
+             board only. */
           cardFields={{
-            units: CARD_UNITS,
-            hidden: cardOff,
-            onShowAll: () => setCardOff(new Set()),
+            units: fieldsForLane(cardScope),
+            /* With the scope on All lanes a field reads as ON only when it is
+               on in EVERY lane — a tick that means "on somewhere" would be a
+               tick the reader cannot act on. */
+            hidden: scopedHidden,
+            scope: cardScope,
+            scopes: BOARD_LANES.map((l) => ({
+              key: l.key,
+              label: l.title ?? l.key,
+            })),
+            onScopeChange: setCardScope,
+            onShowAll: () =>
+              setCardOff((prev) => {
+                const next = { ...prev };
+                for (const lane of lanesInScope(cardScope))
+                  next[lane] = new Set();
+                return next;
+              }),
             /* A PARENT CARRIES ITS CHILDREN. Turning the heading off takes the
                lines with it, because the heading is what holds them together;
                turning it back on brings them all back, which is what "show me
@@ -1908,31 +2119,15 @@ export function BrokerOrdersScreen({
                parent, since a heading with nothing under it is not a unit. */
             onToggle: (k) =>
               setCardOff((prev) => {
-                const next = new Set(prev);
-                const kids = CARD_UNITS.filter((c) => c.group === k).map(
-                  (c) => c.key
-                );
-                if (next.has(k)) {
-                  next.delete(k);
-                  for (const c of kids) next.delete(c);
-                } else if (kids.length > 0) {
-                  next.add(k);
-                  for (const c of kids) next.add(c);
-                } else {
-                  const entry = CARD_UNITS.find((c) => c.key === k);
-                  next.add(k);
-                  if (entry?.group) {
-                    const siblings = CARD_UNITS.filter(
-                      (c) => c.group === entry.group
-                    ).map((c) => c.key);
-                    if (siblings.every((sib) => next.has(sib)))
-                      next.add(entry.group);
-                  }
+                /* WHAT ONE PRESS MEANS ON "ALL LANES": the field ends up the
+                   same everywhere. Toggling each lane against its own state
+                   would leave it on in some and off in others, which is the
+                   one outcome the scope exists to avoid. */
+                const turningOff = !scopedHidden.has(k);
+                const next = { ...prev };
+                for (const lane of lanesInScope(cardScope)) {
+                  next[lane] = toggleField(prev[lane] ?? EMPTY_SET, k, turningOff);
                 }
-                /* Switching a child back on switches its heading back on too —
-                   otherwise the line you just asked for is still not drawn. */
-                const entry = CARD_UNITS.find((c) => c.key === k);
-                if (!next.has(k) && entry?.group) next.delete(entry.group);
                 return next;
               }),
           }}

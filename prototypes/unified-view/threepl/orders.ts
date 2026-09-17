@@ -63,6 +63,22 @@ export type BrokerStatus =
      why it is last in the lane order rather than in sequence with the rest. */
   | "Cancelled";
 
+/**
+ * PAST THE DELIVERY. The stages where the run has happened and the order is
+ * being settled rather than arranged — which is the line the card's own
+ * contents turn on: before it, a card is about a plan; after it, about a fact.
+ */
+export const DELIVERED_STATUSES: BrokerStatus[] = [
+  "Completed",
+  "Verified",
+  "Partially Synced",
+  "Synced",
+];
+
+export function isDelivered(s: BrokerStatus): boolean {
+  return DELIVERED_STATUSES.includes(s);
+}
+
 /** Lane / tab order. The board renders lanes in exactly this sequence. */
 export const BROKER_STATUSES: BrokerStatus[] = [
   "Draft",
@@ -457,6 +473,16 @@ export interface BrokerOrder {
    * mails people outside the building, so sending is the deliberate act.
    */
   notifyVendor: boolean;
+  /**
+   * WHEN THE DELIVERY ACTUALLY HAPPENED. ISO, `null` until it has.
+   *
+   * The board is scoped to the day an order was PLANNED for, and past the
+   * delivery that is the wrong date to be reading: what a finished order is
+   * asked is when it was done, not when it was meant to be. Stored rather than
+   * dug out of the audit trail — a trail is a list of changes, and the one
+   * that matters here has to survive being summarised.
+   */
+  completedAt: string | null;
   /** Only ever set on `Blocked` — the credit reason shown on the card. */
   blockedReason: string | null;
   /** Movement orders only. */
@@ -1585,6 +1611,22 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
                 RECURRENCE_FREQUENCIES[i % RECURRENCE_FREQUENCIES.length],
             }
           : null,
+      /* WHEN IT ACTUALLY RAN. Inside the delivery window it was planned for
+         and a few minutes off the hour, because a finished order whose
+         completion time is exactly its window's start reads as a default
+         rather than as a record. Null before the delivery. */
+      completedAt: isDelivered(status)
+        ? (() => {
+            const at = new Date(when);
+            at.setHours(
+              timeToMinutes(WINDOWS[i % WINDOWS.length].start) / 60 + 1,
+              (i * 7) % 60,
+              0,
+              0
+            );
+            return at.toISOString();
+          })()
+        : null,
       hub: HUBS[i % HUBS.length],
       /* EVERY SEEDED ORDER IS BROKERAGE. All of them were put out to a
          partner, and the transportation path — our own fleet, no vendor
@@ -1756,6 +1798,12 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     }
     if (r.secondaryPocs.some((p) => p === "")) {
       problems.push(`${r.orderNo}: an empty second contact`);
+    }
+    /* A COMPLETION TIME IS THE RECORD OF A RUN THAT HAPPENED. An order still
+       being arranged cannot have one, and one past the delivery cannot be
+       missing it — the card in those lanes is built around it. */
+    if (isDelivered(r.status) !== (r.completedAt !== null)) {
+      problems.push(`${r.orderNo}: ${r.status} and its completion time disagree`);
     }
     /* A WINTER BLEND IS A FUEL THING — lubricants and propane have no
        additive, so the flag would describe a spec nobody can supply. */

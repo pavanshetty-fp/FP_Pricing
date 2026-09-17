@@ -593,6 +593,57 @@ Decided 2026-09-17, from a marked-up board screenshot.
   is not offered behind the price either, and an Assigned order whose partner
   has not priced keeps its unit — there would be no figure to fold it behind.
 
+### A card is not one design repeated eight times
+
+Decided 2026-09-17. What a card should say changes as the order moves, so the
+field set moves with it and the reader can move it further.
+
+**The default set per lane.**
+
+- **Draft** keeps everything, including the Schedule — a draft is a plan, and
+  when it is meant to run is half of it.
+- **From Quoting on, the Schedule goes.** The board is already scoped to a day
+  and the window is on the order; what the reader is doing in these lanes is
+  comparing partners and prices, and a delivery window sitting between the
+  customer and the quotes is a line they read past every time. What is left is
+  the number, the type, the customer, what is being delivered, who is carrying
+  it and how many quotes are in.
+- **Past the delivery, "Completed on" takes its place** — the date AND the
+  time, with the cadence beside it on a recurring order. A finished order is
+  asked when it RAN, not when it was meant to. It is a FIELD OF ITS OWN rather
+  than the Schedule wearing a second name: on a run that went out a day late,
+  both being readable at once is the whole point, and a reader who wants that
+  turns Schedule back on.
+- **The awarded partner's price joins the Vendor unit** once one holds the
+  order. Same size and same edge as a quote's figure, because it is the same
+  fact one stage on; a finished card that names who ran the job and not what it
+  came to is half an answer.
+- **Urgent stops being a badge once the order is delivered.** It is about
+  getting the job done, so past the delivery it is a red chip asking for a
+  hurry nobody can supply, competing with the chips that still matter.
+  Recurring stays — it says what KIND of order this is, and a finished one
+  still is one.
+
+**`completedAt` is a stored field**, not something dug out of the audit trail.
+A trail is a list of changes and the one that matters here has to survive being
+summarised. It is stamped once, the first time the order reaches a delivered
+stage, and cleared if the order goes backwards out of them.
+
+### The Card fields menu speaks for one lane at a time
+
+- **A scope control sits at the top of the menu**, above the ticks it governs,
+  because it changes what every one of them means. "All lanes" or one lane.
+- **On one lane, a tick is that lane's.** Turning the Schedule back on in
+  Quoting leaves every other lane alone.
+- **On All lanes, one press means one outcome.** The field ends up the same
+  everywhere — toggling each lane against its own state would leave it on in
+  some and off in others, which is the one result the scope exists to avoid. A
+  field reads as ON there only when it is on in EVERY lane.
+- **A lane is only offered the fields it can draw.** "Completed on" and the
+  partner's price are not in Quoting's list, because a switch that does nothing
+  is worse than a shorter menu. The full list is there under All lanes, which
+  is a setting about the board rather than about one card.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

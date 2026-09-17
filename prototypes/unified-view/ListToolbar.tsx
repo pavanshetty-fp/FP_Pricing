@@ -181,9 +181,21 @@ export interface ListToolbarProps<K extends string> {
    */
   cardFields?: {
     units: { key: string; label: string; group?: string }[];
-    hidden: Set<string>;
+    hidden: ReadonlySet<string>;
     onToggle: (key: string) => void;
     onShowAll: () => void;
+    /**
+     * WHICH LANE THE MENU IS SPEAKING FOR. `null` is every lane at once.
+     *
+     * A board card is not one design repeated down the page — what a card in
+     * the first lane should say is not what one in the last should — so a
+     * single field list could only ever be right for one lane. The scope is
+     * the first thing in the menu because it changes what every tick under it
+     * means.
+     */
+    scope?: string | null;
+    scopes?: { key: string; label: string }[];
+    onScopeChange?: (scope: string | null) => void;
   };
 }
 
@@ -639,7 +651,7 @@ export function ListToolbar<K extends string>({
                 </TooltipTrigger>
                 <TooltipContent>Card fields</TooltipContent>
               </Tooltip>
-              <PopoverContent align="end" className="w-56 p-1">
+              <PopoverContent align="end" className="w-60 p-1">
                 <div className="flex items-center justify-between px-2 py-1.5">
                   <span className="text-xs font-medium text-muted-foreground">
                     Card fields
@@ -648,6 +660,33 @@ export function ListToolbar<K extends string>({
                     {cardShown}/{cardFields.units.length}
                   </span>
                 </div>
+                {/* WHICH CARDS THIS IS ABOUT, above the ticks it governs. A
+                    card in the first lane and one in the last are answering
+                    different questions, so the field list has to be able to
+                    differ between them — and the reader has to be told which
+                    set they are editing BEFORE they edit it, not after. */}
+                {cardFields.scopes && cardFields.onScopeChange && (
+                  <div className="px-2 pb-2">
+                    <Combobox
+                      size="sm"
+                      className="w-full"
+                      value={cardFields.scope ?? ALL_LANES}
+                      onValueChange={(v) =>
+                        cardFields.onScopeChange?.(v === ALL_LANES ? null : v)
+                      }
+                      options={[
+                        { value: ALL_LANES, label: "All lanes" },
+                        ...cardFields.scopes.map((sc) => ({
+                          value: sc.key,
+                          label: sc.label,
+                        })),
+                      ]}
+                      placeholder="All lanes"
+                      searchPlaceholder="Search lanes…"
+                      emptyText="No lane found."
+                    />
+                  </div>
+                )}
                 <div className="max-h-64 overflow-y-auto">
                   {cardFields.units.map((u) => (
                     <div
@@ -692,6 +731,10 @@ export function ListToolbar<K extends string>({
     </div>
   );
 }
+
+/* The scope option standing for "every lane". A sentinel rather than "" —
+   the combobox treats an empty value as nothing chosen. */
+const ALL_LANES = "__all__";
 
 /** The active column-search chip the DS unit renders under the toolbar. */
 export function ColumnSearchChip({

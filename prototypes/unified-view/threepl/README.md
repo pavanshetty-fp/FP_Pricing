@@ -164,14 +164,22 @@ Dispatch and 3PL"*.
   Only on a BLANK row — on a row that already names a partner the question is
   "which one instead", and answering it with three would replace one row with
   three under a reader who asked to change one.
-- **The table's closing band carries the two switches.** *Send email
-  notifications* and *Request a quote* were two full-width rows under the
-  table, where they read as two more things to fill in. Both are settings for
-  the ROUND rather than for a partner, so they sit on the band that closes the
-  table, opposite Add vendor — the rows it adds are on the left, the settings
-  for them on the right. Request a quote lost its explainer sentence with the
-  full-width row: on a band beside three other controls a sentence is the
-  loudest thing there.
+- **The table's closing band carries the SENDING.** Add vendor on the left,
+  where the rows it adds are; on the right the **···** of spare acts and a
+  **smaller** Send invitations to all. Inviting is what this table is for, so
+  the act belongs on the table — and at the footer's size the two were
+  competing for one press. What the button would send to is the ticked unsent
+  rows, or every unsent row when nothing is ticked; it goes when there is
+  nothing left to send rather than sitting there spent.
+- **Invitation Settings is its own unit.** *Send email notifications* and
+  *Request a quote* are standing choices about how the round goes out, not part
+  of pressing send, and on the band beside the send button they read as part of
+  it. A unit of their own says: set them, then send.
+- **Two ways to ask, and the second is not a second button.** The row's Invite
+  carries a caret with **Invite and request quote** — the same act with one more
+  thing in the envelope. Two buttons of equal weight would make the reader
+  choose before they knew they had a choice. The quote request is the round's
+  (there is no per-partner flag), so it turns that on and sends in one press.
 - **Send email notifications is OFF by default.** It was on, on the argument
   that suppressing every email should be the deliberate act. The other way
   round is safer: the switch mails people outside the building, and a draft
@@ -451,7 +459,7 @@ that is when it will move to Quoting. Till then, everything is in draft mode."*
 - **Sending is the precondition; Proceed is the transition.** Sending an
   invitation used to move the order to Quoting by itself, which made one act do
   two things — a broker who asked one carrier while still weighing the rest
-  found the order had left Draft underneath them. The footer's **Proceed**
+  found the order had left Draft underneath them. The footer's **Create Order**
   is the moment they say the round is out, and it needs **one invitation
   actually sent**: an order in Quoting that nobody has been asked for is a lane
   telling a lie. (Revised with Pavan the same day, after the first reading.)

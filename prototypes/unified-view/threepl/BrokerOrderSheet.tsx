@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Calendar as CalendarIcon,
   Check,
+  ChevronDown,
   CircleAlert,
   Layers,
   Copy,
@@ -1676,10 +1677,14 @@ export function BrokerOrderSheet({
   const selectedRows = partnerRows
     .map((id, i) => (id && selected.has(id) ? i : -1))
     .filter((i) => i !== -1);
-  /* Ticked rows that have not been asked yet — what a send would actually do. */
+  /* WHAT A SEND WOULD ACTUALLY DO. Ticked rows that have not been asked, or —
+     with nothing ticked — every row that has not. A partner already invited is
+     never re-sent by either. */
+  const unsentIds = invitedIds.filter((id) => !sentIds.includes(id));
   const unsentTicked = selectedRows
     .map((i) => partnerRows[i])
     .filter((id) => id && !sentIds.includes(id));
+  const sendable = unsentTicked.length > 0 ? unsentTicked : unsentIds;
   const headerChecked: boolean | "indeterminate" =
     invitedIds.length > 0 && selectedRows.length === invitedIds.length
       ? true
@@ -1768,42 +1773,33 @@ export function BrokerOrderSheet({
   */
   const nextAct: { label: string; onSelect: () => void; why?: string } = !hasAssets
     ? { label: "Add an asset", onSelect: addBlankLine }
-    /* TICKED AND NOT YET ASKED — the one case where sending is the next act,
-       and it holds at EVERY stage. More partners can be brought into a round
-       that is already out: a broker chasing a quote adds two more carriers on
-       Thursday, and the footer has to be able to send to them without the
-       order going backwards. The ticked rows already sent are not re-sent. */
-    : unsentTicked.length > 0
+    /* SENDING IS THE TABLE'S ACT, NOT THE SHEET'S. It lives on the band that
+       closes the vendor table, next to the rows it acts on; the footer carries
+       the ORDER's act, and while the order is a draft that act is creating it.
+       Two buttons of the same size for the two were competing for one press.
+
+       ONE CTA THAT DOES NOT CHANGE ITS NAME UNDER THE READER. What is missing
+       goes in the line beside it, never on it. */
+    : invitedIds.length === 0
       ? {
-          label:
-            unsentTicked.length === 1
-              ? "Send invitation"
-              : "Send invitations to all",
-          onSelect: () => sendInvitations(unsentTicked),
+          label: "Create Order",
+          onSelect: () => {},
+          why: "Add a partner in the table above.",
         }
-      : invitedIds.length === 0
+      : sentIds.length === 0
         ? {
-            /* ONE CTA THAT DOES NOT CHANGE ITS NAME UNDER THE READER. What is
-               missing goes in the line beside it, not on it. */
-            label: "Proceed",
+            label: "Create Order",
             onSelect: () => {},
-            why: "Add a partner in the table above.",
+            why: "Send an invitation first.",
           }
-        : sentIds.length === 0
+        : draft.status === "Draft"
           ? {
-              label: "Proceed",
-              onSelect: () => {},
-              why: "Send an invitation first.",
+              /* ONE INVITATION OUT IS ENOUGH. The rest can be sent from
+                 Quoting — waiting for every carrier to be asked before the
+                 order may be created is the broker's own pace, not a rule. */
+              label: "Create Order",
+              onSelect: proceedToQuoting,
             }
-          : draft.status === "Draft"
-            ? {
-                /* ONE INVITATION OUT IS ENOUGH TO PROCEED. The rest can be
-                   sent from Quoting — waiting for every carrier to be asked
-                   before the order may move is the broker's own pace, not a
-                   rule. */
-                label: "Proceed",
-                onSelect: proceedToQuoting,
-              }
         : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
              accepted order was being offered "Request a quote" because the
              ladder asked about quoting before it asked whether the quoting was
@@ -2466,53 +2462,6 @@ export function BrokerOrderSheet({
          one act that actually moves the order on from where it is. */
       footerPrimary={
         <>
-          {/* THE SPARE ACTS ON THE PARTNER LIST, beside the act that uses it.
-              Acknowledging on a partner's behalf and clearing the list are
-              both things you do TO the rows, and they were the floating bar's
-              reason to exist; behind a ··· next to the send button they are
-              where a reader looks for a second act on what they have ticked,
-              without a bar appearing over the table to offer them. Grey and
-              small: it is not the act, it is the alternative to it. */}
-          {invitedIds.length > 0 && !confirmed && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="More partner actions"
-                  className="text-muted-foreground"
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="w-64">
-                {/* THE TICKED ROWS, OR ALL OF THEM. A menu that did nothing
-                    because nothing was ticked would be a control whose
-                    precondition is invisible. */}
-                <DropdownMenuItem
-                  onSelect={() =>
-                    acknowledgeFor(
-                      selectedRows.length > 0
-                        ? selectedRows.map((i) => partnerRows[i])
-                        : invitedIds
-                    )
-                  }
-                >
-                  <Check />
-                  {selectedRows.length === 1
-                    ? "Acknowledge for them"
-                    : selectedRows.length > 1
-                      ? `Acknowledge for ${selectedRows.length}`
-                      : "Acknowledge for them all"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={removeAllPartners}>
-                  <ThumbsDown />
-                  Remove all vendors
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
           {nextActBlocked && (
             <span className="max-w-[280px] text-xs text-muted-foreground">
               {nextActBlocked}
@@ -3789,19 +3738,59 @@ export function BrokerOrderSheet({
                                   Invited
                                 </StatusChip>
                               ) : (
-                                <Button
-                                  size="xs"
-                                  variant="outline"
-                                  disabled={draft.status === "Blocked"}
-                                  title={
-                                    draft.status === "Blocked"
-                                      ? "A blocked order cannot be sent to a vendor"
-                                      : undefined
-                                  }
-                                  onClick={() => sendInvitations([id])}
-                                >
-                                  <Check /> Invite
-                                </Button>
+                                /* TWO WAYS TO ASK, AND THE SECOND IS NOT A
+                                   SECOND BUTTON. Inviting is the common act
+                                   and keeps the press; asking for a price with
+                                   it is the same act with one more thing in
+                                   the envelope, so it hangs off the same
+                                   control. A plain Invite beside an Invite and
+                                   request quote of equal weight would make the
+                                   reader choose before they know they had a
+                                   choice.
+
+                                   The quote request is the ROUND's — there is
+                                   no per-partner flag on the order — so this
+                                   turns it on and sends in one press. */
+                                <span className="inline-flex items-center">
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    disabled={draft.status === "Blocked"}
+                                    title={
+                                      draft.status === "Blocked"
+                                        ? "A blocked order cannot be sent to a vendor"
+                                        : undefined
+                                    }
+                                    onClick={() => sendInvitations([id])}
+                                    className="rounded-r-none border-r-0"
+                                  >
+                                    <Check /> Invite
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        size="xs"
+                                        variant="outline"
+                                        disabled={draft.status === "Blocked"}
+                                        aria-label={`More ways to invite ${v?.name ?? `row ${i + 1}`}`}
+                                        className="rounded-l-none px-1"
+                                      >
+                                        <ChevronDown />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-60">
+                                      <DropdownMenuItem
+                                        onSelect={() => {
+                                          set("quoteRequested", true);
+                                          sendInvitations([id]);
+                                        }}
+                                      >
+                                        <Check />
+                                        Invite and request quote
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </span>
                               )}
                             </td>
                             {/* AWARDING IS A PRICED PARTNER'S ROW ONLY. The
@@ -3907,14 +3896,17 @@ export function BrokerOrderSheet({
                   </tbody>
                 </table>
               </div>
-              {/* THE LAST BAND CARRIES THE TWO SWITCHES AS WELL.
-                  (Pavan, 2026-09-17 — they were two full-width rows of their
-                  own under the table.) Both are settings for the ROUND rather
-                  than for a partner, so they belong on the table's own closing
-                  band and not as two more rows below it, where they read as
-                  two more things to fill in. Add vendor keeps the left, where
-                  the rows it adds are; the settings take the right. */}
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border px-3 py-2">
+              {/* THE BAND THAT CLOSES THE TABLE CARRIES THE SENDING.
+                  (Pavan, 2026-09-17.) Inviting is what this table is FOR, so
+                  the act belongs on the table rather than in the sheet's
+                  footer three sections down — the footer's act is the ORDER's,
+                  and the two were competing for the same press. Add vendor
+                  keeps the left, where the rows it adds are; the send and its
+                  spare acts take the right, next to the rows they act on.
+
+                  SMALLER THAN THE FOOTER'S. It is one section's act, not the
+                  sheet's, and at the same size the two read as equals. */}
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border px-3 py-2">
                 <button
                   type="button"
                   /* A BLOCK STOPS SENDING, NOT BUILDING THE LIST. Lining up
@@ -3927,38 +3919,72 @@ export function BrokerOrderSheet({
                 >
                   <Plus className="size-4" /> Add vendor
                 </button>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                  {/* §6's per-order kill switch. OFF by default — it mails
-                      people outside the building. */}
-                  <label
-                    htmlFor="do-notify"
-                    className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
-                  >
-                    Send email notifications
-                    <Switch
-                      id="do-notify"
-                      checked={draft.notifyVendor}
-                      onCheckedChange={(v) => set("notifyVendor", v)}
-                    />
-                  </label>
-                  {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this stated
-                      what had been asked for weeks ago, in the place a control
-                      used to be. THE EXPLAINER IS GONE with the full-width
-                      row: on a band beside three other controls a sentence is
-                      the loudest thing there, and what it explained is in the
-                      section's own note. */}
-                  {invitedIds.length > 0 && draft.status === "Draft" && (
-                    <label
-                      htmlFor="quote"
-                      className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+                <div className="flex items-center gap-2">
+                  {/* THE SPARE ACTS ON THE LIST, beside the act that uses it:
+                      acknowledging on a partner's behalf and clearing the rows
+                      are both things you do TO the rows. */}
+                  {invitedIds.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label="More partner actions"
+                          className="text-muted-foreground"
+                        >
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            acknowledgeFor(
+                              selectedRows.length > 0
+                                ? selectedRows.map((i) => partnerRows[i])
+                                : invitedIds
+                            )
+                          }
+                        >
+                          <Check />
+                          {selectedRows.length === 1
+                            ? "Acknowledge for them"
+                            : selectedRows.length > 1
+                              ? `Acknowledge for ${selectedRows.length}`
+                              : "Acknowledge for them all"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={removeAllPartners}
+                        >
+                          <ThumbsDown />
+                          Remove all vendors
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {/* WHAT A PRESS WOULD ACTUALLY SEND TO: the ticked rows that
+                      have not been asked, or every row that has not. Nothing
+                      left to send and it goes, rather than sitting there spent. */}
+                  {sendable.length > 0 && (
+                    <Button
+                      size="sm"
+                      disabled={draft.status === "Blocked"}
+                      title={
+                        draft.status === "Blocked"
+                          ? "A blocked order cannot be sent to a vendor"
+                          : undefined
+                      }
+                      onClick={() => sendInvitations(sendable)}
                     >
-                      Request a quote
-                      <Switch
-                        id="quote"
-                        checked={draft.quoteRequested}
-                        onCheckedChange={(v) => set("quoteRequested", v)}
-                      />
-                    </label>
+                      {selectedRows.length === 1
+                        ? "Send invitation"
+                        : selectedRows.length > 1
+                          ? "Send invitations to all"
+                          : unsentIds.length === 1
+                            ? "Send invitation"
+                            : "Send invitations to all"}
+                    </Button>
                   )}
                 </div>
               </div>
@@ -4003,6 +4029,43 @@ export function BrokerOrderSheet({
           </SheetSectionInset>
         )}
       </SheetSection>
+
+      {/* HOW THE ROUND GOES OUT — its own unit (Pavan, 2026-09-17).
+          Both switches are settings for the INVITATION rather than for a
+          partner or a row, and on the table's closing band they sat beside
+          the act that uses them, where a toggle reads as part of pressing it.
+          A unit of their own says they are standing choices: set them, then
+          send. */}
+      {!confirmed && (
+        <SheetSection title="Invitation Settings">
+          <label
+            htmlFor="do-notify"
+            className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-foreground"
+          >
+            Send email notifications to vendor
+            <Switch
+              id="do-notify"
+              checked={draft.notifyVendor}
+              onCheckedChange={(v) => set("notifyVendor", v)}
+            />
+          </label>
+          {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this stated what had
+              been asked for weeks ago, in the place a control used to be. */}
+          {draft.status === "Draft" && (
+            <label
+              htmlFor="quote"
+              className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-foreground"
+            >
+              Request a quote
+              <Switch
+                id="quote"
+                checked={draft.quoteRequested}
+                onCheckedChange={(v) => set("quoteRequested", v)}
+              />
+            </label>
+          )}
+        </SheetSection>
+      )}
 
       <CustomRecurrenceDialog
         open={customOpen}

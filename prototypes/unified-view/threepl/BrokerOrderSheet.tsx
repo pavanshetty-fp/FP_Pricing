@@ -3074,14 +3074,22 @@ export function BrokerOrderSheet({
             }}
             aria-label="Delivery window"
           />
+        </div>
 
-          {/* A FIELD, not a checkbox. Recurring is a property of the order that
-              belongs in the row that describes its schedule, and it gates the
-              cadence below — a checkbox floating under the row read as an
-              afterthought and gave the reveal nothing to hang off. Answering
-              "No" is a real answer, which is why it is an option rather than an
-              unticked box: an empty checkbox and a deliberate "not recurring"
-              look identical and are not the same thing. */}
+        {/* A RULE BETWEEN THE TWO ROWS (Pavan, 2026-09-17), with 12px either
+            side. They are different questions — WHEN this one goes out, then
+            whether it goes out again — and four controls in one grid read as
+            one block of four.
+
+            IT SPLITS THE GRID RATHER THAN SITTING IN IT. A full-width row
+            inside the grid cannot be 12 from both neighbours: the tracks are
+            laid out on the 16px gap and a negative margin moves the rule
+            within its track rather than moving the row after it, so it lands
+            12 above and 20 below. Between two grids, in the section's flex
+            column, the margin pulls both ways and 12/12 is what it is. */}
+        <div className="-my-1 h-px bg-border" aria-hidden />
+
+        <div className="grid grid-cols-9 gap-4">
           {/* A CHECKBOX, NOT A YES/NO LIST (Pavan, 2026-09-17). Opening a menu
               to choose between Yes and No is two gestures to say one thing, and
               the field had to carry a label as well as the word "No" to be read

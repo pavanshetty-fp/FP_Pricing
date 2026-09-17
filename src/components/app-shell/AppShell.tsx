@@ -85,12 +85,14 @@ export interface AppShellProps {
 /**
  * How long the drawer stays out after the pointer leaves both it and the rail.
  *
- * A second, not two. The delay exists only to forgive the gap a pointer
- * crosses on its way somewhere else — long enough to cover the trip, short
- * enough that a drawer you have finished with is gone before you notice it is
- * still sitting on your table.
+ * 700ms, down from a second (2026-09-17). The delay exists only to forgive the
+ * gap a pointer crosses on its way somewhere else — long enough to cover the
+ * trip, short enough that a drawer you have finished with is gone before you
+ * notice it is still sitting on your table. A full second was on the wrong
+ * side of that: the trip takes a fraction of it, and the rest was the panel
+ * hanging about.
  */
-const PEEK_HIDE_MS = 1000;
+const PEEK_HIDE_MS = 700;
 
 export function AppShell({
   topBar,

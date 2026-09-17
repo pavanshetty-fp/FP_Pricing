@@ -986,8 +986,10 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
  * and "nothing, deliberately". A tick beside the name answers it at the top of
  * the column instead of the bottom.
  *
- * FILLED MEANS THE COLUMN TOTALS SOMETHING. One rule for all three: a rate has
- * been typed, a customer is being billed, a partner has priced it.
+ * FILLED MEANS EVERY FIELD IN THE COLUMN IS. Not that it totals something: a
+ * delivery fee typed and a margin left at zero add up to a number, and a tick
+ * on that says the column has been dealt with when half of it has not been
+ * touched.
  */
 function PricingColumnHead({ label, done }: { label: string; done: boolean }) {
   return (
@@ -2101,6 +2103,29 @@ export function BrokerOrderSheet({
         ]
       : [];
 
+  /**
+   * A COLUMN IS DONE WHEN EVERY FIELD IN IT IS, not when it totals something
+   * (Pavan, 2026-09-17). A delivery fee typed and a margin left at zero add up
+   * to a number, and a tick on that says the column has been dealt with when
+   * half of it has not been touched.
+   *
+   * ZERO READS AS EMPTY. It is what the field shows before anyone types, so a
+   * deliberate zero — no margin, free delivery — cannot be told from an
+   * untouched one without a per-field record of who typed what. Named here
+   * rather than buried: see the note in the README.
+   *
+   * CARRIER COST HAS NO FIELDS — it is the partner's quote, read back. It is
+   * done when there IS one and it prices the order as it now stands.
+   */
+  const pricedLines = draft.lines.filter((l) => l.asset.trim() !== "");
+  const orderDetailsDone =
+    pricedLines.length > 0 && pricedLines.every((l) => (l.pricePerGal ?? 0) > 0);
+  const customerBillingDone =
+    pricedLines.length > 0 &&
+    pricedLines.every((l) => (l.marginPerGal ?? 0) > 0) &&
+    Object.values(draft.customerCharges).every((v) => (v ?? 0) > 0);
+  const carrierCostDone = Boolean(shownQuote && quoteCoversOrder(shownQuote));
+
   const canSubmit =
     draft.customer.trim() !== "" &&
     draft.shipTo.trim() !== "" &&
@@ -2197,7 +2222,7 @@ export function BrokerOrderSheet({
       <div className="grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-3">
         {/* ── ORDER DETAILS ────────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:pr-6">
-          <PricingColumnHead label="Order details" done={productTotal > 0} />
+          <PricingColumnHead label="Order details" done={orderDetailsDone} />
           <dl className="flex flex-col">
             {draft.lines.filter((l) => l.asset).length === 0 && (
               <p className="py-2.5 text-sm text-muted-foreground">
@@ -2237,7 +2262,7 @@ export function BrokerOrderSheet({
 
         {/* ── CUSTOMER BILLING ─────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:px-6">
-          <PricingColumnHead label="Customer billing" done={billed > 0} />
+          <PricingColumnHead label="Customer billing" done={customerBillingDone} />
           <dl className="flex flex-col">
             {/* MARGIN IS PER GALLON AND PER LINE, because it is a markup on
                 the product; the fees under it are charged once for the run. */}
@@ -2301,7 +2326,7 @@ export function BrokerOrderSheet({
 
         {/* ── CARRIER COST ─────────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:pl-6">
-          <PricingColumnHead label="Carrier cost" done={carrierTotal > 0} />
+          <PricingColumnHead label="Carrier cost" done={carrierCostDone} />
 
           {/* WHOSE PRICE THIS IS, and the way to read another. One partner
               needs no control — a select of one is a question with its answer

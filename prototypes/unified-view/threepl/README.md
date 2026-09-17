@@ -96,12 +96,18 @@ Dispatch and 3PL"*.
     its sign** — green when there is one, red when the order costs money to
     run, neither at exactly zero — and the rail's Margin row, which is the same
     number, is coloured the same way.
-  - **A green tick beside a column's name once it has a figure in it.** Three
-    columns of rows that look alike, and the question the reader carries down
-    the unit is "which of these have I done". The totals answer it only by
-    being read and compared, and `$0.00` is both "nothing yet" and "nothing,
-    deliberately". One rule for all three: the column totals something — a rate
-    has been typed, a customer is being billed, a partner has priced it.
+  - **A green tick beside a column's name once EVERY field in it is filled.**
+    Three columns of rows that look alike, and the question the reader carries
+    down the unit is "which of these have I done". The totals answer it only by
+    being read and compared. Not "the column totals something": a delivery fee
+    typed and a margin left at zero add up to a number, and a tick on that says
+    the column has been dealt with when half of it has not been touched. Order
+    details wants a rate on every line, Customer billing a margin on every line
+    and every order charge, and Carrier cost — which has no fields, being the
+    partner's quote read back — wants a quote that prices the order as it now
+    stands. **Zero reads as empty**, because it is what the field shows before
+    anyone types; telling a deliberate zero from an untouched one needs a
+    per-field record of who typed what, which the model does not carry.
   - **The product is stated once, in the first column** — product, requested
     gallons, and the rate, typed there. It is neither side's; the same gallons
     at the same rate whoever carries them, and stating it in both of the columns

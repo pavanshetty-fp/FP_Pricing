@@ -3,7 +3,10 @@ import {
   Calendar as CalendarIcon,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
+  CircleCheck,
   Layers,
   Copy,
   Download,
@@ -974,6 +977,76 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
   return "Yet to review a quote.";
 }
 
+/**
+ * WHAT IS STILL OUTSTANDING, one at a time, in a strip that does not scroll.
+ *
+ * A disabled primary has to say why, and beside the button there is room for
+ * one clause — so with three things missing it named one and implied nothing
+ * about the others. The strip has room for the count and a way to walk it:
+ * chevrons either side of "1 of 3", and the step itself spelled as the act
+ * that clears it.
+ *
+ * IT STAYS WHEN THERE IS NOTHING LEFT, and says so. A banner that vanished at
+ * the moment everything was done would take the only confirmation with it —
+ * the reader would be left inferring completeness from an enabled button.
+ */
+function MandatoryStepsBanner({
+  pending,
+}: {
+  pending: { key: string; label: string }[];
+}) {
+  const [at, setAt] = React.useState(0);
+  /* The list shortens as steps are cleared, so the cursor has to be pulled
+     back with it rather than pointing past the end. */
+  const i = Math.min(at, Math.max(pending.length - 1, 0));
+  React.useEffect(() => {
+    if (at > pending.length - 1) setAt(Math.max(pending.length - 1, 0));
+  }, [at, pending.length]);
+
+  if (pending.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-fp-banner-accent-success">
+        <CircleCheck className="size-4 shrink-0" />
+        All mandatory steps completed
+      </div>
+    );
+  }
+
+  const step = pending[i];
+  const chevron =
+    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-fp-banner-accent-caution">
+        <Info className="size-4 shrink-0" />
+        <span className="truncate">{step.label}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+        <button
+          type="button"
+          aria-label="Previous pending step"
+          disabled={i === 0}
+          onClick={() => setAt(i - 1)}
+          className={chevron}
+        >
+          <ChevronLeft className="size-3.5" />
+        </button>
+        {i + 1} of {pending.length}
+        <button
+          type="button"
+          aria-label="Next pending step"
+          disabled={i >= pending.length - 1}
+          onClick={() => setAt(i + 1)}
+          className={chevron}
+        >
+          <ChevronRight className="size-3.5" />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export function BrokerOrderSheet({
   order,
   mode = "edit",
@@ -1642,6 +1715,57 @@ export function BrokerOrderSheet({
     });
   };
   /**
+   * WHAT AN ORDER MUST HAVE BEFORE IT IS AN ORDER (Pavan, 2026-09-17).
+   *
+   * Three things, and they are the same three whether you read them as "what
+   * Create Order is waiting on" or as "what moving to Quoting means": who it
+   * is for and where it goes, what is being delivered, and a partner who has
+   * been asked for a price. Anything else on this sheet can be filled in
+   * afterwards.
+   *
+   * EACH ONE NAMES WHAT IS MISSING, not what it is about. "Vendors" tells a
+   * reader the area; "send an invitation" tells them the act — and the third
+   * step covers three of those, so it says whichever is outstanding.
+   */
+  const mandatorySteps: { key: string; label: string; done: boolean }[] = [
+    {
+      key: "customer",
+      label: !draft.customer
+        ? "Choose a customer"
+        : "Choose a ship-to site",
+      done: Boolean(draft.customer.trim() && draft.shipTo.trim()),
+    },
+    {
+      key: "lines",
+      label:
+        draft.lines.length === 0
+          ? isMovement
+            ? "Add the asset"
+            : "Add a product line"
+          : draft.lines.some((l) => !l.asset.trim())
+            ? "Name the asset on every line"
+            : "State a quantity, or mark the line a top-off",
+      done:
+        draft.lines.length > 0 &&
+        draft.lines.every(
+          (l) => l.asset.trim() !== "" && (l.topOff || (l.gal ?? 0) > 0)
+        ),
+    },
+    {
+      key: "partners",
+      label:
+        invitedIds.length === 0
+          ? "Add a delivery partner"
+          : sentIds.length === 0
+            ? "Send an invitation"
+            : "Turn on Request a quote",
+      done:
+        invitedIds.length > 0 && sentIds.length > 0 && draft.quoteRequested,
+    },
+  ];
+  const pendingSteps = mandatorySteps.filter((x) => !x.done);
+
+  /**
    * DRAFT → QUOTING, AND IT IS A DECISION.
    *
    * Sending an invitation used to move the order on its own, which made one
@@ -1771,35 +1895,35 @@ export function BrokerOrderSheet({
     whether it can be taken, so the button stays and goes disabled with the
     reason on it, the same call the spent Accept quote makes.
   */
-  const nextAct: { label: string; onSelect: () => void; why?: string } = !hasAssets
-    ? { label: "Add an asset", onSelect: addBlankLine }
-    /* SENDING IS THE TABLE'S ACT, NOT THE SHEET'S. It lives on the band that
+  const nextAct: {
+    label: string;
+    onSelect: () => void;
+    why?: string;
+    /** Disabled with no clause of its own — something else is saying why. */
+    blocked?: boolean;
+  } =
+    /* THE WHOLE OF DRAFT IS ONE ACT: create the order. What is missing before
+       it can be is the banner's business — it has room for three things and a
+       way to step through them, which is why the ladder no longer opens with
+       "Add an asset". A footer that renamed itself three times on the way
+       through a form was a button the reader had to re-read at every step.
+
+       SENDING IS THE TABLE'S ACT, NOT THE SHEET'S. It lives on the band that
        closes the vendor table, next to the rows it acts on; the footer carries
        the ORDER's act, and while the order is a draft that act is creating it.
        Two buttons of the same size for the two were competing for one press.
 
        ONE CTA THAT DOES NOT CHANGE ITS NAME UNDER THE READER. What is missing
        goes in the line beside it, never on it. */
-    : invitedIds.length === 0
+    draft.status === "Draft"
       ? {
+          /* THE BANNER CARRIES THE REASON NOW. It has room for the whole list
+             and a way to step through it; the clause beside the button had
+             room for one of the three and no way to say there were others. */
           label: "Create Order",
-          onSelect: () => {},
-          why: "Add a partner in the table above.",
+          onSelect: pendingSteps.length === 0 ? proceedToQuoting : () => {},
+          blocked: pendingSteps.length > 0,
         }
-      : sentIds.length === 0
-        ? {
-            label: "Create Order",
-            onSelect: () => {},
-            why: "Send an invitation first.",
-          }
-        : draft.status === "Draft"
-          ? {
-              /* ONE INVITATION OUT IS ENOUGH. The rest can be sent from
-                 Quoting — waiting for every carrier to be asked before the
-                 order may be created is the broker's own pace, not a rule. */
-              label: "Create Order",
-              onSelect: proceedToQuoting,
-            }
         : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
              accepted order was being offered "Request a quote" because the
              ladder asked about quoting before it asked whether the quoting was
@@ -1890,6 +2014,9 @@ export function BrokerOrderSheet({
       : draft.status === "Cancelled"
         ? "Order cancelled"
         : nextAct.why;
+  /* Disabled either because something is SAID beside it, or because the banner
+     above it is saying it instead. */
+  const nextActOff = Boolean(nextActBlocked) || Boolean(nextAct.blocked);
   const shownCost = shownVendorId ? costOf(shownVendorId) : 0;
   /** The base on its own, so the table can show it whether or not it counts. */
   /** Freight + fees + taxes, which belong to no line. */
@@ -2460,6 +2587,14 @@ export function BrokerOrderSheet({
          is the sheet arguing with itself — one of the two has to be wrong and
          the reader cannot tell which. What the footer carries instead is the
          one act that actually moves the order on from where it is. */
+      /* ONLY WHILE IT IS A DRAFT. Past Quoting the list is spent: the order
+         has been created, and a strip reporting the conditions of its creation
+         would be reporting history. */
+      footerBanner={
+        draft.status === "Draft" ? (
+          <MandatoryStepsBanner pending={pendingSteps} />
+        ) : undefined
+      }
       footerPrimary={
         <>
           {nextActBlocked && (
@@ -2467,7 +2602,7 @@ export function BrokerOrderSheet({
               {nextActBlocked}
             </span>
           )}
-          <Button disabled={Boolean(nextActBlocked)} onClick={nextAct.onSelect}>
+          <Button disabled={nextActOff} onClick={nextAct.onSelect}>
             {nextAct.label}
           </Button>
         </>
@@ -3988,6 +4123,43 @@ export function BrokerOrderSheet({
                   )}
                 </div>
               </div>
+
+              {/* THE TWO SETTINGS, ONE ROW UNDER THE ROWS THEY APPLY TO.
+                  (Pavan, 2026-09-17 — after a turn in a unit of their own.)
+                  They belong to the vendor unit because they are about the
+                  invitation, and the unit is where the invitation is made; a
+                  section of their own put a card between the table and the
+                  pricing for two toggles. Side by side rather than stacked:
+                  there is a screen's worth of horizontal room here and they
+                  are two of the same kind of thing, not a list. */}
+              <div className="flex flex-wrap items-center gap-x-10 gap-y-2 border-t border-border px-3 py-2.5">
+                <label
+                  htmlFor="do-notify"
+                  className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+                >
+                  Send email notifications to vendor
+                  <Switch
+                    id="do-notify"
+                    checked={draft.notifyVendor}
+                    onCheckedChange={(v) => set("notifyVendor", v)}
+                  />
+                </label>
+                {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this stated what
+                    had been asked for weeks ago, where a control used to be. */}
+                {draft.status === "Draft" && (
+                  <label
+                    htmlFor="quote"
+                    className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+                  >
+                    Request a quote
+                    <Switch
+                      id="quote"
+                      checked={draft.quoteRequested}
+                      onCheckedChange={(v) => set("quoteRequested", v)}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
           </>
@@ -4029,43 +4201,6 @@ export function BrokerOrderSheet({
           </SheetSectionInset>
         )}
       </SheetSection>
-
-      {/* HOW THE ROUND GOES OUT — its own unit (Pavan, 2026-09-17).
-          Both switches are settings for the INVITATION rather than for a
-          partner or a row, and on the table's closing band they sat beside
-          the act that uses them, where a toggle reads as part of pressing it.
-          A unit of their own says they are standing choices: set them, then
-          send. */}
-      {!confirmed && (
-        <SheetSection title="Invitation Settings">
-          <label
-            htmlFor="do-notify"
-            className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-foreground"
-          >
-            Send email notifications to vendor
-            <Switch
-              id="do-notify"
-              checked={draft.notifyVendor}
-              onCheckedChange={(v) => set("notifyVendor", v)}
-            />
-          </label>
-          {/* ONLY WHILE IT IS STILL A CHOICE. Past Draft this stated what had
-              been asked for weeks ago, in the place a control used to be. */}
-          {draft.status === "Draft" && (
-            <label
-              htmlFor="quote"
-              className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-foreground"
-            >
-              Request a quote
-              <Switch
-                id="quote"
-                checked={draft.quoteRequested}
-                onCheckedChange={(v) => set("quoteRequested", v)}
-              />
-            </label>
-          )}
-        </SheetSection>
-      )}
 
       <CustomRecurrenceDialog
         open={customOpen}

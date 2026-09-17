@@ -136,6 +136,15 @@ export interface RecordSheetProps {
    */
   footerAside?: React.ReactNode;
   onSubmit: () => void;
+  /**
+   * A FIXED STRIP DIRECTLY ABOVE THE FOOTER, spanning the sheet.
+   *
+   * For what the footer's act is waiting on. The reason a primary is disabled
+   * belongs beside it, and beside it there is room for a clause — not for a
+   * list. This is where a sheet says what is still outstanding, in the one
+   * place that does not scroll away from the button it is about.
+   */
+  footerBanner?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -276,6 +285,7 @@ export function RecordSheet({
   footerPrimary,
   footerAside,
   onSubmit,
+  footerBanner,
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
@@ -328,6 +338,15 @@ export function RecordSheet({
         <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
           {children}
         </div>
+
+        {footerBanner && (
+          /* ABOVE THE FOOTER AND OUTSIDE THE SCROLL — the same reason the
+             stage bar sits under the header: a strip that describes the
+             footer's button has to be visible whenever the button is. */
+          <div className="shrink-0 border-t border-border px-4 py-2.5">
+            {footerBanner}
+          </div>
+        )}
 
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-4">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">

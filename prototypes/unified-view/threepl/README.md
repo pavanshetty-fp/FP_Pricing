@@ -171,10 +171,29 @@ Dispatch and 3PL"*.
   competing for one press. What the button would send to is the ticked unsent
   rows, or every unsent row when nothing is ticked; it goes when there is
   nothing left to send rather than sitting there spent.
-- **Invitation Settings is its own unit.** *Send email notifications* and
-  *Request a quote* are standing choices about how the round goes out, not part
-  of pressing send, and on the band beside the send button they read as part of
-  it. A unit of their own says: set them, then send.
+- **The two settings are a row of their own, inside the unit.** *Send email
+  notifications* and *Request a quote*, side by side directly under Add vendor.
+  They belong to the vendor unit because they are about the invitation and the
+  unit is where the invitation is made; a section of their own put a card
+  between the table and the pricing for two toggles, and on the send band they
+  read as part of pressing send. Side by side rather than stacked — there is a
+  screen's worth of horizontal room and they are two of the same kind of thing,
+  not a list.
+- **What the order must have before it is an order, in a strip above the
+  footer.** Three mandatory steps, and they are the same three whether you read
+  them as "what Create Order is waiting on" or as "what moving to Quoting
+  means": customer and ship-to · product (or asset) details · a partner added,
+  invited and asked for a price. The strip names one at a time with chevrons
+  and *1 of 3* — a disabled primary has room beside it for one clause, so with
+  three things missing it named one and implied nothing about the others. Each
+  step is worded as the ACT that clears it, not the area it belongs to, and the
+  third says whichever of its three parts is outstanding. With nothing left it
+  stays and says **All mandatory steps completed** — a banner that vanished at
+  that moment would take the only confirmation with it. `RecordSheet` gained
+  `footerBanner` for the slot, fixed above the footer and outside the scroll.
+- **The ladder no longer opens with "Add an asset".** The whole of Draft is one
+  act — create the order — and a footer that renamed itself three times on the
+  way through a form was a button the reader had to re-read at every step.
 - **Two ways to ask, and the second is not a second button.** The row's Invite
   carries a caret with **Invite and request quote** — the same act with one more
   thing in the envelope. Two buttons of equal weight would make the reader

@@ -96,6 +96,12 @@ Dispatch and 3PL"*.
     its sign** — green when there is one, red when the order costs money to
     run, neither at exactly zero — and the rail's Margin row, which is the same
     number, is coloured the same way.
+  - **A green tick beside a column's name once it has a figure in it.** Three
+    columns of rows that look alike, and the question the reader carries down
+    the unit is "which of these have I done". The totals answer it only by
+    being read and compared, and `$0.00` is both "nothing yet" and "nothing,
+    deliberately". One rule for all three: the column totals something — a rate
+    has been typed, a customer is being billed, a partner has priced it.
   - **The product is stated once, in the first column** — product, requested
     gallons, and the rate, typed there. It is neither side's; the same gallons
     at the same rate whoever carries them, and stating it in both of the columns

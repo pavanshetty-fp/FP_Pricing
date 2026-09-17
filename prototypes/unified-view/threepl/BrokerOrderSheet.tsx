@@ -978,6 +978,32 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
 }
 
 /**
+ * A PRICING COLUMN'S NAME, with a tick once the column has a figure in it.
+ *
+ * Three columns of rows that look alike, and the question the reader is
+ * actually carrying down the unit is "which of these have I done". The totals
+ * answer it, but only by being read and compared — $0.00 is both "nothing yet"
+ * and "nothing, deliberately". A tick beside the name answers it at the top of
+ * the column instead of the bottom.
+ *
+ * FILLED MEANS THE COLUMN TOTALS SOMETHING. One rule for all three: a rate has
+ * been typed, a customer is being billed, a partner has priced it.
+ */
+function PricingColumnHead({ label, done }: { label: string; done: boolean }) {
+  return (
+    <p className="flex items-center gap-1.5 pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      {label}
+      {done && (
+        <Check
+          className="size-3.5 shrink-0 text-status-success"
+          aria-label="Filled in"
+        />
+      )}
+    </p>
+  );
+}
+
+/**
  * WHAT IS STILL OUTSTANDING, one at a time, in a strip that does not scroll.
  *
  * A disabled primary has to say why, and beside the button there is room for
@@ -2171,9 +2197,7 @@ export function BrokerOrderSheet({
       <div className="grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-3">
         {/* ── ORDER DETAILS ────────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:pr-6">
-          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Order details
-          </p>
+          <PricingColumnHead label="Order details" done={productTotal > 0} />
           <dl className="flex flex-col">
             {draft.lines.filter((l) => l.asset).length === 0 && (
               <p className="py-2.5 text-sm text-muted-foreground">
@@ -2213,9 +2237,7 @@ export function BrokerOrderSheet({
 
         {/* ── CUSTOMER BILLING ─────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:px-6">
-          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Customer billing
-          </p>
+          <PricingColumnHead label="Customer billing" done={billed > 0} />
           <dl className="flex flex-col">
             {/* MARGIN IS PER GALLON AND PER LINE, because it is a markup on
                 the product; the fees under it are charged once for the run. */}
@@ -2279,9 +2301,7 @@ export function BrokerOrderSheet({
 
         {/* ── CARRIER COST ─────────────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col lg:border-l lg:border-border lg:pl-6">
-          <p className="pb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Carrier cost
-          </p>
+          <PricingColumnHead label="Carrier cost" done={carrierTotal > 0} />
 
           {/* WHOSE PRICE THIS IS, and the way to read another. One partner
               needs no control — a select of one is a question with its answer

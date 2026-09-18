@@ -12,7 +12,7 @@ import {
 import { TablePagination } from "@/components/tables-layout";
 import { ListToolbar } from "../ListToolbar";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
-import { TECHNICIANS, WORK_ORDERS, type Technician } from "./work";
+import { SERVICE_ORDERS, TECHNICIANS, type Technician } from "./work";
 
 /**
  * TECHNICIANS — who can take the work.
@@ -61,12 +61,21 @@ const TECH_SEARCH_FIELDS = [
   { key: "skills", label: "Skills" },
 ];
 
-/** Work still on somebody — anything not finished, cancelled or on hold. */
+/**
+ * WORK STILL ON SOMEBODY.
+ *
+ * Assigned, under way, or stalled for a part — all three are jobs that are
+ * still theirs. Anything past the visit belongs to a manager or to accounting,
+ * and counting it here would make a technician look busy for work they
+ * finished last week.
+ */
 function openJobsFor(id: string): number {
-  return WORK_ORDERS.filter(
+  return SERVICE_ORDERS.filter(
     (r) =>
       r.technicianId === id &&
-      (r.status === "Scheduled" || r.status === "In Progress")
+      (r.status === "Assigned" ||
+        r.status === "In progress" ||
+        r.status === "Parts-pending")
   ).length;
 }
 

@@ -21,6 +21,7 @@ import {
   DollarSign,
   Wrench,
   HardHat,
+  SlidersHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -29,6 +30,7 @@ import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
 import { TechniciansScreen } from "./service/TechniciansScreen";
+import { ServiceSettingsScreen } from "./service/ServiceSettingsScreen";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
@@ -169,8 +171,12 @@ const THREE_PL_NAV: NavItem[] = [
  * layer takes the full width in both (Sales works the same way).
  */
 const SERVICE_NAV: NavItem[] = [
-  { key: "service-work-orders", label: "Work Orders", icon: <Wrench /> },
+  { key: "service-work-orders", label: "Service Orders", icon: <Wrench /> },
   { key: "service-technicians", label: "Technicians", icon: <HardHat /> },
+  /* THE MODULE'S OWN SWITCH POINTS, not the app's Settings page — that one
+     will govern several modules and is held back pending it. These change what
+     the flow IS, so they belong where the flow is. */
+  { key: "service-settings", label: "Service Settings", icon: <SlidersHorizontal /> },
 ];
 
 /**
@@ -1292,6 +1298,8 @@ export function UnifiedView() {
         return <ServiceWorkScreen />;
       case "service-technicians":
         return <TechniciansScreen />;
+      case "service-settings":
+        return <ServiceSettingsScreen />;
       case "3pl-vendors":
         return <BrokerVendorsScreen {...dirProps("3pl-vendors")} />;
       case "3pl-customers":

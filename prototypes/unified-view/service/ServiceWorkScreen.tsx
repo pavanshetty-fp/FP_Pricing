@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Wrench, SearchX, CalendarOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CodeDisc } from "@/components/ui/code-disc";
 import { Badge } from "@/components/ui/badge";
@@ -18,127 +19,149 @@ import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
+import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
+import { ServiceOrderSheet } from "./ServiceOrderSheet";
+import { TechnicianAppSheet } from "./TechnicianAppSheet";
+import { useServiceSettings } from "./settings";
 import {
-  JOB_TYPES,
-  JOB_TYPE_CODE,
+  INTAKE_SOURCES,
+  PORTAL_SOURCE,
   PRIORITIES,
+  SERVICE_ORDERS,
   TECHNICIANS,
   WORK_LANES,
   WORK_LANE_COLOR,
-  WORK_ORDERS,
   WORK_STATUSES,
   WORK_STATUS_TONE,
-  assertWorkConsistent,
+  WORK_TYPE_CODE,
+  WORK_TYPE_NAMES,
+  WORK_TYPES,
+  assertServiceConsistent,
+  isRecorded,
+  money,
+  orderTotal,
+  quoteableTotal,
   technicianById,
-  type WorkOrder,
+  type FeeLine,
+  type PartLine,
+  type ServiceOrder,
   type WorkStatus,
 } from "./work";
 
 /**
- * SERVICE WORK — the work-order dashboard.
+ * SERVICE ORDERS — the dispatcher's board.
  *
  * SAME SKELETON AS THE OTHER TWO MODULES, deliberately: preset-view row,
  * toolbar, board or table, pagination. A reader who has learnt the 3PL board
- * has learnt this one, and the differences below are the work's, not a
- * preference.
+ * has learnt this one. What differs is the work's, not a preference:
  *
- *  1. THE BOARD IS THE DEFAULT. What somebody does all day here is watch jobs
- *     move from reported to scheduled to done, which is what a board is for.
- *  2. THE LANES ARE THE LIFECYCLE, and On Hold sits behind a rule with
- *     Cancelled — neither is a step of the work.
- *  3. THE CARD IS ABOUT AN ASSET AT A SITE. 3PL's card leads with a quantity
- *     going somewhere; this one leads with the thing that is already there and
- *     what is wrong with it.
- *
- * NOT BUILT YET, named rather than faked: the work-order sheet (so a card
- * opens nothing), creating a job, and the technician's own schedule.
+ *  1. EIGHT LANES, because the job has eight states — and the gaps between
+ *     them are the point. Open and Assigned are two facts (nobody on it vs
+ *     nobody started); Approved and Completed are two more (a human agreed the
+ *     numbers vs the money left the building).
+ *  2. PARTS-PENDING IS IN SEQUENCE, not set apart. Waiting on a part is a
+ *     normal thing for a job to be doing, and it is the lane a dispatcher
+ *     works from first thing. Only Cancelled sits behind the rule.
+ *  3. THE BOARD OPENS ON A WEEK. A delivery IS a day; a reported fault from
+ *     Tuesday is still a fault on Friday.
  */
 
 /* --------------------------------------------------------------- columns */
 
-type WorkColumnKey =
+type Col =
   | "order"
   | "type"
   | "customer"
   | "shipTo"
   | "asset"
   | "fault"
-  | "date"
-  | "window"
+  | "scheduled"
   | "technician"
   | "priority"
   | "status"
+  | "total"
+  | "source"
   | "raisedBy"
-  | "hours"
+  | "labor"
+  | "invoice"
   | "actions";
 
 /* THE SAME COLUMN GRAMMAR AS THE ORDERS TABLES — number, type, who, where,
-   what, when, who is doing it, state — so the three modules' tables read as
-   one product. Every column sorts, for the reason `orders.ts` gives. */
-const WORK_COLUMNS: ListColumn<WorkColumnKey>[] = [
-  { key: "order", label: "Work Order #", width: 140, sortable: true },
+   what, when, who is doing it, state, money — so the three modules' tables
+   read as one product. Every column sorts, for the reason `orders.ts` gives. */
+const COLUMNS: ListColumn<Col>[] = [
+  { key: "order", label: "Service Order #", width: 150, sortable: true },
   { key: "type", label: "Type", width: 70, sortable: true },
-  { key: "customer", label: "Customer", width: 210, sortable: true },
+  { key: "customer", label: "Customer", width: 200, sortable: true },
   { key: "shipTo", label: "Site", width: 180, sortable: true },
-  { key: "asset", label: "Asset", width: 190, sortable: true },
-  { key: "fault", label: "Reported Fault", width: 260, sortable: true },
-  { key: "date", label: "Scheduled Date", width: 160, sortable: true },
-  { key: "window", label: "Window", width: 150, sortable: true },
-  { key: "technician", label: "Technician", width: 170, sortable: true },
-  { key: "priority", label: "Priority", width: 120, sortable: true },
-  { key: "status", label: "Status", width: 150, sortable: true },
+  { key: "asset", label: "Asset", width: 180, sortable: true },
+  { key: "fault", label: "Reported Fault", width: 250, sortable: true },
+  { key: "scheduled", label: "Scheduled", width: 175, sortable: true },
+  { key: "technician", label: "Technician", width: 165, sortable: true },
+  { key: "priority", label: "Priority", width: 110, sortable: true },
+  { key: "status", label: "Status", width: 160, sortable: true },
+  { key: "total", label: "Total", width: 120, sortable: true, align: "right" },
   /* ── Available, not shown by default. ── */
+  { key: "source", label: "Intake Source", width: 165, sortable: true },
   { key: "raisedBy", label: "Raised By", width: 160, sortable: true },
-  { key: "hours", label: "Hours", width: 100, sortable: true, align: "right" },
+  { key: "labor", label: "Labour (h)", width: 110, sortable: true, align: "right" },
+  { key: "invoice", label: "Invoice", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
 /* A TABLE THAT OPENS WIDER THAN THE SCREEN teaches the reader to scroll before
-   it teaches them anything else. The two that answer questions nobody asks
+   it teaches them anything else. The four that answer questions nobody asks
    first are off until asked for. */
-const WORK_HIDDEN_BY_DEFAULT = new Set<WorkColumnKey>(["raisedBy", "hours"]);
+const HIDDEN_BY_DEFAULT = new Set<Col>(["source", "raisedBy", "labor", "invoice"]);
 
-const WORK_SEARCH_FIELDS = [
+const SEARCH_FIELDS = [
   { key: "customer", label: "Customer" },
   { key: "shipTo", label: "Site" },
   { key: "asset", label: "Asset" },
   { key: "fault", label: "Reported Fault" },
   { key: "technician", label: "Technician" },
-  { key: "order", label: "Work Order #" },
+  { key: "order", label: "Service Order #" },
 ];
 
 /* ---------------------------------------------------------------- facets */
 
-const WORK_FACETS = [
-  { key: "status", label: "Status", options: [...WORK_STATUSES] },
-  { key: "jobType", label: "Job Type", options: [...JOB_TYPES] },
-  { key: "priority", label: "Priority", options: [...PRIORITIES] },
-  {
-    key: "technician",
-    label: "Technician",
-    options: TECHNICIANS.map((t) => t.name),
-    searchable: true,
-  },
-  {
-    key: "assetType",
-    label: "Asset Type",
-    options: Array.from(new Set(WORK_ORDERS.map((r) => r.assetType))).sort(),
-  },
-];
+function buildFacets(portalOn: boolean) {
+  return [
+    { key: "status", label: "Status", options: [...WORK_STATUSES] },
+    { key: "workType", label: "Work Type", options: [...WORK_TYPE_NAMES] },
+    { key: "priority", label: "Priority", options: [...PRIORITIES] },
+    {
+      key: "technician",
+      label: "Technician",
+      options: TECHNICIANS.map((t) => t.name),
+      searchable: true,
+    },
+    {
+      key: "source",
+      label: "Intake Source",
+      /* THE PORTAL OPTION FOLLOWS THE SWITCH. Offering a filter for a source
+         nothing can arrive from is a facet that can only ever return zero. */
+      options: [...INTAKE_SOURCES, ...(portalOn ? [PORTAL_SOURCE] : [])],
+    },
+    { key: "invoice", label: "Invoice", options: ["Raised", "Not raised", "Synced"] },
+  ];
+}
 
-function facetValue(r: WorkOrder, key: string): string {
+function facetValue(r: ServiceOrder, key: string): string {
   switch (key) {
     case "status":
       return r.status;
-    case "jobType":
-      return r.jobType;
+    case "workType":
+      return r.workType;
     case "priority":
       return r.priority;
     case "technician":
       return technicianById(r.technicianId)?.name ?? "";
-    case "assetType":
-      return r.assetType;
+    case "source":
+      return r.source;
+    case "invoice":
+      return r.synced ? "Synced" : r.invoiceCreated ? "Raised" : "Not raised";
     default:
       return "";
   }
@@ -149,11 +172,12 @@ function facetValue(r: WorkOrder, key: string): string {
 /**
  * WHAT A CARD SAYS, and in what order.
  *
- * WHO IT IS FOR, WHAT IS WRONG, WHEN, WHO IS GOING. The fault sits second
- * because it is the only line on the card that is not a lookup — everything
- * else can be guessed from the columns, and the sentence somebody typed cannot.
+ * WHO IT IS FOR, WHAT IS WRONG, WHEN, WHO IS GOING, WHAT IT COMES TO. The
+ * fault sits second because it is the only line on the card that is not a
+ * lookup: everything else can be guessed from the columns, and the sentence
+ * somebody typed cannot.
  */
-function workCardUnits(r: WorkOrder, off: ReadonlySet<string>) {
+function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
   const tech = technicianById(r.technicianId);
   const units = [
     {
@@ -161,9 +185,7 @@ function workCardUnits(r: WorkOrder, off: ReadonlySet<string>) {
       key: "customer",
       heading: "Customer",
       lines: [
-        ...(off.has("customer.account")
-          ? []
-          : [{ text: r.customer, level: 1 as const }]),
+        ...(off.has("customer.account") ? [] : [{ text: r.customer, level: 1 as const }]),
         ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
         ...(off.has("customer.city") || !r.city
           ? []
@@ -184,21 +206,25 @@ function workCardUnits(r: WorkOrder, off: ReadonlySet<string>) {
       kind: "inline" as const,
       key: "schedule",
       heading: "Scheduled",
-      parts: [
-        ...(off.has("schedule.window")
-          ? []
-          : [`${r.window.start} – ${r.window.end}`]),
-        ...(off.has("schedule.date") ? [] : [dayLabel(r.dateKey)]),
-      ],
+      parts: off.has("schedule")
+        ? []
+        : r.scheduledAt
+          ? [
+              ...(off.has("schedule.time") ? [] : [timeLabel(r.scheduledAt)]),
+              ...(off.has("schedule.date") ? [] : [dayLabel(r.dateKey)]),
+            ]
+          : /* NOT SCHEDULED IS A STATE, not an absence — the intake form
+               offers "dispatch when you can" and the board has to show it. */
+            ["Not scheduled"],
     },
     {
       kind: "inline" as const,
       key: "completed",
-      heading: "Completed on",
+      heading: "Recorded",
       parts: r.completedAt
         ? [
             completedLabel(r.completedAt),
-            ...(r.hoursOnSite != null ? [`${r.hoursOnSite} h on site`] : []),
+            ...(r.labor > 0 ? [`${r.labor} h on site`] : []),
           ]
         : [],
     },
@@ -206,26 +232,18 @@ function workCardUnits(r: WorkOrder, off: ReadonlySet<string>) {
       kind: "stack" as const,
       key: "technician",
       heading: "Technician",
+      figure:
+        off.has("technician.total") || !isRecorded(r.status)
+          ? undefined
+          : money(orderTotal(r)),
       lines: tech
         ? [
-            ...(off.has("technician.name")
-              ? []
-              : [{ text: tech.name, level: 1 as const }]),
+            ...(off.has("technician.name") ? [] : [{ text: tech.name, level: 1 as const }]),
             ...(off.has("technician.detail")
               ? []
-              : [
-                  {
-                    text: `${tech.base} · ${tech.skills.join(" · ")}`,
-                    level: 3 as const,
-                  },
-                ]),
+              : [{ text: `${tech.base} · ${tech.skills.join(" · ")}`, level: 3 as const }]),
           ]
-        : [
-            /* NOBODY ON IT IS THE POINT OF THE FIRST LANE, so the card says so
-               rather than dropping the unit and leaving the reader to notice
-               an absence. */
-            { text: "Nobody assigned", level: 3 as const },
-          ],
+        : [{ text: "Nobody assigned", level: 3 as const }],
     },
   ];
   return units.filter((u) => {
@@ -245,38 +263,35 @@ const CARD_UNITS = [
   { key: "asset.type", label: "Asset type", group: "asset" },
   { key: "asset.fault", label: "Reported fault", group: "asset" },
   { key: "schedule", label: "Scheduled" },
-  { key: "schedule.window", label: "Window", group: "schedule" },
+  { key: "schedule.time", label: "Time", group: "schedule" },
   { key: "schedule.date", label: "Date", group: "schedule" },
-  { key: "completed", label: "Completed on" },
+  { key: "completed", label: "Recorded" },
   { key: "technician", label: "Technician" },
   { key: "technician.name", label: "Name", group: "technician" },
   { key: "technician.detail", label: "Base · skills", group: "technician" },
+  { key: "technician.total", label: "Total", group: "technician" },
 ];
 
-/* THE DEFAULT SET PER LANE, following the same rule the 3PL board settled on:
-   a card is not one design repeated seven times.
+/* THE DEFAULT SET PER LANE — the rule the 3PL board settled on: a card is not
+   one design repeated eight times.
 
-   - Reported has nobody on it and no date worth reading, so the technician
-     unit is the one that matters and the schedule is noise.
-   - Past the visit, "Completed on" replaces the schedule — a finished job is
-     asked when it RAN, not when it was booked. */
-const SCHEDULE_FIELDS = ["schedule", "schedule.window", "schedule.date"];
-const LANE_FIELD_DEFAULTS: Record<string, string[]> = {
-  Reported: SCHEDULE_FIELDS,
-  Completed: SCHEDULE_FIELDS,
-  Invoiced: SCHEDULE_FIELDS,
-};
-
-const DONE_LANES = new Set(["Completed", "Invoiced"]);
+   - Open has nobody on it and often no date, so the schedule earns its place
+     and the money does not exist yet.
+   - Once the work is recorded, "Recorded" replaces the schedule: a finished
+     job is asked when it RAN, not when it was booked. */
+const SCHEDULE_FIELDS = ["schedule", "schedule.time", "schedule.date"];
+const RECORDED_LANES = ["Needs approval", "Approved", "Completed"];
+const LANE_FIELD_DEFAULTS: Record<string, string[]> = Object.fromEntries(
+  RECORDED_LANES.map((k) => [k, SCHEDULE_FIELDS])
+);
 
 function fieldsForLane(laneKey: string | null) {
   if (!laneKey) return CARD_UNITS;
-  /* "Completed on" is a switch that would do nothing in the lanes where the
-     visit has not happened, and a menu whose ticks do not describe the card is
-     worse than a shorter menu. */
-  return DONE_LANES.has(laneKey)
+  /* A switch that would do nothing in this lane is worse than a shorter menu:
+     nothing is recorded before the work happens, and there is no total. */
+  return RECORDED_LANES.includes(laneKey)
     ? CARD_UNITS
-    : CARD_UNITS.filter((u) => u.key !== "completed");
+    : CARD_UNITS.filter((u) => u.key !== "completed" && u.key !== "technician.total");
 }
 
 const EMPTY_SET: ReadonlySet<string> = new Set<string>();
@@ -305,9 +320,7 @@ function toggleField(
   next.add(key);
   for (const c of kids) next.add(c);
   if (entry?.group) {
-    const siblings = CARD_UNITS.filter((c) => c.group === entry.group).map(
-      (c) => c.key
-    );
+    const siblings = CARD_UNITS.filter((c) => c.group === entry.group).map((c) => c.key);
     if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
   }
   return next;
@@ -320,26 +333,21 @@ function startOfDay(d: Date): Date {
   x.setHours(0, 0, 0, 0);
   return x;
 }
-
 function dateKeyOf(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-
 function fromKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-
 function dayLabel(key: string): string {
   return DATE_FMT.format(fromKey(key));
 }
-
-const TIME_FMT = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-});
-
+const TIME_FMT = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+function timeLabel(iso: string): string {
+  return TIME_FMT.format(new Date(iso));
+}
 function completedLabel(iso: string): string {
   const at = new Date(iso);
   return `${DATE_FMT.format(at)} · ${TIME_FMT.format(at)}`;
@@ -347,40 +355,29 @@ function completedLabel(iso: string): string {
 
 /* ------------------------------------------------------------- the screen */
 
-/** Emergency is the only priority that changes what somebody does next. */
-function priorityBadge(r: WorkOrder) {
-  if (r.priority === "Routine") return null;
-  return {
-    label: r.priority,
-    tone: r.priority === "Emergency" ? ("critical" as const) : undefined,
-  };
-}
-
 export function ServiceWorkScreen() {
-  const [rows] = React.useState<WorkOrder[]>(WORK_ORDERS);
+  const cfg = useServiceSettings();
+  const [rows, setRows] = React.useState<ServiceOrder[]>(SERVICE_ORDERS);
   const [view, setView] = React.useState<ListView>("board");
   const [search, setSearch] = React.useState("");
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
-  const [sort, setSort] = React.useState<ListSort<WorkColumnKey> | null>(null);
-  const [hidden, setHidden] = React.useState<Set<WorkColumnKey>>(
-    new Set(WORK_HIDDEN_BY_DEFAULT)
-  );
+  const [sort, setSort] = React.useState<ListSort<Col> | null>(null);
+  const [hidden, setHidden] = React.useState<Set<Col>>(new Set(HIDDEN_BY_DEFAULT));
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [cardOff, setCardOff] = React.useState<Record<string, Set<string>>>(
-    initialCardOff
-  );
+  const [cardOff, setCardOff] = React.useState<Record<string, Set<string>>>(initialCardOff);
   const [cardScope, setCardScope] = React.useState<string | null>(null);
   const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>({});
+  const [openId, setOpenId] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [techAppId, setTechAppId] = React.useState<string | null>(null);
 
   /* THE BOARD OPENS ON A WEEK, not a day. A dispatcher's question is "what is
-     outstanding", and the answer does not fall inside one shift — a reported
-     fault from Tuesday is still a reported fault on Friday. 3PL opens on one
-     day because a delivery IS a day; this one is not. */
+     outstanding", and the answer does not fall inside one shift. */
   const [range, setRange] = React.useState<DateRange>(() => {
     const today = startOfDay(new Date());
     const from = new Date(today);
@@ -390,13 +387,39 @@ export function ServiceWorkScreen() {
     return { from, to };
   });
 
-  /* The fixture's contract, shouted about once rather than silently wrong. */
   React.useEffect(() => {
-    const problems = assertWorkConsistent(WORK_ORDERS);
+    const problems = assertServiceConsistent(SERVICE_ORDERS);
     if (problems.length > 0) {
-      console.error("[Service Work] seed invariants broken:\n" + problems.join("\n"));
+      console.error("[Service] seed invariants broken:\n" + problems.join("\n"));
     }
   }, []);
+
+  /* AN INVOICE REACHES ACCOUNTING ON A BATCH SCHEDULE, not the instant it is
+     raised. The gap is the whole reason Approved and Completed are two lanes,
+     so the prototype has to actually wait rather than jumping straight to
+     Completed and making the distinction invisible. */
+  const syncing = React.useRef(new Set<string>());
+  React.useEffect(() => {
+    const timers: number[] = [];
+    for (const r of rows) {
+      if (r.status !== "Approved" || !r.invoiceCreated || r.synced) continue;
+      if (syncing.current.has(r.id)) continue;
+      syncing.current.add(r.id);
+      timers.push(
+        window.setTimeout(() => {
+          setRows((prev) =>
+            prev.map((x) =>
+              x.id === r.id ? { ...x, synced: true, status: "Completed" } : x
+            )
+          );
+          toast.success(`${r.orderNo} synced to accounting`);
+        }, 4000)
+      );
+    }
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [rows]);
+
+  const facets = React.useMemo(() => buildFacets(cfg.portalIntake), [cfg.portalIntake]);
 
   const onDate = React.useMemo(() => {
     const from = dateKeyOf(range.from);
@@ -415,9 +438,9 @@ export function ServiceWorkScreen() {
         r.assetName,
         r.assetType,
         r.fault,
+        r.workType,
         technicianById(r.technicianId)?.name ?? "",
         r.status,
-        r.jobType,
       ]
         .join(" ")
         .toLowerCase()
@@ -427,9 +450,9 @@ export function ServiceWorkScreen() {
 
   const filtered = React.useMemo(() => {
     if (facetSel.size === 0) return searched;
-    /* WITHIN A FACET, OR; ACROSS FACETS, AND — the same rule every other list
-       in this prototype follows, because picking two statuses means "either"
-       and picking a status and a technician means "both". */
+    /* WITHIN A FACET, OR; ACROSS FACETS, AND — the rule every list here
+       follows, because two statuses means "either" and a status plus a
+       technician means "both". */
     const byFacet = new Map<string, Set<string>>();
     for (const id of facetSel) {
       const [key, ...rest] = id.split(":");
@@ -444,12 +467,12 @@ export function ServiceWorkScreen() {
 
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
-    const value = (r: WorkOrder): string | number => {
+    const value = (r: ServiceOrder): string | number => {
       switch (sort.key) {
         case "order":
           return r.orderNo;
         case "type":
-          return r.jobType;
+          return r.workType;
         case "customer":
           return r.customer;
         case "shipTo":
@@ -458,23 +481,29 @@ export function ServiceWorkScreen() {
           return r.assetName;
         case "fault":
           return r.fault;
-        case "date":
-          return r.dateKey;
-        case "window":
-          return r.window.start;
+        /* AN UNSCHEDULED JOB SORTS LAST, not first. Empty string would put the
+           jobs nobody has booked at the top of "earliest first", which is the
+           opposite of what that sort is asked for. */
+        case "scheduled":
+          return r.scheduledAt ?? "9999";
         case "technician":
           return technicianById(r.technicianId)?.name ?? "";
-        /* SORTING BY PRIORITY SORTS BY URGENCY, not by the alphabet, which
-           would put Emergency between two milder words. Same rule the 3PL
-           status column follows. */
+        /* PRIORITY AND STATUS SORT BY POSITION, not by the alphabet — Urgent
+           does not belong between two milder words. */
         case "priority":
           return PRIORITIES.indexOf(r.priority);
         case "status":
           return WORK_STATUSES.indexOf(r.status);
+        case "total":
+          return orderTotal(r);
+        case "source":
+          return r.source;
         case "raisedBy":
           return r.raisedBy;
-        case "hours":
-          return r.hoursOnSite ?? -1;
+        case "labor":
+          return r.labor;
+        case "invoice":
+          return r.synced ? 2 : r.invoiceCreated ? 1 : 0;
         default:
           return "";
       }
@@ -497,37 +526,83 @@ export function ServiceWorkScreen() {
     () =>
       WORK_LANES.map((lane) => {
         const held = new Set<WorkStatus>(lane.statuses);
-        const cards = filtered.filter((r) => held.has(r.status));
+        let cards = filtered.filter((r) => held.has(r.status));
+        const when = (r: ServiceOrder) => r.scheduledAt ?? "9999";
+        switch (laneSort[lane.key]) {
+          case "soonest":
+            cards = [...cards].sort((a, b) => when(a).localeCompare(when(b)));
+            break;
+          case "latest":
+            cards = [...cards].sort((a, b) => when(b).localeCompare(when(a)));
+            break;
+          case "priority":
+            cards = [...cards].sort(
+              (a, b) => PRIORITIES.indexOf(b.priority) - PRIORITIES.indexOf(a.priority)
+            );
+            break;
+          case "customer":
+            cards = [...cards].sort((a, b) => a.customer.localeCompare(b.customer));
+            break;
+          /* LONGEST UNASSIGNED IS THE OLDEST BOOKING, which is the one that
+             has been sitting in the lane the longest. */
+          case "oldest":
+            cards = [...cards].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+            break;
+          case "value":
+            cards = [...cards].sort((a, b) => orderTotal(b) - orderTotal(a));
+            break;
+          default:
+            break;
+        }
         return {
           key: lane.key,
           title: lane.key,
           color: WORK_LANE_COLOR[lane.statuses[lane.statuses.length - 1]],
           apart: lane.apart,
           emptyLabel: `Nothing ${lane.key.toLowerCase()}`,
-          cards: cards.map((r) => {
-            const badge = priorityBadge(r);
-            return {
-              id: r.id,
-              title: r.orderNo,
-              badges: badge ? [badge] : [],
-              code: {
-                text: JOB_TYPE_CODE[r.jobType].text,
-                label: r.jobType,
-                tone: JOB_TYPE_CODE[r.jobType].tone,
-              },
-              units: workCardUnits(r, cardOff[lane.key] ?? EMPTY_SET),
-              /* THE ONE THING THAT STOPS THE WORK, said on the card that is
-                 stopped. Every other lane's cards carry no alert, because an
-                 alert on every card is a border. */
-              alert:
-                r.status === "On Hold" && r.holdReason
-                  ? { status: "warning" as const, text: r.holdReason }
-                  : undefined,
-            };
-          }),
+          cards: cards.map((r) => ({
+            id: r.id,
+            title: r.orderNo,
+            badges:
+              r.priority === "Normal"
+                ? []
+                : [
+                    {
+                      label: r.priority,
+                      tone: r.priority === "Urgent" ? ("critical" as const) : undefined,
+                    },
+                  ],
+            code: {
+              text: WORK_TYPE_CODE[r.workType].text,
+              label: r.workType,
+              tone: WORK_TYPE_CODE[r.workType].tone,
+            },
+            units: cardUnits(r, cardOff[lane.key] ?? EMPTY_SET),
+            /* AN ALERT ONLY WHERE SOMETHING IS OUTSTANDING. An alert on every
+               card is a border, so the three lanes with nothing waiting on
+               anybody carry none. */
+            alert:
+              r.status === "Parts-pending" && r.partNeeded
+                ? { status: "warning" as const, text: r.partNeeded }
+                : r.status === "Needs approval"
+                  ? {
+                      status: "default" as const,
+                      text: `${money(orderTotal(r))} — waiting on a manager`,
+                      actionLabel: "Review",
+                    }
+                  : r.status === "Approved" && !r.invoiceCreated
+                    ? {
+                        status: "warning" as const,
+                        text: "Invoice not raised",
+                        actionLabel: "Review",
+                      }
+                    : r.status === "Approved"
+                      ? { status: "default" as const, text: "Invoice on its way to accounting" }
+                      : undefined,
+          })),
         };
       }),
-    [filtered, cardOff]
+    [filtered, cardOff, laneSort]
   );
 
   const scopedHidden = React.useMemo<ReadonlySet<string>>(() => {
@@ -543,21 +618,300 @@ export function ServiceWorkScreen() {
   const lanesInScope = (scope: string | null) =>
     scope ? [scope] : WORK_LANES.map((l) => l.key);
 
+  const laneSortOptions = React.useCallback(
+    (laneKey: string) => [
+      { key: "soonest", label: "Soonest first" },
+      { key: "latest", label: "Latest first" },
+      { key: "priority", label: "Most urgent first" },
+      { key: "customer", label: "Customer A–Z" },
+      ...(laneKey === "Open"
+        ? [{ key: "oldest", label: "Longest unassigned" }]
+        : []),
+      ...(laneKey === "Needs approval" || laneKey === "Approved"
+        ? [{ key: "value", label: "Largest first" }]
+        : []),
+    ],
+    []
+  );
+
   const rangeLabel =
     dateKeyOf(range.from) === dateKeyOf(range.to)
       ? DATE_FMT.format(range.from)
       : `${DATE_FMT.format(range.from)} – ${DATE_FMT.format(range.to)}`;
 
-  const renderCell = (r: WorkOrder, key: WorkColumnKey): React.ReactNode => {
+  /* ─────────────────────────────────────────── the cascading pickers ───── */
+
+  const customers = React.useMemo(
+    () =>
+      Array.from(
+        new Set(RENTAL_ASSETS.map((a) => a.customer).filter(Boolean) as string[])
+      ).sort(),
+    []
+  );
+  const shipTosFor = React.useCallback(
+    (customer: string) =>
+      Array.from(
+        new Set(
+          RENTAL_ASSETS.filter((a) => a.customer === customer && a.shipTo).map(
+            (a) => a.shipTo as string
+          )
+        )
+      ).sort(),
+    []
+  );
+  const assetsFor = React.useCallback(
+    (shipTo: string) =>
+      RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.assetType,
+      })),
+    []
+  );
+
+  /** A blank order, with the price book's lines already in it if it is on. */
+  const blankOrder = React.useCallback((): ServiceOrder => {
+    const workType = WORK_TYPE_NAMES[0];
+    const book = WORK_TYPES[workType];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    return {
+      id: "so-new",
+      orderNo: "—",
+      status: "Open",
+      source: INTAKE_SOURCES[0],
+      priority: "Normal",
+      customer: "",
+      shipTo: "",
+      city: "",
+      state: "",
+      assetId: "",
+      assetName: "",
+      assetType: "",
+      workType,
+      fault: "",
+      dateKey: dateKeyOf(tomorrow),
+      scheduledAt: tomorrow.toISOString(),
+      technicianId: null,
+      arrivedAt: null,
+      parts: cfg.priceBook ? book.parts.map((p) => ({ ...p })) : [],
+      labor: 0,
+      mileage: 0,
+      fees: cfg.priceBook ? book.fees.map((f) => ({ ...f })) : [],
+      quote: null,
+      extraCharges: [],
+      invoiceCreated: false,
+      invoicedAt: null,
+      synced: false,
+      partNeeded: null,
+      returnOf: null,
+      spawnedReturn: null,
+      signed: false,
+      completedAt: null,
+      raisedBy: "Dana Whitfield",
+    };
+  }, [cfg.priceBook]);
+
+  /* ───────────────────────────────────────────────────────── the acts ───── */
+
+  const nextOrderNo = () =>
+    `SO-${Math.max(...rows.map((r) => Number(r.orderNo.slice(3)) || 0)) + 3}`;
+
+  const saveOrder = React.useCallback((order: ServiceOrder, next: ServiceOrder) => {
+    setRows((prev) => prev.map((r) => (r.id === order.id ? next : r)));
+  }, []);
+
+  const createOrder = (draft: ServiceOrder) => {
+    const no = nextOrderNo();
+    const site = RENTAL_ASSETS.find((a) => a.id === draft.assetId);
+    const created: ServiceOrder = {
+      ...draft,
+      id: `so-new-${no}`,
+      orderNo: no,
+      city: site?.city ?? "",
+      state: site?.state ?? "",
+      /* CREATING AND ASSIGNING ARE ONE ACT WHEN A TECHNICIAN IS NAMED, and two
+         when one is not. The form's own button says "Create and assign", and
+         leaving the technician blank is how a dispatcher says "the yard team
+         will pick it up" — which is exactly what Open means. */
+      status: draft.technicianId ? "Assigned" : "Open",
+    };
+    setRows((prev) => [created, ...prev]);
+    /* A NEW ORDER HAS TO BE WHERE THE READER IS LOOKING — the same rule the
+       3PL board follows. The window widens to take it in rather than moving. */
+    setRange((r) => {
+      const day = startOfDay(fromKey(created.dateKey));
+      if (day >= startOfDay(r.from) && day <= startOfDay(r.to)) return r;
+      return {
+        from: day < startOfDay(r.from) ? day : r.from,
+        to: day > startOfDay(r.to) ? day : r.to,
+      };
+    });
+    setCreating(false);
+    setOpenId(created.id);
+    toast.success(
+      created.status === "Assigned"
+        ? `${no} created and assigned`
+        : `${no} created — waiting for a technician`
+    );
+  };
+
+  const patch = (id: string, p: Partial<ServiceOrder>) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...p } : r)));
+
+  const onArrive = (id: string) => {
+    patch(id, { arrivedAt: new Date().toISOString(), status: "In progress" });
+  };
+
+  const onSendQuote = (
+    id: string,
+    q: { parts: PartLine[]; fees: FeeLine[] }
+  ) => {
+    const at = new Date().toISOString();
+    patch(id, {
+      parts: q.parts,
+      fees: q.fees,
+      quote: {
+        parts: q.parts.map((p) => ({ ...p })),
+        fees: q.fees.map((f) => ({ ...f })),
+        total: quoteableTotal(q.parts, q.fees),
+        sentAt: at,
+        approvedAt: null,
+      },
+    });
+  };
+
+  const onApproveQuote = (id: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === id && r.quote
+          ? { ...r, quote: { ...r.quote, approvedAt: new Date().toISOString() } }
+          : r
+      )
+    );
+  };
+
+  const onCompleteWork = (
+    id: string,
+    data: {
+      parts: PartLine[];
+      fees: FeeLine[];
+      labor: number;
+      mileage: number;
+      signed: boolean;
+    }
+  ) => {
+    const at = new Date().toISOString();
+    const order = rows.find((r) => r.id === id);
+    if (!order) return;
+    /* THE APPROVAL STEP IS A SETTING. With it off there is nothing between the
+       technician submitting and the job being billed, and the Needs approval
+       lane is simply never used. */
+    if (cfg.managerApproval) {
+      patch(id, { ...data, completedAt: at, status: "Needs approval", partNeeded: null });
+      toast.success(`${order.orderNo} recorded — sent for approval`);
+    } else {
+      patch(id, {
+        ...data,
+        completedAt: at,
+        status: "Approved",
+        partNeeded: null,
+        invoiceCreated: cfg.nativeBilling,
+        invoicedAt: cfg.nativeBilling ? at : null,
+      });
+      toast.success(
+        cfg.nativeBilling
+          ? `${order.orderNo} complete — invoice generated`
+          : `${order.orderNo} complete and approved`
+      );
+    }
+  };
+
+  const onPartsPending = (
+    id: string,
+    data: { labor: number; partNeeded: string }
+  ) => {
+    const order = rows.find((r) => r.id === id);
+    if (!order) return;
+    if (cfg.returnMode === "spawn") {
+      /* A LINKED RETURN VISIT IS ITS OWN JOB. The second trip has its own
+         schedule, its own technician and its own labour, so rolling it into
+         the first would make one record describe two visits. */
+      const no = nextOrderNo();
+      const returnVisit: ServiceOrder = {
+        ...order,
+        id: `so-ret-${no}`,
+        orderNo: no,
+        status: "Assigned",
+        workType: order.workType,
+        fault: `Return visit — ${data.partNeeded}`,
+        arrivedAt: null,
+        parts: [],
+        labor: 0,
+        mileage: 0,
+        quote: null,
+        extraCharges: [],
+        invoiceCreated: false,
+        invoicedAt: null,
+        synced: false,
+        partNeeded: null,
+        returnOf: order.orderNo,
+        spawnedReturn: null,
+        signed: false,
+        completedAt: null,
+      };
+      setRows((prev) => [
+        returnVisit,
+        ...prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                labor: data.labor,
+                status: "Parts-pending" as WorkStatus,
+                partNeeded: data.partNeeded,
+                spawnedReturn: no,
+              }
+            : r
+        ),
+      ]);
+      toast.success(`${order.orderNo} parts-pending`, {
+        description: `Linked return visit ${no} created.`,
+      });
+    } else {
+      /* ROLL FORWARD: the same order, tomorrow. No second record, which is
+         what a business that does not want two invoices for one fault wants. */
+      const next = fromKey(order.dateKey);
+      next.setDate(next.getDate() + 1);
+      patch(id, {
+        labor: data.labor,
+        status: "Parts-pending",
+        partNeeded: data.partNeeded,
+        dateKey: dateKeyOf(next),
+        scheduledAt: order.scheduledAt
+          ? new Date(
+              new Date(order.scheduledAt).getTime() + 86_400_000
+            ).toISOString()
+          : null,
+      });
+      toast.success(`${order.orderNo} rolled to the next day`, {
+        description: "Same order, no second visit created.",
+      });
+    }
+  };
+
+  /* ──────────────────────────────────────────────────────── the table ───── */
+
+  const renderCell = (r: ServiceOrder, key: Col): React.ReactNode => {
     switch (key) {
       case "order":
         return <span className="font-medium tabular-nums">{r.orderNo}</span>;
       case "type":
         return (
           <CodeDisc
-            code={JOB_TYPE_CODE[r.jobType].text}
-            label={r.jobType}
-            tone={JOB_TYPE_CODE[r.jobType].tone}
+            code={WORK_TYPE_CODE[r.workType].text}
+            label={r.workType}
+            tone={WORK_TYPE_CODE[r.workType].tone}
           />
         );
       case "customer":
@@ -568,20 +922,18 @@ export function ServiceWorkScreen() {
         return (
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-foreground">{r.assetName}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              {r.assetType}
-            </span>
+            <span className="truncate text-xs text-muted-foreground">{r.assetType}</span>
           </span>
         );
       case "fault":
         return <span className="text-muted-foreground">{r.fault}</span>;
-      case "date":
-        return <span className="tabular-nums">{dayLabel(r.dateKey)}</span>;
-      case "window":
-        return (
-          <span className="tabular-nums text-muted-foreground">
-            {r.window.start} – {r.window.end}
+      case "scheduled":
+        return r.scheduledAt ? (
+          <span className="tabular-nums">
+            {dayLabel(r.dateKey)} · {timeLabel(r.scheduledAt)}
           </span>
+        ) : (
+          <span className="text-muted-foreground">Not scheduled</span>
         );
       case "technician":
         return (
@@ -590,32 +942,47 @@ export function ServiceWorkScreen() {
           )
         );
       case "priority":
-        /* ROUTINE IS THE ABSENCE OF A BADGE. Ninety cards all carrying a chip
-           saying "normal" is ninety chips saying nothing. */
-        return r.priority === "Routine" ? (
-          <span className="text-muted-foreground">Routine</span>
+        /* NORMAL IS THE ABSENCE OF A BADGE. A hundred rows all carrying a chip
+           saying "normal" is a hundred chips saying nothing. */
+        return r.priority === "Normal" ? (
+          <span className="text-muted-foreground">Normal</span>
         ) : (
-          <Badge variant={r.priority === "Emergency" ? "destructive" : "secondary"}>
+          <Badge variant={r.priority === "Urgent" ? "destructive" : "secondary"}>
             {r.priority}
           </Badge>
         );
       case "status":
         return <StatusChip tone={WORK_STATUS_TONE[r.status]}>{r.status}</StatusChip>;
+      case "total":
+        return isRecorded(r.status) ? (
+          <span className="tabular-nums">{money(orderTotal(r))}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      case "source":
+        return r.source;
       case "raisedBy":
         return r.raisedBy;
-      case "hours":
-        return r.hoursOnSite == null ? (
-          <span className="text-muted-foreground">—</span>
+      case "labor":
+        return r.labor > 0 ? (
+          <span className="tabular-nums">{r.labor}</span>
         ) : (
-          <span className="tabular-nums">{r.hoursOnSite}</span>
+          <span className="text-muted-foreground">—</span>
+        );
+      case "invoice":
+        return r.synced ? (
+          <StatusChip tone="success">Synced</StatusChip>
+        ) : r.invoiceCreated ? (
+          <StatusChip tone="processing">Raised</StatusChip>
+        ) : (
+          <span className="text-muted-foreground">—</span>
         );
       default:
         return null;
     }
   };
 
-  const narrowed =
-    search.trim().length > 0 || facetSel.size > 0 || colQuery.trim().length > 0;
+  const narrowed = search.trim().length > 0 || facetSel.size > 0;
 
   const emptyBody =
     onDate.length === 0 ? (
@@ -635,7 +1002,7 @@ export function ServiceWorkScreen() {
       <Empty className="h-full">
         <EmptyHeader>
           <EmptyMedia variant="icon">{narrowed ? <SearchX /> : <Wrench />}</EmptyMedia>
-          <EmptyTitle>No work orders match</EmptyTitle>
+          <EmptyTitle>No service orders match</EmptyTitle>
           <EmptyDescription>
             {onDate.length} in this window, none of them past what you have
             narrowed to. Clear a filter to widen it.
@@ -643,6 +1010,8 @@ export function ServiceWorkScreen() {
         </EmptyHeader>
       </Empty>
     );
+
+  const openOrder = rows.find((r) => r.id === openId) ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -656,6 +1025,8 @@ export function ServiceWorkScreen() {
         onRename={() => {}}
         onUpdate={() => {}}
         onDelete={() => {}}
+        ctaLabel="New service order"
+        onCreateOrder={() => setCreating(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -665,7 +1036,7 @@ export function ServiceWorkScreen() {
             setSearch(v);
             setPage(1);
           }}
-          searchPlaceholder="Search work orders, sites, assets, technicians…"
+          searchPlaceholder="Search service orders, sites, assets, technicians…"
           showGroupBy={false}
           filters={
             <ListFilters
@@ -674,10 +1045,10 @@ export function ServiceWorkScreen() {
                 setFacetSel(sel);
                 setPage(1);
               }}
-              facets={WORK_FACETS}
+              facets={facets}
             />
           }
-          columns={WORK_COLUMNS.filter((c) => c.label).map((c) => ({
+          columns={COLUMNS.filter((c) => c.label).map((c) => ({
             key: c.key,
             label: c.label,
           }))}
@@ -715,7 +1086,7 @@ export function ServiceWorkScreen() {
                 return next;
               }),
           }}
-          searchFields={WORK_SEARCH_FIELDS}
+          searchFields={SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={setColScope}
           colQuery={colQuery}
@@ -736,7 +1107,7 @@ export function ServiceWorkScreen() {
           }
         />
         <FilterChips
-          facets={WORK_FACETS}
+          facets={facets}
           selected={facetSel}
           onChange={(next) => {
             setFacetSel(next);
@@ -752,6 +1123,12 @@ export function ServiceWorkScreen() {
           ) : view === "board" ? (
             <BrokerBoard
               lanes={lanes}
+              onOpenCard={setOpenId}
+              /* FOUR WAYS TO ORDER A LANE, and the fourth belongs to the
+                 lane: what is worth ordering Open by is which job has waited
+                 longest with nobody on it, and that question does not exist
+                 once somebody is assigned. */
+              laneSortOptions={laneSortOptions}
               laneSort={laneSort}
               onLaneSortChange={(lane: string, key: string | null) =>
                 setLaneSort((prev) => ({ ...prev, [lane]: key ?? undefined }))
@@ -760,7 +1137,7 @@ export function ServiceWorkScreen() {
           ) : (
             <ListTable
               rows={pageRows}
-              columns={WORK_COLUMNS}
+              columns={COLUMNS}
               hidden={hidden}
               sort={sort}
               onSort={(key) =>
@@ -777,24 +1154,22 @@ export function ServiceWorkScreen() {
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
-              openLabel={(r) => `Open work order ${r.orderNo}`}
+              openLabel={(r) => `Open service order ${r.orderNo}`}
+              onOpenRow={(r) => setOpenId(r.id)}
             />
           )}
         </div>
       </div>
 
-      {/* The board is not paged, so it gets a total instead — and the total
-          states its scope, because a number with no window is one nobody can
-          check. */}
       {view !== "table" && sorted.length > 0 && (
         <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
           <span className="font-medium text-foreground">
             {sorted.length.toLocaleString()}{" "}
-            {sorted.length === 1 ? "work order" : "work orders"}
+            {sorted.length === 1 ? "service order" : "service orders"}
           </span>
           <span className="text-muted-foreground">
-            across {lanes.filter((l) => l.cards.length > 0).length} of{" "}
-            {lanes.length} lanes · {rangeLabel}
+            across {lanes.filter((l) => l.cards.length > 0).length} of {lanes.length}{" "}
+            lanes · {rangeLabel}
           </span>
         </div>
       )}
@@ -812,6 +1187,39 @@ export function ServiceWorkScreen() {
           }}
         />
       </div>
+
+      <ServiceOrderSheet
+        order={openOrder}
+        mode={creating ? "create" : "edit"}
+        open={creating || openId !== null}
+        onOpenChange={(o) => {
+          if (o) return;
+          setCreating(false);
+          setOpenId(null);
+        }}
+        onSave={saveOrder}
+        onCreate={createOrder}
+        onOpenTechApp={(id) => setTechAppId(id)}
+        customers={customers}
+        shipTosFor={shipTosFor}
+        assetsFor={assetsFor}
+        blankOrder={blankOrder}
+      />
+
+      {/* THE TECHNICIAN'S OWN VIEW, over the order it belongs to. Mounted only
+          while open, so it starts from the job's current state each time. */}
+      {techAppId && (
+        <TechnicianAppSheet
+          order={rows.find((r) => r.id === techAppId) ?? null}
+          open
+          onOpenChange={(o) => !o && setTechAppId(null)}
+          onArrive={onArrive}
+          onSendQuote={onSendQuote}
+          onApproveQuote={onApproveQuote}
+          onComplete={onCompleteWork}
+          onPartsPending={onPartsPending}
+        />
+      )}
     </div>
   );
 }

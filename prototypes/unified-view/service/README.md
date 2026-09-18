@@ -1,89 +1,134 @@
-# Service Work — the maintenance module
+# Service Work — the service-order module
 
-Created 2026-09-18.
+Rebuilt 2026-09-18 against the eight-stage flow, on the FP design system and
+the structures the other two modules already established.
 
-## What this module is
+## What a service order is
 
-Everything this business rents out — tanks, pumps, meters, the hoses and
-nozzles hanging off them — needs looking after. It gets inspected on a cycle,
-it breaks, it gets swapped, it gets taken away. That work is what this module
-holds, and the thing it holds is a **work order**: one visit, to one asset, at
-one site, on one day, by one technician.
+One job on one deployed asset: somebody reports it, a dispatcher books it, a
+technician does it, a manager signs it off, and it is billed. The asset is the
+subject, because the history hangs off the asset — and the assets, customers
+and sites are the ones already in the rental directory, not a second copy.
 
-## Three decisions taken when it was created
+## The eight stages
 
-Pavan had no preference on any of the three, so they were taken here and are
-written down rather than left to be re-derived.
+| Stage | What it is waiting on |
+|---|---|
+| **Open** | nobody is on it |
+| **Assigned** | a technician is, but they have not arrived |
+| **In progress** | they have arrived and are working |
+| **Parts-pending** | they stopped, and it is a part that stopped them |
+| **Needs approval** | the work is recorded and a manager has not signed it |
+| **Approved** | signed off; the invoice exists |
+| **Completed** | the invoice reached accounting and the job is closed |
+| **Cancelled** | it is not happening |
 
-**1. The asset is the subject.** 3PL's order is about a quantity going to a
-place; this one is about a THING that is already there. The asset is what the
-history hangs off — *this tank has been out three times this year* is the
-question the module exists to answer — so an order that named a site and not an
-asset would be a visit nobody could account for afterwards. The assets are the
-ones in the existing Rental Assets directory, not a second copy of them.
+- **Open and Assigned are two facts, not one.** A job nobody is on and a job
+  somebody is on but has not started are different problems, and the gap
+  between them is the dispatcher's backlog. It is an invariant: Open means no
+  technician, and every stage after it means one.
+- **Approved and Completed are two facts too.** Approved says a human agreed
+  the numbers; Completed says the money left the building. The module actually
+  waits — an approved invoice reaches accounting on a batch sync, and the
+  prototype delays it rather than jumping straight to Completed and making the
+  distinction invisible.
+- **Parts-pending sits IN SEQUENCE, not behind the rule.** Waiting on a part is
+  a normal thing for a job to be doing, and it is the lane a dispatcher works
+  from first thing. Only Cancelled is set apart.
 
-**2. It is our own technicians, not partners.** 3PL already covers work put out
-to third parties and priced. Here the question is who is free and when, not who
-is cheapest, so there is no quoting and no partner table. *If service work ever
-does go out to third parties, that is a change to make deliberately.*
+## The money rule, which is the sharp edge of the whole module
 
-**3. The board is the default, as in 3PL.** The work has a lifecycle and what
-somebody does all day is watch it move. A calendar laid out by technician and
-day is the other plausible answer and may still be the better one for the
-scheduling half — but it is a component the DS does not have, and the board is
-the shape this product already teaches.
+**A quote is parts + the predefined fee**, sent and approved on site BEFORE the
+work starts. It *cannot* contain labour or mileage — at the moment it is sent
+nobody knows how long the job took or how far the van went.
 
-## The lanes
+**An invoice is raised after the job and may be bigger:** actual labour hours,
+mileage, and any extra parts the technician turned out to need. The gap between
+the two is not an error. It is the thing the customer has to be able to see, so
+both figures stay on the order and the sheet states the difference in words.
 
-`Reported · Scheduled · In Progress · Completed · Invoiced`, then behind a rule
-`On Hold · Cancelled`.
+A quote is stored as a **snapshot** — what the lines WERE when it was sent.
+Recomputing it from today's lines would quietly rewrite what was agreed.
 
-- **Reported and Scheduled are two facts, not one.** A fault that has been
-  raised and a fault with a technician and a date against it are different
-  problems, and the gap between them is the backlog the board exists to show.
-  The invariant is exact: Reported means nobody is assigned, and every stage
-  after it means somebody is.
-- **On Hold sits apart** for the same reason 3PL's Cancelled does — it is not a
-  step of the work, it is a way of not doing it today. It is the only lane whose
-  cards carry an alert, because it is the only one with a reason to give.
+Parts at cost × quantity · labour at $95/h · mileage at $1.50/mi · fees.
 
-## What the card says
+## The eight switch points
 
-Customer → **Asset & Fault** → Scheduled → Technician. The fault sits second
-because it is the only line on the card that is not a lookup: everything else
-can be guessed from the columns, and the sentence somebody typed cannot.
+They are not preferences. Each turns a whole step of the flow on or off, and
+the board, the order sheet and the technician's app all change with them.
 
-Per-lane defaults, following the rule the 3PL board settled on:
+1. **Native billing** — the invoice writes itself on approval, or somebody
+   raises it by hand.
+2. **Service cost feeds asset payback.**
+3. **Manager approval required** — or work approves itself on submit, and the
+   Needs approval lane is never used.
+4. **Return-visit behaviour** — spawn a linked return visit, or roll the same
+   order forward to the next day.
+5. **Price book** — a work type brings its usual parts and a suggested fee, as
+   editable lines rather than silently.
+6. **Service technician app** — assigned work goes to the field app, or
+   dispatch records the finished work on the order itself.
+7. **Field quoting** (nested under 6) — quote on site before starting.
+8. **Portal intake** — customers raise jobs themselves.
 
-- **Reported** drops the schedule — there is no date worth reading yet, and the
-  technician unit saying "Nobody assigned" is the point of the lane.
-- **Completed and Invoiced** replace the schedule with **Completed on** (date,
-  time and hours on site). A finished job is asked when it RAN.
+**Two named profiles** sit at the ends of the range and are one click each:
+*Unified* (everything on) and *Dispatch layer* (everything off).
 
-## The board opens on a week, not a day
+They live on a rail item inside the module, NOT in the app's Settings page —
+that one will govern several modules and is held back pending it.
 
-3PL opens on one day because a delivery IS a day. A reported fault from Tuesday
-is still a reported fault on Friday, so this board opens on today ±3 and the
-question it answers is "what is outstanding".
+## What was built with the established structures, not around them
+
+- **The board** is the 3PL board component, with eight lanes, per-lane sorts
+  and the same per-lane card-field menu.
+- **The table** is `ListTable` with the same column grammar as the two orders
+  tables — number, type, who, where, what, when, who is doing it, state, money.
+- **The order sheet** is `RecordSheet`, with the footer's next-act ladder: the
+  primary always names the ONE thing that moves the job on from here, and when
+  it cannot be pressed the reason sits beside it rather than on it. The rung
+  depends on the settings as much as on the stage.
+- **The technician app is a sheet, not a page** — it is somebody else's view of
+  this job, the same relationship the vendor quote sheet has to a 3PL order, so
+  it opens over the record and closes back onto it. Narrow on purpose: it is a
+  phone in a van.
+- **"Complete manually" and "Create invoice" are not separate screens.** They
+  are what the order sheet's own act becomes when the technician app is off and
+  when native billing is off. Two more pages would be two more places to learn
+  for two acts that belong to this record.
+
+## Per-lane card defaults
+
+- **Open** keeps the schedule and says "Nobody assigned" — that is the point of
+  the lane. There is no money yet.
+- **Needs approval, Approved, Completed** replace the schedule with **Recorded**
+  (when it ran, and hours on site) and put the total on the technician unit. A
+  finished job is asked when it RAN, not when it was booked.
+- A lane is only offered the fields it can draw.
 
 ## Not built, named rather than faked
 
-- **The work-order sheet.** A card opens nothing yet — there is no detail view,
-  no way to assign a technician, no way to close a job.
-- **Creating a work order.** No CTA on the view bar.
+- **The customer's portal.** The switch controls whether "Portal request"
+  exists as an intake source; there is no portal in this prototype.
+- **Emailing a quote or an invoice to a customer.** Both are acts on the record
+  here; nothing leaves the building.
 - **The technician's own day** — their jobs in order, with travel between them.
   The Technicians list is a roster with an open-job count, not a schedule.
-- **Recurring maintenance.** Inspections and preventive service are job TYPES
-  here; nothing generates the next one when the last is done.
+- **Recurring maintenance.** Nothing generates the next inspection.
+- **Asset payback.** The switch says the cost feeds it; the screen that shows
+  the payback is the rental module's, and is not built.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `work.ts` | the model, the lifecycle, the fixture, the invariants |
-| `ServiceWorkScreen.tsx` | the work-order board and table |
+| `work.ts` | the model, the eight stages, the money rules, the fixture, the invariants |
+| `settings.ts` | the eight switch points and the two profiles |
+| `ServiceWorkScreen.tsx` | the board and the table |
+| `ServiceOrderSheet.tsx` | the order, with the next-act ladder |
+| `TechnicianAppSheet.tsx` | arrive → quote → record, as the technician sees it |
+| `ServiceSettingsScreen.tsx` | the switch points |
 | `TechniciansScreen.tsx` | the roster |
 
-Customers, ship-tos and assets are REUSED from the 3PL directory. The
-technicians, the fault descriptions, the labour hours and the parts are
-invented, and flagged as such in `work.ts`.
+Customers, ship-tos and assets are REUSED from the rental directory. The
+technicians, fault text, labour hours, parts and rates are invented and flagged
+as such in `work.ts`.

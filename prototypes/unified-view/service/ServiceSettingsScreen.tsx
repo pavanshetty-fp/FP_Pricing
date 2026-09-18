@@ -1,0 +1,191 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_PROFILES,
+  applyServiceProfile,
+  setServiceSetting,
+  useServiceSettings,
+  type ServiceSettings,
+} from "./settings";
+
+/**
+ * THE SERVICE MODULE'S SWITCH POINTS.
+ *
+ * NOT PREFERENCES. Each of these turns a whole step of the flow on or off —
+ * whether there is a field app at all, whether a job is quoted before it is
+ * done, whether a manager signs it off, whether an invoice writes itself. The
+ * descriptions say what happens in BOTH positions, because a switch whose
+ * off-state is unstated is one nobody dares move.
+ *
+ * WHY IT IS HERE AND NOT IN THE APP'S SETTINGS. The global Settings page will
+ * govern several modules and has been held back pending that; these belong to
+ * this module, so they sit inside it.
+ */
+
+function SwitchRow({
+  title,
+  description,
+  checked,
+  onChange,
+  nested,
+  disabled,
+  disabledNote,
+}: {
+  title: string;
+  description: React.ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  /** A switch that only means anything while its parent is on. */
+  nested?: boolean;
+  disabled?: boolean;
+  disabledNote?: string;
+}) {
+  const id = React.useId();
+  return (
+    <div
+      className={cn(
+        "flex items-start justify-between gap-8 border-b border-fp-outline-1 py-4 last:border-b-0",
+        /* THE INDENT AND THE RULE ARE THE ONLY THINGS SAYING "UNDER" — the
+           same device the column and card-field menus use. */
+        nested && "ml-2 border-l border-fp-outline-1 py-3 pl-5",
+        disabled && "opacity-50"
+      )}
+    >
+      <div className="max-w-xl">
+        <Label htmlFor={id} className="text-sm font-medium text-foreground">
+          {title}
+        </Label>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        {disabled && disabledNote && (
+          <p className="mt-1 text-sm text-muted-foreground">{disabledNote}</p>
+        )}
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onChange}
+      />
+    </div>
+  );
+}
+
+function sameSettings(a: ServiceSettings, b: ServiceSettings) {
+  return (Object.keys(a) as (keyof ServiceSettings)[]).every((k) => a[k] === b[k]);
+}
+
+export function ServiceSettingsScreen() {
+  const cfg = useServiceSettings();
+  const activeProfile = SETTINGS_PROFILES.find((p) => sameSettings(cfg, p.settings));
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="max-w-4xl pb-8">
+          <p className="text-sm text-muted-foreground">
+            These are not preferences. Each one turns a whole step of the flow on
+            or off, and the board, the order sheet and the technician's app all
+            change with them.
+          </p>
+
+          {/* THE TWO ENDS OF THE RANGE, as one click each. Eight switches is
+              eight decisions; the two configurations the module was shaped
+              around are worth being able to reach without making all eight. */}
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {SETTINGS_PROFILES.map((p) => (
+              <Button
+                key={p.key}
+                variant={activeProfile?.key === p.key ? "default" : "outline"}
+                onClick={() => applyServiceProfile(p.settings)}
+              >
+                {p.name}
+              </Button>
+            ))}
+            <span className="text-sm text-muted-foreground">
+              {activeProfile
+                ? activeProfile.detail
+                : "A configuration of your own — neither named profile."}
+            </span>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-fp-outline-1 bg-fp-surface-1a px-5">
+            <SwitchRow
+              title="Native billing"
+              description="On: the invoice writes itself the moment a job is approved — parts, actual labour, mileage and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."
+              checked={cfg.nativeBilling}
+              onChange={(v) => setServiceSetting("nativeBilling", v)}
+            />
+            <SwitchRow
+              title="Service cost feeds asset payback"
+              description="On: what a job costs rolls into the asset's return picture. Off: service is not part of how an asset's payback is worked out."
+              checked={cfg.roiFeed}
+              onChange={(v) => setServiceSetting("roiFeed", v)}
+            />
+            <SwitchRow
+              title="Manager approval required"
+              description="On: finished work waits in Needs approval for a service manager to sign it off before it can be billed. Off: it approves itself the moment the technician submits, and the lane is never used."
+              checked={cfg.managerApproval}
+              onChange={(v) => setServiceSetting("managerApproval", v)}
+            />
+            <SwitchRow
+              title="Price book"
+              description="On: choosing a work type brings its usual parts and a suggested fee with it, as editable lines rather than silently. Off: parts and fees are typed by hand, or handled by product codes in the ERP."
+              checked={cfg.priceBook}
+              onChange={(v) => setServiceSetting("priceBook", v)}
+            />
+            <SwitchRow
+              title="Service technician app"
+              description="On: assigned work goes to the technician's own app — arrive, then record what was done. Off: there is no field app, and dispatch records the finished work on the order itself."
+              checked={cfg.serviceTechApp}
+              onChange={(v) => setServiceSetting("serviceTechApp", v)}
+            />
+            <SwitchRow
+              nested
+              title="Field quoting"
+              description="On: before starting, the technician sends the customer a quote — parts and the predefined fee — and waits for approval on site. Off: work starts straight from dispatch and everything is settled on the invoice."
+              checked={cfg.fieldQuote}
+              onChange={(v) => setServiceSetting("fieldQuote", v)}
+              disabled={!cfg.serviceTechApp}
+              disabledNote="There is no field app to quote from."
+            />
+            <SwitchRow
+              title="Portal intake"
+              description="On: customers can raise a job themselves, and 'Portal request' is offered as an intake source. Off: every job is keyed here, from a call, a rep, or a flagged inspection."
+              checked={cfg.portalIntake}
+              onChange={(v) => setServiceSetting("portalIntake", v)}
+            />
+          </div>
+
+          {/* THE ONE RULE THAT IS NOT A SWITCH, said where the switches are —
+              it is what half of them are about. */}
+          <div className="mt-6 rounded-lg border border-fp-outline-1 bg-fp-card-1 p-5">
+            <p className="text-sm font-medium text-foreground">Quote and invoice</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              A quote is parts and the predefined fee, sent and approved on site{" "}
+              <em>before</em> the work starts. An invoice is raised{" "}
+              <em>after</em> it and may come to more — actual labour hours,
+              mileage, and anything extra the job turned out to need. The gap
+              between the two is not an error, and both stay on the order so a
+              customer can be shown either.
+            </p>
+          </div>
+
+          {!sameSettings(cfg, DEFAULT_SETTINGS) && (
+            <div className="mt-5">
+              <Button
+                variant="ghost"
+                onClick={() => applyServiceProfile(DEFAULT_SETTINGS)}
+              >
+                Reset to defaults
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

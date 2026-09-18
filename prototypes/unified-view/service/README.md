@@ -158,6 +158,35 @@ field in the sheet that did not match the date on a 3PL order. Leaving a job
 unscheduled is an answer, so it is offered inside the picker rather than only
 by clearing a field nobody can clear.
 
+### Edits are committed, not autosaved — and the primary says so
+
+A service order is not a draft being assembled the way a delivery order is: it
+already exists the moment somebody reports the fault, and what the sheet is for
+afterwards is **correcting** it — the wrong asset, the wrong work type, a fee
+that should not be there. A correction that keeps itself 600ms after a
+keystroke gives the reader nowhere to change their mind, and on a record on its
+way to an invoice that is the wrong default.
+
+So **while the form differs from the record, the primary is `Update`** and the
+stage's own act waits behind it. One button, and it names the thing that has to
+happen next. Cancel comes back with it — it was off while the sheet autosaved,
+because "Cancel" promises to undo and a sheet that has already kept everything
+cannot keep that promise.
+
+**Update is not gated by the banner.** The technician is a precondition of the
+ACT that takes a job out of Open, not of the record: fixing a typo in the
+reported fault must not wait on somebody being free. Update is held back only
+by a field the record itself cannot do without.
+
+### The strip above the footer says what the act is waiting on
+
+The 3PL sheet's mandatory-steps banner, verbatim: one missing field at a time,
+with a counter and a way to step through them, so three missing fields cost one
+line rather than three. Each label is the INSTRUCTION — "Choose a customer",
+not "Customer" — because the reader is being told what to do, not what they are
+looking at. A stalled job's reason beats the list: it is the thing that stopped
+the work, and the fields can wait behind it.
+
 ### Open is this module's Draft, so its act is called Create Service Order
 
 The job exists the moment it is reported; the footer's act is where somebody

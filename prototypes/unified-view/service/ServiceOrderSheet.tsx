@@ -2,6 +2,10 @@ import * as React from "react";
 import {
   Plus,
   Trash2,
+  CircleCheck,
+  ChevronLeft,
+  ChevronRight,
+  Info,
   Calendar as CalendarIcon,
   Download,
   Receipt,
@@ -36,7 +40,7 @@ import {
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
-import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
+import { RecordSheet } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
@@ -111,6 +115,72 @@ function MoneyRow({
         )}
       >
         {value}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * WHAT THE FOOTER'S ACT IS STILL WAITING ON, in the one place that does not
+ * scroll away from the button it is about.
+ *
+ * SAME BANNER AS THE 3PL ORDER SHEET, for the same reason: the reason a
+ * primary is dead belongs beside it, and beside it there is room for a clause
+ * — not for a list. One step at a time, with a counter and a way to step
+ * through them, so three missing fields cost one line rather than three.
+ */
+function MandatoryStepsBanner({
+  pending,
+}: {
+  pending: { key: string; label: string }[];
+}) {
+  const [at, setAt] = React.useState(0);
+  /* The list shortens as fields are filled, so the cursor has to be pulled
+     back with it rather than pointing past the end. */
+  const i = Math.min(at, Math.max(pending.length - 1, 0));
+  React.useEffect(() => {
+    if (at > pending.length - 1) setAt(Math.max(pending.length - 1, 0));
+  }, [at, pending.length]);
+
+  if (pending.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-fp-banner-accent-success">
+        <CircleCheck className="size-4 shrink-0" />
+        Everything this order needs is filled in
+      </div>
+    );
+  }
+
+  const step = pending[i];
+  const chevron =
+    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-fp-banner-accent-caution">
+        <Info className="size-4 shrink-0" />
+        <span className="truncate">{step.label}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+        <button
+          type="button"
+          aria-label="Previous missing field"
+          disabled={i === 0}
+          onClick={() => setAt(i - 1)}
+          className={chevron}
+        >
+          <ChevronLeft className="size-3.5" />
+        </button>
+        {i + 1} of {pending.length}
+        <button
+          type="button"
+          aria-label="Next missing field"
+          disabled={i >= pending.length - 1}
+          onClick={() => setAt(i + 1)}
+          className={chevron}
+        >
+          <ChevronRight className="size-3.5" />
+        </button>
       </span>
     </div>
   );
@@ -377,24 +447,31 @@ export function ServiceOrderSheet({
       return;
     }
     if (!order) return;
+    /* THE ROW COMING BACK FROM OUR OWN SAVE MUST NOT REBUILD THE FORM. It is
+       the same object the reader is typing into; rebuilding it would move the
+       caret and lose anything typed in the meantime. */
     if (lastSaved.current === JSON.stringify(order)) return;
     setDraft({ ...order });
     lastSaved.current = null;
   }, [open, creating, order, blankOrder]);
 
-  const saveState = useDraftSaveState(draft, open && !creating);
-
-  /* AUTOSAVE, DEBOUNCED — the sheet keeps what it says it keeps. */
-  React.useEffect(() => {
-    if (creating || !order || !draft) return;
-    const serialised = JSON.stringify(draft);
-    if (serialised === JSON.stringify(order)) return;
-    const t = window.setTimeout(() => {
-      lastSaved.current = serialised;
-      onSave(order, draft);
-    }, 600);
-    return () => window.clearTimeout(t);
-  }, [draft, order, creating, onSave]);
+  /**
+   * EDITS ARE COMMITTED, NOT AUTOSAVED.
+   *
+   * A service order is not a draft being assembled the way a delivery order
+   * is: it already exists the moment somebody reports the fault, and what the
+   * sheet is for afterwards is CORRECTING it — the wrong asset, the wrong
+   * work type, a fee that should not be there. A correction that keeps itself
+   * 600ms after a keystroke gives the reader nowhere to change their mind, and
+   * on a record that is on its way to an invoice that is the wrong default.
+   *
+   * So the primary says **Update** whenever the form differs from the record,
+   * and the stage's own act waits its turn behind it. One button, and it names
+   * the thing that has to happen next.
+   */
+  const dirty = Boolean(
+    order && draft && JSON.stringify(draft) !== JSON.stringify(order)
+  );
 
   if (!draft) return null;
 
@@ -461,6 +538,38 @@ export function ServiceOrderSheet({
 
   const advance = (status: WorkStatus, patch: Partial<ServiceOrder> = {}) =>
     setDraft((d) => (d ? { ...d, ...patch, status } : d));
+
+  /**
+   * WHAT THIS ORDER STILL NEEDS.
+   *
+   * The starred fields, plus the technician — which is not starred because it
+   * is optional on a job that is going into the yard team's queue, and
+   * mandatory only for the act that takes the order out of Open. Each label is
+   * the INSTRUCTION, not the field name: "Choose a customer" tells somebody
+   * what to do, "Customer" tells them what they are looking at.
+   */
+  const mandatory = [
+    { key: "customer", label: "Choose a customer", done: Boolean(draft.customer) },
+    { key: "shipTo", label: "Choose a ship-to site", done: Boolean(draft.shipTo) },
+    { key: "asset", label: "Choose the asset the job is on", done: Boolean(draft.assetId) },
+    { key: "workType", label: "Choose a work type", done: Boolean(draft.workType) },
+    ...(draft.status === "Open"
+      ? [
+          {
+            key: "tech",
+            label: "Assign a technician",
+            done: Boolean(draft.technicianId),
+          },
+        ]
+      : []),
+  ];
+  const pendingSteps = mandatory.filter((x) => !x.done);
+
+  /* SAVING A CORRECTION IS NOT COMMITTING THE ORDER. The technician is a
+     precondition of the ACT that takes a job out of Open, not of the record —
+     fixing a typo in the reported fault must not wait on somebody being free.
+     Update is held back only by a field the record itself cannot do without. */
+  const recordIncomplete = mandatory.some((x) => x.key !== "tech" && !x.done);
 
   /* ────────────────────────────────────────── the footer's ladder ───── */
 
@@ -604,7 +713,12 @@ export function ServiceOrderSheet({
       createAction="Create Service Order"
       canSubmit={readyToCreate}
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
-      showCancel={creating}
+      /* CANCEL IS HONEST AGAIN. It was off while the sheet autosaved, because
+         "Cancel" promises to undo and a sheet that has already kept everything
+         typed cannot keep that promise. Nothing is kept until Update, so
+         closing genuinely discards — and a form with unsaved edits and no way
+         back but the X is a form people stop editing. */
+      showCancel={creating || dirty}
       headerAside={
         creating ? undefined : (
           <span className="flex items-center gap-2">
@@ -614,8 +728,11 @@ export function ServiceOrderSheet({
                 {draft.priority}
               </Badge>
             )}
-            {saveState !== "idle" && (
-              <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+            {/* WHAT IS TRUE, NOT WHAT WAS PROMISED. Nothing autosaves here, so
+                "Draft saved" would be a claim about something that has not
+                happened; the honest line is that there is something to keep. */}
+            {dirty && (
+              <span className="text-sm text-muted-foreground">Unsaved changes</span>
             )}
           </span>
         )
@@ -623,8 +740,13 @@ export function ServiceOrderSheet({
       headerSubtitle={
         creating ? undefined : `${draft.workType} · ${draft.assetName} · ${draft.shipTo}`
       }
+      /* THE STRIP ABOVE THE FOOTER SAYS WHAT THE ACT IS WAITING ON. A stalled
+         job's reason beats a list of missing fields: it is the thing that
+         stopped the work, and the fields can wait behind it. */
       footerBanner={
-        draft.status === "Parts-pending" ? (
+        creating ? (
+          <MandatoryStepsBanner pending={pendingSteps} />
+        ) : draft.status === "Parts-pending" ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-foreground">Waiting on a part</span>
             <span className="text-muted-foreground">
@@ -634,10 +756,28 @@ export function ServiceOrderSheet({
                 : " · rolled forward on this order"}
             </span>
           </div>
-        ) : undefined
+        ) : (
+          <MandatoryStepsBanner pending={pendingSteps} />
+        )
       }
       footerPrimary={
-        creating ? undefined : blockedWhy ? (
+        creating ? undefined : dirty ? (
+          /* UNSAVED EDITS COME BEFORE THE STAGE. While the form differs from
+             the record, the one thing that has to happen next is keeping what
+             was typed — advancing a stage on figures nobody has committed
+             would bill the customer for a draft. */
+          <Button
+            disabled={recordIncomplete}
+            onClick={() => {
+              if (!order) return;
+              lastSaved.current = JSON.stringify(draft);
+              onSave(order, draft);
+              toast.success(`${draft.orderNo} updated`);
+            }}
+          >
+            Update
+          </Button>
+        ) : blockedWhy ? (
           /* THE REASON IS ON THE BUTTON, NOT BESIDE IT.
              A clause standing permanently next to the primary is a sentence
              the reader has to read on every visit to the sheet, including the

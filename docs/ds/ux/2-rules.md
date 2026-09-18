@@ -58,6 +58,52 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
+- **`xxwide` is 1440px, and it exists for exactly one shape: a step that is TWO
+  COLUMNS** — what you fill in on the left, what that makes on the right. A
+  sheet does not get this size for being long; it gets it for being split. The
+  rail costs the left column 340px plus a 24px gap, and at `xwide` that comes
+  straight out of table columns already at their minimum.
+- **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
+  type into it?** Editable sections go left, in the sequence you fill them.
+  What the record HAS BECOME goes right — derived, read-only, true whether or
+  not anyone is looking. Once an editable number and a computed one share a
+  column they look identical and the reader stops knowing which is which.
+  - The rail is `<aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">`
+    inside `grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]`.
+  - **It stays put while the form scrolls.** The rail answers questions the
+    reader has while looking at ANY part of the form; scrolled away with the
+    sections it describes, a total is only visible next to the tables that
+    produce it, which is where it is least needed.
+  - It folds to one column below `lg`, where a 340px rail beside a form is two
+    columns of nothing.
+- **THE FOOTER HAS THREE SLOTS, and each answers a different question.**
+  - `footerBanner` — a fixed strip spanning the sheet, directly above the
+    footer: **what the primary is waiting on.** The reason a button is dead
+    belongs beside it, and beside it there is room for a clause, not a list.
+  - `footerAside` — decisions taken at the moment of committing (flags, the
+    second outcome of the same act). They stay in view however far the body has
+    scrolled.
+  - `footerPrimary` — **the next act, and only ever one.**
+- **THE PRIMARY IS A LADDER, NOT A SAVE.** Whatever the stage, it names the ONE
+  thing that moves the record on from where it is, and it changes as the record
+  does. Two consequences:
+  - **The label is the ACT, never the state.** "Waiting on partners" on a
+    button asks the reader to press a fact. What has not happened yet goes in
+    the banner or the tooltip; the button says what pressing it does.
+  - **A rung that cannot be taken is disabled, and says why on the press** —
+    see the interactions rules on the disabled primary. A clause standing
+    permanently beside the button is a sentence read on every visit, including
+    the ones where nothing is wrong.
+- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `MandatoryStepsBanner`
+  in `footerBanner`: one outstanding item at a time, with a counter and chevrons
+  to step through them, so three missing fields cost one line rather than three.
+  Each label is the INSTRUCTION — "Choose a customer", not "Customer" — because
+  the reader is being told what to do, not what they are looking at. When
+  nothing is outstanding it says so, in the success channel, rather than
+  disappearing: an empty strip and a satisfied one are different states.
+  An exception that STOPS the work (a hold, a credit block) takes the strip
+  instead — it is the thing the reader has to act on, and the fields wait
+  behind it.
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a

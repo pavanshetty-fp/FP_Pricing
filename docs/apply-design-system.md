@@ -393,6 +393,29 @@ saved views.
 
 ---
 
+## 10b. The DS ships hues; the application binds meaning
+
+Added 2026-09-18. The DS already says a chip renders neutral until a usage rule
+binds a colour to a meaning (§9). This is the other half of it: **where that
+binding is written down.**
+
+- **Every application keeps ONE colour-mapping table**, in its own docs, listing
+  each hue against the single thing it means there. Lane fills, code-disc tones,
+  status-chip channels, pastel badges — all of it, in one place, so a hue cannot
+  come to mean two things in two modules of the same product.
+- **A mapping is a decision, not an inheritance.** `--fp-lane-green` is a green,
+  not a "done" green; if two modules both need a terminal lane they should agree
+  because the table says so, not because both authors reached for the same
+  swatch.
+- **Four tone channels, and a lifecycle longer than four shares them.** That is
+  allowed and is not a defect — the label always says which stage it is, so
+  colour is never the only carrier. What is NOT allowed is two stages sharing a
+  channel when one of them is the exception: the failure channel belongs to the
+  one state where something has gone wrong.
+- **A count of one meaning is a badge nobody needs.** "Normal" priority, a
+  status that repeats its own lane heading, a placing on a board of one — if
+  every row carries the same chip, the chip says nothing. Render the absence.
+
 ## 11. A status is its word
 
 Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
@@ -1475,6 +1498,52 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
+- **`xxwide` is 1440px, and it exists for exactly one shape: a step that is TWO
+  COLUMNS** — what you fill in on the left, what that makes on the right. A
+  sheet does not get this size for being long; it gets it for being split. The
+  rail costs the left column 340px plus a 24px gap, and at `xwide` that comes
+  straight out of table columns already at their minimum.
+- **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
+  type into it?** Editable sections go left, in the sequence you fill them.
+  What the record HAS BECOME goes right — derived, read-only, true whether or
+  not anyone is looking. Once an editable number and a computed one share a
+  column they look identical and the reader stops knowing which is which.
+  - The rail is `<aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">`
+    inside `grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]`.
+  - **It stays put while the form scrolls.** The rail answers questions the
+    reader has while looking at ANY part of the form; scrolled away with the
+    sections it describes, a total is only visible next to the tables that
+    produce it, which is where it is least needed.
+  - It folds to one column below `lg`, where a 340px rail beside a form is two
+    columns of nothing.
+- **THE FOOTER HAS THREE SLOTS, and each answers a different question.**
+  - `footerBanner` — a fixed strip spanning the sheet, directly above the
+    footer: **what the primary is waiting on.** The reason a button is dead
+    belongs beside it, and beside it there is room for a clause, not a list.
+  - `footerAside` — decisions taken at the moment of committing (flags, the
+    second outcome of the same act). They stay in view however far the body has
+    scrolled.
+  - `footerPrimary` — **the next act, and only ever one.**
+- **THE PRIMARY IS A LADDER, NOT A SAVE.** Whatever the stage, it names the ONE
+  thing that moves the record on from where it is, and it changes as the record
+  does. Two consequences:
+  - **The label is the ACT, never the state.** "Waiting on partners" on a
+    button asks the reader to press a fact. What has not happened yet goes in
+    the banner or the tooltip; the button says what pressing it does.
+  - **A rung that cannot be taken is disabled, and says why on the press** —
+    see the interactions rules on the disabled primary. A clause standing
+    permanently beside the button is a sentence read on every visit, including
+    the ones where nothing is wrong.
+- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `MandatoryStepsBanner`
+  in `footerBanner`: one outstanding item at a time, with a counter and chevrons
+  to step through them, so three missing fields cost one line rather than three.
+  Each label is the INSTRUCTION — "Choose a customer", not "Customer" — because
+  the reader is being told what to do, not what they are looking at. When
+  nothing is outstanding it says so, in the success channel, rather than
+  disappearing: an empty strip and a satisfied one are different states.
+  An exception that STOPS the work (a hold, a credit block) takes the strip
+  instead — it is the thing the reader has to act on, and the fields wait
+  behind it.
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a
@@ -2439,6 +2508,24 @@ it, which is often the next thing someone wanted.
 - **Action/reminder banner**: pending-work summary + CTA ("49 pending · Show All").
 - **Dismissible info note**: contextual, closeable.
 
+## 7b. A dead control says why on the press
+
+Added 2026-09-18, from the service order sheet.
+
+- **The reason belongs to the press, not to the layout.** A clause standing
+  permanently beside a disabled primary is a sentence the reader reads on every
+  visit, including the ones where nothing is wrong — and at the foot of a long
+  form it reads as part of the button's label.
+- **So: disable the control, and hang a `Tooltip` off it carrying the reason.**
+  One sentence, in the imperative — "Choose a technician before proceeding."
+- **A disabled control fires no pointer events**, so the trigger has to be a
+  wrapper (`<span tabIndex={0}>` with the button `pointer-events-none` inside),
+  or the tooltip never opens on the one state it exists for. This is a
+  mechanism, not a preference: getting it wrong silently deletes the feedback.
+- **The banner and the tooltip are not the same thing.** The banner lists what
+  the record is missing and can be stepped through; the tooltip is the one
+  sentence about the press that just happened.
+
 ## 8. Board / detail / outreach archetypes
 
 ### 8.1 Status Kanban board
@@ -2452,6 +2539,40 @@ it, which is often the next thing someone wanted.
   a card for cross-cutting flags (Urgent, Overdue, At Risk).
 - Page-level actions (e.g. Accounting Sync) live in the page header, not on
   cards or lanes.
+
+### 8.1b The board as built — amends 8.1
+
+From the 3PL and Service Work boards. Where this contradicts 8.1, this wins.
+
+- **NO DRAG BETWEEN LANES.** A stage change here is a workflow act with side
+  effects — mail leaves the building, an accounting push happens — not a
+  reorder. Dragging a card into the next lane would have to mean "do that on
+  somebody's behalf", which is a decision, not a gesture. Stages change from
+  the record's own next-act control.
+- **A LANE THAT IS NOT A STEP SITS APART**, behind a 3px rule, not in sequence
+  and not in a tinted tray: Cancelled, Blocked. A lane that is a normal thing
+  for work to be doing — waiting on a part — stays in sequence.
+- **A CARD IS RULED UNITS**, not a property grid. Each unit is one heading and
+  one shape, divided from the next by a rule, and three shapes cover every
+  unit: `stack` (lines at three levels), `inline` (short values, hairline
+  split), `rows` (a small table). Inside a unit there are NO field labels —
+  the heading names the unit and weight carries the rest.
+- **A HEADING WITH NOTHING UNDER IT IS NOT A UNIT.** Switching off every line
+  inside one must remove the heading too, or it reads as a failure to load.
+- **THE CARD'S FIELD SET IS PER LANE.** A card is not one design repeated eight
+  times: what a card in the first lane should say is not what one in the last
+  should. The Card fields menu carries a scope control ABOVE the ticks it
+  governs — "All lanes" or one lane — because it changes what every tick under
+  it means. On All lanes a field reads as ON only when it is on in every lane,
+  and one press makes it the same everywhere. **A lane is only offered the
+  fields it can draw**: a switch that does nothing is worse than a shorter menu.
+- **AN ALERT ON EVERY CARD IS A BORDER.** Only a card with something
+  outstanding gets one.
+- **LANE SORT IS PER LANE, AND ONE OPTION MAY BELONG TO THE LANE.** What is
+  worth ordering the first lane by is not what is worth ordering the last by.
+- **THE BOARD IS NOT PAGED**, so it gets a total instead of pagination — and
+  the total states its scope, because a number with no window is one nobody can
+  check.
 
 ### 8.2 Entity card
 A reusable card molecule for a record summary:

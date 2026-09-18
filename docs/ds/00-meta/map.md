@@ -25,6 +25,19 @@ Each category folder holds the six facet files, **in this order**:
 > **Rules are canonical.** The normative statement lives once, in `2-rules.md`.
 > The other facets reference it — they never restate the full rule.
 
+## Applications built on this DS
+
+An application that adopts the DS keeps its OWN doc set, as a child. It records
+how it uses the system and what it has bound meaning to; it never redefines a
+component, and anything general it settles is promoted UP into these rules.
+
+| App | Docs |
+|---|---|
+| Unified View | `docs/unified-view/map.md` |
+
+**When a child doc and these rules disagree, these rules win** and the child is
+out of date. Its `evals/` exist to catch that.
+
 ## The meta spine (`00-meta/`)
 
 | File | For |

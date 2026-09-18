@@ -376,6 +376,24 @@ it, which is often the next thing someone wanted.
 - **Action/reminder banner**: pending-work summary + CTA ("49 pending · Show All").
 - **Dismissible info note**: contextual, closeable.
 
+## 7b. A dead control says why on the press
+
+Added 2026-09-18, from the service order sheet.
+
+- **The reason belongs to the press, not to the layout.** A clause standing
+  permanently beside a disabled primary is a sentence the reader reads on every
+  visit, including the ones where nothing is wrong — and at the foot of a long
+  form it reads as part of the button's label.
+- **So: disable the control, and hang a `Tooltip` off it carrying the reason.**
+  One sentence, in the imperative — "Choose a technician before proceeding."
+- **A disabled control fires no pointer events**, so the trigger has to be a
+  wrapper (`<span tabIndex={0}>` with the button `pointer-events-none` inside),
+  or the tooltip never opens on the one state it exists for. This is a
+  mechanism, not a preference: getting it wrong silently deletes the feedback.
+- **The banner and the tooltip are not the same thing.** The banner lists what
+  the record is missing and can be stepped through; the tooltip is the one
+  sentence about the press that just happened.
+
 ## 8. Board / detail / outreach archetypes
 
 ### 8.1 Status Kanban board
@@ -389,6 +407,40 @@ it, which is often the next thing someone wanted.
   a card for cross-cutting flags (Urgent, Overdue, At Risk).
 - Page-level actions (e.g. Accounting Sync) live in the page header, not on
   cards or lanes.
+
+### 8.1b The board as built — amends 8.1
+
+From the 3PL and Service Work boards. Where this contradicts 8.1, this wins.
+
+- **NO DRAG BETWEEN LANES.** A stage change here is a workflow act with side
+  effects — mail leaves the building, an accounting push happens — not a
+  reorder. Dragging a card into the next lane would have to mean "do that on
+  somebody's behalf", which is a decision, not a gesture. Stages change from
+  the record's own next-act control.
+- **A LANE THAT IS NOT A STEP SITS APART**, behind a 3px rule, not in sequence
+  and not in a tinted tray: Cancelled, Blocked. A lane that is a normal thing
+  for work to be doing — waiting on a part — stays in sequence.
+- **A CARD IS RULED UNITS**, not a property grid. Each unit is one heading and
+  one shape, divided from the next by a rule, and three shapes cover every
+  unit: `stack` (lines at three levels), `inline` (short values, hairline
+  split), `rows` (a small table). Inside a unit there are NO field labels —
+  the heading names the unit and weight carries the rest.
+- **A HEADING WITH NOTHING UNDER IT IS NOT A UNIT.** Switching off every line
+  inside one must remove the heading too, or it reads as a failure to load.
+- **THE CARD'S FIELD SET IS PER LANE.** A card is not one design repeated eight
+  times: what a card in the first lane should say is not what one in the last
+  should. The Card fields menu carries a scope control ABOVE the ticks it
+  governs — "All lanes" or one lane — because it changes what every tick under
+  it means. On All lanes a field reads as ON only when it is on in every lane,
+  and one press makes it the same everywhere. **A lane is only offered the
+  fields it can draw**: a switch that does nothing is worse than a shorter menu.
+- **AN ALERT ON EVERY CARD IS A BORDER.** Only a card with something
+  outstanding gets one.
+- **LANE SORT IS PER LANE, AND ONE OPTION MAY BELONG TO THE LANE.** What is
+  worth ordering the first lane by is not what is worth ordering the last by.
+- **THE BOARD IS NOT PAGED**, so it gets a total instead of pagination — and
+  the total states its scope, because a number with no window is one nobody can
+  check.
 
 ### 8.2 Entity card
 A reusable card molecule for a record summary:

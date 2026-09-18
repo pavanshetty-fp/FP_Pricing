@@ -190,6 +190,29 @@ saved views.
 
 ---
 
+## 10b. The DS ships hues; the application binds meaning
+
+Added 2026-09-18. The DS already says a chip renders neutral until a usage rule
+binds a colour to a meaning (§9). This is the other half of it: **where that
+binding is written down.**
+
+- **Every application keeps ONE colour-mapping table**, in its own docs, listing
+  each hue against the single thing it means there. Lane fills, code-disc tones,
+  status-chip channels, pastel badges — all of it, in one place, so a hue cannot
+  come to mean two things in two modules of the same product.
+- **A mapping is a decision, not an inheritance.** `--fp-lane-green` is a green,
+  not a "done" green; if two modules both need a terminal lane they should agree
+  because the table says so, not because both authors reached for the same
+  swatch.
+- **Four tone channels, and a lifecycle longer than four shares them.** That is
+  allowed and is not a defect — the label always says which stage it is, so
+  colour is never the only carrier. What is NOT allowed is two stages sharing a
+  channel when one of them is the exception: the failure channel belongs to the
+  one state where something has gone wrong.
+- **A count of one meaning is a badge nobody needs.** "Normal" priority, a
+  status that repeats its own lane heading, a placing on a board of one — if
+  every row carries the same chip, the chip says nothing. Render the absence.
+
 ## 11. A status is its word
 
 Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.

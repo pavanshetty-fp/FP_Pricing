@@ -235,23 +235,21 @@ driverless per open question 1. The **Category** filter facet renders an explici
 
 ## Branch state
 
-`feat/3pl-module`, **235 commits ahead of `main`, and pushed to origin.** Ask
-before merging. The user works main-based per `START-HERE.md`, so a branch is a
+**MERGED. `main` is the tip** as of 2026-09-18 — `feat/3pl-module` was
+fast-forwarded into it (236 commits) and pushed, so main now has the DS, all
+three modules and the doc set. Work from `main` unless a change touches the DS
+in a way that wants reviewing separately. The user works main-based per `START-HERE.md`, so a branch is a
 deviation they should decide about; it exists because this pass changes a DS
 component (`ModuleSwitcher`) as well as the prototype.
 
-Three branches are in play, so be precise about which has what:
-
 | Branch | Holds |
 |---|---|
-| `main` | the DS, and the Sales screens as of the last merge to it |
-| `feat/unified-view-prototype` | further prototype commits that never reached `main` |
-| `feat/3pl-module` | `main` + 3PL + Service Work + the doc set + the DS updates they produced |
+| `main` | **everything** — the DS, Sales, 3PL, Service Work, the doc set |
+| `feat/3pl-module` | the same commit; kept as the branch the work was done on |
+| `feat/unified-view-prototype`, `feat/ds-foundations-sweep` | older inputs, now contained in `main` |
 
-**`main` is NOT a superset of `feat/unified-view-prototype`** — verify with
-`git merge-base --is-ancestor feat/unified-view-prototype main`, which currently
-returns false. `feat/3pl-module` is the only branch that has everything; treat it
-as the tip and merge from it, not from either input.
+The old warning that `main` was not a superset no longer applies: the merge was
+a fast-forward, so `main` contains every commit from every branch above.
 
 **The shareable artifact is `../FP-DS-2026-unified-view.html`** — one level ABOVE
 the repo, outside version control. `npm run build:unified` writes

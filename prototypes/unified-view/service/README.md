@@ -108,6 +108,13 @@ It takes `xxwide`, the size that exists for exactly this shape. The rail costs
 the tables 340px plus a gap, and at `wide` that came out of columns already at
 their minimum.
 
+**The rail stays put while the form scrolls** (`sticky top-0`, the same as the
+3PL sheet's). It is the running account of the job — what it comes to, whether
+it is billed, when it was worked — and those are the questions a reader has
+while looking at ANY part of the form. Scrolled away with the sections it
+describes, the total was only visible next to the tables that produce it, which
+is the one place it is least needed.
+
 ### Parts and fees are the DS's editable table
 
 The same idiom the 3PL lines table is built from: fixed layout, a Surface-1a

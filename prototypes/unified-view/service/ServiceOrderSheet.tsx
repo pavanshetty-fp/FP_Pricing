@@ -1111,8 +1111,16 @@ export function ServiceOrderSheet({
             has become goes right — derived, read-only, true whether or not
             anyone is looking. Once an editable number and a computed one share
             a column they look identical, and the reader stops knowing which is
-            which. Same rail, same width, same cards as the 3PL order sheet. */}
-        <div className="flex flex-col gap-4">
+            which. Same rail, same width, same cards as the 3PL order sheet.
+
+            AND IT STAYS PUT. The rail is the running account of the job — what
+            it comes to, whether it is billed, when it was worked — and those
+            are the questions a reader has while they are looking at ANY part of
+            the form. Scrolled away with the sections it describes, the total
+            was only visible next to the tables that produce it, which is the
+            one place it is least needed. `sticky top-0`, the same as the 3PL
+            sheet's rail. */}
+        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
           {/* THE ACCOUNT OF HOW IT ADDS UP, beside the tables it adds up. */}
           <RailCard title="Summary" icon={<Receipt />}>
             <div className="flex flex-col divide-y divide-border">
@@ -1251,7 +1259,7 @@ export function ServiceOrderSheet({
               )}
             </div>
           </RailCard>
-        </div>
+        </aside>
       </div>
     </RecordSheet>
   );

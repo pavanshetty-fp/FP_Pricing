@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import type { NavGroup } from "./types";
 import { ModuleSwitcher } from "./ModuleSwitcher";
+import type { Module } from "./data";
 
 export interface NavRailProps {
   groups: NavGroup[];
@@ -15,6 +16,8 @@ export interface NavRailProps {
    */
   activeModule?: string;
   onModuleChange?: (key: string) => void;
+  /** Passed straight through to `ModuleSwitcher` — see its `modules` prop. */
+  modules?: Module[];
 }
 
 /**
@@ -32,6 +35,7 @@ export function NavRail({
   onNavigate,
   activeModule,
   onModuleChange,
+  modules,
 }: NavRailProps) {
   const [moduleOpen, setModuleOpen] = React.useState(false);
   /**
@@ -80,6 +84,7 @@ export function NavRail({
           onOpenChange={setModuleOpen}
           activeModule={activeModule}
           onModuleChange={onModuleChange}
+          modules={modules}
         />
 
         {/* Divider — clear separation between the module and its menus */}

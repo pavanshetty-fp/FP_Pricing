@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Check, CircleCheck } from "lucide-react";
-import { MODULES } from "./data";
+import { MODULES, type Module } from "./data";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -33,6 +33,12 @@ export interface ModuleSwitcherProps {
    * navigation on this must not do it under the user's cursor mid-animation.
    */
   onModuleChange?: (key: string) => void;
+  /**
+   * The modules to offer. Defaults to the DS's own sample list, which is all
+   * the gallery needs; an application passes its real one rather than editing
+   * the DS's data file to add a module only that application has.
+   */
+  modules?: Module[];
 }
 
 /**
@@ -50,6 +56,7 @@ export function ModuleSwitcher({
   onOpenChange,
   activeModule,
   onModuleChange,
+  modules = MODULES,
 }: ModuleSwitcherProps) {
   const [open, setOpen] = React.useState(false);
   const [ownKey, setOwnKey] = React.useState("sales");
@@ -57,7 +64,7 @@ export function ModuleSwitcher({
   const [completedKey, setCompletedKey] = React.useState<string | null>(null);
   // Controlled when `activeModule` is supplied; otherwise the local key wins.
   const activeKey = activeModule ?? ownKey;
-  const active = MODULES.find((m) => m.key === activeKey) ?? MODULES[0];
+  const active = modules.find((m) => m.key === activeKey) ?? modules[0];
 
   const setMenuOpen = (o: boolean) => {
     setOpen(o);
@@ -104,7 +111,7 @@ export function ModuleSwitcher({
         sideOffset={6}
         className="w-[var(--radix-dropdown-menu-trigger-width)]"
       >
-        {MODULES.map((m) => {
+        {modules.map((m) => {
           const isSwitching = switchingKey === m.key;
           const isCompleting = completedKey === m.key;
           return (

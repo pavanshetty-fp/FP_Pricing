@@ -16,6 +16,10 @@ import {
   Droplet,
   Caravan,
   Clock,
+  Handshake,
+  FileSignature,
+  DollarSign,
+  Wrench,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -197,6 +201,23 @@ const firstSubKey = (areaKey: string): string | null =>
   SUB_NAV[areaKey]?.flatMap((g) => g.items)[0]?.key ?? null;
 
 /**
+ * THE APP'S OWN MODULE LIST, not the DS's sample one.
+ *
+ * `ModuleSwitcher` used to read a module-level constant inside the DS, so the
+ * only way to add a module this product has was to edit the design system's
+ * data file — which would have put a FleetPanda module in the DS gallery's
+ * demo. It takes a `modules` prop now (defaulting to the sample list, which is
+ * all the gallery needs) and the application owns its own.
+ */
+const APP_MODULES = [
+  { key: "sales", name: "Sales", icon: <Handshake /> },
+  { key: "3pl", name: "3PL", icon: <Truck /> },
+  { key: "service", name: "Service Work", icon: <Wrench /> },
+  { key: "lease", name: "Lease", icon: <FileSignature /> },
+  { key: "pricing", name: "Pricing", icon: <DollarSign /> },
+];
+
+/**
  * Lease and Pricing get NO destinations rather than invented ones. The module
  * switcher offers four modules because the DS component does; two of them have
  * had no information architecture specified, and guessing their rail would put
@@ -207,6 +228,9 @@ const firstSubKey = (areaKey: string): string | null =>
 const MODULE_NAV: Record<string, NavItem[]> = {
   sales: SALES_NAV,
   "3pl": THREE_PL_NAV,
+  /* SERVICE WORK IS NEXT, and it gets the same treatment while its shape is
+     being decided: the module is real, its rail is not invented. */
+  service: [],
   lease: [],
   pricing: [],
 };
@@ -245,12 +269,9 @@ function readStoredModule(): string {
   }
 }
 
-const MODULE_LABEL: Record<string, string> = {
-  sales: "Sales",
-  "3pl": "3PL",
-  lease: "Lease",
-  pricing: "Pricing",
-};
+const MODULE_LABEL: Record<string, string> = Object.fromEntries(
+  APP_MODULES.map((m) => [m.key, m.name])
+);
 
 /**
  * Account destinations — full pages, reached only from the top bar's account
@@ -1310,6 +1331,7 @@ export function UnifiedView() {
             onNavigate={goToArea}
             activeModule={moduleKey}
             onModuleChange={switchModule}
+            modules={APP_MODULES}
           />
         }
         /* TIER 2 — rendered only where the active rail item declares a second

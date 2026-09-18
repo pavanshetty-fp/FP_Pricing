@@ -1051,7 +1051,12 @@ export function ServiceOrderSheet({
           </SheetSectionNote>
         }
       >
-        <div className="flex flex-col gap-6">
+        {/* SIDE BY SIDE, 24px APART. They are two halves of one answer — what
+            the visit cost in time and in travel — and stacked they read as two
+            unrelated questions with the parts table's rhythm between them.
+            Every other pair of fields in this sheet is a two-column row; these
+            are the same kind of pair. */}
+        <div className="grid grid-cols-2 gap-6">
           <MeasureSlider
             label="Labour"
             value={draft.labor}

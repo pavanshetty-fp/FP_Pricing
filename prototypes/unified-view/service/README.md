@@ -133,6 +133,13 @@ The figure is PRINTED beside the label rather than estimated from where the
 handle sits, and **what it costs sits at the other edge** — the rate and the
 money — because that is the reason anybody moves it.
 
+**They sit side by side, 24px apart.** They are two halves of one answer — what
+the visit cost in time and in travel — and stacked they read as two unrelated
+questions with the parts table's rhythm between them. Every other pair of
+fields in this sheet is a two-column row; these are the same kind of pair. The
+technician's app keeps them stacked: at 560px two scales side by side is two
+scales nobody can read.
+
 The technician's app uses the same control for the same two numbers. Two
 screens must not ask for the same number two ways.
 

@@ -226,6 +226,6 @@ what decides whether a new screen should reuse it.
 | `MeasureSlider` | molecule | one MEASURE on one handle — hours, miles. A quantity you size, never a moment you choose |
 | `Combobox` of `TIME_OPTIONS` | atom | a moment — an arrival, a window edge. A picker, not a track |
 | `RailCard` / `RailRow` | molecule | a read-only card in a sheet's right-hand rail |
-| `MandatoryStepsBanner` | molecule | what the footer's act is waiting on, one item at a time |
+| `PendingStrip` (+ `attend`) | molecule | what the footer's act is waiting on, one item at a time — pressable, and it takes you to the section. **Shared by every sheet that has one.** |
 | `StageBar` | molecule | where the record is in its life, under the sheet header |
 | `OrderMapView` | organism | the map alternate of a list whose records have a place |

@@ -3,10 +3,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CircleAlert,
-  CircleCheck,
   Layers,
   Copy,
   Download,
@@ -95,6 +92,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { PendingStrip } from "../PendingStrip";
 import { EditDrawer } from "./DirectoryRecordSheet";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT } from "../data";
@@ -652,8 +650,12 @@ function VendorRow({ id }: { id: string }) {
   );
 }
 
-/** The Vendor section's anchor — see `focus` below. */
+/* THE SECTIONS THE PENDING STRIP AND THE CARD ACTIONS CAN SEND SOMEBODY TO.
+   Named here rather than typed at each call site, so a section that is renamed
+   cannot leave one of them pointing at nothing. */
 const VENDOR_SECTION_ID = "broker-order-vendor-section";
+const SECTION_BASICS = "broker-order-basics";
+const SECTION_LINES = "broker-order-lines";
 /** The Pricing section's anchor. Same job, for the stage after Quoting. */
 const PRICING_SECTION_ID = "broker-order-pricing-section";
 
@@ -1058,75 +1060,6 @@ function PricingColumnHead({ label, done }: { label: string; done: boolean }) {
   );
 }
 
-/**
- * WHAT IS STILL OUTSTANDING, one at a time, in a strip that does not scroll.
- *
- * A disabled primary has to say why, and beside the button there is room for
- * one clause — so with three things missing it named one and implied nothing
- * about the others. The strip has room for the count and a way to walk it:
- * chevrons either side of "1 of 3", and the step itself spelled as the act
- * that clears it.
- *
- * IT STAYS WHEN THERE IS NOTHING LEFT, and says so. A banner that vanished at
- * the moment everything was done would take the only confirmation with it —
- * the reader would be left inferring completeness from an enabled button.
- */
-function MandatoryStepsBanner({
-  pending,
-}: {
-  pending: { key: string; label: string }[];
-}) {
-  const [at, setAt] = React.useState(0);
-  /* The list shortens as steps are cleared, so the cursor has to be pulled
-     back with it rather than pointing past the end. */
-  const i = Math.min(at, Math.max(pending.length - 1, 0));
-  React.useEffect(() => {
-    if (at > pending.length - 1) setAt(Math.max(pending.length - 1, 0));
-  }, [at, pending.length]);
-
-  if (pending.length === 0) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-fp-banner-accent-success">
-        <CircleCheck className="size-4 shrink-0" />
-        All mandatory steps completed
-      </div>
-    );
-  }
-
-  const step = pending[i];
-  const chevron =
-    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
-
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex min-w-0 items-center gap-2 text-sm text-fp-banner-accent-caution">
-        <Info className="size-4 shrink-0" />
-        <span className="truncate">{step.label}</span>
-      </span>
-      <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
-        <button
-          type="button"
-          aria-label="Previous pending step"
-          disabled={i === 0}
-          onClick={() => setAt(i - 1)}
-          className={chevron}
-        >
-          <ChevronLeft className="size-3.5" />
-        </button>
-        {i + 1} of {pending.length}
-        <button
-          type="button"
-          aria-label="Next pending step"
-          disabled={i >= pending.length - 1}
-          onClick={() => setAt(i + 1)}
-          className={chevron}
-        >
-          <ChevronRight className="size-3.5" />
-        </button>
-      </span>
-    </div>
-  );
-}
 
 export function BrokerOrderSheet({
   order,
@@ -1815,13 +1748,21 @@ export function BrokerOrderSheet({
    * reader the area; "send an invitation" tells them the act — and the third
    * step covers three of those, so it says whichever is outstanding.
    */
-  const mandatorySteps: { key: string; label: string; done: boolean }[] = [
+  const mandatorySteps: {
+    key: string;
+    label: string;
+    done: boolean;
+    /* WHERE THE STEP LIVES, so the strip can take the reader to it rather than
+       naming a field and leaving them to find it. */
+    target: string;
+  }[] = [
     {
       key: "customer",
       label: !draft.customer
         ? "Choose a customer"
         : "Choose a ship-to site",
       done: Boolean(draft.customer.trim() && draft.shipTo.trim()),
+      target: SECTION_BASICS,
     },
     {
       key: "lines",
@@ -1838,6 +1779,7 @@ export function BrokerOrderSheet({
         draft.lines.every(
           (l) => l.asset.trim() !== "" && (l.topOff || (l.gal ?? 0) > 0)
         ),
+      target: SECTION_LINES,
     },
     {
       key: "partners",
@@ -1849,6 +1791,7 @@ export function BrokerOrderSheet({
             : "Turn on Request a quote",
       done:
         invitedIds.length > 0 && sentIds.length > 0 && draft.quoteRequested,
+      target: VENDOR_SECTION_ID,
     },
   ];
   const pendingSteps = mandatorySteps.filter((x) => !x.done);
@@ -2713,7 +2656,10 @@ export function BrokerOrderSheet({
          would be reporting history. */
       footerBanner={
         draft.status === "Draft" ? (
-          <MandatoryStepsBanner pending={pendingSteps} />
+          <PendingStrip
+            pending={pendingSteps}
+            clearLabel="All mandatory steps completed"
+          />
         ) : undefined
       }
       footerPrimary={
@@ -2815,7 +2761,7 @@ export function BrokerOrderSheet({
         </RadioGroup>
       </SheetSection>
 
-      <SheetSection title="Basic Details">
+      <SheetSection id={SECTION_BASICS} title="Basic Details">
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
@@ -3290,7 +3236,11 @@ export function BrokerOrderSheet({
           the asset is FIXED once the order is created. Read-only is the honest
           rendering of a field that cannot be changed. */}
       {isMovement && order?.movement && (
-        <SheetSection title="Asset">
+        /* THE SAME ANCHOR AS THE LINES TABLE. A movement shows its one asset
+           here instead of a Delivery Order table — same slot, same question,
+           so a pending step that says "add the asset" lands in the right place
+           whichever kind of order this is. */
+        <SheetSection id={SECTION_LINES} title="Asset">
           <div className="grid grid-cols-2 gap-4">
             <SheetField label="Direction">
               <Input value={order.movement.direction} disabled />
@@ -3315,7 +3265,7 @@ export function BrokerOrderSheet({
           and inside a padded card the table's own border ran 16px inside the
           card's, two lines doing one job. See `flush` on `SheetSection`. */}
       {!isMovement && (
-        <SheetSection title="Delivery Order" flush>
+        <SheetSection id={SECTION_LINES} title="Delivery Order" flush>
           {/* ALWAYS A TABLE, never an empty-state panel standing in for one. An
               empty table with its columns showing tells you what an order line
               is made of and is ready to be typed into; a panel saying "select a

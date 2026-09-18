@@ -689,6 +689,22 @@ line of the name. It is a badge: green for the cheapest, because that is the
 only placing anyone acts on, and neutral for the rest so a board of chips does
 not turn into a ranking nobody asked to see.
 
+### The mandatory strip names its subject and takes you there
+
+Brought over from the service order sheet 2026-09-18, and the component is now
+shared (`prototypes/unified-view/PendingStrip.tsx`) rather than living twice.
+
+- **"Pending" does not move.** It is the strip's subject; stepping swaps only
+  the item.
+- **The item is pressable.** It scrolls to the section it is about and blinks
+  its outline twice — a strip that names a missing field and cannot reach it is
+  a label for a hunt.
+- Each step carries its target: the customer step goes to Basic Details, the
+  lines step to Delivery Order, the partners step to Vendor. **A movement's
+  Asset section carries the same anchor as the lines table** — same slot, same
+  question, so "add the asset" lands in the right place whichever kind of order
+  it is.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

@@ -130,12 +130,21 @@ and a box for it is a box to get it wrong in. A **fee has one money column**,
 because a fee's amount IS what was typed — two headers called Amount was the
 part table's shape forced onto something that does not have it.
 
-### Labour, mileage and the arrival time are single-handle sliders
+### Labour and mileage are single-handle sliders; the arrival time is a picker
 
 The same control as the delivery window, minus the second handle. A window is
-two facts, a start and an end; four hours is one, sixteen miles is one, and an
-arrival is one — the second handle would have been a promise about when the
-technician leaves that nobody can make.
+two facts, a start and an end; four hours is one and sixteen miles is one.
+
+**An arrival is not a measure, so it is not a slider.** A customer is told
+"half past twelve", and a handle on a 24-hour track asks somebody to aim at it.
+The window slider earns its track because a window is a span you SIZE; one
+moment is a value you CHOOSE, and the list of them is short. Scheduled date and
+scheduled time share a row — they are one answer — and the technician gets its
+own line under them, because it is a different question.
+
+The fixture's times sit on the picker's half-hour grid: a stored value the
+picker cannot represent shows in the field and vanishes the moment anybody
+opens it.
 
 The figure is PRINTED beside the label rather than estimated from where the
 handle sits, and **what it costs sits at the other edge** — the rate and the

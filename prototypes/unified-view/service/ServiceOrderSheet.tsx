@@ -34,7 +34,10 @@ import {
   TableCellInput,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
-import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
+import {
+  formatMinutes,
+  parseMinutes,
+} from "@/components/form-layout/TimeWindowSlider";
 import {
   SheetField,
   SheetSection,
@@ -44,6 +47,7 @@ import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet"
 import { DATE_FMT } from "../data";
 import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
+import { TIME_OPTIONS } from "../threepl/orders";
 import {
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
@@ -989,6 +993,8 @@ export function ServiceOrderSheet({
 
       {/* ──────────────────────────────────────────── schedule and who ───── */}
       <SheetSection title="Schedule">
+        {/* DATE AND TIME ARE ONE ANSWER, so they share a row; the technician
+            is a different question and gets its own line under them. */}
         <div className="grid grid-cols-2 gap-4">
           {/* THE DS DATE CONTROL, not a native `datetime-local`. The browser's
               own field draws a calendar glyph this app cannot theme — in dark
@@ -1044,6 +1050,32 @@ export function ServiceOrderSheet({
               </PopoverContent>
             </Popover>
           </SheetField>
+          {/* A PICKER, NOT A SLIDER. An arrival is a time somebody is told, and
+              a customer is told "half past twelve" — a handle on a 24-hour
+              track asks them to aim at it. The window slider earns its track
+              because a window is a span you size; one moment is a value you
+              choose, and the list of them is short. */}
+          <SheetField label="Scheduled time">
+            <Combobox
+              className="w-full"
+              value={draft.scheduledAt ? formatMinutes(scheduledMinutes) : ""}
+              onValueChange={(v) => {
+                const mins = parseMinutes(v);
+                if (mins == null || !draft.scheduledAt) return;
+                const at = new Date(draft.scheduledAt);
+                at.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+                setDraft((x) =>
+                  x ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) } : x
+                );
+              }}
+              options={TIME_OPTIONS}
+              placeholder={draft.scheduledAt ? "Select time" : "No date set"}
+              searchPlaceholder="Search times…"
+              disabled={workLocked || !draft.scheduledAt}
+            />
+          </SheetField>
+        </div>
+        <div className="mt-4">
           <SheetField
             label="Technician"
             description="Leave unassigned to route to the yard team's queue"
@@ -1064,32 +1096,6 @@ export function ServiceOrderSheet({
             />
           </SheetField>
         </div>
-        {/* ARRIVAL TIME, ON THE SAME CONTROL THE DELIVERY WINDOW USES — the
-            two handles collapsed to the one this asks for. A service call is
-            an arrival, not a window: the customer is told when somebody turns
-            up, and the second handle would have been a promise about when they
-            leave that nobody can make. */}
-        {draft.scheduledAt && (
-          <div className="mt-4">
-            <MeasureSlider
-              label="Arriving"
-              value={scheduledMinutes}
-              max={24 * 60}
-              step={15}
-              format={(v) => formatMinutes(v)}
-              ticks={[0, 6 * 60, 12 * 60, 18 * 60, 24 * 60]}
-              tickLabel={(v) => formatMinutes(v).replace(":00", "")}
-              aria-label="Arrival time"
-              onChange={(a) => {
-                const at = new Date(draft.scheduledAt!);
-                at.setHours(Math.floor(a / 60), a % 60, 0, 0);
-                setDraft((x) =>
-                  x ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) } : x
-                );
-              }}
-            />
-          </div>
-        )}
         {tech && (
           <p className="mt-3 text-sm text-muted-foreground">
             {tech.base} · {tech.skills.join(" · ")} · {tech.phone}

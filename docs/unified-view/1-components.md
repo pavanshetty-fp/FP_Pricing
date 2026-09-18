@@ -223,7 +223,8 @@ what decides whether a new screen should reuse it.
 | `BrokerBoard` | organism | every board in the app (forked from the DS Kanban — see its header for the DS follow-ups) |
 | `RecordSheet` | organism | every side sheet: sizes, header, stage bar, the three footer slots |
 | `DateRangeFilter` | molecule | the date scope every list carries |
-| `MeasureSlider` | molecule | one number on one handle — hours, miles, a time of day |
+| `MeasureSlider` | molecule | one MEASURE on one handle — hours, miles. A quantity you size, never a moment you choose |
+| `Combobox` of `TIME_OPTIONS` | atom | a moment — an arrival, a window edge. A picker, not a track |
 | `RailCard` / `RailRow` | molecule | a read-only card in a sheet's right-hand rail |
 | `MandatoryStepsBanner` | molecule | what the footer's act is waiting on, one item at a time |
 | `StageBar` | molecule | where the record is in its life, under the sheet header |

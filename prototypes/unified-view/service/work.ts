@@ -469,7 +469,10 @@ function buildOrders(): ServiceOrder[] {
         ? null
         : (() => {
             const at = new Date(day);
-            at.setHours(hour, (i % 4) * 15, 0, 0);
+            /* ON THE HALF HOUR, because that is the grid the time picker
+               offers. A stored value the picker cannot represent shows in the
+               field and vanishes the moment anybody opens it. */
+            at.setHours(hour, (i % 2) * 30, 0, 0);
             return at.toISOString();
           })();
 

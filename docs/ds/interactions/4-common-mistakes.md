@@ -36,3 +36,10 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Confirming nothing** — ❌ "are you sure?" over a section whose table is still a row of blanks · ✅ `hasContent` decides whether the dialog appears (`ux/2-rules`).
 - **A bin on a section heading** — ❌ `<Trash2>` to turn an optional section off, next to the bins that delete table rows · ✅ `SheetSectionRemove`, a minus (`ux/2-rules`).
 - **A padded heading row** — ❌ a `min-h` on the section title so a 16px gap renders as 20, and 22 once the heading carries a button · ✅ the row is the title's own line and a taller action hangs off it (`ux/2-rules`).
+
+## Dead controls and boards *(added 2026-09-18)*
+- **Dead primary (§7b)** — ❌ a clause standing permanently beside it · ✅ disabled, with the reason on the press; the sheet is quiet the rest of the time.
+- **Tooltip that never opens (§7b)** — ❌ hanging it off the disabled button itself · ✅ a wrapper takes the pointer events, or the feedback is silently deleted.
+- **Card alerts (§8.1b)** — ❌ every card carrying one · ✅ only the cards with something outstanding.
+- **Empty unit (§8.1b)** — ❌ a heading on a rule with nothing under it, reading as a failure to load · ✅ the unit is removed when its lines are.
+- **One card design for every lane (§8.1b)** — ❌ the same fields in the first lane and the last · ✅ a default set per lane, and a menu that says which lane it is editing.

@@ -2,14 +2,20 @@
 
 A **standalone prototype** of the FleetPanda console, recreated on FP-DS.
 
-**Two modules are built**, switched from the module switcher at the top of the
+**Three modules are built**, switched from the module switcher at the top of the
 rail — which drives real routing, not just its own label:
 
 | Module | Destinations | State |
 |---|---|---|
 | **Sales** | Fuel Orders · Asset Orders · Customers · Assets | all four built |
-| **3PL** (brokerage) | Orders · Vendors · Customers · Assets | Orders built; see [`threepl/README.md`](threepl/README.md) |
+| **3PL** (brokerage) | Orders · Directory | built; see [`threepl/README.md`](threepl/README.md) |
+| **Service Work** | Service Orders · Technicians · Service Settings | built; see [`service/README.md`](service/README.md) |
 | Lease, Pricing | — | no destinations; their IA has not been specified, and guessing it would put fake navigation on screen |
+
+The module list is the APPLICATION's (`APP_MODULES` in `UnifiedView.tsx`), passed
+to `ModuleSwitcher` as a prop. It used to be a constant inside the DS, so the
+only way to add a module this product has was to edit the design system's own
+data file — which would have put a FleetPanda module in the gallery's demo.
 
 A module owns a destination list, and switching module swaps the list along with
 the screen under it. Destination keys are globally unique (`3pl-customers`, not a
@@ -22,6 +28,18 @@ It is deliberately **not** part of the FP DS 2026 gallery. The gallery showcases
 the design system; this is an application built *with* it. Keeping them apart
 means app-level decisions (this screen's columns, filters, sample data) never
 get mistaken for design-system rules.
+
+## Where the documents are
+
+| Doc | For |
+|---|---|
+| [`docs/unified-view/map.md`](../../docs/unified-view/map.md) | **the router — read it first.** The app's own component / layout / interaction documents, and the evals that check them |
+| [`docs/ds/00-meta/map.md`](../../docs/ds/00-meta/map.md) | the design system, which is the parent |
+| `threepl/README.md`, `service/README.md` | each module's own decisions |
+
+**The DS is the parent and wins every disagreement.** Anything settled here that
+would be true in any FleetPanda product is promoted UP into `docs/ds/`, never
+copied into the app's docs.
 
 ## It uses the design system, it does not fork it
 

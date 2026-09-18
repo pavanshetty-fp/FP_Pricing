@@ -74,10 +74,20 @@ design-system components. It is deliberately **not** a section of the FP DS 2026
 gallery — it has its own entry point and ships as its own HTML. `src/App.tsx` is
 untouched. Read `prototypes/unified-view/README.md` for the boundary.
 
+**Three modules are built** — Sales, 3PL and Service Work — plus Lease and
+Pricing, which have no destinations because their IA has never been specified.
+
 **Shell:** Tier-0 top bar (Profile lives in the account menu) · Tier-1 52px rail
 with the module switcher + that module's top-level areas · **Tier-2 drawer where
 an area has a second nav level**, otherwise none and the content layer takes the
 full width.
+
+**READ THE DOCUMENTS BEFORE CHANGING ANYTHING.**
+`docs/unified-view/map.md` routes to this app's own component, layout and
+interaction documents and to the evals that check them;
+`docs/ds/00-meta/map.md` routes to the design system, which is the parent and
+wins every disagreement. Anything settled here that would be true in any
+FleetPanda product is promoted UP into `docs/ds/`, never copied.
 
 The drawer is **per rail item, not per module**. Sales' four destinations have no
 second level, so Sales still renders with no drawer. 3PL's two areas — Orders and
@@ -144,6 +154,15 @@ yet" states), the Lease and Pricing modules entirely, and the Sales Create Order
 - **Visual values come from the DS, never invented.** Tokens in
   `src/index.css`; no raw hex in components. Structure and behaviour may come
   from the source app's screenshots, but never its pixel values.
+- **A side sheet with editable fields AUTOSAVES** — always, creating or editing,
+  with the draft chip and no Save, Update or Cancel. It is a DS rule
+  (`docs/ds/ux/2-rules.md`), not a per-sheet choice.
+- **A sheet's footer primary is the NEXT ACT on the record**, never Save. What
+  it is waiting on goes in the strip above the footer; why it is dead goes in a
+  tooltip on the press.
+- **The second screen to need a component is the promotion signal.** Two copies
+  is not a preference, it is a defect — `PendingStrip` was extracted the day the
+  second sheet wanted it.
 - **Verify in BOTH themes, and measure — don't eyeball.** Three separate bugs
   here existed only in dark mode, and one was a literal `[0,0,0]` RGB delta that
   looked perfectly fine in a screenshot. Read computed values and confirm a fill
@@ -216,8 +235,8 @@ driverless per open question 1. The **Category** filter facet renders an explici
 
 ## Branch state
 
-`feat/3pl-module`, **22 commits ahead of `main`, not pushed.** Ask before pushing
-or merging. The user works main-based per `START-HERE.md`, so a branch is a
+`feat/3pl-module`, **235 commits ahead of `main`, and pushed to origin.** Ask
+before merging. The user works main-based per `START-HERE.md`, so a branch is a
 deviation they should decide about; it exists because this pass changes a DS
 component (`ModuleSwitcher`) as well as the prototype.
 
@@ -227,7 +246,7 @@ Three branches are in play, so be precise about which has what:
 |---|---|
 | `main` | the DS, and the Sales screens as of the last merge to it |
 | `feat/unified-view-prototype` | further prototype commits that never reached `main` |
-| `feat/3pl-module` | `main` + the 3PL module + a merge of the branch above |
+| `feat/3pl-module` | `main` + 3PL + Service Work + the doc set + the DS updates they produced |
 
 **`main` is NOT a superset of `feat/unified-view-prototype`** — verify with
 `git merge-base --is-ancestor feat/unified-view-prototype main`, which currently

@@ -14,6 +14,7 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Component variants follow data meaning (semantic).
 - [ ] Radii / type / spacing come from the scale, not one-off values.
 - [ ] Text contrast ≥ WCAG AA in both modes.
+- [ ] Every hue in use is in the application's colour-mapping table, meaning one thing across the product.
 
 ## UX
 - [ ] Elevation steps once per level; no same-weight fill nested on itself.
@@ -21,9 +22,15 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Header units earn their place: breadcrumb only if nested, tabs only for real facets, toolbar only if the data needs it — no placeholder units.
 - [ ] Dense rows are fixed ordered slots, not crammed elements.
 - [ ] One primary group / one primary action per view.
+- [ ] Every side sheet with an editable field autosaves, shows the draft chip, and carries no Save / Update / Cancel.
+- [ ] A sheet's footer primary is the next act on the record, labelled as an act.
+- [ ] A two-column sheet keeps editable left, derived right, rail sticky; width is per step.
+- [ ] What the primary is waiting on is in the strip above the footer, one item at a time, and each item reaches its section.
 
 ## Interactions
 - [ ] Feedback for every action (loading / empty / success / error).
 - [ ] Destructive actions guarded (52px confirm or `AlertDialog`).
 - [ ] Visible focus rings; keyboard-operable; icon-only buttons have `aria-label`.
 - [ ] Reduced motion respected; charts render without mount animation.
+- [ ] A disabled control says why on the press, never in a clause beside it.
+- [ ] No board card drags between lanes; card units disappear with their lines; only outstanding cards carry an alert.

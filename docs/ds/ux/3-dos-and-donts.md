@@ -12,6 +12,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Keep the Tier-1 rail flat** — one item per top-level screen. (N1)
 - **Put sub-categories in the Tier-2 drawer**, as group labels or collapsible children. (N1)
 - **Re-derive whether a module needs a drawer** whenever its destinations change. (N2)
+- **Autosave every side sheet that has an editable field**, and show the draft chip. (S1)
+- **Make the footer's primary the NEXT ACT on the record**, and let it change as the record does. (S2)
+- **Split a sheet into two columns only when it has both halves** — editable left, derived right, rail sticky. (S3)
+- **Put what the act is waiting on in the strip above the footer**, one item at a time. (S4)
+- **Make the strip's item pressable** — it scrolls to its section and blinks the outline twice. (S4)
 
 ## Don't
 - **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)
@@ -22,3 +27,8 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't reorder the header stack.** (L2/L4)
 - **Don't emphasize more than one group/action.** (H3)
 - **Don't cram unaligned elements into a row.** (H4)
+- **Don't put a Save, an Update or a Cancel on an autosaving sheet.** (S1)
+- **Don't label a primary with a state** — "Waiting on partners" asks the reader to press a fact. (S2)
+- **Don't park a permanent clause beside a disabled primary** — the reason belongs to the press. (S2)
+- **Don't let a sheet take `xxwide` for being long** — it is for being split. (S3)
+- **Don't name a strip item after a field** — "Choose a customer", not "Customer". (S4)

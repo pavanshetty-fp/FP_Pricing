@@ -473,6 +473,15 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't give a field the divider's weight** — in light the border is the only
   thing that makes a field a field.
 
+## Colour mapping *(§10b)*
+### Do
+- **Keep one colour-mapping table per application**, listing each hue against the single thing it means there.
+- **Treat a mapping as a decision**, written down — not as something inherited from the swatch's name.
+
+### Don't
+- **Don't let a hue mean two things in two modules.**
+- **Don't ship a chip every row carries** — it says nothing.
+
 
 ---
 
@@ -551,6 +560,12 @@ shadow alone; if you need the old tinted ground, name `--fp-surface-base`. Befor
    `#ffffff` when selected. A wash needs its own token — see `--fp-row-hover`
    / `--fp-row-selected`. The tell is scale: the larger the painted area, the
    quieter the value has to be for the same perceived weight.
+
+## Colour mapping *(§10b, added 2026-09-18)*
+- [ ] Every hue in use appears in the application's own colour-mapping table.
+- [ ] No hue means two different things in two modules of one product.
+- [ ] The failure channel is used only where something is wrong and somebody must act.
+- [ ] No chip that every row carries — render the absence instead.
 
 
 ---
@@ -1975,6 +1990,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Keep the Tier-1 rail flat** — one item per top-level screen. (N1)
 - **Put sub-categories in the Tier-2 drawer**, as group labels or collapsible children. (N1)
 - **Re-derive whether a module needs a drawer** whenever its destinations change. (N2)
+- **Autosave every side sheet that has an editable field**, and show the draft chip. (S1)
+- **Make the footer's primary the NEXT ACT on the record**, and let it change as the record does. (S2)
+- **Split a sheet into two columns only when it has both halves** — editable left, derived right, rail sticky. (S3)
+- **Put what the act is waiting on in the strip above the footer**, one item at a time. (S4)
+- **Make the strip's item pressable** — it scrolls to its section and blinks the outline twice. (S4)
 
 ## Don't
 - **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)
@@ -1985,6 +2005,11 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't reorder the header stack.** (L2/L4)
 - **Don't emphasize more than one group/action.** (H3)
 - **Don't cram unaligned elements into a row.** (H4)
+- **Don't put a Save, an Update or a Cancel on an autosaving sheet.** (S1)
+- **Don't label a primary with a state** — "Waiting on partners" asks the reader to press a fact. (S2)
+- **Don't park a permanent clause beside a disabled primary** — the reason belongs to the press. (S2)
+- **Don't let a sheet take `xxwide` for being long** — it is for being split. (S3)
+- **Don't name a strip item after a field** — "Choose a customer", not "Customer". (S4)
 
 
 ---
@@ -2007,6 +2032,15 @@ renders these as visual pairs.)
 - **Stale tier decision (N2)** — ❌ "this app has no drawer" carried forward after a module gained sub-categories · ✅ re-derive the tier question every time the destination list changes.
 - **Duplicated nav capability (N3)** — ❌ teaching `NavRail` to render group labels · ✅ use `NavigationDrawer`, which already renders labels and collapsible children.
 - **Reading a mock by width (N1)** — ❌ assuming a 256px grouped panel is the expanded rail · ✅ check the surface: rail = `bg-rail`, square, flush; drawer = `bg-sidebar`, rounded, shadowed.
+
+## Side sheets
+- **Saving (S1)** — ❌ a Save button, an Update, or a Cancel on a sheet that autosaves · ✅ autosave + the draft chip; Close is the exit and the primary is the next act.
+- **Silent draft (S1)** — ❌ keeping a draft with nothing on screen saying so · ✅ `DraftStatusChip`: nothing before the first keystroke, then saving, then saved.
+- **Primary's label (S2)** — ❌ "Waiting on partners" on a button · ✅ the act on the button, the waiting in the strip.
+- **Dead primary (S2)** — ❌ a clause parked permanently beside it · ✅ disabled, with one imperative sentence on the press.
+- **Width (S3)** — ❌ `xxwide` because the sheet is long · ✅ `xxwide` because the step is two columns; width is per step.
+- **Column mixing (S3)** — ❌ a computed total sitting among the fields that produce it · ✅ editable left, derived right, so the reader can tell them apart.
+- **Strip item (S4)** — ❌ "Customer", with no way to reach it · ✅ "Choose a customer", pressable, scrolling to the section and blinking it twice.
 
 ## Hierarchy
 - **Elevation (H2)** — ❌ same-weight fill nested on the same fill · ✅ step up one surface (`surface-1b → card → fp-card-1`).
@@ -2036,6 +2070,12 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] One primary group / one primary action per view. (H3)
 - [ ] Dense rows are fixed ordered slots, not crammed elements. (H4)
 - [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
+- [ ] Every side sheet with an editable field autosaves, shows the draft chip, and has no Save / Update / Cancel. (S1)
+- [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
+- [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
+- [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
+- [ ] Sheet width matches the shape (560 / 864 / 1120 / 1440) and is chosen per step. (S3)
+- [ ] The strip above the footer shows one outstanding item at a time, under a fixed subject, and each item reaches its section. (S4)
 
 
 ---
@@ -2761,6 +2801,20 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't put the audit history at the foot of a record body** — it buries
   everything the record was opened for (§8.4).
 
+## Dead controls and boards *(added 2026-09-18)*
+
+### Do
+- **Disable a control the reader can unblock, and put the reason on the press.** (§7b)
+- **Hide a control that has nothing to point at.** (§7b)
+- **Keep a lane that is a normal state of the work in sequence**; set apart only the ones that are not steps. (§8.1b)
+- **Give each lane its own card-field set**, with the scope named above the ticks. (§8.1b)
+
+### Don't
+- **Don't park the reason beside a disabled control** — it is read on every visit, including the ones where nothing is wrong. (§7b)
+- **Don't let a card drag between lanes** when the stage change has side effects. (§8.1b)
+- **Don't leave a unit heading standing with nothing under it.** (§8.1b)
+- **Don't give every card an alert** — an alert on every card is a border. (§8.1b)
+
 
 ---
 
@@ -2803,6 +2857,13 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **A bin on a section heading** — ❌ `<Trash2>` to turn an optional section off, next to the bins that delete table rows · ✅ `SheetSectionRemove`, a minus (`ux/2-rules`).
 - **A padded heading row** — ❌ a `min-h` on the section title so a 16px gap renders as 20, and 22 once the heading carries a button · ✅ the row is the title's own line and a taller action hangs off it (`ux/2-rules`).
 
+## Dead controls and boards *(added 2026-09-18)*
+- **Dead primary (§7b)** — ❌ a clause standing permanently beside it · ✅ disabled, with the reason on the press; the sheet is quiet the rest of the time.
+- **Tooltip that never opens (§7b)** — ❌ hanging it off the disabled button itself · ✅ a wrapper takes the pointer events, or the feedback is silently deleted.
+- **Card alerts (§8.1b)** — ❌ every card carrying one · ✅ only the cards with something outstanding.
+- **Empty unit (§8.1b)** — ❌ a heading on a rule with nothing under it, reading as a failure to load · ✅ the unit is removed when its lines are.
+- **One card design for every lane (§8.1b)** — ❌ the same fields in the first lane and the last · ✅ a default set per lane, and a menu that says which lane it is editing.
+
 
 ---
 
@@ -2819,6 +2880,14 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Text contrast ≥ WCAG AA in both modes.
 - [ ] Reduced motion respected; charts render without mount animation.
 - [ ] Loading skeletons hold the loaded shape (no layout jump).
+- [ ] A disabled control carries a tooltip with one imperative sentence, and the trigger wraps it so it actually opens. (§7b)
+- [ ] A control with nothing to point at is hidden, not disabled. (§7b)
+- [ ] No board card drags between lanes; a stage change is the record's own act. (§8.1b)
+- [ ] A lane that is not a step of the work sits apart behind the rule. (§8.1b)
+- [ ] A card unit with no lines is removed, heading and all. (§8.1b)
+- [ ] The card-field menu scopes to a lane, and a lane is offered only the fields it can draw. (§8.1b)
+- [ ] Only a card with something outstanding carries an alert. (§8.1b)
+- [ ] The board shows a total with its scope stated, not pagination. (§8.1b)
 
 
 ---
@@ -3066,6 +3135,7 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Component variants follow data meaning (semantic).
 - [ ] Radii / type / spacing come from the scale, not one-off values.
 - [ ] Text contrast ≥ WCAG AA in both modes.
+- [ ] Every hue in use is in the application's colour-mapping table, meaning one thing across the product.
 
 ## UX
 - [ ] Elevation steps once per level; no same-weight fill nested on itself.
@@ -3073,12 +3143,18 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Header units earn their place: breadcrumb only if nested, tabs only for real facets, toolbar only if the data needs it — no placeholder units.
 - [ ] Dense rows are fixed ordered slots, not crammed elements.
 - [ ] One primary group / one primary action per view.
+- [ ] Every side sheet with an editable field autosaves, shows the draft chip, and carries no Save / Update / Cancel.
+- [ ] A sheet's footer primary is the next act on the record, labelled as an act.
+- [ ] A two-column sheet keeps editable left, derived right, rail sticky; width is per step.
+- [ ] What the primary is waiting on is in the strip above the footer, one item at a time, and each item reaches its section.
 
 ## Interactions
 - [ ] Feedback for every action (loading / empty / success / error).
 - [ ] Destructive actions guarded (52px confirm or `AlertDialog`).
 - [ ] Visible focus rings; keyboard-operable; icon-only buttons have `aria-label`.
 - [ ] Reduced motion respected; charts render without mount animation.
+- [ ] A disabled control says why on the press, never in a clause beside it.
+- [ ] No board card drags between lanes; card units disappear with their lines; only outstanding cards carry an alert.
 
 
 ---

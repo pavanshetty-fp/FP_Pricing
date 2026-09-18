@@ -57,3 +57,9 @@ shadow alone; if you need the old tinted ground, name `--fp-surface-base`. Befor
    `#ffffff` when selected. A wash needs its own token — see `--fp-row-hover`
    / `--fp-row-selected`. The tell is scale: the larger the painted area, the
    quieter the value has to be for the same perceived weight.
+
+## Colour mapping *(§10b, added 2026-09-18)*
+- [ ] Every hue in use appears in the application's own colour-mapping table.
+- [ ] No hue means two different things in two modules of one product.
+- [ ] The failure channel is used only where something is wrong and somebody must act.
+- [ ] No chip that every row carries — render the absence instead.

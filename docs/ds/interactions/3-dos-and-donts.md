@@ -93,3 +93,17 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't rewrite a field while somebody is typing in it** — normalise on blur (§1).
 - **Don't put the audit history at the foot of a record body** — it buries
   everything the record was opened for (§8.4).
+
+## Dead controls and boards *(added 2026-09-18)*
+
+### Do
+- **Disable a control the reader can unblock, and put the reason on the press.** (§7b)
+- **Hide a control that has nothing to point at.** (§7b)
+- **Keep a lane that is a normal state of the work in sequence**; set apart only the ones that are not steps. (§8.1b)
+- **Give each lane its own card-field set**, with the scope named above the ticks. (§8.1b)
+
+### Don't
+- **Don't park the reason beside a disabled control** — it is read on every visit, including the ones where nothing is wrong. (§7b)
+- **Don't let a card drag between lanes** when the stage change has side effects. (§8.1b)
+- **Don't leave a unit heading standing with nothing under it.** (§8.1b)
+- **Don't give every card an alert** — an alert on every card is a border. (§8.1b)

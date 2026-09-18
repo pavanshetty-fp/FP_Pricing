@@ -125,18 +125,104 @@ function MoneyRow({
 }
 
 /**
+ * SEND THE READER TO THE SECTION, and say which one it was.
+ *
+ * A banner that names a missing field and cannot take you to it is a label for
+ * a hunt. The press scrolls the section into view and then blinks its outline
+ * twice — because after a scroll the reader's eye is on the MOVEMENT, not on
+ * the thing that moved, and "it is this one" is a different statement from
+ * "here is some of the form".
+ *
+ * TWICE, AND IT LEAVES NO TRACE. Once reads as a render glitch, three times
+ * reads as an error, and a ring that stays is a state — nothing about the
+ * record changed, so nothing about it should still look different in a second.
+ */
+/* THE SECTIONS THE BANNER CAN SEND SOMEBODY TO. Named here rather than typed
+   at each call site, so a section that is renamed cannot leave the banner
+   pointing at nothing. */
+const SECTION_INTAKE = "service-order-intake";
+const SECTION_ASSET = "service-order-asset";
+const SECTION_SCHEDULE = "service-order-schedule";
+
+function attend(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  /* SCROLL THE CONTAINER, NOT THE ELEMENT, AND SCROLL BEFORE ANYTHING ELSE.
+     Two things were fighting this:
+       1. `scrollIntoView` picks its own ancestor and hands the animation to the
+          browser. Finding the scrollport and setting its offset is
+          deterministic.
+       2. Moving focus first CANCELS the smooth scroll — measured: the port got
+          half a pixel in and stopped. A sheet is a focus trap, and the trap
+          reacts to the focus by scrolling to what it just focused.
+     So: scroll, then take focus once the travel is over. */
+  let port: HTMLElement | null = el.parentElement;
+  while (port && port.scrollHeight <= port.clientHeight + 4) {
+    port = port.parentElement;
+  }
+  if (!port) return;
+  /* 12px of air above the section, so it does not sit flush against the
+     header and read as clipped. */
+  const top = port.scrollTop + el.getBoundingClientRect().top -
+    port.getBoundingClientRect().top - 12;
+  /* ANIMATED BY HAND, because `behavior: "smooth"` does not survive in here.
+     MEASURED in the running sheet: an instant scroll to 400 lands at 400; the
+     same call with `smooth` lands at 0 — the sheet's scroll lock cancels the
+     browser's animation the frame after it starts. A rAF loop is not
+     decoration: without it the section either does not move or teleports, and
+     the travel is what tells the reader this is the same sheet they were
+     already in rather than a new screen. */
+  const from = port.scrollTop;
+  const distance = top - from;
+  const started = performance.now();
+  const DURATION = 320;
+  const step = (now: number) => {
+    const t = Math.min((now - started) / DURATION, 1);
+    /* ease-out cubic — fast away, slow into place, which is what makes an
+       arrival read as an arrival. */
+    port!.scrollTop = from + distance * (1 - Math.pow(1 - t, 3));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+
+  /* NO FOCUS MOVE. Focusing the section, or a control inside it, was tried and
+     dropped: inside a focus-trapped sheet the trap restores the scroll position
+     of whatever it considers focused, which fights the travel. The blink is
+     what says "this one", and focus stays on the banner — which is where the
+     reader presses next if more than one item is outstanding.
+     KEYBOARD GAP, KNOWN: a reader who presses this with the keyboard is shown
+     the section but still has to Tab to it. */
+
+  /* THE BLINK WAITS FOR THE SCROLL. Flashing a section that is still travelling
+     spends the whole animation off screen. */
+  window.setTimeout(() => {
+    el.classList.remove("fp-attention");
+    /* Re-adding in the same frame does not restart a CSS animation; the reflow
+       between the two is what does. */
+    void el.offsetWidth;
+    el.classList.add("fp-attention");
+    window.setTimeout(() => el.classList.remove("fp-attention"), 1400);
+  }, 320);
+}
+
+/**
  * WHAT THE FOOTER'S ACT IS STILL WAITING ON, in the one place that does not
  * scroll away from the button it is about.
  *
- * SAME BANNER AS THE 3PL ORDER SHEET, for the same reason: the reason a
- * primary is dead belongs beside it, and beside it there is room for a clause
- * — not for a list. One step at a time, with a counter and a way to step
- * through them, so three missing fields cost one line rather than three.
+ * SAME BANNER AS THE 3PL ORDER SHEET: the reason a primary is dead belongs
+ * beside it, and beside it there is room for a clause — not for a list. One
+ * item at a time, with a counter and a way to step through them, so three
+ * missing fields cost one line rather than three.
+ *
+ * THE WORD "PENDING" DOES NOT MOVE. It is the banner's subject and it is true
+ * of every item under it; stepping swaps only the item. A label that changed
+ * with the content would make the reader re-read what kind of line this is on
+ * every press.
  */
 function MandatoryStepsBanner({
   pending,
 }: {
-  pending: { key: string; label: string }[];
+  pending: { key: string; label: string; target?: string }[];
 }) {
   const [at, setAt] = React.useState(0);
   /* The list shortens as fields are filled, so the cursor has to be pulled
@@ -163,12 +249,23 @@ function MandatoryStepsBanner({
     <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-2 text-sm text-fp-banner-accent-caution">
         <Info className="size-4 shrink-0" />
-        <span className="truncate">{step.label}</span>
+        <span className="shrink-0 font-medium">Pending</span>
+        {step.target ? (
+          <button
+            type="button"
+            onClick={() => attend(step.target!)}
+            className="min-w-0 truncate rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {step.label}
+          </button>
+        ) : (
+          <span className="truncate">{step.label}</span>
+        )}
       </span>
       <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
         <button
           type="button"
-          aria-label="Previous missing field"
+          aria-label="Previous pending item"
           disabled={i === 0}
           onClick={() => setAt(i - 1)}
           className={chevron}
@@ -178,7 +275,7 @@ function MandatoryStepsBanner({
         {i + 1} of {pending.length}
         <button
           type="button"
-          aria-label="Next missing field"
+          aria-label="Next pending item"
           disabled={i >= pending.length - 1}
           onClick={() => setAt(i + 1)}
           className={chevron}
@@ -557,16 +654,37 @@ export function ServiceOrderSheet({
    * what to do, "Customer" tells them what they are looking at.
    */
   const mandatory = [
-    { key: "customer", label: "Choose a customer", done: Boolean(draft.customer) },
-    { key: "shipTo", label: "Choose a ship-to site", done: Boolean(draft.shipTo) },
-    { key: "asset", label: "Choose the asset the job is on", done: Boolean(draft.assetId) },
-    { key: "workType", label: "Choose a work type", done: Boolean(draft.workType) },
+    {
+      key: "customer",
+      label: "Choose a customer",
+      done: Boolean(draft.customer),
+      target: SECTION_ASSET,
+    },
+    {
+      key: "shipTo",
+      label: "Choose a ship-to site",
+      done: Boolean(draft.shipTo),
+      target: SECTION_ASSET,
+    },
+    {
+      key: "asset",
+      label: "Choose the asset the job is on",
+      done: Boolean(draft.assetId),
+      target: SECTION_ASSET,
+    },
+    {
+      key: "workType",
+      label: "Choose a work type",
+      done: Boolean(draft.workType),
+      target: SECTION_ASSET,
+    },
     ...(draft.status === "Open"
       ? [
           {
             key: "tech",
             label: "Assign a technician",
             done: Boolean(draft.technicianId),
+            target: SECTION_SCHEDULE,
           },
         ]
       : []),
@@ -836,6 +954,7 @@ export function ServiceOrderSheet({
         <div className="flex min-w-0 flex-col gap-10">
       {/* ───────────────────────────────────────────────────── intake ───── */}
       <SheetSection
+        id={SECTION_INTAKE}
         title="Intake"
         note={
           <SheetSectionNote label="About intake">
@@ -876,6 +995,7 @@ export function ServiceOrderSheet({
 
       {/* ──────────────────────────────────── customer, site and asset ───── */}
       <SheetSection
+        id={SECTION_ASSET}
         title="Asset"
         note={
           <SheetSectionNote label="Why it cascades">
@@ -992,7 +1112,7 @@ export function ServiceOrderSheet({
       </SheetSection>
 
       {/* ──────────────────────────────────────────── schedule and who ───── */}
-      <SheetSection title="Schedule">
+      <SheetSection id={SECTION_SCHEDULE} title="Schedule">
         {/* DATE AND TIME ARE ONE ANSWER, so they share a row; the technician
             is a different question and gets its own line under them. */}
         <div className="grid grid-cols-2 gap-4">

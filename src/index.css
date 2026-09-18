@@ -41,6 +41,41 @@
   animation: bulk-bar-in 200ms ease-out;
 }
 
+/* ATTENTION — "it is THIS one".
+   A ring that blinks twice on a section somebody was just sent to. It is not a
+   state and nothing about the record changed, so it leaves no trace: 1.2s and
+   the outline is gone. Twice, because once reads as a render glitch and three
+   times reads as an error.
+
+   `outline`, not `ring` or `border`: an outline is drawn outside the box and
+   changes no layout, so a section does not jump the moment it is pointed at. */
+@keyframes fp-attention {
+  0%,
+  100% {
+    outline-color: transparent;
+  }
+  25%,
+  75% {
+    outline-color: var(--ring);
+  }
+}
+.fp-attention {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-radius: var(--radius-lg);
+  animation: fp-attention 600ms ease-in-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* THE POINT SURVIVES WITHOUT THE BLINK. Somebody who has asked for less
+     motion still has to be told which section they were sent to, so the ring
+     holds steady for the same duration instead of flashing. */
+  .fp-attention {
+    animation: none;
+    outline-color: var(--ring);
+    transition: outline-color 1200ms step-end;
+  }
+}
+
 /* Module-switch progress — a thin bar that fills left→right on selection. */
 @keyframes module-switch-progress {
   from {

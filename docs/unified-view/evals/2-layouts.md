@@ -85,6 +85,11 @@ Against `../2-layouts.md` and `docs/ds/ux/2-rules.md`.
 - [ ] **L2** The primary is the next act, never Save or Update.
 - [ ] **L2** A blocked primary is disabled with the reason on the press, not
       beside it.
+- [ ] **L2** The banner's subject label is fixed; only the item changes.
+- [ ] **L2** Every banner item has a target section, and pressing it scrolls
+      there and blinks the outline twice.
+- [ ] **L1** Every section a banner item targets has the `id` it names. An
+      item pointing at nothing fails silently.
 
 ## Pagination and totals
 

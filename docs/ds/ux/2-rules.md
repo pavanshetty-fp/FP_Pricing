@@ -104,6 +104,17 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   An exception that STOPS the work (a hold, a credit block) takes the strip
   instead — it is the thing the reader has to act on, and the fields wait
   behind it.
+  - **The word "Pending" does not move.** It is the strip's subject and it is
+    true of every item under it; stepping swaps only the item. A label that
+    changed with the content would make the reader re-read what KIND of line
+    this is on every press.
+  - **The item is pressable, and pressing it takes you there.** A banner that
+    names a missing field and cannot reach it is a label for a hunt. The press
+    scrolls the section into view and **blinks its outline twice** — after a
+    scroll the eye is on the movement, not on the thing that moved, and "it is
+    this one" is a different statement from "here is some of the form".
+    Twice: once reads as a render glitch, three times as an error. The ring
+    leaves no trace, because nothing about the record changed.
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a

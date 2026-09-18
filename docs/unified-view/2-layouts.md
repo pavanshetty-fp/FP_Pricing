@@ -249,7 +249,13 @@ sheet.**
 - **A rung that cannot be taken is disabled and says why on the press** — a
   tooltip, one sentence, imperative. Not a clause parked beside the button.
 - **What the record is missing goes in the banner**, one item at a time with a
-  counter. An exception that stops the work takes the banner instead.
+  counter, under a fixed "Pending" label. An exception that stops the work
+  takes the banner instead.
+- **The banner's item is pressable and takes you to the section**, which then
+  blinks its outline twice. Implementation note that matters: the sheet's focus
+  trap cancels `behavior: "smooth"` and restores the scroll of whatever it
+  considers focused, so the travel is a rAF loop on the scrollport and nothing
+  takes focus.
 - **A secondary outcome of the same act lives in `footerAside`** — the press
   that admits the job cannot be finished today.
 

@@ -492,8 +492,14 @@ export function ServiceOrderSheet({
         onSelect: () => advance("Open", { technicianId: null }),
       };
     if (draft.status === "Open")
+      /* OPEN IS THIS MODULE'S DRAFT, so its act has the same name as the one
+         3PL uses to get out of Draft: the job exists the moment it is reported,
+         and this is where somebody says it is real work with a name against
+         it. "Assign technician" named the field it needs rather than the thing
+         it does — the technician is the precondition, the act is committing
+         the order. */
       return {
-        label: "Assign technician",
+        label: "Create Service Order",
         onSelect: () => advance("Assigned"),
       };
     if (isWorkable(draft.status)) {
@@ -595,7 +601,7 @@ export function ServiceOrderSheet({
       mode={mode}
       editTitle={`Service order: ${draft.orderNo}`}
       createTitle="New service order"
-      createAction="Create and assign"
+      createAction="Create Service Order"
       canSubmit={readyToCreate}
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
       showCancel={creating}

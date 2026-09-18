@@ -158,6 +158,16 @@ field in the sheet that did not match the date on a 3PL order. Leaving a job
 unscheduled is an answer, so it is offered inside the picker rather than only
 by clearing a field nobody can clear.
 
+### Open is this module's Draft, so its act is called Create Service Order
+
+The job exists the moment it is reported; the footer's act is where somebody
+says it is real work with a name against it. That is the same act 3PL's
+**Create Order** performs on a draft, so it carries the same words. "Assign
+technician" named the FIELD it needs rather than the thing it does — the
+technician is the precondition, the act is committing the order — and the
+create form uses the same words, because one act should not have two names
+depending on whether the record already existed.
+
 ### The blocked reason is on the button, not beside it
 
 A clause standing permanently next to the primary is a sentence the reader has

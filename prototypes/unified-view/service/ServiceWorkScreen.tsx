@@ -22,7 +22,6 @@ import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
 import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
 import { ServiceOrderSheet } from "./ServiceOrderSheet";
-import { TechnicianAppSheet } from "./TechnicianAppSheet";
 import { useServiceSettings } from "./settings";
 import {
   INTAKE_SOURCES,
@@ -41,10 +40,7 @@ import {
   isRecorded,
   money,
   orderTotal,
-  quoteableTotal,
   technicianById,
-  type FeeLine,
-  type PartLine,
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
@@ -374,7 +370,6 @@ export function ServiceWorkScreen() {
   const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>({});
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
-  const [techAppId, setTechAppId] = React.useState<string | null>(null);
 
   /* THE BOARD OPENS ON A WEEK, not a day. A dispatcher's question is "what is
      outstanding", and the answer does not fall inside one shift. */
@@ -760,73 +755,9 @@ export function ServiceWorkScreen() {
   const patch = (id: string, p: Partial<ServiceOrder>) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...p } : r)));
 
-  const onArrive = (id: string) => {
-    patch(id, { arrivedAt: new Date().toISOString(), status: "In progress" });
-  };
 
-  const onSendQuote = (
-    id: string,
-    q: { parts: PartLine[]; fees: FeeLine[] }
-  ) => {
-    const at = new Date().toISOString();
-    patch(id, {
-      parts: q.parts,
-      fees: q.fees,
-      quote: {
-        parts: q.parts.map((p) => ({ ...p })),
-        fees: q.fees.map((f) => ({ ...f })),
-        total: quoteableTotal(q.parts, q.fees),
-        sentAt: at,
-        approvedAt: null,
-      },
-    });
-  };
 
-  const onApproveQuote = (id: string) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === id && r.quote
-          ? { ...r, quote: { ...r.quote, approvedAt: new Date().toISOString() } }
-          : r
-      )
-    );
-  };
 
-  const onCompleteWork = (
-    id: string,
-    data: {
-      parts: PartLine[];
-      fees: FeeLine[];
-      labor: number;
-      mileage: number;
-      signed: boolean;
-    }
-  ) => {
-    const at = new Date().toISOString();
-    const order = rows.find((r) => r.id === id);
-    if (!order) return;
-    /* THE APPROVAL STEP IS A SETTING. With it off there is nothing between the
-       technician submitting and the job being billed, and the Needs approval
-       lane is simply never used. */
-    if (cfg.managerApproval) {
-      patch(id, { ...data, completedAt: at, status: "Needs approval", partNeeded: null });
-      toast.success(`${order.orderNo} recorded — sent for approval`);
-    } else {
-      patch(id, {
-        ...data,
-        completedAt: at,
-        status: "Approved",
-        partNeeded: null,
-        invoiceCreated: cfg.nativeBilling,
-        invoicedAt: cfg.nativeBilling ? at : null,
-      });
-      toast.success(
-        cfg.nativeBilling
-          ? `${order.orderNo} complete — invoice generated`
-          : `${order.orderNo} complete and approved`
-      );
-    }
-  };
 
   const onPartsPending = (
     id: string,
@@ -1199,27 +1130,13 @@ export function ServiceWorkScreen() {
         }}
         onSave={saveOrder}
         onCreate={createOrder}
-        onOpenTechApp={(id) => setTechAppId(id)}
+        onPartsPending={onPartsPending}
         customers={customers}
         shipTosFor={shipTosFor}
         assetsFor={assetsFor}
         blankOrder={blankOrder}
       />
 
-      {/* THE TECHNICIAN'S OWN VIEW, over the order it belongs to. Mounted only
-          while open, so it starts from the job's current state each time. */}
-      {techAppId && (
-        <TechnicianAppSheet
-          order={rows.find((r) => r.id === techAppId) ?? null}
-          open
-          onOpenChange={(o) => !o && setTechAppId(null)}
-          onArrive={onArrive}
-          onSendQuote={onSendQuote}
-          onApproveQuote={onApproveQuote}
-          onComplete={onCompleteWork}
-          onPartsPending={onPartsPending}
-        />
-      )}
     </div>
   );
 }

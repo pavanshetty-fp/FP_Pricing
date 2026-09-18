@@ -88,8 +88,7 @@ export function ServiceSettingsScreen() {
         <div className="max-w-4xl pb-8">
           <p className="text-sm text-muted-foreground">
             These are not preferences. Each one turns a whole step of the flow on
-            or off, and the board, the order sheet and the technician's app all
-            change with them.
+            or off, and the board and the order sheet change with them.
           </p>
 
           {/* THE TWO ENDS OF THE RANGE, as one click each. Eight switches is
@@ -136,21 +135,6 @@ export function ServiceSettingsScreen() {
               description="On: choosing a work type brings its usual parts and a suggested fee with it, as editable lines rather than silently. Off: parts and fees are typed by hand, or handled by product codes in the ERP."
               checked={cfg.priceBook}
               onChange={(v) => setServiceSetting("priceBook", v)}
-            />
-            <SwitchRow
-              title="Service technician app"
-              description="On: assigned work goes to the technician's own app — arrive, then record what was done. Off: there is no field app, and dispatch records the finished work on the order itself."
-              checked={cfg.serviceTechApp}
-              onChange={(v) => setServiceSetting("serviceTechApp", v)}
-            />
-            <SwitchRow
-              nested
-              title="Field quoting"
-              description="On: before starting, the technician sends the customer a quote — parts and the predefined fee — and waits for approval on site. Off: work starts straight from dispatch and everything is settled on the invoice."
-              checked={cfg.fieldQuote}
-              onChange={(v) => setServiceSetting("fieldQuote", v)}
-              disabled={!cfg.serviceTechApp}
-              disabledNote="There is no field app to quote from."
             />
             <SwitchRow
               title="Portal intake"

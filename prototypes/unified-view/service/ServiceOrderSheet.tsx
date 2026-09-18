@@ -40,7 +40,7 @@ import {
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
-import { RecordSheet } from "../RecordSheet";
+import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
@@ -406,8 +406,12 @@ export interface ServiceOrderSheetProps {
   onOpenChange: (open: boolean) => void;
   onSave: (order: ServiceOrder, next: ServiceOrder) => void;
   onCreate?: (draft: ServiceOrder) => void;
-  /** Opens the technician's own app on this job. */
-  onOpenTechApp?: (id: string) => void;
+  /**
+   * The job stopped for a part. It is the screen's act rather than the
+   * sheet's, because one of its two outcomes creates a SECOND order — and a
+   * sheet cannot add a row to the list it was opened from.
+   */
+  onPartsPending?: (id: string, data: { labor: number; partNeeded: string }) => void;
   customers: string[];
   /** Ship-tos for a chosen customer, and assets for a chosen ship-to. */
   shipTosFor: (customer: string) => string[];
@@ -422,7 +426,7 @@ export function ServiceOrderSheet({
   onOpenChange,
   onSave,
   onCreate,
-  onOpenTechApp,
+  onPartsPending,
   customers,
   shipTosFor,
   assetsFor,
@@ -431,6 +435,8 @@ export function ServiceOrderSheet({
   const cfg = useServiceSettings();
   const creating = mode === "create";
   const [draft, setDraft] = React.useState<ServiceOrder | null>(null);
+  const [holdOpen, setHoldOpen] = React.useState(false);
+  const [holdReason, setHoldReason] = React.useState("");
   const lastSaved = React.useRef<string | null>(null);
 
   /* BUILD THE DRAFT ONCE PER RECORD, not once per save — the same rule the 3PL
@@ -455,23 +461,21 @@ export function ServiceOrderSheet({
     lastSaved.current = null;
   }, [open, creating, order, blankOrder]);
 
-  /**
-   * EDITS ARE COMMITTED, NOT AUTOSAVED.
-   *
-   * A service order is not a draft being assembled the way a delivery order
-   * is: it already exists the moment somebody reports the fault, and what the
-   * sheet is for afterwards is CORRECTING it — the wrong asset, the wrong
-   * work type, a fee that should not be there. A correction that keeps itself
-   * 600ms after a keystroke gives the reader nowhere to change their mind, and
-   * on a record that is on its way to an invoice that is the wrong default.
-   *
-   * So the primary says **Update** whenever the form differs from the record,
-   * and the stage's own act waits its turn behind it. One button, and it names
-   * the thing that has to happen next.
-   */
-  const dirty = Boolean(
-    order && draft && JSON.stringify(draft) !== JSON.stringify(order)
-  );
+  const saveState = useDraftSaveState(draft, open && !creating);
+
+  /* AUTOSAVED, DEBOUNCED — the DS rule for every side sheet with editable
+     fields in it (`docs/ds/ux/2-rules.md`, Side-sheet anatomy). A reader who
+     has to remember to press Save is a reader who loses work. */
+  React.useEffect(() => {
+    if (creating || !order || !draft) return;
+    const serialised = JSON.stringify(draft);
+    if (serialised === JSON.stringify(order)) return;
+    const t = window.setTimeout(() => {
+      lastSaved.current = serialised;
+      onSave(order, draft);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, order, creating, onSave]);
 
   if (!draft) return null;
 
@@ -565,12 +569,6 @@ export function ServiceOrderSheet({
   ];
   const pendingSteps = mandatory.filter((x) => !x.done);
 
-  /* SAVING A CORRECTION IS NOT COMMITTING THE ORDER. The technician is a
-     precondition of the ACT that takes a job out of Open, not of the record —
-     fixing a typo in the reported fault must not wait on somebody being free.
-     Update is held back only by a field the record itself cannot do without. */
-  const recordIncomplete = mandatory.some((x) => x.key !== "tech" && !x.done);
-
   /* ────────────────────────────────────────── the footer's ladder ───── */
 
   const nowIso = () => new Date().toISOString();
@@ -611,17 +609,17 @@ export function ServiceOrderSheet({
         label: "Create Service Order",
         onSelect: () => advance("Assigned"),
       };
+    /* ARRIVAL IS ITS OWN ACT, because "somebody is on their way" and "somebody
+       is on site" are the two facts the Assigned and In progress lanes exist
+       to tell apart. The technician's own app is a separate product and does
+       not live in this module — when it exists, this is the rung it will
+       report into rather than replace. */
+    if (draft.status === "Assigned")
+      return {
+        label: "Start work",
+        onSelect: () => advance("In progress", { arrivedAt: nowIso() }),
+      };
     if (isWorkable(draft.status)) {
-      /* THE FIELD APP IS A SETTING, so the act is too. With it off, the same
-         rung records the work here instead of sending it somewhere else. */
-      if (cfg.serviceTechApp)
-        return {
-          label:
-            draft.status === "Parts-pending"
-              ? "Resume in technician app"
-              : "Open technician app",
-          onSelect: () => onOpenTechApp?.(draft.id),
-        };
       return {
         label: draft.status === "Parts-pending" ? "Resume and complete" : "Mark complete",
         onSelect: () => {
@@ -678,7 +676,7 @@ export function ServiceOrderSheet({
   const blockedWhy =
     draft.status === "Open" && !draft.technicianId
       ? "Choose a technician before proceeding."
-      : isWorkable(draft.status) && !cfg.serviceTechApp && draft.labor <= 0
+      : isWorkable(draft.status) && draft.status !== "Assigned" && draft.labor <= 0
         ? "Record the labour hours before proceeding."
         : nextAct.why;
 
@@ -713,12 +711,9 @@ export function ServiceOrderSheet({
       createAction="Create Service Order"
       canSubmit={readyToCreate}
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
-      /* CANCEL IS HONEST AGAIN. It was off while the sheet autosaved, because
-         "Cancel" promises to undo and a sheet that has already kept everything
-         typed cannot keep that promise. Nothing is kept until Update, so
-         closing genuinely discards — and a form with unsaved edits and no way
-         back but the X is a form people stop editing. */
-      showCancel={creating || dirty}
+      /* AUTOSAVED, so Cancel is a promise the sheet cannot keep — it would
+         claim to undo what has already been kept. Close is the honest exit. */
+      showCancel={false}
       headerAside={
         creating ? undefined : (
           <span className="flex items-center gap-2">
@@ -728,11 +723,8 @@ export function ServiceOrderSheet({
                 {draft.priority}
               </Badge>
             )}
-            {/* WHAT IS TRUE, NOT WHAT WAS PROMISED. Nothing autosaves here, so
-                "Draft saved" would be a claim about something that has not
-                happened; the honest line is that there is something to keep. */}
-            {dirty && (
-              <span className="text-sm text-muted-foreground">Unsaved changes</span>
+            {saveState !== "idle" && (
+              <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
             )}
           </span>
         )
@@ -760,24 +752,52 @@ export function ServiceOrderSheet({
           <MandatoryStepsBanner pending={pendingSteps} />
         )
       }
+      /* THE SECOND OUTCOME OF A VISIT, in the slot for decisions taken at the
+         moment of committing. A technician does not know which of the two it
+         will be until the work is in front of them, so both live at the foot
+         of the same form — the primary is the one that finishes the job, and
+         this is the one that admits it cannot be finished today. */
+      footerAside={
+        draft.status === "In progress" && onPartsPending ? (
+          <Popover open={holdOpen} onOpenChange={setHoldOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline">Waiting on a part</Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 p-3">
+              <SheetField label="Part or reason" required>
+                <Input
+                  value={holdReason}
+                  placeholder="e.g. 2-inch pump seal on order"
+                  onChange={(e) => setHoldReason(e.target.value)}
+                />
+              </SheetField>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {cfg.returnMode === "spawn"
+                  ? "A linked return visit will be created, so the second trip is its own job with its own schedule."
+                  : "This job stays open and rolls to tomorrow. No second order is created."}
+              </p>
+              <div className="mt-3 flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={!holdReason.trim()}
+                  onClick={() => {
+                    onPartsPending(draft.id, {
+                      labor: draft.labor,
+                      partNeeded: holdReason.trim(),
+                    });
+                    setHoldOpen(false);
+                    setHoldReason("");
+                  }}
+                >
+                  Save as parts-pending
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : undefined
+      }
       footerPrimary={
-        creating ? undefined : dirty ? (
-          /* UNSAVED EDITS COME BEFORE THE STAGE. While the form differs from
-             the record, the one thing that has to happen next is keeping what
-             was typed — advancing a stage on figures nobody has committed
-             would bill the customer for a draft. */
-          <Button
-            disabled={recordIncomplete}
-            onClick={() => {
-              if (!order) return;
-              lastSaved.current = JSON.stringify(draft);
-              onSave(order, draft);
-              toast.success(`${draft.orderNo} updated`);
-            }}
-          >
-            Update
-          </Button>
-        ) : blockedWhy ? (
+        creating ? undefined : blockedWhy ? (
           /* THE REASON IS ON THE BUTTON, NOT BESIDE IT.
              A clause standing permanently next to the primary is a sentence
              the reader has to read on every visit to the sheet, including the
@@ -1092,6 +1112,10 @@ export function ServiceOrderSheet({
                 nobody knew how long the job would take or how far the van went.
                 Those land on the invoice, which is why the invoice can be
                 larger than the quote and why both stay on the record.
+              </p>
+              <p className="mt-1.5 text-muted-foreground">
+                Read-only here: a quote is sent from the technician's own app,
+                on site, and this is the record of what was agreed.
               </p>
             </SheetSectionNote>
           }

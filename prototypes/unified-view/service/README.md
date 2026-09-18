@@ -52,24 +52,24 @@ Recomputing it from today's lines would quietly rewrite what was agreed.
 
 Parts at cost × quantity · labour at $95/h · mileage at $1.50/mi · fees.
 
-## The eight switch points
+## The switch points
 
 They are not preferences. Each turns a whole step of the flow on or off, and
-the board, the order sheet and the technician's app all change with them.
+the board and the order sheet change with them.
 
 1. **Native billing** — the invoice writes itself on approval, or somebody
    raises it by hand.
 2. **Service cost feeds asset payback.**
-3. **Manager approval required** — or work approves itself on submit, and the
-   Needs approval lane is never used.
+3. **Manager approval required** — or work approves itself the moment it is
+   recorded, and the Needs approval lane is never used.
 4. **Return-visit behaviour** — spawn a linked return visit, or roll the same
    order forward to the next day.
 5. **Price book** — a work type brings its usual parts and a suggested fee, as
    editable lines rather than silently.
-6. **Service technician app** — assigned work goes to the field app, or
-   dispatch records the finished work on the order itself.
-7. **Field quoting** (nested under 6) — quote on site before starting.
-8. **Portal intake** — customers raise jobs themselves.
+6. **Portal intake** — customers raise jobs themselves.
+
+*The spec's "service technician app" and "field quoting" switches are gone: the
+technician's app is a separate mobile product, not a mode of this one.*
 
 **Two named profiles** sit at the ends of the range and are one click each:
 *Unified* (everything on) and *Dispatch layer* (everything off).
@@ -87,14 +87,15 @@ that one will govern several modules and is held back pending it.
   primary always names the ONE thing that moves the job on from here, and when
   it cannot be pressed the reason sits beside it rather than on it. The rung
   depends on the settings as much as on the stage.
-- **The technician app is a sheet, not a page** — it is somebody else's view of
-  this job, the same relationship the vendor quote sheet has to a 3PL order, so
-  it opens over the record and closes back onto it. Narrow on purpose: it is a
-  phone in a van.
-- **"Complete manually" and "Create invoice" are not separate screens.** They
-  are what the order sheet's own act becomes when the technician app is off and
-  when native billing is off. Two more pages would be two more places to learn
-  for two acts that belong to this record.
+- **"Create invoice" is not a separate screen.** It is what the order sheet's
+  own act becomes when native billing is off. Another page would be another
+  place to learn for an act that belongs to this record.
+- **The technician's app is not in this module.** It is a separate mobile
+  product. Everything the field would report — arrival, the work, the stall —
+  has a rung on this sheet, so a dispatcher can drive a job end to end from
+  here; when the app exists it will report INTO those rungs rather than replace
+  them. A quote is the one thing that can only be sent from the field, so the
+  Quote section is read-only: the record of what was agreed on site.
 
 ## The order sheet is two columns, like the 3PL one
 
@@ -158,25 +159,15 @@ field in the sheet that did not match the date on a 3PL order. Leaving a job
 unscheduled is an answer, so it is offered inside the picker rather than only
 by clearing a field nobody can clear.
 
-### Edits are committed, not autosaved — and the primary says so
+### The sheet autosaves, because every side sheet does
 
-A service order is not a draft being assembled the way a delivery order is: it
-already exists the moment somebody reports the fault, and what the sheet is for
-afterwards is **correcting** it — the wrong asset, the wrong work type, a fee
-that should not be there. A correction that keeps itself 600ms after a
-keystroke gives the reader nowhere to change their mind, and on a record on its
-way to an invoice that is the wrong default.
-
-So **while the form differs from the record, the primary is `Update`** and the
-stage's own act waits behind it. One button, and it names the thing that has to
-happen next. Cancel comes back with it — it was off while the sheet autosaved,
-because "Cancel" promises to undo and a sheet that has already kept everything
-cannot keep that promise.
-
-**Update is not gated by the banner.** The technician is a precondition of the
-ACT that takes a job out of Open, not of the record: fixing a typo in the
-reported fault must not wait on somebody being free. Update is held back only
-by a field the record itself cannot do without.
+`docs/ds/ux/2-rules.md`, Side-sheet anatomy: **a side sheet with editable
+fields autosaves, always, whether it is creating or editing.** Debounced 600ms,
+with the `DraftStatusChip` beside the title saying so, no Cancel — "Cancel"
+promises to undo and a sheet that has already kept everything cannot keep that
+promise — and **no Save and no Update**. The footer's primary is the NEXT ACT on
+the record; a primary that says "Update" on a sheet that has already updated is
+a button for a job that is done.
 
 ### The strip above the footer says what the act is waiting on
 
@@ -220,6 +211,7 @@ for.)
 
 - **The customer's portal.** The switch controls whether "Portal request"
   exists as an intake source; there is no portal in this prototype.
+- **The technician's mobile app**, which is its own product.
 - **Emailing a quote or an invoice to a customer.** Both are acts on the record
   here; nothing leaves the building.
 - **The technician's own day** — their jobs in order, with travel between them.
@@ -236,7 +228,7 @@ for.)
 | `settings.ts` | the eight switch points and the two profiles |
 | `ServiceWorkScreen.tsx` | the board and the table |
 | `ServiceOrderSheet.tsx` | the order, with the next-act ladder |
-| `TechnicianAppSheet.tsx` | arrive → quote → record, as the technician sees it |
+| `sheet-parts.tsx` | the single-handle slider and the rail card |
 | `ServiceSettingsScreen.tsx` | the switch points |
 | `TechniciansScreen.tsx` | the roster |
 

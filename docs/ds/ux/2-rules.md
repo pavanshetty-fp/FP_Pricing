@@ -24,6 +24,24 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   margin (`p-2` + `gap-2`); **16px** inset inside the content-layer body.
 
 ## Side-sheet anatomy
+- **A SIDE SHEET WITH EDITABLE FIELDS AUTOSAVES. Always, and whether it is
+  creating or editing.** This is the default, not a choice per sheet. A reader
+  who has to remember to press Save is a reader who loses work, and a record
+  that is half-filled is still worth keeping — a service call somebody started
+  typing and abandoned is a service call, and the next person can finish it.
+  Three consequences, and all three are part of the rule:
+  - **Say it out loud.** `useDraftSaveState` + `DraftStatusChip` beside the
+    title: `saving` while a change settles, `saved` once it has, nothing at all
+    before the first keystroke. A sheet that keeps a draft silently is one
+    people behave as though it does not — they finish fields they meant to
+    return to, and they hesitate to close. The feedback IS the feature.
+  - **Cancel comes off.** "Cancel" promises to undo, and a sheet that has
+    already kept everything typed cannot keep that promise. Close is the honest
+    exit.
+  - **There is no Save button, and no `Update`.** The footer's primary is the
+    NEXT ACT on the record — the one thing that moves it on from where it is.
+    A primary that says "Update" on a sheet that has already updated is a
+    button for a job that is done.
 - **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
   of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
   columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because

@@ -5,8 +5,8 @@ import * as React from "react";
 
   Eight of them, and between them they describe every customer this module has
   to fit. They are NOT preferences: each one turns a whole step of the flow on
-  or off — whether there is a field app at all, whether a job is quoted before
-  it is done, whether a manager signs it off, whether an invoice writes itself.
+  or off — whether a work type arrives with its parts priced, whether a manager
+  signs it off, whether an invoice writes itself, what a stalled job does next.
   Two named profiles sit at the ends of the range, and everything in between is
   a real configuration somebody runs.
 
@@ -47,17 +47,6 @@ export interface ServiceSettings {
   returnMode: ReturnMode;
   /** ON: a work type arrives with its usual parts and a suggested fee. */
   priceBook: boolean;
-  /**
-   * ON: assigned work goes to the technician's own app — arrive, quote, record.
-   * OFF: there is no field app, and dispatch records the finished work itself.
-   */
-  serviceTechApp: boolean;
-  /**
-   * ON: before starting, the technician sends the customer a quote — parts and
-   * the predefined fee — for approval on site. Only meaningful with the
-   * technician app on.
-   */
-  fieldQuote: boolean;
   /** ON: "Portal request" is offered as an intake source. */
   portalIntake: boolean;
 }
@@ -69,8 +58,6 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   managerApproval: true,
   returnMode: "spawn",
   priceBook: true,
-  serviceTechApp: true,
-  fieldQuote: true,
   portalIntake: true,
 };
 
@@ -89,22 +76,20 @@ export const SETTINGS_PROFILES: {
     key: "unified",
     name: "Unified",
     detail:
-      "Everything in FleetPanda — field app, on-site quoting, manager sign-off and invoicing.",
+      "Everything in FleetPanda — price book, manager sign-off and invoicing.",
     settings: DEFAULT_SETTINGS,
   },
   {
     key: "dispatch",
     name: "Dispatch layer",
     detail:
-      "FleetPanda dispatches and records; quoting, approval and billing happen elsewhere.",
+      "FleetPanda dispatches and records; approval and billing happen elsewhere.",
     settings: {
       nativeBilling: false,
       roiFeed: false,
       managerApproval: false,
       returnMode: "rollforward",
       priceBook: false,
-      serviceTechApp: false,
-      fieldQuote: false,
       portalIntake: false,
     },
   },
@@ -122,13 +107,6 @@ export function setServiceSetting<K extends keyof ServiceSettings>(
   value: ServiceSettings[K]
 ) {
   current = { ...current, [key]: value };
-  /* FIELD QUOTING CANNOT OUTLIVE THE APP IT LIVES IN. Turning the technician
-     app off leaves the nested switch describing a step that no longer exists,
-     so it goes off with it — and the screen shows it disabled rather than
-     silently lying. */
-  if (key === "serviceTechApp" && value === false) {
-    current = { ...current, fieldQuote: false };
-  }
   emit();
 }
 

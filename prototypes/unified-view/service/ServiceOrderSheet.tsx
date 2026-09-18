@@ -1,18 +1,44 @@
 import * as React from "react";
-import { Plus, X, Wrench, FileCheck, Download, Send } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Calendar as CalendarIcon,
+  Download,
+  Receipt,
+  History,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { StatusChip } from "@/components/ui/status-chip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  TableCellInput,
+  TableRequiredLabel,
+} from "@/components/form-layout/table-cells";
+import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 import {
   SheetField,
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
 import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
+import { DATE_FMT } from "../data";
+import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import {
   ACTIVE_TECHNICIANS,
@@ -61,8 +87,6 @@ import {
  * invoice" because the invoice wrote itself.
  */
 
-const SECTION_MONEY_ID = "service-order-money";
-
 /** One label / figure line inside the money card. */
 function MoneyRow({
   label,
@@ -92,107 +116,215 @@ function MoneyRow({
   );
 }
 
+const STAMP_TIME = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** "Sep 18, 2026 · 9:07 AM" — the app's date format, not the locale default. */
+function stampLabel(iso: string): string {
+  const at = new Date(iso);
+  return `${DATE_FMT.format(at)} · ${STAMP_TIME.format(at)}`;
+}
+
 /**
- * A LIST OF TYPED LINES — parts, fees, extra charges.
+ * PARTS AND FEES, AS THE EDITABLE TABLE EVERY OTHER SHEET USES.
  *
- * ONE COMPONENT, because all three are a name, a number and a way to take the
- * row away; written out three times they would have drifted, and the drift
- * would be in whichever one gets opened least.
+ * The DS's editable-table idiom, the same one the 3PL order sheet's lines
+ * table is built from: fixed layout, a Surface-1a header band, cells with no
+ * chrome of their own, and the Add row as the table's last band. Three stacked
+ * inputs in a row was a form pretending to be a table — the columns had no
+ * headers, so a reader had to work out which box was the quantity and which
+ * was the money, on every row.
+ *
+ * ONE COMPONENT FOR BOTH, because a part and a fee are the same shape once the
+ * quantity column is optional: a name, a number, and a way to take the row
+ * away. Written out twice they would have drifted.
  */
-function LineRows({
+function LineTable({
   rows,
   onChange,
   onAdd,
   onRemove,
   readOnly,
-  namePlaceholder,
   withQty,
+  nameLabel,
+  namePlaceholder,
   addLabel,
   emptyLabel,
+  total,
 }: {
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
   onAdd: () => void;
   onRemove: (i: number) => void;
   readOnly: boolean;
-  namePlaceholder: string;
   withQty?: boolean;
+  nameLabel: string;
+  namePlaceholder: string;
   addLabel: string;
   emptyLabel: string;
+  total: number;
 }) {
-  if (readOnly) {
-    if (rows.length === 0)
-      return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
-    return (
-      <div className="flex flex-col">
-        {rows.map((r, i) => (
-          <MoneyRow
-            key={i}
-            label={
-              withQty && "qty" in r && r.qty > 1
-                ? `${r.name || "—"} × ${r.qty}`
-                : r.name || "—"
-            }
-            value={money(
-              "cost" in r ? (r as PartLine).cost * (r as PartLine).qty : (r as FeeLine).amount
-            )}
-          />
-        ))}
-      </div>
-    );
-  }
+  const amountOf = (r: PartLine | FeeLine) =>
+    "cost" in r ? (r as PartLine).cost * (r as PartLine).qty : (r as FeeLine).amount;
+
   return (
-    <div className="flex flex-col gap-2">
-      {rows.length === 0 && (
-        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-      )}
-      {rows.map((r, i) => (
-        <div
-          key={i}
-          className={cn(
-            "grid items-center gap-2",
-            withQty ? "grid-cols-[1fr_72px_110px_32px]" : "grid-cols-[1fr_110px_32px]"
+    <div>
+      <table className="w-full table-fixed border-collapse">
+        <colgroup>
+          <col />
+          {withQty && <col className="w-[84px]" />}
+          <col className="w-[120px]" />
+          {/* NO SECOND MONEY COLUMN ON A FEE. Quantity times unit is
+              arithmetic worth showing; a fee's amount IS what was typed, and a
+              column repeating it was two headers called Amount. */}
+          {withQty && <col className="w-[110px]" />}
+          {!readOnly && <col className="w-[52px]" />}
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border bg-fp-table-header">
+            <th className="px-3 py-2.5 text-left">
+              <TableRequiredLabel>{nameLabel}</TableRequiredLabel>
+            </th>
+            {withQty && (
+              <th className="px-3 py-2.5 text-right">
+                <TableRequiredLabel>Qty</TableRequiredLabel>
+              </th>
+            )}
+            <th className="px-3 py-2.5 text-right">
+              <TableRequiredLabel>{withQty ? "Unit" : "Amount"}</TableRequiredLabel>
+            </th>
+            {withQty && (
+              <th className="px-3 py-2.5 text-right">
+                <TableRequiredLabel>Amount</TableRequiredLabel>
+              </th>
+            )}
+            {!readOnly && <th aria-hidden />}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr className="h-11 border-b border-border last:border-b-0">
+              <td
+                colSpan={withQty ? (readOnly ? 4 : 5) : readOnly ? 2 : 3}
+                className="px-3 text-sm text-muted-foreground"
+              >
+                {emptyLabel}
+              </td>
+            </tr>
           )}
-        >
-          <Input
-            value={r.name}
-            placeholder={namePlaceholder}
-            onChange={(e) => onChange(i, { name: e.target.value })}
-          />
-          {withQty && (
-            <Input
-              type="number"
-              className="text-center tabular-nums"
-              value={(r as PartLine).qty}
-              onChange={(e) => onChange(i, { qty: Number(e.target.value) })}
-            />
-          )}
-          <Input
-            type="number"
-            className="tabular-nums"
-            placeholder="$"
-            value={"cost" in r ? (r as PartLine).cost : (r as FeeLine).amount}
-            onChange={(e) =>
-              onChange(i, { [withQty ? "cost" : "amount"]: Number(e.target.value) })
-            }
-          />
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Remove ${r.name || "row"}`}
-            onClick={() => onRemove(i)}
+          {rows.map((r, i) => (
+            <tr key={i} className="group/row h-11 border-b border-border last:border-b-0">
+              <td className="relative p-0">
+                {readOnly ? (
+                  <span className="block truncate px-3 text-sm text-foreground">
+                    {r.name || "—"}
+                  </span>
+                ) : (
+                  <TableCellInput
+                    value={r.name}
+                    placeholder={namePlaceholder}
+                    aria-label={`${nameLabel} for row ${i + 1}`}
+                    onChange={(v) => onChange(i, { name: v })}
+                  />
+                )}
+              </td>
+              {withQty && (
+                <td className="relative p-0">
+                  {readOnly ? (
+                    <span className="block px-3 text-right text-sm tabular-nums text-foreground">
+                      {(r as PartLine).qty}
+                    </span>
+                  ) : (
+                    <TableCellInput
+                      value={String((r as PartLine).qty)}
+                      numeric
+                      aria-label={`Quantity for row ${i + 1}`}
+                      onChange={(v) =>
+                        onChange(i, { qty: Number(v.replace(/[^0-9]/g, "")) || 0 })
+                      }
+                    />
+                  )}
+                </td>
+              )}
+              <td className="relative p-0">
+                {readOnly ? (
+                  <span className="block px-3 text-right text-sm tabular-nums text-foreground">
+                    {money("cost" in r ? (r as PartLine).cost : (r as FeeLine).amount)}
+                  </span>
+                ) : (
+                  <TableCellInput
+                    value={String("cost" in r ? (r as PartLine).cost : (r as FeeLine).amount)}
+                    numeric
+                    prefix="$"
+                    aria-label={`${withQty ? "Unit cost" : "Amount"} for row ${i + 1}`}
+                    onChange={(v) =>
+                      onChange(i, {
+                        [withQty ? "cost" : "amount"]:
+                          Number(v.replace(/[^0-9.]/g, "")) || 0,
+                      })
+                    }
+                  />
+                )}
+              </td>
+              {/* THE LINE'S OWN TOTAL, computed — never typed. Quantity times
+                  unit is arithmetic, and a box to type it into is a box to get
+                  it wrong in. */}
+              {withQty && (
+                <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                  {money(amountOf(r))}
+                </td>
+              )}
+              {!readOnly && (
+                <td className="p-0 text-center">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove row ${i + 1}`}
+                    className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
+                    onClick={() => onRemove(i)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+        {/* THE TOTAL IS A ROW OF THE TABLE, not a caption under it — a sum
+            lives in the column it sums, on the same grid as the numbers above
+            it. Only once there is something to add up. */}
+        {rows.length > 0 && (
+          <tfoot>
+            <tr className="h-11 border-t border-border bg-fp-table-header">
+              <td
+                colSpan={withQty ? 3 : 1}
+                className="px-3 text-right text-sm text-muted-foreground"
+              >
+                Total
+              </td>
+              <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                {money(total)}
+              </td>
+              {!readOnly && <td aria-hidden />}
+            </tr>
+          </tfoot>
+        )}
+      </table>
+      {/* THE ADD ROW IS THE TABLE'S LAST BAND, not a chip on a corner — flush
+          inside a card there is no corner to hang from. */}
+      {!readOnly && (
+        <div className="flex items-center border-t border-border px-3 py-2">
+          <button
+            type="button"
+            onClick={onAdd}
+            className="-mx-1 flex h-8 items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            <X />
-          </Button>
+            <Plus className="size-4" /> {addLabel}
+          </button>
         </div>
-      ))}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="-mx-1 flex h-8 w-fit items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-      >
-        <Plus className="size-4" /> {addLabel}
-      </button>
+      )}
     </div>
   );
 }
@@ -270,6 +402,15 @@ export function ServiceOrderSheet({
     setDraft((d) => (d ? { ...d, [key]: value } : d));
 
   const tech = technicianById(draft.technicianId);
+  /* Minutes past midnight, which is the unit the DS's time slider speaks. */
+  const scheduledMinutes = draft.scheduledAt
+    ? new Date(draft.scheduledAt).getHours() * 60 +
+      new Date(draft.scheduledAt).getMinutes()
+    : 9 * 60;
+  const keyOf = (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
   const book = WORK_TYPES[draft.workType];
   const shipTos = shipTosFor(draft.customer);
   const assets = assetsFor(draft.shipTo);
@@ -354,7 +495,6 @@ export function ServiceOrderSheet({
       return {
         label: "Assign technician",
         onSelect: () => advance("Assigned"),
-        why: draft.technicianId ? undefined : "Choose a technician above.",
       };
     if (isWorkable(draft.status)) {
       /* THE FIELD APP IS A SETTING, so the act is too. With it off, the same
@@ -394,7 +534,7 @@ export function ServiceOrderSheet({
             );
           }
         },
-        why: draft.labor > 0 ? undefined : "Record the labour hours below.",
+
       };
     }
     if (draft.status === "Needs approval")
@@ -422,12 +562,10 @@ export function ServiceOrderSheet({
      states a condition asks the reader to press a fact. */
   const blockedWhy =
     draft.status === "Open" && !draft.technicianId
-      ? "Choose a technician above."
+      ? "Choose a technician before proceeding."
       : isWorkable(draft.status) && !cfg.serviceTechApp && draft.labor <= 0
-        ? "Record the labour hours below."
+        ? "Record the labour hours before proceeding."
         : nextAct.why;
-
-  const canAct = !blockedWhy;
 
   /* ─────────────────────────────────────────────── the money, worked out ── */
 
@@ -446,7 +584,12 @@ export function ServiceOrderSheet({
 
   return (
     <RecordSheet
-      size="wide"
+      /* THE SIZE THAT EXISTS FOR EXACTLY THIS SHAPE: tables on the left, a
+         fixed rail on the right. The rail costs the tables 340px plus a gap,
+         and at `wide` that came straight out of columns already at their
+         minimum — a parts table whose Amount column wraps is a table nobody
+         can add up by eye. */
+      size="xxwide"
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -488,21 +631,39 @@ export function ServiceOrderSheet({
         ) : undefined
       }
       footerPrimary={
-        creating ? undefined : (
-          <div className="flex items-center gap-3">
-            {blockedWhy && (
-              <span className="text-sm text-muted-foreground">{blockedWhy}</span>
-            )}
-            <Button disabled={!canAct} onClick={nextAct.onSelect}>
-              {nextAct.label}
-            </Button>
-          </div>
+        creating ? undefined : blockedWhy ? (
+          /* THE REASON IS ON THE BUTTON, NOT BESIDE IT.
+             A clause standing permanently next to the primary is a sentence
+             the reader has to read on every visit to the sheet, including the
+             ones where nothing is wrong — and at the foot of a long form it
+             read as part of the button's label. It belongs to the press: the
+             button is dead, pressing it says why, and the sheet is quiet the
+             rest of the time.
+
+             THE WRAPPER IS WHAT MAKES A DISABLED BUTTON HOVERABLE. A disabled
+             control fires no pointer events of its own, so the tooltip would
+             never open on the one state it exists for. */
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex" tabIndex={0} aria-describedby={undefined}>
+                <Button disabled onClick={nextAct.onSelect} className="pointer-events-none">
+                  {nextAct.label}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{blockedWhy}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button onClick={nextAct.onSelect}>{nextAct.label}</Button>
         )
       }
       onSubmit={() => {
         if (creating && onCreate) onCreate(draft);
       }}
     >
+      {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-10">
       {/* ───────────────────────────────────────────────────── intake ───── */}
       <SheetSection
         title="Intake"
@@ -663,29 +824,59 @@ export function ServiceOrderSheet({
       {/* ──────────────────────────────────────────── schedule and who ───── */}
       <SheetSection title="Schedule">
         <div className="grid grid-cols-2 gap-4">
-          <SheetField
-            label="Scheduled date and time"
-            description="Leave blank to dispatch at the yard team's discretion"
-          >
-            <Input
-              type="datetime-local"
-              value={draft.scheduledAt ? draft.scheduledAt.slice(0, 16) : ""}
-              onChange={(e) =>
-                setDraft((d) => {
-                  if (!d) return d;
-                  const v = e.target.value;
-                  if (!v) return { ...d, scheduledAt: null };
-                  const at = new Date(v);
-                  const p = (n: number) => String(n).padStart(2, "0");
-                  return {
-                    ...d,
-                    scheduledAt: at.toISOString(),
-                    dateKey: `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}`,
-                  };
-                })
-              }
-              disabled={workLocked}
-            />
+          {/* THE DS DATE CONTROL, not a native `datetime-local`. The browser's
+              own field draws a calendar glyph this app cannot theme — in dark
+              mode it renders as a pale box that belongs to no palette here —
+              and it is the one field in the sheet that would not have matched
+              the date on the 3PL order. */}
+          <SheetField label="Scheduled date">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start font-normal"
+                  disabled={workLocked}
+                >
+                  <CalendarIcon />
+                  {draft.scheduledAt
+                    ? DATE_FMT.format(new Date(draft.scheduledAt))
+                    : "Dispatch when you can"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={draft.scheduledAt ? new Date(draft.scheduledAt) : undefined}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    const at = new Date(d);
+                    at.setHours(
+                      Math.floor(scheduledMinutes / 60),
+                      scheduledMinutes % 60,
+                      0,
+                      0
+                    );
+                    setDraft((x) =>
+                      x
+                        ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) }
+                        : x
+                    );
+                  }}
+                />
+                {/* LEAVING IT UNBOOKED IS AN ANSWER, so it is offered here
+                    rather than only by clearing a text field nobody can clear. */}
+                <div className="border-t border-border p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => set("scheduledAt", null)}
+                  >
+                    Dispatch at the yard team's discretion
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </SheetField>
           <SheetField
             label="Technician"
@@ -707,6 +898,32 @@ export function ServiceOrderSheet({
             />
           </SheetField>
         </div>
+        {/* ARRIVAL TIME, ON THE SAME CONTROL THE DELIVERY WINDOW USES — the
+            two handles collapsed to the one this asks for. A service call is
+            an arrival, not a window: the customer is told when somebody turns
+            up, and the second handle would have been a promise about when they
+            leave that nobody can make. */}
+        {draft.scheduledAt && (
+          <div className="mt-4">
+            <MeasureSlider
+              label="Arriving"
+              value={scheduledMinutes}
+              max={24 * 60}
+              step={15}
+              format={(v) => formatMinutes(v)}
+              ticks={[0, 6 * 60, 12 * 60, 18 * 60, 24 * 60]}
+              tickLabel={(v) => formatMinutes(v).replace(":00", "")}
+              aria-label="Arrival time"
+              onChange={(a) => {
+                const at = new Date(draft.scheduledAt!);
+                at.setHours(Math.floor(a / 60), a % 60, 0, 0);
+                setDraft((x) =>
+                  x ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) } : x
+                );
+              }}
+            />
+          </div>
+        )}
         {tech && (
           <p className="mt-3 text-sm text-muted-foreground">
             {tech.base} · {tech.skills.join(" · ")} · {tech.phone}
@@ -767,229 +984,271 @@ export function ServiceOrderSheet({
 
       {/* ─────────────────────────────────────────── what was done, and cost */}
       <SheetSection
-        id={SECTION_MONEY_ID}
-        title="Work and billing"
+        title="Parts"
+        flush
         note={
-          <SheetSectionNote label="How this is worked out">
-            Parts at cost × quantity, labour at {money(LABOR_RATE)} an hour,
-            mileage at {money(MILEAGE_RATE)} a mile, plus the fees. Fees are set
-            by the dispatcher at intake and added to on site; labour and mileage
-            only exist once the job has happened.
+          <SheetSectionNote label="About parts">
+            Quantity times unit cost. The line's own total is arithmetic and is
+            never typed — a box for it is a box to get it wrong in.
           </SheetSectionNote>
         }
       >
-        <div className="flex flex-col gap-5">
-          <div>
-            <p className="mb-2 text-sm font-medium text-foreground">Parts</p>
-            <LineRows
-              rows={draft.parts}
-              withQty
-              readOnly={workLocked}
-              namePlaceholder="Part"
-              addLabel="Add part"
-              emptyLabel="No parts on this job."
-              onChange={(i, patch) => setLine("parts", i, patch)}
-              onAdd={() => addLine("parts")}
-              onRemove={(i) => removeLine("parts", i)}
-            />
-          </div>
+        <LineTable
+          rows={draft.parts}
+          withQty
+          readOnly={workLocked}
+          nameLabel="Part"
+          namePlaceholder="Part"
+          addLabel="Add part"
+          emptyLabel="No parts on this job."
+          total={partsSum}
+          onChange={(i, p) => setLine("parts", i, p)}
+          onAdd={() => addLine("parts")}
+          onRemove={(i) => removeLine("parts", i)}
+        />
+      </SheetSection>
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-foreground">Fees</p>
-            <LineRows
-              rows={draft.fees}
-              readOnly={billed}
-              namePlaceholder="Fee name, e.g. Service call fee"
-              addLabel="Add fee"
-              emptyLabel="No fees on this job."
-              onChange={(i, patch) => setLine("fees", i, patch)}
-              onAdd={() => addLine("fees")}
-              onRemove={(i) => removeLine("fees", i)}
-            />
-          </div>
+      <SheetSection
+        title="Fees"
+        flush
+        note={
+          <SheetSectionNote label="Who sets a fee">
+            The dispatcher sets these at intake — a service call, a trip, an
+            after-hours callout — and the technician adds to them on site.
+            Labour and mileage are not fees; they are measured, and they only
+            exist once the job has happened.
+          </SheetSectionNote>
+        }
+      >
+        <LineTable
+          rows={draft.fees}
+          readOnly={billed}
+          nameLabel="Fee"
+          namePlaceholder="Fee name, e.g. Service call fee"
+          addLabel="Add fee"
+          emptyLabel="No fees on this job."
+          total={feesSum}
+          onChange={(i, p) => setLine("fees", i, p)}
+          onAdd={() => addLine("fees")}
+          onRemove={(i) => removeLine("fees", i)}
+        />
+      </SheetSection>
 
-          <div className="grid grid-cols-2 gap-4">
-            <SheetField label="Labour (hours)">
-              <Input
-                type="number"
-                className="tabular-nums"
-                value={draft.labor}
-                onChange={(e) => set("labor", Number(e.target.value))}
-                disabled={workLocked}
+      <SheetSection
+        title="Labour and mileage"
+        note={
+          <SheetSectionNote label="Why sliders">
+            <p className="text-foreground">
+              Both are one number, so both get one handle.
+            </p>
+            <p className="mt-1.5 text-muted-foreground">
+              The same control the delivery window uses, minus the second
+              handle — a window is a start and an end, four hours is not. The
+              figure is printed beside the label rather than estimated from
+              where the handle sits, and what it costs sits at the other edge,
+              because that is the reason anybody moves it.
+            </p>
+          </SheetSectionNote>
+        }
+      >
+        <div className="flex flex-col gap-6">
+          <MeasureSlider
+            label="Labour"
+            value={draft.labor}
+            onChange={(v) => set("labor", v)}
+            max={12}
+            step={0.25}
+            format={(v) => `${v} h`}
+            ticks={[0, 3, 6, 9, 12]}
+            trailing={`${money(LABOR_RATE)}/h · ${money(laborSum)}`}
+            aria-label="Labour hours"
+          />
+          <MeasureSlider
+            label="Mileage"
+            value={draft.mileage}
+            onChange={(v) => set("mileage", v)}
+            max={200}
+            step={1}
+            format={(v) => `${v} mi`}
+            ticks={[0, 50, 100, 150, 200]}
+            trailing={`${money(MILEAGE_RATE)}/mi · ${money(mileageSum)}`}
+            aria-label="Mileage"
+          />
+        </div>
+      </SheetSection>
+
+      {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a disposal
+          fee, a correction. Kept apart from the fees set at intake because
+          "what we agreed to charge" and "what we added afterwards" are
+          different answers to a customer's question. */}
+      {(draft.status === "Approved" || draft.status === "Completed") && (
+        <SheetSection title="Additional charges" flush>
+          <LineTable
+            rows={draft.extraCharges}
+            readOnly={draft.status === "Completed"}
+            nameLabel="Charge"
+            namePlaceholder="Charge name, e.g. Return trip"
+            addLabel="Add charge"
+            emptyLabel="No additional charges."
+            total={extraSum}
+            onChange={(i, p) => setLine("extraCharges", i, p)}
+            onAdd={() => addLine("extraCharges")}
+            onRemove={(i) => removeLine("extraCharges", i)}
+          />
+        </SheetSection>
+      )}
+
+        </div>
+
+        {/* ── THE RAIL: WHAT THE ORDER HAS BECOME ──────────────────────────
+            One rule decides which side a card is on: can you type into it? The
+            job's parts go left, in the sequence you fill them; what the job
+            has become goes right — derived, read-only, true whether or not
+            anyone is looking. Once an editable number and a computed one share
+            a column they look identical, and the reader stops knowing which is
+            which. Same rail, same width, same cards as the 3PL order sheet. */}
+        <div className="flex flex-col gap-4">
+          {/* THE ACCOUNT OF HOW IT ADDS UP, beside the tables it adds up. */}
+          <RailCard title="Summary" icon={<Receipt />}>
+            <div className="flex flex-col divide-y divide-border">
+              <RailRow label="Parts" value={money(partsSum)} />
+              <RailRow
+                label={`Labour — ${draft.labor} h`}
+                value={money(laborSum)}
               />
-            </SheetField>
-            <SheetField label="Mileage (miles)">
-              <Input
-                type="number"
-                className="tabular-nums"
-                value={draft.mileage}
-                onChange={(e) => set("mileage", Number(e.target.value))}
-                disabled={workLocked}
+              <RailRow
+                label={`Mileage — ${draft.mileage} mi`}
+                value={money(mileageSum)}
               />
-            </SheetField>
-          </div>
-
-          {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a
-              disposal fee, a correction. They are kept apart from the fees set
-              at intake because "what we agreed to charge" and "what we added
-              afterwards" are different answers to a customer's question. */}
-          {(draft.status === "Approved" || draft.status === "Completed") && (
-            <div>
-              <p className="mb-2 text-sm font-medium text-foreground">
-                Additional charges
-              </p>
-              <LineRows
-                rows={draft.extraCharges}
-                readOnly={draft.status === "Completed"}
-                namePlaceholder="Charge name, e.g. Return trip"
-                addLabel="Add charge"
-                emptyLabel="No additional charges."
-                onChange={(i, patch) => setLine("extraCharges", i, patch)}
-                onAdd={() => addLine("extraCharges")}
-                onRemove={(i) => removeLine("extraCharges", i)}
-              />
-            </div>
-          )}
-
-          <div className="rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-4">
-            <MoneyRow label="Parts" value={money(partsSum)} />
-            <MoneyRow
-              label={`Labour — ${draft.labor} h × ${money(LABOR_RATE)}`}
-              value={money(laborSum)}
-            />
-            <MoneyRow
-              label={`Mileage — ${draft.mileage} mi × ${money(MILEAGE_RATE)}`}
-              value={money(mileageSum)}
-            />
-            <MoneyRow label="Fees" value={money(feesSum)} />
-            {extraSum > 0 && (
-              <MoneyRow label="Additional charges" value={money(extraSum)} />
-            )}
-            <div className="mt-2 border-t border-fp-outline-1 pt-2">
-              <MoneyRow
+              <RailRow label="Fees" value={money(feesSum)} />
+              {extraSum > 0 && (
+                <RailRow label="Additional charges" value={money(extraSum)} />
+              )}
+              <RailRow
                 label={billed ? "Invoice total" : "Running total"}
                 value={money(total)}
                 bold
               />
             </div>
-          </div>
-        </div>
-      </SheetSection>
-
-      {/* ───────────────────────────────────────────────────── billing ───── */}
-      <SheetSection
-        title="Billing"
-        note={
-          <SheetSectionNote label="How billing runs here">
-            <p className="text-foreground">
-              {cfg.nativeBilling
-                ? "Native billing is on: the invoice writes itself once the job is approved."
-                : "Native billing is off: the costs are captured here, and somebody raises the invoice."}
-            </p>
-            <p className="mt-1.5 text-muted-foreground">
-              Either way it reaches accounting on a batch sync afterwards, not
-              in real time — which is the difference between Approved and
-              Completed.
-            </p>
-          </SheetSectionNote>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Invoice</span>
-            {draft.invoiceCreated ? (
-              <StatusChip tone="success">Raised</StatusChip>
-            ) : billed ? (
-              <StatusChip tone="failed">Not generated</StatusChip>
-            ) : (
-              <span className="text-muted-foreground">
-                {cfg.nativeBilling
-                  ? "Generates itself on approval"
-                  : "Raised by hand after approval"}
-              </span>
+            {draft.quote && (
+              <div className="border-t border-border px-4 py-3">
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-sm text-muted-foreground">Quoted on site</span>
+                  <span className="text-sm tabular-nums text-foreground">
+                    {money(draft.quote.total)}
+                  </span>
+                </div>
+                {isRecorded(draft.status) && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {quoteGap > 0.005
+                      ? `${money(quoteGap)} more than the quote — actual labour, mileage and anything extra the job needed.`
+                      : "The job came in at the quoted figure."}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-          {draft.invoiceCreated && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Accounting</span>
-              {draft.synced ? (
-                <StatusChip tone="success">Synced</StatusChip>
-              ) : (
-                <StatusChip tone="processing">Waiting on the next sync</StatusChip>
+          </RailCard>
+
+          <RailCard title="Billing" icon={<FileText />}>
+            <div className="flex flex-col divide-y divide-border">
+              <RailRow
+                label="Invoice"
+                value={
+                  draft.invoiceCreated ? (
+                    <StatusChip tone="success">Raised</StatusChip>
+                  ) : billed ? (
+                    <StatusChip tone="failed">Not generated</StatusChip>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {cfg.nativeBilling ? "On approval" : "Raised by hand"}
+                    </span>
+                  )
+                }
+              />
+              {draft.invoiceCreated && (
+                <RailRow
+                  label="Accounting"
+                  value={
+                    draft.synced ? (
+                      <StatusChip tone="success">Synced</StatusChip>
+                    ) : (
+                      <StatusChip tone="processing">Next sync</StatusChip>
+                    )
+                  }
+                />
+              )}
+              <RailRow
+                label="Approval"
+                value={
+                  <span className="text-muted-foreground">
+                    {cfg.managerApproval ? "Manager signs off" : "Automatic"}
+                  </span>
+                }
+              />
+              {cfg.roiFeed && (
+                <RailRow
+                  label="Asset payback"
+                  value={
+                    <span className="text-muted-foreground">Fed by this job</span>
+                  }
+                />
               )}
             </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Approval</span>
-            <span className="text-foreground">
-              {cfg.managerApproval
-                ? "A service manager signs the job off before it is billed"
-                : "Approved automatically the moment the work is recorded"}
-            </span>
-          </div>
-          {cfg.roiFeed && (
-            <p className="text-sm text-muted-foreground">
-              What this job costs feeds {draft.assetName}'s payback.
-            </p>
-          )}
-          {draft.invoiceCreated && (
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toast.success(`${draft.orderNo} invoice downloaded`)}
-              >
-                <Download /> Download invoice
-              </Button>
-            </div>
-          )}
-        </div>
-      </SheetSection>
+            {draft.invoiceCreated && (
+              <div className="border-t border-border p-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => toast.success(`${draft.orderNo} invoice downloaded`)}
+                >
+                  <Download /> Download invoice
+                </Button>
+              </div>
+            )}
+          </RailCard>
 
-      {/* ─────────────────────────────────────────────────── provenance ───── */}
-      <SheetSection title="Record">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Raised by</p>
-            <p className="text-foreground">{draft.raisedBy}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Arrived on site</p>
-            <p className="text-foreground">
-              {draft.arrivedAt
-                ? new Date(draft.arrivedAt).toLocaleString()
-                : "Not yet"}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Work recorded</p>
-            <p className="text-foreground">
-              {draft.completedAt
-                ? new Date(draft.completedAt).toLocaleString()
-                : "Not yet"}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Customer signature</p>
-            <p className="text-foreground">{draft.signed ? "Captured" : "Not captured"}</p>
-          </div>
-          {draft.returnOf && (
-            <div>
-              <p className="text-muted-foreground">Return visit for</p>
-              <p className="text-foreground">{draft.returnOf}</p>
+          <RailCard title="Record" icon={<History />}>
+            <div className="flex flex-col divide-y divide-border">
+              <RailRow label="Raised by" value={draft.raisedBy} />
+              <RailRow label="Intake" value={draft.source} />
+              <RailRow
+                label="Arrived on site"
+                value={
+                  draft.arrivedAt
+                    ? stampLabel(draft.arrivedAt)
+                    : <span className="text-muted-foreground">Not yet</span>
+                }
+              />
+              <RailRow
+                label="Work recorded"
+                value={
+                  draft.completedAt
+                    ? stampLabel(draft.completedAt)
+                    : <span className="text-muted-foreground">Not yet</span>
+                }
+              />
+              <RailRow
+                label="Signature"
+                value={
+                  draft.signed ? (
+                    "Captured"
+                  ) : (
+                    <span className="text-muted-foreground">Not captured</span>
+                  )
+                }
+              />
+              {draft.returnOf && (
+                <RailRow label="Return visit for" value={draft.returnOf} />
+              )}
+              {draft.spawnedReturn && (
+                <RailRow label="Return visit created" value={draft.spawnedReturn} />
+              )}
             </div>
-          )}
-          {draft.spawnedReturn && (
-            <div>
-              <p className="text-muted-foreground">Return visit created</p>
-              <p className="text-foreground">{draft.spawnedReturn}</p>
-            </div>
-          )}
+          </RailCard>
         </div>
-      </SheetSection>
+      </div>
     </RecordSheet>
   );
 }
 
-/** Icons kept in scope for the acts that use them. */
-export const SHEET_ICONS = { Wrench, FileCheck, Send };

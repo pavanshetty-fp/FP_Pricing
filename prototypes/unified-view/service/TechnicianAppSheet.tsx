@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { RecordSheet } from "../RecordSheet";
+import { MeasureSlider } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import {
   LABOR_RATE,
@@ -399,29 +400,39 @@ export function TechnicianAppSheet({
               <p className="mb-2 text-sm font-medium text-foreground">Fees</p>
               {feesEditor}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <SheetField
-                label={
-                  outcome === "done" ? "Labour (hours)" : "Diagnostic labour so far"
-                }
-                required
-              >
-                <Input
-                  type="number"
-                  className="tabular-nums"
-                  value={labor}
-                  onChange={(e) => setLabor(Number(e.target.value))}
-                />
-              </SheetField>
-              <SheetField label="Mileage (miles)">
-                <Input
-                  type="number"
-                  className="tabular-nums"
+            {/* THE SAME CONTROL AS THE ORDER SHEET'S, for the same reason:
+                both are one number, so both get one handle, and the figure is
+                printed rather than estimated from where the handle sits. A
+                technician on a phone drags; a dispatcher at a desk drags. The
+                two screens must not ask for the same number two ways. */}
+            <div className="flex flex-col gap-6">
+              <MeasureSlider
+                label={outcome === "done" ? "Labour" : "Diagnostic labour so far"}
+                value={labor}
+                onChange={setLabor}
+                max={12}
+                step={0.25}
+                format={(v) => `${v} h`}
+                ticks={[0, 3, 6, 9, 12]}
+                trailing={money(labor * LABOR_RATE)}
+                aria-label="Labour hours"
+              />
+              {/* NOTHING TO CLAIM FOR A TRIP THAT IS NOT OVER. A job left
+                  parts-pending has not finished travelling, so the miles are
+                  counted on the visit that completes it. */}
+              {outcome === "done" && (
+                <MeasureSlider
+                  label="Mileage"
                   value={mileage}
-                  onChange={(e) => setMileage(Number(e.target.value))}
-                  disabled={outcome === "pending"}
+                  onChange={setMileage}
+                  max={200}
+                  step={1}
+                  format={(v) => `${v} mi`}
+                  ticks={[0, 50, 100, 150, 200]}
+                  trailing={money(mileage * MILEAGE_RATE)}
+                  aria-label="Mileage"
                 />
-              </SheetField>
+              )}
             </div>
 
             {/* THE OUTCOME, AS TWO WORDS RATHER THAN TWO BUTTONS. Which one is

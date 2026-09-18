@@ -96,6 +96,64 @@ that one will govern several modules and is held back pending it.
   when native billing is off. Two more pages would be two more places to learn
   for two acts that belong to this record.
 
+## The order sheet is two columns, like the 3PL one
+
+One rule decides which side a card is on: **can you type into it?** The job's
+parts go left, in the sequence you fill them. What the job HAS BECOME goes
+right — Summary, Billing, Record — derived, read-only, true whether or not
+anyone is looking. Once an editable number and a computed one share a column
+they look identical and the reader stops knowing which is which.
+
+It takes `xxwide`, the size that exists for exactly this shape. The rail costs
+the tables 340px plus a gap, and at `wide` that came out of columns already at
+their minimum.
+
+### Parts and fees are the DS's editable table
+
+The same idiom the 3PL lines table is built from: fixed layout, a Surface-1a
+header band, cells with no chrome of their own, the total as a ROW of the table
+rather than a caption under it, and the Add row as the table's last band. Three
+stacked inputs in a row was a form pretending to be a table — the columns had
+no headers, so a reader had to work out which box was the quantity and which
+was the money, on every row.
+
+A part's line total is computed, never typed: quantity × unit is arithmetic,
+and a box for it is a box to get it wrong in. A **fee has one money column**,
+because a fee's amount IS what was typed — two headers called Amount was the
+part table's shape forced onto something that does not have it.
+
+### Labour, mileage and the arrival time are single-handle sliders
+
+The same control as the delivery window, minus the second handle. A window is
+two facts, a start and an end; four hours is one, sixteen miles is one, and an
+arrival is one — the second handle would have been a promise about when the
+technician leaves that nobody can make.
+
+The figure is PRINTED beside the label rather than estimated from where the
+handle sits, and **what it costs sits at the other edge** — the rate and the
+money — because that is the reason anybody moves it.
+
+The technician's app uses the same control for the same two numbers. Two
+screens must not ask for the same number two ways.
+
+### The date is the DS date control, not a native `datetime-local`
+
+The browser's own field draws a calendar glyph this app cannot theme; in dark
+mode it rendered as a pale box belonging to no palette here, and it was the one
+field in the sheet that did not match the date on a 3PL order. Leaving a job
+unscheduled is an answer, so it is offered inside the picker rather than only
+by clearing a field nobody can clear.
+
+### The blocked reason is on the button, not beside it
+
+A clause standing permanently next to the primary is a sentence the reader has
+to read on every visit, including the ones where nothing is wrong — and at the
+foot of a long form it read as part of the button's label. It belongs to the
+press: the button is dead, pressing it says why, and the sheet is quiet the
+rest of the time. (A disabled control fires no pointer events, so the tooltip
+hangs off a wrapper — otherwise it would never open on the one state it exists
+for.)
+
 ## Per-lane card defaults
 
 - **Open** keeps the schedule and says "Nobody assigned" — that is the point of

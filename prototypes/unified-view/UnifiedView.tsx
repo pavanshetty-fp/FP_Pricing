@@ -20,12 +20,15 @@ import {
   FileSignature,
   DollarSign,
   Wrench,
+  HardHat,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ThemeToggle } from "@/components/theme";
+import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
+import { TechniciansScreen } from "./service/TechniciansScreen";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
@@ -161,6 +164,16 @@ const THREE_PL_NAV: NavItem[] = [
 ];
 
 /**
+ * SERVICE WORK — TIER 1. Two areas, and no second level: Work Orders is a
+ * destination in its own right and so is the technician list, so the content
+ * layer takes the full width in both (Sales works the same way).
+ */
+const SERVICE_NAV: NavItem[] = [
+  { key: "service-work-orders", label: "Work Orders", icon: <Wrench /> },
+  { key: "service-technicians", label: "Technicians", icon: <HardHat /> },
+];
+
+/**
  * TIER 2 — the contextual sub-nav for the active rail item, keyed by that
  * item. Only areas with a second nav level appear here; a rail item with no
  * entry is a destination in its own right and the content layer takes the full
@@ -228,9 +241,7 @@ const APP_MODULES = [
 const MODULE_NAV: Record<string, NavItem[]> = {
   sales: SALES_NAV,
   "3pl": THREE_PL_NAV,
-  /* SERVICE WORK IS NEXT, and it gets the same treatment while its shape is
-     being decided: the module is real, its rail is not invented. */
-  service: [],
+  service: SERVICE_NAV,
   lease: [],
   pricing: [],
 };
@@ -1277,6 +1288,10 @@ export function UnifiedView() {
         return <AssetsScreen focus={focus} />;
       case "3pl-delivery-orders":
         return <BrokerOrdersScreen focus={focus} />;
+      case "service-work-orders":
+        return <ServiceWorkScreen />;
+      case "service-technicians":
+        return <TechniciansScreen />;
       case "3pl-vendors":
         return <BrokerVendorsScreen {...dirProps("3pl-vendors")} />;
       case "3pl-customers":

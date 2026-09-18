@@ -336,8 +336,12 @@ const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
 function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string }) {
   const stack = (
     <div className="flex min-w-0 flex-col">
-      {lines.map((l) => (
-        <span key={l.text} className={cn("truncate", LEVEL_CLASS[l.level ?? 1])} title={l.text}>
+      {/* KEYED BY POSITION, NOT BY TEXT. Two lines in a unit can legitimately
+          read the same — an asset called "Lube Skid" whose type is "Lube Skid"
+          — and React then drops one of them and warns about it. Position is
+          what a stack's identity actually is: these lines never reorder. */}
+      {lines.map((l, i) => (
+        <span key={i} className={cn("truncate", LEVEL_CLASS[l.level ?? 1])} title={l.text}>
           {l.text}
         </span>
       ))}

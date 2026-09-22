@@ -2483,8 +2483,19 @@ export function BrokerOrderSheet({
                      shouted before the reader had compared anything. Outlined,
                      it is still the only coloured thing on the row and still
                      the only press that moves the order, and it fills on
-                     hover, when it IS the one being chosen. */
-                  className="border-status-success text-status-success hover:bg-status-success hover:text-status-success-foreground"
+                     hover, when it IS the one being chosen.
+
+                     THE `dark:` HALF IS NOT BELT-AND-BRACES (Pavan,
+                     2026-09-22 — "the hover state seems off"). The `outline`
+                     variant carries `dark:hover:bg-input/50`, which is a
+                     later-stacked variant of the same specificity and so BEAT
+                     the plain `hover:bg-status-success`: in dark the fill
+                     never went green at all. The text still switched to
+                     `--status-success-foreground` — #052e16, a near-black
+                     green — and landed on that grey-blue fill, which is how a
+                     hover state came to be less readable than the resting one.
+                     Naming the dark hover explicitly is what wins. */
+                  className="border-status-success text-status-success hover:bg-status-success hover:text-status-success-foreground dark:hover:bg-status-success dark:hover:text-status-success-foreground"
                   disabled={draft.vendorId === v.id}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -3789,15 +3800,21 @@ export function BrokerOrderSheet({
         row of figures to show through. A top rule says it is pinned; a shadow
         under a full-bleed bar reads as a second edge.
 
-        OPAQUE, IN THE SHEET'S OWN SURFACE — `bg-popover`. Without a fill the
-        content scrolls through it.
+        A SURFACE OF ITS OWN — `bg-fp-card-1`, the DS's raised/inset step
+        (Pavan, 2026-09-22). It was `bg-popover`, which is the SHEET's own
+        fill: opaque, so nothing scrolled through it, but identical to the
+        ground behind it — so while it was pinned there was nothing to say it
+        was pinned, and the top rule read as one more row rule in a sheet full
+        of them. `--fp-card-1` steps AWAY from the content layer in both
+        themes — lighter in dark, darker in light — so the bar reads as a
+        layer over the form rather than as part of it.
 
         FIGURES ONLY. It was a banner with a sentence and a percentage in it,
         which is a paragraph where a reader wants a row of numbers. Equal
         thirds, with the profit's figure flush to the right edge so the row
         spans the bar instead of trailing off before it does. */}
     {shownQuote && (
-      <div className="sticky -bottom-4 z-10 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-popover px-4 py-3 lg:grid-cols-3">
+      <div className="sticky -bottom-4 z-10 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-fp-card-1 px-4 py-3 lg:grid-cols-3">
         {[
           { label: "Vendor pricing", value: carrierTotal },
           { label: "Customer pricing", value: billed },

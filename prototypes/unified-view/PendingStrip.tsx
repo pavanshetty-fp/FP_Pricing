@@ -27,13 +27,16 @@ export interface PendingItem {
  *
  * A strip that names a missing field and cannot take you to it is a label for
  * a hunt. The press scrolls the section into view and then blinks its outline
- * twice — because after a scroll the eye is on the MOVEMENT, not on the thing
- * that moved, and "it is this one" is a different statement from "here is some
- * of the form".
+ * — because after a scroll the eye is on the MOVEMENT, not on the thing that
+ * moved, and "it is this one" is a different statement from "here is some of
+ * the form".
  *
- * TWICE, AND IT LEAVES NO TRACE. Once reads as a render glitch, three times
- * reads as an error, and a ring that stays is a state — nothing about the
- * record changed, so nothing about it should still look different in a second.
+ * ONCE, AND IT LEAVES NO TRACE (Pavan, 2026-09-22 — it was twice). Two flashes
+ * is a thing asking to be watched; one is a thing pointing at itself and then
+ * getting out of the way, and the reader is already looking because the scroll
+ * took them there. Three times reads as an error, and a ring that stays is a
+ * state — nothing about the record changed, so nothing about it should still
+ * look different in a second.
  */
 export function attend(id: string) {
   const el = document.getElementById(id);

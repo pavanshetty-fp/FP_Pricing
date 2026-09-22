@@ -150,6 +150,12 @@ export function RecurringDeliverySheet({
   return (
     <RecordSheet
       size="wide"
+      /* IT OPENS OVER THE RULE SHEET, so it takes the gap twice. At level 1 it
+         covered the rule sheet exactly and read as the SAME sheet having
+         changed its contents — the 56px strip of the sheet underneath is the
+         only language the stack has for "there is one of these behind this
+         one". (DS ux rules, side-sheet anatomy.) */
+      level={2}
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"

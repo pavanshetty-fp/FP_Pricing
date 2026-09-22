@@ -294,6 +294,10 @@ export function DirectoryRecordSheet<T>({
       editTitle={title}
       createTitle={`Create New ${noun}`}
       createAction={`Create ${noun}`}
+      /* NO CANCEL — this sheet autosaves its draft (`useDraftSaveState`
+         above), and "Cancel" promises to undo something that has already been
+         kept. Close is the honest exit. (DS ux rules, side-sheet anatomy.) */
+      showCancel={false}
       headerAside={
         <span className="flex items-center gap-2">
           {headerAside}

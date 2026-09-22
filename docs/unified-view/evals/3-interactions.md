@@ -1,5 +1,15 @@
 # Eval — interactions and behaviour
 
+
+> **METHOD TAGS.** Every assertion below carries one, because an assertion with
+> no stated method is one each run measures differently and no two runs agree
+> on. `npm run eval` executes the `[script]` ones and writes a results file;
+> the rest are read by a person or an agent, against this file.
+>
+> `[script]` a check in `scripts/eval/` · `[grep]` a one-line search, written
+> out · `[structural]` a search plus a look at the context · `[read]` an agent
+> reads the file against the doc · `[browser]` the running app.
+
 Against `../3-interactions.md` and `docs/ds/interactions/2-rules.md`.
 
 ## Editing
@@ -78,3 +88,25 @@ Against `../3-interactions.md` and `docs/ds/interactions/2-rules.md`.
 - [ ] **L2** A nested switch goes off with its parent and shows disabled.
 - [ ] **L2** A setting that removes a step removes its UI — no facet for a
       source nothing can arrive from.
+
+## From Unified View — added 2026-09-22
+
+- [ ] **L1** `[script]` A sheet that autosaves does not show Cancel.
+      — *ux §Side-sheet anatomy*
+- [ ] **L1** `[grep]` The attention outline fires **once**.
+      `grep -n "fp-attention" src/index.css` — *interactions §3c*
+- [ ] **L2** `[read]` A thing that is not one box flashes a FILL across every
+      cell carrying `data-blink`, not an outline round each. — *interactions
+      §3c*
+- [ ] **L2** `[read]` `attend()` moves no focus, and the blink waits for the
+      travel to finish. — *interactions §3c*
+- [ ] **L2** `[browser]` Reduced motion keeps the point and drops the flash.
+- [ ] **L2** `[read]` A membership gate is enforced in the PICKER, and its
+      empty state names the gate. A gate enforced afterwards by an error let
+      somebody do the work first. — *ux §Side-sheet anatomy*
+- [ ] **L2** `[read]` A collision is flagged inline and stays pressable. The
+      system knows the fact; only the person knows whether it is a mistake.
+      — *ux, same rule*
+- [ ] **L1** `[structural]` A control with nothing behind it is **not
+      rendered**, rather than rendered dead — and a control that is dead for a
+      reason says the reason on the press. — *interactions §7b*

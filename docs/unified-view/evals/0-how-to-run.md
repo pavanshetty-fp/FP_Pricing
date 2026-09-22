@@ -27,11 +27,76 @@ notice, so it is a first-class result, not an afterthought.
 
 ## Running them
 
+```bash
+npm run eval
+```
+
+**That command is the whole answer to why these sat unrun from the day they
+were written until 2026-09-22.** It was not that nobody cared. It was that
+**nothing executed them**: four of the five segments were prose checkboxes with
+no stated method, there was no command, nothing ran in CI, and a run left no
+trace — so a run could not be told apart from a reading, and no two runs could
+be compared. Three things were missing and they are three separate things.
+
+| Missing | Now |
+|---|---|
+| a command | `npm run eval` — every scripted check, exits non-zero on L1 |
+| a method per assertion | a **method tag** on every line: `[script]` `[grep]` `[structural]` `[read]` `[browser]` |
+| a trace | each run writes `results/<date>.md` with the commit it ran against |
+
+### The five methods
+
+| Tag | How it is answered | Who |
+|---|---|---|
+| `[script]` | a check module in `scripts/eval/` | the runner |
+| `[grep]` | a one-line search, written out in the assertion | anyone |
+| `[structural]` | a search, then a look at what surrounds the hit | an agent |
+| `[read]` | an agent reads the file against the rule | an agent |
+| `[browser]` | the running app — contrast, both themes, focus, scrollbars | an agent with the preview |
+
+### What the runner will NOT do
+
+**It holds only L1 — the rules with exactly one correct answer.** A script that
+reports L2 is a script one commit away from making a design decision, and the
+first version of the boxed-table check proved it: it reported three violations
+and two of them were correct code. It now surfaces those at L2 and asks a
+person which variant it is.
+
+The run ends by listing what no script covered, so a clean run is never
+mistaken for a finished one.
+
+## How a run measures CHANGE
+
+A single run is a snapshot and says nothing about direction. Three things make
+it a measurement:
+
+1. **A baseline.** The first run writes `results/<date>.md` with a finding
+   count in a machine-readable comment.
+2. **A delta.** Every run after it prints `N findings · was M in <file>` and
+   the difference. A number going up in a week nobody touched tokens is a
+   check that has started matching something new.
+3. **A census, not just a pass/fail.** `npm run eval -- --census` counts the
+   VARIANTS — every sheet against every option it takes, every table against
+   whether it is in a unit. Pass/fail cannot see a fifth width appearing or a
+   second table quietly growing its own box; a census can, and that is how
+   `docs/ds/ui/7-variants.md` stays true.
+
+## When they run — the habit
+
+- **Before any commit that changes a screen.** `npm run eval` takes under a
+  second.
+- **At the end of any stretch of work that settled a rule**, because the rule
+  has to land in `docs/ds/` and the eval has to gain the assertion. A run that
+  changes no document, over work that settled something, has left it in the
+  wrong place.
+- **Whole-set, on a schedule** — the scripted checks every time, and one manual
+  segment each pass, in the order below, so all five come round.
+
 | Kind | How |
 |---|---|
-| Countable — tokens, hex, icons, scale values, labels, imports | a script over the source; fast, runs in CI |
-| Scripted segments | `npm run eval:boxed-tables` — the boxed table unit (§10f) |
-| Structural — does this screen have the zones in order, does this sheet have the three footer slots | grep-shaped assertions over the source |
+| Countable — tokens, hex, icons, scale values, labels, imports | `npm run eval` |
+| The boxed table unit on its own (§10f) | `npm run eval:boxed-tables` |
+| Structural — zones in order, the three footer slots | grep-shaped assertions over the source |
 | Judgement — does the board follow the board rules, is this colour binding right | an agent reading the file against the doc |
 | Rendered — contrast, both themes, focus rings, no visible scrollbars | the running app in the browser pane |
 

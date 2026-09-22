@@ -1,5 +1,15 @@
 # Eval — layouts, placement and structure
 
+
+> **METHOD TAGS.** Every assertion below carries one, because an assertion with
+> no stated method is one each run measures differently and no two runs agree
+> on. `npm run eval` executes the `[script]` ones and writes a results file;
+> the rest are read by a person or an agent, against this file.
+>
+> `[script]` a check in `scripts/eval/` · `[grep]` a one-line search, written
+> out · `[structural]` a search plus a look at the context · `[read]` an agent
+> reads the file against the doc · `[browser]` the running app.
+
 Against `../2-layouts.md` and `docs/ds/ux/2-rules.md`.
 
 ## The page
@@ -136,3 +146,29 @@ Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
 - [ ] **L2** Four distinct states exist and say different things: nothing in
       the window · nothing matches · nothing yet · module not built.
 - [ ] **L1** No screen says only "No data".
+
+## From Unified View — added 2026-09-22
+
+Against `docs/ds/ui/7-variants.md`, the variant catalogue.
+
+- [ ] **L1** `[script]` Every sheet's width is one of the five named sizes.
+      A sixth is a decision nobody took in the open. — *variants §1 W1–W5*
+- [ ] **L2** `[script]` **The sheet census is read, not just printed.**
+      `npm run eval -- --census`. A width used once is either a shape nobody
+      else has met or a fork; either way somebody looks. — *variants §1*
+- [ ] **L1** `[structural]` A sheet rendered inside another sheet's subtree
+      passes `level={2}`. — *variants §1 D2*
+- [ ] **L2** `[script]` **Every T2 table — one drawing its own box — is
+      declared.** The check surfaces them at L2 and asks which variant it is,
+      because a table that IS its own unit is correct and a T2 nested inside a
+      card is not. Today: 25 T1, 3 T2, of which one is a box in a box.
+      — *variants §3*
+- [ ] **L2** `[read]` A two-column sheet has a genuinely derived right side.
+      A rail of things you can type into is a B1 sheet wearing B2. — *variants
+      §1 B1/B2*
+- [ ] **L1** `[structural]` A create sheet's strip is `SheetSteps`; a live
+      record's is `StageBar`. Neither is hand-rolled. — *variants §1 H1/H2*
+- [ ] **L2** `[read]` An add inside a multi-table card is a cell of the
+      matrix, not a hanging add that could only aim at one table. — *ui §10f*
+- [ ] **L1** `[read]` An empty table is padded text (E1); a dashed box is only
+      ever an optional section that is off (E2). — *variants §5*

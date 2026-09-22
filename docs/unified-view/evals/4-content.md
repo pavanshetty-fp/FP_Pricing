@@ -1,5 +1,15 @@
 # Eval — what the screens say
 
+
+> **METHOD TAGS.** Every assertion below carries one, because an assertion with
+> no stated method is one each run measures differently and no two runs agree
+> on. `npm run eval` executes the `[script]` ones and writes a results file;
+> the rest are read by a person or an agent, against this file.
+>
+> `[script]` a check in `scripts/eval/` · `[grep]` a one-line search, written
+> out · `[structural]` a search plus a look at the context · `[read]` an agent
+> reads the file against the doc · `[browser]` the running app.
+
 The segment nobody lists and everybody breaks. Against
 `docs/ds/ux/2-rules.md` and the standing rule that **the UI ships the label and
 the control; explanations live behind an info affordance, not on screen.**
@@ -41,3 +51,16 @@ the control; explanations live behind an info affordance, not on screen.**
 - [ ] **L2** Every section note explains WHY the section is shaped as it is,
       not what the fields are called.
 - [ ] **L2** No note repeats its own heading.
+
+## From Unified View — added 2026-09-22
+
+- [ ] **L1** `[script]` No footer primary reads *Save*, *Save Changes* or
+      *Update*. It names the act. — *ux §"THE PRIMARY IS A LADDER"*
+- [ ] **L1** `[read]` Every pending item is an INSTRUCTION — "Choose a
+      customer", not "Customer". — *ux §"WHAT THE RECORD IS MISSING"*
+- [ ] **L2** `[read]` A gated picker's empty state names the gate: "Nothing
+      matches inside this partner's area", not "No results".
+- [ ] **L2** `[read]` No explanatory paragraph on screen. The label and the
+      control ship; the explanation goes behind `SheetSectionNote`.
+- [ ] **L2** `[read]` A status is its word, and no word appears twice for one
+      fact — a Draft says "Draft saved", not a chip plus a note plus a dot.

@@ -1,5 +1,15 @@
 # Eval — is the screen telling the truth
 
+
+> **METHOD TAGS.** Every assertion below carries one, because an assertion with
+> no stated method is one each run measures differently and no two runs agree
+> on. `npm run eval` executes the `[script]` ones and writes a results file;
+> the rest are read by a person or an agent, against this file.
+>
+> `[script]` a check in `scripts/eval/` · `[grep]` a one-line search, written
+> out · `[structural]` a search plus a look at the context · `[read]` an agent
+> reads the file against the doc · `[browser]` the running app.
+
 The other segment nobody lists. A screen can follow every layout rule and still
 lie about the record behind it.
 
@@ -50,3 +60,20 @@ lie about the record behind it.
 - [ ] **L2** Nothing on screen is undocumented. **Walk one screen end to end
       and find the thing no document mentions** — that is the check this file
       exists for.
+
+## From Unified View — added 2026-09-22
+
+- [ ] **L2** `[read]` A charge is the ORDER's and only the figures are each
+      side's — `LineCharge.perGal` and `QuoteLine.rates[charge.id]`, keyed by
+      the same id. Adding a row adds it to both columns.
+- [ ] **L2** `[read]` A price that does not exist renders the dash, never
+      `0.00`. Zero is what a field shows before anyone types.
+- [ ] **L2** `[browser]` The console is clean at boot. **Today it is not** —
+      15 seed orders break the Assigned invariant and `Propane HD-5` is
+      orderable but missing from Products. Both are open decisions, not bugs
+      to fix quietly.
+- [ ] **L2** `[read]` A quote stays a snapshot of what the lines WERE, never
+      recomputed from what they are now.
+- [ ] **L2** `[read]` Every state the UI distinguishes exists in the fixture,
+      including the ones a new version added — a draft lane, a partly-live
+      rule, a target that has stopped being serviceable.

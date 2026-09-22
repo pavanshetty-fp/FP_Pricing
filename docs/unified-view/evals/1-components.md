@@ -1,5 +1,15 @@
 # Eval — components, tokens and colour
 
+
+> **METHOD TAGS.** Every assertion below carries one, because an assertion with
+> no stated method is one each run measures differently and no two runs agree
+> on. `npm run eval` executes the `[script]` ones and writes a results file;
+> the rest are read by a person or an agent, against this file.
+>
+> `[script]` a check in `scripts/eval/` · `[grep]` a one-line search, written
+> out · `[structural]` a search plus a look at the context · `[read]` an agent
+> reads the file against the doc · `[browser]` the running app.
+
 Against `../1-components.md` and `docs/ds/ui/2-rules.md`.
 **L1** = fixable automatically. **L2** = surface only.
 
@@ -75,3 +85,30 @@ Against `../1-components.md` and `docs/ds/ui/2-rules.md`.
       signal — list the outstanding ones.
 - [ ] **L2** Every fork of a DS component carries a header saying what it
       forked, why, and what to parameterise to undo it.
+
+## From Unified View — added 2026-09-22
+
+The settled work of the last week, turned into checks. See
+`docs/ds/ui/7-variants.md` and `docs/unified-view/3pl/creation.md`.
+
+- [ ] **L1** `[script]` A card's rim is `--fp-outline-1`, never `--border`.
+      Settled 2026-09-22 — `--border` is the divider weight and a card was
+      wearing it on the outside. — *ui §Strokes*
+- [ ] **L2** `[read]` The three stroke weights are each doing their own job:
+      rim, divider, field boundary. A boundary that is not reading gets
+      spacing or a surface step, never a darker line. — *ui §Strokes*
+- [ ] **L1** `[script]` No raw hex, colour literal or Tailwind palette class
+      outside `src/index.css`. — *ui §Token discipline*
+- [ ] **L1** `[script]` No arbitrary spacing or radius value. Widths and
+      heights are exempt: a 340px rail is a measured decision with no scale to
+      be on. — *ui §Token discipline*
+- [ ] **L2** `[read]` **The exemption list in `scripts/eval/tokens.mjs` is
+      audited on every run.** A path is exempt because the rule does not apply
+      to it, never because the finding was tedious. Three today: the
+      anti-pattern reference, the chart colour bridge, the vendored shadcn
+      primitives.
+- [ ] **L1** `[grep]` The only attention animations are `fp-attention` and
+      `fp-attention-fill`. A third would be a second vocabulary for one act.
+      `grep -rn "fp-attention" src prototypes`
+- [ ] **L2** `[read]` Every hue still means exactly one thing in this app, and
+      the mapping table is the only place it is decided. — *ui §10b*

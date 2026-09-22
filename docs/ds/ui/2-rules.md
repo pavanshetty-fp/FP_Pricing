@@ -337,6 +337,12 @@ named a different column.
 
 ## 10f. THE BOXED TABLE UNIT
 
+> **READ `7-variants.md` §3 FIRST.** There are three table forms — in a unit,
+> its own unit, and the list — and this rule is about the first. A table that
+> IS its own box is not breaking it; a table that draws its own box INSIDE a
+> card is. Stating this as one rule was the error, and the check that enforced
+> it flagged two correct components on its first run.
+
 Added 2026-09-21, settled 2026-09-22 on the Vendor table. **One shape, every
 time a table sits inside a box** — a card, a `SheetSection`, a panel. Editable
 or read-only, one row or forty.

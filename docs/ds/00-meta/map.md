@@ -36,6 +36,10 @@ component, and anything general it settles is promoted UP into these rules.
 | Unified View | `docs/unified-view/map.md` |
 | Unified View → 3PL creation | `docs/unified-view/3pl/creation.md` |
 
+**The variant catalogue — `ui/7-variants.md`** — lists every form each element
+takes and the one question that picks between them. It is counted by
+`npm run eval -- --census`, so it cannot quietly go stale.
+
 **When a child doc and these rules disagree, these rules win** and the child is
 out of date. Its `evals/` exist to catch that.
 

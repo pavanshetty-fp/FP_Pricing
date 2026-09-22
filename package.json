@@ -13,6 +13,7 @@
     "preview:unified": "UNIFIED=1 vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
+    "eval": "node scripts/eval.mjs",
     "eval:boxed-tables": "node scripts/eval-boxed-tables.mjs"
   },
   "dependencies": {

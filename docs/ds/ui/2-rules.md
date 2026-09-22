@@ -370,6 +370,26 @@ or read-only, one row or forty.
 - **Square on top, rounded below**, or a radius shows a notch where the card
   ends.
 
+### When the add cannot aim — it becomes a cell
+
+**A card holding SEVERAL tables has no single bottom-left corner to hang
+from.** The order's pricing unit is one band per product; a hanging add on that
+card's corner could only ever add to one of them, and which one would be a
+guess the reader has to make.
+
+**So the add becomes a CELL OF THE MATRIX** — in the column that names the
+thing being added, styled exactly like its siblings: a rule on top, no inset of
+its own, and the button carrying the padding. It is not the full-width band
+this rule forbids; it is one cell of a grid that happens to hold a control
+instead of a value. (Added 2026-09-22, on the charge rows.)
+
+**One control, not one per kind.** Three kinds of charge get one *Add charge*
+with a menu, because three separate adds would be three controls for one act.
+
+**An add with nothing left to add is not rendered.** Once every product has its
+own loading account there is no further split to make, and a dead button with
+no reason beside it is worse than no button.
+
 ### What the table does NOT give up
 
 Its row rules, its header fill and its `tfoot` total stay. Those separate rows

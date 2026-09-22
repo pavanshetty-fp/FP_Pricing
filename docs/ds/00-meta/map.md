@@ -34,6 +34,7 @@ component, and anything general it settles is promoted UP into these rules.
 | App | Docs |
 |---|---|
 | Unified View | `docs/unified-view/map.md` |
+| Unified View → 3PL creation | `docs/unified-view/3pl/creation.md` |
 
 **When a child doc and these rules disagree, these rules win** and the child is
 out of date. Its `evals/` exist to catch that.

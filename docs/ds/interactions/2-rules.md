@@ -184,6 +184,32 @@ for the one below. Label→control keeps the field's own rhythm; control→helpe
   by default — Confirm stays enabled and the user proceeds on judgment;
   block only for hard-safety or destructive operations.
 
+### 3c. Pointing at something without moving the reader
+
+Added 2026-09-22, from Unified View's pending strip.
+
+- **Travel, then point.** Bringing a section into view and flashing it are two
+  statements — "here" and then "it is this one" — and they must not overlap,
+  or the flash reads as the scroll still going. The flash waits for the travel
+  to finish.
+- **Once, not twice.** Two flashes is a thing asking to be watched; one is a
+  thing pointing at itself and then getting out of the way. The reader is
+  already looking — the scroll took them there. Three times reads as an error,
+  and a ring that stays is a *state*, which is a lie when nothing about the
+  record changed.
+- **A thing that is not one box flashes a FILL, not an outline.** A column of a
+  grid is a stack of separate cells, and an outline round each of them is a
+  ladder rather than a column. `blinkGroup` flashes `.fp-attention-fill` across
+  every cell carrying `data-blink="<name>"`, which reads as the one unit it is.
+- **Nothing takes focus.** Inside a focus-trapped sheet, focusing the target
+  makes the trap restore *its* scroll position, which fights the travel — and
+  `behavior: "smooth"` is cancelled by the same trap, so the scroll is a hand-
+  run rAF loop on the scrollport. Known gap: a keyboard reader is shown the
+  section and still has to Tab to it.
+- **Reduced motion keeps the point and drops the blink.** The outline or fill
+  arrives with a `step-end` transition and fades — the statement survives
+  without the flash.
+
 ## 4. Tables (list & data)
 
 - **Standard toolbar**: search · column filter · **Filters** (with active-count

@@ -42,6 +42,30 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     NEXT ACT on the record — the one thing that moves it on from where it is.
     A primary that says "Update" on a sheet that has already updated is a
     button for a job that is done.
+- **CREATE AND EDIT ARE THE SAME SHEET.** `mode="create"` swaps the title and
+  the primary's label and the caller seeds a blank draft; everything else is
+  the edit sheet. One layout to learn, and no create form that can drift from
+  the record it makes. A separate create screen is how two descriptions of one
+  record come to exist. (Promoted from Unified View, 2026-09-22.)
+- **A SHEET OPENED OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so
+  `100vw − 112px`. The 56px is what tells a reader a sheet is over something; a
+  second sheet at the same inset covers the first exactly and reads as the SAME
+  sheet having changed its contents. The extra 56 leaves a strip of the sheet
+  underneath showing, which says "there is one of these behind this one" in the
+  only language the stack has. (Added 2026-09-22.)
+- **A MEMBERSHIP GATE LIVES IN THE PICKER, AND NOWHERE ELSE.** When an earlier
+  choice decides what may be added — a partner's service area deciding which
+  ship-tos exist — the picker offers nothing outside it, and **its empty state
+  names the gate**: "Nothing matches inside this partner's area" is a different
+  sentence from "No results", and only one of them tells the reader why. A gate
+  enforced after the press, by an error, is a gate that let somebody do the
+  work first.
+  - **A COLLISION IS FLAGGED, NOT BLOCKED.** Something already claimed
+    elsewhere shows the clash inline on its own row, and its add drops from
+    `default` to `outline` — still pressable. The system knows the fact; only
+    the person knows whether it is a mistake. Blocking here is the system
+    overruling a judgement it does not have the information to make.
+  (Both promoted from Unified View, 2026-09-22.)
 - **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
   of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
   columns have to be scrolled to be read. `xwide` is **1120px**, for a step whose
@@ -106,7 +130,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     see the interactions rules on the disabled primary. A clause standing
     permanently beside the button is a sentence read on every visit, including
     the ones where nothing is wrong.
-- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `MandatoryStepsBanner`
+- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `PendingStrip`
   in `footerBanner`: one outstanding item at a time, with a counter and chevrons
   to step through them, so three missing fields cost one line rather than three.
   Each label is the INSTRUCTION — "Choose a customer", not "Customer" — because
@@ -125,8 +149,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     scrolls the section into view and **blinks its outline once** — after a
     scroll the eye is on the movement, not on the thing that moved, and "it is
     this one" is a different statement from "here is some of the form".
-    Twice: once reads as a render glitch, three times as an error. The ring
-    leaves no trace, because nothing about the record changed.
+    **Once, not twice** (changed 2026-09-22): two flashes is a thing asking to
+    be watched, one is a thing pointing at itself and then getting out of the
+    way — and the reader is already looking, because the scroll took them
+    there. The ring leaves no trace, because nothing about the record changed.
+  - **A thing that is not one box flashes a FILL, not an outline.** A column of
+    a grid is a stack of separate cells, and an outline round each of them is a
+    ladder rather than a column. Every cell carries `data-blink="<name>"` and
+    they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
+    2026-09-22.)
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a

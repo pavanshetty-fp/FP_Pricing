@@ -16,7 +16,7 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Make the footer's primary the NEXT ACT on the record**, and let it change as the record does. (S2)
 - **Split a sheet into two columns only when it has both halves** — editable left, derived right, rail sticky. (S3)
 - **Put what the act is waiting on in the strip above the footer**, one item at a time. (S4)
-- **Make the strip's item pressable** — it scrolls to its section and blinks the outline twice. (S4)
+- **Make the strip's item pressable** — it scrolls to its section and blinks the outline once. (S4)
 
 ## Don't
 - **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)

@@ -190,6 +190,242 @@ saved views.
 
 ---
 
+## 10c. Wherever data is a TABLE, the whole action unit ships with it
+
+Added 2026-09-19, from the Recurring Orders screens. Revised the same day,
+because the first version of this rule was written too small — see *How this
+was got wrong*, below.
+
+**A table is not a table plus optional chrome.** The unit below is what a list
+IS in this app. A screen that ships a table without it has not saved anything;
+it has made a second thing for people to learn.
+
+### The unit, top to bottom
+
+| Row | What it carries | Component |
+| --- | --- | --- |
+| **Scope shelf** | Preset/saved views · the line and the business inside it · Export · the create CTA | `FuelOrdersViewBar` + `useSavedViews` |
+| **Toolbar** | Search · filters · the view switch · the column tools | `ListToolbar` |
+| **Chips** | What is currently applied, said out loud | `FilterChips` |
+| **The table** | | |
+| **Footer** | The page position | `TablePagination` |
+
+- **Scope is not a filter.** The line and the business say WHICH LIST; the
+  filter panel narrows the list you are on. They look similar and sit near each
+  other, and conflating them is how a reader ends up with a narrowing they
+  cannot see. Default means *nothing applied*, and that has to include the
+  scope shelf.
+- **The CTA goes where creation actually happens**, which is not always this
+  screen. A recurring order is created by ticking Recurring on a delivery
+  order, so Recurring Orders' CTA navigates to that form rather than growing a
+  second one. Two forms making one record is two forms that will drift.
+- **Export means the rows you are looking at** — filtered, searched, sorted,
+  all pages. One implementation (`csv.ts`), because the quoting is the same
+  everywhere and a second copy is a second set of bugs.
+- **The page position is not a count.** "24 rules" does not say which 24 and
+  offers no way to the next page.
+- **A control with nothing behind it is switched OFF by flag, never omitted by
+  silence.** This is §10 at the toolbar's own level, and it is why `mapView`
+  and `boardView` exist: a list of standing arrangements has no lanes and no
+  pins, so it draws neither, and the omission is written down in the call.
+- **A fact about the list that a count cannot carry sits beside the
+  pagination** — "showing deliveries from today through one month out" is true
+  of the list, not of any row.
+
+### How this was got wrong
+
+Worth keeping, because the failure repeats. Three screens shipped a table with
+a search box and one filter button, then grew the rest of the unit one piece at
+a time as each omission was pointed at.
+
+The cause was not forgetting. It was **defining the unit from what had been
+built rather than from the reference screen**. Delivery Orders has carried the
+whole unit for weeks; nobody looked at it. Then the first version of this rule
+wrote down that too-small definition as law, which would have propagated it.
+
+**So: before shipping a list, open the closest existing list and match it row
+for row.** The unit is the table above, not whatever the last screen happened
+to need.
+
+### Quick filters — when a split earns a control of its own
+
+Added 2026-09-21. `ListToolbar` takes a `quickFilters` slot at the **head of
+the left cluster — before the search box**, because it is the coarsest cut on
+the row: it decides WHICH SET you are then searching and filtering inside.
+Left to right then matches the order somebody actually narrows — pick the
+book, then find the row.
+
+A split belongs there only when all three are true:
+
+- **It is exhaustive and short** — All plus two or three, no more.
+- **A reader changes it several times a session.** Opening a panel, ticking a
+  box and closing it again is the wrong amount of work for something flipped
+  that often; anything flipped once a week stays a facet.
+- **It divides the list into different jobs**, not different values. First
+  party and third party operations are two books with two people worrying
+  about them; a product is a value you look up.
+
+**It matches the row it sits in — `h-8`**, the same as the search field and
+the Filters button. A control a pixel off on a row of three reads as a
+mistake, and nobody can say why.
+
+**It is `variant="outline"` with the default `spacing={0}`** — the DS's own
+joined segmented control, which draws the box round the set and the hairlines
+between the segments. Without them the three read as three buttons that happen
+to sit together rather than as one choice with three answers, and nothing on
+screen says only one of them can be true.
+
+### The composition is part of the component
+
+The same failure recurred one step down. The scope shelf was added to both
+screens and read as a crowded band, because the component went in without the
+layout around it: the reference wraps the toolbar and the chips in one
+`mt-4 shrink-0` shelf, and the table gets its own `mt-4` below that. Dropped in
+bare, the view bar and the toolbar sat flush.
+
+**A list's vertical rhythm is fixed, and it is part of the unit:**
+
+```
+<FuelOrdersViewBar … />              ← the scope shelf, flush to the header
+<div className="mt-4 shrink-0">      ← ONE shelf for the toolbar + the chips
+  <ListToolbar … />
+  <FilterChips …>…</FilterChips>
+</div>
+<div className="relative mt-4 min-h-0 flex-1">  ← the table
+<div className="mt-4 shrink-0">      ← the page position
+```
+
+Copying a control without the box it lives in is the same mistake as copying
+half the controls. Take the composition, not the component.
+
+## 10e. Group a table's columns only when the groups outlive the reader
+
+Added 2026-09-21, from removing the groups on Recurring Orders V1 the week
+after adding them.
+
+A two-tier header reads beautifully and takes three things away:
+
+- **A column can only move inside its group.** The reader who wants two
+  columns side by side cannot have them if the groups disagree.
+- **The header costs two rows on every screen**, forever, for a label that is
+  read once.
+- **It asserts a relationship** — that Terminal belongs with Partner and not
+  with Product — which is the author's model, not necessarily the reader's.
+
+`useTableColumns` and `TableColumnHeader` — order, widths, the resize guard,
+the sort glyph, all of it — are unusable grouped, because the hook knows
+nothing about groups. Everything has to be rebuilt by hand and constrained.
+
+**So group only where the groups are the point** (V1.1's programme list is
+one partner's terms, coverage and economics — three genuinely separate
+questions about one row). Everywhere else, flat and equal.
+
+**And when a group goes, its heading hands meaning back to the labels.**
+*Vendor* and *Customer* under a "Pricing" heading became *Vendor Price* and
+*Customer Price* the moment the heading went, because *Customer* already
+named a different column.
+
+## 10f. THE BOXED TABLE UNIT
+
+Added 2026-09-21, settled 2026-09-22 on the Vendor table. **One shape, every
+time a table sits inside a box** — a card, a `SheetSection`, a panel. Editable
+or read-only, one row or forty.
+
+### The shape, top to bottom
+
+1. **The box's header band** — the section's title on its tinted strip. This
+   is the unit's name.
+2. **The table, flush.** No border, no radius, no inset of its own. Its edges
+   ARE the box's edges, and its column-header row sits directly under the
+   title band.
+3. **The hanging add**, when the table can grow — a tab below the box's
+   bottom-left corner, OUTSIDE it, with that corner squared so the two join.
+4. **An acts band**, when there is an act on the whole list (Send, Export) —
+   inside the box, right-aligned, with a top rule, and rendered **only when it
+   has something in it**.
+5. **A flag about the whole table rides the hanging row's right end** — level
+   with the add, outside the card, nothing drawn around it. Winter additive on
+   the Delivery Order table is the case: it is a property of the LOAD, not of
+   a row, so it cannot sit in the table, and stacked below the add it read as
+   a third thing rather than as part of the unit. (Added 2026-09-22.)
+6. **Anything else is outside the box entirely**, with 24px to it — settings
+   that are about the ORDER rather than about this table, a note. See the
+   Vendor unit's two toggles, which are about the invitation.
+
+### Why each part
+
+- **A table set inside a padded card is a box in a box.** The card draws a
+  rim, a tinted band and a rounded corner; the table draws its own a few
+  pixels inside. Two lines say one thing, and the gap between them belongs to
+  neither.
+- **The add hangs rather than banding.** A full-width strip draws a rule
+  across the whole card to carry one small act, and what it reads as is an
+  empty extra row of the table.
+- **The add is filled, not outlined** — the table's own header tint, so it
+  continues the table. An outline is a second box under a card that already
+  has one, which is the nesting this rule exists to remove.
+- **A plus, and the words on hover or keyboard focus.** The row it adds is one
+  of many. The `aria-label` is always the full phrase — the collapsed state is
+  a visual economy, never a nameless control.
+- **Square on top, rounded below**, or a radius shows a notch where the card
+  ends.
+
+### What the table does NOT give up
+
+Its row rules, its header fill and its `tfoot` total stay. Those separate rows
+from each other, which is a different job from separating the table from its
+container.
+
+### The parts that are not the table
+
+Anything inside a flush box that is not the table brings its own 16px inset,
+and the boundary where it meets the table carries the rule (`border-t` /
+`border-b`). The rule belongs to the boundary, and only the call site knows
+which side it is on.
+
+**An empty table is padded text, not a dashed box.** A dashed rectangle inside
+the card is the same nesting again.
+
+### Where the flags live
+
+On the components, not on every call site — `SheetSection`'s `flush` and
+`hanging`, and a table that declares it fills its section. A rule nobody has
+to remember is a rule that holds.
+
+### Checked, not remembered
+
+`npm run eval:boxed-tables` scans the source for every violation of the above
+and exits non-zero. Run it with the layouts eval; it is the countable half of
+that segment.
+
+## 10d. A sticky table header needs separated borders
+
+Added 2026-09-21, from the Recurring Orders tables. Cost an hour; worth the
+paragraph.
+
+Tailwind's preflight sets `border-collapse: collapse` on every table. In that
+mode Chrome does two things that make a sticky header impossible to get right:
+
+- it **ignores z-index on the table, the `<thead>` and the rows**, so a
+  `sticky z-20` header holds its position but paints UNDERNEATH the body — it
+  hit-tests on top and renders beneath, and a scrolled row can be read straight
+  through it;
+- it **refuses `position: sticky` on a cell**, so moving the stickiness to the
+  `<th>` to get the z-index back means the header stops sticking at all.
+
+Collapsed, a table can hold its header still or paint it above the body, never
+both.
+
+**So a table with a sticky header sets `border-separate border-spacing-0`, and
+the header sticks on its CELLS** — `sticky top-0` on the first header row, and
+`top-<height of that row>` on a second tier. The cost is that a border on a
+`<tr>` stops painting, so the row rule moves onto the cells
+(`[&>td]:border-b`), which is where the header's borders already were.
+
+**A two-tier header also needs the line between the tiers.** Without it the
+group words and the column words read as one crowded block instead of a heading
+over its columns.
+
 ## 10b. The DS ships hues; the application binds meaning
 
 Added 2026-09-18. The DS already says a chip renders neutral until a usage rule

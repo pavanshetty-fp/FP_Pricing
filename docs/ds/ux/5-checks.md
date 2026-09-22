@@ -15,5 +15,6 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
-- [ ] Sheet width matches the shape (560 / 864 / 1120 / 1440) and is chosen per step. (S3)
+- [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)
+- [ ] Every sheet and nested drawer clamps to `100vw − 56px`. (S3)
 - [ ] The strip above the footer shows one outstanding item at a time, under a fixed subject, and each item reaches its section. (S4)

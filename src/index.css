@@ -63,7 +63,28 @@
   outline: 2px solid transparent;
   outline-offset: 2px;
   border-radius: var(--radius-lg);
-  animation: fp-attention 600ms ease-in-out 2;
+  /* ONCE, NOT TWICE (Pavan, 2026-09-22). Two flashes is a thing asking to be
+     watched; one is a thing pointing at itself and then getting out of the
+     way. The reader is already looking — the scroll took them there. */
+  animation: fp-attention 600ms ease-in-out 1;
+}
+
+/* THE SAME ATTENTION, FOR SOMETHING THAT IS NOT ONE BOX.
+   A column of a grid is a stack of separate cells, and an outline round each
+   of them is a ladder rather than a column. A fill flashed across all of them
+   at once reads as the one thing it is. */
+@keyframes fp-attention-fill {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  25%,
+  75% {
+    background-color: color-mix(in oklab, var(--ring) 16%, transparent);
+  }
+}
+.fp-attention-fill {
+  animation: fp-attention-fill 600ms ease-in-out 1;
 }
 @media (prefers-reduced-motion: reduce) {
   /* THE POINT SURVIVES WITHOUT THE BLINK. Somebody who has asked for less
@@ -73,6 +94,11 @@
     animation: none;
     outline-color: var(--ring);
     transition: outline-color 1200ms step-end;
+  }
+  .fp-attention-fill {
+    animation: none;
+    background-color: color-mix(in oklab, var(--ring) 16%, transparent);
+    transition: background-color 1200ms step-end;
   }
 }
 
@@ -803,6 +829,36 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
+  }
+
+  /*
+    THE DATE FIELD'S PICKER ICON IS THE BROWSER'S, NOT OURS.
+
+    `<input type="date">` draws its own calendar button, and it is painted in
+    the USER AGENT's colours rather than the document's. On the light theme it
+    happens to look right; on the dark one it lands as a near-black glyph on a
+    dark surface, which is the one control in the app whose colour is decided
+    by something other than the design system.
+
+    THE FIX IS A FILTER, NOT A COLOUR, because the shadow-root content cannot be
+    targeted directly — there is no property to set. `invert(1)` flips the black
+    glyph to white, and the opacity pair matches what every other muted icon in
+    the app does: muted at rest, full on hover, so it reads as a control rather
+    than as decoration.
+
+    LIGHT MODE IS LEFT ALONE. The default glyph is already dark-on-light there,
+    and inverting it would recreate the same mismatch the other way round.
+  */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+    transition: opacity 100ms;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 
 }

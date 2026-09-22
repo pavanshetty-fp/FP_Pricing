@@ -29,6 +29,8 @@ export function SheetSection({
   note,
   variant = "card",
   flush = false,
+  hanging,
+  bodyClassName,
   children,
   className,
   id,
@@ -58,6 +60,23 @@ export function SheetSection({
    * Add row, a footnote) has to bring its own padding and its own top rule.
    */
   flush?: boolean;
+  /**
+   * A control that HANGS OFF THE CARD'S BOTTOM-LEFT, outside it.
+   *
+   * FOR THE ADD ON A TABLE. The card's bottom-left corner squares so the two
+   * join, and the control continues the table's last row rather than sitting
+   * on a full-width band inside the card — a band draws a rule across the
+   * whole card to carry one small act, and reads as an empty extra row of the
+   * table. (Pavan, 2026-09-22.)
+   */
+  hanging?: React.ReactNode;
+  /**
+   * Classes for the BODY, not the card — for a section that has to fill the
+   * height it is given rather than wrap its content. A composer's message box
+   * is the case: it should run to the bottom of the sheet, and only the body
+   * can be told to grow.
+   */
+  bodyClassName?: string;
   /**
    * Controls that act on the SECTION rather than on one field — "Add asset",
    * "Refresh". They sit on the heading row, right-aligned, because a control
@@ -116,25 +135,59 @@ export function SheetSection({
        The 16px title→content rhythm the plain variant measures so carefully is
        not needed here: the band's own edge is the separation, and it holds at
        any section length — which is the thing a 40px gap could not do. */
-    return (
+    const card = (
       <section
-        id={id}
+        id={hanging ? undefined : id}
         /* `shrink-0` IS LOAD-BEARING, not tidiness. The sheet body is a flex
            column, and `overflow-hidden` switches a flex item's automatic
            minimum size from its content to zero — so without this the whole
            card collapses to its own 2px of border. */
         className={cn(
           "shrink-0 overflow-hidden rounded-lg border border-border",
-          className
+          /* SQUARED WHERE THE HANGING CONTROL JOINS, so the two read as one
+             shape rather than a rounded box with a tab floating under it. */
+          hanging && "rounded-bl-none",
+          /* THE CALLER'S CLASSES GO ON WHICHEVER ELEMENT IS THE OUTER ONE.
+             With something hanging, that is the wrapper below, not this —
+             `lg:col-span-3` landing here put the SECTION inside a grid item
+             that was still one column wide, so a section could be told to take
+             three columns and silently take one. (Found 2026-09-22, on the
+             Documents table.) */
+          !hanging && className
         )}
       >
         <div className="border-b border-border bg-fp-surface-1a px-4 py-2.5">
           {heading}
         </div>
-        <div className={cn("flex flex-col", !flush && "gap-4 p-4")}>
+        <div
+          className={cn(
+            "flex flex-col",
+            !flush && "gap-4 p-4",
+            bodyClassName
+          )}
+        >
           {children}
         </div>
       </section>
+    );
+
+    /* THE WRAPPER OWNS THE `shrink-0` AND THE ID once there is something
+       hanging: the card and its tab are one block in the sheet's stack, and
+       the body's 40px gap has to fall after the tab rather than between the
+       two. */
+    return hanging ? (
+      <div id={id} className={cn("flex shrink-0 flex-col", className)}>
+        {card}
+        {/* THE HANGING ROW runs the card's width so a second thing can sit at
+            its right end — the add on the left, a flag about the whole unit on
+            the right. With one child `justify-between` leaves it on the left,
+            which is where a lone add belongs. */}
+        <div className="flex w-full items-center justify-between gap-4">
+          {hanging}
+        </div>
+      </div>
+    ) : (
+      card
     );
   }
 

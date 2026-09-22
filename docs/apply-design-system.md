@@ -1565,7 +1565,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     this is on every press.
   - **The item is pressable, and pressing it takes you there.** A banner that
     names a missing field and cannot reach it is a label for a hunt. The press
-    scrolls the section into view and **blinks its outline twice** — after a
+    scrolls the section into view and **blinks its outline once** — after a
     scroll the eye is on the movement, not on the thing that moved, and "it is
     this one" is a different statement from "here is some of the form".
     Twice: once reads as a render glitch, three times as an error. The ring
@@ -1994,7 +1994,7 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Make the footer's primary the NEXT ACT on the record**, and let it change as the record does. (S2)
 - **Split a sheet into two columns only when it has both halves** — editable left, derived right, rail sticky. (S3)
 - **Put what the act is waiting on in the strip above the footer**, one item at a time. (S4)
-- **Make the strip's item pressable** — it scrolls to its section and blinks the outline twice. (S4)
+- **Make the strip's item pressable** — it scrolls to its section and blinks the outline once. (S4)
 
 ## Don't
 - **Don't ship a *page-owned* top-bar** that duplicates the global (Tier-0) chrome — the one global top bar (brand · search · account) is canonical; the content header is compact (breadcrumb-as-title, no divider). (L1/L2)
@@ -2040,7 +2040,7 @@ renders these as visual pairs.)
 - **Dead primary (S2)** — ❌ a clause parked permanently beside it · ✅ disabled, with one imperative sentence on the press.
 - **Width (S3)** — ❌ `xxwide` because the sheet is long · ✅ `xxwide` because the step is two columns; width is per step.
 - **Column mixing (S3)** — ❌ a computed total sitting among the fields that produce it · ✅ editable left, derived right, so the reader can tell them apart.
-- **Strip item (S4)** — ❌ "Customer", with no way to reach it · ✅ "Choose a customer", pressable, scrolling to the section and blinking it twice.
+- **Strip item (S4)** — ❌ "Customer", with no way to reach it · ✅ "Choose a customer", pressable, scrolling to the section and blinking it once.
 
 ## Hierarchy
 - **Elevation (H2)** — ❌ same-weight fill nested on the same fill · ✅ step up one surface (`surface-1b → card → fp-card-1`).

@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "preview:unified": "UNIFIED=1 vite preview",
     "typecheck": "tsc -b --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "eval:boxed-tables": "node scripts/eval-boxed-tables.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

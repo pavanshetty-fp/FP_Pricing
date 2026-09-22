@@ -44,11 +44,14 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     button for a job that is done.
 - **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
   of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
-  columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because
-  60px-from-the-edge is the **most** a sheet may take, not the width it should be —
-  a sheet that eats a wide monitor turns two-column pairs into a hunt across the
-  screen and leaves nothing of the list it came from. `xwide` is **1120px**, for
-  a step whose tables run past six columns.
+  columns have to be scrolled to be read. `xwide` is **1120px**, for a step whose
+  tables run past six columns. These are the **most** a sheet may take, not a
+  width to grow into — a form that eats a wide monitor turns two-column pairs
+  into a hunt across the screen and leaves nothing of the list it came from.
+- **The gap is 56px and it is the one constant.** Every size clamps to
+  `100vw − 56px`, so no sheet reaches the edge and none overflows a small
+  screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
+  drawer.
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while
@@ -58,11 +61,20 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
-- **`xxwide` is 1440px, and it exists for exactly one shape: a step that is TWO
-  COLUMNS** — what you fill in on the left, what that makes on the right. A
-  sheet does not get this size for being long; it gets it for being split. The
-  rail costs the left column 340px plus a 24px gap, and at `xwide` that comes
-  straight out of table columns already at their minimum.
+- **`xxwide` FILLS — `100vw − 56px`, no cap — and it exists for exactly one
+  shape: a step that is TWO COLUMNS** — what you fill in on the left, what that
+  makes on the right. A sheet does not get this size for being long; it gets it
+  for being split.
+  - **Why this one is not capped.** Its width was never a chosen number. The
+    rail is fixed at 340px plus a 24px gap; everything else the viewport has
+    belongs to the tables, which at `xwide` were already at their minimum. A
+    fixed 1440 left a strip of the list showing on a wide screen and the sheet
+    read as having stopped short of something. Changed from 1440 on 2026-09-21.
+  - **The cap argument does not apply to it.** What a cap protects is a FORM —
+    label-to-control pairs stretched across a monitor. A two-column step has no
+    such pairs to stretch: the left is tables, the right is a fixed rail.
+  - Below the fold-back width the step is one column again and stops needing
+    any of this.
 - **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
   type into it?** Editable sections go left, in the sequence you fill them.
   What the record HAS BECOME goes right — derived, read-only, true whether or
@@ -110,7 +122,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     this is on every press.
   - **The item is pressable, and pressing it takes you there.** A banner that
     names a missing field and cannot reach it is a label for a hunt. The press
-    scrolls the section into view and **blinks its outline twice** — after a
+    scrolls the section into view and **blinks its outline once** — after a
     scroll the eye is on the movement, not on the thing that moved, and "it is
     this one" is a different statement from "here is some of the form".
     Twice: once reads as a render glitch, three times as an error. The ring

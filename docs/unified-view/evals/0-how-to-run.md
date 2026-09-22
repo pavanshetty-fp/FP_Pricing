@@ -54,3 +54,26 @@ that will be found again next time.
 3. `3-interactions.md` — behaviour
 4. `4-content.md` — what the screens say
 5. `5-data-and-state.md` — whether the screens are telling the truth
+6. **the module evals** — `../3pl/evals-creation.md`, and one per module job
+   after it
+
+## Module evals, and the one rule they add
+
+A module eval lives beside its rules file, not here — `../3pl/evals-creation.md`
+is the first. It runs last, because it assumes the five segments above have
+already passed: a module's assembly cannot be judged while its tokens are still
+wrong.
+
+> **EVERY MODULE ASSERTION CITES THE DS.** Checking a module against its own
+> document proves that document is self-consistent and nothing else — and a
+> module document is the likeliest file in this set to have drifted, because it
+> is written fastest and read least. The DS is the authority in every row.
+> **An assertion with no DS citation is itself a finding**: either the rule
+> belongs upstairs and should be promoted, or it is a genuine module binding
+> and the row should say so.
+
+**And the traffic goes both ways.** A module finding that turns out to be
+general does not get fixed in the module — it is written into `docs/ds/`, and
+the module file is cut down to a pointer. A run that changes no DS file, over a
+stretch of work that settled real rules, has almost certainly left something
+sitting in the wrong document.

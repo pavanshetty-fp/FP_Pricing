@@ -37,12 +37,39 @@ Three consequences, and they are the whole point of splitting the docs:
 
 `evals/` holds one file per segment, each a list of **verifiable assertions**
 against the code — not prose. `evals/0-how-to-run.md` says how they run and
-what the two layers are.
+what the two layers are. **Module evals sit beside their rules file**, not in
+`evals/` — `3pl/evals-creation.md` is the first.
 
 > **Two layers, and the second one is the important one.** Layer 1 repairs what
 > has exactly one correct answer. Layer 2 surfaces everything else — including a
 > document that claims something the code does not do, which is the failure mode
 > a doc set is most prone to and least likely to notice.
+
+## The module layer — read this before building
+
+Between "what is true across modules" and "why this module decided that" there
+is a third thing: **how a module assembles the DS to do one job.** That is a
+rules document, it lives under the module, and it is the file a continuation
+session reads first.
+
+| File | Covers |
+|---|---|
+| `3pl/creation.md` | **the continuation document for 3PL.** Every component a creation flow uses, filed by layer, with its spacing, colour, addition, subtraction and interaction |
+| `3pl/evals-creation.md` | the same, as assertions — **each one naming the DS rule it tests** |
+
+Three rules govern this layer:
+
+1. **A module rules file may not redefine a component.** Same rule as this
+   whole doc set: it records the assembly and the binding.
+2. **A rule that a SECOND module needs is promoted to `docs/ds/`**, and both
+   modules point at it. Most of what is in `3pl/creation.md` will eventually be
+   true of Service Work too — that is expected, and it is still not a reason to
+   write it upstairs before the second module asks.
+3. **A module eval cites the DS on every assertion.** An eval that checks a
+   module only against its own document proves the document is self-consistent
+   and nothing else, and a module document is the likeliest thing in the set to
+   have drifted. Where an assertion has no DS citation, that is the finding:
+   either promote the rule, or say out loud that it is a module binding.
 
 ## Where the modules' own records live
 

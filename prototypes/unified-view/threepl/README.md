@@ -10,6 +10,14 @@ app and reports back when the delivery is done. Everything distinctive about thi
 module follows from that one fact — there is a party outside the building whose
 acceptance the order is waiting on.
 
+> **BUILDING OR CHANGING A CREATION FLOW? READ
+> `docs/unified-view/3pl/creation.md` FIRST.** It is the module's rules
+> document — every component a create sheet uses, filed by layer, with its
+> spacing, colour, addition, subtraction and interaction, and it is the file a
+> continuation session starts from. This README records **why 3PL decided
+> things**; that one records **how 3PL builds them**. Anything settled in a
+> creation flow is written back into it in the same commit.
+
 ---
 
 ## Where the model comes from

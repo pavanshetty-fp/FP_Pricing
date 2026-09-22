@@ -20,6 +20,16 @@ mistakes, and Checks derive from these.
 | `--border` (`--fp-stroke-hairline`) | `#d4d4d8` zinc/300 | 1.48:1 | a structural divider — page header, tab strip, table edge and row rules, sidebar edge |
 | `--input` (`--fp-stroke-field`) · `--fp-outline-2` | `#c4c4c9` | 1.74:1 | a field's boundary, and the rim that has to beat a card's (hover / active) |
 
+- **A CARD'S RIM IS `--fp-outline-1`, AND THAT IS NOT NEGOTIABLE PER COMPONENT**
+  (settled 2026-09-22). `SheetSection` drew `border-border` — the divider
+  weight — round its outside for months, so a card sat heavier on the page than
+  the lines inside it, and two components disagreed about what a card's edge
+  is. In DARK the two tokens carry the same value (`#363c45`), which is exactly
+  why it went unnoticed: it is a light-mode difference only.
+  - **Open, and measured rather than guessed:** a card's title band still
+    divides on `--border` (`#d4d4d8`), now heavier than the card's own rim
+    (`#e2e5ea`). Defensible — a divider is structural and a rim is quiet — but
+    nobody has ruled on it.
 - **A field border does more work than a divider**, which is why they are not one
   value. In light an `Input` is `bg-transparent` — only dark gets `dark:bg-input/30`
   — so the border is the *only* thing that makes a field a field; a divider merely

@@ -75,8 +75,14 @@
 ## L2 — the group
 
 - [ ] **L1** Every group is `SheetSection`. **A locally defined card component
-      is a finding, and `RecurringProgramCreate`'s `Card` is the open one.**
-      — *ux §"A section is a CARD"*
+      is a finding, and `RecurringProgramCreate`'s `Card` is the open one** —
+      see `creation.md` §8, gap #1. — *ux §"A section is a CARD"*
+- [ ] **L1** Every field is `SheetField`. `RecurringProgramCreate`'s local
+      `Field` is the open one — §8, gap #2. — *ux §Side-sheet anatomy*
+- [ ] **L1** A step strip is `SheetSteps`, not hand-rolled — §8, gap #6.
+      — *ux §"The strip under the header is a STAGE BAR, not a stepper"*
+- [ ] **L1** Footer flags are `FlagRow`, not an inline label — §8, gap #7.
+      — *ux §"Footer flags"*
 - [ ] **L1** A group whose body is a table is `flush`; one whose body is a CTA
       panel or an empty state is not. — *ui §10f*
 - [ ] **L1** No table draws its own rim inside a group. — *ui §10f*
@@ -150,9 +156,8 @@
       `creation.md` §3. — *ux §Shell & spacing*
 - [ ] **L1** No raw hex and no arbitrary colour value in any surface above.
       — *ui §Token discipline*
-- [ ] **L2** A card's rim uses ONE token across the module. **Open: the DS's
-      stroke table says `--fp-outline-1` and `SheetSection` draws
-      `border-border`.** — *ui §Strokes*
+- [ ] **L1** A card's rim is `--fp-outline-1`, never `--border`. Settled
+      2026-09-22; `SheetSection` was corrected. — *ui §Strokes*
 - [ ] **L1** A table header is `bg-fp-table-header`, never `bg-fp-surface-1a`.
       — *ux §"A table header has its own ground"*
 - [ ] **L1** No dot beside a status label. — *ui §11*

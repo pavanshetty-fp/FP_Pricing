@@ -143,7 +143,14 @@ export function SheetSection({
            minimum size from its content to zero — so without this the whole
            card collapses to its own 2px of border. */
         className={cn(
-          "shrink-0 overflow-hidden rounded-lg border border-border",
+          /* THE RIM IS `--fp-outline-1`, NOT `--border` (Pavan, 2026-09-22).
+             The DS's stroke table has said so all along — outline-1 is "a
+             card's own rim" and `--border` is "a structural divider" — and
+             this card was drawing the divider weight round its outside, which
+             is why a card sat heavier on the page than the lines inside it.
+             In DARK the two tokens carry the same value, so this is a
+             light-mode correction only. */
+          "shrink-0 overflow-hidden rounded-lg border border-fp-outline-1",
           /* SQUARED WHERE THE HANGING CONTROL JOINS, so the two read as one
              shape rather than a rounded box with a tab floating under it. */
           hanging && "rounded-bl-none",

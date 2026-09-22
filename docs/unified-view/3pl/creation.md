@@ -108,7 +108,7 @@ introduces a colour; it picks one off this table.
 
 | Job | Token | Layer |
 |---|---|---|
-| A card's own rim | `--fp-outline-1` | L2 |
+| A card's own rim | `--fp-outline-1` — settled 2026-09-22 | L2 |
 | A structural divider — a card's title band, a row rule, a table edge | `--border` | L2, L3, L6 |
 | A field's boundary, and a rim that must beat a card's | `--input` / `--fp-outline-2` | L5 |
 | A card's title band fill | `bg-fp-surface-1a` | L2 |
@@ -311,32 +311,72 @@ and the two icons look alike at 16px, which is why it needs writing down.
 
 ---
 
-## 8. Known drift — open, and none of it fixed here
+## 8. The reference surface, and the gap to it
 
-These are Layer 2 findings: the code and the documents disagree, and each needs
-a decision rather than a patch. **They are listed so a continuation session
-does not re-discover them.**
+**THE DELIVERY ORDER CREATE SHEET IS THE REFERENCE** (Pavan, 2026-09-22).
+`BrokerOrderSheet.tsx` in draft mode is what a 3PL create sheet looks like;
+every other create surface in the module is measured against it, and where they
+differ the other one is wrong unless it can say why.
 
-1. **`RecurringProgramCreate` defines its own `Card` and `Field`** instead of
-   using `SheetSection` and `SheetField`. They differ in four ways — `rounded-md`
-   not `rounded-lg`, `border-fp-outline-1` not `border-border`, a header of
-   `px-4 py-3` not `px-4 py-2.5`, and **no tinted title band at all**. It is the
-   newest creation surface and the only one that does not look like the others.
-   *Decision needed: move it onto `SheetSection`, or say why this surface is
-   different.*
-2. **A card's rim is two tokens.** The DS's stroke table says a card's own rim
-   is `--fp-outline-1`; `SheetSection` draws `border-border`, which the same
-   table calls a structural divider. The local `Card` above matches the table
-   and the DS component does not. *Decision needed, and it is the DS's to make —
-   it touches every card in the app.*
-3. **`PendingStrip.tsx`'s own comment still says the outline blinks twice.**
-   The CSS blinks once as of 2026-09-22. One of the two is wrong and it is the
-   comment. *Layer 1 — fix the comment.*
-4. **`npm run eval:boxed-tables` reports `RecurringProgramCreate.tsx:292`** —
-   the tank table inside a padded target row. Genuine box-in-a-box, or a table
-   that IS its own box. *Decision needed.*
-5. ~~**The DS names the strip `MandatoryStepsBanner`; the shipped component is
-   `PendingStrip`.**~~ *Fixed 2026-09-22.*
+That makes `RecurringProgramCreate.tsx` — the newest surface and the only one
+that does not use `SheetSection` at all — the open piece of work. Below is the
+gap, item by item.
+
+### The gap
+
+| # | The reference does | `RecurringProgramCreate` does | The change |
+|---|---|---|---|
+| **1** | `SheetSection` — `rounded-lg`, `border-fp-outline-1`, a **tinted** title band `bg-fp-surface-1a px-4 py-2.5`, body `p-4 gap-4` | a local `Card` — `rounded-md`, **no tint on the band at all**, band `px-4 py-3`, body `p-4` with no gap | **delete the local `Card`**, use `SheetSection` |
+| **2** | `SheetField` — label, `gap-1.5`, `required` asterisk, description as `<p class="text-xs text-muted-foreground">` at `gap-1` | a local `Field` — right gap, **no `required`**, hint as a bare `<span>` | **delete the local `Field`**, use `SheetField` |
+| **3** | required marked with the destructive asterisk on 34 fields | **zero required markers on the whole form**, though six answers are mandatory | mark them |
+| **4** | tables are `flush` inside the card, and the add is `HangingAdd` on `hanging` | each table draws **its own rim inside a padded card**, and adds are ghost buttons on a `border-t` band | flush + `HangingAdd`; the per-account add becomes an **A2 matrix cell** |
+| **5** | every pending item carries a `target`, every target names a section `id` | **0 targets and 0 ids** — the strip names six outstanding things and can reach none of them | give each section an `id` and each pending item its `target` |
+| **6** | *(n/a — one page, no steps)* | a **hand-rolled** step strip: bespoke pills, bespoke numerals, bespoke disabled state | use `SheetSteps`, which is the DS control and is currently used **nowhere** |
+| **7** | `footerAside` is `FlagRow` | an inline `<label>` wrapping a `Checkbox` | use `FlagRow` — and **promote it**, it is already defined twice (`BrokerOrderSheet`, `AssetMovementSheet`) |
+| **8** | an empty state is the DS `Empty` / `EmptyHeader` / `EmptyMedia` | a dashed box, `px-4 py-8 text-center` | `Empty`, or padded text — §10f forbids the dashed box round a table |
+| **9** | a list of rows in a card sits in a `flush` section | `-m-4 mt-0` cancels the card's own padding by hand | `flush` |
+| **10** | radius `rounded-lg` on every card | `rounded-md` | follows from #1 |
+
+### What is NOT a gap, and must not be "fixed"
+
+- **`xwide` and one column.** The reference is `xxwide` with a sticky rail
+  because it has a derived side — totals that the form produces. A recurring
+  rule has no such side at step 1, and `xxwide` would be a rail of nothing.
+  **Width is per step**, and this step's shape is genuinely different.
+- **Two steps.** The reference is one page because its questions are all
+  askable at once. Here the partner decides which sites exist, so step 2 cannot
+  be answered until step 1 is. The steps are correct; only their *control* is
+  wrong (#6).
+- **The lane grid.** The per-target editor is this surface's own idea and there
+  is nothing in the reference to align it to.
+
+### Order to do it in
+
+1. **#1 and #2 first** — everything else is easier once the surface is made of
+   the same parts. They are also the two that make it *look* like the rest of
+   3PL.
+2. **#5** — the pending strip currently promises navigation it does not have,
+   which is the most visible broken thing on the screen.
+3. **#4, #8, #9** — the table shapes, which is also what clears the surface's
+   `eval:boxed-tables` finding.
+4. **#6 and #7** — the two DS controls that exist and are going unused.
+
+---
+
+## 8b. Other drift, still open
+
+1. ~~**A card's rim is two tokens.**~~ **Settled 2026-09-22: it is
+   `--fp-outline-1`.** `SheetSection` drew `border-border`, the divider weight,
+   round its outside. In dark the two tokens carry the same value, so the fix
+   was a light-mode correction only.
+   - **Follow-on, unsettled:** the card's title band still divides on
+     `border-border` (`#d4d4d8`), which is now **heavier than the card's own
+     rim** (`#e2e5ea`). Measured, not guessed. It may be right — a divider is
+     structural and a rim is quiet — but nobody has ruled on it, and the local
+     `Card` used `--fp-outline-1` for both.
+2. **`npm run eval:boxed-tables` reports `RecurringProgramCreate.tsx:292`** —
+   the tank table inside a padded target row. Covered by gap #4 above.
+3. ~~**The DS names the strip `MandatoryStepsBanner`.**~~ *Fixed 2026-09-22.*
 
 ### Fixed on the first pass, because each had exactly one correct answer
 

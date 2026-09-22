@@ -25,8 +25,10 @@ the control; explanations live behind an info affordance, not on screen.**
       the same field.
 - [ ] **L2** Dates read in the app's format everywhere — never a raw
       `toLocaleString()`.
-- [ ] **L2** Money is formatted by one helper, to two places, right-aligned,
-      tabular.
+- [ ] **L1** Money is formatted by ONE helper — `MONEY` — always two places,
+      right-aligned, tabular. No second `Intl.NumberFormat` with a currency,
+      no `` `$${n}` ``.
+- [ ] **L2** A per-unit rate uses the rate helper, not money with a `dp`.
 
 ## Empty and error text
 

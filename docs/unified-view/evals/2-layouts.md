@@ -50,6 +50,34 @@ Against `../2-layouts.md` and `docs/ds/ux/2-rules.md`.
 - [ ] **L2** Selection exists only where there is a bulk act.
 - [ ] **L1** No empty cell — a dash, or the word for the state.
 
+## Tables inside a boxed unit
+
+Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
+
+> **This segment is scripted.** `npm run eval:boxed-tables` scans every `.tsx`
+> under `prototypes/unified-view` and `src/components` and reports each
+> violation with its file, line and the rule it breaks. It exits non-zero, so
+> it can sit in CI. Run it before reading the list below by hand; what the
+> script covers, nobody has to.
+>
+> The assertions it holds: a table wrapped in its own bordered box · a
+> `SheetSection` whose body is a table but is not `flush` · an Add on a
+> full-width band inside the card · a hanging Add drawn with a border instead
+> of a fill · a table's empty state drawn as a dashed box.
+
+- [ ] **L1** No table draws its own border inside a card or a `SheetSection`.
+      The box's edge is the table's edge, and the section is `flush`.
+- [ ] **L1** An empty table in a boxed unit is padded text, not a dashed box.
+- [ ] **L2** Everything in a flush section that is NOT the table carries its
+      own 16px inset and a rule on the side that meets the table.
+- [ ] **L2** Holds for static tables too — a read-only rate card breaks this
+      as easily as an editable grid.
+- [ ] **L1** No Add control is a full-width band inside the card. It hangs
+      off the card's bottom-left corner, outside it, and the corner is
+      squared.
+- [ ] **L2** The hanging add is filled with the table's header tint, shows
+      only a `+` at rest, and carries the full phrase as its `aria-label`.
+
 ## Editable tables in a sheet
 
 - [ ] **L2** The total is a row of the table, not a caption under it.
@@ -74,7 +102,12 @@ Against `../2-layouts.md` and `docs/ds/ux/2-rules.md`.
 ## The side sheet
 
 - [ ] **L2** Width matches the shape: 560 stacked fields · 864 tables · 1120
-      wide tables · 1440 two columns. Per step, not per sheet.
+      wide tables · `xxwide` fills for two columns. Per step, not per sheet.
+- [ ] **L1** Every sheet and nested drawer clamps to `100vw − 56px` — one
+      number, no 60s left anywhere.
+- [ ] **L2** At 1900 the two-column step leaves exactly 56px and no strip of
+      the list behind it; at 760 it folds to one column with no sideways
+      scroll.
 - [ ] **L2** In a two-column sheet, everything editable is left and everything
       derived is right.
 - [ ] **L2** The rail is 340px, `sticky top-0`, and folds to one column below
@@ -87,7 +120,7 @@ Against `../2-layouts.md` and `docs/ds/ux/2-rules.md`.
       beside it.
 - [ ] **L2** The banner's subject label is fixed; only the item changes.
 - [ ] **L2** Every banner item has a target section, and pressing it scrolls
-      there and blinks the outline twice.
+      there and blinks the outline once.
 - [ ] **L1** Every section a banner item targets has the `id` it names. An
       item pointing at nothing fails silently.
 

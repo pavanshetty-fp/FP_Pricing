@@ -66,7 +66,10 @@ Against `../3-interactions.md` and `docs/ds/interactions/2-rules.md`.
       somewhere.
 - [ ] **L2** No scrollbar is visible, on either axis.
 - [ ] **L2** Contrast ≥ AA in BOTH themes — check light, which is the one that
-      gets forgotten.
+      gets forgotten. **Disabled controls are exempt** (WCAG 1.4.3 excludes
+      inactive components), and this app dims them to 50%, which puts a dead
+      primary around 3.5:1 in light by design. A disabled control still has to
+      be legible — if it cannot be read at all, that is a finding.
 - [ ] **L2** Colour is never the only carrier; the label always says the state.
 
 ## Settings that change the flow

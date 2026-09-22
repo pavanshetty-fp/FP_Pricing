@@ -234,8 +234,16 @@ derived, read-only, true whether or not anyone is looking.
 has while looking at any part of the form.
 
 **Widths:** `narrow` 560 (stacked fields) · `wide` 864 (tables) · `xwide` 1120
-(tables past six columns) · `xxwide` 1440 (two columns). **Per step, not per
+(tables past six columns) · `xxwide` fills to `100vw − 56px` (two columns). **Per step, not per
 sheet.**
+
+**A SHEET OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so `100vw − 112px`
+(Pavan, 2026-09-22). The 56px is what tells a reader a sheet is over
+something; a second sheet at the same inset covers the first exactly and reads
+as the SAME sheet having changed its contents. The extra 56 leaves a strip of
+the sheet underneath showing, which says "there is one of these behind this
+one" in the only language the stack has. The invitation and a partner's quote
+both sit at level 2, over the order.
 
 ---
 
@@ -252,7 +260,7 @@ sheet.**
   counter, under a fixed "Pending" label. An exception that stops the work
   takes the banner instead.
 - **The banner's item is pressable and takes you to the section**, which then
-  blinks its outline twice. Implementation note that matters: the sheet's focus
+  blinks its outline once. Implementation note that matters: the sheet's focus
   trap cancels `behavior: "smooth"` and restores the scroll of whatever it
   considers focused, so the travel is a rAF loop on the scrollport and nothing
   takes focus.

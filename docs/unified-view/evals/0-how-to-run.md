@@ -30,6 +30,7 @@ notice, so it is a first-class result, not an afterthought.
 | Kind | How |
 |---|---|
 | Countable — tokens, hex, icons, scale values, labels, imports | a script over the source; fast, runs in CI |
+| Scripted segments | `npm run eval:boxed-tables` — the boxed table unit (§10f) |
 | Structural — does this screen have the zones in order, does this sheet have the three footer slots | grep-shaped assertions over the source |
 | Judgement — does the board follow the board rules, is this colour binding right | an agent reading the file against the doc |
 | Rendered — contrast, both themes, focus rings, no visible scrollbars | the running app in the browser pane |

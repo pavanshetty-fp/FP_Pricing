@@ -207,9 +207,25 @@ export interface BoardCardQuote {
 
 export interface BoardCardBadge {
   label: string;
-  /** `critical` for a state that changes what someone does next. */
-  tone?: "critical" | "neutral";
+  /**
+   * `critical` for a state that changes what someone does next.
+   *
+   * `caution` and `success` are for a state the reader is WAITING ON and one
+   * that has ARRIVED — waiting on a partner's price, and having it (Pavan,
+   * 2026-09-22). Both take the DS's soft recipe: a `/10` tint of the tone's
+   * own hue with the tone's text. A badge on a card is read at a glance from
+   * three columns away, so the colour has to carry the difference without
+   * becoming the loudest thing on the lane.
+   */
+  tone?: "critical" | "neutral" | "caution" | "success";
 }
+
+/** The soft tints, one per tone — the `/10` fill the DS's `StatusChip` uses. */
+const BADGE_TONE: Record<string, string> = {
+  caution:
+    "border-transparent bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution",
+  success: "border-transparent bg-status-success/10 text-status-success",
+};
 
 export interface BoardCard {
   id: string;
@@ -687,6 +703,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                 <Badge
                   key={b.label}
                   variant={b.tone === "critical" ? "destructive" : "secondary"}
+                  className={b.tone ? BADGE_TONE[b.tone] : undefined}
                 >
                   {b.label}
                 </Badge>

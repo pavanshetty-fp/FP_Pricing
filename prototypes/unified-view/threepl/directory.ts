@@ -61,7 +61,7 @@ import {
   type ShipToLocation,
 } from "./directoryCore";
 
-export { USD0 as USD } from "./directoryCore";
+export { MONEY as USD } from "../data";
 
 /* ═══════════════════════════════════════════════════════════════ customers ═ */
 

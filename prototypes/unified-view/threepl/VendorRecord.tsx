@@ -225,13 +225,13 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
               key: "rate",
               label: "Rate",
               align: "right",
-              render: (l) => `${money(l.rate, true)} ${l.unit}`,
+              render: (l) => `${money(l.rate)} ${l.unit}`,
             },
             {
               key: "fsc",
               label: "Surcharge",
               align: "right",
-              render: (l) => (l.fuelSurcharge === null ? <Muted /> : money(l.fuelSurcharge, true)),
+              render: (l) => (l.fuelSurcharge === null ? <Muted /> : money(l.fuelSurcharge)),
             },
           ]}
         />

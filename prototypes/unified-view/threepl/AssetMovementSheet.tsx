@@ -42,6 +42,7 @@ import {
   SheetSection,
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
+import { HangingAdd } from "../HangingAdd";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, TANK_TYPES, type RentalAsset } from "./directory";
@@ -348,7 +349,7 @@ function AssetPickerSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="z-[60] w-[min(620px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(620px,calc(100vw-60px))]"
+        className="z-[60] w-[min(620px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(620px,calc(100vw-56px))]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -1382,6 +1383,22 @@ export function AssetMovementSheet({
           a section of its own, which is also what stops it being mistaken for
           a row of the table beneath it. */}
       <SheetSection
+        flush
+        /* THE ADD HANGS OFF THE CARD — DS ui §10f. Only while the table is
+           there to add to; the empty state has its own CTA. */
+        hanging={
+          draft.peripheralsOn ? (
+            <HangingAdd
+              label="Add peripherals"
+              onClick={() =>
+                setDraft((d) => ({
+                  ...d,
+                  peripherals: [...d.peripherals, blankPeripheral()],
+                }))
+              }
+            />
+          ) : undefined
+        }
         title="Add Peripheral"
         /* QUIET UNTIL REACHED FOR — the same removal affordance the Load Order
            carries, and for the same reason: emptying an optional list is
@@ -1408,7 +1425,8 @@ export function AssetMovementSheet({
       >
         {draft.peripheralsOn ? (
           <div>
-            <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+            {/* NO RIM OF ITS OWN — the card supplies it (DS ui §10f). */}
+            <div className="overflow-hidden">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
                   <col />
@@ -1501,18 +1519,6 @@ export function AssetMovementSheet({
                 </tbody>
               </table>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setDraft((d) => ({
-                  ...d,
-                  peripherals: [...d.peripherals, blankPeripheral()],
-                }))
-              }
-              className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Plus className="size-4" /> Add peripheral
-            </button>
           </div>
         ) : (
           /* THE EMPTY STATE IS THE TABLE'S OWN BOX, dashed, with the CTA inside
@@ -1520,7 +1526,7 @@ export function AssetMovementSheet({
              the section could be turned on but not what turning it on would
              give you; a box the size of the table, naming the thing it will
              hold, does both. */
-          <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+          <div className="m-4 flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
             <span className="flex flex-col gap-0.5">
               <span className="text-sm text-foreground">Add Peripheral</span>
               <span className="text-xs text-muted-foreground">
@@ -1539,6 +1545,24 @@ export function AssetMovementSheet({
       </SheetSection>
 
       <SheetSection
+        flush
+        /* THE ADD HANGS OFF THE CARD — DS ui §10f. */
+        hanging={
+          draft.customOn ? (
+            <HangingAdd
+              label="Add items"
+              onClick={() =>
+                setDraft((d) => ({
+                  ...d,
+                  customItems: [
+                    ...d.customItems,
+                    { name: "", qty: null, unit: UNITS[0] },
+                  ],
+                }))
+              }
+            />
+          ) : undefined
+        }
         title="Custom Items"
         action={
           draft.customOn && (
@@ -1558,7 +1582,8 @@ export function AssetMovementSheet({
       >
         {draft.customOn ? (
           <div>
-            <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+            {/* NO RIM OF ITS OWN — the card supplies it (DS ui §10f). */}
+            <div className="overflow-hidden">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
                   <col />
@@ -1635,21 +1660,9 @@ export function AssetMovementSheet({
                 </tbody>
               </table>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setDraft((d) => ({
-                  ...d,
-                  customItems: [...d.customItems, { name: "", qty: null, unit: UNITS[0] }],
-                }))
-              }
-              className="flex h-8 items-center gap-1.5 rounded-b-md border border-t-0 border-border px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Plus className="size-4" /> Add item
-            </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+          <div className="m-4 flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
             <span className="flex flex-col gap-0.5">
               <span className="text-sm text-foreground">Add Custom Items</span>
               <span className="text-xs text-muted-foreground">

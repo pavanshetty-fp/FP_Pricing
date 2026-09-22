@@ -79,7 +79,7 @@ export function productReadSections(
       note: `${customerReach(p)} customers · ${vendors.length} vendors`,
       render: () => (
         <ReadGrid>
-          <ReadField label="Base price" value={`${money(p.basePrice, true)} per ${p.unit}`} />
+          <ReadField label="Base price" value={`${money(p.basePrice)} per ${p.unit}`} />
           <ReadField
             label="Top-off"
             value={p.topOffSupported ? "A line may be a top-off" : "Every line needs a quantity"}

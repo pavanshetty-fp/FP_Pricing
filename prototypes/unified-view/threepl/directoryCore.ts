@@ -19,6 +19,8 @@
   the tables print where a hole shows through.
 */
 
+import { MONEY } from "../data";
+
 /* ─────────────────────────────────────────────────────── missing values ── */
 
 /**
@@ -132,22 +134,9 @@ export function daysFromToday(iso: string | null): number | null {
 
 /* ────────────────────────────────────────────────────────────── currency ── */
 
-export const USD0 = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-export const USD2 = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 /** Money in a table cell: `-` when absent, never `$0` standing in for unknown. */
-export const money = (n: number | null | undefined, cents = false): string =>
-  n === null || n === undefined ? DASH : (cents ? USD2 : USD0).format(n);
+export const money = (n: number | null | undefined): string =>
+  n === null || n === undefined ? DASH : MONEY(n);
 
 /* ───────────────────────────────────────────────────────── shared shapes ── */
 

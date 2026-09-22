@@ -32,6 +32,7 @@ import {
 } from "../data";
 import {
   BrokerBoard,
+  type BoardCardBadge,
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
@@ -72,6 +73,7 @@ import {
   isAllTopOff,
   isDelivered,
   isOrderReady,
+  defaultLineCharges,
   matchesBrokerOrder,
   matchesBrokerOrderIn,
   sortBrokerOrders,
@@ -306,7 +308,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           nameOff: off.has("partner.name"),
           quotes: ranked.map((q, i) => ({
             vendor: vendorName(q.vendorId),
-            total: money(q.total, true),
+            total: money(q.total),
             rank: i + 1,
           })),
           breakdown:
@@ -324,7 +326,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
          what it came to is half an answer. */
       figure:
         vendor && !off.has("partner.price") && heldQuote
-          ? money(quoteTotal(heldQuote, r.lines, !r.loadOrder), true)
+          ? money(quoteTotal(heldQuote, r.lines, !r.loadOrder))
           : undefined,
       lines: vendor
         ? [
@@ -342,12 +344,21 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           ]
         : [
             {
+              /* OUT MEANS SENT, NOT SELECTED (Pavan, 2026-09-22). This read
+                 "Out for acknowledgement" off `invitedVendorIds`, which is the
+                 broker's shortlist and not a thing anybody outside the
+                 building has seen — so a card could say it was waiting on
+                 partners who had never been written to, directly under a badge
+                 saying Draft. Sending is the act; `sentVendorIds` is its
+                 record. */
               text:
                 r.acceptedVendorIds.length > 0
                   ? `${r.acceptedVendorIds.length} accepted — no quote taken yet`
-                  : r.invitedVendorIds.length > 0
+                  : r.sentVendorIds.filter(Boolean).length > 0
                     ? "Out for acknowledgement"
-                    : "Not assigned",
+                    : r.invitedVendorIds.length > 0
+                      ? `${r.invitedVendorIds.length} selected, not sent`
+                      : "Not assigned",
               level: 3 as const,
             },
           ],
@@ -400,20 +411,41 @@ function laneCardCode(r: BrokerOrder) {
  * went into the route, where it reads as a gloss on the route rather than as a
  * third chip competing with Urgent for the same row.
  */
-function laneCardBadges(r: BrokerOrder): { label: string; tone?: "critical" | "neutral" }[] {
-  const out: { label: string; tone?: "critical" | "neutral" }[] = [];
+function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
+  const out: BoardCardBadge[] = [];
   /* URGENT IS ABOUT GETTING IT DONE, so it stops meaning anything once it is.
      On a delivered card it is a red chip asking for a hurry nobody can supply,
      competing with the chips that still matter. Recurrence is not like that —
      it says what KIND of order this is, and a finished one is still one. */
   if (r.urgent && !isDelivered(r.status)) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
-  /* DRAFT OR READY. A draft that has everything it needs and a draft that is
-     half typed look identical in a lane of eight, and the difference is the
-     only thing anyone opens that lane to find out. Sending is an explicit act,
-     so "Ready" means ready to be sent, not sent. */
+  /* THREE STATES IN THE ORDERS LANE, AND THEY ARE ABOUT THE PARTNER (Pavan,
+     2026-09-22). The reader of this lane is not waiting on the form, they are
+     waiting on a price:
+
+       Draft                  nothing has been sent
+       Awaiting Quotation     sent, and nobody has priced it — CAUTION
+       N Quotations Received  at least one price is in — SUCCESS
+
+     `sentVendorIds` is the record of the asking (invited is a selection, sent
+     is the act) and `quotes` is the record of the answer. THE COUNT IS ON THE
+     BADGE because on an order out to five partners, one price back and four
+     are different situations and the lane should not make you open the order
+     to find out which. Both tones take the DS's soft recipe — a /10 tint of
+     the tone's own hue — because a lane of eight cards should read as a lane
+     and not as a set of traffic lights. */
   if (r.status === "Draft") {
-    out.push({ label: isOrderReady(r) ? "Ready" : "Draft" });
+    const quotes = r.quotes.length;
+    out.push(
+      quotes > 0
+        ? {
+            label: `${quotes} Quotation${quotes === 1 ? "" : "s"} Received`,
+            tone: "success",
+          }
+        : r.sentVendorIds.filter(Boolean).length > 0
+          ? { label: "Awaiting Quotation", tone: "caution" }
+          : { label: "Draft" }
+    );
   }
   /* WHERE IN SYNCED. The Synced lane is the one that still holds two statuses
      — fully and partly — so the card is what says which. Only the partial one
@@ -532,7 +564,13 @@ const BOARD_LANES: {
   statuses: BrokerStatus[];
   apart?: boolean;
 }[] = [
-  { key: "Draft", statuses: ["Draft"] },
+  /* THE FIRST LANE IS CALLED ORDERS (Pavan, 2026-09-22). It holds two states,
+     not one — an order still being typed, and one whose invitations are out
+     and whose partners have not priced it — so "Draft" named half of what was
+     in it and the card's badge had to contradict the heading to say so. The
+     STATUS is still Draft; this is the lane's name, and the badge below is
+     what tells the two apart. */
+  { key: "Draft", title: "Orders", statuses: ["Draft"] },
   { key: "Quoting", statuses: ["Quoting"] },
   { key: "Assigned", statuses: ["Assigned"] },
   { key: "Completed", statuses: ["Completed"] },
@@ -868,13 +906,34 @@ const keyOf = (s: ViewState) =>
 
 export function BrokerOrdersScreen({
   focus,
-}: { focus?: { id: string; n: number } | null } = {}) {
+  startCreate,
+  onCreateClose,
+}: {
+  focus?: { id: string; n: number } | null;
+  /**
+   * OPEN THE CREATE SHEET ON ARRIVAL. A nonce, not a boolean: the Recurring
+   * Orders screens send the reader here to make one, and a boolean would fire
+   * once and then be stuck on, reopening the sheet every time the screen
+   * re-rendered.
+   */
+  startCreate?: number | null;
+  /**
+   * THE WAY BACK. A reader sent here by another screen's Create CTA came to
+   * make ONE order; closing that form should put them back where they were,
+   * not strand them on a list they never asked for.
+   */
+  onCreateClose?: () => void;
+} = {}) {
   const [rows, setRows] = React.useState<BrokerOrder[]>(BROKER_ORDERS);
   const [openId, setOpenId] = React.useState<string | null>(null);
   /* WHICH PART OF THE SHEET THE READER ASKED FOR. A card's "review pricing"
      names the vendor table; opening at the top and leaving them to scroll is
      answering a different request. Cleared when the sheet closes. */
   const [sheetFocus, setSheetFocus] = React.useState<"vendor" | null>(null);
+  /* Arrived here from another screen's Create CTA — see `startCreate`. */
+  React.useEffect(() => {
+    if (startCreate) setCreating(true);
+  }, [startCreate]);
   const [creating, setCreating] = React.useState(false);
   /* §5.20 — Create means three DIFFERENT records, so the choice is made before
      a form opens rather than by a Type field inside one. `null` is "no movement
@@ -1317,7 +1376,7 @@ export function BrokerOrdersScreen({
                  of the work. */
               acceptedVendorIds: draft.acceptedVendorIds,
               quotes: draft.quotes,
-              customerCharges: draft.customerCharges,
+              orderFees: draft.orderFees,
               tags: draft.tags,
               /* A MOVEMENT STAYS A MOVEMENT. Its kind is a fact about what the
                  record IS — one asset, no quantity, an M prefix `orders.ts`
@@ -1498,7 +1557,7 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
         quotes: [],
-        customerCharges: { deliveryFee: 0 },
+        orderFees: [],
         /* A new order has not been delivered, let alone billed. */
         invoiceState: "none",
         serviceLine: lineOfProduct(draft.lines[0]?.product ?? ""),
@@ -1616,6 +1675,7 @@ export function BrokerOrdersScreen({
                     : "",
             gal: null,
             topOff: false,
+            charges: defaultLineCharges(),
             rental: true,
           },
         ],
@@ -1626,7 +1686,7 @@ export function BrokerOrdersScreen({
         acceptedVendorIds: [],
         quoteRequested: false,
         quotes: [],
-        customerCharges: { deliveryFee: 0 },
+        orderFees: [],
         invoiceState: "none",
         serviceLine: lineOfProduct(""),
         business: null,
@@ -2328,6 +2388,9 @@ export function BrokerOrdersScreen({
         open={creating || openId !== null}
         onOpenChange={(o) => {
           if (o) return;
+          /* Saved or abandoned, the form is finished with — either way the
+             reader goes back to the screen that sent them. */
+          if (creating) onCreateClose?.();
           setCreating(false);
           setOpenId(null);
           setSheetFocus(null);

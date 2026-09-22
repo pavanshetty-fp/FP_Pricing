@@ -9,6 +9,7 @@ import {
   TagRow,
   type RecordReadSection,
 } from "./DirectoryRecordSheet";
+import { MONTH_FMT } from "../data";
 import { daysFromToday, formatDate, money, oneLineAddress } from "./directoryCore";
 import {
   MAINTENANCE_STATUSES,
@@ -227,11 +228,7 @@ export function assetReadSections(
           while (cursor <= end && i < 36) {
             rows.push({
               id: `${a.id}-bill-${i}`,
-              period: cursor.toLocaleDateString("en-US", {
-                month: "short",
-                year: "numeric",
-                timeZone: "UTC",
-              }),
+              period: MONTH_FMT.format(cursor),
               amount: a.rentalRate * step,
             });
             cursor.setUTCMonth(cursor.getUTCMonth() + step);

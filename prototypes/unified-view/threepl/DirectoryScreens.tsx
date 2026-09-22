@@ -128,8 +128,10 @@ const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
    so nothing truncates any more and it went with them. Six words of a driver
    instruction was never worth a column. */
 
-const Money = ({ value, cents = false }: { value: number | null; cents?: boolean }) =>
-  value === null ? <Muted /> : <span className="text-sm tabular-nums">{money(value, cents)}</span>;
+/* MONEY IS ONE FORMAT NOW — always two places — so there is no longer a
+   per-cell choice to pass down. */
+const Money = ({ value }: { value: number | null }) =>
+  value === null ? <Muted /> : <span className="text-sm tabular-nums">{money(value)}</span>;
 
 const RECORD_STATUS_TONE = (s: RecordStatus) =>
   s === "active" ? ("success" as const) : ("neutral" as const);
@@ -572,7 +574,7 @@ export function vendorConfig(
         case "rateCard": {
           const base = v.rateCard.find((l) => l.id === v.defaultRateCardId) ?? v.rateCard[0];
           return base ? (
-            <TwoLineCell title={base.label} description={`${money(base.rate, true)} ${base.unit}`} />
+            <TwoLineCell title={base.label} description={`${money(base.rate)} ${base.unit}`} />
           ) : (
             <Muted />
           );
@@ -857,7 +859,7 @@ export function productConfig(
             </span>
           );
         case "price":
-          return <Money value={p.basePrice} cents />;
+          return <Money value={p.basePrice} />;
         case "taxCode":
           /* A taxable product with no code is the one gap that produces a
              wrong invoice rather than an incomplete record — so it is loud. */

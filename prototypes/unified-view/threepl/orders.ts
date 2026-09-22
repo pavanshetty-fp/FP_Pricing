@@ -1,4 +1,4 @@
-import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "../data";
+import { DATE_FMT, MONEY, dateKeyOf, relativeLabel, startOfDay } from "../data";
 import { CUSTOMERS } from "../customers";
 import type { TwoLine } from "../types";
 import { VENDORS } from "./vendors";
@@ -196,7 +196,78 @@ export interface OrderLine {
    * must not throw away the pricing worked out for the customer.
    */
   pricePerGal?: number;
-  marginPerGal?: number;
+  /**
+   * EVERYTHING ELSE CHARGED ON THIS PRODUCT, AS A LIST (Pavan, 2026-09-22).
+   *
+   * It was three fields — margin, tax, fee — one of each. One of each is not
+   * what an order looks like: a load can carry a state excise AND a county
+   * tax, a pump fee AND a hazmat fee, a margin split between the broker and
+   * the salesperson. Three fields could hold the first of each and nothing
+   * after it.
+   *
+   * ALL OF THEM ARE PER GALLON and charged on what is in the tank — a gallon
+   * of dyed diesel is taxed differently from a gallon of DEF. A fee that is
+   * NOT about a product (an after-hours callout, a split delivery) is not one
+   * of these: it is an `OrderFee`, charged once for the run.
+   */
+  charges: LineCharge[];
+}
+
+/**
+ * ONE CHARGE ON ONE PRODUCT — the row it defines, and the BROKER's rate for it.
+ *
+ * THE ROW BELONGS TO THE ORDER, THE RATES TO EACH SIDE. The pricing unit lays
+ * the partner's figure beside the broker's for the same charge, so the charge
+ * itself has to exist once, above both: `perGal` here is what the customer is
+ * billed, and the partner's figure for the same row is `QuoteLine.rates[id]`.
+ * That is also why the id is stable — a quote points at it.
+ *
+ * WHICH ONE IT IS, WHEN THERE ARE SEVERAL, is not stored. Two margins on a
+ * product are "Margin 1" and "Margin 2" by their order in the list; a typed
+ * name is one more thing to keep consistent across an order for no gain the
+ * figures do not already give.
+ */
+export interface LineCharge {
+  /** Unique within its line. `QuoteLine.rates` is keyed by it. */
+  id: string;
+  kind: LineChargeKind;
+  /** The BROKER's rate. The partner's is on the quote. */
+  perGal?: number;
+}
+
+/**
+ * The charges a product can carry more than one of. PRICE IS NOT ONE: a
+ * product has one rate, and a second would be a second product.
+ */
+export const LINE_CHARGE_KINDS = ["Margin", "Tax", "Fee"] as const;
+export type LineChargeKind = (typeof LINE_CHARGE_KINDS)[number];
+
+/** A fresh charge, with an id nothing else on the line is using. */
+export function newLineCharge(
+  kind: LineChargeKind,
+  taken: LineCharge[]
+): LineCharge {
+  const base = kind.toLowerCase();
+  let n = 1;
+  let id = base;
+  while (taken.some((c) => c.id === id)) id = `${base}-${++n}`;
+  return { id, kind };
+}
+
+/** The three a line starts with — one of each, which is the common case. */
+export function defaultLineCharges(): LineCharge[] {
+  return LINE_CHARGE_KINDS.map((kind) => ({ id: kind.toLowerCase(), kind }));
+}
+
+/**
+ * WHAT A CHARGE IS CALLED ON THE ROW. Plain "Margin" when it is the only one
+ * of its kind on the line; numbered when it is not, because two rows reading
+ * "Margin" with different figures is a table that cannot be checked.
+ */
+export function chargeLabel(c: LineCharge, all: LineCharge[]): string {
+  const sameKind = all.filter((x) => x.kind === c.kind);
+  if (sameKind.length < 2) return c.kind;
+  return `${c.kind} ${sameKind.indexOf(c) + 1}`;
 }
 
 /**
@@ -323,8 +394,16 @@ export interface QuoteLine {
   asset: string;
   /** (B) What the vendor charges per gallon delivered. */
   ratePerGal: number;
-  /** (C) Everything else they add per gallon — fuel, tolls, wait time. */
-  surcharge: number;
+
+  /**
+   * THE PARTNER'S RATE FOR EACH OF THE LINE'S CHARGES, keyed by `LineCharge.id`.
+   *
+   * The CHARGE is defined on the order line, once, so the pricing unit can lay
+   * the two sides against each other row for row; what is per-partner is only
+   * the figure. A key with no charge behind it any more is simply not read —
+   * removing a charge from the order does not have to reach into every quote.
+   */
+  rates: Record<string, number>;
 }
 
 export interface VendorQuote {
@@ -332,14 +411,12 @@ export interface VendorQuote {
   /** Per order line. Everything else about a quote is derived from these. */
   lines: QuoteLine[];
   /**
-   * ORDER-LEVEL CHARGES. Freight, fees and taxes are charged once for the run,
-   * not per gallon, so they cannot live on the lines — and they are charged
-   * WHOEVER supplies the product, which is what makes them the constant half
-   * of a quote. See `quoteTotal` for the half that is not constant.
+   * FREIGHT — the one carrier charge that belongs to no product. It is the
+   * truck coming out, charged once for the run whoever supplies the fuel; the
+   * partner's fees and taxes moved onto the LINES, because those are charged
+   * on what is in the tank. See `quoteTotal`.
    */
   freight: number;
-  fees: number;
-  taxes: number;
   /**
    * WHAT THE PARTNER SAID WITH THE PRICE, and what they sent with it.
    *
@@ -353,15 +430,67 @@ export interface VendorQuote {
 }
 
 /**
- * ORDER-LEVEL CHARGES ON THE CUSTOMER'S SIDE.
+ * A FEE THAT IS NOT ABOUT A PRODUCT — charged once for the run, whatever is on
+ * the truck.
  *
- * The partner's quote has its own three (freight, fees, taxes); these are what
- * the BROKER adds on top when it bills the customer, and they are charged once
- * for the run rather than per gallon. A delivery fee is the first of them —
- * more are expected, which is why it is a record rather than a field.
+ * Most fees ARE about a product and are per gallon; they live on the order
+ * line beside the margin. What is left is this: an after-hours callout, a
+ * split delivery, a demurrage charge. They cannot be per gallon because they
+ * are not about gallons, so the amount is a flat figure (Pavan, 2026-09-22).
+ *
+ * THE KIND IS PICKED, NOT TYPED. A free-text fee name is a fee nobody can
+ * report on — "After hours", "after-hours", "AH callout" are three fees to a
+ * spreadsheet and one to a person. `ORDER_FEE_KINDS` is the list.
  */
-export interface CustomerCharges {
-  deliveryFee: number;
+export interface OrderFee {
+  /** Which way the money goes and what it is — see `ORDER_FEE_TYPES`. */
+  type: OrderFeeType;
+  /** WHICH fee this one is — picked from `ORDER_FEE_LABELS`, or typed. */
+  label: string;
+  amount: number;
+}
+
+/**
+ * WHAT KIND OF LINE THIS IS, and it is not decoration: a Discount SUBTRACTS.
+ *
+ * Type and label are two different questions. The type is the handful of
+ * things a run-level line can BE — money on, money off, duty — and the label
+ * is which one of them it is. One select and one name, rather than one list
+ * that has to carry both and grows a row every time either changes.
+ */
+export const ORDER_FEE_TYPES = ["Fee", "Discount", "Tax"] as const;
+export type OrderFeeType = (typeof ORDER_FEE_TYPES)[number];
+
+/**
+ * THE LABELS A RUN-LEVEL LINE CAN CARRY. One vocabulary, so two orders with the
+ * same charge on them say it the same way — "After hours", "after-hours" and
+ * "AH callout" are three fees to a report and one to a person. The field is
+ * still typeable, because the list cannot have foreseen every customer's
+ * arrangement, but the list is what it offers first.
+ *
+ * Delivery fee is in here rather than a field of its own — it was the only
+ * order-level fee the model had, which made every other one impossible to
+ * record. It is a label like the rest.
+ */
+export const ORDER_FEE_LABELS: string[] = [
+  "Delivery fee",
+  "After-hours delivery",
+  "Split delivery",
+  "Wait time",
+  "Demurrage",
+  "Minimum load fee",
+  "Environmental fee",
+  "Hazmat handling",
+  "Pump fee",
+  "Re-delivery fee",
+];
+
+/** What the run's own lines come to — a Discount comes off, the rest go on. */
+export function orderFeesTotal(fees: OrderFee[] | undefined): number {
+  return (fees ?? []).reduce(
+    (sum, f) => sum + (f.type === "Discount" ? -(f.amount || 0) : f.amount || 0),
+    0
+  );
 }
 
 /**
@@ -454,8 +583,8 @@ export interface BrokerOrder {
   /** §5.9 — the broker asked for pricing instead of a plain acknowledgement. */
   quoteRequested: boolean;
   quotes: VendorQuote[];
-  /** What the broker adds to the customer's bill for the run — see the type. */
-  customerCharges: CustomerCharges;
+  /** Fees charged once for the run, belonging to no product — see `OrderFee`. */
+  orderFees: OrderFee[];
   /**
    * Where the vendor's BILL has got to. Three states, one at a time:
    *
@@ -656,8 +785,8 @@ export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
   return out;
 }
 
-const money2 = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** One helper, app-wide — `MONEY` in `../data`. */
+const money2 = MONEY;
 
 /** Gallons a line is priced on — what was delivered if known, else requested. */
 export function billableGal(l: OrderLine): number {
@@ -666,16 +795,21 @@ export function billableGal(l: OrderLine): number {
 
 /**
  * TOTAL LANDING COST for one line — D x (B + C), the vendor's rate and its
- * surcharge over the gallons actually moved. "Landing" because it is what the
+ * margin over the gallons actually moved. "Landing" because it is what the
  * product costs the broker once it is on the ground: the whole point of the
- * column is that a low rate with a high surcharge is not a cheap quote.
+ * column is that a low rate with a high margin is not a cheap quote.
  */
 export function quoteLineTotal(q: QuoteLine, l: OrderLine): number {
-  return billableGal(l) * (q.ratePerGal + q.surcharge);
+  return billableGal(l) * (q.ratePerGal + quoteLineChargeRate(q, l));
+}
+
+/** What the partner adds per gallon on this line — every charge it carries. */
+export function quoteLineChargeRate(q: QuoteLine, l: OrderLine): number {
+  return (l.charges ?? []).reduce((sum, c) => sum + (q.rates?.[c.id] ?? 0), 0);
 }
 
 /**
- * THE BASE PRICE — the product itself, at the partner's rate plus surcharge.
+ * THE BASE PRICE — the product itself, at the partner's rate plus margin.
  *
  * It is only the partner's to charge when the partner is the one supplying the
  * product. See `quoteTotal`.
@@ -696,23 +830,40 @@ export function quoteProductTotal(q: VendorQuote, lines: OrderLine[]): number {
 }
 
 /**
- * (C) alone — the SERVICE CHARGE, and it is always the partner's to charge.
+ * ONE KIND OF CHARGE, ACROSS THE WHOLE QUOTE — every Margin the partner
+ * charges, or every Tax, or every Fee. A product can carry more than one of
+ * each, so this sums the kind rather than reading a single field.
  *
- * It was folded into the base price, which meant a load order struck it along
- * with the product: the broker owning the fuel does not stop the partner
- * charging for wait time and tolls to haul it. Split out, the base is the
- * product and only the product, and this stands whoever bought the fuel.
+ * A PARTNER'S MARGIN IS ALWAYS THEIRS TO CHARGE, whoever bought the fuel: the
+ * broker owning the product does not stop the partner charging for wait time
+ * and tolls to haul it. It is the PRICE a load order strikes, not this.
  */
-export function quoteServiceTotal(q: VendorQuote, lines: OrderLine[]): number {
+export function quoteChargeTotal(
+  q: VendorQuote,
+  lines: OrderLine[],
+  kind: LineChargeKind
+): number {
   return q.lines.reduce((sum, ql) => {
     const l = lines.find((x) => x.asset === ql.asset);
-    return sum + (l ? billableGal(l) * ql.surcharge : 0);
+    if (!l) return sum;
+    const rate = (l.charges ?? [])
+      .filter((c) => c.kind === kind)
+      .reduce((r, c) => r + (ql.rates?.[c.id] ?? 0), 0);
+    return sum + billableGal(l) * rate;
   }, 0);
 }
 
-/** Freight, fees and taxes — charged on every order, whoever brings the fuel. */
-export function quoteOrderCharges(q: VendorQuote): number {
-  return q.freight + q.fees + q.taxes;
+/** Everything the partner adds on top of the product, over the whole quote. */
+export function quoteChargesTotal(q: VendorQuote, lines: OrderLine[]): number {
+  return q.lines.reduce((sum, ql) => {
+    const l = lines.find((x) => x.asset === ql.asset);
+    return sum + (l ? billableGal(l) * quoteLineChargeRate(ql, l) : 0);
+  }, 0);
+}
+
+/** Freight — charged on every order, whoever brings the fuel. */
+export function quoteFreight(q: VendorQuote): number {
+  return q.freight;
 }
 
 /**
@@ -735,20 +886,43 @@ export function quoteTotal(
 ): number {
   return (
     (chargesBase ? quoteProductTotal(q, lines) : 0) +
-    quoteServiceTotal(q, lines) +
-    quoteOrderCharges(q)
+    quoteChargesTotal(q, lines) +
+    quoteFreight(q)
   );
 }
 
-/** One line's revenue: A x (B + C) — the customer-pricing table's last column. */
+/**
+ * One line's revenue — the gallons times everything charged on that product:
+ * its price, the margin on it, and the tax and fee it carries.
+ */
+export function customerLineChargeRate(l: OrderLine): number {
+  return (l.charges ?? []).reduce((sum, c) => sum + (c.perGal ?? 0), 0);
+}
+
+/** One kind of charge on one line, over the gallons it is priced on. */
+export function customerChargeTotal(
+  l: OrderLine,
+  kind: LineChargeKind
+): number {
+  return (
+    billableGal(l) *
+    (l.charges ?? [])
+      .filter((c) => c.kind === kind)
+      .reduce((sum, c) => sum + (c.perGal ?? 0), 0)
+  );
+}
+
 export function customerLineTotal(l: OrderLine): number {
-  return billableGal(l) * ((l.pricePerGal ?? 0) + (l.marginPerGal ?? 0));
+  return (
+    billableGal(l) *
+    ((l.pricePerGal ?? 0) + customerLineChargeRate(l))
+  );
 }
 
 /** What the customer pays for the whole order. */
 export function customerTotal(
   lines: OrderLine[],
-  charges?: CustomerCharges,
+  fees?: OrderFee[],
   /**
    * The partner's fees and taxes, when they are the customer's to pay.
    *
@@ -762,7 +936,7 @@ export function customerTotal(
 ): number {
   return (
     lines.reduce((sum, l) => sum + customerLineTotal(l), 0) +
-    (charges?.deliveryFee ?? 0) +
+    orderFeesTotal(fees) +
     passedThrough
   );
 }
@@ -1335,10 +1509,11 @@ function vendorStateFor(
   acceptedVendorIds: string[];
 } {
   if (status === "Draft" || status === "Blocked") {
-    /* A DRAFT MAY ALREADY HAVE ITS PARTNERS PICKED. Sending is an explicit act
-       now, so "chosen but not sent" is a real state — and it is the difference
-       between a card that says Draft and one that says Ready. A fixture that
-       never produced it would leave half of that badge unreachable. */
+    /* A DRAFT MAY ALREADY HAVE ITS PARTNERS PICKED. Sending is an explicit act,
+       so "chosen but not sent" is a real state — and once the shortlist has
+       gone out the card stops saying Draft and says Awaiting Quotation. A
+       fixture that never produced a shortlist would leave half of that badge
+       unreachable; see `sentVendorIds` below for which of them were sent. */
     const ready = pick() < 0.45;
     if (!ready) return { vendorId: null, invitedVendorIds: [], acceptedVendorIds: [] };
     const needsLine = kind === "Movement" ? "Asset Movement" : "Bulk Fuel";
@@ -1474,9 +1649,16 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       inLine.length > 0
         ? inLine
         : site.assets.filter((a) => lineOfProduct(a.product) === fallbackLine);
+    /* UP TO SIX PRODUCTS ON EVERY FIFTH ORDER (Pavan, 2026-09-22 — "add at
+       least 1-6 products as different examples"). The pricing unit is a table
+       of products now, and a fixture that never ran past three could not show
+       what it does at six. ONE DRAW EITHER WAY, so the random stream is not
+       lengthened; only what this one is multiplied by changes. Bray North Yard
+       is the only site with six assets standing on it, so that is where a
+       six-line order can actually land. */
     const nLines = isMovement
       ? 1
-      : Math.min(pool.length, 1 + Math.floor(pick() * 3));
+      : Math.min(pool.length, 1 + Math.floor(pick() * (i % 5 === 0 ? 6 : 3)));
     const lines: OrderLine[] = Array.from({ length: nLines }, (_, k) => {
       // Top-off lines exist on ~1 in 6 fuel lines and never on movement orders,
       // which carry an asset rather than a requested volume.
@@ -1496,9 +1678,11 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
            stages downstream of the delivery; null while the order is still
            being priced, where the broker may type an expected figure. */
         deliveredGal: null,
-        /* The broker's own numbers, unset until someone prices the order. */
+        /* The broker's own numbers, unset until someone prices the order.
+           ONE OF EACH CHARGE TO BEGIN WITH — the common case, and the reader
+           adds a second margin or a county tax when the load wants one. */
         pricePerGal: undefined,
-        marginPerGal: undefined,
+        charges: defaultLineCharges(),
       };
     });
 
@@ -1509,7 +1693,17 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       for (const l of lines) {
         l.deliveredGal = l.gal == null ? 50 + Math.floor(pick() * 20) * 25 : l.gal;
         l.pricePerGal = Number((3.1 + pick() * 0.8).toFixed(3));
-        l.marginPerGal = Number((0.18 + pick() * 0.34).toFixed(3));
+        const margin = Number((0.18 + pick() * 0.34).toFixed(3));
+        /* DERIVED, NOT DRAWN. Every `pick()` shifts every value after it, so a
+           new field seeded from the random stream would have reshuffled the
+           whole fixture — different vendors, different quotes, different
+           lanes. Both come off figures already settled above. */
+        const rate: Record<string, number> = {
+          margin,
+          tax: Number((l.pricePerGal * 0.06).toFixed(3)),
+          fee: Number((margin * 0.12).toFixed(3)),
+        };
+        l.charges = l.charges.map((c) => ({ ...c, perGal: rate[c.id] ?? 0 }));
       }
     }
 
@@ -1542,17 +1736,36 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
                fixture — is unchanged. */
             .filter((_, k) => (k === 0 ? true : pick() < 0.6 || k === 1))
             .filter(() => (status === "Assigned" ? pick() < 0.7 : true))
-            .map((vid) => ({
-              vendorId: vid,
-              lines: lines.map((l) => ({
+            .map((vid) => {
+              const quoteLines = lines.map((l) => ({
                 asset: l.asset,
                 ratePerGal: Number((2.85 + pick() * 0.9).toFixed(3)),
-                surcharge: Number((0.08 + pick() * 0.22).toFixed(3)),
-              })),
-              /* Charged once for the run, so they do not scale with gallons. */
-              freight: Math.round(180 + pick() * 320),
-              fees: Math.round(25 + pick() * 90),
-              taxes: Math.round(40 + pick() * 160),
+                /* KEYED BY THE LINE'S OWN CHARGES, so the partner's column can
+                   be laid against the broker's row for row. */
+                rates: {
+                  margin: Number((0.08 + pick() * 0.22).toFixed(3)),
+                } as Record<string, number>,
+              }));
+              /* The truck coming out — charged once, so it does not scale with
+                 gallons. The partner's fee and tax do, and are on the lines. */
+              const freight = Math.round(180 + pick() * 320);
+              /* THE TWO DRAWS THAT USED TO BE `fees` AND `taxes` ARE STILL
+                 TAKEN, IN THE SAME PLACE. Those were one figure each for the
+                 whole run; they are now per gallon and per product. Dropping
+                 the draws would have shifted every value after them and
+                 reshuffled the whole fixture — different vendors, different
+                 quotes, different lanes — so they are kept and spent on the
+                 rate the lines carry instead. */
+              const feeRate = Number((0.012 + pick() * 0.03).toFixed(3));
+              const taxRate = Number((0.02 + pick() * 0.06).toFixed(3));
+              for (const ql of quoteLines) {
+                ql.rates.fee = feeRate;
+                ql.rates.tax = taxRate;
+              }
+              return {
+              vendorId: vid,
+              lines: quoteLines,
+              freight,
               /* BY INDEX, so the two states — a quote with a covering note and
                  one without — are both on the board without taking a draw. */
               note:
@@ -1563,8 +1776,34 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
                 i % 3 === 0
                   ? ["Rate sheet.pdf", "Fuel supply agreement.pdf"]
                   : undefined,
-            }))
+              };
+            })
         : [];
+
+    /* A DRAFT WITH A PRICE ALREADY WRITTEN DOWN (2026-09-22). In a draft the
+       broker writes a partner's quote down themselves — "Add their quotation"
+       in the row's menu, for a price given on a call — and that is the state
+       the Orders lane badges as *N Quotations Received*. A fixture that never
+       produced one would leave that badge, and the pricing unit it unlocks,
+       unreachable without typing.
+
+       BY INDEX AND DERIVED, NOT DRAWN. No `pick()` here: a draw would shift
+       every value after it and reshuffle the whole board. */
+    if (status === "Draft" && invitedVendorIds.length > 0 && i % 5 === 0) {
+      quotes.push({
+        vendorId: invitedVendorIds[0],
+        lines: lines.map((l, k) => ({
+          asset: l.asset,
+          ratePerGal: Number((2.9 + ((i + k) % 7) * 0.09).toFixed(3)),
+          rates: {
+            margin: Number((0.1 + ((i + k) % 5) * 0.02).toFixed(3)),
+            tax: Number((0.03 + ((i + k) % 3) * 0.01).toFixed(3)),
+            fee: Number((0.02 + ((i + k) % 4) * 0.005).toFixed(3)),
+          },
+        })),
+        freight: 180 + (i % 9) * 30,
+      });
+    }
 
     /* SEEDED SO ALL THREE SHOW, and BY INDEX rather than by `pick()`. Every
        draw taken from the generator shifts every value after it, so seeding a
@@ -1602,14 +1841,36 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       vendorId,
       invitedVendorIds,
       /* A SEEDED ORDER PAST DRAFT HAS BEEN ASKED — that is what leaving Draft
-         meant before the field existed. A seeded Draft has not. */
-      sentVendorIds: status === "Draft" ? [] : [...invitedVendorIds],
+         meant before the field existed.
+
+         A SEEDED DRAFT GOES BOTH WAYS (2026-09-22), because the Orders lane
+         now holds two states and the card's badge is what tells them apart:
+         nothing sent is a Draft, something sent is Awaiting Quotation. Every
+         other Draft with a shortlist has sent it — BY INDEX, so no draw is
+         taken from the generator and the rest of the fixture is unchanged. */
+      /* NOT A MULTIPLE OF FOUR. The board buckets by date off the same index,
+         and every Draft landing on one day turned out to share `i % 4` — so a
+         quarter-split put the whole lane on one side of it. */
+      sentVendorIds:
+        status === "Draft" && i % 3 === 2 ? [] : [...invitedVendorIds],
       acceptedVendorIds,
       quoteRequested,
       quotes,
-      /* SEEDED BY INDEX, so both states — a fee charged and none — are on the
-         board without taking a draw from the generator. */
-      customerCharges: { deliveryFee: i % 3 === 0 ? 125 : 0 },
+      /* SEEDED BY INDEX, so all three states — no run fee, one, and two — are
+         on the board without taking a draw from the generator. */
+      orderFees:
+        i % 3 === 0
+          ? [{ type: "Fee" as const, label: "Delivery fee", amount: 125 }]
+          : i % 3 === 1
+            ? []
+            : [
+                {
+                  type: "Fee" as const,
+                  label: "After-hours delivery",
+                  amount: 85,
+                },
+                { type: "Fee" as const, label: "Wait time", amount: 60 },
+              ],
       invoiceState,
       serviceLine: lines.length > 0 ? lineOfProduct(lines[0].product) : wanted,
       /* BY INDEX, NOT FROM THE RANDOM STREAM — a draw here would shift every
@@ -1662,8 +1923,16 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
         kind === "Recurring"
           ? {
               fromDateKey: dateKeyOf(when),
+              /* CYCLED ON THE RECURRING ORDINAL, NOT THE GLOBAL INDEX.
+                 Recurring orders are every fourth row, so `i % 6` only ever
+                 landed on three of the six frequencies — Daily, Every weekday
+                 and Monthly — and the other three were unreachable in the
+                 fixture. A UI that distinguishes six schedule shapes needs all
+                 six to exist or half of it cannot be seen to work. */
               frequency:
-                RECURRENCE_FREQUENCIES[i % RECURRENCE_FREQUENCIES.length],
+                RECURRENCE_FREQUENCIES[
+                  Math.floor(i / 4) % RECURRENCE_FREQUENCIES.length
+                ],
             }
           : null,
       /* WHEN IT ACTUALLY RAN. Inside the delivery window it was planned for
@@ -1683,11 +1952,22 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
           })()
         : null,
       hub: HUBS[i % HUBS.length],
-      /* EVERY SEEDED ORDER IS BROKERAGE. All of them were put out to a
-         partner, and the transportation path — our own fleet, no vendor
-         table — is not built, so seeding one would be seeding a screen that
-         does not exist. */
-      jobType: "Brokerage",
+      /*
+        NEARLY EVERY SEEDED ORDER IS BROKERAGE, and the exceptions are narrow
+        on purpose. The transportation path — our own fleet, no vendor table —
+        is not built in the ORDER SHEET, so seeding one there would be seeding
+        a screen that does not exist.
+
+        But the recurring lists now split first-party from third-party
+        operations, and a segment that is always empty teaches nothing. So a
+        third of the RECURRING orders that no partner holds are ours to run:
+        coherent, because an own-fleet job has no partner BECAUSE we run it,
+        and confined to rows the unbuilt sheet path is not reached from.
+      */
+      jobType:
+        kind === "Recurring" && vendorId === null && i % 3 === 0
+          ? "Transportation"
+          : "Brokerage",
       primaryPoc: POCS[i % POCS.length],
       /* Every fifth order names a second person, and never the same one as the
          primary — a fallback contact that is the contact is not a fallback. */

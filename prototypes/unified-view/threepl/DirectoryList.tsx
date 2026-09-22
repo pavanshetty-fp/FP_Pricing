@@ -28,6 +28,7 @@ import { ListFilters } from "../ListFilters";
 import { ListTable } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import { packList, readUrl, unpackList, writeUrl } from "./directoryUrl";
+import { downloadCsv } from "../csv";
 
 /*
   The Directory's list shell — Customers, Vendors, Products, Rental Assets.
@@ -143,33 +144,6 @@ interface ViewState {
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({ ...s, hidden: [...s.hidden].sort(), filters: [...s.filters].sort() });
-
-/**
- * CSV of what is on screen, not of the table.
- *
- * Export means "the rows I am looking at" — filtered, searched and sorted, all
- * pages of them. Exporting the page would be a surprise and exporting the whole
- * table would ignore the filtering somebody just did.
- */
-function downloadCsv(name: string, records: Record<string, string | number>[]): void {
-  if (records.length === 0) return;
-  const headers = Object.keys(records[0]);
-  const cell = (v: string | number) => {
-    const s = String(v ?? "");
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = [
-    headers.join(","),
-    ...records.map((r) => headers.map((h) => cell(r[h])).join(",")),
-  ].join("\n");
-
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${name}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export function DirectoryList<Row, K extends string>({
   rows,

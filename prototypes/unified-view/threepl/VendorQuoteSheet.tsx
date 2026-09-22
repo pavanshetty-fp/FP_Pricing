@@ -2,6 +2,7 @@ import { Check, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetSection } from "@/components/side-sheet/parts";
+import { MONEY } from "../data";
 import {
   TableCellInput,
   TableRequiredLabel,
@@ -11,6 +12,7 @@ import { RecordSheet } from "../RecordSheet";
 import {
   billableGal,
   quoteLineTotal,
+  quoteLineChargeRate,
   quoteTotal,
   type OrderLine,
   type QuoteLine,
@@ -21,7 +23,7 @@ import {
  * ONE PARTNER'S QUOTE, IN FULL — the working behind the TLC on its row.
  *
  * The vendor table gives every partner one number, which is the right amount to
- * compare on and not enough to decide on: a quote is a rate and a surcharge on
+ * compare on and not enough to decide on: a quote is a rate and a margin on
  * every line, plus the charges that ride on the run, plus whatever the partner
  * attached and said. That belongs somewhere you go to deliberately, not in a
  * column, so it is a second sheet over the order.
@@ -43,20 +45,24 @@ import {
  * a quote about nothing.
  */
 
+/**
+ * WHAT RIDES ON THE RUN AND NOT ON THE PRODUCT — which is freight alone.
+ *
+ * Fees and taxes used to be here beside it, one figure each for the whole
+ * quote. They are charged on what is in the tank, so they moved onto the lines
+ * as (D) and (E) and a quote can now say that the tax on the dyed diesel is
+ * not the tax on the DEF next to it. Freight stays: it is the truck, not the
+ * cargo. (Pavan, 2026-09-22.)
+ */
 const ORDER_CHARGES = [
   { key: "freight", label: "Freight" },
-  { key: "fees", label: "Fees" },
-  { key: "taxes", label: "Taxes" },
 ] as const satisfies readonly {
-  key: keyof Pick<VendorQuote, "freight" | "fees" | "taxes">;
+  key: keyof Pick<VendorQuote, "freight">;
   label: string;
 }[];
 
-const money = (n: number) =>
-  `$${n.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+/** One helper, app-wide — `MONEY` in `../data`. */
+const money = MONEY;
 
 const num = (v: string) => {
   const n = Number(v.replace(/[^0-9.-]/g, ""));
@@ -119,7 +125,7 @@ export function VendorQuoteSheet({
       ...quote,
       lines: has
         ? quote.lines.map((x) => (x.asset === asset ? { ...x, ...patch } : x))
-        : [...quote.lines, { asset, ratePerGal: 0, surcharge: 0, ...patch }],
+        : [...quote.lines, { asset, ratePerGal: 0, rates: {}, ...patch }],
     });
   };
 
@@ -134,6 +140,8 @@ export function VendorQuoteSheet({
          would have to be scrolled sideways to be read, and a table you scroll
          to read is one you cannot compare rows in. */
       size="wide"
+      /* OVER THE ORDER SHEET — see `level` on `RecordSheet`. */
+      level={2}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
@@ -185,13 +193,17 @@ export function VendorQuoteSheet({
     >
       <SheetSection title="Pricing" flush>
         <table className="w-full table-fixed border-collapse">
+          {/* EIGHT COLUMNS, NOT SIX. The partner's fee and tax are per gallon
+              and per product now, so they are cells on the row like the rate
+              and the margin beside them — and the four narrow money columns
+              are all one width, because they hold the same kind of figure. */}
           <colgroup>
             <col />
             <col className="w-[22%]" />
+            <col className="w-[112px]" />
             <col className="w-[128px]" />
-            <col className="w-[132px]" />
-            <col className="w-[132px]" />
-            <col className="w-[140px]" />
+            <col className="w-[128px]" />
+            <col className="w-[144px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
@@ -207,12 +219,19 @@ export function VendorQuoteSheet({
               <th className="px-3 py-2.5 text-right">
                 <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
               </th>
+              {/* ONE COLUMN FOR EVERYTHING ON TOP OF THE RATE, and it is read
+                  back rather than typed (Pavan, 2026-09-22). A product can
+                  carry several margins, several taxes and several fees now, so
+                  three fixed columns could hold the first of each and nothing
+                  after it. They are typed where they are compared — the order
+                  sheet's Pricing unit, which lays the partner's figure beside
+                  the broker's row for row. */}
               <th className="px-3 py-2.5 text-right">
-                <TableRequiredLabel>Surcharge (C)</TableRequiredLabel>
+                <TableRequiredLabel>Adds/gal (C)</TableRequiredLabel>
               </th>
               <th
                 className="px-3 py-2.5 text-right"
-                title="Total landing cost — requested gallons x (rate + surcharge)"
+                title="Total landing cost — requested gallons x (rate + everything added)"
               >
                 <TableRequiredLabel>TLC A×(B+C)</TableRequiredLabel>
               </th>
@@ -244,17 +263,10 @@ export function VendorQuoteSheet({
                         }
                       />
                     </td>
-                    <td className="relative p-0">
-                      <TableCellInput
-                        value={ql ? String(ql.surcharge) : ""}
-                        placeholder="0.000"
-                        numeric
-                        prefix="$"
-                        aria-label={`Surcharge for line ${i + 1}`}
-                        onChange={(v) =>
-                          putLine(line.asset, { surcharge: num(v) })
-                        }
-                      />
+                    <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                      {ql
+                        ? `$${quoteLineChargeRate(ql, line).toFixed(4)}`
+                        : "—"}
                     </td>
                   </>
                 ) : (
@@ -263,7 +275,9 @@ export function VendorQuoteSheet({
                       {ql ? `$${ql.ratePerGal.toFixed(4)}` : "—"}
                     </td>
                     <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
-                      {ql ? `$${ql.surcharge.toFixed(4)}` : "—"}
+                      {ql
+                        ? `$${quoteLineChargeRate(ql, line).toFixed(4)}`
+                        : "—"}
                     </td>
                   </>
                 )}

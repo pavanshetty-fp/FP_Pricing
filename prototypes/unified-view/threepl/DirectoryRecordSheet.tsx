@@ -422,21 +422,28 @@ export function DirectoryRecordSheet<T>({
         />
       )}
 
-      {readSections.map((s) => (
-        <SheetSection
-          key={s.key}
-          title={s.title}
-          note={
-            s.note || s.count !== undefined ? (
-              <SheetSectionNote>
-                {s.note ?? `${s.count} ${s.count === 1 ? "entry" : "entries"}`}
-              </SheetSectionNote>
-            ) : undefined
-          }
-        >
-          {s.render()}
-        </SheetSection>
-      ))}
+      {readSections.map((s) => {
+        /* A TABLE TAKES THE CARD'S OWN EDGES. Decided here from what the
+           section actually renders rather than from a flag on every section,
+           so a new table cannot be added with the gap left in by accident. */
+        const body = s.render();
+        return (
+          <SheetSection
+            key={s.key}
+            title={s.title}
+            flush={fillsSection(body)}
+            note={
+              s.note || s.count !== undefined ? (
+                <SheetSectionNote>
+                  {s.note ?? `${s.count} ${s.count === 1 ? "entry" : "entries"}`}
+                </SheetSectionNote>
+              ) : undefined
+            }
+          >
+            {body}
+          </SheetSection>
+        );
+      })}
     </RecordSheet>
   );
 }
@@ -496,16 +503,19 @@ export function SheetTable<T>({
   rowKey: (row: T) => string;
   max?: number;
 }) {
+  /* THE CARD IS THE BOX. A table in a boxed unit runs to the unit's edges and
+     borrows its border — so the empty state is padded text, not a second
+     dashed box inside the first. */
   if (rows.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-fp-outline-1 px-4 py-6 text-center text-sm text-muted-foreground">
+      <p className="px-4 py-6 text-center text-sm text-muted-foreground">
         {emptyBody}
       </p>
     );
   }
   const shown = rows.slice(0, max);
   return (
-    <div className="overflow-hidden rounded-md border border-fp-outline-1">
+    <div className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full min-w-max text-sm">
           <thead>
@@ -555,6 +565,22 @@ export function SheetTable<T>({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * IT FILLS ITS SECTION. A section whose body is one of these is rendered
+ * flush, so the table's edges are the card's edges and there is one border
+ * where there used to be two. The flag is on the component rather than on
+ * every call site, because a rule nobody has to remember is a rule that holds.
+ */
+SheetTable.fillsSection = true;
+
+/** Whether a section's body is a table that wants the card's own edges. */
+function fillsSection(body: React.ReactNode): boolean {
+  return (
+    React.isValidElement(body) &&
+    (body.type as { fillsSection?: boolean })?.fillsSection === true
   );
 }
 
@@ -621,6 +647,9 @@ export function AttachmentTable({ files }: { files: Attachment[] }) {
     />
   );
 }
+
+/** It is a `SheetTable`, so it fills its section for the same reason. */
+AttachmentTable.fillsSection = true;
 
 /**
  * The record's history — the same treatment the order sheet's Activity uses.
@@ -697,7 +726,7 @@ export function ReadDrawer({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="z-[60] w-[min(420px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(420px,calc(100vw-60px))]"
+        className="z-[60] w-[min(420px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(420px,calc(100vw-56px))]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -753,7 +782,7 @@ export function EditDrawer({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="z-[60] w-[min(460px,calc(100vw-60px))] gap-0 p-0 sm:max-w-[min(460px,calc(100vw-60px))]"
+        className="z-[60] w-[min(460px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(460px,calc(100vw-56px))]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex min-w-0 flex-col gap-0.5">

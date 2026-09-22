@@ -1,7 +1,6 @@
 import * as React from "react";
-import { Check, ChevronDown, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,16 +143,8 @@ export interface ProductTableProps {
 export function ProductTable({ lines, options, onChange }: ProductTableProps) {
   // Row index awaiting inline delete confirmation (✕ / red ✓).
   const [confirmIndex, setConfirmIndex] = React.useState<number | null>(null);
-  // Add chip: icon-only until hovered/focused, then the label slides out.
-  const [addExpanded, setAddExpanded] = React.useState(false);
-
   const update = (i: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-
-  const addRow = () => {
-    const unused = options.find((o) => !lines.some((l) => l.name === o));
-    onChange([...lines, { name: unused ?? options[0] ?? "", gal: 0 }]);
-  };
 
   const removeRow = (i: number) =>
     onChange(lines.filter((_, idx) => idx !== i));
@@ -162,8 +153,10 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
 
   return (
     <div>
-      {/* Bottom-left corner squared so the add chip connects as an extension. */}
-      <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+      {/* NO BORDER AND NO RADIUS OF ITS OWN — the card supplies both. The
+          section is `flush`, so the table's edges are the card's edges
+          (DS ui §10f). */}
+      <div className="overflow-hidden">
         <table className="w-full table-fixed border-collapse">
           {/* Delete column pinned; the two data columns scale to the rest. */}
           <colgroup>
@@ -260,29 +253,6 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
         </table>
       </div>
 
-      {/* Add chip, attached to the table's squared bottom-left corner. */}
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={addRow}
-          onMouseEnter={() => setAddExpanded(true)}
-          onMouseLeave={() => setAddExpanded(false)}
-          onFocus={() => setAddExpanded(true)}
-          onBlur={() => setAddExpanded(false)}
-          className="mt-px h-7 gap-0 rounded-t-none rounded-b-md bg-background px-2 text-foreground hover:bg-background/80"
-        >
-          <Plus className="size-4 shrink-0" />
-          <span
-            className={cn(
-              "overflow-hidden whitespace-nowrap transition-[max-width,opacity,padding] duration-200",
-              addExpanded ? "max-w-[110px] pl-1.5 opacity-100" : "max-w-0 opacity-0"
-            )}
-          >
-            Add product
-          </span>
-        </Button>
-      </div>
     </div>
   );
 }

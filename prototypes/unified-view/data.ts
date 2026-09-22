@@ -35,7 +35,53 @@ export function totalGal(products: ProductQty[]): number {
   return products.reduce((n, p) => n + p.gal, 0);
 }
 
+/* -------------------------------------------------------------- money ----- */
+
+/**
+ * MONEY, AND THERE IS ONLY ONE. Always two places — `$4.30`, and `$4.00`
+ * rather than `$4`. A column where some figures carry cents and others do not
+ * cannot be scanned down, and the same total read `$147` on one screen and
+ * `$147.00` on another depending on which of eight local formatters the file
+ * happened to define. Eight became this on 2026-09-22.
+ *
+ * Intl, not a template literal, so a negative is `-$4,183.50` and not
+ * `$-4,183.50`.
+ */
+const MONEY_FMT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export const MONEY = (n: number): string => MONEY_FMT.format(n);
+
+/**
+ * A PER-UNIT RATE IS NOT A TOTAL. $0.245 a gallon is three real places, and
+ * rounding it to $0.25 changes the arithmetic on the invoice — so rates get
+ * their own helper rather than a `dp` argument on the money one, which is how
+ * a total ends up rendered to four places by accident.
+ */
+export const RATE = (n: number, dp = 3): string =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+  }).format(n);
+
 /* -------------------------------------------------------------- dates ----- */
+
+/**
+ * A BILLING PERIOD IS A MONTH, not a day — "Sep 2026". Beside `DATE_FMT`
+ * because a formatter defined inline in the one screen that needs it is the
+ * ninth money helper waiting to happen.
+ */
+export const MONTH_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 export const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",

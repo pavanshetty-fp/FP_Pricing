@@ -16,6 +16,7 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { HangingAdd } from "./HangingAdd";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
 import { formatFullDate } from "./data";
@@ -103,7 +104,7 @@ function draftFrom(order: FuelOrder): OrderDraft {
  * same order, same spacing — with nothing filled in, so there is one layout to
  * learn instead of a separate create form that drifts from the edit one.
  *
- * `products: []` is deliberate: ProductTable carries its own "Add" chip, so the
+ * `products: []` is deliberate: the section carries a hanging "Add" tab, so the
  * operator adds the first line rather than being handed a placeholder line to
  * correct. `urgent: false` is the only non-empty value, because a switch has no
  * empty state.
@@ -328,7 +329,27 @@ export function OrderSheet({
             </div>
           </SheetSection>
 
-          <SheetSection title="Product Details">
+          <SheetSection
+            title="Product Details"
+            flush
+            /* THE ADD HANGS OFF THE CARD, not on a band inside it — DS ui
+               §10f. It lives here rather than in `ProductTable` because the
+               tab is outside the card and the table is inside it. */
+            hanging={
+              <HangingAdd
+                label="Add products"
+                onClick={() => {
+                  const unused = productNames.find(
+                    (o) => !draft.products.some((l) => l.name === o)
+                  );
+                  set("products", [
+                    ...draft.products,
+                    { name: unused ?? productNames[0] ?? "", gal: 0 },
+                  ]);
+                }}
+              />
+            }
+          >
             <ProductTable
               lines={draft.products}
               options={productNames}
@@ -392,7 +413,7 @@ export function OrderSheet({
               onOpenChange(false);
             }}
           >
-            {creating ? "Create Order" : "Save Changes"}
+            {creating ? "Create Order" : "Confirm"}
           </Button>
         </div>
       </SheetContent>

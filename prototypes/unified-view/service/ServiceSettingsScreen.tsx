@@ -88,7 +88,8 @@ export function ServiceSettingsScreen() {
         <div className="max-w-4xl pb-8">
           <p className="text-sm text-muted-foreground">
             These are not preferences. Each one turns a whole step of the flow on
-            or off, and the board and the order sheet change with them.
+            or off, and the board, the order sheet and the field app change
+            with them.
           </p>
 
           {/* THE TWO ENDS OF THE RANGE, as one click each. Eight switches is
@@ -112,6 +113,24 @@ export function ServiceSettingsScreen() {
           </div>
 
           <div className="mt-6 rounded-lg border border-fp-outline-1 bg-fp-surface-1a px-5">
+            {/* FIRST, BECAUSE IT DECIDES WHETHER THERE IS A FIELD STEP AT ALL.
+                Everything below it describes what happens to work once it has
+                been recorded; this one says WHO records it and where. */}
+            <SwitchRow
+              title="Service technician app"
+              description="On: assigned orders flow to the technician's field app for on-site completion — arrive, quote, then do it now or defer for a part. Off: handled by hand from the order sheet — dispatch records the completed work, with no field app and no on-site quote."
+              checked={cfg.techApp}
+              onChange={(v) => setServiceSetting("techApp", v)}
+            />
+            <SwitchRow
+              nested
+              disabled={!cfg.techApp}
+              disabledNote="A quote can only be sent from the field, so this needs the technician app."
+              title="Field quoting"
+              description="On: before starting, the technician sends the customer a quote — parts plus fees — for approval on site. Off: no quote step; work starts straight from dispatch and everything settles on the invoice afterwards."
+              checked={cfg.fieldQuote}
+              onChange={(v) => setServiceSetting("fieldQuote", v)}
+            />
             <SwitchRow
               title="Native billing"
               description="On: the invoice writes itself the moment a job is approved — parts, actual labour, mileage and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."

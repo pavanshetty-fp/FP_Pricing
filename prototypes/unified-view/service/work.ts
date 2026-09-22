@@ -350,8 +350,8 @@ export function quoteableTotal(parts: PartLine[], fees: FeeLine[]): number {
   return partsTotal(parts) + feesTotal(fees);
 }
 
-export const money = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** One helper, app-wide. */
+export { MONEY as money } from "../data";
 
 /* ------------------------------------------------------------- the fixture */
 

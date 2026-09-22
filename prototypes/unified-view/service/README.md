@@ -67,9 +67,12 @@ the board and the order sheet change with them.
 5. **Price book** — a work type brings its usual parts and a suggested fee, as
    editable lines rather than silently.
 6. **Portal intake** — customers raise jobs themselves.
-
-*The spec's "service technician app" and "field quoting" switches are gone: the
-technician's app is a separate mobile product, not a mode of this one.*
+7. **Service technician app** — assigned orders flow to the technician's field
+   app for on-site completion, or they are handled by hand from the order
+   sheet.
+8. **Field quoting** *(nested under 7, and dead without it)* — the technician
+   sends the customer a quote before starting, or there is no quote step at
+   all.
 
 **Two named profiles** sit at the ends of the range and are one click each:
 *Unified* (everything on) and *Dispatch layer* (everything off).
@@ -90,12 +93,11 @@ that one will govern several modules and is held back pending it.
 - **"Create invoice" is not a separate screen.** It is what the order sheet's
   own act becomes when native billing is off. Another page would be another
   place to learn for an act that belongs to this record.
-- **The technician's app is not in this module.** It is a separate mobile
-  product. Everything the field would report — arrival, the work, the stall —
-  has a rung on this sheet, so a dispatcher can drive a job end to end from
-  here; when the app exists it will report INTO those rungs rather than replace
-  them. A quote is the one thing that can only be sent from the field, so the
-  Quote section is read-only: the record of what was agreed on site.
+- **The technician's app is a separate product, shown from inside this one.**
+  It was cut on 2026-09-18 on exactly that ground and restored on 2026-09-21,
+  because "separate product" is the reason it has to be here rather than the
+  reason it does not: whether the field app is in play decides what the
+  DISPATCH screens are allowed to do. See below.
 
 ## The order sheet is two columns, like the 3PL one
 
@@ -244,3 +246,49 @@ for.)
 Customers, ship-tos and assets are REUSED from the rental directory. The
 technicians, fault text, labour hours, parts and rates are invented and flagged
 as such in `work.ts`.
+
+## The technician's app
+
+Added 2026-09-21, from the Service Work Orders artifact. `TechnicianApp.tsx`.
+
+**With the switch on, dispatch hands the job over and stops.** The order
+sheet's act on an Assigned, In progress or Parts-pending job becomes *Open
+technician app* / *Resume in technician app*, and the arrival, quote and
+completion rungs are gone from the sheet — because the person holding the job
+is standing in front of the asset. With the switch off the old ladder is the
+whole flow and dispatch records the work by hand, which is what *Service
+technician app: off* means.
+
+**It opens over the sheet, at phone width, with its own header.** The break
+from the app's own chrome is the point: this is somebody else's product, seen
+over the dispatcher's shoulder, and the moment it stops looking like the rest
+of the app is the moment nobody mistakes it for something dispatch can do.
+
+### The flow, and why each step exists
+
+| Step | Why it is its own step |
+| --- | --- |
+| **Arrive** | "On the way" and "on site" are the two facts the Assigned and In progress lanes exist to tell apart. Somebody has to say it. |
+| **Quote** | Parts + fees, priced before a spanner is lifted. Only with Field quoting on. |
+| **Waiting** | Work does not start until the customer says yes. A screen that skipped it would be lying about a step that really does hold jobs up — and it offers *Customer wants it changed*, because a screen with only a yes has never met a customer. |
+| **Work** | Log what was used, then one of two endings. |
+
+**The quote is a snapshot taken the moment it is sent** — parts and fees as
+they stood then. Labour and mileage cannot be on it: they are not known until
+the job has happened. That gap is the module's sharpest rule and this is where
+it gets created, so it is enforced here rather than explained later. On the
+work step the panel shows *Quoted X · Now Y* side by side — naming the gap
+while it is still being made is what stops it being a surprise on the invoice.
+
+**Two endings, not one button with a caveat.** *Completed* needs the labour
+hours and a signature. *Parts pending* needs neither — it needs to know what is
+missing — and it states what the `returnMode` switch will do with it BEFORE the
+press, because a technician who finds out afterwards has been told too late.
+
+**Leaving is not cancelling.** Closing the panel walks away from the job; the
+order is exactly where it was.
+
+### What it does not do
+
+No offline state, no photos, no route or day list, no push. It is the one flow
+that changes what dispatch sees, not the technician's whole product.

@@ -48,12 +48,34 @@ export interface RecordSheetProps {
    * were already at their minimum. A sheet does not get this size for being
    * long; it gets it for being split.
    *
-   * All four are CAPPED rather than filling the viewport. 60px-from-the-edge is
-   * the most a sheet may take, not the width it should be; the viewport clamp
-   * only bites on a narrow screen — which is where the two-column step folds
-   * back to one and stops needing the width at all.
+   * THE GAP IS 56px AND IT IS THE ONE CONSTANT. Every size is clamped to
+   * `100vw - 56px`, so no sheet can ever reach the edge and none can overflow
+   * a small screen. A sheet opened OVER another one takes that gap TWICE —
+   * see `level`.
+   *
+   * THE FOUR NARROWER SIZES ARE CAPPED rather than filling: the cap is the
+   * most a sheet may take, not the width it should be, and the clamp only
+   * bites on a narrow screen.
+   *
+   * `xxwide` IS THE EXCEPTION — it fills. Changed 2026-09-21. Its width was
+   * never a chosen number: it is tables beside a fixed 320px rail, so the rail
+   * is constant and everything else the viewport has belongs to the tables. At
+   * a fixed 1440 a wide screen showed a strip of the list behind it and the
+   * sheet read as having stopped short of something.
    */
   size?: "compact" | "narrow" | "wide" | "xwide" | "xxwide";
+  /**
+   * HOW DEEP IN THE STACK THIS SHEET IS. `2` is a sheet opened OVER another
+   * one — the invitation over an order, a partner's quote over an order.
+   *
+   * IT TAKES A SECOND GAP (Pavan, 2026-09-22). The 56px is what tells a reader
+   * a sheet is over something; a second sheet at the same inset covers the
+   * first exactly and reads as the SAME sheet having changed its contents.
+   * 112px leaves a 56px strip of the sheet underneath showing, which says
+   * "there is one of these behind this one" in the only language the stack
+   * has.
+   */
+  level?: 1 | 2;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit" | "create";
@@ -62,6 +84,15 @@ export interface RecordSheetProps {
   /** Header title when creating, e.g. `Create Asset Order`. */
   createTitle: string;
   /** Submit label when editing. Defaults to the DS's `Save Changes`. */
+  /**
+   * THE EDIT-MODE PRIMARY. "Confirm", not "Save Changes" — autosave is the
+   * default now, so by the time anybody looks at the footer the change is
+   * already written and a Save would be claiming credit for work already
+   * done. What is left to do is agree that the record is right.
+   *
+   * It is a per-sheet word: a footer that commits the record to a NEXT ACT
+   * should say that act instead. Changed 2026-09-22.
+   */
   editAction?: string;
   /** Submit label when creating — usually the same words as `createTitle`. */
   createAction: string;
@@ -268,12 +299,13 @@ export function DraftStatusChip({
 
 export function RecordSheet({
   size = "narrow",
+  level = 1,
   open,
   onOpenChange,
   mode,
   editTitle,
   createTitle,
-  editAction = "Save Changes",
+  editAction = "Confirm",
   createAction,
   headerAside,
   headerSubtitle,
@@ -294,21 +326,33 @@ export function RecordSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
+        /* THE GAP IS A VARIABLE, so one set of classes serves both levels. A
+           second-level sheet takes 112 — the constant, twice — and the strip
+           of the sheet beneath it is what says it is second. */
+        style={
+          { "--fp-sheet-gap": level === 2 ? "112px" : "56px" } as React.CSSProperties
+        }
         className={cn(
           "gap-0 p-0",
           size === "xxwide"
-            ? "w-[min(1440px,calc(100vw-60px))] sm:max-w-[min(1440px,calc(100vw-60px))]"
+            ? /* THE TWO-COLUMN STEP FILLS. It is the one shape whose width is
+                 not a number somebody chose — tables on the left and a fixed
+                 rail on the right, and every pixel the viewport has goes to
+                 the tables. Capped at 1440 it left a strip of list showing on
+                 a wide screen and made the sheet look like it had stopped
+                 short of something. The gap is the only constant. */
+              "w-[calc(100vw-var(--fp-sheet-gap))] sm:max-w-[calc(100vw-var(--fp-sheet-gap))]"
             : size === "xwide"
-            ? "w-[min(1120px,calc(100vw-60px))] sm:max-w-[min(1120px,calc(100vw-60px))]"
+            ? "w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))]"
             : size === "wide"
-              ? "w-[min(864px,calc(100vw-60px))] sm:max-w-[min(864px,calc(100vw-60px))]"
+              ? "w-[min(864px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(864px,calc(100vw-var(--fp-sheet-gap)))]"
               : size === "compact"
                 ? /* 510 — between the DS narrow and nothing. For a sheet that
                      is CONTROLS rather than a form: a facet list has a natural
                      width of its own, and the 560 a two-column form needs left
                      it swimming. */
-                  "w-[510px] sm:max-w-[510px]"
-                : "w-[560px] sm:max-w-[560px]"
+                  "w-[min(510px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(510px,calc(100vw-var(--fp-sheet-gap)))]"
+                : "w-[min(560px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(560px,calc(100vw-var(--fp-sheet-gap)))]"
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">

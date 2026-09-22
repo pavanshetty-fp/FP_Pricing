@@ -86,14 +86,51 @@ export function attend(id: string) {
 
   /* THE BLINK WAITS FOR THE SCROLL. Flashing a section that is still
      travelling spends the whole animation off screen. */
-  window.setTimeout(() => {
-    el.classList.remove("fp-attention");
+  window.setTimeout(() => blink(id), 320);
+}
+
+/** How long `blink` takes, start to finish — for anything sequencing after it. */
+export const BLINK_MS = 800;
+
+/**
+ * THE FLASH ON ITS OWN, WITHOUT THE TRAVEL.
+ *
+ * FOR A SECOND, NARROWER "THIS ONE". After a section has been brought into
+ * view and named, the thing actually worth reading inside it can be named
+ * too — the Pricing unit, then the vendor's own column. Two statements, not
+ * one longer one: "here" and then "this part of here". They must not overlap,
+ * or the second reads as the first still going.
+ */
+export function blink(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove("fp-attention");
+  /* Re-adding in the same frame does not restart a CSS animation; the reflow
+     between the two is what does. */
+  void el.offsetWidth;
+  el.classList.add("fp-attention");
+  window.setTimeout(() => el.classList.remove("fp-attention"), BLINK_MS);
+}
+
+/**
+ * THE SAME FLASH, ACROSS SOMETHING THAT IS NOT ONE BOX.
+ *
+ * A column of a grid is a stack of separate cells: an outline round each of
+ * them is a ladder, not a column. Every cell that belongs to the thing carries
+ * `data-blink="<name>"`, and they flash a FILL together — which reads as the
+ * one unit it is. (Pavan, 2026-09-22 — "blink should happen through this whole
+ * unit".)
+ */
+export function blinkGroup(name: string) {
+  const els = document.querySelectorAll<HTMLElement>(`[data-blink="${name}"]`);
+  els.forEach((el) => {
+    el.classList.remove("fp-attention-fill");
     /* Re-adding in the same frame does not restart a CSS animation; the reflow
        between the two is what does. */
     void el.offsetWidth;
-    el.classList.add("fp-attention");
-    window.setTimeout(() => el.classList.remove("fp-attention"), 1400);
-  }, 320);
+    el.classList.add("fp-attention-fill");
+    window.setTimeout(() => el.classList.remove("fp-attention-fill"), BLINK_MS);
+  });
 }
 
 /**

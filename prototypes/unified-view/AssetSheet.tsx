@@ -6,7 +6,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { MultiSelectList } from "@/components/ui/multi-select-list";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
-import { RecordSheet } from "./RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import {
   ASSET_LOS,
   ASSET_STATUSES,
@@ -97,11 +97,35 @@ export function AssetSheet({
 }: AssetSheetProps) {
   const [draft, setDraft] = React.useState<AssetDraft | null>(null);
   const creating = mode === "create";
+  const saveState = useDraftSaveState(draft, open);
+  /* WHAT WENT OUT LAST. The row comes back changed by our own save, so
+     without this the sheet would answer its own write with a rebuild. */
+  const lastSaved = React.useRef<string | null>(null);
 
+  /* THE DRAFT IS BUILT ONCE PER RECORD, keyed on the id rather than the row.
+     Keyed on the row, every autosave would hand the form a new object and
+     rebuild it under the cursor. */
+  const assetId = asset?.id ?? null;
   React.useEffect(() => {
     if (!open) return;
-    setDraft(creating ? emptyDraft() : asset ? draftFrom(asset) : null);
-  }, [open, creating, asset]);
+    const next = creating ? emptyDraft() : asset ? draftFrom(asset) : null;
+    lastSaved.current = next ? JSON.stringify(next) : null;
+    setDraft(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, creating, assetId]);
+
+  /* AUTOSAVED, DEBOUNCED — the DS rule for every side sheet with editable
+     fields in it. 600ms, the same everywhere. */
+  React.useEffect(() => {
+    if (creating || !asset || !draft) return;
+    const serialised = JSON.stringify(draft);
+    if (serialised === lastSaved.current) return;
+    const t = window.setTimeout(() => {
+      lastSaved.current = serialised;
+      onSave(asset, draft);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, asset, creating, onSave]);
 
   if (!draft || (!creating && !asset)) return null;
 
@@ -116,14 +140,24 @@ export function AssetSheet({
       editTitle={asset?.displayName ?? ""}
       createTitle="Create New Asset"
       createAction="Create New Asset"
+      /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE. An
+         edit is already written by the time the reader looks up; creating
+         still takes an act, because the record does not exist until somebody
+         says so. */
+      showCancel={false}
+      footerPrimary={creating ? undefined : null}
       headerAside={
-        <StatusChip tone={ASSET_STATUS_TONE[draft.status]} variant="soft">
-          {draft.status}
-        </StatusChip>
+        <span className="flex items-center gap-2">
+          <StatusChip tone={ASSET_STATUS_TONE[draft.status]} variant="soft">
+            {draft.status}
+          </StatusChip>
+          {saveState !== "idle" && (
+            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+          )}
+        </span>
       }
       onSubmit={() => {
         if (creating) onCreate?.(draft);
-        else if (asset) onSave(asset, draft);
       }}
     >
       <SheetSection title="Identity">

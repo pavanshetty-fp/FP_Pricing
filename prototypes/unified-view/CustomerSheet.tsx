@@ -8,7 +8,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { MultiSelectList } from "@/components/ui/multi-select-list";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
-import { RecordSheet } from "./RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import {
   BILLING_TERMS,
   LINES_OF_SERVICE,
@@ -100,12 +100,35 @@ export function CustomerSheet({
   const [draft, setDraft] = React.useState<CustomerDraft | null>(null);
   const [newShipTo, setNewShipTo] = React.useState("");
   const creating = mode === "create";
+  const saveState = useDraftSaveState(draft, open);
+  /* WHAT WENT OUT LAST. The row comes back changed by our own save, so
+     without this the sheet would answer its own write with a rebuild. */
+  const lastSaved = React.useRef<string | null>(null);
 
+  /* THE DRAFT IS BUILT ONCE PER RECORD, keyed on the id rather than the row.
+     Keyed on the row, every autosave would rebuild the form under the
+     cursor. */
+  const customerId = customer?.id ?? null;
   React.useEffect(() => {
     if (!open) return;
-    setDraft(creating ? emptyDraft() : customer ? draftFrom(customer) : null);
+    const next = creating ? emptyDraft() : customer ? draftFrom(customer) : null;
+    lastSaved.current = next ? JSON.stringify(next) : null;
+    setDraft(next);
     setNewShipTo("");
-  }, [open, creating, customer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, creating, customerId]);
+
+  /* AUTOSAVED, DEBOUNCED — 600ms, the same everywhere. */
+  React.useEffect(() => {
+    if (creating || !customer || !draft) return;
+    const serialised = JSON.stringify(draft);
+    if (serialised === lastSaved.current) return;
+    const t = window.setTimeout(() => {
+      lastSaved.current = serialised;
+      onSave(customer, draft);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, customer, creating, onSave]);
 
   if (!draft || (!creating && !customer)) return null;
 
@@ -128,17 +151,25 @@ export function CustomerSheet({
       createTitle="Create New Customer"
       // Matches the header and the rail CTA verbatim; Asset Orders does the same.
       createAction="Create New Customer"
+      /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE.
+         Creating still takes an act. */
+      showCancel={false}
+      footerPrimary={creating ? undefined : null}
       headerAside={
-        <StatusChip
-          tone={draft.status === "Active" ? "success" : "neutral"}
-          variant="soft"
-        >
-          {draft.status}
-        </StatusChip>
+        <span className="flex items-center gap-2">
+          <StatusChip
+            tone={draft.status === "Active" ? "success" : "neutral"}
+            variant="soft"
+          >
+            {draft.status}
+          </StatusChip>
+          {saveState !== "idle" && (
+            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+          )}
+        </span>
       }
       onSubmit={() => {
         if (creating) onCreate?.(draft);
-        else if (customer) onSave(customer, draft);
       }}
     >
       <SheetSection title="Customer Details">

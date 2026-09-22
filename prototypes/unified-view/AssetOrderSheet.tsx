@@ -12,7 +12,7 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
-import { RecordSheet } from "./RecordSheet";
+import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { formatFullDate } from "./data";
 import {
   ASSET_ORDER_STATUSES,
@@ -111,13 +111,34 @@ export function AssetOrderSheet({
 }: AssetOrderSheetProps) {
   const [draft, setDraft] = React.useState<AssetOrderDraft | null>(null);
   const creating = mode === "create";
+  const saveState = useDraftSaveState(draft, open);
+  /* WHAT WENT OUT LAST. The row comes back changed by our own save, so
+     without this the sheet would answer its own write with a rebuild. */
+  const lastSaved = React.useRef<string | null>(null);
 
-  // Re-seed on every open, so a half-filled create draft never comes back and
-  // edits never leak between rows.
+  /* Re-seed on every open, so a half-filled create draft never comes back and
+     edits never leak between rows — keyed on the ORDER'S ID rather than the
+     row, because the row is handed back changed by every autosave. */
+  const orderId = order?.id ?? null;
   React.useEffect(() => {
     if (!open) return;
-    setDraft(creating ? emptyDraft() : order ? draftFrom(order) : null);
-  }, [open, creating, order]);
+    const next = creating ? emptyDraft() : order ? draftFrom(order) : null;
+    lastSaved.current = next ? JSON.stringify(next) : null;
+    setDraft(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, creating, orderId]);
+
+  /* AUTOSAVED, DEBOUNCED — 600ms, the same everywhere. */
+  React.useEffect(() => {
+    if (creating || !order || !draft) return;
+    const serialised = JSON.stringify(draft);
+    if (serialised === lastSaved.current) return;
+    const t = window.setTimeout(() => {
+      lastSaved.current = serialised;
+      onSave(order, draft);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, order, creating, onSave]);
 
   if (!draft || (!creating && !order)) return null;
 
@@ -134,14 +155,22 @@ export function AssetOrderSheet({
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Asset Order"
       createAction="Create Asset Order"
+      /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE.
+         Creating still takes an act. */
+      showCancel={false}
+      footerPrimary={creating ? undefined : null}
       headerAside={
-        <StatusChip tone={STATUS_TONE[draft.status]} variant="soft">
-          {draft.status}
-        </StatusChip>
+        <span className="flex items-center gap-2">
+          <StatusChip tone={STATUS_TONE[draft.status]} variant="soft">
+            {draft.status}
+          </StatusChip>
+          {saveState !== "idle" && (
+            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
+          )}
+        </span>
       }
       onSubmit={() => {
         if (creating) onCreate?.(draft);
-        else if (order) onSave(order, draft);
       }}
     >
       <SheetSection title="Order Details">

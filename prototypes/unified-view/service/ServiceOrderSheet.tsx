@@ -44,6 +44,7 @@ import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
+import { TechnicianApp } from "./TechnicianApp";
 import { TIME_OPTIONS } from "../threepl/orders";
 import {
   ACTIVE_TECHNICIANS,
@@ -377,6 +378,7 @@ export function ServiceOrderSheet({
   const cfg = useServiceSettings();
   const creating = mode === "create";
   const [draft, setDraft] = React.useState<ServiceOrder | null>(null);
+  const [fieldOpen, setFieldOpen] = React.useState(false);
   const [holdOpen, setHoldOpen] = React.useState(false);
   const [holdReason, setHoldReason] = React.useState("");
   const lastSaved = React.useRef<string | null>(null);
@@ -572,11 +574,27 @@ export function ServiceOrderSheet({
         label: "Create Service Order",
         onSelect: () => advance("Assigned"),
       };
+    /* WITH THE FIELD APP ON, DISPATCH HANDS THE JOB OVER AND STOPS.
+       Arriving, quoting and recording all happen in front of the asset, so the
+       sheet's act is the handover itself rather than a second place to claim
+       any of them. Off, the ladder below is the whole flow and dispatch does
+       it by hand — which is what "Service technician app: off" means. */
+    if (
+      cfg.techApp &&
+      (draft.status === "Assigned" ||
+        draft.status === "In progress" ||
+        draft.status === "Parts-pending")
+    )
+      return {
+        label:
+          draft.status === "Assigned"
+            ? "Open technician app"
+            : "Resume in technician app",
+        onSelect: () => setFieldOpen(true),
+      };
     /* ARRIVAL IS ITS OWN ACT, because "somebody is on their way" and "somebody
        is on site" are the two facts the Assigned and In progress lanes exist
-       to tell apart. The technician's own app is a separate product and does
-       not live in this module — when it exists, this is the rung it will
-       report into rather than replace. */
+       to tell apart. */
     if (draft.status === "Assigned")
       return {
         label: "Start work",
@@ -639,7 +657,13 @@ export function ServiceOrderSheet({
   const blockedWhy =
     draft.status === "Open" && !draft.technicianId
       ? "Choose a technician before proceeding."
-      : isWorkable(draft.status) && draft.status !== "Assigned" && draft.labor <= 0
+      : /* NOT WHEN THE FIELD APP HOLDS THE JOB. The hours are recorded there,
+           so demanding them here would be the dispatch screen blocking itself
+           on a field they cannot fill. */
+        !cfg.techApp &&
+          isWorkable(draft.status) &&
+          draft.status !== "Assigned" &&
+          draft.labor <= 0
         ? "Record the labour hours before proceeding."
         : nextAct.why;
 
@@ -1404,6 +1428,65 @@ export function ServiceOrderSheet({
           </RailCard>
         </aside>
       </div>
+
+      {/* THE FIELD APP, OVER THE SHEET. It opens from the handover act and the
+          sheet stays behind it, because the dispatcher watching a job go out is
+          not leaving the order — they are looking at what the technician sees.
+          Everything it submits comes back through the same two paths the sheet
+          already has: a completion advances the ladder, and a stall is the
+          SCREEN's act because one of its outcomes creates a second order. */}
+      <TechnicianApp
+        order={draft}
+        open={fieldOpen}
+        onOpenChange={setFieldOpen}
+        onSubmit={(r) => {
+          const at = nowIso();
+          if (!r.completed) {
+            /* THE PARTS AND HOURS ARE KEPT EVEN THOUGH THE JOB IS NOT DONE.
+               A technician who fitted two of three parts has spent them. */
+            setDraft((d) =>
+              d
+                ? { ...d, parts: r.parts, fees: r.fees, labor: r.labor, quote: r.quote ?? d.quote }
+                : d
+            );
+            onPartsPending?.(draft.id, {
+              labor: r.labor,
+              partNeeded: r.partNeeded ?? "",
+            });
+            onOpenChange(false);
+            return;
+          }
+
+          const patch: Partial<ServiceOrder> = {
+            parts: r.parts,
+            fees: r.fees,
+            labor: r.labor,
+            mileage: r.mileage,
+            quote: r.quote ?? draft.quote,
+            arrivedAt: draft.arrivedAt ?? at,
+            completedAt: at,
+            signed: r.signed,
+            partNeeded: null,
+          };
+          if (cfg.managerApproval) {
+            advance("Needs approval", patch);
+            toast.success(`${draft.orderNo} submitted from the field`, {
+              description: "Waiting on a service manager.",
+            });
+          } else {
+            advance("Approved", {
+              ...patch,
+              invoiceCreated: cfg.nativeBilling,
+              invoicedAt: cfg.nativeBilling ? at : null,
+            });
+            toast.success(
+              cfg.nativeBilling
+                ? `${draft.orderNo} submitted — invoice generated`
+                : `${draft.orderNo} submitted and approved`
+            );
+          }
+        }}
+      />
     </RecordSheet>
   );
 }

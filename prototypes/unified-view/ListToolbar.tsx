@@ -79,6 +79,20 @@ export interface ListToolbarProps<K extends string> {
   /** The screen's facet panel — a `Filters` trigger plus its popover. */
   filters: React.ReactNode;
   /**
+   * QUICK FILTERS — a segmented control beside the facet panel.
+   *
+   * For the one or two splits a reader flips between constantly, where opening
+   * a panel to tick a box and closing it again is the wrong amount of work.
+   * It sits on the LEFT cluster with search and Filters because it narrows the
+   * list, which is what everything on that side does; the right-hand side acts
+   * on the view. See `docs/ds/ui/2-rules.md` §10.
+   *
+   * NOT A REPLACEMENT FOR THE PANEL. A split belongs here only when it is
+   * exhaustive and short — All plus two or three — and when a reader changes
+   * it several times a session. Everything else stays a facet.
+   */
+  quickFilters?: React.ReactNode;
+  /**
    * `group` makes an entry a CHILD of the entry with that key — one level, no
    * deeper. A board card is not a flat list of fields: "Customer Details" is a
    * heading with three lines under it, and a reader who wants the account but
@@ -133,6 +147,17 @@ export interface ListToolbarProps<K extends string> {
   onViewChange: (v: ListView) => void;
   /** Offer the map view. Off unless the records are geographic. */
   mapView?: boolean;
+  /**
+   * WHETHER THIS LIST HAS A BOARD AT ALL. Default true, because every list
+   * that has used this toolbar so far does.
+   *
+   * The same call `mapView` makes, and for the same reason: a view switch that
+   * offers a board to a list with no board is a dead control, and the rule
+   * three lines down — the one that hides the column tools off the table —
+   * exists precisely because a control with nothing behind it is worse than no
+   * control. A list of standing arrangements has no lanes to put them in.
+   */
+  boardView?: boolean;
   /** Omit entirely on lists that are not date-scoped. */
   dateScope?: { date: Date; onDateChange: (d: Date) => void };
   /**
@@ -237,6 +262,7 @@ export function ListToolbar<K extends string>({
   onSearchChange,
   searchPlaceholder,
   filters,
+  quickFilters,
   columns,
   hiddenColumns,
   onToggleColumn,
@@ -254,6 +280,7 @@ export function ListToolbar<K extends string>({
   view,
   onViewChange,
   mapView = false,
+  boardView = true,
   dateScope,
   dateControl,
   groupBy,
@@ -310,8 +337,14 @@ export function ListToolbar<K extends string>({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* LEFT — search · Filters · Group By */}
+      {/* LEFT — quick filters · search · Filters · Group By
+
+          THE QUICK FILTERS COME FIRST, before the search box, because they are
+          the coarsest cut on the row: they decide WHICH SET you are searching
+          and filtering inside. Reading left to right then matches the order
+          somebody actually narrows — pick the book, then find the row. */}
       <div className="flex items-center gap-3">
+        {quickFilters}
         <div className="relative w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -367,13 +400,15 @@ export function ListToolbar<K extends string>({
         >
           <Table2 />
         </IconTool>
-        <IconTool
-          label="Board view"
-          active={view === "board"}
-          onClick={() => onViewChange("board")}
-        >
-          <KanbanSquare />
-        </IconTool>
+        {boardView && (
+          <IconTool
+            label="Board view"
+            active={view === "board"}
+            onClick={() => onViewChange("board")}
+          >
+            <KanbanSquare />
+          </IconTool>
+        )}
         {mapView && (
           <IconTool
             label="Map view"

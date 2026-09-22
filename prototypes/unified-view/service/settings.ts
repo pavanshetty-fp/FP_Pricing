@@ -49,6 +49,28 @@ export interface ServiceSettings {
   priceBook: boolean;
   /** ON: "Portal request" is offered as an intake source. */
   portalIntake: boolean;
+  /**
+   * ON: an assigned order flows to the TECHNICIAN'S OWN APP for on-site
+   * completion — arrive, quote, then do it now or defer for a part. OFF: it is
+   * handled by hand from the order sheet; dispatch records the completed work
+   * and there is no on-site quote at all.
+   *
+   * RESTORED 2026-09-21, having been cut on 2026-09-18 on the grounds that the
+   * field app is a separate mobile product. It is — and that is exactly why
+   * the switch has to exist: whether it is in play changes what the DISPATCH
+   * screens can do. With it on, the order sheet cannot complete a job, because
+   * the person holding the job is standing in front of the asset.
+   */
+  techApp: boolean;
+  /**
+   * ON: before work starts the technician sends the customer a quote — parts
+   * plus fees — for on-site approval. OFF: work starts straight from dispatch
+   * and everything settles on the invoice afterwards.
+   *
+   * NESTED UNDER `techApp`, and dead without it: a quote can only be sent from
+   * the field, so with no field app there is no moment at which to send one.
+   */
+  fieldQuote: boolean;
 }
 
 /** Everything on — the unified profile. */
@@ -59,6 +81,8 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   returnMode: "spawn",
   priceBook: true,
   portalIntake: true,
+  techApp: true,
+  fieldQuote: true,
 };
 
 /**
@@ -91,6 +115,8 @@ export const SETTINGS_PROFILES: {
       returnMode: "rollforward",
       priceBook: false,
       portalIntake: false,
+      techApp: false,
+      fieldQuote: false,
     },
   },
 ];
@@ -107,6 +133,10 @@ export function setServiceSetting<K extends keyof ServiceSettings>(
   value: ServiceSettings[K]
 ) {
   current = { ...current, [key]: value };
+  /* A NESTED SWITCH CANNOT OUTLIVE ITS PARENT. Field quoting means nothing
+     without a field app, and leaving it ticked under a disabled parent is how
+     a reader comes back later and believes a step is running that is not. */
+  if (key === "techApp" && value === false) current.fieldQuote = false;
   emit();
 }
 

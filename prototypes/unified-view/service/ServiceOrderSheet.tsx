@@ -433,6 +433,7 @@ function LineTable({
   namePlaceholder,
   emptyLabel,
   total,
+  focusRow,
 }: {
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
@@ -443,6 +444,8 @@ function LineTable({
   namePlaceholder: string;
   emptyLabel: string;
   total: number;
+  /** The row just added — its first cell takes the cursor. */
+  focusRow?: number;
 }) {
   const amountOf = (r: PartLine | FeeLine) =>
     "cost" in r ? (r as PartLine).cost * (r as PartLine).qty : (r as FeeLine).amount;
@@ -503,6 +506,7 @@ function LineTable({
                   <TableCellInput
                     value={r.name}
                     placeholder={namePlaceholder}
+                    autoFocus={i === focusRow}
                     aria-label={`${nameLabel} for row ${i + 1}`}
                     onChange={(v) => onChange(i, { name: v })}
                   />
@@ -559,7 +563,7 @@ function LineTable({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remove row ${i + 1}`}
+                    aria-label={`Remove ${r.name || `${nameLabel.toLowerCase()} ${i + 1}`}`}
                     className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                     onClick={() => onRemove(i)}
                   >
@@ -636,6 +640,12 @@ export function ServiceOrderSheet({
   const [fieldOpen, setFieldOpen] = React.useState(false);
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [holdOpen, setHoldOpen] = React.useState(false);
+  /* THE ROW JUST ADDED, so its first cell can take the cursor (DS ui §10f,
+     "Rows"). Mount-only on the cell's side, so rows already there are never
+     re-focused and this never needs clearing. */
+  const [justAdded, setJustAdded] = React.useState<{ table: string; i: number } | null>(null);
+  const isJustAdded = (table: string, i: number) =>
+    justAdded?.table === table && justAdded.i === i;
   const lastSaved = React.useRef<string | null>(null);
 
   /* BUILD THE DRAFT ONCE PER RECORD, not once per save — the same rule the 3PL
@@ -752,7 +762,8 @@ export function ServiceOrderSheet({
           }
         : d
     );
-  const addLine = (field: "parts" | "fees" | "extraCharges") =>
+  const addLine = (field: "parts" | "fees" | "extraCharges") => {
+    if (draft) setJustAdded({ table: field, i: (draft[field] as unknown[]).length });
     setDraft((d) =>
       d
         ? {
@@ -764,6 +775,7 @@ export function ServiceOrderSheet({
           }
         : d
     );
+  };
   const removeLine = (field: "parts" | "fees" | "extraCharges", i: number) =>
     setDraft((d) =>
       d
@@ -1478,7 +1490,8 @@ export function ServiceOrderSheet({
           !intakeLocked ? (
             <HangingAdd
               label="Add asset"
-              onClick={() =>
+              onClick={() => {
+                setJustAdded({ table: "assets", i: draft.assets.length });
                 setDraft((x) =>
                   x
                     ? syncPrimaryAsset({
@@ -1486,8 +1499,8 @@ export function ServiceOrderSheet({
                         assets: [...x.assets, blankAssetLine()],
                       })
                     : x
-                )
-              }
+                );
+              }}
             />
           ) : undefined
         }
@@ -1532,6 +1545,7 @@ export function ServiceOrderSheet({
                       .map((r) => r.assetName)}
                     placeholder={draft.shipTo ? "Select" : "Site first"}
                     disabled={intakeLocked || !draft.shipTo}
+                    autoFocus={isJustAdded("assets", i)}
                     aria-label={`Asset for row ${i + 1}`}
                     onChange={(v) => {
                       const a = siteAssets.find((x) => x.name === v);
@@ -1571,7 +1585,7 @@ export function ServiceOrderSheet({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Remove ${row.assetName || `row ${i + 1}`}`}
+                      aria-label={`Remove ${row.assetName || `asset ${i + 1}`}`}
                       className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                       onClick={() =>
                         setDraft((x) =>
@@ -1675,6 +1689,7 @@ export function ServiceOrderSheet({
           total={partsSum}
           onChange={(i, p) => setLine("parts", i, p)}
           onRemove={(i) => removeLine("parts", i)}
+            focusRow={justAdded?.table === "parts" ? justAdded.i : undefined}
         />
       </SheetSection>
 
@@ -1704,6 +1719,7 @@ export function ServiceOrderSheet({
           total={feesSum}
           onChange={(i, p) => setLine("fees", i, p)}
           onRemove={(i) => removeLine("fees", i)}
+            focusRow={justAdded?.table === "fees" ? justAdded.i : undefined}
         />
       </SheetSection>
 
@@ -1888,6 +1904,7 @@ export function ServiceOrderSheet({
             total={extraSum}
             onChange={(i, p) => setLine("extraCharges", i, p)}
               onRemove={(i) => removeLine("extraCharges", i)}
+            focusRow={justAdded?.table === "extraCharges" ? justAdded.i : undefined}
           />
         </SheetSection>
       )}

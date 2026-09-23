@@ -151,6 +151,7 @@ import {
   type BrokerStatus,
   type OrderLine,
 } from "./orders";
+import { kindTone } from "../statusKind";
 
 /**
  * 3PL order side sheet — chrome and rhythm from `RecordSheet`, so it is the same
@@ -1083,6 +1084,7 @@ function PricingRateInput({
   onChange,
   dp = 3,
   padClass,
+  autoFocus,
   "aria-label": ariaLabel,
 }: {
   value: number | undefined;
@@ -1091,6 +1093,8 @@ function PricingRateInput({
   dp?: number;
   /** The cell's own left inset, so the hit area starts at the cell edge. */
   padClass?: string;
+  /** Take focus on mount — the first rate of a charge row just added. */
+  autoFocus?: boolean;
   "aria-label": string;
 }) {
   const [typed, setTyped] = React.useState<string | null>(null);
@@ -1110,6 +1114,7 @@ function PricingRateInput({
       <input
         type="text"
         inputMode="decimal"
+        autoFocus={autoFocus}
         aria-label={ariaLabel}
         value={typed ?? (value == null ? "" : String(value))}
         placeholder={(0).toFixed(dp)}
@@ -1619,6 +1624,20 @@ export function BrokerOrderSheet({
   const [salesEdit, setSalesEdit] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmCancel, setConfirmCancel] = React.useState(false);
+  /* THE ROW JUST ADDED, per table. Its first cell takes focus when it mounts —
+     DS ui §10f — so the add is followed by the answer, not a hunt for the row.
+     A charge is named by line and id, since the matrix holds every line's. */
+  const [focusLine, setFocusLine] = React.useState<number | null>(null);
+  const [focusFee, setFocusFee] = React.useState<number | null>(null);
+  const [focusCharge, setFocusCharge] = React.useState<string | null>(null);
+  /* THE VENDOR ROW CARRIES A COUNT, because its add may land on a blank row
+     that is already mounted; the count goes in the key, which remounts it. */
+  const [focusPartner, setFocusPartner] = React.useState<{
+    row: number;
+    n: number;
+  } | null>(null);
+  /** Set by an add from the charge menu, so the menu's close does not take focus back. */
+  const chargeJustAdded = React.useRef(false);
   /* AUTOSAVE FEEDBACK. A draft order is kept as it is typed; the header says
      so, because an autosave nobody is told about is one nobody relies on. */
   const saveState = useDraftSaveState(draft, open);
@@ -1750,7 +1769,8 @@ export function BrokerOrderSheet({
         : d
     );
 
-  const addBlankLine = () =>
+  const addBlankLine = () => {
+    setFocusLine(draft.lines.length);
     setDraft((d) =>
       d
         ? {
@@ -1768,6 +1788,7 @@ export function BrokerOrderSheet({
           }
         : d
     );
+  };
 
   const removeLine = (i: number) =>
     setDraft((d) =>
@@ -1850,10 +1871,19 @@ export function BrokerOrderSheet({
   /* ── Workflow transitions. Each one moves the status AND the vendor fields
         together, so the pair cannot end up contradicting itself. ─────────── */
   /** A blank row, ready for its first cell to be filled. */
-  const addPartnerRow = () =>
+  /* ONE BLANK ROW AT A TIME. A second empty row asks the same question twice;
+     if one is already waiting, the add goes to it instead. */
+  const addPartnerRow = () => {
+    const blank = partnerRows.indexOf("");
+    setFocusPartner((f) => ({
+      row: blank >= 0 ? blank : partnerRows.length,
+      n: (f?.n ?? 0) + 1,
+    }));
+    if (blank >= 0) return;
     setDraft((d) =>
       d ? { ...d, invitedVendorIds: [...d.invitedVendorIds, ""] } : d
     );
+  };
 
   /* SEVERAL AT ONCE, from one open of the list. Picking five partners was five
      rounds of "add a row, open it, choose, close"; the row's picker takes ticks
@@ -2273,7 +2303,9 @@ export function BrokerOrderSheet({
    * late and nothing is being waited on yet.
    */
   const invitedWord = draft.status === "Draft" ? "Invited" : "Awaiting quote";
-  const invitedTone = draft.status === "Draft" ? "neutral" : "processing";
+  /* Invited = waiting on the partner. On a draft nothing has been sent, so
+     it is not yet a state. */
+  const invitedTone = kindTone(draft.status === "Draft" ? "neutral" : "caution");
 
   /* WHAT A SEND WOULD ACTUALLY DO. Ticked rows that have not been asked, or —
      with nothing ticked — every row that has not. A partner already invited is
@@ -3092,13 +3124,14 @@ export function BrokerOrderSheet({
    * columns at once, which is the point of a unit that exists to be read
    * across.
    */
-  const addCharge = (i: number, kind: LineChargeKind) =>
+  const addCharge = (i: number, kind: LineChargeKind) => {
+    const added = newLineCharge(kind, draft.lines[i].charges ?? []);
+    chargeJustAdded.current = true;
+    setFocusCharge(`${i}:${added.id}`);
     setLine(i, {
-      charges: [
-        ...(draft.lines[i].charges ?? []),
-        newLineCharge(kind, draft.lines[i].charges ?? []),
-      ],
+      charges: [...(draft.lines[i].charges ?? []), added],
     });
+  };
   const removeCharge = (i: number, id: string) =>
     setLine(i, {
       charges: (draft.lines[i].charges ?? []).filter((c) => c.id !== id),
@@ -3144,7 +3177,8 @@ export function BrokerOrderSheet({
           }
         : d
     );
-  const addFee = () =>
+  const addFee = () => {
+    setFocusFee(draft.orderFees.length);
     setDraft((d) =>
       d
         ? {
@@ -3159,6 +3193,7 @@ export function BrokerOrderSheet({
           }
         : d
     );
+  };
   const removeFee = (i: number) =>
     setDraft((d) =>
       d ? { ...d, orderFees: d.orderFees.filter((_, j) => j !== i) } : d
@@ -3319,6 +3354,8 @@ export function BrokerOrderSheet({
           const charges = l.charges ?? [];
           const rows: {
             key: string;
+            /** The charge just added — its first rate takes focus. */
+            focus?: boolean;
             label: string;
             /** Null on Price — a product has one rate and it cannot be removed. */
             onRemove?: () => void;
@@ -3339,6 +3376,7 @@ export function BrokerOrderSheet({
             },
             ...charges.map((c) => ({
               key: c.id,
+              focus: focusCharge === `${i}:${c.id}`,
               label: chargeLabel(c, charges),
               onRemove: () => removeCharge(i, c.id),
               vendorValue: ql?.rates?.[c.id],
@@ -3457,6 +3495,7 @@ export function BrokerOrderSheet({
                           <PricingRateInput
                             value={r.vendorValue}
                             padClass={PRICE_PAD_L}
+                            autoFocus={r.focus}
                             aria-label={`Partner ${r.label.toLowerCase()} per gallon for ${l.product}`}
                             onChange={r.onVendor}
                           />
@@ -3472,6 +3511,9 @@ export function BrokerOrderSheet({
                         <PricingRateInput
                           value={r.customerValue}
                           padClass={PRICE_PAD_L}
+                          /* The partner's cell comes first; this one only when
+                             there is no partner rate to type. */
+                          autoFocus={r.focus && !(shownQuote && !r.vendorNote)}
                           aria-label={`Customer ${r.label.toLowerCase()} per gallon for ${l.product}`}
                           onChange={r.onCustomer}
                         />
@@ -3507,7 +3549,15 @@ export function BrokerOrderSheet({
                           Add charge
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
+                      <DropdownMenuContent
+                        align="start"
+                        /* An add hands focus to the new charge's rate; the
+                           menu handing it back to this button would undo it. */
+                        onCloseAutoFocus={(e) => {
+                          if (chargeJustAdded.current) e.preventDefault();
+                          chargeJustAdded.current = false;
+                        }}
+                      >
                         {LINE_CHARGE_KINDS.map((kind) => (
                           <DropdownMenuItem
                             key={kind}
@@ -3670,7 +3720,7 @@ export function BrokerOrderSheet({
             <col className="w-[40%]" />
             <col />
             <col className="w-[160px]" />
-            <col className="w-[88px]" />
+            <col className="w-[52px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
@@ -3683,13 +3733,10 @@ export function BrokerOrderSheet({
               <th className="px-3 py-2.5 text-right">
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
-              {/* A NAMED COLUMN, SO THE CONTROL IN IT STAYS PUT. Row deletes
-                  elsewhere hide until the row is hovered, because they sit in
-                  an unnamed sliver; a column with a heading and nothing under
-                  it reads as broken. */}
-              <th className="px-3 py-2.5 text-center">
-                <TableRequiredLabel>Action</TableRequiredLabel>
-              </th>
+              {/* UNNAMED, LIKE EVERY OTHER ROW REMOVE — DS ui §10f. A named
+                  column held its bin in view on every row, which made this the
+                  one table whose delete shouted. */}
+              <th aria-hidden />
             </tr>
           </thead>
           <tbody>
@@ -3703,7 +3750,7 @@ export function BrokerOrderSheet({
             {draft.orderFees.map((f, i) => (
               <tr
                 key={i}
-                className="h-11 border-b border-border last:border-b-0"
+                className="group/row h-11 border-b border-border last:border-b-0"
               >
                 <td className="relative p-0">
                   <TableCellSelect
@@ -3724,6 +3771,9 @@ export function BrokerOrderSheet({
                     /* The same charge on two rows is one charge billed twice. */
                     taken={draft.orderFees.map((x) => x.label)}
                     placeholder="Enter label"
+                    /* THE CURSOR GOES TO THE FIRST ANSWER, not the first
+                       column — a new fee's type is already "Fee". */
+                    autoFocus={i === focusFee}
                     aria-label={`Label for row ${i + 1}`}
                     onChange={(v) => setFee(i, { label: v })}
                   />
@@ -3746,8 +3796,8 @@ export function BrokerOrderSheet({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remove row ${i + 1}`}
-                    className="text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove ${f.label || `fee ${i + 1}`}`}
+                    className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                     onClick={() => removeFee(i)}
                   >
                     <Trash2 />
@@ -4668,7 +4718,7 @@ export function BrokerOrderSheet({
              empty extra row and the flag is not an act on the list. */
           hanging={
             <>
-              <HangingAdd label="Add assets" onClick={addBlankLine} />
+              <HangingAdd label="Add asset" onClick={addBlankLine} />
               {/* WINTER ADDITIVE IS A PROPERTY OF THE LOAD, not of a row —
                   every gallon on the truck is blended or none is — so it is
                   not in the table. It rides the hanging row's right end:
@@ -4771,6 +4821,7 @@ export function BrokerOrderSheet({
                             }
                             disabled={!draft.shipTo}
                             creatable
+                            autoFocus={i === focusLine && Boolean(draft.shipTo)}
                             aria-label={`Asset for line ${i + 1}`}
                             /* Picking a known asset fills its product and its
                                rental flag — they are facts about the asset, not
@@ -4790,6 +4841,9 @@ export function BrokerOrderSheet({
                             value={line.product}
                             options={[...PRODUCTS]}
                             placeholder="Select product"
+                            /* With no ShipTo the asset cell is shut, so the
+                               product is the first cell that can be filled. */
+                            autoFocus={i === focusLine && !draft.shipTo}
                             aria-label={`Product for line ${i + 1}`}
                             onChange={(v) => setLine(i, { product: v })}
                           />
@@ -4815,7 +4869,7 @@ export function BrokerOrderSheet({
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            aria-label={`Remove line ${i + 1}`}
+                            aria-label={`Remove ${line.asset || `asset line ${i + 1}`}`}
                             disabled={draft.lines.length === 1}
                             className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                             onClick={() => removeLine(i)}
@@ -5579,7 +5633,7 @@ export function BrokerOrderSheet({
                         const quote = quotes.find((q) => q.vendorId === id);
                         return (
                           <tr
-                            key={`${id}-${i}`}
+                            key={`${id}-${i}${focusPartner?.row === i ? `-f${focusPartner.n}` : ""}`}
                             className="group/row h-11 border-b border-border last:border-b-0"
                           >
                             <td className="px-3">
@@ -5608,6 +5662,7 @@ export function BrokerOrderSheet({
                                 ]}
                                 placeholder="Add vendor"
                                 disabled={draft.status === "Blocked"}
+                                autoFocus={focusPartner?.row === i}
                                 aria-label={`Vendor for row ${i + 1}`}
                                 /* NO REACHABILITY TAG. "Emails off" and "Link
                                    only" described how the invitation would
@@ -5710,15 +5765,15 @@ export function BrokerOrderSheet({
                                    the wrong thing to say: what the reader has
                                    to know is that it prices lines the order no
                                    longer only has. */
-                                <StatusChip tone="processing" variant="text">
+                                <StatusChip tone={kindTone("caution")} variant="text">
                                   Products updated
                                 </StatusChip>
                               ) : quote ? (
-                                <StatusChip tone="success" variant="text">
+                                <StatusChip tone={kindTone("caution")} variant="text">
                                   Quotation shared
                                 </StatusChip>
                               ) : draft.acceptedVendorIds.includes(id) ? (
-                                <StatusChip tone="processing" variant="text">
+                                <StatusChip tone={kindTone("caution")} variant="text">
                                   Accepted
                                 </StatusChip>
                               ) : sentIds.includes(id) ? (
@@ -5804,7 +5859,7 @@ export function BrokerOrderSheet({
                                 </Button>
                               ) : id && quote ? (
                                 draft.vendorId === id ? (
-                                  <StatusChip tone="success" variant="soft">
+                                  <StatusChip tone={kindTone("success")} variant="soft">
                                     Awarded
                                   </StatusChip>
                                 ) : (
@@ -5826,7 +5881,12 @@ export function BrokerOrderSheet({
                             </td>
                             <td className="p-0 text-center">
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild disabled={!id}>
+                                {/* A BLANK ROW CAN GO TOO, once it is not the only
+                                    row — otherwise an extra one is stuck there. */}
+                                <DropdownMenuTrigger
+                                  asChild
+                                  disabled={!id && partnerRows.length === 1}
+                                >
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"
@@ -5852,7 +5912,7 @@ export function BrokerOrderSheet({
                                       and then draft a quote that exists, which
                                       is two words of nonsense over a menu item
                                       nobody could want. */}
-                                  {!quote && (
+                                  {id && !quote && (
                                     <>
                                       <DropdownMenuItem
                                         onSelect={() => openQuoteDraft(id)}
@@ -6207,9 +6267,9 @@ export function BrokerOrderSheet({
                         <StatusChip
                           tone={
                             draft.vendorId === id
-                              ? "success"
+                              ? kindTone("success")
                               : quotes.some((q) => q.vendorId === id)
-                                ? "processing"
+                                ? kindTone("caution")
                                 : invitedTone
                           }
                           variant="soft"

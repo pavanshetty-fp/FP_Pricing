@@ -798,6 +798,10 @@ export function AssetMovementSheet({
 
   /** The asset table, on top of the form. Closed until asked for. */
   const [pickerOpen, setPickerOpen] = React.useState(false);
+  /* THE ROW JUST ADDED, per table. Its first cell takes focus when it mounts —
+     DS ui §10f — so the add is followed by the answer, not a hunt for the row. */
+  const [focusPeripheral, setFocusPeripheral] = React.useState<number | null>(null);
+  const [focusItem, setFocusItem] = React.useState<number | null>(null);
 
   const setPeripheral = (i: number, patch: Partial<PeripheralRow>) =>
     setDraft((d) => ({
@@ -1389,13 +1393,14 @@ export function AssetMovementSheet({
         hanging={
           draft.peripheralsOn ? (
             <HangingAdd
-              label="Add peripherals"
-              onClick={() =>
+              label="Add peripheral"
+              onClick={() => {
+                setFocusPeripheral(draft.peripherals.length);
                 setDraft((d) => ({
                   ...d,
                   peripherals: [...d.peripherals, blankPeripheral()],
-                }))
-              }
+                }));
+              }}
             />
           ) : undefined
         }
@@ -1467,6 +1472,7 @@ export function AssetMovementSheet({
                           taken={draft.peripherals.map((x) => x.name)}
                           creatable
                           placeholder="Select"
+                          autoFocus={i === focusPeripheral}
                           aria-label={`Peripheral ${i + 1}`}
                           onChange={(v) => setPeripheral(i, { name: v })}
                         />
@@ -1501,7 +1507,7 @@ export function AssetMovementSheet({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Remove peripheral ${i + 1}`}
+                          aria-label={`Remove ${p.name || `peripheral ${i + 1}`}`}
                           disabled={draft.peripherals.length === 1}
                           className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                           onClick={() =>
@@ -1550,16 +1556,17 @@ export function AssetMovementSheet({
         hanging={
           draft.customOn ? (
             <HangingAdd
-              label="Add items"
-              onClick={() =>
+              label="Add item"
+              onClick={() => {
+                setFocusItem(draft.customItems.length);
                 setDraft((d) => ({
                   ...d,
                   customItems: [
                     ...d.customItems,
                     { name: "", qty: null, unit: UNITS[0] },
                   ],
-                }))
-              }
+                }));
+              }}
             />
           ) : undefined
         }
@@ -1615,6 +1622,7 @@ export function AssetMovementSheet({
                         <TableCellInput
                           value={it.name}
                           placeholder="Describe the item"
+                          autoFocus={i === focusItem}
                           aria-label={`Custom item ${i + 1}`}
                           onChange={(v) => setItem(i, { name: v })}
                         />
@@ -1642,7 +1650,7 @@ export function AssetMovementSheet({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Remove item ${i + 1}`}
+                          aria-label={`Remove ${it.name || `item ${i + 1}`}`}
                           disabled={draft.customItems.length === 1}
                           className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                           onClick={() =>

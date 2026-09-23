@@ -71,6 +71,13 @@ export interface TableCellSelectProps {
   /** Option count at or above which the search field appears. Default: always. */
   searchThreshold?: number;
   onChange: (v: string) => void;
+  /**
+   * Take focus when the cell MOUNTS — pass it to the first editable cell of a
+   * row the reader has just added, so the add is followed by the answer and
+   * not by a hunt for the row (DS ui §10f, "Rows"). Mount-only: rows already
+   * on the table are never re-focused.
+   */
+  autoFocus?: boolean;
   "aria-label"?: string;
   /**
    * PICK SEVERAL AT ONCE, AND APPLY THEM.
@@ -110,6 +117,7 @@ export function TableCellSelect({
   onChange,
   "aria-label": ariaLabel,
   multiple,
+  autoFocus,
 }: TableCellSelectProps) {
   const [open, setOpen] = React.useState(false);
   const showSearch = options.length >= searchThreshold;
@@ -131,6 +139,7 @@ export function TableCellSelect({
         <button
           type="button"
           aria-label={ariaLabel}
+          autoFocus={autoFocus}
           className={cn(
             "absolute inset-0 flex items-center justify-between gap-2 px-3 text-left transition-colors outline-none",
             "hover:bg-accent focus-visible:bg-fp-surface-1a focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
@@ -235,6 +244,13 @@ export interface TableCellInputProps {
    * number's length and stop marking anything.
    */
   prefix?: string;
+  /**
+   * Take focus when the cell MOUNTS — pass it to the first editable cell of a
+   * row the reader has just added, so the add is followed by the answer and
+   * not by a hunt for the row (DS ui §10f, "Rows"). Mount-only: rows already
+   * on the table are never re-focused.
+   */
+  autoFocus?: boolean;
   "aria-label"?: string;
 }
 
@@ -248,6 +264,7 @@ export function TableCellInput({
   suffix,
   prefix,
   "aria-label": ariaLabel,
+  autoFocus,
 }: TableCellInputProps) {
   /*
     WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
@@ -305,6 +322,7 @@ export function TableCellInput({
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
+        autoFocus={autoFocus}
         className={cn(
           "h-full min-w-0 bg-transparent text-sm text-foreground outline-none",
           "placeholder:text-muted-foreground disabled:cursor-not-allowed",
@@ -331,6 +349,13 @@ export interface TableCellMultiSelectProps {
    */
   unitLabel?: string;
   onChange: (next: string[]) => void;
+  /**
+   * Take focus when the cell MOUNTS — pass it to the first editable cell of a
+   * row the reader has just added, so the add is followed by the answer and
+   * not by a hunt for the row (DS ui §10f, "Rows"). Mount-only: rows already
+   * on the table are never re-focused.
+   */
+  autoFocus?: boolean;
   "aria-label"?: string;
 }
 
@@ -353,6 +378,7 @@ export function TableCellMultiSelect({
   unitLabel = "selected",
   onChange,
   "aria-label": ariaLabel,
+  autoFocus,
 }: TableCellMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -374,6 +400,7 @@ export function TableCellMultiSelect({
         <button
           type="button"
           aria-label={ariaLabel}
+          autoFocus={autoFocus}
           title={values.join(", ") || undefined}
           className={cn(
             "absolute inset-0 flex items-center justify-between gap-2 px-3 text-left transition-colors outline-none",
@@ -428,6 +455,13 @@ export interface TableCellComboboxProps {
    */
   taken?: readonly string[];
   onChange: (v: string) => void;
+  /**
+   * Take focus when the cell MOUNTS — pass it to the first editable cell of a
+   * row the reader has just added, so the add is followed by the answer and
+   * not by a hunt for the row (DS ui §10f, "Rows"). Mount-only: rows already
+   * on the table are never re-focused.
+   */
+  autoFocus?: boolean;
   "aria-label"?: string;
 }
 
@@ -448,6 +482,7 @@ export function TableCellCombobox({
   taken,
   onChange,
   "aria-label": ariaLabel,
+  autoFocus,
 }: TableCellComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -472,6 +507,7 @@ export function TableCellCombobox({
         <button
           type="button"
           aria-label={ariaLabel}
+          autoFocus={autoFocus}
           className={cn(
             "absolute inset-0 flex items-center justify-between gap-2 px-3 text-left transition-colors outline-none",
             "hover:bg-accent focus-visible:bg-fp-surface-1a focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",

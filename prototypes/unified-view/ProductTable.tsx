@@ -1,12 +1,10 @@
 import * as React from "react";
-import { Check, ChevronDown, Trash2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Check, Trash2, X } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  TableCellInput,
+  TableCellSelect,
+  TableRequiredLabel,
+} from "@/components/form-layout/table-cells";
 
 /**
  * Product lines as an editable table.
@@ -48,99 +46,22 @@ export interface ProductLine {
   gal: number;
 }
 
-/** Full-cell dropdown. One line; otherwise the DS CellSelect verbatim. */
-function CellSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex h-full w-full items-center justify-between gap-2 px-3 py-2.5 text-left outline-none transition-colors",
-            "hover:bg-accent",
-            "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-            "data-[state=open]:bg-accent"
-          )}
-        >
-          <span className="min-w-0 truncate text-sm text-foreground">
-            {value || "Select product"}
-          </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        {options.map((opt) => (
-          <DropdownMenuItem key={opt} onSelect={() => onChange(opt)}>
-            {opt}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** Full-cell text input — the DS CellInput, restricted to digits. */
-function CellNumber({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label
-      className={cn(
-        "absolute inset-0 flex cursor-text items-stretch transition-colors",
-        "hover:bg-accent",
-        "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50"
-      )}
-    >
-      <input
-        type="text"
-        inputMode="numeric"
-        value={String(value)}
-        onChange={(e) =>
-          onChange(Number(e.target.value.replace(/[^0-9]/g, "")) || 0)
-        }
-        placeholder={placeholder}
-        className="h-full w-full min-w-0 bg-transparent px-3 text-sm tabular-nums text-foreground outline-none placeholder:text-muted-foreground"
-      />
-    </label>
-  );
-}
-
-function RequiredLabel({
-  children,
-  required,
-}: {
-  children: React.ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <span className="text-sm font-medium text-foreground">
-      {children}
-      {required && <span className="text-destructive"> *</span>}
-    </span>
-  );
-}
+/*
+  THE CELLS ARE THE DS'S `TableCell*` SINCE 2026-09-23. This table had its own
+  `CellSelect` (a menu with no search) and `CellNumber`, so the one sales table
+  looked and behaved unlike every 3PL and service table beside it — and the
+  boxed-table check could not see it, because it looked for the DS names.
+*/
 
 export interface ProductTableProps {
   lines: ProductLine[];
   options: string[];
   onChange: (next: ProductLine[]) => void;
+  /** The row just added — its first cell takes the cursor (DS ui §10f). */
+  focusRow?: number;
 }
 
-export function ProductTable({ lines, options, onChange }: ProductTableProps) {
+export function ProductTable({ lines, options, onChange, focusRow }: ProductTableProps) {
   // Row index awaiting inline delete confirmation (✕ / red ✓).
   const [confirmIndex, setConfirmIndex] = React.useState<number | null>(null);
   const update = (i: number, patch: Partial<ProductLine>) =>
@@ -167,10 +88,10 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
-                <RequiredLabel required>Product</RequiredLabel>
+                <TableRequiredLabel required>Product</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5 text-left">
-                <RequiredLabel required>Quantity (Gal)</RequiredLabel>
+              <th className="px-3 py-2.5 text-right">
+                <TableRequiredLabel required>Quantity (Gal)</TableRequiredLabel>
               </th>
               <th aria-hidden />
             </tr>
@@ -179,20 +100,25 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
             {lines.map((line, i) => (
               <tr
                 key={i}
-                className="group/row border-b border-border last:border-b-0"
+                className="group/row h-11 border-b border-border last:border-b-0"
               >
-                <td className="p-0 align-middle">
-                  <CellSelect
+                <td className="relative p-0">
+                  <TableCellSelect
                     value={line.name}
                     options={options}
+                    placeholder="Select product"
+                    autoFocus={i === focusRow}
+                    aria-label={`Product for row ${i + 1}`}
                     onChange={(v) => update(i, { name: v })}
                   />
                 </td>
-                <td className="relative p-0 align-middle">
-                  <CellNumber
-                    value={line.gal}
-                    onChange={(v) => update(i, { gal: v })}
+                <td className="relative p-0">
+                  <TableCellInput
+                    value={String(line.gal)}
+                    numeric
                     placeholder="Enter gallons"
+                    aria-label={`Gallons of ${line.name || `row ${i + 1}`}`}
+                    onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
                   />
                 </td>
                 {/* Delete — hover reveals the trash, click swaps in ✕ / ✓. */}
@@ -223,7 +149,7 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
                     <button
                       type="button"
                       onClick={() => setConfirmIndex(i)}
-                      aria-label={`Delete ${line.name || "product"}`}
+                      aria-label={`Remove ${line.name || `product ${i + 1}`}`}
                       // An order needs at least one product line, so the last
                       // row keeps no delete affordance.
                       disabled={lines.length === 1}
@@ -240,11 +166,11 @@ export function ProductTable({ lines, options, onChange }: ProductTableProps) {
               stays aligned to the Quantity column. Derived from the rows above,
               so it can never disagree with them. */}
           <tfoot>
-            <tr className="border-t border-border bg-fp-table-header">
-              <td className="px-3 py-2.5 text-sm font-medium text-foreground">
+            <tr className="h-11 border-t border-border bg-fp-table-header">
+              <td className="px-3 text-right text-sm text-muted-foreground">
                 Total
               </td>
-              <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-foreground">
+              <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
                 {total.toLocaleString()}
               </td>
               <td aria-hidden />

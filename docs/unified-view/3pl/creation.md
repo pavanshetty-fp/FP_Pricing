@@ -217,6 +217,9 @@ and the two icons look alike at 16px, which is why it needs writing down.
   nobody chose. A dialog over an empty table teaches people to dismiss dialogs
   without reading them, which is the habit that makes the one that matters
   useless.
+- **Adding and removing rows follows DS §10f "Rows"** — new row at the bottom,
+  the cursor in its first cell, one blank row at a time, the 52px unnamed bin
+  column. Written 2026-09-23 from this module's tables.
 - **Every row delete carries the subject in its `aria-label`** — `Remove
   {shipTo}`, not "Remove". A list of eleven identical bins is eleven identical
   announcements otherwise.

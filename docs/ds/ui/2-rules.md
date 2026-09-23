@@ -434,6 +434,41 @@ it.**
   quantity-plus-unit. Found 2026-09-23, on the service visits table, by the
   check that enforces the rule.
 
+### Rows — adding one, and taking one away
+
+Added 2026-09-23, after an audit of all seventeen editable tables in Unified
+View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
+
+- **A new row goes at the bottom**, every time. The add hangs below the last
+  row, so the row it makes appears where the eye already is.
+- **The cursor goes into the new row's first editable cell.** The add is
+  followed by the answer, not by a hunt for the row it made. Found broken in
+  all seventeen tables — after every add, focus stayed on the add button. The
+  `TableCell*` controls take `autoFocus`; it acts on MOUNT only, so passing it
+  to the row just added never re-focuses a row that was already there.
+- **An add with nothing left to add is not rendered** (see "When the add cannot
+  aim"). The sales product table used to fall back to the first product, so the
+  last press made a duplicate line.
+- **A blank row is not added twice.** If the table already holds an unfilled
+  row, the add takes the cursor to it. Two blank rows is a table asking the same
+  question twice, and on the 3PL vendor table the second one could not be
+  removed at all.
+- **A row goes with a bin** (`Trash2`, `ghost`, `icon-sm`), quiet until the row
+  is hovered or the bin is focused, in an **unnamed trailing column 52px
+  wide**. No confirm — a row is not a section (the 3PL creation rules, S2).
+- **The bin says what it removes.** `Remove {name}`, or `Remove {kind} N` while
+  the row is blank — "Remove fee 2", never "Remove row 2". Eleven identical
+  announcements down a table are eleven questions for a screen reader.
+- **Whether the last row can go depends on whether the table may be empty.**
+  A table the record cannot do without (products on an order, assets on a
+  job) keeps no bin on its last row. A table that may be empty (fees, parts,
+  charges) lets the last row go, and the empty table is padded text.
+- **A hanging add's label is singular** — "Add product", "Add fee". Each press
+  adds one row.
+
+**Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
+rows and focuses nothing, a remove with no subject, a local cell control.
+
 ### There is no "last band" alternative to the hanging add
 
 **The add hangs. Always.** A rule in Unified View's own layouts document said
@@ -522,6 +557,53 @@ binding is written down.**
 - **A count of one meaning is a badge nobody needs.** "Normal" priority, a
   status that repeats its own lane heading, a placing on a board of one — if
   every row carries the same chip, the chip says nothing. Render the absence.
+
+### A status is coloured by its KIND — what the reader should do about it
+
+Added 2026-09-23, from the service board; applies to every module of every
+application — sales, 3PL, service and whatever is added next. Confirmed by
+Pavan on screen before it was written down.
+
+**Five kinds. They are about what the reader has to do, not about where the
+status sits in its lifecycle.**
+
+| Kind | Means | Drawn in | Examples |
+|---|---|---|---|
+| `caution` | **waiting on somebody** — pending, awaiting, not yet looked at | amber | Parts pending · Needs approval · Quoting · Unassigned · Paused |
+| `info` | **simply true, asks nothing** — somebody is on it, it is under way, it exists | blue | Assigned · Ongoing · Scheduled · Active |
+| `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Awarded |
+| `critical` | **a warning**, or a state important enough to change a plan | red | Blocked · Declined · Compliance expired · Over limit |
+| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | grey | Draft · Cancelled · Ended · Inactive |
+
+- **A column is a place, not a state.** Every badge grey made the lane the only
+  thing carrying meaning, and in one lane a job waiting on parts and a
+  brand-new job looked identical. A dispatcher scans a board for the amber ones.
+- **Being active is `info`, not `success`.** Nothing has been achieved by a
+  customer existing. Green is kept for a thing that is DONE, so that it means
+  something when it appears.
+- **Cancelled is not red.** It is a terminal non-event, not a problem to solve,
+  and a lane of red badges would be the loudest thing on the board saying the
+  least. Red stays for the state that genuinely goes wrong — and a lifecycle
+  with no such state has no red, which is correct rather than an oversight.
+- **A decision is not a fault.** Paused and Skipped were red; somebody chose
+  them. Paused is `caution` (it waits on somebody to resume), Skipped is
+  `neutral`.
+- **A price in is not a thing done.** "Quotation received" is `caution`: it is
+  now the dispatcher's turn to award. `success` is Awarded.
+- **The normal state says nothing.** Maintenance "OK" is `neutral`; the
+  exceptions carry the colour.
+
+**An application declares KINDS, never tones.** `StatusChip`'s tones are the
+DS's channels and their names are hues in disguise (`processing` is amber). A
+map written in them is a map written in colours — which is how "Assigned" came
+to be green in one module, amber in another and blue in a third, each author
+reaching for a swatch. The DS's `StatusChip` ships `info` (blue, on
+`--fp-banner-accent-info`) as its fifth channel for this rule.
+
+**Checked, not remembered.** In Unified View, `prototypes/unified-view/statusKind.ts`
+holds the kind → tone map and nothing else names a tone; `npm run eval` fails a
+chip or a map that does (`scripts/eval/status-kinds.mjs`). Which kind a given
+status is stays a reading — the binding table in the application's own docs.
 
 ## 11. A status is its word
 

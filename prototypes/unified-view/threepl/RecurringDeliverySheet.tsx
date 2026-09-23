@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { TableCellInput } from "@/components/form-layout";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChip } from "@/components/ui/status-chip";
 import { RecordSheet } from "../RecordSheet";
@@ -18,6 +19,7 @@ import {
   type RecurringRule,
   type RuleDelivery,
 } from "./recurringRules";
+import { statusTones } from "../statusKind";
 
 /*
   ONE DELIVERY, OPENED FROM THE CALENDAR.
@@ -55,15 +57,15 @@ const STATE_LABEL: Record<DeliveryState, string> = {
   skipped: "Skipped",
 };
 
-const STATE_TONE: Record<
-  DeliveryState,
-  "success" | "processing" | "failed" | "neutral"
-> = {
+const STATE_TONE = statusTones<DeliveryState>({
   delivered: "success",
-  created: "processing",
+  /* The order exists and is on its way through. */
+  created: "info",
+  /* "Not created yet" — a date on a plan, not yet a state. */
   scheduled: "neutral",
-  skipped: "failed",
-};
+  /* Skipped by decision. An absence, not a fault. */
+  skipped: "neutral",
+});
 
 const DASH = "—";
 
@@ -335,27 +337,28 @@ export function RecurringDeliverySheet({
                   <td className="px-3 py-2.5 text-muted-foreground">
                     {l.asset}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  {/* THE CELL IS THE FIELD — DS ui §10f. A boxed input inside
+                      a padded cell drew a second grid over the table's. */}
+                  <td className="relative p-0 text-right">
                     {editable && !l.topOff ? (
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        className="h-8 text-right tabular-nums"
-                        value={l.gal ?? ""}
+                      <TableCellInput
+                        numeric
+                        placeholder="0"
+                        value={l.gal == null ? "" : String(l.gal)}
                         aria-label={`Quantity for ${l.product}`}
-                        onChange={(e) =>
+                        onChange={(v) => {
+                          const clean = v.replace(/[^0-9.]/g, "");
                           setLine(i, {
-                            gal:
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value),
-                          })
-                        }
+                            gal: clean === "" ? null : Number(clean),
+                          });
+                        }}
                       />
                     ) : l.topOff ? (
-                      <span className="text-muted-foreground">{DASH}</span>
+                      <span className="block px-3 py-2.5 text-muted-foreground">
+                        {DASH}
+                      </span>
                     ) : (
-                      <span className="tabular-nums text-foreground">
+                      <span className="block px-3 py-2.5 tabular-nums text-foreground">
                         {(l.gal ?? 0).toLocaleString()}
                       </span>
                     )}
@@ -382,7 +385,7 @@ export function RecurringDeliverySheet({
         </div>
 
         {delivery.lines && (
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
             These quantities belong to this delivery alone. The rule still says{" "}
             {rule.lines
               .map((l) =>

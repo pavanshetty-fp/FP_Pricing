@@ -14,13 +14,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
-import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
+import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { HangingAdd } from "./HangingAdd";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
 import { formatFullDate } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
+import { STATUS_TONE } from "./FuelOrdersTable";
 
 /*
   Order side sheet.
@@ -48,10 +49,6 @@ import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
 
 const DRIVERS = ["Shriya", "Shriya Test 2", "Aakash"];
 
-const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
-  Assigned: "success",
-  Unassigned: "processing",
-};
 
 /** Sample option sets — the source app never exposed these lists. */
 const TAG_OPTIONS = [
@@ -154,6 +151,8 @@ export function OrderSheet({
   productNames,
 }: OrderSheetProps) {
   const [draft, setDraft] = React.useState<OrderDraft | null>(null);
+  /* The product line just added — its first cell takes the cursor. */
+  const [focusProduct, setFocusProduct] = React.useState<number | undefined>();
   const creating = mode === "create";
 
   // Re-seed on every open, so edits never leak between rows — and so a
@@ -167,6 +166,10 @@ export function OrderSheet({
 
   const set = <K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
+
+  const unusedProduct = productNames.find(
+    (o) => !draft.products.some((l) => l.name === o)
+  );
 
   // Derived, never stored: a driver means Assigned.
   const status: FuelOrderStatus = draft.driver ? "Assigned" : "Unassigned";
@@ -336,23 +339,24 @@ export function OrderSheet({
                §10f. It lives here rather than in `ProductTable` because the
                tab is outside the card and the table is inside it. */
             hanging={
-              <HangingAdd
-                label="Add products"
-                onClick={() => {
-                  const unused = productNames.find(
-                    (o) => !draft.products.some((l) => l.name === o)
-                  );
-                  set("products", [
-                    ...draft.products,
-                    { name: unused ?? productNames[0] ?? "", gal: 0 },
-                  ]);
-                }}
-              />
+              /* AN ADD WITH NOTHING LEFT TO ADD IS NOT RENDERED (§10f). It used
+                 to fall back to the first product, so the last press added a
+                 duplicate line. */
+              unusedProduct !== undefined ? (
+                <HangingAdd
+                  label="Add product"
+                  onClick={() => {
+                    setFocusProduct(draft.products.length);
+                    set("products", [...draft.products, { name: unusedProduct, gal: 0 }]);
+                  }}
+                />
+              ) : undefined
             }
           >
             <ProductTable
               lines={draft.products}
               options={productNames}
+              focusRow={focusProduct}
               onChange={(next) => set("products", next)}
             />
           </SheetSection>

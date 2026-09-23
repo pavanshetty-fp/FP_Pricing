@@ -25,6 +25,7 @@ import {
   WORK_TYPE_NAMES,
   WORK_TYPES,
   assetsAt,
+  technicianById,
   computedLabor,
   formatHours,
   money,
@@ -432,10 +433,24 @@ export function TechnicianJob({
             });
             toast.success("Quote shared");
           }}
-          secondary="Skip — no quote needed"
+          /* ACKNOWLEDGED ON THE CUSTOMER'S BEHALF (Pavan, 2026-09-24) — for a
+             customer who agreed but is not there to confirm. The quote is
+             still recorded in full; the acknowledgement says who gave it. */
+          secondary="Acknowledge on behalf of the customer"
           onSecondary={() => {
-            onPatch({ quote: { parts: [], fees: [], total: 0, sentAt: nowIso(), approvedAt: nowIso() } });
-            toast.success("Quote skipped");
+            const at = nowIso();
+            const tech = technicianById(job.technicianId)?.name ?? "Technician";
+            onPatch({
+              quote: {
+                parts: job.parts.map((p) => ({ ...p })),
+                fees: job.fees.map((f) => ({ ...f })),
+                total,
+                sentAt: at,
+                approvedAt: at,
+                acknowledgedBy: `${tech}, on behalf of the customer`,
+              },
+            });
+            toast.success("Acknowledged on behalf of the customer");
           }}
         />
       </>

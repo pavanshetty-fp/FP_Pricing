@@ -273,7 +273,7 @@ export function customerFormSections(): FormSectionDef<BrokerCustomer>[] {
     {
       key: "identity",
       title: "Identity",
-      description: "How this account is named here and in accounting.",
+      note: "How this account is named here and in accounting.",
       fields: [
         {
           key: "name",
@@ -379,7 +379,7 @@ export function customerFormSections(): FormSectionDef<BrokerCustomer>[] {
     {
       key: "financial",
       title: "Financial",
-      description: "What finance will let through, and on what terms.",
+      note: "What finance will let through, and on what terms.",
       fields: [
         {
           key: "creditStatus",

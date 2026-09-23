@@ -75,6 +75,11 @@ export function check() {
       /* A PLACEHOLDER IS NOT HELPER TEXT. It lives inside the control, it is
          gone the moment there is a value, and where it names a gate — "Choose
          a site first" — it is reporting a state rather than teaching one. */
+      /* TEXT BEHIND AN ⓘ IS NOT HELPER TEXT (Pavan, 2026-09-23). A
+         section's `note:` renders as `SheetSectionNote` — shown only when
+         somebody clicks to ask — which is exactly where an explanation is
+         allowed to live. */
+      if (/^\s*note:/.test(line)) return;
       const teach = line.match(/"([^"]{10,})"/);
       if (
         teach &&

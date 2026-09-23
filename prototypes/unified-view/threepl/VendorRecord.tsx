@@ -335,7 +335,7 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
     {
       key: "dispatch",
       title: "Dispatch contacts",
-      description: "Who gets the invitation, and who gets called when it is urgent.",
+      note: "Who gets the invitation, and who gets called when it is urgent.",
       fields: [
         { key: "dispatchContactName", label: "Dispatch contact", kind: "text", required: true, get: (d) => d.dispatchContactName, set: (d, v) => ({ ...d, dispatchContactName: (v as string) || null }) },
         {
@@ -379,7 +379,7 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
     {
       key: "coverage",
       title: "Service coverage",
-      description: "A vendor is only offered for an order inside the area they cover.",
+      note: "A vendor is only offered for an order inside the area they cover.",
       fields: [
         { key: "serviceAreaType", label: "Service area type", kind: "select", required: true, options: SERVICE_AREA_TYPES, get: (d) => d.serviceAreaType, set: (d, v) => ({ ...d, serviceAreaType: v as Vendor["serviceAreaType"] }) },
         {
@@ -444,7 +444,7 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
     {
       key: "compliance",
       title: "Compliance and approval",
-      description: "Paperwork and permission are separate — both must hold before a vendor is offered.",
+      note: "Paperwork and permission are separate — both must hold before a vendor is offered.",
       fields: [
         {
           key: "complianceValidTo",

@@ -236,7 +236,7 @@ export function productFormSections(): FormSectionDef<BrokerProduct>[] {
     {
       key: "quantity",
       title: "Unit and quantity rules",
-      description: "These constrain every order line that names this product.",
+      note: "These constrain every order line that names this product.",
       fields: [
         {
           key: "unit",

@@ -337,7 +337,7 @@ export function DirectoryRecordSheet<T>({
         <SheetSection
           key={s.key}
           title={s.title}
-          note={s.description ? <SheetSectionNote>{s.description}</SheetSectionNote> : undefined}
+          note={s.note ? <SheetSectionNote>{s.note}</SheetSectionNote> : undefined}
         >
           {/* Two up. A sheet at `wide` fits a pair of fields comfortably and
               three would put a metre between a label and its control. */}

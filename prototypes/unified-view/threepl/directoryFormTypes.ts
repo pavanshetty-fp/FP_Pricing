@@ -75,6 +75,12 @@ export interface FormFieldDef<T> {
 export interface FormSectionDef<T> {
   key: string;
   title: string;
-  description?: string;
+  /**
+   * The section's "why", shown ON DEMAND behind the ⓘ by its title
+   * (`SheetSectionNote`) — never as a paragraph under it. Named `note`, not
+   * `description`, so the difference from a field's always-visible helper
+   * text is in the code and the microcopy check can tell them apart.
+   */
+  note?: string;
   fields: FormFieldDef<T>[];
 }

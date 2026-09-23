@@ -6628,7 +6628,12 @@ export function BrokerOrderSheet({
                 { label: "Freight", value: q.freight },
               ];
               return (
-                <div className="overflow-hidden rounded-md border border-fp-outline-1">
+                /* T2 — ITS OWN BOX, ruled correct 2026-09-22: a dialog body is
+                   not a card, and nothing else here draws an edge. */
+                <div
+                  data-table-variant="T2"
+                  className="overflow-hidden rounded-md border border-fp-outline-1"
+                >
                   <table className="w-full text-sm">
                     <tbody>
                       {rows.map((r) => (

@@ -335,7 +335,7 @@ export function assetFormSections(): FormSectionDef<RentalAsset>[] {
     {
       key: "placement",
       title: "Placement",
-      description: "Where the asset physically is. Leave blank for anything back at the yard.",
+      note: "Where the asset physically is. Leave blank for anything back at the yard.",
       fields: [
         { key: "customer", label: "Customer", kind: "text", get: (d) => d.customer, set: (d, v) => ({ ...d, customer: (v as string) || null }) },
         { key: "shipTo", label: "Ship-to", kind: "text", get: (d) => d.shipTo, set: (d, v) => ({ ...d, shipTo: (v as string) || null }) },

@@ -63,7 +63,14 @@ export function check() {
             against a wrapper that plainly had a rim. */
       if (line.includes("<table")) {
         const cls = nearbyClass(lines, i - 1);
-        if (isRim(cls) && /rounded/.test(cls)) {
+        /* A RULING, REMEMBERED (2026-09-23). A wrapper that says
+           `data-table-variant="T2"` has been looked at by a person and ruled
+           a table that IS its own box (7-variants §3). The check stops
+           asking; the attribute is the record of the answer, next to the
+           thing it answers for. */
+        const ruled = lines.slice(Math.max(0, i - 3), i + 1).some((l) =>
+          /data-table-variant="T2"/.test(l));
+        if (isRim(cls) && /rounded/.test(cls) && !ruled) {
           /* L2, NOT L1 — AND THE DEMOTION IS THE POINT (2026-09-22). A table
              in its own box is a legitimate variant: `7-variants.md` T2, a
              table that IS its own unit with nothing around it. What §10f

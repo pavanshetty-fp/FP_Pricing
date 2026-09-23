@@ -18,6 +18,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -723,20 +724,35 @@ export function ListToolbar<K extends string>({
                   </div>
                 )}
                 <div className="max-h-64 overflow-y-auto">
-                  {cardFields.units.map((u) => (
-                    <div
-                      key={u.key}
-                      className="flex items-center rounded-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
-                    >
+                  {/* A TOGGLE PER CATEGORY, a tick per field inside it (Pavan,
+                      2026-09-23). The category — Customer, Asset & Fault — is
+                      the decision somebody actually makes about a card, so it
+                      is a switch: on or off, and it reads that way. Its fields
+                      are the finer adjustment, shown only while the category
+                      is on, because ticking a field inside a hidden block
+                      changes nothing anybody can see. */}
+                  {cardFields.units.map((u) => {
+                    if (!u.group) {
+                      const on = !cardFields.hidden.has(u.key);
+                      return (
+                        <label
+                          key={u.key}
+                          className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                        >
+                          <span className="flex-1 truncate">{u.label}</span>
+                          <Switch
+                            size="sm"
+                            checked={on}
+                            onCheckedChange={() => cardFields.onToggle(u.key)}
+                          />
+                        </label>
+                      );
+                    }
+                    if (cardFields.hidden.has(u.group)) return null;
+                    return (
                       <label
-                        className={cn(
-                          "flex flex-1 cursor-pointer items-center gap-2 py-1.5 pr-2 text-sm",
-                          /* THE INDENT IS THE ONLY THING SAYING "UNDER" — same
-                             as the column menu, for the same reason. */
-                          u.group
-                            ? "pl-5 text-[13px] text-muted-foreground"
-                            : "pl-2"
-                        )}
+                        key={u.key}
+                        className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-5 text-[13px] text-muted-foreground transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
                       >
                         <Checkbox
                           checked={!cardFields.hidden.has(u.key)}
@@ -744,8 +760,8 @@ export function ListToolbar<K extends string>({
                         />
                         <span className="flex-1 truncate">{u.label}</span>
                       </label>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Separator className="my-1" />
                 <div className="flex justify-end">

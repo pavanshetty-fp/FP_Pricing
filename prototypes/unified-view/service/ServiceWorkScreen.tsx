@@ -646,9 +646,12 @@ export function ServiceWorkScreen() {
             /* AN ALERT ONLY WHERE SOMETHING IS OUTSTANDING. An alert on every
                card is a border, so the three lanes with nothing waiting on
                anybody carry none. */
+            /* AMBER, NOT RED (the status-kind rule, DS §10b). A part on order
+               and an invoice nobody has raised are both WAITING ON SOMEBODY;
+               red is for a warning that changes the plan. */
             alert:
               r.status === "Parts pending" && r.partNeeded
-                ? { status: "warning" as const, text: r.partNeeded }
+                ? { status: "caution" as const, text: r.partNeeded }
                 : r.status === "Needs approval"
                   ? {
                       status: "default" as const,
@@ -657,7 +660,7 @@ export function ServiceWorkScreen() {
                     }
                   : r.status === "Completed" && !r.invoiceCreated
                     ? {
-                        status: "warning" as const,
+                        status: "caution" as const,
                         text: "Invoice not raised",
                         actionLabel: "Review",
                       }

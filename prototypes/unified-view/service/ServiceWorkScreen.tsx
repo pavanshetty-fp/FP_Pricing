@@ -43,6 +43,7 @@ import {
   technicianById,
   type ServiceOrder,
   type WorkStatus,
+  LABOR_RATE,
 } from "./work";
 
 /**
@@ -688,6 +689,7 @@ export function ServiceWorkScreen() {
       fault: "",
       dateKey: dateKeyOf(tomorrow),
       scheduledAt: tomorrow.toISOString(),
+      windowEndMin: (tomorrow.getHours() + 3) * 60,
       technicianId: null,
       arrivedAt: null,
       startedAt: null,
@@ -696,6 +698,7 @@ export function ServiceWorkScreen() {
       parts: cfg.priceBook ? book.parts.map((p) => ({ ...p })) : [],
       labor: 0,
       laborOverride: null,
+      laborRate: LABOR_RATE,
       /* PRE-FILLED FROM SETTINGS (Pavan, 2026-09-23). Most yards bill a
          standard trip; typing the same number on every job is a question the
          settings have already answered. It stays editable — see the sheet. */
@@ -790,7 +793,9 @@ export function ServiceWorkScreen() {
         parts: [],
         labor: 0,
         laborOverride: null,
+        laborRate: order.laborRate,
         startedAt: null,
+        windowEndMin: order.windowEndMin,
         mileage: 0,
         quote: null,
         extraCharges: [],

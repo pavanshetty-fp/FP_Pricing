@@ -300,8 +300,26 @@ export interface ServiceOrder {
   /* ── when and who ── */
   /** The day it is booked for. `YYYY-MM-DD`, as every list here keys dates. */
   dateKey: string;
-  /** ISO. Null means "dispatch it at the yard team's discretion". */
+  /**
+   * ISO — **the START of the window**, kept because every list, card and
+   * header already reads it. Null means "dispatch it at the yard team's
+   * discretion".
+   */
   scheduledAt: string | null;
+  /**
+   * THE END OF THE WINDOW, in minutes from midnight (Pavan, 2026-09-23).
+   *
+   * A SLOT, NOT A MOMENT — the same control 3PL uses for a delivery window,
+   * and for the same reason: a site whose gate opens between 7 and 11 was
+   * being filed under a single 7:00 AM that nobody could honour, and the four
+   * hours of slack lived in a dispatcher's head. A window is two times, so it
+   * takes two numbers.
+   *
+   * Minutes rather than a second ISO because the END shares the start's DATE
+   * by definition; storing it as a full timestamp invites the two to disagree
+   * about which day they are on.
+   */
+  windowEndMin: number | null;
   /** Null is exactly what Open means. */
   technicianId: string | null;
   /** Set when the technician marks arrival. */
@@ -339,6 +357,15 @@ export interface ServiceOrder {
    * correction reviewable.
    */
   laborOverride: number | null;
+  /**
+   * WHAT AN HOUR COSTS ON THIS JOB (Pavan, 2026-09-23).
+   *
+   * PER ORDER, NOT PER COMPANY. `LABOR_RATE` is the house rate and the
+   * default, but an after-hours callout, a contract customer and a warranty
+   * job are three different numbers, and a single global rate meant the
+   * difference had to be smuggled in as a fee with a name that explained it.
+   */
+  laborRate: number;
   /** Miles. Billable on the invoice only. */
   mileage: number;
   /** Set by the dispatcher at intake, added to by the technician. */
@@ -414,6 +441,32 @@ export function computedLabor(
   return Math.max(0.25, Math.round((ms / 3_600_000) * 4) / 4);
 }
 
+/**
+ * HOURS AS HOURS AND MINUTES. `2.25` is how the money is worked out; `2 h
+ * 15 m` is how long the job took, and those are two different sentences.
+ *
+ * A TECHNICIAN THINKS IN MINUTES (Pavan, 2026-09-23). Nobody comes off a job
+ * saying "that was one point seven five hours", and asking them to convert is
+ * asking them to make a rounding error on the invoice.
+ */
+export function splitHours(hours: number): { h: number; m: number } {
+  const total = Math.max(0, Math.round(hours * 60));
+  return { h: Math.floor(total / 60), m: total % 60 };
+}
+
+/** `2 h 15 m`, or `45 m` when there is no hour to print. */
+export function formatHours(hours: number): string {
+  const { h, m } = splitHours(hours);
+  if (h === 0 && m === 0) return "0 m";
+  if (h === 0) return `${m} m`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m} m`;
+}
+
+/** Back the other way, for the two number fields. */
+export const joinHours = (h: number, m: number) =>
+  Math.max(0, h) + Math.max(0, Math.min(59, m)) / 60;
+
 /** The figure to bill: what somebody typed, or failing that what the clock said. */
 export const effectiveLabor = (o: {
   laborOverride: number | null;
@@ -430,7 +483,7 @@ export const mileageTotal = (miles: number) => miles * MILEAGE_RATE;
 export function orderTotal(o: ServiceOrder): number {
   return (
     partsTotal(o.parts) +
-    laborTotal(o.labor) +
+    o.labor * o.laborRate +
     mileageTotal(o.mileage) +
     feesTotal(o.fees) +
     feesTotal(o.extraCharges)
@@ -659,6 +712,11 @@ function buildOrders(): ServiceOrder[] {
       fault: faults[i % faults.length],
       dateKey: dateKeyOf(day),
       scheduledAt: scheduled,
+      /* A THREE-HOUR SLOT BY DEFAULT, wide enough to be honest about a yard
+         team's day and narrow enough to be a promise. */
+      windowEndMin: scheduled
+        ? (new Date(scheduled).getHours() + 3) * 60
+        : null,
       technicianId,
       arrivedAt,
       startedAt,
@@ -671,6 +729,7 @@ function buildOrders(): ServiceOrder[] {
       parts,
       labor,
       laborOverride,
+      laborRate: LABOR_RATE,
       mileage,
       fees,
       quote,

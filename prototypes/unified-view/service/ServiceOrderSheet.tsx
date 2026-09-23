@@ -3,12 +3,27 @@ import {
   Plus,
   Trash2,
   Calendar as CalendarIcon,
+  MoreHorizontal,
   Receipt,
   History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Combobox } from "@/components/ui/combobox";
@@ -28,10 +43,7 @@ import {
   TableCellInput,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
-import {
-  formatMinutes,
-  parseMinutes,
-} from "@/components/form-layout/TimeWindowSlider";
+import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import {
   SheetField,
   SheetSection,
@@ -43,11 +55,9 @@ import { DATE_FMT } from "../data";
 import { RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import { TechnicianApp } from "./TechnicianApp";
-import { TIME_OPTIONS } from "../threepl/orders";
 import {
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
-  LABOR_RATE,
   MILEAGE_RATE,
   PORTAL_SOURCE,
   PRIORITIES,
@@ -57,8 +67,10 @@ import {
   feesTotal,
   isRecorded,
   isWorkable,
-  laborTotal,
   computedLabor,
+  formatHours,
+  splitHours,
+  joinHours,
   mileageTotal,
   money,
   orderTotal,
@@ -178,121 +190,219 @@ function stampLabel(iso: string): string {
  * so it says so rather than showing 0 h — zero hours is a claim about a visit
  * that has not happened.
  */
+/**
+ * LABOUR — HOURS AND MINUTES, AND WHAT AN HOUR COSTS.
+ *
+ * COMPUTED WITH AN OVERRIDE (Pavan, 2026-09-23). The time is start-of-work to
+ * completion, which is a fact nobody has to remember to type. But a clock
+ * cannot know about the half hour spent moving a truck that should not be
+ * billed, so somebody has to be able to disagree with it — and **a computed
+ * figure nobody can correct is one people work around by not starting the job
+ * in the app at all.**
+ *
+ * HOURS AND MINUTES, NOT DECIMAL HOURS. `2.25` is how the money is worked
+ * out; `2 h 15 m` is how long the job took. Nobody comes off a job saying
+ * "that was one point seven five hours", and asking them to convert is asking
+ * them to make a rounding error on the invoice. So the READ-OUT and the two
+ * inputs are both in h/m, and the decimal stays where it belongs — inside
+ * `laborTotal`.
+ *
+ * A READ-OUT, NOT A DISABLED FIELD. The DS rule, and it matters most here: a
+ * greyed input still looks like a field promising an edit, and its dimming
+ * makes the value the hardest thing in the section to read.
+ *
+ * WHEN IT IS OVERRULED, BOTH ARE SHOWN. The measurement does not disappear
+ * behind the correction — keeping it is what makes the correction reviewable.
+ * Clearing goes back to the clock rather than to zero, because zero is not
+ * what "never mind" means.
+ */
+/** One line of the quote. `approx` marks the half nobody can promise yet. */
+function QuoteRow({
+  label,
+  value,
+  approx,
+  strong,
+}: {
+  label: string;
+  value: number;
+  approx?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
+      <span
+        className={cn(
+          "text-sm",
+          strong ? "font-medium text-foreground" : "text-muted-foreground"
+        )}
+      >
+        {label}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 text-sm tabular-nums",
+          strong ? "font-medium text-foreground" : "text-foreground"
+        )}
+      >
+        {/* THE TILDE IS THE WHOLE CAVEAT, on the figure itself. A footnote
+            somewhere else is read once and not carried down the column. */}
+        {approx ? "~" : ""}
+        {money(value)}
+      </span>
+    </div>
+  );
+}
+
 function LabourFigure({
   startedAt,
   completedAt,
   override,
   effective,
+  rate,
   locked,
   onOverride,
+  onRate,
 }: {
   startedAt: string | null;
   completedAt: string | null;
   override: number | null;
   /** The figure every total reads — the override, or the clock. */
   effective: number;
-  /** Past billing, the argument is over. */
+  /** What an hour costs on THIS job. */
+  rate: number;
   locked?: boolean;
   onOverride: (v: number | null) => void;
+  onRate: (v: number) => void;
 }) {
   const [editing, setEditing] = React.useState(false);
-  const [typed, setTyped] = React.useState("");
+  const [h, setH] = React.useState("");
+  const [m, setM] = React.useState("");
   const measured = computedLabor(startedAt, completedAt);
   const ran = Boolean(startedAt && completedAt);
 
   const commit = () => {
-    const n = Number(typed);
-    onOverride(typed.trim() === "" || !Number.isFinite(n) || n < 0 ? null : n);
+    const hh = Number(h) || 0;
+    const mm = Number(m) || 0;
+    onOverride(hh === 0 && mm === 0 && h === "" && m === "" ? null : joinHours(hh, mm));
     setEditing(false);
   };
 
+  /* STOPPED, NOT JUST HANDLED. Enter in here means "I have finished typing
+     this number"; left to bubble it reached the sheet and closed the whole
+     thing, losing the order the reader was looking at. */
+  const keys = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Enter") commit();
+      else setEditing(false);
+    }
+  };
+
   return (
-    <SheetField label="Labour">
-      <div className="flex min-h-9 items-center gap-2">
-        {editing ? (
-          <>
-            <Input
-              autoFocus
-              type="number"
-              min={0}
-              step={0.25}
-              inputMode="decimal"
-              value={typed}
-              placeholder={String(measured || 0)}
-              onChange={(e) => setTyped(e.target.value)}
-              onKeyDown={(e) => {
-                /* STOPPED, NOT JUST HANDLED. Enter in here means "I have
-                   finished typing this number"; left to bubble it reached the
-                   sheet and closed the whole thing, losing the order the
-                   reader was looking at. Escape is the same story one level
-                   up — it should leave the FIELD, not the sheet. */
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  commit();
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setEditing(false);
-                }
-              }}
-              className="w-24 tabular-nums"
-              aria-label="Labour hours"
-            />
-            <span className="text-sm text-muted-foreground">h</span>
-            <Button variant="ghost" size="sm" onClick={commit}>
-              Done
-            </Button>
-          </>
-        ) : (
-          <>
-            {/* THE FIGURE NEVER WRAPS. It is the one thing in the row worth
-                reading, and at a narrow sheet width "2.5 h" was breaking
-                across two lines while the rate beside it stayed whole. */}
-            <span className="shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
-              {ran || override !== null ? `${effective} h` : "\u2014"}
-            </span>
-            {override !== null && ran && (
-              /* THE MEASUREMENT, KEPT IN VIEW. Not a warning — a correction is
-                 a normal thing to make — so it is muted text and not a tone. */
-              <span className="text-xs text-muted-foreground">
-                measured {measured} h
-              </span>
-            )}
-            {!ran && override === null && (
-              <span className="text-xs text-muted-foreground">
-                Timed from the moment work starts.
-              </span>
-            )}
-            <span className="ml-auto shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
-              {money(LABOR_RATE)}/h · {money(laborTotal(effective))}
-            </span>
-            {!locked && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTyped(override !== null ? String(override) : "");
-                  setEditing(true);
-                }}
-              >
-                {override === null ? "Adjust" : "Change"}
+    <div className="grid grid-cols-2 gap-6">
+      <SheetField label="Labour">
+        <div className="flex min-h-9 items-center gap-2">
+          {editing ? (
+            <>
+              <Input
+                autoFocus
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={h}
+                placeholder={String(splitHours(measured).h)}
+                onChange={(e) => setH(e.target.value)}
+                onKeyDown={keys}
+                className="w-16 tabular-nums"
+                aria-label="Labour hours"
+              />
+              <span className="text-sm text-muted-foreground">h</span>
+              <Input
+                type="number"
+                min={0}
+                max={59}
+                inputMode="numeric"
+                value={m}
+                placeholder={String(splitHours(measured).m)}
+                onChange={(e) => setM(e.target.value)}
+                onKeyDown={keys}
+                className="w-16 tabular-nums"
+                aria-label="Labour minutes"
+              />
+              <span className="text-sm text-muted-foreground">m</span>
+              <Button variant="ghost" size="sm" onClick={commit}>
+                Done
               </Button>
-            )}
-            {override !== null && !locked && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOverride(null)}
-              >
-                Use measured
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    </SheetField>
+            </>
+          ) : (
+            <>
+              <span className="shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
+                {ran || override !== null ? formatHours(effective) : "\u2014"}
+              </span>
+              {override !== null && ran && (
+                /* THE MEASUREMENT, KEPT IN VIEW. Not a warning — a correction
+                   is a normal thing to make — so it is muted text, not a
+                   tone. */
+                <span className="text-xs text-muted-foreground">
+                  measured {formatHours(measured)}
+                </span>
+              )}
+              {!ran && override === null && (
+                <span className="text-xs text-muted-foreground">
+                  Timed from the moment work starts.
+                </span>
+              )}
+              {!locked && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => {
+                    const src = override ?? measured;
+                    setH(override !== null || ran ? String(splitHours(src).h) : "");
+                    setM(override !== null || ran ? String(splitHours(src).m) : "");
+                    setEditing(true);
+                  }}
+                >
+                  {override === null ? "Adjust" : "Change"}
+                </Button>
+              )}
+              {override !== null && !locked && (
+                <Button variant="ghost" size="sm" onClick={() => onOverride(null)}>
+                  Use measured
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </SheetField>
+
+      {/* THE RATE IS PER ORDER, NOT PER COMPANY (Pavan, 2026-09-23). An
+          after-hours callout, a contract customer and a warranty job are three
+          different numbers, and one global rate meant the difference had to be
+          smuggled in as a fee with a name that explained it. */}
+      <SheetField label="Cost per hour">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">$</span>
+          <Input
+            type="number"
+            min={0}
+            step={5}
+            inputMode="decimal"
+            value={rate === 0 ? "" : rate}
+            placeholder="0"
+            disabled={locked}
+            onChange={(e) => onRate(Math.max(0, Number(e.target.value) || 0))}
+            className="w-24 tabular-nums"
+            aria-label="Cost per hour"
+          />
+          <span className="ml-auto shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+            {money(effective * rate)}
+          </span>
+        </div>
+      </SheetField>
+    </div>
   );
 }
 
@@ -521,6 +631,7 @@ export function ServiceOrderSheet({
   const creating = mode === "create";
   const [draft, setDraft] = React.useState<ServiceOrder | null>(null);
   const [fieldOpen, setFieldOpen] = React.useState(false);
+  const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [holdOpen, setHoldOpen] = React.useState(false);
   const [holdReason, setHoldReason] = React.useState("");
   const lastSaved = React.useRef<string | null>(null);
@@ -651,18 +762,11 @@ export function ServiceOrderSheet({
       done: Boolean(draft.shipTo),
       target: SECTION_ASSET,
     },
-    {
-      key: "asset",
-      label: "Choose the asset the job is on",
-      done: Boolean(draft.assetId),
-      target: SECTION_ASSET,
-    },
-    {
-      key: "workType",
-      label: "Choose a work type",
-      done: Boolean(draft.workType),
-      target: SECTION_ASSET,
-    },
+    /* ASSET AND WORK TYPE LEFT THIS LIST ON 2026-09-23, because they left the
+       mandatory set. A job can exist knowing only the customer and the fault,
+       which is what a phone call actually gives you — and a strip that keeps
+       asking for them would be asking for something the form no longer
+       requires. */
     ...(draft.status === "Open"
       ? [
           {
@@ -674,7 +778,42 @@ export function ServiceOrderSheet({
         ]
       : []),
   ];
-  const pendingSteps = mandatory.filter((x) => !x.done);
+  /**
+   * WHAT STILL STOPS THIS JOB BEING CALLED DONE (Pavan, 2026-09-23).
+   *
+   * COMPLETION IS THE PRESS THAT TURNS WORK INTO MONEY, so it is the one act
+   * on this sheet worth gating. Each line is an INSTRUCTION rather than a
+   * field name, and the order is the order somebody would fix them in.
+   *
+   * THE RATE IS ON THE LIST because labour without a rate is hours nobody can
+   * invoice, and it is the field most likely to be left at whatever the last
+   * job used.
+   */
+  const completionMissing = [
+    !draft.startedAt && "Start the work before completing it.",
+    draft.labor <= 0 && "Record how long the job took.",
+    draft.laborRate <= 0 && "Set what an hour costs on this job.",
+    !draft.technicianId && "Say who did the work.",
+  ].filter(Boolean) as string[];
+
+  /**
+   * THE STRIP SAYS WHAT THE PRIMARY IS WAITING ON — whatever the primary
+   * currently is (DS: the footer's three slots).
+   *
+   * IT WAS SAYING "EVERYTHING IS FILLED IN" BESIDE A DEAD BUTTON. Once
+   * dispatch could complete a job, the primary on a workable order became
+   * *Mark as completed* with its own requirements, and the strip was still
+   * reporting on the CREATION set — so the one place that exists to explain a
+   * disabled primary was cheerfully reporting all clear. The strip follows
+   * the act, not the form.
+   */
+  const pendingSteps = isWorkable(draft.status)
+    ? completionMissing.map((label, i) => ({
+        key: `done-${i}`,
+        label,
+        target: SECTION_SCHEDULE,
+      }))
+    : mandatory.filter((x) => !x.done);
 
   /* ────────────────────────────────────────── the footer's ladder ───── */
 
@@ -699,6 +838,77 @@ export function ServiceOrderSheet({
     );
   };
 
+
+  /**
+   * RECORDING THE WORK — from the sheet, and from the technician's app, which
+   * is why it is a function and not an inline handler.
+   */
+  const completeNow = () => {
+    const at = nowIso();
+    const startedAt = draft.startedAt ?? draft.arrivedAt ?? at;
+    const patch = {
+      arrivedAt: draft.arrivedAt ?? at,
+      startedAt,
+      completedAt: at,
+      /* THE CLOCK WRITES THE HOURS, unless somebody has already disagreed
+         with it. `labor` is the effective figure every total reads, so it is
+         written here rather than derived at each call site — one number,
+         decided at the one moment both ends of it are known. */
+      labor: draft.laborOverride ?? computedLabor(startedAt, at),
+      signed: true,
+      partNeeded: null,
+    };
+    if (cfg.managerApproval) {
+      advance("Needs approval", patch);
+      toast.success(`${draft.orderNo} recorded — sent for approval`);
+    } else {
+      advance("Approved", {
+        ...patch,
+        invoiceCreated: cfg.nativeBilling,
+        invoicedAt: cfg.nativeBilling ? at : null,
+      });
+      toast.success(
+        cfg.nativeBilling
+          ? `${draft.orderNo} complete — invoice generated`
+          : `${draft.orderNo} complete and approved`
+      );
+    }
+  };
+
+  /**
+   * EVERYTHING ELSE A DISPATCHER CAN DO AT THIS STAGE — the footer's ···.
+   *
+   * NOT THE NEXT ACT, AND NOT NOTHING. Starting the work, handing it to the
+   * technician's app and pricing it for the customer are all real acts a
+   * dispatcher takes; none of them is the ONE thing that moves the record on,
+   * which is what the primary is for. A button each would turn the footer
+   * into a toolbar and make the primary just another control on it.
+   */
+  const sheetActs: { label: string; onSelect: () => void }[] = [];
+  if (draft.status === "Assigned")
+    sheetActs.push({
+      label: "Start work",
+      /* BOTH TIMESTAMPS, because from dispatch these are one press. The
+         technician's app tells arrival and starting apart — it has a quote
+         and a wait between them — but somebody starting a job from this sheet
+         is saying both at once, and a second button to separate them would be
+         inventing a step nobody takes. */
+      onSelect: () => {
+        advance("In progress", { arrivedAt: nowIso(), startedAt: nowIso() });
+        toast.success(`${draft.orderNo} — work started`);
+      },
+    });
+  if (!creating && draft.customer)
+    sheetActs.push({ label: "Send quote to customer", onSelect: () => setQuoteOpen(true) });
+  if (cfg.techApp && isWorkable(draft.status))
+    sheetActs.push({
+      label:
+        draft.status === "Assigned"
+          ? "Open technician app"
+          : "Resume in technician app",
+      onSelect: () => setFieldOpen(true),
+    });
+
   const nextAct: { label: string; onSelect: () => void; why?: string } = (() => {
     if (draft.status === "Cancelled")
       return {
@@ -716,75 +926,36 @@ export function ServiceOrderSheet({
         label: "Create Service Order",
         onSelect: () => advance("Assigned"),
       };
-    /* WITH THE FIELD APP ON, DISPATCH HANDS THE JOB OVER AND STOPS.
-       Arriving, quoting and recording all happen in front of the asset, so the
-       sheet's act is the handover itself rather than a second place to claim
-       any of them. Off, the ladder below is the whole flow and dispatch does
-       it by hand — which is what "Service technician app: off" means. */
-    if (
-      cfg.techApp &&
-      (draft.status === "Assigned" ||
-        draft.status === "In progress" ||
-        draft.status === "Parts-pending")
-    )
-      return {
-        label:
-          draft.status === "Assigned"
-            ? "Open technician app"
-            : "Resume in technician app",
-        onSelect: () => setFieldOpen(true),
-      };
-    /* ARRIVAL IS ITS OWN ACT, because "somebody is on their way" and "somebody
-       is on site" are the two facts the Assigned and In progress lanes exist
-       to tell apart. */
+    /* THE FIELD APP IS WHERE THE TECHNICIAN WORKS. IT IS NOT THE ONLY PLACE
+       THE WORK CAN BE RECORDED (Pavan, 2026-09-23).
+
+       This REVERSES the 2026-09-21 rule, which made the sheet hand the job
+       over and stop. The reasoning then was that the person holding the job is
+       standing in front of the asset — true, and beside the point: a
+       technician rings in, a job is done off the app, a customer wants a price
+       before anyone travels. Dispatch has always been able to do these things
+       on the phone; the sheet was the only thing pretending otherwise.
+
+       So the sheet keeps the whole ladder and the technician's app becomes a
+       convenience rather than a gate. "Open technician app" moves to the ···,
+       where it belongs: a thing you can do, not the thing to do. */
     if (draft.status === "Assigned")
       return {
-        label: "Start work",
-        /* BOTH TIMESTAMPS, because from dispatch these are one press. The
-           technician's app tells arrival and starting apart — it has a quote
-           and a wait between them — but somebody starting a job from this
-           sheet is saying both things at once, and inventing a second button
-           to separate them would be inventing a step nobody takes. */
-        onSelect: () =>
-          advance("In progress", { arrivedAt: nowIso(), startedAt: nowIso() }),
+        /* MARK AS COMPLETED, NOT "START WORK" — starting is in the ···, where
+           it is one press among several, because by the time a job is Assigned
+           the interesting question is whether it is finished. */
+        label: "Mark as completed",
+        why: completionMissing.length > 0 ? completionMissing[0] : undefined,
+        onSelect: completeNow,
       };
     if (isWorkable(draft.status)) {
       return {
-        label: draft.status === "Parts-pending" ? "Resume and complete" : "Mark complete",
-        onSelect: () => {
-          const at = nowIso();
-          const startedAt = draft.startedAt ?? draft.arrivedAt ?? at;
-          const patch = {
-            arrivedAt: draft.arrivedAt ?? at,
-            startedAt,
-            completedAt: at,
-            /* THE CLOCK WRITES THE HOURS, unless somebody has already
-               disagreed with it. `labor` is the effective figure every total
-               reads, so it is written here rather than derived at each call
-               site — one number, decided at the one moment both ends of it
-               are known. */
-            labor: draft.laborOverride ?? computedLabor(startedAt, at),
-            signed: true,
-            partNeeded: null,
-          };
-          if (cfg.managerApproval) {
-            advance("Needs approval", patch);
-            toast.success(`${draft.orderNo} recorded — sent for approval`);
-          } else {
-            const billedAt = cfg.nativeBilling ? at : null;
-            advance("Approved", {
-              ...patch,
-              invoiceCreated: cfg.nativeBilling,
-              invoicedAt: billedAt,
-            });
-            toast.success(
-              cfg.nativeBilling
-                ? `${draft.orderNo} complete — invoice generated`
-                : `${draft.orderNo} complete and approved`
-            );
-          }
-        },
-
+        label:
+          draft.status === "Parts-pending"
+            ? "Resume and complete"
+            : "Mark as completed",
+        why: completionMissing.length > 0 ? completionMissing[0] : undefined,
+        onSelect: completeNow,
       };
     }
     if (draft.status === "Needs approval")
@@ -813,23 +984,31 @@ export function ServiceOrderSheet({
   const blockedWhy =
     draft.status === "Open" && !draft.technicianId
       ? "Choose a technician before proceeding."
-      : /* NOT WHEN THE FIELD APP HOLDS THE JOB. The hours are recorded there,
-           so demanding them here would be the dispatch screen blocking itself
-           on a field they cannot fill. */
-        !cfg.techApp &&
-          isWorkable(draft.status) &&
-          draft.status !== "Assigned" &&
-          draft.labor <= 0
-        ? "Record the labour hours before proceeding."
+      : /* COMPLETION IS GATED WHEREVER IT IS OFFERED (Pavan, 2026-09-23). It
+           used to be exempt while the field app held the job, on the grounds
+           that the hours were recorded there — but dispatch can complete a job
+           now, so the gate has to be true on this screen too. */
+        isWorkable(draft.status) && completionMissing.length > 0
+        ? completionMissing[0]
         : nextAct.why;
 
   /* ─────────────────────────────────────────────── the money, worked out ── */
 
   const partsSum = partsTotal(draft.parts);
-  const laborSum = laborTotal(draft.labor);
+  const laborSum = draft.labor * draft.laborRate;
   const mileageSum = mileageTotal(draft.mileage);
   const feesSum = feesTotal(draft.fees);
   const extraSum = feesTotal(draft.extraCharges);
+
+  /* ── WHAT A QUOTE SAYS, AND HOW MUCH OF IT IS A GUESS ──────────────────
+     FIRM is what is already priced: the parts and the fees off the book.
+     ESTIMATED is what the visit will add — and the estimate has to come from
+     somewhere a customer could be told, so it is whatever has been recorded
+     already, or the house assumptions when nothing has. */
+  const quoteFirm = partsSum + feesSum;
+  const quoteHours = draft.labor > 0 ? draft.labor : 1.5;
+  const quoteMiles = draft.mileage > 0 ? draft.mileage : cfg.defaultMileage;
+  const quoteEstimate = quoteHours * draft.laborRate + quoteMiles * MILEAGE_RATE;
   const total = orderTotal(draft);
   const quoteGap = draft.quote ? total - draft.quote.total : 0;
 
@@ -958,18 +1137,70 @@ export function ServiceOrderSheet({
              THE WRAPPER IS WHAT MAKES A DISABLED BUTTON HOVERABLE. A disabled
              control fires no pointer events of its own, so the tooltip would
              never open on the one state it exists for. */
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex" tabIndex={0} aria-describedby={undefined}>
-                <Button disabled onClick={nextAct.onSelect} className="pointer-events-none">
-                  {nextAct.label}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>{blockedWhy}</TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-2">
+            {/* THE MENU STAYS WHEN THE PRIMARY IS DEAD — and it matters most
+                then, because the act that UNBLOCKS the primary is usually in
+                it. A footer that empties out when the button greys leaves the
+                reader with nothing to press and no way forward. */}
+            {sheetActs.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="More actions">
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {sheetActs.map((a) => (
+                    <DropdownMenuItem key={a.label} onSelect={a.onSelect}>
+                      {a.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex" tabIndex={0} aria-describedby={undefined}>
+                  <Button disabled onClick={nextAct.onSelect} className="pointer-events-none">
+                    {nextAct.label}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{blockedWhy}</TooltipContent>
+            </Tooltip>
+          </div>
         ) : (
-          <Button onClick={nextAct.onSelect}>{nextAct.label}</Button>
+          <div className="flex items-center gap-2">
+            {/* THE ··· BESIDE THE PRIMARY (Pavan, 2026-09-23).
+
+                THE PRIMARY IS STILL ONE THING — the next act, and only the
+                next act. What goes here is everything ELSE a dispatcher can
+                legitimately do at this stage: start the work, hand it to the
+                technician's app, price it for the customer. They are real
+                acts, they are not the next one, and a second button for each
+                would make the footer a toolbar.
+
+                IT SITS LEFT OF THE PRIMARY, not in the header. The header's
+                ··· is for acts on the RECORD — deleting it. These are acts on
+                the WORK, which is what the footer is about. */}
+            {sheetActs.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="More actions">
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {sheetActs.map((a) => (
+                    <DropdownMenuItem key={a.label} onSelect={a.onSelect}>
+                      {a.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button onClick={nextAct.onSelect}>{nextAct.label}</Button>
+          </div>
         )
       }
       onSubmit={() => {
@@ -1071,7 +1302,7 @@ export function ServiceOrderSheet({
               disabled={intakeLocked || !draft.customer}
             />
           </SheetField>
-          <SheetField label="Asset" required>
+          <SheetField label="Asset">
             <Combobox
               className="w-full"
               value={draft.assetName}
@@ -1089,7 +1320,7 @@ export function ServiceOrderSheet({
               disabled={intakeLocked || !draft.shipTo}
             />
           </SheetField>
-          <SheetField label="Work type" required>
+          <SheetField label="Work type">
             <Combobox
               className="w-full"
               value={draft.workType}
@@ -1202,25 +1433,34 @@ export function ServiceOrderSheet({
               track asks them to aim at it. The window slider earns its track
               because a window is a span you size; one moment is a value you
               choose, and the list of them is short. */}
-          <SheetField label="Scheduled time">
-            <Combobox
-              className="w-full"
-              value={draft.scheduledAt ? formatMinutes(scheduledMinutes) : ""}
-              onValueChange={(v) => {
-                const mins = parseMinutes(v);
-                if (mins == null || !draft.scheduledAt) return;
-                const at = new Date(draft.scheduledAt);
-                at.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
-                setDraft((x) =>
-                  x ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) } : x
-                );
-              }}
-              options={TIME_OPTIONS}
-              placeholder={draft.scheduledAt ? "Select time" : "No date set"}
-              searchPlaceholder="Search times…"
-              disabled={workLocked || !draft.scheduledAt}
-            />
-          </SheetField>
+          {/* A WINDOW, NOT A MOMENT (Pavan, 2026-09-23) — the same control 3PL
+              uses for a delivery window, and for the same reason. A site whose
+              gate opens between 7 and 11 was being filed under a single 7:00 AM
+              nobody could honour, and the four hours of slack lived in a
+              dispatcher's head. Reused rather than rebuilt: two window
+              controls in one app is how two windows come to behave
+              differently. */}
+          <TimeWindowSlider
+            label="Scheduling window"
+            start={scheduledMinutes}
+            end={draft.windowEndMin ?? scheduledMinutes + 180}
+            aria-label="Scheduling window"
+            onChange={(startMin, endMin) => {
+              if (!draft.scheduledAt) return;
+              const at = new Date(draft.scheduledAt);
+              at.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+              setDraft((x) =>
+                x
+                  ? {
+                      ...x,
+                      scheduledAt: at.toISOString(),
+                      dateKey: keyOf(at),
+                      windowEndMin: endMin,
+                    }
+                  : x
+              );
+            }}
+          />
         </div>
         <div className="mt-4">
           <SheetField
@@ -1357,67 +1597,59 @@ export function ServiceOrderSheet({
         />
       </SheetSection>
 
-      {/* LABOUR IS MEASURED; MILEAGE IS TYPED (Pavan, 2026-09-23). They were a
-          matched pair of sliders because both were one number somebody
-          entered. Only one of them still is: labour is now the clock reading
-          from the moment work started to the moment it was completed, and a
-          slider for a derived figure is a control that invites you to
-          contradict a measurement without saying you are.
-
-          SO THEY STOPPED BEING A PAIR. The DS rule is that a derived value is
-          a READ-OUT, never a disabled field — a greyed input still looks like
-          a field promising an edit, and its dimming makes the value the
-          hardest thing in the section to read. */}
-      <SheetSection title="Labour and mileage">
-        <div className="grid grid-cols-2 gap-6">
-          <LabourFigure
-            startedAt={draft.startedAt}
-            completedAt={draft.completedAt}
-            override={draft.laborOverride}
-            effective={draft.labor}
-            locked={billed}
-            onOverride={(v) => {
-              /* ONE PRESS, TWO FIELDS. `labor` is what every total reads, so
-                 it follows the override immediately rather than waiting for
-                 the next completion — otherwise the figure on screen and the
-                 running total disagree until something else happens. */
-              set("laborOverride", v);
-              set(
-                "labor",
-                v ?? computedLabor(draft.startedAt, draft.completedAt)
-              );
-            }}
-          />
-          <SheetField
-            label="Mileage"
-            description={
-              cfg.defaultMileage > 0 && draft.mileage === cfg.defaultMileage
-                ? "The standard trip, from settings."
-                : undefined
-            }
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                value={draft.mileage === 0 ? "" : draft.mileage}
-                placeholder="0"
-                disabled={billed}
-                onChange={(e) =>
-                  set("mileage", Math.max(0, Number(e.target.value) || 0))
-                }
-                className="w-28 tabular-nums"
-                aria-label="Mileage in miles"
-              />
-              <span className="text-sm text-muted-foreground">mi</span>
-              <span className="ml-auto text-sm tabular-nums text-muted-foreground">
-                {money(MILEAGE_RATE)}/mi · {money(mileageSum)}
-              </span>
-            </div>
-          </SheetField>
-        </div>
+      {/* LABOUR AND COST (Pavan, 2026-09-23). It was "Labour and mileage" —
+          a matched pair of sliders, because both were one number somebody
+          entered. Neither is that any more: labour is the clock reading, and
+          what it comes to depends on a rate that is this JOB's rather than the
+          company's. Mileage stays, under them, because it is the third thing
+          the visit cost and it has nowhere better to be. */}
+      <SheetSection title="Labour and cost">
+        <LabourFigure
+          startedAt={draft.startedAt}
+          completedAt={draft.completedAt}
+          override={draft.laborOverride}
+          effective={draft.labor}
+          rate={draft.laborRate}
+          locked={billed}
+          onOverride={(v) => {
+            /* ONE PRESS, TWO FIELDS. `labor` is what every total reads, so it
+               follows the override immediately rather than waiting for the
+               next completion — otherwise the figure on screen and the running
+               total disagree until something else happens. */
+            set("laborOverride", v);
+            set("labor", v ?? computedLabor(draft.startedAt, draft.completedAt));
+          }}
+          onRate={(v) => set("laborRate", v)}
+        />
+        <SheetField
+          label="Mileage"
+          description={
+            cfg.defaultMileage > 0 && draft.mileage === cfg.defaultMileage
+              ? "The standard trip, from settings."
+              : undefined
+          }
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              value={draft.mileage === 0 ? "" : draft.mileage}
+              placeholder="0"
+              disabled={billed}
+              onChange={(e) =>
+                set("mileage", Math.max(0, Number(e.target.value) || 0))
+              }
+              className="w-28 tabular-nums"
+              aria-label="Mileage in miles"
+            />
+            <span className="text-sm text-muted-foreground">mi</span>
+            <span className="ml-auto text-sm tabular-nums text-muted-foreground">
+              {money(MILEAGE_RATE)}/mi · {money(mileageSum)}
+            </span>
+          </div>
+        </SheetField>
       </SheetSection>
 
       {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a disposal
@@ -1464,7 +1696,7 @@ export function ServiceOrderSheet({
             <div className="flex flex-col divide-y divide-border">
               <RailRow label="Parts" value={money(partsSum)} />
               <RailRow
-                label={`Labour — ${draft.labor} h`}
+                label={`Labour — ${formatHours(draft.labor)}`}
                 value={money(laborSum)}
               />
               <RailRow
@@ -1548,6 +1780,102 @@ export function ServiceOrderSheet({
           Everything it submits comes back through the same two paths the sheet
           already has: a completion advances the ladder, and a stall is the
           SCREEN's act because one of its outcomes creates a second order. */}
+      {/* THE QUOTE THE DISPATCHER SENDS (Pavan, 2026-09-23).
+
+          IT USED TO BE THE FIELD'S ALONE, on the reasoning that a price can
+          only be given once somebody has seen the thing. Often true, and not
+          always: a customer rings and wants a number before anyone travels,
+          and a known work type on a known asset has a price in the book. So
+          dispatch can send one too.
+
+          THE HONEST PART IS THE APPROXIMATION. Parts and fees are known now;
+          labour and mileage are not, and a quote that quietly omits them
+          reads as the whole price and turns into an argument at the invoice.
+          So they are ON the quote, marked as estimates, with what they are
+          estimated FROM — and the total says which half is firm. */}
+      <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Quote {draft.customer}</DialogTitle>
+            <DialogDescription>
+              {draft.orderNo} · {draft.workType || "Service"}
+              {draft.assetName ? ` · ${draft.assetName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <div className="overflow-hidden rounded-md border border-fp-outline-1">
+              <div className="border-b border-border bg-fp-surface-1a px-3 py-2">
+                <span className="text-xs font-medium text-foreground">
+                  Known now
+                </span>
+              </div>
+              <QuoteRow label="Parts" value={partsSum} />
+              <QuoteRow label="Fees" value={feesSum} />
+              <QuoteRow label="Firm subtotal" value={quoteFirm} strong />
+            </div>
+
+            <div className="overflow-hidden rounded-md border border-fp-outline-1">
+              <div className="border-b border-border bg-fp-surface-1a px-3 py-2">
+                <span className="text-xs font-medium text-foreground">
+                  Estimated — not known until the job has run
+                </span>
+              </div>
+              <QuoteRow
+                label={`Labour — ${formatHours(quoteHours)} at ${money(draft.laborRate)}/h`}
+                value={quoteHours * draft.laborRate}
+                approx
+              />
+              <QuoteRow
+                label={`Mileage — ${quoteMiles} mi at ${money(MILEAGE_RATE)}/mi`}
+                value={quoteMiles * MILEAGE_RATE}
+                approx
+              />
+              <QuoteRow label="Estimated subtotal" value={quoteEstimate} approx strong />
+            </div>
+
+            <div className="flex items-baseline justify-between border-t border-border pt-3">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-foreground">
+                  Estimated total
+                </span>
+                {/* SAID ONCE, WHERE THE NUMBER IS. A caveat at the top of a
+                    quote is read before the figure it is about and forgotten
+                    by the time the reader reaches it. */}
+                <span className="text-xs text-muted-foreground">
+                  Approximate. The invoice will carry the hours and miles
+                  actually used.
+                </span>
+              </div>
+              <span className="text-lg font-semibold tabular-nums text-foreground">
+                ~{money(quoteFirm + quoteEstimate)}
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuoteOpen(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                set("quote", {
+                  parts: draft.parts.map((x) => ({ ...x })),
+                  fees: draft.fees.map((x) => ({ ...x })),
+                  total: quoteFirm + quoteEstimate,
+                  sentAt: nowIso(),
+                  approvedAt: null,
+                });
+                setQuoteOpen(false);
+                toast.success(`Quote sent to ${draft.customer}`);
+              }}
+            >
+              Send quote
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <TechnicianApp
         order={draft}
         open={fieldOpen}

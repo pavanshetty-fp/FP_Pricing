@@ -70,6 +70,8 @@ import {
   isRecorded,
   isWorkable,
   computedLabor,
+  isUnassigned,
+  LANE_OF,
   syncPrimaryAsset,
   type ServiceAssetLine,
   fittedOf,
@@ -146,7 +148,8 @@ const SECTION_INTAKE = "service-order-intake";
 const SECTION_ASSET = "service-order-asset";
 /** The assets table, and the technician — both their own cards since 2026-09-23. */
 const SECTION_ASSETS = "service-order-assets";
-const SECTION_TECH = "service-order-technician";
+/** EXPORTED, because the board's Assign CTA scrolls the sheet to it. */
+export const SECTION_TECH = "service-order-technician";
 
 /** A fresh, empty row for the assets table. */
 const blankAssetLine = (): ServiceAssetLine => ({
@@ -735,9 +738,12 @@ export function ServiceOrderSheet({
   /* WHO MAY EDIT WHAT, BY STAGE. Intake is the dispatcher's until the job
      starts; the work is the technician's while it is running; past approval
      the record is what was billed and nothing on it moves. */
-  const intakeLocked = draft.status !== "Open" && draft.status !== "Assigned";
+  const intakeLocked = !isUnassigned(draft.status) && draft.status !== "Assigned";
   const workLocked = isRecorded(draft.status) || draft.status === "Cancelled";
-  const billed = draft.status === "Approved" || draft.status === "Completed";
+  /* PAST THE VISIT, THE RECORD IS WHAT WAS BILLED. Both the Completed lane
+     and the Synced lane are past it. */
+  const billed =
+    LANE_OF[draft.status] === "Completed" || LANE_OF[draft.status] === "Synced";
 
   /* THE DISPATCHER SETS THE FEES AT INTAKE; the technician adds to them on
      site. Labour and mileage are not fees and never appear at intake — nobody
@@ -806,7 +812,7 @@ export function ServiceOrderSheet({
        which is what a phone call actually gives you — and a strip that keeps
        asking for them would be asking for something the form no longer
        requires. */
-    ...(draft.status === "Open"
+    ...(isUnassigned(draft.status)
       ? [
           {
             key: "tech",
@@ -863,7 +869,7 @@ export function ServiceOrderSheet({
   /** Approval and billing in one act, because settings decide both. */
   const approveNow = () => {
     const at = nowIso();
-    advance("Approved", {
+    advance("Completed", {
       invoiceCreated: cfg.nativeBilling,
       invoicedAt: cfg.nativeBilling ? at : null,
     });
@@ -903,7 +909,7 @@ export function ServiceOrderSheet({
       advance("Needs approval", patch);
       toast.success(`${draft.orderNo} recorded — sent for approval`);
     } else {
-      advance("Approved", {
+      advance("Completed", {
         ...patch,
         invoiceCreated: cfg.nativeBilling,
         invoicedAt: cfg.nativeBilling ? at : null,
@@ -935,7 +941,7 @@ export function ServiceOrderSheet({
          is saying both at once, and a second button to separate them would be
          inventing a step nobody takes. */
       onSelect: () => {
-        advance("In progress", { arrivedAt: nowIso(), startedAt: nowIso() });
+        advance("Ongoing", { arrivedAt: nowIso(), startedAt: nowIso() });
         toast.success(`${draft.orderNo} — work started`);
       },
     });
@@ -954,17 +960,24 @@ export function ServiceOrderSheet({
     if (draft.status === "Cancelled")
       return {
         label: "Reopen",
-        onSelect: () => advance("Open", { technicianId: null }),
+        onSelect: () => advance("Drafted", { technicianId: null }),
       };
-    if (draft.status === "Open")
+    if (isUnassigned(draft.status))
       /* OPEN IS THIS MODULE'S DRAFT, so its act has the same name as the one
          3PL uses to get out of Draft: the job exists the moment it is reported,
          and this is where somebody says it is real work with a name against
          it. "Assign technician" named the field it needs rather than the thing
          it does — the technician is the precondition, the act is committing
          the order. */
+      /* THE LANE'S WHOLE MEANING IS "NOBODY IS ON IT", so the act that
+         leaves it is putting somebody on it (Pavan, 2026-09-23). It used to
+         say "Create Service Order", which named the record rather than the
+         act — and on a Parts-pending remainder or a linked order the record
+         already exists, so creating it again is a sentence that does not
+         parse. */
       return {
-        label: "Create Service Order",
+        label: creating ? "Create Service Order" : "Assign a technician",
+        why: draft.technicianId ? undefined : "Choose a technician first.",
         onSelect: () => advance("Assigned"),
       };
     /* THE FIELD APP IS WHERE THE TECHNICIAN WORKS. IT IS NOT THE ONLY PLACE
@@ -992,7 +1005,7 @@ export function ServiceOrderSheet({
     if (isWorkable(draft.status)) {
       return {
         label:
-          draft.status === "Parts-pending"
+          draft.status === "Parts pending"
             ? "Resume and complete"
             : "Mark as completed",
         why: completionMissing.length > 0 ? completionMissing[0] : undefined,
@@ -1001,18 +1014,18 @@ export function ServiceOrderSheet({
     }
     if (draft.status === "Needs approval")
       return { label: "Approve", onSelect: approveNow };
-    if (draft.status === "Approved" && !draft.invoiceCreated)
+    if (draft.status === "Completed" && !draft.invoiceCreated)
       return {
         label: "Generate invoice",
         onSelect: () => {
-          advance("Approved", { invoiceCreated: true, invoicedAt: nowIso() });
+          advance("Yet to be reviewed", { invoiceCreated: true, invoicedAt: nowIso() });
           toast.success(`${draft.orderNo} invoice generated`);
         },
       };
-    if (draft.status === "Approved")
+    if (draft.status === "Completed")
       return {
         label: "Mark synced to accounting",
-        onSelect: () => advance("Completed", { synced: true }),
+        onSelect: () => advance("Reviewed", { synced: true }),
       };
     return {
       label: "Download invoice",
@@ -1023,7 +1036,7 @@ export function ServiceOrderSheet({
   /* THE REASON THE BUTTON IS DEAD SITS BESIDE IT, never on it. A label that
      states a condition asks the reader to press a fact. */
   const blockedWhy =
-    draft.status === "Open" && !draft.technicianId
+    isUnassigned(draft.status) && !draft.technicianId
       ? "Choose a technician before proceeding."
       : /* COMPLETION IS GATED WHEREVER IT IS OFFERED (Pavan, 2026-09-23). It
            used to be exempt while the field app held the job, on the grounds
@@ -1109,14 +1122,14 @@ export function ServiceOrderSheet({
             pending={pendingSteps}
             clearLabel="Everything this order needs is filled in"
           />
-        ) : draft.status === "Parts-pending" ? (
+        ) : draft.status === "Parts pending" ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-foreground">Waiting on a part</span>
             <span className="text-muted-foreground">
               {draft.partNeeded}
               {draft.spawnedReturn
                 ? ` · linked return visit ${draft.spawnedReturn} created`
-                : " · rolled forward on this order"}
+                : " · nobody is on it yet"}
             </span>
           </div>
         ) : (
@@ -1132,7 +1145,7 @@ export function ServiceOrderSheet({
          of the same form — the primary is the one that finishes the job, and
          this is the one that admits it cannot be finished today. */
       footerAside={
-        draft.status === "In progress" && onPartsPending ? (
+        draft.status === "Ongoing" && onPartsPending ? (
           <Button variant="outline" onClick={() => setHoldOpen(true)}>
             Some parts unavailable
           </Button>
@@ -1738,7 +1751,7 @@ export function ServiceOrderSheet({
           fee, a correction. Kept apart from the fees set at intake because
           "what we agreed to charge" and "what we added afterwards" are
           different answers to a customer's question. */}
-      {(draft.status === "Approved" || draft.status === "Completed") && (
+      {billed && (
         <SheetSection
           title="Additional charges"
           flush
@@ -2108,7 +2121,7 @@ export function ServiceOrderSheet({
               description: "Waiting on a service manager.",
             });
           } else {
-            advance("Approved", {
+            advance("Completed", {
               ...patch,
               invoiceCreated: cfg.nativeBilling,
               invoicedAt: cfg.nativeBilling ? at : null,

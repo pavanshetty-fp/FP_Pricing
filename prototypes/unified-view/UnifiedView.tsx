@@ -21,6 +21,7 @@ import {
   DollarSign,
   Wrench,
   HardHat,
+  Cog,
   Smartphone,
   SlidersHorizontal,
 } from "lucide-react";
@@ -242,7 +243,11 @@ const firstSubKey = (areaKey: string): string | null =>
 const APP_MODULES = [
   { key: "sales", name: "Sales", icon: <Handshake /> },
   { key: "3pl", name: "3PL", icon: <Truck /> },
-  { key: "service", name: "Service Work", icon: <Wrench /> },
+  /* NOT A WRENCH — the module switcher and the Service Orders rail item were
+     both showing one, so the app said the same thing twice in two places a
+     centimetre apart (Pavan, 2026-09-23). The module is the whole business of
+     keeping equipment working; the rail item inside it is the orders. */
+  { key: "service", name: "Service Work", icon: <Cog /> },
   { key: "lease", name: "Lease", icon: <FileSignature /> },
   { key: "pricing", name: "Pricing", icon: <DollarSign /> },
 ];

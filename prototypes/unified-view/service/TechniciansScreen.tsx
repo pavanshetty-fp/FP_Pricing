@@ -74,8 +74,8 @@ function openJobsFor(id: string): number {
     (r) =>
       r.technicianId === id &&
       (r.status === "Assigned" ||
-        r.status === "In progress" ||
-        r.status === "Parts-pending")
+        r.status === "Ongoing" ||
+        r.status === "Parts pending")
   ).length;
 }
 

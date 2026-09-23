@@ -1,6 +1,26 @@
 # Service Work — the service-order module
 
 
+> **THE LIFECYCLE IS FIVE LANES AND TWELVE STATUSES (2026-09-23).** A LANE is
+> a place in the work — whose problem is this now. A STATUS is why it is
+> there.
+>
+> | Lane | Statuses |
+> |---|---|
+> | **Open** — nobody is on it | Drafted · Parts pending · Linked order |
+> | **Assigned** — somebody is, but not today | Assigned |
+> | **Working** — it is in the field | Yet to start · Ongoing · Needs approval |
+> | **Completed** — the visit is over | Completed · Completed — linked |
+> | **Synced** — the money has been checked | Yet to be reviewed · Reviewed |
+>
+> Cancelled sits apart, behind a rule. **The two Open statuses that are not
+> "new" are the point**: a remainder from a partial visit and a spawned linked
+> order are both work nobody is on, which is what Open means. Every Open card
+> carries the lane's act — **Assign a technician** — which opens the sheet at
+> the Technician card. **Working sorts by what is next**: today's jobs first,
+> soonest at the top.
+
+
 > **THE PARTIAL VISIT (2026-09-23).** When a technician fits some of what a
 > job needs and not all of it, the order splits along the PARTS. What went on
 > stays with the labour and mileage it took; what did not becomes a debt, and

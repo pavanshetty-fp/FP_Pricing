@@ -54,81 +54,153 @@ import type { LaneColor } from "../threepl/BrokerBoard";
  * been raised and an invoice that has landed in accounting are not the same
  * state, and only the second one means nobody has to look at this again.
  */
-export type WorkStatus =
+/*
+  ═══════════════════════════════════════════════════════════════════════════
+  THE LIFECYCLE — FIVE LANES, AND THE STATUSES INSIDE THEM
+  ═══════════════════════════════════════════════════════════════════════════
+
+  RESTRUCTURED 2026-09-23 (Pavan). It was eight flat statuses and eight lanes,
+  one each, which made the board a row of narrow columns most of them empty —
+  and made every status a peer of every other, so "waiting for a part" looked
+  like the same KIND of thing as "approved".
+
+  A LANE IS A PLACE IN THE WORK. A STATUS IS WHY IT IS THERE. The lane answers
+  "whose problem is this now"; the status answers "what exactly". Five lanes,
+  because there are five people-shaped answers to the first question:
+
+    Open      nobody is on it            → dispatch has to assign somebody
+    Assigned  somebody is on it, later   → nothing to do but wait for the day
+    Working   it is in the field today   → the technician has it
+    Completed the visit is over          → what is left is money
+    Synced    the money has been checked → finished
+
+  THE TWO OPEN STATUSES THAT ARE NOT "NEW" ARE THE POINT. A remainder from a
+  partial visit and a spawned linked order are both WORK NOBODY IS ON, which
+  is what Open means — filing them anywhere else hides outstanding work behind
+  a word about how it arose.
+*/
+
+export type WorkLane =
   | "Open"
   | "Assigned"
-  | "In progress"
-  | "Parts-pending"
-  | "Needs approval"
-  | "Approved"
+  | "Working"
   | "Completed"
+  | "Synced"
+  | "Cancelled";
+
+export type WorkStatus =
+  /* Open — nobody is on it */
+  | "Drafted"
+  | "Parts pending"
+  | "Linked order"
+  /* Assigned — somebody is, but not today */
+  | "Assigned"
+  /* Working — it is in the field */
+  | "Yet to start"
+  | "Ongoing"
+  | "Needs approval"
+  /* Completed — the visit is over */
+  | "Completed"
+  | "Completed — linked"
+  /* Synced — the money has been looked at */
+  | "Yet to be reviewed"
+  | "Reviewed"
   | "Cancelled";
 
 export const WORK_STATUSES: WorkStatus[] = [
-  "Open",
+  "Drafted",
+  "Parts pending",
+  "Linked order",
   "Assigned",
-  "In progress",
-  "Parts-pending",
+  "Yet to start",
+  "Ongoing",
   "Needs approval",
-  "Approved",
   "Completed",
+  "Completed — linked",
+  "Yet to be reviewed",
+  "Reviewed",
   "Cancelled",
 ];
 
-/** Past this, the visit has happened and what is left is money. */
-export function isRecorded(s: WorkStatus): boolean {
-  return s === "Needs approval" || s === "Approved" || s === "Completed";
-}
-
-/** The technician can still act on it. */
-export function isWorkable(s: WorkStatus): boolean {
-  return s === "Assigned" || s === "In progress" || s === "Parts-pending";
-}
-
-/**
- * THE DS SHIPS FOUR TONE CHANNELS and this lifecycle has eight stages, so some
- * of them share. The DS's own rule is that colour is never the only carrier of
- * meaning — the label always says which — so sharing is honest where two
- * stages are the same KIND of state. The lane colours below do the separating.
- */
-export const WORK_STATUS_TONE: Record<WorkStatus, StatusTone> = {
-  Open: "neutral",
-  Assigned: "processing",
-  "In progress": "processing",
-  /* THE ONLY STAGE WHERE SOMETHING HAS GONE WRONG, and the only one that
-     carries a reason. */
-  "Parts-pending": "failed",
-  "Needs approval": "processing",
-  Approved: "success",
-  Completed: "success",
-  Cancelled: "neutral",
-};
-
 /** Lane order on the board. Cancelled sits behind a rule — it is not a step. */
 export const WORK_LANES: {
-  key: string;
+  key: WorkLane;
   statuses: WorkStatus[];
   apart?: boolean;
 }[] = [
-  { key: "Open", statuses: ["Open"] },
+  { key: "Open", statuses: ["Drafted", "Parts pending", "Linked order"] },
   { key: "Assigned", statuses: ["Assigned"] },
-  { key: "In progress", statuses: ["In progress"] },
-  { key: "Parts-pending", statuses: ["Parts-pending"] },
-  { key: "Needs approval", statuses: ["Needs approval"] },
-  { key: "Approved", statuses: ["Approved"] },
-  { key: "Completed", statuses: ["Completed"] },
+  { key: "Working", statuses: ["Yet to start", "Ongoing", "Needs approval"] },
+  { key: "Completed", statuses: ["Completed", "Completed — linked"] },
+  { key: "Synced", statuses: ["Yet to be reviewed", "Reviewed"] },
   { key: "Cancelled", statuses: ["Cancelled"], apart: true },
 ];
 
+/** Which lane a status lives in. One place, so the board and the list agree. */
+export const LANE_OF: Record<WorkStatus, WorkLane> = Object.fromEntries(
+  WORK_LANES.flatMap((l) => l.statuses.map((st) => [st, l.key]))
+) as Record<WorkStatus, WorkLane>;
+
+/** Past this, the visit has happened and what is left is money. */
+export function isRecorded(s: WorkStatus): boolean {
+  return (
+    s === "Needs approval" ||
+    LANE_OF[s] === "Completed" ||
+    LANE_OF[s] === "Synced"
+  );
+}
+
+/**
+ * The technician can still act on it.
+ *
+ * NOT "PARTS PENDING" ANY MORE. That status now belongs to the REMAINDER,
+ * which is a separate order sitting in Open waiting for somebody to be put on
+ * it — there is nothing for a technician to resume.
+ */
+export function isWorkable(s: WorkStatus): boolean {
+  return s === "Assigned" || s === "Yet to start" || s === "Ongoing";
+}
+
+/** Work nobody is on. The lane's whole meaning, and the CTA follows it. */
+export const isUnassigned = (s: WorkStatus) => LANE_OF[s] === "Open";
+
+/**
+ * THE DS SHIPS FOUR TONE CHANNELS and this lifecycle has twelve statuses, so
+ * they share. The DS's own rule is that colour is never the only carrier of
+ * meaning — the label always says which — so sharing is honest where two
+ * statuses are the same KIND of state. The lane colours below do the
+ * separating.
+ */
+export const WORK_STATUS_TONE: Record<WorkStatus, StatusTone> = {
+  Drafted: "neutral",
+  /* THE TWO THAT CARRY A REASON — something did not go to plan, and the card
+     says what. */
+  "Parts pending": "failed",
+  "Linked order": "failed",
+  Assigned: "processing",
+  "Yet to start": "processing",
+  Ongoing: "processing",
+  "Needs approval": "processing",
+  Completed: "success",
+  "Completed — linked": "success",
+  "Yet to be reviewed": "processing",
+  Reviewed: "success",
+  Cancelled: "neutral",
+};
+
 /** The DS's `--fp-lane-*` set, the same tokens the 3PL board draws from. */
 export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {
-  Open: "grey",
+  Drafted: "grey",
+  "Parts pending": "yellow",
+  "Linked order": "yellow",
   Assigned: "blue",
-  "In progress": "cyan",
-  "Parts-pending": "yellow",
+  "Yet to start": "blue",
+  Ongoing: "cyan",
   "Needs approval": "violet",
-  Approved: "green",
-  Completed: "purple",
+  Completed: "green",
+  "Completed — linked": "green",
+  "Yet to be reviewed": "violet",
+  Reviewed: "purple",
   Cancelled: "red",
 };
 
@@ -668,23 +740,26 @@ function buildOrders(): ServiceOrder[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  /* EVERY LANE HOLDS SOMETHING, AND EVERY STATUS APPEARS. A board whose fifth
+     column is always empty is a board nobody believes; a status reachable
+     only by a sequence of presses is a status nobody has reviewed. */
   const spread: WorkStatus[] = [
-    "Open",
+    "Drafted",
     "Assigned",
-    "In progress",
-    "Assigned",
-    "Needs approval",
-    "Parts-pending",
-    "Approved",
-    "Open",
-    "Completed",
+    "Ongoing",
     "Assigned",
     "Needs approval",
+    "Parts pending",
     "Completed",
-    "In progress",
-    "Approved",
+    "Drafted",
+    "Reviewed",
+    "Yet to start",
+    "Needs approval",
+    "Completed — linked",
+    "Ongoing",
+    "Yet to be reviewed",
     "Cancelled",
-    "Open",
+    "Linked order",
   ];
 
   for (let i = 0; i < 112; i++) {
@@ -704,7 +779,7 @@ function buildOrders(): ServiceOrder[] {
        having nobody on it, so seeding one there would make the first lane
        indistinguishable from the second. */
     const technicianId =
-      status === "Open"
+      LANE_OF[status] === "Open"
         ? null
         : ACTIVE_TECHNICIANS[i % ACTIVE_TECHNICIANS.length].id;
 
@@ -713,7 +788,7 @@ function buildOrders(): ServiceOrder[] {
        show it. Never on a job already under way — a technician cannot have
        arrived at a visit nobody booked. */
     const scheduled =
-      status === "Open" && i % 6 === 0
+      LANE_OF[status] === "Open" && i % 6 === 0
         ? null
         : (() => {
             const at = new Date(day);
@@ -724,9 +799,9 @@ function buildOrders(): ServiceOrder[] {
             return at.toISOString();
           })();
 
-    const started = status !== "Open" && status !== "Assigned" && status !== "Cancelled";
+    const started = LANE_OF[status] !== "Open" && status !== "Assigned" && status !== "Cancelled";
     const recorded = isRecorded(status);
-    const billed = status === "Approved" || status === "Completed";
+    const billed = LANE_OF[status] === "Completed" || LANE_OF[status] === "Synced";
 
     const arrivedAt = started && scheduled
       ? new Date(new Date(scheduled).getTime() + 12 * 60_000).toISOString()
@@ -741,7 +816,7 @@ function buildOrders(): ServiceOrder[] {
              explain. */
           ...(i % 5 === 0 ? [{ ...EXTRA_PARTS[i % EXTRA_PARTS.length] }] : []),
         ]
-      : status === "Parts-pending"
+      : status === "Parts pending"
         ? book.parts.map((p) => ({ ...p }))
         : book.parts.map((p) => ({ ...p }));
 
@@ -759,7 +834,7 @@ function buildOrders(): ServiceOrder[] {
        job is seeded from NOW, between twenty minutes and three hours ago. */
     const startedAt = !started
       ? null
-      : status === "In progress"
+      : status === "Ongoing"
         ? new Date(Date.now() - (20 + (i % 9) * 20) * 60_000).toISOString()
         : arrivedAt
           ? new Date(new Date(arrivedAt).getTime() + 18 * 60_000).toISOString()
@@ -798,7 +873,7 @@ function buildOrders(): ServiceOrder[] {
         : null;
     const labor =
       laborOverride ??
-      (status === "Parts-pending"
+      (status === "Parts pending"
         ? computedLabor(startedAt, new Date(new Date(startedAt ?? day).getTime() + 45 * 60_000).toISOString())
         : computedLabor(startedAt, completedAt));
 
@@ -871,11 +946,11 @@ function buildOrders(): ServiceOrder[] {
       extraCharges: [],
       invoiceCreated: billed,
       invoicedAt: billed ? completedAt : null,
-      /* SYNCING IS WHAT COMPLETED MEANS. An approved job with its invoice
-         still in flight is exactly the state the Approved lane holds. */
-      synced: status === "Completed",
+      /* REVIEWED IS WHAT SYNCED MEANS. An invoice raised but not yet looked
+         at is exactly the state "Yet to be reviewed" holds. */
+      synced: status === "Reviewed",
       partNeeded:
-        status === "Parts-pending" ? PARTS_NEEDED[i % PARTS_NEEDED.length] : null,
+        status === "Parts pending" ? PARTS_NEEDED[i % PARTS_NEEDED.length] : null,
       returnOf: null,
       spawnedReturn: null,
       signed: recorded,
@@ -907,12 +982,14 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
 
     /* OPEN MEANS NOBODY IS ON IT. Every stage after it means somebody is, or
        the lane is telling a lie. */
-    if ((r.status === "Open") !== (r.technicianId === null)) {
+    if (isUnassigned(r.status) !== (r.technicianId === null)) {
       problems.push(`${r.orderNo}: ${r.status} and its technician disagree`);
     }
     /* ARRIVAL IS WHAT STARTS THE WORK. Nothing past Assigned can be without
        it, and nothing before it can have one. */
-    const started = r.status !== "Open" && r.status !== "Assigned";
+    /* NOTHING IN OPEN OR ASSIGNED HAS BEEN VISITED. Everything past them has
+       — which is what the Working lane means. */
+    const started = !isUnassigned(r.status) && r.status !== "Assigned";
     if (started && !r.arrivedAt) {
       problems.push(`${r.orderNo}: ${r.status} with no arrival recorded`);
     }
@@ -927,26 +1004,30 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     if (isRecorded(r.status) !== (r.completedAt !== null)) {
       problems.push(`${r.orderNo}: ${r.status} and its completion time disagree`);
     }
-    /* THE INVOICE FOLLOWS THE APPROVAL, and the sync follows the invoice. */
-    const billed = r.status === "Approved" || r.status === "Completed";
+    /* THE INVOICE FOLLOWS THE VISIT, and the sync follows the invoice. BOTH
+       Completed statuses are past the visit — "Completed — linked" is a
+       finished job that happened to spawn a remainder, and the remainder is a
+       different order with its own invoice. */
+    const billed =
+      LANE_OF[r.status] === "Synced" || LANE_OF[r.status] === "Completed";
     if (billed !== r.invoiceCreated) {
       problems.push(`${r.orderNo}: ${r.status} and its invoice disagree`);
     }
     if (r.synced && !r.invoiceCreated) {
       problems.push(`${r.orderNo}: synced without an invoice`);
     }
-    if ((r.status === "Completed") !== r.synced) {
+    if ((r.status === "Reviewed") !== r.synced) {
       problems.push(`${r.orderNo}: Completed means the invoice reached accounting`);
     }
     /* A STALL HAS A REASON, and only a stall has one. */
-    if ((r.status === "Parts-pending") !== (r.partNeeded !== null)) {
+    if ((r.status === "Parts pending") !== (r.partNeeded !== null)) {
       problems.push(`${r.orderNo}: hold reason and status disagree`);
     }
     /* A QUOTE CANNOT CONTAIN WHAT NOBODY KNEW WHEN IT WAS SENT. */
     if (r.quote && r.quote.total !== quoteableTotal(r.quote.parts, r.quote.fees)) {
       problems.push(`${r.orderNo}: the quote's total does not match its lines`);
     }
-    if (r.quote && !isRecorded(r.status) && r.status !== "Parts-pending") {
+    if (r.quote && !isRecorded(r.status) && r.status !== "Parts pending") {
       problems.push(`${r.orderNo}: a quote on a job that has not been worked`);
     }
   }

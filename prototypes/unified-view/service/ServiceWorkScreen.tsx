@@ -21,7 +21,8 @@ import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
 import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
-import { ServiceOrderSheet } from "./ServiceOrderSheet";
+import { ServiceOrderSheet, SECTION_TECH } from "./ServiceOrderSheet";
+import { attend } from "../PendingStrip";
 import { useServiceSettings } from "./settings";
 import {
   INTAKE_SOURCES,
@@ -44,6 +45,7 @@ import {
   type ServiceOrder,
   type WorkStatus,
   LABOR_RATE,
+  isUnassigned,
   splitParts,
   shortfallLabel,
   type PartLine,
@@ -280,7 +282,7 @@ const CARD_UNITS = [
    - Once the work is recorded, "Recorded" replaces the schedule: a finished
      job is asked when it RAN, not when it was booked. */
 const SCHEDULE_FIELDS = ["schedule", "schedule.time", "schedule.date"];
-const RECORDED_LANES = ["Needs approval", "Approved", "Completed"];
+const RECORDED_LANES = ["Needs approval", "Completed", "Completed"];
 const LANE_FIELD_DEFAULTS: Record<string, string[]> = Object.fromEntries(
   RECORDED_LANES.map((k) => [k, SCHEDULE_FIELDS])
 );
@@ -401,7 +403,7 @@ export function ServiceWorkScreen() {
   React.useEffect(() => {
     const timers: number[] = [];
     for (const r of rows) {
-      if (r.status !== "Approved" || !r.invoiceCreated || r.synced) continue;
+      if (r.status !== "Completed" || !r.invoiceCreated || r.synced) continue;
       if (syncing.current.has(r.id)) continue;
       syncing.current.add(r.id);
       timers.push(
@@ -527,6 +529,21 @@ export function ServiceWorkScreen() {
         const held = new Set<WorkStatus>(lane.statuses);
         let cards = filtered.filter((r) => held.has(r.status));
         const when = (r: ServiceOrder) => r.scheduledAt ?? "9999";
+
+        /* WORKING IS TODAY'S WORK, SO IT SORTS BY WHAT IS NEXT (Pavan,
+           2026-09-23). The other lanes are queues somebody works through; this
+           one is a day somebody is living, and the question it answers is
+           "what happens next", not "what arrived first". Today's jobs come
+           first, soonest at the top; anything not today falls below them. */
+        if (lane.key === "Working" && !laneSort[lane.key]) {
+          const todayKey = dateKeyOf(new Date());
+          cards = [...cards].sort((a, b) => {
+            const at = a.dateKey === todayKey ? 0 : 1;
+            const bt = b.dateKey === todayKey ? 0 : 1;
+            return at !== bt ? at - bt : when(a).localeCompare(when(b));
+          });
+        }
+
         switch (laneSort[lane.key]) {
           case "soonest":
             cards = [...cards].sort((a, b) => when(a).localeCompare(when(b)));
@@ -562,15 +579,22 @@ export function ServiceWorkScreen() {
           cards: cards.map((r) => ({
             id: r.id,
             title: r.orderNo,
-            badges:
-              r.priority === "Normal"
+            /* THE STATUS IS ON THE CARD BECAUSE THE LANE NO LONGER SAYS IT.
+               Five lanes hold twelve statuses, so the column answers "whose
+               problem is this" and the chip answers "what exactly" — and
+               without it a Parts-pending remainder and a brand-new job are
+               two identical cards in one column. */
+            badges: [
+              { label: r.status, tone: undefined },
+              ...(r.priority === "Normal"
                 ? []
                 : [
                     {
                       label: r.priority,
                       tone: r.priority === "Urgent" ? ("critical" as const) : undefined,
                     },
-                  ],
+                  ]),
+            ],
             code: {
               text: WORK_TYPE_CODE[r.workType].text,
               label: r.workType,
@@ -581,7 +605,7 @@ export function ServiceWorkScreen() {
                card is a border, so the three lanes with nothing waiting on
                anybody carry none. */
             alert:
-              r.status === "Parts-pending" && r.partNeeded
+              r.status === "Parts pending" && r.partNeeded
                 ? { status: "warning" as const, text: r.partNeeded }
                 : r.status === "Needs approval"
                   ? {
@@ -589,15 +613,33 @@ export function ServiceWorkScreen() {
                       text: `${money(orderTotal(r))} — waiting on a manager`,
                       actionLabel: "Review",
                     }
-                  : r.status === "Approved" && !r.invoiceCreated
+                  : r.status === "Completed" && !r.invoiceCreated
                     ? {
                         status: "warning" as const,
                         text: "Invoice not raised",
                         actionLabel: "Review",
                       }
-                    : r.status === "Approved"
+                    : r.status === "Completed"
                       ? { status: "default" as const, text: "Invoice on its way to accounting" }
                       : undefined,
+            /* THE LANE'S ACT, ON THE CARD (Pavan, 2026-09-23). Open means
+               nobody is on it, and the one thing that changes that is naming
+               somebody — so every card in the lane carries it and no card
+               outside the lane does. It opens the sheet at the technician
+               card rather than assigning somebody blind: who goes is a
+               judgement about skills and a yard, and a board card has room
+               for neither. */
+            footerAction: isUnassigned(r.status)
+              ? {
+                  label: "Nobody assigned",
+                  actionLabel: "Assign a technician",
+                  actionVariant: "outline" as const,
+                  onAction: () => {
+                    setOpenId(r.id);
+                    window.setTimeout(() => attend(SECTION_TECH), 120);
+                  },
+                }
+              : undefined,
           })),
         };
       }),
@@ -626,7 +668,7 @@ export function ServiceWorkScreen() {
       ...(laneKey === "Open"
         ? [{ key: "oldest", label: "Longest unassigned" }]
         : []),
-      ...(laneKey === "Needs approval" || laneKey === "Approved"
+      ...(laneKey === "Needs approval" || laneKey === "Completed"
         ? [{ key: "value", label: "Largest first" }]
         : []),
     ],
@@ -678,7 +720,7 @@ export function ServiceWorkScreen() {
     return {
       id: "so-new",
       orderNo: "—",
-      status: "Open",
+      status: "Drafted",
       source: INTAKE_SOURCES[0],
       priority: "Normal",
       customer: "",
@@ -748,7 +790,7 @@ export function ServiceWorkScreen() {
          when one is not. The form's own button says "Create and assign", and
          leaving the technician blank is how a dispatcher says "the yard team
          will pick it up" — which is exactly what Open means. */
-      status: draft.technicianId ? "Assigned" : "Open",
+      status: (draft.technicianId ? "Assigned" : "Drafted") as WorkStatus,
     };
     setRows((prev) => [created, ...prev]);
     /* A NEW ORDER HAS TO BE WHERE THE READER IS LOOKING — the same rule the
@@ -859,7 +901,7 @@ export function ServiceWorkScreen() {
               ...r,
               labor: data.labor,
               parts: data.parts,
-              status: "Parts-pending" as WorkStatus,
+              status: "Parts pending" as WorkStatus,
               partNeeded: shortfall,
               techNotes: data.note ?? r.techNotes,
               spawnedReturn: no,

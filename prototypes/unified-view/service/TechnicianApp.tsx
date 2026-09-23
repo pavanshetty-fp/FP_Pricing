@@ -268,7 +268,7 @@ export function TechnicianApp({
     setPartNeeded(order.partNeeded ?? "");
     setQuote(order.quote);
     setStep(
-      order.status === "Parts-pending" || order.arrivedAt
+      order.status === "Parts pending" || order.arrivedAt
         ? "work"
         : cfg.fieldQuote && !order.quote
           ? "arrive"

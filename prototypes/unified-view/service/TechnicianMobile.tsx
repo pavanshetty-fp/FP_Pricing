@@ -98,7 +98,7 @@ const stageOf = (o: ServiceOrder, fieldQuote: boolean): Stage => {
   if (!o.assessment) return "assess";
   if (fieldQuote && !o.quote) return "quote";
   if (fieldQuote && o.quote && !o.quote.approvedAt) return "waiting";
-  if (o.status === "Parts-pending" || o.completedAt) return "wrapup";
+  if (o.status === "Parts pending" || o.completedAt) return "wrapup";
   /* STARTING THE CLOCK IS ITS OWN PRESS (Pavan, 2026-09-23). It used to
      happen as a side effect of skipping or of the customer approving — so
      the billable hours began while the technician was still putting their
@@ -337,7 +337,7 @@ function Job({
   const [notes, setNotes] = React.useState(job.techNotes ?? "");
   const [part, setPart] = React.useState(job.partNeeded ?? "");
   const [ending, setEnding] = React.useState<"done" | "parts" | null>(
-    job.status === "Parts-pending" ? "parts" : job.completedAt ? "done" : null
+    job.status === "Parts pending" ? "parts" : job.completedAt ? "done" : null
   );
   /* WHEN THEY PRESSED COMPLETED — held here and not written to the record
      until they submit. Writing `completedAt` on the press made the job look
@@ -612,7 +612,7 @@ function Job({
           onPress={() => {
             onPatch({
               startedAt: nowIso(),
-              status: "In progress" as WorkStatus,
+              status: "Ongoing" as WorkStatus,
             });
             toast.success("Labour started");
           }}
@@ -681,7 +681,7 @@ function Job({
   /* SETTLED MEANS HANDED IN, not finished. A job whose work is over but whose
      notes have not been submitted is still the technician's. */
   const settled = partsEnding
-    ? job.status === "Parts-pending"
+    ? job.status === "Parts pending"
     : Boolean(job.completedAt);
 
   return (
@@ -744,7 +744,7 @@ function Job({
             if (partsEnding) {
               onPatch({
                 ...patch,
-                status: "Parts-pending",
+                status: "Parts pending",
                 partNeeded: part.trim(),
                 completedAt: null,
               });
@@ -756,7 +756,7 @@ function Job({
                 completedAt: at,
                 signed: true,
                 labor: computedLabor(job.startedAt, at),
-                status: cfg.managerApproval ? "Needs approval" : "Approved",
+                status: cfg.managerApproval ? "Needs approval" : "Completed",
               });
               toast.success(
                 cfg.managerApproval

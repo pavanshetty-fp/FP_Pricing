@@ -425,6 +425,14 @@ it.**
   section heading two cards above it.
 - **A read-only cell is plain text with the cell's own inset** (`px-3`), not a
   disabled control.
+- **A CELL WHOSE VALUE IS A PAIR IS THE ONE CASE THE `TableCell*` SET CANNOT
+  HOLD.** A duration is two numbers — `1 h 30 m` — and a single full-bleed
+  field cannot be two boxes. Such a cell keeps the table's inset and row
+  height and puts the pair inside it, at `h-8`, with the units as muted text.
+  **It is a gap, not an exception: the answer is a `TableCellDuration` in the
+  DS**, and the same shape will come round again for a range and for a
+  quantity-plus-unit. Found 2026-09-23, on the service visits table, by the
+  check that enforces the rule.
 
 ### There is no "last band" alternative to the hanging add
 

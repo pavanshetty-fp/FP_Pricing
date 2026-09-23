@@ -118,11 +118,24 @@ export function check() {
            sibling held a TableCell control — the same mistake the section
            check made in September, made again three lines lower. **A window
            that can cross the thing it is scoped to is not a window.** */
-        const rest = lines.slice(i, i + 40);
+        /* 90, NOT 40. A cell holding a pair plus its correction line runs
+           past forty, and a window that falls short silently reverts to the
+           14-line fallback — which found one `<Input>`, missed the second,
+           and reported a cell the rule allows. A window that cannot reach the
+           end of what it is scoped to is the same bug as one that runs past
+           it. */
+        const rest = lines.slice(i, i + 90);
         const close = rest.findIndex((l, k) => k > 0 && /<\/td>|<td\b/.test(l));
         const inside = rest.slice(0, close === -1 ? 14 : close).join("\n");
         const bare = inside.match(/<(Combobox|Input|Select|Textarea|MultiSelect)\b/);
-        if (bare && !/<TableCell/.test(inside)) {
+        /* A PAIR IS NOT A BARE CONTROL. A duration cell is two numbers and no
+           `TableCell*` holds two — see §10f. Declared by the `h-8` pair the
+           rule describes, so a lone full-size `<Input>` in a cell is still
+           reported. The real fix is a `TableCellDuration`; until it exists
+           this is a named gap rather than a silent skip. */
+        const isPair = (inside.match(/<Input\b/g) ?? []).length >= 2 &&
+          /\bh-8\b/.test(inside);
+        if (bare && !isPair && !/<TableCell/.test(inside)) {
           report(file, n,
             `bare <${bare[1]}> in a table cell — use the TableCell* component`);
         }

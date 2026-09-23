@@ -168,10 +168,27 @@ with no chrome of their own.
 
 - **The total is a ROW of the table, not a caption under it.** A sum lives in
   the column it sums, on the same grid as the numbers above it.
-- **The Add row is the table's last band** — its own rule above it, the same
-  insets as a cell — because that is where the next row goes. (The DS's "+ Add
-  more" chip attaches to a squared bottom-left corner, which a flush table
-  inside a card does not have.)
+- ~~**The Add row is the table's last band.**~~ **WRONG, AND IT WAS WRONG HERE
+  FOR A MONTH. The add HANGS off the card's bottom-left corner** — `HangingAdd`
+  through `SheetSection`'s `hanging` — see `docs/ds/ui/2-rules.md` §10f.
+  Corrected 2026-09-23.
+  - The parenthetical that justified it — "a flush table inside a card does not
+    have a squared corner" — was the mistake. **The card squares its own
+    corner** when something hangs off it; that is what `hanging` does.
+  - **This line is why two tables in one sheet ended up with two different
+    adds.** It contradicted the parent, the eval below asserted THIS version,
+    and a check that enforces the wrong rule is worse than no check — it makes
+    the wrong answer look reviewed. See §The cells, below.
+- **THE CELLS ARE `TableCell*`, NEVER A BARE FORM CONTROL.** `TableCellInput`,
+  `TableCellSelect`, `TableCellCombobox`, `TableCellMultiSelect` — they are
+  `absolute inset-0` and FILL the cell rather than sitting in it, which is the
+  whole idiom: **a cell is editable ground, not a box with a field parked
+  inside it.** A `<Combobox>` dropped into a `<td>` brings its own border, its
+  own radius and its own padding, so the row reads as a form pretending to be
+  a table.
+  - The cell must be `relative p-0` for them to fill it. Without the
+    positioning the control escapes the table entirely — measured, 2026-09-23,
+    when a fault cell landed at the top of the sheet.
 - **A computed cell is never an input.** Quantity × unit is arithmetic, and a
   box for it is a box to get it wrong in.
 - **A column that would repeat what was typed does not exist.** A line with no

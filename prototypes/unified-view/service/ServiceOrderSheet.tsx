@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  Plus,
   Trash2,
   Calendar as CalendarIcon,
   MoreHorizontal,
@@ -40,14 +39,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  TableCellCombobox,
   TableCellInput,
+  TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { HangingAdd } from "../HangingAdd";
 import {
   SheetField,
-  SheetSectionInset,
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
@@ -174,7 +174,7 @@ function stampLabel(iso: string): string {
  *
  * The DS's editable-table idiom, the same one the 3PL order sheet's lines
  * table is built from: fixed layout, a Surface-1a header band, cells with no
- * chrome of their own, and the Add row as the table's last band. Three stacked
+ * chrome of their own, and the add HANGING off the card's corner. Three stacked
  * inputs in a row was a form pretending to be a table — the columns had no
  * headers, so a reader had to work out which box was the quantity and which
  * was the money, on every row.
@@ -427,25 +427,21 @@ function LabourFigure({
 function LineTable({
   rows,
   onChange,
-  onAdd,
   onRemove,
   readOnly,
   withQty,
   nameLabel,
   namePlaceholder,
-  addLabel,
   emptyLabel,
   total,
 }: {
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
-  onAdd: () => void;
   onRemove: (i: number) => void;
   readOnly: boolean;
   withQty?: boolean;
   nameLabel: string;
   namePlaceholder: string;
-  addLabel: string;
   emptyLabel: string;
   total: number;
 }) {
@@ -595,19 +591,6 @@ function LineTable({
           </tfoot>
         )}
       </table>
-      {/* THE ADD ROW IS THE TABLE'S LAST BAND, not a chip on a corner — flush
-          inside a card there is no corner to hang from. */}
-      {!readOnly && (
-        <div className="flex items-center border-t border-border px-3 py-2">
-          <button
-            type="button"
-            onClick={onAdd}
-            className="-mx-1 flex h-8 items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <Plus className="size-4" /> {addLabel}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -709,7 +692,11 @@ export function ServiceOrderSheet({
     const p = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   };
+  /* THE PRICE BOOK STILL SEEDS THE PARTS AND FEES; its explanatory line left
+     the Asset card on 2026-09-23. The card is a table of assets, and a
+     sentence about what one of them happens to cost is not a row of it. */
   const book = WORK_TYPES[draft.workType];
+  void book;
   const shipTos = shipTosFor(draft.customer);
   const siteAssets = assetsFor(draft.shipTo);
 
@@ -1458,15 +1445,15 @@ export function ServiceOrderSheet({
           ) : undefined
         }
       >
-        <table className="w-full border-separate border-spacing-0 text-sm">
+        <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[30%]" />
+            <col className="w-[32%]" />
             <col className="w-[26%]" />
             <col />
             <col className="w-[52px]" />
           </colgroup>
           <thead>
-            <tr className="bg-fp-table-header [&>th]:border-b [&>th]:border-border">
+            <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Asset</TableRequiredLabel>
               </th>
@@ -1476,17 +1463,30 @@ export function ServiceOrderSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Reported fault</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5" aria-label="Remove" />
+              <th aria-hidden />
             </tr>
           </thead>
           <tbody>
             {draft.assets.map((row, i) => (
-              <tr key={i} className="[&>td]:border-b [&>td]:border-border">
-                <td className="px-3 py-1.5">
-                  <Combobox
-                    className="w-full"
+              <tr
+                key={i}
+                className="group/row h-11 border-b border-border last:border-b-0"
+              >
+                {/* `relative p-0` ON EVERY CELL — the TableCell* controls are
+                    `absolute inset-0` and FILL the cell rather than sitting in
+                    it. That is the whole idiom: a cell is editable ground, not
+                    a box with a field parked inside it. */}
+                <td className="relative p-0">
+                  <TableCellCombobox
                     value={row.assetName}
-                    onValueChange={(v) => {
+                    options={siteAssets.map((a) => a.name)}
+                    taken={draft.assets
+                      .filter((_, j) => j !== i)
+                      .map((r) => r.assetName)}
+                    placeholder={draft.shipTo ? "Select" : "Site first"}
+                    disabled={intakeLocked || !draft.shipTo}
+                    aria-label={`Asset for row ${i + 1}`}
+                    onChange={(v) => {
                       const a = siteAssets.find((x) => x.name === v);
                       setAssetLine(i, {
                         assetId: a?.id ?? "",
@@ -1494,45 +1494,38 @@ export function ServiceOrderSheet({
                         assetType: a?.type ?? "",
                       });
                     }}
-                    options={siteAssets.map((a) => a.name)}
-                    placeholder={draft.shipTo ? "Choose an asset" : "Choose a site first"}
-                    searchPlaceholder="Search assets…"
-                    disabled={intakeLocked || !draft.shipTo}
                   />
                 </td>
-                <td className="px-3 py-1.5">
-                  <Combobox
-                    className="w-full"
+                <td className="relative p-0">
+                  <TableCellSelect
                     value={row.workType}
-                    onValueChange={(v) => setAssetLine(i, { workType: v })}
                     options={WORK_TYPE_NAMES}
-                    placeholder="Choose"
-                    searchPlaceholder="Search work types…"
+                    placeholder="Select"
                     disabled={intakeLocked}
+                    aria-label={`Work type for row ${i + 1}`}
+                    onChange={(v) => setAssetLine(i, { workType: v })}
                   />
                 </td>
-                {/* `relative p-0`, BECAUSE `TableCellInput` IS `absolute
-                    inset-0` — it fills the cell rather than sitting in it, so
-                    the cell has to be the thing it fills. Without the
-                    positioning it escapes the table entirely and lands at the
-                    top of the sheet. */}
-                <td className="relative h-11 p-0">
+                <td className="relative p-0">
                   <TableCellInput
                     value={row.fault}
                     placeholder="What the customer described"
-                    onChange={(v) => setAssetLine(i, { fault: v })}
                     disabled={intakeLocked}
+                    aria-label={`Reported fault for row ${i + 1}`}
+                    onChange={(v) => setAssetLine(i, { fault: v })}
                   />
                 </td>
-                <td className="px-3 py-1.5 text-right">
-                  {/* THE BIN, BECAUSE A ROW REALLY DOES GO. The last row stays
-                      — emptying the table would leave a card with nothing in
-                      it and no way back but the hanging add. */}
+                <td className="p-0 text-center">
+                  {/* QUIET UNTIL THE ROW IS REACHED FOR, like every other row
+                      delete in this app. A column of bins down a table reads
+                      as the table's purpose. The last row keeps none — an
+                      empty table has no way back but the add. */}
                   {draft.assets.length > 1 && !intakeLocked && (
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Remove ${row.assetName || "this asset"}`}
+                      aria-label={`Remove ${row.assetName || `row ${i + 1}`}`}
+                      className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                       onClick={() =>
                         setDraft((x) =>
                           x
@@ -1552,17 +1545,6 @@ export function ServiceOrderSheet({
             ))}
           </tbody>
         </table>
-        {cfg.priceBook && book && (
-          <SheetSectionInset className="border-t border-border">
-            <p className="text-sm text-muted-foreground">
-              From the price book —{" "}
-              {book.parts.length
-                ? book.parts.map((p) => `${p.name} (${money(p.cost)})`).join(", ")
-                : "no default parts"}
-              , {book.fees.map((f) => `${f.name} ${money(f.amount)}`).join(", ")}.
-            </p>
-          </SheetSectionInset>
-        )}
       </SheetSection>
 
       {/* ──────────────────────────────────────────── the quote, if sent ─── */}
@@ -1624,6 +1606,11 @@ export function ServiceOrderSheet({
       <SheetSection
         title="Parts"
         flush
+        hanging={
+          !workLocked ? (
+            <HangingAdd label="Add part" onClick={() => addLine("parts")} />
+          ) : undefined
+        }
         note={
           <SheetSectionNote label="About parts">
             Quantity times unit cost. The line's own total is arithmetic and is
@@ -1637,11 +1624,9 @@ export function ServiceOrderSheet({
           readOnly={workLocked}
           nameLabel="Part"
           namePlaceholder="Part"
-          addLabel="Add part"
           emptyLabel="No parts on this job."
           total={partsSum}
           onChange={(i, p) => setLine("parts", i, p)}
-          onAdd={() => addLine("parts")}
           onRemove={(i) => removeLine("parts", i)}
         />
       </SheetSection>
@@ -1649,6 +1634,11 @@ export function ServiceOrderSheet({
       <SheetSection
         title="Fees"
         flush
+        hanging={
+          !billed ? (
+            <HangingAdd label="Add fee" onClick={() => addLine("fees")} />
+          ) : undefined
+        }
         note={
           <SheetSectionNote label="Who sets a fee">
             The dispatcher sets these at intake — a service call, a trip, an
@@ -1663,11 +1653,9 @@ export function ServiceOrderSheet({
           readOnly={billed}
           nameLabel="Fee"
           namePlaceholder="Fee name, e.g. Service call fee"
-          addLabel="Add fee"
           emptyLabel="No fees on this job."
           total={feesSum}
           onChange={(i, p) => setLine("fees", i, p)}
-          onAdd={() => addLine("fees")}
           onRemove={(i) => removeLine("fees", i)}
         />
       </SheetSection>
@@ -1732,18 +1720,27 @@ export function ServiceOrderSheet({
           "what we agreed to charge" and "what we added afterwards" are
           different answers to a customer's question. */}
       {(draft.status === "Approved" || draft.status === "Completed") && (
-        <SheetSection title="Additional charges" flush>
+        <SheetSection
+          title="Additional charges"
+          flush
+          hanging={
+            draft.status !== "Completed" ? (
+              <HangingAdd
+                label="Add charge"
+                onClick={() => addLine("extraCharges")}
+              />
+            ) : undefined
+          }
+        >
           <LineTable
             rows={draft.extraCharges}
             readOnly={draft.status === "Completed"}
             nameLabel="Charge"
             namePlaceholder="Charge name, e.g. Return trip"
-            addLabel="Add charge"
-            emptyLabel="No additional charges."
+              emptyLabel="No additional charges."
             total={extraSum}
             onChange={(i, p) => setLine("extraCharges", i, p)}
-            onAdd={() => addLine("extraCharges")}
-            onRemove={(i) => removeLine("extraCharges", i)}
+              onRemove={(i) => removeLine("extraCharges", i)}
           />
         </SheetSection>
       )}

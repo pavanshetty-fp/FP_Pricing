@@ -91,7 +91,13 @@ Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
 ## Editable tables in a sheet
 
 - [ ] **L2** The total is a row of the table, not a caption under it.
-- [ ] **L2** The Add row is the table's last band.
+- [ ] **L1** `[script]` The add HANGS off the card's corner — `HangingAdd`
+      through `hanging`. **This assertion said the opposite until 2026-09-23**
+      and enforced the child over the parent, which is how one sheet came to
+      hold two different adds. — *ui §10f*
+- [ ] **L1** `[script]` Every editable cell is a `TableCell*` component, and
+      its `<td>` is `relative p-0`. A bare `Combobox`, `Input` or `Select` in a
+      cell is a form pretending to be a table. — *ui §10f*
 - [ ] **L2** No computed cell is an input.
 - [ ] **L2** No column repeats what was typed in another.
 

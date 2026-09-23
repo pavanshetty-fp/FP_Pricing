@@ -138,7 +138,9 @@ is the one place it is least needed.
 
 The same idiom the 3PL lines table is built from: fixed layout, a Surface-1a
 header band, cells with no chrome of their own, the total as a ROW of the table
-rather than a caption under it, and the Add row as the table's last band. Three
+rather than a caption under it, and the add HANGING off the card's corner (§10f;
+corrected 2026-09-23 — it used to say "the table's last band", which contradicted
+the DS). Three
 stacked inputs in a row was a form pretending to be a table — the columns had
 no headers, so a reader had to work out which box was the quantity and which
 was the money, on every row.

@@ -87,8 +87,48 @@ export function check() {
       const cls = (line.match(/className="([^"]*)"/) ?? [])[1] ?? "";
       if (/\bborder-t\b/.test(cls) && (/\bw-full\b/.test(cls) || /\bpx-\d/.test(cls))) {
         const inside = lines.slice(i, i + 22).join("\n");
-        if (/>\s*Add [a-z]|\bAdd [a-z][a-z ]*<\/|\/>\s*Add [a-z]/.test(inside)) {
+        /* A LITERAL LABEL WAS NOT ENOUGH (2026-09-23). This matched
+           `>Add part<` and missed `{addLabel}` — so a live violation sat
+           inside `LineTable` for a month, unreported, because its label had
+           been lifted into a prop. **A check that only catches literals is a
+           check you escape by extracting a variable.** So the shape is what
+           is matched now: a `Plus` icon or an `add`-ish handler on a strip. */
+        if (
+          /(?:>|\/>)\s*(?:Add [a-z]|\{\s*addLabel)/.test(inside) ||
+          (/<Plus\b/.test(inside) && /onClick=\{[^}]*\b(?:add|onAdd)/i.test(inside))
+        ) {
           report(file, n, "Add control on a full-width band inside the card");
+        }
+      }
+
+      /* 1b. A BARE FORM CONTROL IN A CELL (added 2026-09-23).
+             The DS ships `TableCellInput` / `TableCellSelect` /
+             `TableCellCombobox` — `absolute inset-0`, filling the cell, no
+             chrome of their own. A `<Combobox>` dropped into a `<td>` brings
+             its own border, radius and padding, and the row stops reading as
+             a table and starts reading as a form with columns.
+
+             NOTHING SAID SO UNTIL A SHEET HAD BOTH SHAPES IN IT. §10f governs
+             the BOX; what goes inside a cell had no rule and therefore no
+             check. */
+      if (/^\s*<td\b/.test(line)) {
+        const cellCls = (line.match(/className="([^"]*)"/) ?? [])[1] ?? "";
+        /* STOP AT THIS CELL'S OWN `</td>`. A fixed lookahead ran into the NEXT
+           cell and reported a read-only `<td>` of plain text because a later
+           sibling held a TableCell control — the same mistake the section
+           check made in September, made again three lines lower. **A window
+           that can cross the thing it is scoped to is not a window.** */
+        const rest = lines.slice(i, i + 40);
+        const close = rest.findIndex((l, k) => k > 0 && /<\/td>|<td\b/.test(l));
+        const inside = rest.slice(0, close === -1 ? 14 : close).join("\n");
+        const bare = inside.match(/<(Combobox|Input|Select|Textarea|MultiSelect)\b/);
+        if (bare && !/<TableCell/.test(inside)) {
+          report(file, n,
+            `bare <${bare[1]}> in a table cell — use the TableCell* component`);
+        }
+        if (/<TableCell/.test(inside) && !/\brelative\b/.test(cellCls)) {
+          report(file, n,
+            "a TableCell* control needs `relative p-0` on its <td> — it fills the cell, it does not sit in it");
         }
       }
 

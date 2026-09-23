@@ -406,6 +406,36 @@ with a menu, because three separate adds would be three controls for one act.
 own loading account there is no further split to make, and a dead button with
 no reason beside it is worse than no button.
 
+### The cells — `TableCell*`, never a bare form control
+
+Added 2026-09-23, after one sheet ended up holding two different table shapes.
+
+**`TableCellInput` · `TableCellSelect` · `TableCellCombobox` ·
+`TableCellMultiSelect`.** They are `absolute inset-0` and **fill** the cell
+rather than sitting in it, and their `<td>` is `relative p-0`. That is the
+whole idiom: **a cell is editable ground, not a box with a field parked inside
+it.**
+
+- **A `<Combobox>` dropped into a `<td>` brings its own border, its own radius
+  and its own padding**, so the row reads as a form with columns rather than as
+  a table. Beside a table that uses the cell controls, the two do not look like
+  the same component — because they are not.
+- **Without `relative` on the cell the control escapes the table altogether.**
+  Measured, not theorised: a fault cell landed at the top of the sheet, over a
+  section heading two cards above it.
+- **A read-only cell is plain text with the cell's own inset** (`px-3`), not a
+  disabled control.
+
+### There is no "last band" alternative to the hanging add
+
+**The add hangs. Always.** A rule in Unified View's own layouts document said
+the opposite — *"the Add row is the table's last band … a flush table inside a
+card does not have a squared corner"* — and its eval asserted that version, so
+for a month the app had both shapes and the check blessed the wrong one.
+
+**The parenthetical was the error: the card squares its own corner.** That is
+precisely what `SheetSection`'s `hanging` does.
+
 ### What the table does NOT give up
 
 Its row rules, its header fill and its `tfoot` total stay. Those separate rows

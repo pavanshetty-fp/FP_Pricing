@@ -34,3 +34,47 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Reduced motion respected; charts render without mount animation.
 - [ ] A disabled control says why on the press, never in a clause beside it.
 - [ ] No board card drags between lanes; card units disappear with their lines; only outstanding cards carry an alert.
+
+## When two rules disagree — the 2026-09-23 lesson
+
+**One sheet ended up holding two different tables.** One had the hanging add
+and boxed controls in its cells; the other had a full-width add band and
+borderless cells. Both were built by somebody reading the documents.
+
+### What actually went wrong
+
+1. **THE CHILD CONTRADICTED THE PARENT, IN WRITING.** `docs/ds/ui/2-rules.md`
+   §10f says the add hangs off the card's corner. `docs/unified-view/
+   2-layouts.md` said *"the Add row is the table's last band"* — and gave a
+   reason that sounded right: a flush table inside a card has no squared corner
+   to hang from. It does; `hanging` squares it.
+2. **THE EVAL ASSERTED THE CHILD'S VERSION.** `evals/2-layouts.md` carried
+   *"The Add row is the table's last band"* as a check. **A check that enforces
+   the wrong rule is worse than no check**, because it makes the wrong answer
+   look reviewed.
+3. **NO RULE COVERED THE INSIDE OF A CELL.** §10f governed the box — rims,
+   radii, the add, the empty state — and said nothing about what goes in a
+   `<td>`. So a bare `Combobox` in a cell broke no written rule.
+4. **THE SCRIPT MISSED THE BAND BECAUSE THE LABEL WAS A VARIABLE.** It matched
+   `>Add part<` and not `{addLabel}`. **A check that only catches literals is a
+   check you escape by extracting a prop.**
+
+### The rules that came out of it
+
+- **A CHILD DOCUMENT MAY NOT RESTATE A PARENT RULE — ONLY POINT AT IT.** A
+  restatement is a copy, and a copy is a thing that can drift while looking
+  authoritative. Where the child needs to say something, it says the BINDING
+  and links the rule.
+- **EVERY CHILD ASSERTION CITES THE DS RULE IT TESTS** (already the rule for
+  module evals since 2026-09-22; this is why it matters). **An assertion with
+  no citation is one nobody can check against the parent** — and the one that
+  caused this had none.
+- **WHEN A DOC AND A SOURCE COMMENT DISAGREE, BOTH ARE SUSPECT.** The comment
+  in `LineTable` argued its own case in detail and was wrong; detail is not
+  evidence.
+- **A CHECK MATCHES SHAPE, NOT SPELLING.** Structure — an icon, a handler, a
+  class — survives refactoring; a literal string does not.
+- **THE CONTRADICTION WAS FINDABLE IN ONE GREP.** `grep -rn "last band" docs/`
+  would have shown both documents disagreeing at any point in that month.
+  **Before writing a rule, grep for its subject across `docs/` — if two files
+  already say something, one of them is wrong.**

@@ -133,8 +133,7 @@ const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
 const Money = ({ value }: { value: number | null }) =>
   value === null ? <Muted /> : <span className="text-sm tabular-nums">{money(value)}</span>;
 
-const RECORD_STATUS_TONE = (s: RecordStatus) =>
-  s === "active" ? ("success" as const) : ("neutral" as const);
+const RECORD_STATUS_TONE = (s: RecordStatus) => kindTone(ACTIVE_KIND(s === "active"));
 
 function RecordStatusChip({ status }: { status: RecordStatus }) {
   return (
@@ -213,13 +212,13 @@ export function customerConfig(
           return (
             <div className="flex min-w-0 flex-col gap-0.5">
               <StatusChip
-                tone={
+                tone={kindTone(
                   c.creditStatus === "Approved"
                     ? "success"
                     : c.creditStatus === "On hold"
-                      ? "processing"
-                      : "failed"
-                }
+                      ? "caution"
+                      : "critical",
+                )}
                 variant="text"
               >
                 {c.creditStatus}
@@ -563,7 +562,7 @@ export function vendorConfig(
              stops an order — one chip cannot carry both. */
           return (
             <div className="flex min-w-0 flex-col gap-0.5">
-              <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
+              <StatusChip tone={kindTone(ACTIVE_KIND(v.active))} variant="text">
                 {v.active ? "Active" : "Inactive"}
               </StatusChip>
               {v.active && !v.approvedForAssignment && (
@@ -866,7 +865,7 @@ export function productConfig(
           return p.taxCode ? (
             <span className="text-sm">{p.taxCode}</span>
           ) : p.taxable ? (
-            <StatusChip tone="failed" variant="text">Missing</StatusChip>
+            <StatusChip tone={kindTone("critical")} variant="text">Missing</StatusChip>
           ) : (
             <Muted>N/A</Muted>
           );
@@ -1047,6 +1046,7 @@ export function productConfig(
 /* Local helper — the product facet needs orders without importing the module
    twice under two names. */
 import { BROKER_ORDERS } from "./orders";
+import { ACTIVE_KIND, kindTone } from "../statusKind";
 const ordersUsing = (productName: string) =>
   BROKER_ORDERS.filter((o) => o.lines.some((l) => l.product === productName));
 
@@ -1161,13 +1161,15 @@ export function assetConfig(
         case "maintenance":
           return (
             <StatusChip
-              tone={
+              tone={kindTone(
+                /* OK is the normal state, not an achievement — it says nothing,
+                   so the exceptions are what carry colour. */
                 a.maintenanceStatus === "OK"
-                  ? "success"
+                  ? "neutral"
                   : a.maintenanceStatus === "Service due"
-                    ? "processing"
-                    : "failed"
-              }
+                    ? "caution"
+                    : "critical",
+              )}
               variant="text"
             >
               {a.maintenanceStatus}

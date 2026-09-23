@@ -63,6 +63,7 @@ import {
 } from "./RecurringProgramCreate";
 import { toSchedule } from "./RuleFrequency";
 import { dateKeyOf, startOfDay } from "../data";
+import { statusTones } from "../statusKind";
 
 /*
   RECURRING ORDERS — V1.1, the programme list.
@@ -87,17 +88,17 @@ import { dateKeyOf, startOfDay } from "../data";
 
 const DASH = "—";
 
-const SERIES_TONE: Record<
-  SeriesStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
-  Upcoming: "processing",
-  Active: "success",
-  Paused: "failed",
+const SERIES_TONE = statusTones<SeriesStatus>({
+  /* Set up, not yet running. True, and asks nothing. */
+  Upcoming: "info",
+  /* Running. Asks nothing — a series being live is not an achievement. */
+  Active: "info",
+  /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
+  Paused: "caution",
   Cancelled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
-};
+});
 
 interface Col {
   key: string;

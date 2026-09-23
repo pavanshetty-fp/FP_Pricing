@@ -59,6 +59,7 @@ import {
 } from "./recurringRules";
 import { RecurringRuleSheet } from "./RecurringRuleSheet";
 import { ScheduleCell } from "./ScheduleCell";
+import { statusTones } from "../statusKind";
 
 /*
   RECURRING ORDERS — V1, the rule-based list.
@@ -92,17 +93,17 @@ import { ScheduleCell } from "./ScheduleCell";
 
 const DASH = "—";
 
-const SERIES_TONE: Record<
-  SeriesStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
-  Upcoming: "processing",
-  Active: "success",
-  Paused: "failed",
+const SERIES_TONE = statusTones<SeriesStatus>({
+  /* Set up, not yet running. True, and asks nothing. */
+  Upcoming: "info",
+  /* Running. Asks nothing — a series being live is not an achievement. */
+  Active: "info",
+  /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
+  Paused: "caution",
   Cancelled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
-};
+});
 
 interface Col {
   key: string;

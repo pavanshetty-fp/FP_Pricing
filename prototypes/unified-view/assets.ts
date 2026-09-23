@@ -1,4 +1,5 @@
 import { DATE_FMT, dateKeyOf, startOfDay } from "./data";
+import { statusTones } from "./statusKind";
 
 /*
   Assets — the fourth rail destination.
@@ -26,12 +27,14 @@ export type AssetStatus = "Active" | "In Use" | "Inactive" | "Terminated";
 
 /** Status -> StatusChip tone. Lives here, not beside the sheet, so both the
  *  sheet and the table read one mapping and AssetSheet exports components only. */
-export const ASSET_STATUS_TONE: Record<AssetStatus, "success" | "processing" | "neutral" | "failed"> = {
-  Active: "success",
-  "In Use": "processing",
+export const ASSET_STATUS_TONE = statusTones<AssetStatus>({
+  /* In the fleet, or out on a job. Both simply true; neither asks anything. */
+  Active: "info",
+  "In Use": "info",
   Inactive: "neutral",
-  Terminated: "failed",
-};
+  /* An end, not a fault. */
+  Terminated: "neutral",
+});
 
 export const ASSET_STATUSES: AssetStatus[] = [
   "Active",

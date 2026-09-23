@@ -16,6 +16,7 @@ import {
   type CustomerStatus,
   type LineOfService,
 } from "./customers";
+import { ACTIVE_KIND, kindTone } from "./statusKind";
 
 /**
  * Customer side sheet — same shell and rhythm as the two order sheets.
@@ -158,7 +159,7 @@ export function CustomerSheet({
       headerAside={
         <span className="flex items-center gap-2">
           <StatusChip
-            tone={draft.status === "Active" ? "success" : "neutral"}
+            tone={kindTone(ACTIVE_KIND(draft.status === "Active"))}
             variant="soft"
           >
             {draft.status}

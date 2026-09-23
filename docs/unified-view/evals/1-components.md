@@ -62,8 +62,11 @@ Against `../1-components.md` and `docs/ds/ui/2-rules.md`.
 - [ ] **L2** Every hue in use appears in the mapping table in
       `../1-components.md`, and means exactly one thing across the app.
 - [ ] **L2** No hue means two different things in two modules.
-- [ ] **L2** The `failed` status channel is used only where something is wrong
-      and somebody must act — never as a fifth "in flight" colour.
+- [ ] **L1** No status chip or map names a DS tone — every one is declared as a
+      kind (DS §10b). `npm run eval` → `status-kinds`.
+- [ ] **L2** Every status's KIND is right: amber waits on somebody, blue asks
+      nothing, green is done, red is a warning, grey is neither. And every
+      status appears in the §5 binding table.
 - [ ] **L2** Every module's `*_LANE_COLOR` and `*_TYPE_CODE` map is reflected in
       the table. A binding in code and not in the doc is the doc being wrong.
 - [ ] **L1** Every `CodeDisc` has a `label`. The letter is never the only

@@ -25,6 +25,7 @@ import {
 } from "./recurringRules";
 import { RecurringDeliverySheet } from "./RecurringDeliverySheet";
 import { SERIES_STATUS_MEANING, type SeriesStatus } from "./recurring";
+import { statusTones } from "../statusKind";
 
 /*
   THE RULE SHEET — V1's record, opened from the Recurring Orders list.
@@ -70,15 +71,15 @@ const MONTH_FMT = new Intl.DateTimeFormat("en-US", {
 const DASH = "—";
 
 /** Four tones, four states — and unlike the series words, these map cleanly. */
-const STATE_TONE: Record<
-  DeliveryState,
-  "success" | "processing" | "failed" | "neutral"
-> = {
+const STATE_TONE = statusTones<DeliveryState>({
   delivered: "success",
-  created: "processing",
+  /* The order exists and is on its way through. */
+  created: "info",
+  /* "Not created yet" — a date on a plan, not yet a state. */
   scheduled: "neutral",
-  skipped: "failed",
-};
+  /* Skipped by decision. An absence, not a fault. */
+  skipped: "neutral",
+});
 
 const STATE_LABEL: Record<DeliveryState, string> = {
   delivered: "Delivered",
@@ -87,17 +88,17 @@ const STATE_LABEL: Record<DeliveryState, string> = {
   skipped: "Skipped",
 };
 
-const SERIES_TONE: Record<
-  SeriesStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
-  Upcoming: "processing",
-  Active: "success",
-  Paused: "failed",
+const SERIES_TONE = statusTones<SeriesStatus>({
+  /* Set up, not yet running. True, and asks nothing. */
+  Upcoming: "info",
+  /* Running. Asks nothing — a series being live is not an achievement. */
+  Active: "info",
+  /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
+  Paused: "caution",
   Cancelled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
-};
+});
 
 /**
  * The seam between what has run and what is coming — four behind, eight ahead.

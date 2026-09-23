@@ -13,6 +13,7 @@ import { TablePagination } from "@/components/tables-layout";
 import { ListToolbar } from "../ListToolbar";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { SERVICE_ORDERS, TECHNICIANS, type Technician } from "./work";
+import { ACTIVE_KIND, kindTone } from "../statusKind";
 
 /**
  * TECHNICIANS — who can take the work.
@@ -163,7 +164,7 @@ export function TechniciansScreen() {
         return <span className="tabular-nums text-muted-foreground">{t.phone}</span>;
       case "status":
         return (
-          <StatusChip tone={t.active ? "success" : "neutral"}>
+          <StatusChip tone={kindTone(ACTIVE_KIND(t.active))}>
             {t.active ? "Active" : "Inactive"}
           </StatusChip>
         );

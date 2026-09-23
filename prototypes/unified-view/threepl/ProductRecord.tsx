@@ -19,6 +19,7 @@ import {
 import { ordersForProduct, vendorsForProduct } from "./directoryLinks";
 import { BROKER_STATUS_TONE } from "./orders";
 import type { FormSectionDef } from "./directoryFormTypes";
+import { ACTIVE_KIND, kindTone } from "../statusKind";
 
 /*
   What a product record shows in the sheet, beyond the fields it edits.
@@ -39,21 +40,21 @@ export function productHeaderAside(p: BrokerProduct) {
   const vendors = vendorsForProduct(p).length;
   return (
     <span className="flex items-center gap-1.5">
-      <StatusChip tone={p.status === "active" ? "success" : "neutral"} variant="soft">
+      <StatusChip tone={kindTone(ACTIVE_KIND(p.status === "active"))} variant="soft">
         <span className="capitalize">{p.status}</span>
       </StatusChip>
       {p.topOffSupported && (
-        <StatusChip tone="processing" variant="soft">
+        <StatusChip tone={kindTone("info")} variant="soft">
           Top-off
         </StatusChip>
       )}
       {p.taxable && !p.taxCode && (
-        <StatusChip tone="failed" variant="soft">
+        <StatusChip tone={kindTone("critical")} variant="soft">
           No tax code
         </StatusChip>
       )}
       {vendors === 0 && (
-        <StatusChip tone="failed" variant="soft">
+        <StatusChip tone={kindTone("critical")} variant="soft">
           No vendor can fulfil
         </StatusChip>
       )}
@@ -128,7 +129,7 @@ export function productReadSections(
               key: "status",
               label: "Status",
               render: (v) => (
-                <StatusChip tone={v.active ? "success" : "neutral"} variant="text">
+                <StatusChip tone={kindTone(ACTIVE_KIND(v.active))} variant="text">
                   {v.active ? "Active" : "Inactive"}
                 </StatusChip>
               ),

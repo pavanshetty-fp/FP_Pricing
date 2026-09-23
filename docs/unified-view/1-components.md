@@ -145,20 +145,30 @@ and the search-match highlight at 25% — nothing else) · `--chip` ·
 > product says what each one means. One table, so a hue cannot come to mean two
 > things in two modules.
 
-### Status channels → lifecycle states
+### Status kinds → every module's statuses
 
-The DS ships four (`success` · `processing` · `failed` · `neutral`). Every
-module's lifecycle is longer than four, so channels are shared — which is
-allowed, because the label always says which stage it is. **The failure channel
-is not shared**: it belongs to the one state where something has gone wrong and
-somebody has to act.
+**The rule is DS §10b** (`docs/ds/ui/2-rules.md`): a status badge is coloured by
+what the reader should do about it. This is the binding. The code is
+`prototypes/unified-view/statusKind.ts`; each module declares kinds through
+`statusTones()` or `kindTone()` and never names a tone. `npm run eval` holds
+that. **A new module adds a row here before it ships a badge.**
 
-| Channel | Means, here | 3PL | Service Work |
+| Kind | Sales | 3PL | Service |
 |---|---|---|---|
-| `neutral` | not started, or ended without completing | Draft, Cancelled | Open, Cancelled |
-| `processing` | in flight, nobody is blocked | Quoting, Assigned, Verified | Assigned, In progress, Needs approval |
-| `success` | the step is done | Completed, Synced | Approved, Completed |
-| `failed` | **something is wrong and somebody must act** | Blocked | Parts-pending |
+| `caution` · waiting on somebody | Unassigned | Quoting · Partially Synced · Paused (series) · Invited · Quoted · Quotation received · Products updated · Awaiting Quotation · Credit on hold · Service due · Compliance expiring · Rental ends soon · In maintenance · Limited availability | Parts pending · Linked order · Needs approval · Yet to be reviewed |
+| `info` · simply true | Assigned · Scheduled (asset order) · Active / In Use (asset) · Active (customer) | Assigned · Upcoming / Active (series) · Order created · Active (any record) · Available / On rent · Top-off | Assigned · Yet to start · Ongoing · Invoice raised · Active (technician) |
+| `success` · done | Delivered | Completed · Verified · Synced · Delivered · Accepted (lane) · Awarded · Credit approved · Compliance valid | Completed · Completed — linked · Reviewed · Invoice synced |
+| `critical` · a warning | — | Blocked · Declined · Out of area · Not approved · Compliance expired · Over limit · Credit rejected · No tax code · No vendor can fulfil · Out of service · Expired (document) | — *(none yet, deliberately)* |
+| `neutral` · neither | Open · Cancelled (asset order) · Inactive · Terminated | Draft · Cancelled · Ended · Expired (series) · Not created yet · Skipped · Inactive · Maintenance OK | Drafted · Cancelled · Inactive |
+
+**Changed by this binding (2026-09-23)** — each was the old channel reading as a
+colour: sales *Assigned* green → blue; asset-order and 3PL *Cancelled* red →
+grey; 3PL *Verified* amber → green; series *Paused* and delivery *Skipped* red →
+amber / grey; the 3PL board's *N Quotations Received* green → amber; service
+*Parts pending* red → amber, *Assigned/Ongoing* amber → blue.
+
+> **The technician's mobile app is not bound yet** — it is out of scope until
+> the web app is done, and the eval skips it rather than passing it.
 
 ### Lane fills → board stages
 

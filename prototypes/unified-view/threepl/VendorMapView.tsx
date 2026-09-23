@@ -4,6 +4,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { PLACES, daysFromToday } from "./directoryCore";
 import type { Vendor } from "./vendors";
+import type { StatusKind } from "../statusKind";
 
 /*
   Vendors on a map — list left, plot right.
@@ -59,18 +60,18 @@ function project(lat: number, lng: number) {
  * worth colouring on a map somebody opens to find cover: inactive or lapsed is
  * the answer that changes what they do next.
  */
-function toneOf(v: Vendor): "success" | "processing" | "failed" | "neutral" {
+function toneOf(v: Vendor): StatusKind {
   if (!v.active) return "neutral";
   const days = daysFromToday(v.complianceValidTo);
-  if (days !== null && days < 0) return "failed";
-  if (v.availabilityStatus !== "Available") return "processing";
+  if (days !== null && days < 0) return "critical";
+  if (v.availabilityStatus !== "Available") return "caution";
   return "success";
 }
 
 const PIN_FILL: Record<string, string> = {
   success: "bg-status-success",
-  processing: "bg-fp-banner-accent-caution",
-  failed: "bg-status-failed",
+  caution: "bg-fp-banner-accent-caution",
+  critical: "bg-status-failed",
   neutral: "bg-muted-foreground",
 };
 
@@ -214,8 +215,8 @@ export function VendorMapView({
           {(
             [
               ["success", "Available"],
-              ["processing", "Limited or unavailable"],
-              ["failed", "Compliance expired"],
+              ["caution", "Limited or unavailable"],
+              ["critical", "Compliance expired"],
               ["neutral", "Inactive"],
             ] as const
           ).map(([tone, label]) => (

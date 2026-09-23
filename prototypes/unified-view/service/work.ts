@@ -1,7 +1,7 @@
 import { RENTAL_ASSETS, type RentalAsset } from "../threepl/directory";
-import type { StatusTone } from "@/components/ui/status-chip";
 import type { CodeDiscTone } from "@/components/ui/code-disc";
 import type { LaneColor } from "../threepl/BrokerBoard";
+import { statusTones, type StatusKind } from "../statusKind";
 
 /*
   SERVICE WORK — the model, the fixture and the invariants.
@@ -171,22 +171,6 @@ export const isUnassigned = (s: WorkStatus) => LANE_OF[s] === "Open";
  * statuses are the same KIND of state. The lane colours below do the
  * separating.
  */
-export const WORK_STATUS_TONE: Record<WorkStatus, StatusTone> = {
-  Drafted: "neutral",
-  /* THE TWO THAT CARRY A REASON — something did not go to plan, and the card
-     says what. */
-  "Parts pending": "failed",
-  "Linked order": "failed",
-  Assigned: "processing",
-  "Yet to start": "processing",
-  Ongoing: "processing",
-  "Needs approval": "processing",
-  Completed: "success",
-  "Completed — linked": "success",
-  "Yet to be reviewed": "processing",
-  Reviewed: "success",
-  Cancelled: "neutral",
-};
 
 /**
  * WHAT KIND OF STATE A STATUS IS — the badge's colour (Pavan, 2026-09-23).
@@ -210,10 +194,7 @@ export const WORK_STATUS_TONE: Record<WorkStatus, StatusTone> = {
  * and for a state that genuinely goes wrong, so that when it does appear it
  * is worth looking at.
  */
-export const WORK_STATUS_KIND: Record<
-  WorkStatus,
-  "caution" | "success" | "info" | "critical" | "neutral"
-> = {
+export const WORK_STATUS_KIND: Record<WorkStatus, StatusKind> = {
   /* A record that exists. Nothing has happened to it yet. */
   Drafted: "neutral",
   /* Waiting on parts, and on somebody to take the next trip. */
@@ -236,6 +217,9 @@ export const WORK_STATUS_KIND: Record<
      saying the least. */
   Cancelled: "neutral",
 };
+
+/** The same kinds as `StatusChip` tones — the table's and the sheet's chip. */
+export const WORK_STATUS_TONE = statusTones(WORK_STATUS_KIND);
 
 /** The DS's `--fp-lane-*` set, the same tokens the 3PL board draws from. */
 export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {

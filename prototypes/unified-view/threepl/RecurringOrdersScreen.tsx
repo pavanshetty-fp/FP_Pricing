@@ -73,6 +73,7 @@ import {
   type SeriesStatus,
 } from "./recurring";
 import { ScheduleCell } from "./ScheduleCell";
+import { statusTones } from "../statusKind";
 
 /*
   RECURRING ORDERS — the destination, V2 (parent/child).
@@ -106,17 +107,17 @@ import { ScheduleCell } from "./ScheduleCell";
 */
 
 /** Four tones, six words — see the note on `SeriesStatus`. */
-const SERIES_TONE: Record<
-  SeriesStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
-  Upcoming: "processing",
-  Active: "success",
-  Paused: "failed",
+const SERIES_TONE = statusTones<SeriesStatus>({
+  /* Set up, not yet running. True, and asks nothing. */
+  Upcoming: "info",
+  /* Running. Asks nothing — a series being live is not an achievement. */
+  Active: "info",
+  /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
+  Paused: "caution",
   Cancelled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
-};
+});
 
 const SERIES_COLUMNS = [
   { key: "order", label: "Order # / Created", width: 165 },

@@ -52,6 +52,7 @@ import {
   shortfallLabel,
   type PartLine,
 } from "./work";
+import { kindTone } from "../statusKind";
 
 /**
  * SERVICE ORDERS — the dispatcher's board.
@@ -1085,9 +1086,9 @@ export function ServiceWorkScreen() {
         );
       case "invoice":
         return r.synced ? (
-          <StatusChip tone="success">Synced</StatusChip>
+          <StatusChip tone={kindTone("success")}>Synced</StatusChip>
         ) : r.invoiceCreated ? (
-          <StatusChip tone="processing">Raised</StatusChip>
+          <StatusChip tone={kindTone("info")}>Raised</StatusChip>
         ) : (
           <span className="text-muted-foreground">—</span>
         );

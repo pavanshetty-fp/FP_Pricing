@@ -24,6 +24,7 @@ import { ordersForAsset, productById } from "./directoryLinks";
 import { BROKER_STATUS_TONE } from "./orders";
 import { vendorById } from "./vendors";
 import type { FormSectionDef } from "./directoryFormTypes";
+import { kindTone } from "../statusKind";
 
 /*
   What a rental asset record shows in the sheet, beyond the fields it edits.
@@ -42,34 +43,34 @@ export function assetHeaderAside(a: RentalAsset) {
   return (
     <span className="flex items-center gap-1.5">
       <StatusChip
-        tone={
-          a.availabilityStatus === "Available"
-            ? "success"
-            : a.availabilityStatus === "On rent"
-              ? "processing"
-              : a.availabilityStatus === "In maintenance"
-                ? "failed"
-                : "neutral"
-        }
+        tone={kindTone(
+          /* Available and On rent are both simply true; maintenance is
+             waiting on the workshop. None of them is a fault. */
+          a.availabilityStatus === "Available" || a.availabilityStatus === "On rent"
+            ? "info"
+            : a.availabilityStatus === "In maintenance"
+              ? "caution"
+              : "neutral",
+        )}
         variant="soft"
       >
         {a.availabilityStatus}
       </StatusChip>
       {a.maintenanceStatus !== "OK" && (
         <StatusChip
-          tone={a.maintenanceStatus === "Service due" ? "processing" : "failed"}
+          tone={kindTone(a.maintenanceStatus === "Service due" ? "caution" : "critical")}
           variant="soft"
         >
           {a.maintenanceStatus}
         </StatusChip>
       )}
       {(a.complianceStatus === "Expired" || a.complianceStatus === "Expiring") && (
-        <StatusChip tone={a.complianceStatus === "Expired" ? "failed" : "processing"} variant="soft">
+        <StatusChip tone={kindTone(a.complianceStatus === "Expired" ? "critical" : "caution")} variant="soft">
           Compliance {a.complianceStatus.toLowerCase()}
         </StatusChip>
       )}
       {endingSoon(a) && (
-        <StatusChip tone="processing" variant="soft">
+        <StatusChip tone={kindTone("caution")} variant="soft">
           Ends in {daysFromToday(a.rentalEndDate)}d
         </StatusChip>
       )}

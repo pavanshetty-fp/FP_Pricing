@@ -40,6 +40,8 @@ import {
   type RecurringProgram,
 } from "./recurringPrograms";
 import { defaultLineCharges } from "./orders";
+import { statusTones } from "../statusKind";
+import { kindTone } from "../statusKind";
 
 /*
   THE PROGRAMME SHEET — V1.1's record.
@@ -67,28 +69,28 @@ import { defaultLineCharges } from "./orders";
 
 const DASH = "—";
 
-const LANE_TONE: Record<
-  LaneState,
-  "success" | "processing" | "failed" | "neutral"
-> = {
+const LANE_TONE = statusTones<LaneState>({
   Accepted: "success",
-  Quoted: "processing",
-  Invited: "processing",
-  Declined: "failed",
+  /* A price is in: waiting on us to accept it. */
+  Quoted: "caution",
+  /* Waiting on the partner to answer. */
+  Invited: "caution",
+  /* The plan has to change — this lane needs somebody else. */
+  Declined: "critical",
   Draft: "neutral",
-};
+});
 
-const SERIES_TONE: Record<
-  SeriesStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
-  Upcoming: "processing",
-  Active: "success",
-  Paused: "failed",
+const SERIES_TONE = statusTones<SeriesStatus>({
+  /* Set up, not yet running. True, and asks nothing. */
+  Upcoming: "info",
+  /* Running. Asks nothing — a series being live is not an achievement. */
+  Active: "info",
+  /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
+  Paused: "caution",
   Cancelled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
-};
+});
 
 function Card({
   title,
@@ -225,7 +227,7 @@ function TargetRow({
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
-                <StatusChip tone="failed" variant="soft">
+                <StatusChip tone={kindTone("critical")} variant="soft">
                   Out of area
                 </StatusChip>
               </span>

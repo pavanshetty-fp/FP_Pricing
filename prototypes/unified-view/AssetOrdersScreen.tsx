@@ -10,7 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
+import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
@@ -33,8 +33,8 @@ import {
   sortAssetOrders,
   type AssetOrder,
   type AssetOrderColumnKey,
-  type AssetOrderStatus,
   type AssetSortState,
+  ASSET_ORDER_STATUS_TONE,
 } from "./assetOrders";
 
 /**
@@ -51,12 +51,7 @@ import {
  * sheet and everything else is here — say the word and the bar is a small
  * addition on top of the same `BulkEditDialog` the fuel screen already uses.
  */
-const STATUS_TONE: Record<AssetOrderStatus, StatusTone> = {
-  Open: "neutral",
-  Scheduled: "processing",
-  Delivered: "success",
-  Cancelled: "failed",
-};
+const STATUS_TONE = ASSET_ORDER_STATUS_TONE;
 
 const TOGGLE_COLUMNS = ASSET_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
   key: c.key,

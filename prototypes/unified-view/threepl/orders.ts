@@ -2,6 +2,7 @@ import { DATE_FMT, MONEY, dateKeyOf, relativeLabel, startOfDay } from "../data";
 import { CUSTOMERS } from "../customers";
 import type { TwoLine } from "../types";
 import { VENDORS } from "./vendors";
+import { statusTones } from "../statusKind";
 
 /*
   3PL (brokerage) orders — the broker's Order Dashboard dataset.
@@ -2402,20 +2403,23 @@ type LaneColorName =
  * colour is never the only carrier of meaning. The label spells the stage out in
  * every case.
  */
-export const BROKER_STATUS_TONE: Record<
-  BrokerStatus,
-  "success" | "processing" | "failed" | "neutral"
-> = {
+export const BROKER_STATUS_TONE = statusTones<BrokerStatus>({
+  /* A record that exists, not yet a state. */
   Draft: "neutral",
-  Blocked: "failed",
-  Quoting: "processing",
-  Assigned: "processing",
+  /* Something has gone wrong and the plan has to change. */
+  Blocked: "critical",
+  /* Waiting on partners to quote, then on the dispatcher to award. */
+  Quoting: "caution",
+  /* A partner is on it. True, and asks nothing. */
+  Assigned: "info",
   Completed: "success",
-  Verified: "processing",
-  "Partially Synced": "processing",
+  /* A human has agreed the numbers — the part that needed a person is done. */
+  Verified: "success",
+  /* Some lines reached accounting and some did not: somebody has to look. */
+  "Partially Synced": "caution",
   Synced: "success",
   Cancelled: "neutral",
-};
+});
 
 /** Half-hour grid for the §5.3 start/end window selects. */
 export const TIME_OPTIONS: string[] = (() => {

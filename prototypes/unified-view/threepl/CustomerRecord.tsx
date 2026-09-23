@@ -21,6 +21,7 @@ import { assetsForCustomer, ordersForCustomer, shipTosForCustomer } from "./dire
 import { BROKER_STATUS_TONE } from "./orders";
 import { vendorById, VENDORS } from "./vendors";
 import type { FormSectionDef } from "./directoryFormTypes";
+import { ACTIVE_KIND, kindTone } from "../statusKind";
 
 /*
   What a customer record shows in the sheet, beyond the fields it edits.
@@ -43,12 +44,12 @@ export function customerHeaderAside(c: BrokerCustomer) {
   const over = c.creditLimit !== null && c.currentBalance > c.creditLimit;
   return (
     <span className="flex items-center gap-1.5">
-      <StatusChip tone={c.status === "active" ? "success" : "neutral"} variant="soft">
+      <StatusChip tone={kindTone(ACTIVE_KIND(c.status === "active"))} variant="soft">
         <span className="capitalize">{c.status}</span>
       </StatusChip>
       <StatusChip
         tone={
-          c.creditStatus === "Approved" ? "success" : c.creditStatus === "On hold" ? "processing" : "failed"
+          kindTone(c.creditStatus === "Approved" ? "success" : c.creditStatus === "On hold" ? "caution" : "critical")
         }
         variant="soft"
       >
@@ -58,7 +59,7 @@ export function customerHeaderAside(c: BrokerCustomer) {
           account can be fully approved AND over its limit — that is exactly
           the pair that blocks an order, and one chip cannot carry both. */}
       {over && (
-        <StatusChip tone="failed" variant="soft">
+        <StatusChip tone={kindTone("critical")} variant="soft">
           Over limit
         </StatusChip>
       )}
@@ -194,7 +195,7 @@ export function customerReadSections(
               key: "status",
               label: "Status",
               render: (s) => (
-                <StatusChip tone={s.status === "active" ? "success" : "neutral"} variant="text">
+                <StatusChip tone={kindTone(ACTIVE_KIND(s.status === "active"))} variant="text">
                   <span className="capitalize">{s.status}</span>
                 </StatusChip>
               ),

@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
-import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
+import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { formatFullDate } from "./data";
@@ -21,6 +21,7 @@ import {
   type AssetOrder,
   type AssetOrderStatus,
 } from "./assetOrders";
+import { ASSET_ORDER_STATUS_TONE } from "./assetOrders";
 
 /**
  * Asset Order side sheet — the Fuel Orders order sheet's shape, with this
@@ -33,12 +34,7 @@ import {
  * has no such dependency — nothing else on the record implies whether it is
  * Open, Scheduled, Delivered or Cancelled — so it needs an explicit control.
  */
-const STATUS_TONE: Record<AssetOrderStatus, StatusTone> = {
-  Open: "neutral",
-  Scheduled: "processing",
-  Delivered: "success",
-  Cancelled: "failed",
-};
+const STATUS_TONE = ASSET_ORDER_STATUS_TONE;
 
 export interface AssetOrderDraft {
   customer: string;

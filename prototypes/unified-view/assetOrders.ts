@@ -1,5 +1,6 @@
 import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "./data";
 import type { TwoLine } from "./types";
+import { statusTones } from "./statusKind";
 
 /*
   Asset Orders — the second rail destination.
@@ -22,6 +23,18 @@ import type { TwoLine } from "./types";
 
 /** ASSUMPTION — a plausible lifecycle, not one captured from the source app. */
 export type AssetOrderStatus = "Open" | "Scheduled" | "Delivered" | "Cancelled";
+
+/** Status → badge colour, by kind (`statusKind.ts`). One map; the sheet and the
+ *  table both read it. */
+export const ASSET_ORDER_STATUS_TONE = statusTones<AssetOrderStatus>({
+  /* A record that exists. Nothing is on it yet. */
+  Open: "neutral",
+  /* A date is set. True, and asks nothing. */
+  Scheduled: "info",
+  Delivered: "success",
+  /* NOT RED — a terminal non-event, not a problem to solve. */
+  Cancelled: "neutral",
+});
 
 export const ASSET_ORDER_STATUSES: AssetOrderStatus[] = [
   "Open",

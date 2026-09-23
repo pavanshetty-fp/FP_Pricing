@@ -8,8 +8,14 @@ import { cn } from "@/lib/utils";
  * usage rule binds it, so the DS ships the channels and each application
  * declares its own mapping (see `statusTone` in `tables-layout/data.ts` for the
  * table's mapping).
+ *
+ * `info` is the fifth channel (2026-09-23): blue, on `--fp-banner-accent-info`,
+ * the one hue here that carries no verdict. A state that is simply TRUE —
+ * assigned, under way — and asks nothing of anybody. Grey would say it is
+ * unremarkable; amber would say somebody is waiting. How an application binds
+ * statuses to these five is `docs/ds/ui/2-rules.md` §10b.
  */
-export type StatusTone = "success" | "processing" | "failed" | "neutral";
+export type StatusTone = "success" | "processing" | "failed" | "neutral" | "info";
 
 /**
  * Which of the three status treatments to render.
@@ -28,6 +34,7 @@ const TONE_FG: Record<StatusTone, string> = {
   processing: "text-status-processing",
   failed: "text-status-failed",
   neutral: "text-muted-foreground",
+  info: "text-fp-banner-accent-info",
 };
 
 /** Dot fill per tone — only `dot` needs this; the others ride `bg-current`. */
@@ -36,6 +43,7 @@ const TONE_DOT: Record<StatusTone, string> = {
   processing: "bg-status-processing",
   failed: "bg-status-failed",
   neutral: "bg-muted-foreground",
+  info: "bg-fp-banner-accent-info",
 };
 
 /** Soft tint per tone — `/10` fill, matching the destructive Badge recipe. */
@@ -44,6 +52,7 @@ const TONE_SOFT: Record<StatusTone, string> = {
   processing: "bg-status-processing/10",
   failed: "bg-status-failed/10",
   neutral: "bg-muted-foreground/10",
+  info: "bg-fp-banner-accent-info/10",
 };
 
 export interface StatusChipProps extends React.ComponentProps<"span"> {

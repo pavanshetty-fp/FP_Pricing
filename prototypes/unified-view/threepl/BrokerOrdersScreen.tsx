@@ -425,7 +425,8 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
 
        Draft                  nothing has been sent
        Awaiting Quotation     sent, and nobody has priced it — CAUTION
-       N Quotations Received  at least one price is in — SUCCESS
+       N Quotations Received  at least one price is in — CAUTION: now the
+                              dispatcher's turn (was SUCCESS until 2026-09-23)
 
      `sentVendorIds` is the record of the asking (invited is a selection, sent
      is the act) and `quotes` is the record of the answer. THE COUNT IS ON THE
@@ -440,7 +441,9 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
       quotes > 0
         ? {
             label: `${quotes} Quotation${quotes === 1 ? "" : "s"} Received`,
-            tone: "success",
+            /* CAUTION, NOT SUCCESS (2026-09-23, the status-kind rule). A price
+               in is not a thing done — it is the dispatcher's turn to award. */
+            tone: "caution",
           }
         : r.sentVendorIds.filter(Boolean).length > 0
           ? { label: "Awaiting Quotation", tone: "caution" }
@@ -452,7 +455,7 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
      gets a badge: on a lane called Synced, a card saying "Synced" is a label
      repeating its own heading, and what the reader is looking for is the
      exception. */
-  if (r.status === "Partially Synced") out.push({ label: "Partially Synced" });
+  if (r.status === "Partially Synced") out.push({ label: "Partially Synced", tone: "caution" });
   return out;
 }
 

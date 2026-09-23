@@ -44,6 +44,7 @@ import {
   type GroupNode,
   groupSelectionState,
 } from "@/components/tables-layout";
+import { statusTones } from "./statusKind";
 
 /** Structure, not content — see `useColumnOrder` in the table below. */
 const FIXED_COLUMNS = ["select", "actions"];
@@ -66,10 +67,12 @@ const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
 
 /** Order status → colour channel. Exported so the map view reads a status the
  *  same way the table does rather than keeping a second copy of the mapping. */
-export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = {
-  Assigned: "success",
-  Unassigned: "processing",
-};
+export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = statusTones({
+  /* A driver is on it. True, and asks nothing — not a finished order. */
+  Assigned: "info",
+  /* Waiting on a dispatcher to give it a driver. */
+  Unassigned: "caution",
+});
 
 function TwoLine({ title, description }: TwoLineData) {
   return (

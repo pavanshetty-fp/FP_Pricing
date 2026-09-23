@@ -33,6 +33,7 @@ import {
   type CustomerColumnKey,
   type CustomerSortState,
 } from "./customers";
+import { ACTIVE_KIND, kindTone } from "./statusKind";
 
 /**
  * Customers list — the same shell as the two order screens: preset-view row with
@@ -189,7 +190,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       case "status":
         return (
           <StatusChip
-            tone={c.status === "Active" ? "success" : "neutral"}
+            tone={kindTone(ACTIVE_KIND(c.status === "Active"))}
             variant="text"
           >
             {c.status}

@@ -22,6 +22,7 @@ import {
   type Vendor,
 } from "./vendors";
 import type { FormSectionDef } from "./directoryFormTypes";
+import { ACTIVE_KIND, kindTone } from "../statusKind";
 
 /*
   What a vendor record shows in the sheet, beyond the fields it edits.
@@ -42,16 +43,18 @@ export function vendorHeaderAside(v: Vendor) {
   const days = daysFromToday(v.complianceValidTo);
   return (
     <span className="flex items-center gap-1.5">
-      <StatusChip tone={v.active ? "success" : "neutral"} variant="soft">
+      <StatusChip tone={kindTone(ACTIVE_KIND(v.active))} variant="soft">
         {v.active ? "Active" : "Inactive"}
       </StatusChip>
       <StatusChip
         tone={
-          v.complianceStatus === "Valid"
-            ? "success"
-            : v.complianceStatus === "Expiring"
-              ? "processing"
-              : "failed"
+          kindTone(
+            v.complianceStatus === "Valid"
+              ? "success"
+              : v.complianceStatus === "Expiring"
+                ? "caution"
+                : "critical",
+          )
         }
         variant="soft"
       >
@@ -62,12 +65,12 @@ export function vendorHeaderAside(v: Vendor) {
             : "Compliance valid"}
       </StatusChip>
       {!v.approvedForAssignment && (
-        <StatusChip tone="failed" variant="soft">
+        <StatusChip tone={kindTone("critical")} variant="soft">
           Not approved
         </StatusChip>
       )}
       {v.availabilityStatus !== "Available" && (
-        <StatusChip tone="processing" variant="soft">
+        <StatusChip tone={kindTone("caution")} variant="soft">
           {v.availabilityStatus}
         </StatusChip>
       )}

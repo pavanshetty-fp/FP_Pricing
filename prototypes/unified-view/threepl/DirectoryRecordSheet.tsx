@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
 import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
+import { kindTone } from "../statusKind";
 
 /*
   The Directory's record sheet.
@@ -629,7 +630,7 @@ export function AttachmentTable({ files }: { files: Attachment[] }) {
             if (!f.expiresOn) return <span className="text-muted-foreground/70">{DASH}</span>;
             const gone = new Date(`${f.expiresOn}T00:00:00Z`) < today;
             return (
-              <StatusChip tone={gone ? "failed" : "success"} variant="text">
+              <StatusChip tone={kindTone(gone ? "critical" : "neutral")} variant="text">
                 {gone ? `Expired ${formatDate(f.expiresOn)}` : formatDate(f.expiresOn)}
               </StatusChip>
             );

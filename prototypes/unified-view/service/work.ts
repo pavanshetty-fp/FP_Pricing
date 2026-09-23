@@ -1447,6 +1447,45 @@ export function blankServiceOrder(opts: {
   };
 }
 
+/**
+ * A TICKET RAISED ON SITE (Pavan, 2026-09-24): a new order for the same
+ * customer and site, the technician on it, booked for now, linked back to
+ * the order it was raised on. Only the services and fees are the
+ * technician's.
+ */
+export function ticketFrom(
+  from: ServiceOrder,
+  req: { assets: ServiceAssetLine[]; fees: FeeLine[] },
+  orderNo: string,
+  by: string
+): ServiceOrder {
+  const now = new Date();
+  const first = req.assets[0];
+  return {
+    ...blankServiceOrder({ priceBook: false, defaultMileage: 0, raisedBy: by, technicianId: from.technicianId, source: "Flagged inspection" }),
+    id: `so-t-${orderNo}`,
+    orderNo,
+    status: "Assigned",
+    priority: from.priority,
+    customer: from.customer,
+    shipTo: from.shipTo,
+    city: from.city,
+    state: from.state,
+    assets: req.assets,
+    assetId: first?.assetId ?? "",
+    assetName: first?.assetName ?? "",
+    assetType: first?.assetType ?? "",
+    workType: first?.workType ?? "",
+    fault: first?.fault ?? "",
+    fees: req.fees,
+    scheduledAt: now.toISOString(),
+    dateKey: keyOfDay(now),
+    windowEndMin: now.getHours() * 60 + now.getMinutes() + 120,
+    returnOf: from.orderNo,
+    audit: [{ at: now.toISOString(), by, changes: [`Order created on site · from ${from.orderNo}`] }],
+  };
+}
+
 /** When the order was raised — the first entry of its log. */
 export const createdAtOf = (o: ServiceOrder): string =>
   o.audit[0]?.at ?? o.scheduledAt ?? `${o.dateKey}T00:00:00`;

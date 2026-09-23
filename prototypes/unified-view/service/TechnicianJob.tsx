@@ -10,6 +10,8 @@ import {
   X,
   ArrowLeft,
   ChevronDown,
+  MoreHorizontal,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,6 +23,7 @@ import {
   WORK_TYPE_CATEGORY,
   type TaskKind,
   WORK_TYPE_NAMES,
+  assetsAt,
   computedLabor,
   formatHours,
   money,
@@ -108,6 +111,12 @@ const lineWhat = (l: AssessmentLine) =>
 /** A job's order line or site finding, as the customer will see it on the quote. */
 const lineTitle = (l: AssessmentLine) => [l.assetName, l.workType].filter(Boolean).join(" · ");
 
+/** A new ticket raised from site — only what the technician adds. */
+export interface TicketRequest {
+  assets: { assetId: string; assetName: string; assetType: string; workType: string; fault: string }[];
+  fees: { name: string; amount: number }[];
+}
+
 export interface SplitRequest {
   mode: "continue" | "neworder";
   parts: PartLine[];
@@ -120,7 +129,10 @@ export function TechnicianJob({
   onPatch,
   onSplit,
   busyWith,
+  onCreateTicket,
 }: {
+  /** A new ticket for the same customer and site — returns its number. */
+  onCreateTicket?: (req: TicketRequest) => string;
   job: ServiceOrder;
   /** Another order this technician already has Ongoing — only one at a time. */
   busyWith?: string;
@@ -144,6 +156,8 @@ export function TechnicianJob({
   );
   const [mode, setMode] = React.useState<"continue" | "neworder">(cfg.returnMode);
   const [mapOpen, setMapOpen] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [ticketOpen, setTicketOpen] = React.useState(false);
 
   const assessed = Boolean(job.assessmentLines && assessmentComplete(job.assessmentLines));
   const handedIn = Boolean(job.completedAt) || job.status === "Parts pending" || job.status === "Completed — linked";
@@ -196,6 +210,22 @@ export function TechnicianJob({
     );
   }
 
+  /* A NEW TICKET FROM SITE (Pavan, 2026-09-24) — the web's create form
+     without the customer or the schedule: those are this order's. */
+  if (ticketOpen && onCreateTicket) {
+    return (
+      <NewTicket
+        job={job}
+        onBack={() => setTicketOpen(false)}
+        onCreate={(req) => {
+          const no = onCreateTicket(req);
+          toast.success(`Ticket ${no} created`, { description: `${job.customer} · ${job.shipTo}` });
+          setTicketOpen(false);
+        }}
+      />
+    );
+  }
+
   if (stage === "travel") {
     return (
       <>
@@ -232,7 +262,22 @@ export function TechnicianJob({
       <>
         {/* THE PAGE IS THE ORDER — its number, nothing else (Pavan,
             2026-09-24). The customer and site were the screen before. */}
-        <TopBar title={job.orderNo} onBack={onBack} />
+        <TopBar
+          title={job.orderNo}
+          onBack={onBack}
+          aside={
+            onCreateTicket && (
+              <button
+                type="button"
+                aria-label="More actions"
+                onClick={() => setMenuOpen(true)}
+                className="flex size-11 shrink-0 items-center justify-center rounded-md text-foreground active:bg-accent"
+              >
+                <MoreHorizontal className="size-5" />
+              </button>
+            )
+          }
+        />
         <Body>
           <TaskOverview lines={lines.filter((l) => l.source === "order")} />
           {lines.map((l, i) => (
@@ -312,6 +357,18 @@ export function TechnicianJob({
           }}
         />
         )}
+        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title={job.orderNo}>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              setTicketOpen(true);
+            }}
+            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
+          >
+            <Plus className="size-4 text-muted-foreground" /> Create new ticket
+          </button>
+        </BottomSheet>
       </>
     );
   }
@@ -667,30 +724,19 @@ function AssessmentCard({
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col">
-          {added ? (
-            <span className="text-xs text-muted-foreground">Found on site</span>
-          ) : (
-            <span className="text-sm font-medium text-foreground">
-              {[line.assetName || `Task ${index + 1}`, line.workType].filter(Boolean).join(" · ")}
-            </span>
-          )}
-        </div>
-        <span className="flex shrink-0 items-center gap-1">
-          <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-foreground">
-            {WORK_TYPE_CATEGORY[line.workType] === "Servicing" ? "Servicing" : "Replacement"}
-          </span>
-          {onRemove && (
-            <button type="button" onClick={onRemove} aria-label="Remove this task" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
-              <X className="size-4" />
-            </button>
-          )}
-        </span>
-      </div>
-
       {added ? (
         <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">Found on site</span>
+            <span className="flex items-center gap-1">
+              <KindChip workType={line.workType} />
+              {onRemove && (
+                <button type="button" onClick={onRemove} aria-label="Remove this task" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+                  <X className="size-4" />
+                </button>
+              )}
+            </span>
+          </div>
           <Input value={line.assetName} onChange={(e) => onChange({ assetName: e.target.value })} placeholder="Asset" className="h-11" />
           {/* THE PHONE'S OWN PICKER — a native select for one choice from a
               fixed list. */}
@@ -707,9 +753,21 @@ function AssessmentCard({
           <Textarea value={line.actual} onChange={(e) => onChange({ actual: e.target.value })} rows={2} placeholder="What it needs" className="text-base" />
         </>
       ) : (
-        <div className="rounded-md bg-fp-card-1 px-3 py-2">
-          <p className="text-xs text-muted-foreground">Reported fault</p>
-          <p className="text-sm text-foreground">{line.reported || "—"}</p>
+        /* THE TASK IN ONE BLOCK (Pavan, 2026-09-24): the asset, its work
+           type, and under them the reported fault — with the kind of job as
+           a chip. */
+        <div className="flex flex-col gap-2 rounded-md bg-fp-card-1 px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-col">
+              <span className="text-sm font-medium text-foreground">{line.assetName || `Task ${index + 1}`}</span>
+              <span className="text-xs text-muted-foreground">{line.workType}</span>
+            </div>
+            <KindChip workType={line.workType} />
+          </div>
+          <div className="flex flex-col border-t border-fp-outline-1 pt-2">
+            <span className="text-xs text-muted-foreground">Reported fault</span>
+            <span className="text-sm text-foreground">{line.reported || "—"}</span>
+          </div>
         </div>
       )}
 
@@ -729,7 +787,7 @@ function AssessmentCard({
             </button>
           )}
           <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
-            {hasNotes ? <Check className="size-4" /> : <Plus className="size-4" />}
+            {hasNotes ? <StickyNote className="size-4" /> : <Plus className="size-4" />}
             {hasNotes
               ? `${line.subject?.trim() || "Assessment notes"}${line.photos.length ? ` · ${line.photos.length} photo${line.photos.length === 1 ? "" : "s"}` : ""}`
               : "Add assessment notes"}
@@ -770,6 +828,129 @@ function AssessmentCard({
         }}
       />
     </section>
+  );
+}
+
+/**
+ * THE NEW TICKET — services (asset, work type, reported fault) and any
+ * additional fees. Customer, site and technician come from the order it was
+ * raised on.
+ */
+function NewTicket({
+  job,
+  onBack,
+  onCreate,
+}: {
+  job: ServiceOrder;
+  onBack: () => void;
+  onCreate: (req: TicketRequest) => void;
+}) {
+  const siteAssets = assetsAt(job.shipTo);
+  const blankService = () => ({ assetId: "", assetName: "", assetType: "", workType: WORK_TYPE_NAMES[0], fault: "" });
+  const [services, setServices] = React.useState([blankService()]);
+  const [fees, setFees] = React.useState<{ name: string; amount: number }[]>([]);
+  const setService = (i: number, p: Partial<ReturnType<typeof blankService>>) =>
+    setServices((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
+  return (
+    <>
+      <TopBar title="New ticket" subtitle={`${job.customer} · ${job.shipTo}`} onBack={onBack} />
+      <Body>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Type of service</SectionTitle>
+            <Button variant="ghost" size="sm" className="h-9" onClick={() => setServices((xs) => [...xs, blankService()])}>
+              <Plus className="size-4" /> Add service
+            </Button>
+          </div>
+          {services.map((sv, i) => (
+            <div key={i} className="flex flex-col gap-2 rounded-lg border border-fp-outline-1 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Service {i + 1}</span>
+                {services.length > 1 && (
+                  <button type="button" aria-label={`Remove service ${i + 1}`} onClick={() => setServices((xs) => xs.filter((_, j) => j !== i))} className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={sv.workType}
+                onChange={(e) => setService(i, { workType: e.target.value })}
+                aria-label={`Work type for service ${i + 1}`}
+                className={field}
+              >
+                {WORK_TYPE_NAMES.map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
+              {siteAssets.length > 0 ? (
+                <select
+                  value={sv.assetId}
+                  onChange={(e) => {
+                    const a = siteAssets.find((x) => x.id === e.target.value);
+                    setService(i, { assetId: a?.id ?? "", assetName: a?.name ?? "", assetType: a?.type ?? "" });
+                  }}
+                  aria-label={`Asset for service ${i + 1}`}
+                  className={field}
+                >
+                  <option value="">Asset</option>
+                  {siteAssets.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input value={sv.assetName} onChange={(e) => setService(i, { assetName: e.target.value })} placeholder="Asset" className="h-11" />
+              )}
+              <Textarea value={sv.fault} onChange={(e) => setService(i, { fault: e.target.value })} rows={2} placeholder="Reported fault" className="text-base" />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Additional fees</SectionTitle>
+            <Button variant="ghost" size="sm" className="h-9" onClick={() => setFees((xs) => [...xs, { name: "", amount: 0 }])}>
+              <Plus className="size-4" /> Add fee
+            </Button>
+          </div>
+          {fees.length === 0 && <p className="text-sm text-muted-foreground">No additional fees.</p>}
+          {fees.map((f, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input value={f.name} onChange={(e) => setFees((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} placeholder="Fee" aria-label={`Fee ${i + 1}`} className="h-11 flex-1" />
+              <Input
+                inputMode="decimal"
+                value={f.amount ? String(f.amount) : ""}
+                onChange={(e) => setFees((xs) => xs.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value.replace(/[^0-9.]/g, "")) || 0 } : x)))}
+                placeholder="0.00"
+                aria-label={`Amount of ${f.name || `fee ${i + 1}`}`}
+                className="h-11 w-24 tabular-nums"
+              />
+              <button type="button" aria-label={`Remove ${f.name || `fee ${i + 1}`}`} onClick={() => setFees((xs) => xs.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+                <X className="size-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Body>
+      <ActionBar
+        label="Create ticket"
+        onPress={() =>
+          onCreate({
+            assets: services,
+            fees: fees.filter((f) => f.name.trim() || f.amount > 0),
+          })
+        }
+      />
+    </>
+  );
+}
+
+/** Servicing or Replacement — the kind of job, from the work type. */
+function KindChip({ workType }: { workType: string }) {
+  return (
+    <span className="shrink-0 rounded-full border border-fp-outline-1 bg-fp-surface-1a px-2 py-0.5 text-[11px] font-medium text-foreground">
+      {WORK_TYPE_CATEGORY[workType] === "Servicing" ? "Servicing" : "Replacement"}
+    </span>
   );
 }
 

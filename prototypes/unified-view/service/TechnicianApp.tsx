@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { ServiceOrder } from "./work";
-import { TechnicianJob, type SplitRequest } from "./TechnicianJob";
+import { TechnicianJob, type SplitRequest, type TicketRequest } from "./TechnicianJob";
 
 /**
  * THE TECHNICIAN'S APP, OVER THE DISPATCH SHEET — the SAME flow the phone runs
@@ -17,7 +17,9 @@ export function TechnicianApp({
   onOpenChange,
   onPatch,
   onSplit,
+  onCreateTicket,
 }: {
+  onCreateTicket?: (req: TicketRequest) => string;
   order: ServiceOrder | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -42,6 +44,7 @@ export function TechnicianApp({
             onBack={() => onOpenChange(false)}
             onPatch={onPatch}
             onSplit={onSplit}
+            onCreateTicket={onCreateTicket}
           />
         </div>
       </DialogContent>

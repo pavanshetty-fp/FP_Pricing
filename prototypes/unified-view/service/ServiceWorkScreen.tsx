@@ -49,6 +49,7 @@ import {
   splitParts,
   diffServiceOrder,
   blankServiceOrder,
+  ticketFrom,
   shipTosOf,
   shipToPlace,
   shortfallLabel,
@@ -1329,6 +1330,13 @@ export function ServiceWorkScreen() {
         onSave={saveOrder}
         onCreate={createOrder}
         onCreateDraft={(d) => createOrder(d, true)}
+        onCreateTicket={(from, req) => {
+          /* A ticket from site joins the board without taking over the sheet
+             the dispatcher is looking at. */
+          const no = nextOrderNo();
+          setRows((prev) => [ticketFrom(from, req, no, technicianById(from.technicianId)?.name ?? "Technician"), ...prev]);
+          return no;
+        }}
         onPartsPending={onPartsPending}
         customers={customers}
         shipTosFor={shipTosFor}

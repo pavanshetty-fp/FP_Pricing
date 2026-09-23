@@ -677,6 +677,8 @@ export interface ServiceOrderSheetProps {
   onCreate?: (draft: ServiceOrder) => void;
   /** The first real change on a new order — saves it as a Drafted row. */
   onCreateDraft?: (draft: ServiceOrder) => void;
+  /** A ticket raised on site from the technician app — returns its number. */
+  onCreateTicket?: (from: ServiceOrder, req: { assets: ServiceOrder["assets"]; fees: FeeLine[] }) => string;
   /**
    * The job stopped for a part. It is the screen's act rather than the
    * sheet's, because one of its two outcomes creates a SECOND order — and a
@@ -701,6 +703,7 @@ export function ServiceOrderSheet({
   onSave,
   onCreate,
   onCreateDraft,
+  onCreateTicket,
   onPartsPending,
   customers,
   shipTosFor,
@@ -2340,6 +2343,7 @@ export function ServiceOrderSheet({
         order={draft}
         open={fieldOpen}
         onOpenChange={setFieldOpen}
+        onCreateTicket={onCreateTicket ? (req) => onCreateTicket(draft, req) : undefined}
         /* EVERY STEP ON THE PHONE LANDS ON THE ORDER, and the sheet's autosave
            carries it to the list like any other edit. */
         onPatch={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}

@@ -9,6 +9,7 @@ import {
   blankServiceOrder,
   shortfallLabel,
   splitParts,
+  ticketFrom,
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
@@ -72,10 +73,13 @@ export function TopBar({
   title,
   subtitle,
   onBack,
+  aside,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  /** Right end of the bar — e.g. the ··· menu. */
+  aside?: React.ReactNode;
 }) {
   return (
     <header className="flex shrink-0 items-center gap-2 border-b border-fp-outline-1 bg-fp-surface-1a px-3 py-3">
@@ -89,7 +93,7 @@ export function TopBar({
           <ArrowLeft className="size-5" />
         </button>
       )}
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-base font-semibold text-foreground">
           {title}
         </span>
@@ -99,6 +103,7 @@ export function TopBar({
           </span>
         )}
       </div>
+      {aside}
     </header>
   );
 }
@@ -439,6 +444,11 @@ export function TechnicianMobile() {
             onPatch={(p) => patch(open.id, p)}
             onSplit={(req) => split(open, req)}
             busyWith={ongoing?.orderNo}
+            onCreateTicket={(req) => {
+              const no = nextOrderNo();
+              setOrders((prev) => [ticketFrom(open, req, no, technician.name), ...prev]);
+              return no;
+            }}
           />
         ) : (
           <>

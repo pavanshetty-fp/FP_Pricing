@@ -36,8 +36,9 @@ import { ROOT } from "./eval/lib.mjs";
 import * as boxedTables from "./eval/boxed-tables.mjs";
 import * as tokens from "./eval/tokens.mjs";
 import * as sheets from "./eval/sheets.mjs";
+import * as microcopy from "./eval/microcopy.mjs";
 
-const CHECKS = [tokens, boxedTables, sheets];
+const CHECKS = [tokens, boxedTables, sheets, microcopy];
 const RESULTS = join(ROOT, "docs/unified-view/evals/results");
 
 /** The segments that no script covers, so the report can say so out loud. */

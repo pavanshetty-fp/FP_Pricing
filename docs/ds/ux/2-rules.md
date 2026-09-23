@@ -206,6 +206,30 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   centres a taller child, which overflows the box without growing it. That holds
   for any control put there, so the 16 cannot drift again the next time a
   section gains an action. **Measure from the text, and measure it on screen.**
+- **HELPER TEXT IS NOT A DEFAULT. IT IS EXCEPTIONAL, AND IT IS NOT A GUIDE.**
+  (Pavan, 2026-09-23 — said more than once before it was written down, which
+  is the reason it is written down.)
+  - **A line of prose under a field is allowed for a STATE**: something is
+    missing, something is wrong, something disagrees with something else, or a
+    value came from somewhere the reader did not put it. Those are facts about
+    THIS record at THIS moment, and they appear only while they are true.
+  - **It is NOT allowed to explain how the field works.** "Timed from the
+    moment work starts, or type it here." "Leave unassigned to route to the
+    yard team's queue." Those teach the control, and **a control that needs
+    teaching under every instance is a control that is wrong** — the label and
+    the placeholder carry it, or the design does.
+  - **Instructional copy is added when it is ASKED FOR, never on the way
+    past.** A designer adding one line per field is adding a paragraph to the
+    screen without ever deciding to.
+  - **The sanctioned place for an explanation is behind an affordance** —
+    `SheetSectionNote`, a popover on click. Read at the moment somebody
+    wonders, which is rarely the moment they first arrive.
+  - **A settings screen is the exception that proves it**: there, explaining
+    what an option does IS the content, not a gloss on it.
+- **A FIGURE HAS A NAME.** A number at the edge of a card, level with the
+  fields that produce it, makes the reader work out which of them it is the
+  product of. Label it — `Total`, `Estimated`, `Owed` — in the muted channel,
+  with the figure in the foreground one. (Added 2026-09-23.)
 - **Helper text is 4px from its control**, not at the field gap — see
   `interactions/2-rules` §2b.
 - **A table header has its own ground** — `bg-fp-table-header`, never

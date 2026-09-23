@@ -388,7 +388,6 @@ function Job({
             onPatch({ arrivedAt: nowIso() });
             toast.success("Arrival recorded");
           }}
-          note="Dispatch sees this the moment you press it."
         />
       </>
     );
@@ -673,7 +672,7 @@ function Job({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
-            placeholder="Optional — the next person on this site will read it."
+            placeholder="Optional"
             className="text-base"
           />
         </div>

@@ -52,6 +52,22 @@ the control; explanations live behind an info affordance, not on screen.**
       not what the fields are called.
 - [ ] **L2** No note repeats its own heading.
 
+## The microcopy rule — added 2026-09-23
+
+Its own section because it was broken three times after being said twice.
+
+- [ ] **L1** `[script]` No `description=` on a `SheetField` and no muted
+      paragraph under a control that EXPLAINS THE CONTROL. Helper text is for
+      a state — missing, wrong, disagreeing, or a value the reader did not put
+      there — never for a guide. — *ux §"HELPER TEXT IS NOT A DEFAULT"*
+- [ ] **L2** `[read]` Every remaining line of helper text names something true
+      of THIS record at THIS moment, and disappears when it stops being true.
+- [ ] **L2** `[read]` Anything that teaches a control lives behind
+      `SheetSectionNote`, not on the screen. A settings page is exempt:
+      explaining the option IS its content.
+- [ ] **L1** `[read]` Every figure standing alone at a card's edge has a
+      label. — *ux §"A FIGURE HAS A NAME"*
+
 ## From Unified View — added 2026-09-22
 
 - [ ] **L1** `[script]` No footer primary reads *Save*, *Save Changes* or

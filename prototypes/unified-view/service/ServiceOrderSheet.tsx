@@ -370,9 +370,13 @@ function LabourFigure({
             />
             <span className="text-sm text-muted-foreground">m</span>
           </div>
-          {override !== null && ran ? (
-            /* NOT A WARNING — a correction is a normal thing to make — so it
-               is muted text and not a tone. */
+          {/* THE ONLY LINE UNDER THE BOXES REPORTS A DISAGREEMENT — what the
+              clock read, when somebody has typed something else. It is not a
+              guide to the field and it appears only when there is something
+              to say. The explanatory version — "timed from the moment work
+              starts, or type it here" — was removed on 2026-09-23; see the
+              microcopy rule in `docs/ds/ux/2-rules.md`. */}
+          {override !== null && ran && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Clock said {formatHours(measured)} ·
               {!locked && (
@@ -387,12 +391,6 @@ function LabourFigure({
                   use it
                 </button>
               )}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {ran
-                ? "From the clock — type over it if it is wrong."
-                : "Timed from the moment work starts, or type it here."}
             </p>
           )}
         </div>
@@ -417,8 +415,15 @@ function LabourFigure({
             className="w-24 tabular-nums"
             aria-label="Cost per hour"
           />
-          <span className="ml-auto shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
-            {money(effective * rate)}
+          {/* A FIGURE WITH NO NAME IS A FIGURE NOBODY TRUSTS. It sat at the
+              card's right edge unlabelled, level with a rate and a duration,
+              and the reader had to work out which of the three it was the
+              product of. (Pavan, 2026-09-23.) */}
+          <span className="ml-auto flex shrink-0 items-baseline gap-2 whitespace-nowrap">
+            <span className="text-xs text-muted-foreground">Total</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">
+              {money(effective * rate)}
+            </span>
           </span>
         </div>
       </SheetField>
@@ -1391,7 +1396,6 @@ export function ServiceOrderSheet({
       <SheetSection id={SECTION_TECH} title="Technician">
         <SheetField
           label="Assigned to"
-          description="Leave unassigned to route to the yard team's queue"
         >
           <Combobox
             className="w-full"

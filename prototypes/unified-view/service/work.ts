@@ -812,6 +812,18 @@ const PARTS_NEEDED = [
   "Meter head backordered",
 ];
 
+/**
+ * THE SAME THREE STALLS AS LINES, for a Parts-pending job whose work type has
+ * no parts in the book (a leak check, a tank swap). Without them the order's
+ * Parts table said "No parts on this job" beside a status that says it is
+ * waiting on one. Same index as `PARTS_NEEDED`, so the line matches the reason.
+ */
+const PARTS_OWED: PartLine[] = [
+  { name: "2-inch pump seal", qty: 2, cost: 45, fittedQty: 0 },
+  { name: "Sight gauge", qty: 1, cost: 60, fittedQty: 0 },
+  { name: "Meter head", qty: 1, cost: 180, fittedQty: 0 },
+];
+
 const RAISED_BY = ["Dana Whitfield", "Alicia Bray", "Sam Okafor", "System — Inspection"];
 
 const WINDOWS_HOURS = [8, 10, 13, 14];
@@ -938,11 +950,13 @@ function buildOrders(): ServiceOrder[] {
         ? /* FIVE OF TEN, ON THE RECORD. A Parts-pending order whose lines all
              came back full would be a stall with nothing outstanding — the
              fitted quantity is the whole reason it is still open. */
-          book.parts.map((p, k) => ({
-            ...p,
-            qty: Math.max(2, p.qty * 2),
-            fittedQty: k === 0 ? Math.max(1, p.qty) : 0,
-          }))
+          book.parts.length > 0
+          ? book.parts.map((p, k) => ({
+              ...p,
+              qty: Math.max(2, p.qty * 2),
+              fittedQty: k === 0 ? Math.max(1, p.qty) : 0,
+            }))
+          : [{ ...PARTS_OWED[i % PARTS_OWED.length] }]
         : book.parts.map((p) => ({ ...p }));
 
     const fees: FeeLine[] = book.fees.map((f) => ({ ...f }));

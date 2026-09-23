@@ -4,6 +4,11 @@ import {
   MoreHorizontal,
   Receipt,
   History,
+  CircleDot,
+  CheckCircle2,
+  FileText,
+  PackageX,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -86,6 +91,7 @@ import {
   orderTotal,
   partsTotal,
   technicianById,
+  visitHours,
   type FeeLine,
   type PartLine,
   type ServiceOrder,
@@ -173,6 +179,82 @@ const STAMP_TIME = new Intl.DateTimeFormat("en-US", {
 function stampLabel(iso: string): string {
   const at = new Date(iso);
   return `${DATE_FMT.format(at)} · ${STAMP_TIME.format(at)}`;
+}
+
+/**
+ * THE ORDER'S ACTIVITY, as a timeline under the Record card (Pavan,
+ * 2026-09-23) — the same shape 3PL's order rail uses: a line down the marks,
+ * most recent first, the event leading and who/when under it.
+ *
+ * BUILT FROM WHAT THE ORDER ALREADY RECORDS — visits, the quote, completion,
+ * the invoice — because a service order keeps no separate change log yet.
+ * Every entry is a fact the record carries with its own timestamp; nothing
+ * here is made up to fill the list. Raising the order has no time on the
+ * record, so it sits at the foot without one.
+ */
+function ServiceActivity({ order }: { order: ServiceOrder }) {
+  type Entry = { at: string | null; text: string; by?: string; icon: React.ReactNode; tone: string };
+  const quiet = "border-border bg-card text-muted-foreground";
+  const good = "border-status-success/30 bg-status-success/10 text-status-success";
+  const wait = "border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution";
+  const name = (id: string | null) => technicianById(id)?.name;
+  const entries: Entry[] = [];
+  for (const v of order.visits) {
+    entries.push({ at: v.startedAt, text: "Visit started", by: name(v.technicianId), icon: <CircleDot />, tone: quiet });
+    if (v.endedAt)
+      entries.push({
+        at: v.endedAt,
+        text: `Visit ended · ${formatHours(visitHours(v))}`,
+        by: name(v.technicianId),
+        icon: <CircleDot />,
+        tone: quiet,
+      });
+  }
+  if (order.status === "Parts pending") {
+    const last = order.visits[order.visits.length - 1];
+    entries.push({ at: last?.endedAt ?? null, text: "Held for parts", by: name(last?.technicianId ?? null), icon: <PackageX />, tone: wait });
+  }
+  if (order.quote) {
+    entries.push({ at: order.quote.sentAt, text: `Quote sent · ${money(order.quote.total)}`, icon: <FileText />, tone: quiet });
+    if (order.quote.approvedAt)
+      entries.push({ at: order.quote.approvedAt, text: "Quote approved", icon: <CheckCircle2 />, tone: good });
+  }
+  /* A job held for parts has not been recorded as done — its stamp is the
+     hold, said above. */
+  if (order.completedAt && order.status !== "Parts pending")
+    entries.push({ at: order.completedAt, text: "Work recorded", by: name(order.technicianId), icon: <CheckCircle2 />, tone: good });
+  if (order.invoicedAt)
+    entries.push({ at: order.invoicedAt, text: "Invoice raised", icon: <Receipt />, tone: good });
+  entries.sort((x, y) => (y.at ?? "").localeCompare(x.at ?? ""));
+  entries.push({ at: null, text: `Raised · ${order.source}`, by: order.raisedBy, icon: <UserRound />, tone: quiet });
+
+  return (
+    <ol className="flex flex-col px-4 py-3">
+      {entries.map((e, idx) => (
+        <li key={`${e.text}-${idx}`} className="relative flex gap-3 pb-4 last:pb-0">
+          {idx < entries.length - 1 && (
+            <span aria-hidden className="absolute top-7 bottom-0 left-[13px] w-px bg-border" />
+          )}
+          <span
+            className={cn(
+              "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border [&_svg]:size-3.5",
+              e.tone
+            )}
+          >
+            {e.icon}
+          </span>
+          <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
+            <span className="text-sm text-foreground">{e.text}</span>
+            {(e.at || e.by) && (
+              <span className="text-xs text-muted-foreground">
+                {[e.at && stampLabel(e.at), e.by].filter(Boolean).join(" · ")}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 /**
@@ -429,6 +511,7 @@ function LineTable({
   emptyLabel,
   total,
   focusRow,
+  showFitted,
 }: {
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
@@ -441,6 +524,13 @@ function LineTable({
   total: number;
   /** The row just added — its first cell takes the cursor. */
   focusRow?: number;
+  /**
+   * WHAT HAS ALREADY GONE ON, per part (Pavan, 2026-09-23). Once the job has
+   * been visited, the list is what was asked for and "Fitted" is how much of
+   * it was delivered — so the next technician sees what is still owed
+   * against the same lines the first one raised.
+   */
+  showFitted?: boolean;
 }) {
   const amountOf = (r: PartLine | FeeLine) =>
     "cost" in r ? (r as PartLine).cost * (r as PartLine).qty : (r as FeeLine).amount;
@@ -451,6 +541,7 @@ function LineTable({
         <colgroup>
           <col />
           {withQty && <col className="w-[84px]" />}
+          {showFitted && <col className="w-[84px]" />}
           <col className="w-[120px]" />
           {/* NO SECOND MONEY COLUMN ON A FEE. Quantity times unit is
               arithmetic worth showing; a fee's amount IS what was typed, and a
@@ -468,6 +559,11 @@ function LineTable({
                 <TableRequiredLabel>Qty</TableRequiredLabel>
               </th>
             )}
+            {showFitted && (
+              <th className="px-3 py-2.5 text-right">
+                <TableRequiredLabel>Fitted</TableRequiredLabel>
+              </th>
+            )}
             <th className="px-3 py-2.5 text-right">
               <TableRequiredLabel>{withQty ? "Unit" : "Amount"}</TableRequiredLabel>
             </th>
@@ -483,7 +579,7 @@ function LineTable({
           {rows.length === 0 && (
             <tr className="h-11 border-b border-border last:border-b-0">
               <td
-                colSpan={withQty ? (readOnly ? 4 : 5) : readOnly ? 2 : 3}
+                colSpan={(withQty ? (readOnly ? 4 : 5) : readOnly ? 2 : 3) + (showFitted ? 1 : 0)}
                 className="px-3 text-sm text-muted-foreground"
               >
                 {emptyLabel}
@@ -523,6 +619,11 @@ function LineTable({
                       }
                     />
                   )}
+                </td>
+              )}
+              {showFitted && (
+                <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                  {fittedOf(r as PartLine)}
                 </td>
               )}
               <td className="relative p-0">
@@ -571,7 +672,7 @@ function LineTable({
           <tfoot>
             <tr className="h-11 border-t border-border bg-fp-table-header">
               <td
-                colSpan={withQty ? 3 : 1}
+                colSpan={(withQty ? 3 : 1) + (showFitted ? 1 : 0)}
                 className="px-3 text-right text-sm text-muted-foreground"
               >
                 Total
@@ -1684,6 +1785,7 @@ export function ServiceOrderSheet({
           onChange={(i, p) => setLine("parts", i, p)}
           onRemove={(i) => removeLine("parts", i)}
             focusRow={justAdded?.table === "parts" ? justAdded.i : undefined}
+          showFitted={draft.visits.some((v) => v.endedAt)}
         />
       </SheetSection>
 
@@ -2001,6 +2103,12 @@ export function ServiceOrderSheet({
               )}
             </div>
           </RailCard>
+
+          {!creating && (
+            <RailCard title="Activity" icon={<History />}>
+              <ServiceActivity order={draft} />
+            </RailCard>
+          )}
         </aside>
       </div>
 

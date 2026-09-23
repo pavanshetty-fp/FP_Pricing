@@ -646,13 +646,12 @@ export function ServiceWorkScreen() {
             /* AN ALERT ONLY WHERE SOMETHING IS OUTSTANDING. An alert on every
                card is a border, so the three lanes with nothing waiting on
                anybody carry none. */
-            /* AMBER, NOT RED (the status-kind rule, DS §10b). A part on order
-               and an invoice nobody has raised are both WAITING ON SOMEBODY;
-               red is for a warning that changes the plan. */
+            /* NO ALERT ON A PARTS-PENDING CARD (Pavan, 2026-09-23). The badge
+               already says Parts pending; which parts is on the order's own
+               Parts table, not repeated on the board. "Invoice not raised" is
+               amber — waiting on somebody, not a warning (DS §10b). */
             alert:
-              r.status === "Parts pending" && r.partNeeded
-                ? { status: "caution" as const, text: r.partNeeded }
-                : r.status === "Needs approval"
+              r.status === "Needs approval"
                   ? {
                       status: "default" as const,
                       text: `${money(orderTotal(r))} — waiting on a manager`,

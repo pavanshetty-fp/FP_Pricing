@@ -5,10 +5,10 @@ import {
   Clock,
   MapPin,
   Minus,
+  Navigation,
   Package,
   Phone,
   Plus,
-  Wrench,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,14 +41,15 @@ import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile
 
   The order of things a technician actually does on site:
 
-    ON SITE    arrival — the address, the time, the contact
+    ORDER      number, customer, ship-to — "Arrived at location", or navigate
+    START      the order's details on site, and "Start work" starts the clock
     ASSESS     the ORDER against what is in front of them, LINE BY LINE:
                right as ordered · different · not needed — plus anything
                found that the order never mentioned. A note and photos on
                every line.
     QUOTE      built from the assessment, shared with the customer, and
                their acknowledgement taken on site
-    WORK       the clock, from one press
+    WORK       the clock keeps running from "Start work"
     COMPLETE   everything done — or partly done, parts missing, and then
                what happens to the rest: a LINKED order (this one carries
                on) or a NEW order (this one closes, the rest is its own job)
@@ -141,40 +142,50 @@ export function TechnicianJob({
       ? "complete"
       : !job.arrivedAt
         ? "travel"
-        : !assessed
-          ? "assess"
-          : cfg.fieldQuote && !job.quote
-            ? "quote"
-            : cfg.fieldQuote && job.quote && !job.quote.approvedAt
-              ? "ack"
-              : !job.startedAt
-                ? "ready"
+        : /* THE CLOCK STARTS BEFORE THE ASSESSMENT (Pavan, 2026-09-24):
+             looking at the job is part of the job. */
+          !job.startedAt
+          ? "ready"
+          : !assessed
+            ? "assess"
+            : cfg.fieldQuote && !job.quote
+              ? "quote"
+              : cfg.fieldQuote && job.quote && !job.quote.approvedAt
+                ? "ack"
                 : "work";
 
   const sub = `${job.orderNo} · ${job.shipTo}`;
   const toDo = (job.assessmentLines ?? lines).filter((l) => l.verdict !== "skip");
   const skipped = (job.assessmentLines ?? lines).filter((l) => l.verdict === "skip");
 
-  /* ── ON SITE ── */
+  /* ── THE ORDER, BEFORE ARRIVAL ── who it is for and where it is, with the
+     two things a technician does from here: go there, or say they are
+     there (Pavan, 2026-09-24). */
   if (stage === "travel") {
+    const address = [job.shipTo, [job.city, job.state].filter(Boolean).join(", ")].filter(Boolean).join(", ");
     return (
       <>
-        <TopBar title={job.customer} subtitle={sub} onBack={onBack} />
+        <TopBar title="Order details" onBack={onBack} />
         <Body>
+          <OrderHeading job={job} />
           <Facts
             items={[
-              { icon: <MapPin className="size-4" />, label: "Site", value: <>{job.shipTo}<br />{job.city}{job.city && ", "}{job.state}</> },
               { icon: <Clock className="size-4" />, label: "Booked for", value: job.scheduledAt ? timeFmt.format(new Date(job.scheduledAt)) : "Any time" },
-              { icon: <Wrench className="size-4" />, label: "On the order", value: linesFromOrder(job).map((l) => [lineTitle(l), l.reported].filter(Boolean).join(" — ")).join("; ") },
               { icon: <Phone className="size-4" />, label: "Site contact", value: "+1 559-555-0104" },
             ]}
           />
         </Body>
         <ActionBar
-          label="I'm on site"
+          label="Arrived at location"
           onPress={() => {
             onPatch({ arrivedAt: nowIso() });
             toast.success("Arrival recorded");
+          }}
+          iconAction={{
+            icon: <Navigation />,
+            label: `Navigate to ${job.shipTo}`,
+            onPress: () =>
+              window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, "_blank", "noopener"),
           }}
         />
       </>
@@ -341,13 +352,25 @@ export function TechnicianJob({
     );
   }
 
-  /* ── READY ── */
+  /* ── ORDER DETAIL, ON SITE ── everything the order asks for, and the one
+     press that starts the clock. The assessment follows it. */
   if (stage === "ready") {
     return (
       <>
-        <TopBar title="Ready to start" subtitle={sub} onBack={onBack} />
+        <TopBar title="Order details" onBack={onBack} />
         <Body>
-          <AssessedWork lines={toDo} />
+          <OrderHeading job={job} />
+          <div className="flex flex-col gap-2">
+            <SectionTitle>On the order</SectionTitle>
+            <div className="flex flex-col divide-y divide-fp-outline-1 rounded-lg border border-fp-outline-1 px-3">
+              {linesFromOrder(job).map((l) => (
+                <div key={l.key} className="flex flex-col gap-0.5 py-2">
+                  <span className="text-sm text-foreground">{lineTitle(l)}</span>
+                  {l.reported && <span className="text-xs text-muted-foreground">{l.reported}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
           <Facts
             items={[
               { icon: <Package className="size-4" />, label: "Parts", value: job.parts.length ? job.parts.map((p) => `${p.qty} × ${p.name}`).join(", ") : "None on this job" },
@@ -355,14 +378,13 @@ export function TechnicianJob({
           />
         </Body>
         <ActionBar
-          label="Start labour"
-          note="Dispatch sees the clock from this press."
+          label="Start work"
           onPress={() => {
             onPatch({
               ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
               status: "Ongoing" as WorkStatus,
             });
-            toast.success("Labour started");
+            toast.success("Work started");
           }}
         />
       </>
@@ -553,6 +575,28 @@ export function TechnicianJob({
 }
 
 /* ───────────────────────────────────────────────────────────── parts ── */
+
+/** Order number, customer and ship-to address — the first thing on an order. */
+function OrderHeading({ job }: { job: ServiceOrder }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+      <span className="text-xs tabular-nums text-muted-foreground">{job.orderNo}</span>
+      <span className="text-base font-semibold text-foreground">{job.customer}</span>
+      <span className="flex items-start gap-1.5 text-sm text-muted-foreground">
+        <MapPin className="mt-0.5 size-4 shrink-0" />
+        <span>
+          {job.shipTo}
+          {(job.city || job.state) && (
+            <>
+              <br />
+              {[job.city, job.state].filter(Boolean).join(", ")}
+            </>
+          )}
+        </span>
+      </span>
+    </div>
+  );
+}
 
 /** One line to assess: the verdict, what it needs, a note, photos. */
 function AssessmentCard({

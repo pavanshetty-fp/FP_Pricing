@@ -117,6 +117,7 @@ export function ActionBar({
   secondary,
   onSecondary,
   note,
+  iconAction,
 }: {
   label: string;
   onPress: () => void;
@@ -124,6 +125,8 @@ export function ActionBar({
   secondary?: string;
   onSecondary?: () => void;
   note?: string;
+  /** A small, filled, icon-only act beside the primary — e.g. navigation. */
+  iconAction?: { icon: React.ReactNode; label: string; onPress: () => void };
 }) {
   return (
     <div className="shrink-0 border-t border-fp-outline-1 bg-fp-surface-1a p-3">
@@ -140,13 +143,25 @@ export function ActionBar({
             {secondary}
           </Button>
         )}
-        <Button
-          className="h-11 w-full text-base"
-          disabled={disabled}
-          onClick={onPress}
-        >
-          {label}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="h-11 flex-1 text-base"
+            disabled={disabled}
+            onClick={onPress}
+          >
+            {label}
+          </Button>
+          {iconAction && (
+            <Button
+              variant="secondary"
+              className="size-11 shrink-0 p-0 [&_svg]:size-5"
+              aria-label={iconAction.label}
+              onClick={iconAction.onPress}
+            >
+              {iconAction.icon}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

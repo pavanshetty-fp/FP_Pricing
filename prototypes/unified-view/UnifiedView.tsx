@@ -21,6 +21,7 @@ import {
   DollarSign,
   Wrench,
   HardHat,
+  Smartphone,
   SlidersHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -32,6 +33,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
 import { TechniciansScreen } from "./service/TechniciansScreen";
 import { ServiceSettingsScreen } from "./service/ServiceSettingsScreen";
+import { TechnicianMobile } from "./service/TechnicianMobile";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { cn } from "@/lib/utils";
@@ -177,6 +179,11 @@ const THREE_PL_NAV: NavItem[] = [
 const SERVICE_NAV: NavItem[] = [
   { key: "service-work-orders", label: "Service Orders", icon: <Wrench /> },
   { key: "service-technicians", label: "Technicians", icon: <HardHat /> },
+  /* A SEPARATE PRODUCT, REACHED FROM HERE ONLY BECAUSE THIS IS A PROTOTYPE
+     (Pavan, 2026-09-23). The technician's app is a phone app a different
+     person signs into; it is on the rail so it can be SHOWN, not because
+     dispatch would ever open it. */
+  { key: "service-tech-app", label: "Technician App", icon: <Smartphone /> },
   /* THE MODULE'S OWN SWITCH POINTS, not the app's Settings page — that one
      will govern several modules and is held back pending it. These change what
      the flow IS, so they belong where the flow is. */
@@ -1355,6 +1362,8 @@ export function UnifiedView() {
         return <ServiceWorkScreen />;
       case "service-technicians":
         return <TechniciansScreen />;
+      case "service-tech-app":
+        return <TechnicianMobile />;
       case "service-settings":
         return <ServiceSettingsScreen />;
       case "3pl-vendors":

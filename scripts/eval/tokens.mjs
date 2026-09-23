@@ -47,6 +47,11 @@ const ALLOWED = [
     why: "Recharts takes a colour string, not a class — the chart token bridge is a known gap, tracked in the charts rules",
   },
   {
+    match: /service\/TechnicianMobile\.tsx$/,
+    kinds: ["radius"],
+    why: "the device bezel is a picture of HARDWARE, not a UI radius — a phone's corner is not on this app's scale and never will be",
+  },
+  {
     match: /src\/components\/ui\//,
     kinds: ["radius", "spacing"],
     why: "vendored shadcn primitives; their arbitrary values are upstream's and are retuned by replacing the primitive, not by editing it",

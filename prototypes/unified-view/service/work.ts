@@ -227,6 +227,22 @@ export interface Technician {
   active: boolean;
 }
 
+/** What the technician found — deliberately not a restatement of the fault. */
+const ASSESSMENTS = [
+  "Hose split at the crimp, not the body. Whole assembly wants replacing.",
+  "Seal is fine. It was the clamp backing off — retorqued and watched it.",
+  "Pump is drawing air. Suction line has a pinhole about a foot off the tank.",
+  "Meter reads 3% high against the prover. Recalibrated.",
+  "Fitting was cross-threaded from the last visit. Chased the thread.",
+];
+
+const TECH_NOTES = [
+  "Site contact asked to be called before the next visit — gate is locked after 3.",
+  "Second skid at this yard is showing the same wear. Worth a look next time.",
+  "Customer watched the whole job and signed happily.",
+  "Access was tight; bring the short hose reel next time.",
+];
+
 export const TECHNICIANS: Technician[] = [
   { id: "tech-1", name: "Rosa Delgado", base: "Fresno Yard", skills: ["Tanks", "Pumps", "Meters"], dailyCapacity: 5, phone: "+1 559-555-0114", active: true },
   { id: "tech-2", name: "Curtis Nwosu", base: "Fresno Yard", skills: ["Tanks", "Welding"], dailyCapacity: 4, phone: "+1 559-555-0127", active: true },
@@ -338,6 +354,26 @@ export interface ServiceOrder {
   synced: boolean;
 
   /* ── exceptions and provenance ── */
+  /**
+   * WHAT THE TECHNICIAN FOUND, as against what was reported (Pavan,
+   * 2026-09-23). `fault` is the customer's words, taken down over the phone;
+   * this is the first field in the module that records what was actually
+   * true. They are often not the same thing, and the gap between them is the
+   * most useful sentence on a service record.
+   *
+   * Captured in the technician's app, once they are standing in front of it.
+   */
+  assessment: string | null;
+  /**
+   * The technician's own note, written after the job ended — completed or
+   * stalled for a part.
+   *
+   * ONE FIELD, NOT TWO. "What I want to say about finishing this" and "what I
+   * want to say about not finishing it" are the same act at two different
+   * endings, and two fields would mean a job that did both ends up with the
+   * note in whichever one nobody reads.
+   */
+  techNotes: string | null;
   /** Why it stalled. Only ever set on `Parts-pending`. */
   partNeeded: string | null;
   /** The linked return visit this job spawned, or the job that spawned this one. */
@@ -626,6 +662,12 @@ function buildOrders(): ServiceOrder[] {
       technicianId,
       arrivedAt,
       startedAt,
+      assessment:
+        started && i % 3 !== 0
+          ? ASSESSMENTS[i % ASSESSMENTS.length]
+          : null,
+      techNotes:
+        recorded && i % 4 === 0 ? TECH_NOTES[i % TECH_NOTES.length] : null,
       parts,
       labor,
       laborOverride,

@@ -247,6 +247,40 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   copy button where it is something people carry elsewhere (a number to a dialler,
   an address to a mail client) — one control over a pair hands over both.
 
+## Mobile — the first five rules
+
+Added 2026-09-23, from the technician's app, which is this system's **first
+phone product**. Everything else in these documents assumes a pointer and a
+wide viewport; none of it was written down as an assumption, which is how a
+desktop rule comes to be applied to a phone by accident.
+
+**These five are what one app settled.** They are not a mobile design system;
+they are the floor, and the next phone screen either follows them or says why.
+
+1. **ONE THING PER SCREEN.** A phone has no room for a form and its context at
+   once, so a screen asks one question and the answer moves you on. The side
+   sheet's stack of sections becomes a sequence, not a scroll — a scroll nobody
+   reaches the end of is a form nobody finishes.
+2. **THE ACT IS PINNED TO THE BOTTOM, FULL WIDTH.** The desktop rule holds —
+   the primary is the next act and there is only ever one — and what changes is
+   where it sits: the one place a thumb reaches without regripping. A second
+   act goes ABOVE it, full width too, because two half-width buttons are two
+   targets neither of which is comfortable.
+3. **NOTHING DEPENDS ON HOVER.** There is no hover. Every state a control has
+   must be reachable by press, and anything the desktop app reveals on hover —
+   a label sliding out of a collapsed add, a row's delete — is permanent here
+   or it does not exist.
+4. **TARGETS ARE 44px** (`h-11`, `size-11`). Gloved hands, a truck cab,
+   sunlight. A floor, not a preference.
+5. **BACK IS IN THE HEADER, AND IT IS THE ONLY WAY BACK.** There is no browser
+   chrome to escape with, so every screen past the first carries one.
+
+**A phone product gets its own shell, not the app's.** The rail, the drawer and
+the top bar are a desktop shell; a phone does not get a 56px rail. And when a
+phone product is shown INSIDE the desktop app for review, it renders in a
+device frame rather than stretching — stretched it stops being the thing it is,
+and the first question anybody asks is about the layout instead of the flow.
+
 ## Layout laws
 
 **L1 — Everything lives in the AppShell.** Every app screen is the global top bar

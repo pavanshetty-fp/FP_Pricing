@@ -165,3 +165,34 @@ export function RailRow({
     </div>
   );
 }
+
+/**
+ * HOW LONG A RUNNING JOB HAS BEEN RUNNING — live.
+ *
+ * WHY A HOOK AND NOT A FIGURE. `computedLabor` needs two ends and a running
+ * job only has one, so the second end is *now* and has to keep moving. A
+ * dispatcher watching a job needs the number to change or they will assume
+ * the screen is stale.
+ *
+ * FIFTEEN SECONDS, NOT ONE. Labour is billed in quarter hours and read in
+ * minutes; a per-second tick would be a stopwatch offering a precision the
+ * business does not use, and it would re-render the sheet sixty times a
+ * minute to change nothing on screen. Fifteen is often enough that the
+ * minutes never look stuck.
+ *
+ * It returns 0 when nothing is running, so a caller can render unconditionally
+ * and decide by the timestamp rather than by the number.
+ */
+export function useElapsedHours(startedAt: string | null): number {
+  const [, tick] = React.useReducer((n: number) => n + 1, 0);
+
+  React.useEffect(() => {
+    if (!startedAt) return undefined;
+    const id = window.setInterval(tick, 15_000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+
+  if (!startedAt) return 0;
+  const ms = Date.now() - new Date(startedAt).getTime();
+  return ms > 0 ? ms / 3_600_000 : 0;
+}

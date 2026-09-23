@@ -21,6 +21,7 @@ import {
   TECHNICIANS,
   WORK_STATUS_TONE,
   computedLabor,
+  formatHours,
   money,
   partsTotal,
   feesTotal,
@@ -29,6 +30,7 @@ import {
   type WorkStatus,
 } from "./work";
 import { useServiceSettings } from "./settings";
+import { useElapsedHours } from "./sheet-parts";
 
 /*
   ═══════════════════════════════════════════════════════════════════════════
@@ -87,6 +89,7 @@ type Stage =
   | "assess"
   | "quote"
   | "waiting"
+  | "ready"
   | "work"
   | "wrapup";
 
@@ -96,6 +99,12 @@ const stageOf = (o: ServiceOrder, fieldQuote: boolean): Stage => {
   if (fieldQuote && !o.quote) return "quote";
   if (fieldQuote && o.quote && !o.quote.approvedAt) return "waiting";
   if (o.status === "Parts-pending" || o.completedAt) return "wrapup";
+  /* STARTING THE CLOCK IS ITS OWN PRESS (Pavan, 2026-09-23). It used to
+     happen as a side effect of skipping or of the customer approving — so
+     the billable hours began while the technician was still putting their
+     phone away and walking to the asset. It is also the moment DISPATCH
+     starts watching: the elapsed timer on the order sheet is this press. */
+  if (!o.startedAt) return "ready";
   return "work";
 };
 
@@ -318,6 +327,11 @@ function Job({
   onPatch: (patch: Partial<ServiceOrder>) => void;
 }) {
   const cfg = useServiceSettings();
+  /* THE CLOCK, WHILE IT RUNS. Hooks cannot sit inside the stage branches, so
+     it is read here and only the work screen uses it. */
+  const elapsed = useElapsedHours(
+    job.startedAt && !job.completedAt ? job.startedAt : null
+  );
 
   const [assessment, setAssessment] = React.useState(job.assessment ?? "");
   const [notes, setNotes] = React.useState(job.techNotes ?? "");
@@ -518,10 +532,8 @@ function Job({
                 sentAt: nowIso(),
                 approvedAt: nowIso(),
               },
-              startedAt: nowIso(),
-              status: "In progress" as WorkStatus,
             });
-            toast.success("Skipped the quote — work started");
+            toast.success("Quote skipped");
           }}
         />
       </>
@@ -547,14 +559,12 @@ function Job({
           </div>
         </Body>
         <ActionBar
-          label="They approved it — start work"
+          label="They approved it"
           onPress={() => {
             onPatch({
               quote: job.quote ? { ...job.quote, approvedAt: nowIso() } : null,
-              startedAt: nowIso(),
-              status: "In progress" as WorkStatus,
             });
-            toast.success("Work started");
+            toast.success("Quote approved");
           }}
           secondary="They want it changed"
           onSecondary={() => {
@@ -566,22 +576,66 @@ function Job({
     );
   }
 
+  /* ── READY ── the clock has not started and everything before it has.
+     ONE SCREEN, ONE PRESS. It exists so that "I am about to work on this" is
+     a thing the technician SAYS rather than something the app infers from
+     them having skipped a quote — and so the elapsed timer a dispatcher
+     watches begins when the spanner does. */
+  if (stage === "ready") {
+    return (
+      <>
+        <TopBar title="Ready to start" subtitle={sub} onBack={onBack} />
+        <Body>
+          <div className="rounded-lg border border-fp-outline-1 bg-fp-card-1 p-3">
+            <p className="text-xs text-muted-foreground">You found</p>
+            <p className="mt-0.5 text-sm text-foreground">{job.assessment}</p>
+          </div>
+          <Facts
+            items={[
+              {
+                icon: <Wrench className="size-4" />,
+                label: "Asset",
+                value: job.assetName,
+              },
+              {
+                icon: <Package className="size-4" />,
+                label: "Parts",
+                value: job.parts.length
+                  ? job.parts.map((p) => `${p.qty} × ${p.name}`).join(", ")
+                  : "None on this job",
+              },
+            ]}
+          />
+        </Body>
+        <ActionBar
+          label="Start labour"
+          onPress={() => {
+            onPatch({
+              startedAt: nowIso(),
+              status: "In progress" as WorkStatus,
+            });
+            toast.success("Labour started");
+          }}
+          note="Dispatch sees the clock from this press."
+        />
+      </>
+    );
+  }
+
   /* ── WORK ── two endings, not one button with a caveat. */
   if (stage === "work") {
-    const running = job.startedAt
-      ? computedLabor(job.startedAt, nowIso())
-      : 0;
+
     return (
       <>
         <TopBar title="Work in progress" subtitle={sub} onBack={onBack} />
         <Body>
           <div className="flex items-baseline gap-2">
+            {/* LIVE, because a number that does not move on a screen you
+                keep glancing at is a number you stop believing. */}
             <span className="text-3xl font-semibold tabular-nums text-foreground">
-              {running}
+              {formatHours(elapsed)}
             </span>
-            <span className="text-sm text-muted-foreground">
-              hours so far — billed from when you started
-            </span>
+            <span className="text-sm text-muted-foreground">so far</span>
           </div>
 
           <div className="rounded-lg border border-fp-outline-1 bg-fp-card-1 p-3">

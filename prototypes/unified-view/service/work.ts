@@ -750,11 +750,20 @@ function buildOrders(): ServiceOrder[] {
     if (recorded && i % 7 === 0) fees.push({ name: "After-hours callout", amount: 75 });
 
     /* WORK BEGINS AFTER THE ARRIVAL, not at it — the gap is the walk round the
-       asset and, on a quoted job, the wait for the customer's answer. */
-    const startedAt =
-      started && arrivedAt
-        ? new Date(new Date(arrivedAt).getTime() + 18 * 60_000).toISOString()
-        : null;
+       asset and, on a quoted job, the wait for the customer's answer.
+
+       A JOB STILL RUNNING STARTED TODAY. The elapsed clock on the order sheet
+       counts from here, and a fixture that started an In-progress job on the
+       scheduled day made it read "49 h 50 m" — true of the data and useless
+       as a picture of the state, because no job runs for two days. A running
+       job is seeded from NOW, between twenty minutes and three hours ago. */
+    const startedAt = !started
+      ? null
+      : status === "In progress"
+        ? new Date(Date.now() - (20 + (i % 9) * 20) * 60_000).toISOString()
+        : arrivedAt
+          ? new Date(new Date(arrivedAt).getTime() + 18 * 60_000).toISOString()
+          : null;
     const mileage = recorded ? Math.round(pick() * 40) : 0;
 
     /* A QUOTE ONLY EXISTS WHERE ONE WAS SENT, and it is a snapshot of the

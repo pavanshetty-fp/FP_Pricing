@@ -54,7 +54,7 @@ import {
 import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
-import { RailCard, RailRow } from "./sheet-parts";
+import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import { TechnicianApp } from "./TechnicianApp";
 import {
@@ -670,6 +670,17 @@ export function ServiceOrderSheet({
 
   const saveState = useDraftSaveState(draft, open && !creating);
 
+  /* A JOB IS RUNNING BETWEEN THE TWO TIMESTAMPS, and only then. `startedAt`
+     without `completedAt` is the one state where the elapsed figure is a
+     moving number rather than a recorded one.
+
+     IT IS READ HERE, ABOVE THE `if (!draft) return null`, because a hook
+     cannot be called conditionally — placed beside the other derived values
+     further down it sat after that early return and changed the hook order
+     between a closed sheet and an open one. */
+  const running = Boolean(draft?.startedAt) && !draft?.completedAt;
+  const elapsed = useElapsedHours(running ? (draft?.startedAt ?? null) : null);
+
   /* AUTOSAVED, DEBOUNCED — the DS rule for every side sheet with editable
      fields in it (`docs/ds/ux/2-rules.md`, Side-sheet anatomy). A reader who
      has to remember to press Save is a reader who loses work. */
@@ -1038,6 +1049,7 @@ export function ServiceOrderSheet({
   /* THE DEBT AS A SENTENCE, recomputed as the technician types — it is both
      the gate on the button and the thing the panel above it says. */
   const heldShortfall = shortfallLabel(draft.parts);
+
 
   const quoteFirm = partsSum + feesSum;
   const quoteHours = draft.labor > 0 ? draft.labor : 1.5;
@@ -1678,7 +1690,31 @@ export function ServiceOrderSheet({
           record, still comes from the Standard trip setting, and still shows
           in the Summary and on a quote — there is simply no longer a box for
           it here. */}
-      <SheetSection title="Labour and cost">
+      <SheetSection
+        title="Labour and cost"
+        /* THE CLOCK, WHILE IT IS RUNNING (Pavan, 2026-09-23). The technician
+           presses Start labour in their app and the dispatcher watches it
+           here — which is the only way, short of ringing them, to know a job
+           is actually under way rather than merely assigned.
+
+           IT SITS ON THE TITLE ROW because it is about the whole card and not
+           about either field in it, and because that row is visible from
+           further up the sheet than the boxes are.
+
+           MUTED, NOT A STATUS COLOUR. The header chip two inches above
+           already says In progress; a second coloured claim about the same
+           fact reads as a second fact. The word carries it. */
+        action={
+          running ? (
+            <span className="flex items-baseline gap-2 text-sm">
+              <span className="text-muted-foreground">Running</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {formatHours(elapsed)}
+              </span>
+            </span>
+          ) : undefined
+        }
+      >
         <LabourFigure
           startedAt={draft.startedAt}
           completedAt={draft.completedAt}

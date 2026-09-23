@@ -443,6 +443,18 @@ export interface AssessmentLine {
   note: string;
   /** Photo URLs taken on site. */
   photos: string[];
+  /**
+   * WHEN IT IS A DIFFERENT ISSUE (Pavan, 2026-09-24): what was actually found —
+   * which asset, what kind of issue, a description, and the parts it needs.
+   * The parts join the order when the assessment is saved, so the quote and
+   * the completion carry them.
+   */
+  found?: {
+    assetName: string;
+    workType: string;
+    description: string;
+    parts: PartLine[];
+  };
 }
 
 /**

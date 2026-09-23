@@ -23,6 +23,7 @@ import {
   WORK_TYPE_CATEGORY,
   type TaskKind,
   WORK_TYPE_NAMES,
+  WORK_TYPES,
   assetsAt,
   computedLabor,
   formatHours,
@@ -106,7 +107,11 @@ const VERDICTS: { key: Exclude<AssessmentVerdict, "added">; label: string }[] = 
 
 /** What a task comes to, in words — the fault confirmed, or what was found instead. */
 const lineWhat = (l: AssessmentLine) =>
-  l.verdict === "accurate" ? l.reported : l.verdict === "different" ? l.note || "Different issue" : l.actual;
+  l.verdict === "accurate"
+    ? l.reported
+    : l.verdict === "different"
+      ? [l.found?.workType, l.found?.description || l.note].filter(Boolean).join(" — ") || "Different issue"
+      : l.actual;
 
 /** A job's order line or site finding, as the customer will see it on the quote. */
 const lineTitle = (l: AssessmentLine) => [l.assetName, l.workType].filter(Boolean).join(" · ");
@@ -286,6 +291,7 @@ export function TechnicianJob({
               index={i}
               line={l}
               active={Boolean(job.startedAt)}
+              siteAssets={assetsAt(job.shipTo).map((a) => a.name)}
               onChange={(p) => set(l.key, p)}
               onRemove={l.source === "added" ? () => setLines((ls) => ls.filter((x) => x.key !== l.key)) : undefined}
             />
@@ -341,7 +347,17 @@ export function TechnicianJob({
           }
           onPress={() => {
             const count = (v: AssessmentVerdict) => lines.filter((l) => l.verdict === v).length;
+            /* PARTS FOUND ON SITE JOIN THE ORDER, so the quote and the
+               completion carry them. Same part on two lines adds up. */
+            const found = lines.flatMap((l) => (l.verdict === "different" ? (l.found?.parts ?? []) : [])).filter((p) => p.name.trim());
+            const parts = [...job.parts.map((p) => ({ ...p }))];
+            for (const f of found) {
+              const hit = parts.find((p) => p.name === f.name);
+              if (hit) hit.qty += f.qty;
+              else parts.push({ ...f });
+            }
             onPatch({
+              parts,
               assessmentLines: lines,
               /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads. */
               assessment: [
@@ -706,11 +722,13 @@ function AssessmentCard({
   index,
   line,
   active,
+  siteAssets,
   onChange,
   onRemove,
 }: {
   index: number;
   line: AssessmentLine;
+  siteAssets: string[];
   /** Work has started — the task takes its answer. Before that it is read-only. */
   active: boolean;
   onChange: (p: Partial<AssessmentLine>) => void;
@@ -785,6 +803,15 @@ function AssessmentCard({
               </span>
               <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
             </button>
+          )}
+          {line.verdict === "different" && !added && (
+            <FoundIssue
+              value={
+                line.found ?? { assetName: line.assetName, workType: line.workType, description: "", parts: [] }
+              }
+              siteAssets={siteAssets}
+              onChange={(found) => onChange({ found })}
+            />
           )}
           <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
             {hasNotes ? <StickyNote className="size-4" /> : <Plus className="size-4" />}
@@ -942,6 +969,74 @@ function NewTicket({
         }
       />
     </>
+  );
+}
+
+/**
+ * WHAT WAS ACTUALLY FOUND, when it is a different issue (Pavan, 2026-09-24):
+ * the asset, the type of issue, a description, and the parts it needs.
+ */
+function FoundIssue({
+  value,
+  siteAssets,
+  onChange,
+}: {
+  value: NonNullable<AssessmentLine["found"]>;
+  siteAssets: string[];
+  onChange: (v: NonNullable<AssessmentLine["found"]>) => void;
+}) {
+  const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
+  const set = (p: Partial<typeof value>) => onChange({ ...value, ...p });
+  const setPart = (i: number, p: Partial<PartLine>) =>
+    set({ parts: value.parts.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
+      <span className="text-xs font-medium text-muted-foreground">What you found</span>
+      {siteAssets.length > 0 ? (
+        <select value={value.assetName} onChange={(e) => set({ assetName: e.target.value })} aria-label="Asset" className={field}>
+          <option value="">Asset</option>
+          {siteAssets.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      ) : (
+        <Input value={value.assetName} onChange={(e) => set({ assetName: e.target.value })} placeholder="Asset" className="h-11" />
+      )}
+      <select value={value.workType} onChange={(e) => set({ workType: e.target.value })} aria-label="Type of issue" className={field}>
+        {WORK_TYPE_NAMES.map((w) => (
+          <option key={w} value={w}>{w}</option>
+        ))}
+      </select>
+      <Textarea value={value.description} onChange={(e) => set({ description: e.target.value })} rows={3} placeholder="Description" className="text-base" />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">Parts</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={() => {
+              /* THE PRICE BOOK'S PART FOR THIS KIND OF ISSUE FIRST, when there
+                 is one and it is not already listed; a blank line otherwise. */
+              const book = WORK_TYPES[value.workType]?.parts.find((b) => !value.parts.some((p) => p.name === b.name));
+              set({ parts: [...value.parts, book ? { ...book } : { name: "", qty: 1, cost: 0 }] });
+            }}
+          >
+            <Plus className="size-4" /> Add part
+          </Button>
+        </div>
+        {value.parts.length === 0 && <p className="text-sm text-muted-foreground">No parts needed.</p>}
+        {value.parts.map((p, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Input value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} placeholder="Part" aria-label={`Part ${i + 1}`} className="h-11 flex-1" />
+            <Stepper value={p.qty} max={99} label={`Quantity of ${p.name || `part ${i + 1}`}`} onChange={(v) => setPart(i, { qty: Math.max(1, v) })} />
+            <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => set({ parts: value.parts.filter((_, j) => j !== i) })} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+              <X className="size-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

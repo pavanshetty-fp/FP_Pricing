@@ -150,10 +150,23 @@ and a box for it is a box to get it wrong in. A **fee has one money column**,
 because a fee's amount IS what was typed — two headers called Amount was the
 part table's shape forced onto something that does not have it.
 
-### Labour and mileage are single-handle sliders; the arrival time is a picker
+### Labour is typed in hours and minutes; the clock fills it in
 
-The same control as the delivery window, minus the second handle. A window is
-two facts, a start and an end; four hours is one and sixteen miles is one.
+**SUPERSEDES the single-handle sliders** (2026-09-23). Both were one number
+somebody entered, and neither is that any more.
+
+- **Labour is two boxes, `[h] [m]`, always present.** Start-to-finish fills
+  them; typing over them is not a mode. It is the number most often corrected
+  on the whole record, so the correction cannot live behind a press — and
+  "1 h 23" is what a technician says, where 1.38 is a rounding error waiting
+  to reach the invoice. When it has been overruled the card still says what
+  the clock read, with one press back to it.
+- **Cost per hour is beside it, and it is the ORDER's.** An after-hours
+  callout, a contract customer and a warranty job are three different numbers.
+- **Mileage has no field here at all.** It is not part of what labour costs,
+  and a third box under a pair made the card a miscellany of numbers. It comes
+  from the Standard trip setting and still shows in the Summary and on a
+  quote.
 
 **An arrival is not a measure, so it is not a slider.** A customer is told
 "half past twelve", and a handle on a 24-hour track asks somebody to aim at it.

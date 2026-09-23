@@ -271,6 +271,25 @@ function QuoteRow({
   );
 }
 
+/**
+ * LABOUR — TYPED IN HOURS AND MINUTES, WITH THE CLOCK AS THE DEFAULT.
+ *
+ * THE FIELDS ARE ALWAYS THERE (Pavan, 2026-09-23). They used to hide behind
+ * an *Adjust*, on the reasoning that a derived figure should be a read-out
+ * rather than a field. That holds for a figure nobody argues with — a total,
+ * a line's amount — and **labour is not that figure.** It is the number most
+ * often corrected on the whole record, and putting the correction behind a
+ * press made the common case the hidden one.
+ *
+ * SO THE CLOCK IS A DEFAULT, NOT A STATE. Start-to-finish fills the boxes;
+ * typing over them is not a mode, it is just typing. "1 h 30" and "1 h 23"
+ * are what a technician actually says, and asking them to convert to 1.5 and
+ * 1.38 is asking for a rounding error on the invoice.
+ *
+ * THE MEASUREMENT STAYS VISIBLE ONCE IT IS OVERRULED, with one press back to
+ * it — "1 h 30, clock said 2 h 15" is a sentence somebody can question, and a
+ * bare 1 h 30 is not.
+ */
 function LabourFigure({
   startedAt,
   completedAt,
@@ -292,114 +311,97 @@ function LabourFigure({
   onOverride: (v: number | null) => void;
   onRate: (v: number) => void;
 }) {
-  const [editing, setEditing] = React.useState(false);
-  const [h, setH] = React.useState("");
-  const [m, setM] = React.useState("");
   const measured = computedLabor(startedAt, completedAt);
   const ran = Boolean(startedAt && completedAt);
+  const shown = splitHours(effective);
 
-  const commit = () => {
-    const hh = Number(h) || 0;
-    const mm = Number(m) || 0;
-    onOverride(hh === 0 && mm === 0 && h === "" && m === "" ? null : joinHours(hh, mm));
-    setEditing(false);
-  };
+  /*
+    WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
 
-  /* STOPPED, NOT JUST HANDLED. Enter in here means "I have finished typing
-     this number"; left to bubble it reached the sheet and closed the whole
-     thing, losing the order the reader was looking at. */
-  const keys = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.key === "Enter") commit();
-      else setEditing(false);
+    The same problem `TableCellInput` solves: the boxes are controlled by ONE
+    number upstream and hours and minutes are two. Clearing the minutes to
+    type "45" sent an empty string, which became 0, which came straight back —
+    so the field refilled itself mid-keystroke and 45 was unreachable. The
+    buffer holds the literal keystrokes; the parent still receives every one.
+  */
+  const [buf, setBuf] = React.useState<{ h: string; m: string } | null>(null);
+  const hVal = buf ? buf.h : ran || override !== null ? String(shown.h) : "";
+  const mVal = buf ? buf.m : ran || override !== null ? String(shown.m) : "";
+
+  const commit = (h: string, m: string) => {
+    setBuf({ h, m });
+    if (h.trim() === "" && m.trim() === "") {
+      onOverride(null);
+      return;
     }
+    onOverride(joinHours(Number(h) || 0, Number(m) || 0));
   };
 
   return (
     <div className="grid grid-cols-2 gap-6">
       <SheetField label="Labour">
-        <div className="flex min-h-9 items-center gap-2">
-          {editing ? (
-            <>
-              <Input
-                autoFocus
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={h}
-                placeholder={String(splitHours(measured).h)}
-                onChange={(e) => setH(e.target.value)}
-                onKeyDown={keys}
-                className="w-16 tabular-nums"
-                aria-label="Labour hours"
-              />
-              <span className="text-sm text-muted-foreground">h</span>
-              <Input
-                type="number"
-                min={0}
-                max={59}
-                inputMode="numeric"
-                value={m}
-                placeholder={String(splitHours(measured).m)}
-                onChange={(e) => setM(e.target.value)}
-                onKeyDown={keys}
-                className="w-16 tabular-nums"
-                aria-label="Labour minutes"
-              />
-              <span className="text-sm text-muted-foreground">m</span>
-              <Button variant="ghost" size="sm" onClick={commit}>
-                Done
-              </Button>
-            </>
-          ) : (
-            <>
-              <span className="shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
-                {ran || override !== null ? formatHours(effective) : "\u2014"}
-              </span>
-              {override !== null && ran && (
-                /* THE MEASUREMENT, KEPT IN VIEW. Not a warning — a correction
-                   is a normal thing to make — so it is muted text, not a
-                   tone. */
-                <span className="text-xs text-muted-foreground">
-                  measured {formatHours(measured)}
-                </span>
-              )}
-              {!ran && override === null && (
-                <span className="text-xs text-muted-foreground">
-                  Timed from the moment work starts.
-                </span>
-              )}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={hVal}
+              placeholder="0"
+              disabled={locked}
+              onChange={(e) => commit(e.target.value, mVal)}
+              onBlur={() => setBuf(null)}
+              className="w-16 tabular-nums"
+              aria-label="Labour hours"
+            />
+            <span className="text-sm text-muted-foreground">h</span>
+            <Input
+              type="number"
+              min={0}
+              max={59}
+              inputMode="numeric"
+              value={mVal}
+              placeholder="0"
+              disabled={locked}
+              onChange={(e) => commit(hVal, e.target.value)}
+              onBlur={() => setBuf(null)}
+              className="w-16 tabular-nums"
+              aria-label="Labour minutes"
+            />
+            <span className="text-sm text-muted-foreground">m</span>
+          </div>
+          {override !== null && ran ? (
+            /* NOT A WARNING — a correction is a normal thing to make — so it
+               is muted text and not a tone. */
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Clock said {formatHours(measured)} ·
               {!locked && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto"
+                <button
+                  type="button"
                   onClick={() => {
-                    const src = override ?? measured;
-                    setH(override !== null || ran ? String(splitHours(src).h) : "");
-                    setM(override !== null || ran ? String(splitHours(src).m) : "");
-                    setEditing(true);
+                    setBuf(null);
+                    onOverride(null);
                   }}
+                  className="rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                  {override === null ? "Adjust" : "Change"}
-                </Button>
+                  use it
+                </button>
               )}
-              {override !== null && !locked && (
-                <Button variant="ghost" size="sm" onClick={() => onOverride(null)}>
-                  Use measured
-                </Button>
-              )}
-            </>
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {ran
+                ? "From the clock — type over it if it is wrong."
+                : "Timed from the moment work starts, or type it here."}
+            </p>
           )}
         </div>
       </SheetField>
 
-      {/* THE RATE IS PER ORDER, NOT PER COMPANY (Pavan, 2026-09-23). An
-          after-hours callout, a contract customer and a warranty job are three
-          different numbers, and one global rate meant the difference had to be
-          smuggled in as a fee with a name that explained it. */}
+      {/* THE RATE IS PER ORDER, NOT PER COMPANY. An after-hours callout, a
+          contract customer and a warranty job are three different numbers, and
+          one global rate meant the difference had to be smuggled in as a fee
+          with a name that explained it. */}
       <SheetField label="Cost per hour">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">$</span>
@@ -1662,10 +1664,16 @@ export function ServiceOrderSheet({
 
       {/* LABOUR AND COST (Pavan, 2026-09-23). It was "Labour and mileage" —
           a matched pair of sliders, because both were one number somebody
-          entered. Neither is that any more: labour is the clock reading, and
-          what it comes to depends on a rate that is this JOB's rather than the
-          company's. Mileage stays, under them, because it is the third thing
-          the visit cost and it has nowhere better to be. */}
+          entered. Neither is that any more: labour is a time somebody types or
+          the clock supplies, and what it comes to depends on a rate that is
+          this JOB's rather than the company's.
+
+          MILEAGE LEFT THE CARD the same day. It is not part of what labour
+          costs, and a third field under a pair made the card read as a
+          miscellany of numbers rather than one answer. It still exists on the
+          record, still comes from the Standard trip setting, and still shows
+          in the Summary and on a quote — there is simply no longer a box for
+          it here. */}
       <SheetSection title="Labour and cost">
         <LabourFigure
           startedAt={draft.startedAt}
@@ -1684,35 +1692,6 @@ export function ServiceOrderSheet({
           }}
           onRate={(v) => set("laborRate", v)}
         />
-        <SheetField
-          label="Mileage"
-          description={
-            cfg.defaultMileage > 0 && draft.mileage === cfg.defaultMileage
-              ? "The standard trip, from settings."
-              : undefined
-          }
-        >
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              inputMode="numeric"
-              value={draft.mileage === 0 ? "" : draft.mileage}
-              placeholder="0"
-              disabled={billed}
-              onChange={(e) =>
-                set("mileage", Math.max(0, Number(e.target.value) || 0))
-              }
-              className="w-28 tabular-nums"
-              aria-label="Mileage in miles"
-            />
-            <span className="text-sm text-muted-foreground">mi</span>
-            <span className="ml-auto text-sm tabular-nums text-muted-foreground">
-              {money(MILEAGE_RATE)}/mi · {money(mileageSum)}
-            </span>
-          </div>
-        </SheetField>
       </SheetSection>
 
       {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a disposal

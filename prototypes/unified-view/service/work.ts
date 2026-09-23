@@ -1259,6 +1259,95 @@ function buildOrders(): ServiceOrder[] {
   return out;
 }
 
+/* ─────────────────────────── shared by every place that makes an order ──
+   The dispatch sheet and the technician's app both create orders; they read
+   the same lists and start from the same blank so the two cannot drift. */
+
+/** Customers with at least one placed asset — the only ones serviceable. */
+export const SERVICE_CUSTOMERS: string[] = Array.from(
+  new Set(RENTAL_ASSETS.map((a) => a.customer).filter(Boolean) as string[])
+).sort();
+
+export const shipTosOf = (customer: string): string[] =>
+  Array.from(
+    new Set(
+      RENTAL_ASSETS.filter((a) => a.customer === customer && a.shipTo).map((a) => a.shipTo as string)
+    )
+  ).sort();
+
+export const assetsAt = (shipTo: string) =>
+  RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
+    id: a.id,
+    name: a.name,
+    type: a.assetType,
+  }));
+
+const keyOfDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** A blank order, booked for 9 tomorrow, with the price book's lines if it is on. */
+export function blankServiceOrder(opts: {
+  priceBook: boolean;
+  defaultMileage: number;
+  raisedBy: string;
+  technicianId?: string | null;
+  source?: IntakeSource;
+}): ServiceOrder {
+  const workType = WORK_TYPE_NAMES[0];
+  const book = WORK_TYPES[workType];
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(9, 0, 0, 0);
+  return {
+    id: "so-new",
+    orderNo: "—",
+    status: "Drafted",
+    source: opts.source ?? INTAKE_SOURCES[0],
+    priority: "Normal",
+    customer: "",
+    shipTo: "",
+    city: "",
+    state: "",
+    assetId: "",
+    assetName: "",
+    assets: [{ assetId: "", assetName: "", assetType: "", workType, fault: "" }],
+    assetType: "",
+    workType,
+    fault: "",
+    dateKey: keyOfDay(tomorrow),
+    scheduledAt: tomorrow.toISOString(),
+    windowEndMin: (tomorrow.getHours() + 3) * 60,
+    technicianId: opts.technicianId ?? null,
+    arrivedAt: null,
+    visits: [],
+    startedAt: null,
+    assessment: null,
+    techNotes: null,
+    parts: opts.priceBook ? book.parts.map((p) => ({ ...p })) : [],
+    labor: 0,
+    laborOverride: null,
+    laborRate: LABOR_RATE,
+    mileage: opts.defaultMileage,
+    fees: opts.priceBook ? book.fees.map((f) => ({ ...f })) : [],
+    quote: null,
+    extraCharges: [],
+    invoiceCreated: false,
+    invoicedAt: null,
+    synced: false,
+    partNeeded: null,
+    returnOf: null,
+    spawnedReturn: null,
+    signed: false,
+    completedAt: null,
+    raisedBy: opts.raisedBy,
+    audit: [],
+  };
+}
+
+/** When the order was raised — the first entry of its log. */
+export const createdAtOf = (o: ServiceOrder): string =>
+  o.audit[0]?.at ?? o.scheduledAt ?? `${o.dateKey}T00:00:00`;
+
 export const SERVICE_ORDERS: ServiceOrder[] = buildOrders().map((r) => ({
   ...r,
   audit: seedServiceAudit(r),

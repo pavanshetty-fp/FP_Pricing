@@ -2,7 +2,6 @@ import * as React from "react";
 import {
   ArrowLeft,
   Check,
-  ChevronRight,
   ClipboardList,
   Clock,
   MapPin,
@@ -15,11 +14,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { StatusChip } from "@/components/ui/status-chip";
 import {
   SERVICE_ORDERS,
   TECHNICIANS,
-  WORK_STATUS_TONE,
+  blankServiceOrder,
   computedLabor,
   formatHours,
   syncVisits,
@@ -32,6 +30,7 @@ import {
 } from "./work";
 import { useServiceSettings } from "./settings";
 import { useElapsedHours } from "./sheet-parts";
+import { JobsScreen, MenuDrawer, NewOrderScreen, TabBar, type HomeTab } from "./TechnicianHome";
 
 /*
   ═══════════════════════════════════════════════════════════════════════════
@@ -237,84 +236,8 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <h2 className="text-sm font-semibold text-foreground">{children}</h2>
 );
 
-/* ───────────────────────────────────────────────────────────── the list ── */
-
-function JobList({
-  jobs,
-  technicianName,
-  onOpen,
-}: {
-  jobs: ServiceOrder[];
-  technicianName: string;
-  onOpen: (id: string) => void;
-}) {
-  const today = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  }).format(new Date());
-
-  const done = jobs.filter((j) => j.completedAt).length;
-
-  return (
-    <>
-      <TopBar title={technicianName.split(" ")[0] + "'s day"} subtitle={today} />
-      <Body>
-        {/* THE ONE NUMBER THAT MATTERS AT 7AM — how much is left. Not a
-            progress bar: a bar says how far along you are, which is a
-            different question from how many more sites you are driving to. */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-semibold tabular-nums text-foreground">
-            {jobs.length - done}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {jobs.length - done === 1 ? "job left" : "jobs left"}
-            {done > 0 && ` · ${done} done`}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {jobs.map((j) => (
-            <button
-              key={j.id}
-              type="button"
-              onClick={() => onOpen(j.id)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3 text-left active:bg-accent",
-                j.completedAt && "opacity-60"
-              )}
-            >
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium tabular-nums text-foreground">
-                    {j.scheduledAt
-                      ? timeFmt.format(new Date(j.scheduledAt))
-                      : "Any time"}
-                  </span>
-                  <StatusChip tone={WORK_STATUS_TONE[j.status]} variant="soft">
-                    {j.status}
-                  </StatusChip>
-                </div>
-                <span className="truncate text-sm text-foreground">
-                  {j.shipTo}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {j.assetName} · {j.fault}
-                </span>
-              </div>
-              <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
-            </button>
-          ))}
-          {jobs.length === 0 && (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              Nothing booked. Dispatch will send work through as it comes in.
-            </p>
-          )}
-        </div>
-      </Body>
-    </>
-  );
-}
+/* THE LIST moved to `TechnicianHome.tsx` (2026-09-23) — with search, sort,
+   filter, the tab bar and the menu. */
 
 /* ────────────────────────────────────────────────────────────── the job ── */
 
@@ -800,26 +723,45 @@ export function TechnicianMobile() {
      state rather than reaching into the dispatch screen's. What that costs is
      that changes here do not show up there, which is honest about what it is
      rather than pretending at a sync nothing behind this prototype does. */
+  const cfg = useServiceSettings();
   const [tech, setTech] = React.useState(TECHNICIANS[0].id);
   const [orders, setOrders] = React.useState<ServiceOrder[]>(() =>
     SERVICE_ORDERS.map((o) => ({ ...o }))
   );
   const [openId, setOpenId] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState<HomeTab>("jobs");
+  const [menuOpen, setMenuOpen] = React.useState(false);
 
+  /* EVERY JOB ASSIGNED TO THEM (Pavan, 2026-09-23) — it used to stop at the
+     first eight, a day's worth, which hid anything booked further out. The
+     list screen sequences and filters them. */
   const jobs = React.useMemo(
-    () =>
-      orders
-        .filter((o) => o.technicianId === tech && o.status !== "Cancelled")
-        .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""))
-        .slice(0, 8),
+    () => orders.filter((o) => o.technicianId === tech && o.status !== "Cancelled"),
     [orders, tech]
   );
 
-  const open = jobs.find((j) => j.id === openId) ?? null;
+  const open = orders.find((j) => j.id === openId) ?? null;
   const technician = TECHNICIANS.find((t) => t.id === tech)!;
 
   const patch = (id: string, p: Partial<ServiceOrder>) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...p } : o)));
+
+  const nextOrderNo = () =>
+    `SO-${Math.max(...orders.map((r) => Number(r.orderNo.slice(3)) || 0)) + 3}`;
+
+  const blank = React.useCallback(
+    () =>
+      blankServiceOrder({
+        priceBook: cfg.priceBook,
+        defaultMileage: cfg.defaultMileage,
+        raisedBy: technician.name,
+        /* THE PERSON RAISING IT IS THE ONE WHO WILL DO IT, unless they say
+           otherwise — and what they found it on is an inspection. */
+        technicianId: technician.id,
+        source: "Flagged inspection",
+      }),
+    [cfg.priceBook, cfg.defaultMileage, technician]
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
@@ -849,8 +791,9 @@ export function TechnicianMobile() {
       </div>
 
       {/* THE DEVICE. 390×844 — an iPhone's points, which is the narrowest
-          screen this has to work on and therefore the one to design at. */}
-      <div className="flex h-[844px] max-h-[calc(100vh-180px)] w-[390px] shrink-0 flex-col overflow-hidden rounded-[2.25rem] border-[10px] border-fp-outline-2 bg-fp-surface-1b shadow-2xl">
+          screen this has to work on and therefore the one to design at.
+          `relative` because the menu and the bottom sheets overlay INSIDE it. */}
+      <div className="relative flex h-[844px] max-h-[calc(100vh-180px)] w-[390px] shrink-0 flex-col overflow-hidden rounded-[2.25rem] border-[10px] border-fp-outline-2 bg-fp-surface-1b shadow-2xl">
         {open ? (
           <Job
             job={open}
@@ -858,12 +801,61 @@ export function TechnicianMobile() {
             onPatch={(p) => patch(open.id, p)}
           />
         ) : (
-          <JobList
-            jobs={jobs}
-            technicianName={technician.name}
-            onOpen={setOpenId}
-          />
+          <>
+            {tab === "jobs" ? (
+              <JobsScreen
+                jobs={jobs}
+                technician={technician}
+                onOpen={setOpenId}
+                onMenu={() => setMenuOpen(true)}
+              />
+            ) : (
+              <NewOrderScreen
+                key={tech}
+                blank={blank}
+                onMenu={() => setMenuOpen(true)}
+                onCreateDraft={(d) => {
+                  const no = nextOrderNo();
+                  const row = {
+                    ...d,
+                    id: `so-m-${no}`,
+                    orderNo: no,
+                    status: "Drafted" as WorkStatus,
+                    audit: [{ at: nowIso(), by: technician.name, changes: ["Order created as a draft"] }],
+                  };
+                  setOrders((prev) => [row, ...prev]);
+                  return { id: row.id, orderNo: no };
+                }}
+                onUpdate={(d) => setOrders((prev) => prev.map((o) => (o.id === d.id ? { ...d } : o)))}
+                onCommit={(d) => {
+                  setOrders((prev) =>
+                    prev.map((o) =>
+                      o.id === d.id
+                        ? {
+                            ...d,
+                            status: "Assigned" as WorkStatus,
+                            audit: [...o.audit, { at: nowIso(), by: technician.name, changes: ["Status: Drafted → Assigned"] }],
+                          }
+                        : o
+                    )
+                  );
+                  toast.success(`${d.orderNo} created and assigned`);
+                  setTab("jobs");
+                }}
+              />
+            )}
+            <TabBar tab={tab} onTab={setTab} />
+          </>
         )}
+        <MenuDrawer
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          technician={technician}
+          onTab={(t) => {
+            setOpenId(null);
+            setTab(t);
+          }}
+        />
       </div>
     </div>
   );

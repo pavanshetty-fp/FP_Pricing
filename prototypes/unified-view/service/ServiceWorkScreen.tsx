@@ -36,7 +36,6 @@ import {
   WORK_STATUS_TONE,
   WORK_TYPE_CODE,
   WORK_TYPE_NAMES,
-  WORK_TYPES,
   assertServiceConsistent,
   isRecorded,
   money,
@@ -44,12 +43,12 @@ import {
   technicianById,
   type ServiceOrder,
   type WorkStatus,
-  LABOR_RATE,
   isUnassigned,
   formatHours,
   WORK_STATUS_KIND,
   splitParts,
   diffServiceOrder,
+  blankServiceOrder,
   shortfallLabel,
   type PartLine,
 } from "./work";
@@ -806,64 +805,17 @@ export function ServiceWorkScreen() {
   );
 
   /** A blank order, with the price book's lines already in it if it is on. */
-  const blankOrder = React.useCallback((): ServiceOrder => {
-    const workType = WORK_TYPE_NAMES[0];
-    const book = WORK_TYPES[workType];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
-    return {
-      id: "so-new",
-      orderNo: "—",
-      status: "Drafted",
-      source: INTAKE_SOURCES[0],
-      priority: "Normal",
-      customer: "",
-      shipTo: "",
-      city: "",
-      state: "",
-      assetId: "",
-      assetName: "",
-      /* ONE BLANK ROW, so the table is a table from the first keystroke rather
-         than an empty state somebody has to press to escape. */
-      assets: [
-        { assetId: "", assetName: "", assetType: "", workType, fault: "" },
-      ],
-      assetType: "",
-      workType,
-      fault: "",
-      dateKey: dateKeyOf(tomorrow),
-      scheduledAt: tomorrow.toISOString(),
-      windowEndMin: (tomorrow.getHours() + 3) * 60,
-      technicianId: null,
-      arrivedAt: null,
-      visits: [],
-      startedAt: null,
-      assessment: null,
-      techNotes: null,
-      parts: cfg.priceBook ? book.parts.map((p) => ({ ...p })) : [],
-      labor: 0,
-      laborOverride: null,
-      laborRate: LABOR_RATE,
-      /* PRE-FILLED FROM SETTINGS (Pavan, 2026-09-23). Most yards bill a
-         standard trip; typing the same number on every job is a question the
-         settings have already answered. It stays editable — see the sheet. */
-      mileage: cfg.defaultMileage,
-      fees: cfg.priceBook ? book.fees.map((f) => ({ ...f })) : [],
-      quote: null,
-      extraCharges: [],
-      invoiceCreated: false,
-      invoicedAt: null,
-      synced: false,
-      partNeeded: null,
-      returnOf: null,
-      spawnedReturn: null,
-      signed: false,
-      completedAt: null,
-      raisedBy: "Dana Whitfield",
-      audit: [],
-    };
-  }, [cfg.priceBook]);
+  const blankOrder = React.useCallback(
+    (): ServiceOrder =>
+      blankServiceOrder({
+        priceBook: cfg.priceBook,
+        /* PRE-FILLED FROM SETTINGS (Pavan, 2026-09-23). Most yards bill a
+           standard trip; it stays editable — see the sheet. */
+        defaultMileage: cfg.defaultMileage,
+        raisedBy: "Dana Whitfield",
+      }),
+    [cfg.priceBook, cfg.defaultMileage]
+  );
 
   /* ───────────────────────────────────────────────────────── the acts ───── */
 

@@ -23,12 +23,12 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { TableRowRemove } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { DATE_FMT } from "../data";
+import { statusTones } from "../statusKind";
 import {
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
   PRIORITIES,
   SERVICE_CUSTOMERS,
-  WORK_STATUS_TONE,
   WORK_TYPE_NAMES,
   assetsAt,
   createdAtOf,
@@ -303,15 +303,33 @@ const DATE_LABEL: Record<Exclude<DateFilter, "day">, string> = {
 };
 
 /**
- * THE STATUS TABS on the jobs list (Pavan, 2026-09-24) — the order's own
- * statuses, grouped by what they mean to the person holding the phone.
+ * THE TECHNICIAN'S FOUR STATUSES (Pavan, 2026-09-24). The order has more
+ * stages than a technician needs; on the phone every order is one of these,
+ * and the tabs are exactly these — "Ongoing", never a second word for it.
  */
-const STATUS_TABS: { key: string; label: string; statuses: string[] | null }[] = [
-  { key: "all", label: "All", statuses: null },
-  { key: "upcoming", label: "Upcoming", statuses: ["Drafted", "Assigned", "Yet to start"] },
-  { key: "progress", label: "In progress", statuses: ["Ongoing"] },
-  { key: "parts", label: "Parts pending", statuses: ["Parts pending", "Linked order"] },
-  { key: "done", label: "Done", statuses: ["Needs approval", "Completed", "Completed — linked", "Yet to be reviewed", "Reviewed"] },
+export type TechStatus = "Yet to start" | "Ongoing" | "Parts pending" | "Completed";
+
+export function techStatusOf(o: ServiceOrder): TechStatus {
+  if (o.status === "Ongoing") return "Ongoing";
+  if (o.status === "Parts pending" || o.status === "Linked order") return "Parts pending";
+  if (o.status === "Drafted" || o.status === "Assigned" || o.status === "Yet to start") return "Yet to start";
+  return "Completed";
+}
+
+/** The status-kind rule (DS §10b): waiting is amber, under way is blue, done is green. */
+const TECH_STATUS_TONE = statusTones<TechStatus>({
+  "Yet to start": "neutral",
+  Ongoing: "info",
+  "Parts pending": "caution",
+  Completed: "success",
+});
+
+const STATUS_TABS: { key: string; label: string; status: TechStatus | null }[] = [
+  { key: "all", label: "All", status: null },
+  { key: "yet", label: "Yet to start", status: "Yet to start" },
+  { key: "ongoing", label: "Ongoing", status: "Ongoing" },
+  { key: "parts", label: "Parts pending", status: "Parts pending" },
+  { key: "done", label: "Completed", status: "Completed" },
 ];
 
 const PRIORITY_RANK: Record<string, number> = { Urgent: 0, High: 1, Normal: 2 };
@@ -391,10 +409,10 @@ export function JobsScreen({
 
   const shown = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    const inTab = STATUS_TABS.find((t) => t.key === statusTab)?.statuses;
+    const inTab = STATUS_TABS.find((t) => t.key === statusTab)?.status;
     const list = jobs.filter(
       (o) =>
-        (!inTab || inTab.includes(o.status)) &&
+        (!inTab || techStatusOf(o) === inTab) &&
         (!q ||
           o.orderNo.toLowerCase().includes(q) ||
           o.customer.toLowerCase().includes(q) ||
@@ -439,7 +457,7 @@ export function JobsScreen({
           brand colour as the web's tabs are. Scrolls sideways on a narrow phone. */}
       <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-fp-outline-1 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {STATUS_TABS.map((t) => {
-          const n = t.statuses ? jobs.filter((j) => t.statuses!.includes(j.status)).length : jobs.length;
+          const n = t.status ? jobs.filter((j) => techStatusOf(j) === t.status).length : jobs.length;
           const on = statusTab === t.key;
           return (
             <button
@@ -583,8 +601,8 @@ function JobCard({ job, onOpen }: { job: ServiceOrder; onOpen: () => void }) {
             {job.priority !== "Normal" && (
               <Badge variant={job.priority === "Urgent" ? "destructive" : "secondary"}>{job.priority}</Badge>
             )}
-            <StatusChip tone={WORK_STATUS_TONE[job.status]} variant="soft">
-              {job.status}
+            <StatusChip tone={TECH_STATUS_TONE[techStatusOf(job)]} variant="soft">
+              {techStatusOf(job)}
             </StatusChip>
           </span>
         </div>

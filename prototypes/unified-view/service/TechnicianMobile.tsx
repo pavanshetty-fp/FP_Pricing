@@ -207,6 +207,50 @@ export const SectionTitle = ({ children }: { children: React.ReactNode }) => (
 
 /* ───────────────────────────────────────────────────────────── the shell ── */
 
+/** An order put back to before anybody started it. */
+const notStarted = (o: ServiceOrder): ServiceOrder => ({
+  ...o,
+  status: "Assigned",
+  arrivedAt: null,
+  startedAt: null,
+  visits: [],
+  completedAt: null,
+  labor: 0,
+  laborOverride: null,
+  quote: null,
+  assessment: null,
+  assessmentLines: undefined,
+  signed: false,
+  invoiceCreated: false,
+  invoicedAt: null,
+  synced: false,
+  partNeeded: null,
+  parts: o.parts.map(({ fittedQty: _f, ...p }) => p),
+});
+
+/**
+ * THE PHONE'S OWN COPY OF THE JOBS, arranged for a technician's day (Pavan,
+ * 2026-09-24): each technician's FIRST TWO jobs are Yet to start, and NOBODY
+ * STARTS WITH AN ONGOING JOB — only one may be Ongoing at a time, so a
+ * seeded one would block starting either of them. The first job started
+ * becomes the one Ongoing.
+ */
+function phoneSeed(all: ServiceOrder[]): ServiceOrder[] {
+  const out = all.map((o) => ({ ...o }));
+  for (const t of TECHNICIANS) {
+    const mine = out
+      .filter((o) => o.technicianId === t.id && o.status !== "Cancelled")
+      .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
+    const reset = new Set(mine.slice(0, 2).map((o) => o.id));
+    for (const o of mine) if (o.status === "Ongoing") reset.add(o.id);
+    reset.forEach((id) => {
+      const i = out.findIndex((o) => o.id === id);
+      out[i] = notStarted(out[i]);
+    });
+  }
+  return out;
+}
+
 export function TechnicianMobile() {
   /* ITS OWN COPY OF THE JOBS. This app is a separate product and, in the real
      one, a separate client talking to the same API — so it keeps its own
@@ -215,9 +259,7 @@ export function TechnicianMobile() {
      rather than pretending at a sync nothing behind this prototype does. */
   const cfg = useServiceSettings();
   const [tech, setTech] = React.useState(TECHNICIANS[0].id);
-  const [orders, setOrders] = React.useState<ServiceOrder[]>(() =>
-    SERVICE_ORDERS.map((o) => ({ ...o }))
-  );
+  const [orders, setOrders] = React.useState<ServiceOrder[]>(() => phoneSeed(SERVICE_ORDERS));
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState<HomeTab>("jobs");
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -231,6 +273,8 @@ export function TechnicianMobile() {
   );
 
   const open = orders.find((j) => j.id === openId) ?? null;
+  /* ONE ONGOING JOB AT A TIME (Pavan, 2026-09-24) — the other it blocks. */
+  const ongoing = jobs.find((j) => j.status === "Ongoing" && j.id !== openId);
   const technician = TECHNICIANS.find((t) => t.id === tech)!;
 
   const patch = (id: string, p: Partial<ServiceOrder>) =>
@@ -377,6 +421,7 @@ export function TechnicianMobile() {
             onBack={() => setOpenId(null)}
             onPatch={(p) => patch(open.id, p)}
             onSplit={(req) => split(open, req)}
+            busyWith={ongoing?.orderNo}
           />
         ) : (
           <>

@@ -7,7 +7,6 @@ import {
   Minus,
   Navigation,
   Package,
-  Phone,
   Plus,
   X,
   ArrowLeft,
@@ -64,7 +63,6 @@ import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile
 type Stage = "travel" | "assess" | "quote" | "ack" | "ready" | "work" | "complete" | "done";
 
 const nowIso = () => new Date().toISOString();
-const timeFmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
 /** The assessment is settled when every line has a verdict and says what it needs where it must. */
 const assessmentComplete = (lines: AssessmentLine[]) =>
@@ -114,8 +112,11 @@ export function TechnicianJob({
   onBack,
   onPatch,
   onSplit,
+  busyWith,
 }: {
   job: ServiceOrder;
+  /** Another order this technician already has Ongoing — only one at a time. */
+  busyWith?: string;
   onBack: () => void;
   onPatch: (patch: Partial<ServiceOrder>) => void;
   /** A partial completion — the screen owns it, because one outcome creates an order. */
@@ -195,16 +196,13 @@ export function TechnicianJob({
       <>
         <TopBar title="Order details" onBack={onBack} />
         <Body>
+          {/* THE THREE THINGS, AND ONLY THEM (Pavan, 2026-09-24): order
+              number, customer, ship-to name and address. From here the
+              technician is either there, or on the way. */}
           <OrderHeading job={job} />
-          <Facts
-            items={[
-              { icon: <Clock className="size-4" />, label: "Booked for", value: job.scheduledAt ? timeFmt.format(new Date(job.scheduledAt)) : "Any time" },
-              { icon: <Phone className="size-4" />, label: "Site contact", value: "+1 559-555-0104" },
-            ]}
-          />
         </Body>
         <ActionBar
-          label="Arrived at location"
+          label="Arrived at site"
           onPress={() => {
             onPatch({ arrivedAt: nowIso() });
             toast.success("Arrival recorded");
@@ -409,6 +407,9 @@ export function TechnicianJob({
         </Body>
         <ActionBar
           label="Start work"
+          /* ONE ONGOING JOB AT A TIME (Pavan, 2026-09-24). */
+          disabled={Boolean(busyWith)}
+          note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
           onPress={() => {
             onPatch({
               ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),

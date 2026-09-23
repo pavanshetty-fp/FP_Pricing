@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -567,5 +567,117 @@ export function TableCellCombobox({
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+export interface TableRowRemoveProps {
+  /** Runs only after the tick. */
+  onRemove: () => void;
+  /** The SUBJECT — "Remove Gas Pr 1", or "Remove fee 2" while the row is blank. */
+  "aria-label": string;
+  disabled?: boolean;
+  /**
+   * `cell` (default): the pair FILLS its `relative p-0` td, ✕ over ✓ — the DS
+   * Figma 28133:1526. `inline`: the pair sits side by side, for a bin that
+   * lives inside another cell's padding (a charge's type cell).
+   */
+  layout?: "cell" | "inline";
+}
+
+/**
+ * A ROW'S DELETE ASKS FIRST (Pavan, 2026-09-23). The bin, quiet until the row
+ * is reached for, swaps on press for ✕ cancel and ✓ confirm — the tick is the
+ * "are you sure?". Nothing goes on one careless click, and there is no dialog:
+ * the question is asked where the finger already is. DS ui §10f "Rows".
+ *
+ * Escape, ✕, or focus leaving the pair takes it back. The row needs
+ * `group/row` for the bin's hover reveal; the armed pair ignores hover and
+ * stays until answered.
+ */
+export function TableRowRemove({
+  onRemove,
+  "aria-label": ariaLabel,
+  disabled,
+  layout = "cell",
+}: TableRowRemoveProps) {
+  const [armed, setArmed] = React.useState(false);
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => {
+    if (armed) cancelRef.current?.focus();
+  }, [armed]);
+
+  if (!armed) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        className="text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 disabled:opacity-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          setArmed(true);
+        }}
+      >
+        <Trash2 />
+      </Button>
+    );
+  }
+
+  const inline = layout === "inline";
+  const btn =
+    "flex items-center justify-center outline-none transition-colors focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50";
+  return (
+    <div
+      role="group"
+      aria-label={`${ariaLabel}?`}
+      className={cn(
+        "flex overflow-hidden",
+        inline ? "h-7 gap-1" : "absolute inset-0 flex-col"
+      )}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setArmed(false);
+        }
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArmed(false);
+      }}
+    >
+      <button
+        ref={cancelRef}
+        type="button"
+        aria-label="Keep it"
+        onClick={(e) => {
+          e.stopPropagation();
+          setArmed(false);
+        }}
+        className={cn(
+          btn,
+          "bg-fp-card-1 text-foreground hover:bg-accent",
+          inline ? "size-7 rounded-sm" : "flex-1"
+        )}
+      >
+        <X className="size-4" />
+      </button>
+      <button
+        type="button"
+        aria-label={`Yes, ${ariaLabel.charAt(0).toLowerCase()}${ariaLabel.slice(1)}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setArmed(false);
+          onRemove();
+        }}
+        className={cn(
+          btn,
+          "bg-destructive text-white hover:bg-destructive/90",
+          inline ? "size-7 rounded-sm" : "flex-1"
+        )}
+      >
+        <Check className="size-4" />
+      </button>
+    </div>
   );
 }

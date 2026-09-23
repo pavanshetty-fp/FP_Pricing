@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  Trash2,
   Calendar as CalendarIcon,
   MoreHorizontal,
   Receipt,
@@ -92,6 +91,7 @@ import {
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
+import { TableRowRemove } from "@/components/form-layout/table-cells";
 
 /**
  * THE SERVICE ORDER SHEET.
@@ -406,17 +406,12 @@ function VisitRow({
           </p>
         )}
       </td>
-      <td className="p-0 text-center">
+      <td className="relative p-0 text-center">
         {onRemove && !locked && !running && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <TableRowRemove
             aria-label={`Remove visit ${index + 1}`}
-            className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-            onClick={onRemove}
-          >
-            <Trash2 />
-          </Button>
+            onRemove={onRemove}
+          />
         )}
       </td>
     </tr>
@@ -559,16 +554,11 @@ function LineTable({
                 </td>
               )}
               {!readOnly && (
-                <td className="p-0 text-center">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                <td className="relative p-0 text-center">
+                  <TableRowRemove
                     aria-label={`Remove ${r.name || `${nameLabel.toLowerCase()} ${i + 1}`}`}
-                    className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                    onClick={() => onRemove(i)}
-                  >
-                    <Trash2 />
-                  </Button>
+                    onRemove={() => onRemove(i)}
+                  />
                 </td>
               )}
             </tr>
@@ -1576,18 +1566,15 @@ export function ServiceOrderSheet({
                     onChange={(v) => setAssetLine(i, { fault: v })}
                   />
                 </td>
-                <td className="p-0 text-center">
+                <td className="relative p-0 text-center">
                   {/* QUIET UNTIL THE ROW IS REACHED FOR, like every other row
                       delete in this app. A column of bins down a table reads
                       as the table's purpose. The last row keeps none — an
                       empty table has no way back but the add. */}
                   {draft.assets.length > 1 && !intakeLocked && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
+                    <TableRowRemove
                       aria-label={`Remove ${row.assetName || `asset ${i + 1}`}`}
-                      className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                      onClick={() =>
+                      onRemove={() =>
                         setDraft((x) =>
                           x
                             ? syncPrimaryAsset({
@@ -1597,9 +1584,7 @@ export function ServiceOrderSheet({
                             : x
                         )
                       }
-                    >
-                      <Trash2 />
-                    </Button>
+                    />
                   )}
                 </td>
               </tr>

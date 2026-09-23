@@ -204,7 +204,7 @@ and the two icons look alike at 16px, which is why it needs writing down.
 | # | Shape | Means | Confirms? |
 |---|---|---|---|
 | **S1** | **A minus**, muted, label slides out on hover/focus — `SheetSectionRemove` | an optional section goes back to its A4 box | **only when `hasContent`** |
-| **S2** | **A bin** (`Trash2`), `variant="ghost" size="icon-sm"` at the row's end | a **row** goes | no |
+| **S2** | **A bin** (`Trash2`), `variant="ghost" size="icon-sm"` at the row's end — `TableRowRemove` | a **row** goes | **yes — ✕ / ✓ in place** (2026-09-23) |
 | **S3** | **An X on a token** | one value comes off a multi-select | no |
 | **S4** | **Clearing a control** | a value is unset | no |
 
@@ -219,7 +219,8 @@ and the two icons look alike at 16px, which is why it needs writing down.
   useless.
 - **Adding and removing rows follows DS §10f "Rows"** — new row at the bottom,
   the cursor in its first cell, one blank row at a time, the 52px unnamed bin
-  column. Written 2026-09-23 from this module's tables.
+  column, and the delete asks ✕ / ✓ before the row goes. Written 2026-09-23
+  from this module's tables.
 - **Every row delete carries the subject in its `aria-label`** — `Remove
   {shipTo}`, not "Remove". A list of eleven identical bins is eleven identical
   announcements otherwise.

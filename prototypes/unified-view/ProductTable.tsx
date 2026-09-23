@@ -1,10 +1,9 @@
-import * as React from "react";
-import { Check, Trash2, X } from "lucide-react";
 import {
   TableCellInput,
   TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
+import { TableRowRemove } from "@/components/form-layout/table-cells";
 
 /**
  * Product lines as an editable table.
@@ -62,8 +61,6 @@ export interface ProductTableProps {
 }
 
 export function ProductTable({ lines, options, onChange, focusRow }: ProductTableProps) {
-  // Row index awaiting inline delete confirmation (✕ / red ✓).
-  const [confirmIndex, setConfirmIndex] = React.useState<number | null>(null);
   const update = (i: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
@@ -121,43 +118,15 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
                     onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
                   />
                 </td>
-                {/* Delete — hover reveals the trash, click swaps in ✕ / ✓. */}
-                <td className="p-0 align-middle">
-                  {confirmIndex === i ? (
-                    <div className="flex h-full w-[52px] flex-col overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setConfirmIndex(null)}
-                        aria-label="Cancel delete"
-                        className="flex flex-1 items-center justify-center bg-fp-card-1 text-foreground outline-none transition-colors hover:bg-accent focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
-                      >
-                        <X className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removeRow(i);
-                          setConfirmIndex(null);
-                        }}
-                        aria-label="Confirm delete"
-                        className="flex flex-1 items-center justify-center bg-destructive text-white outline-none transition-colors hover:bg-destructive/90 focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
-                      >
-                        <Check className="size-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmIndex(i)}
-                      aria-label={`Remove ${line.name || `product ${i + 1}`}`}
-                      // An order needs at least one product line, so the last
-                      // row keeps no delete affordance.
-                      disabled={lines.length === 1}
-                      className="mx-auto flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-none transition-[color,opacity,background-color] group-hover/row:opacity-100 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-0"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  )}
+                {/* THE CONFIRM IS THE DS's NOW — `TableRowRemove`, the same ✕ / ✓
+                    every table asks with. An order needs a product line, so
+                    the last row keeps no bin. */}
+                <td className="relative p-0 text-center">
+                  <TableRowRemove
+                    aria-label={`Remove ${line.name || `product ${i + 1}`}`}
+                    disabled={lines.length === 1}
+                    onRemove={() => removeRow(i)}
+                  />
                 </td>
               </tr>
             ))}

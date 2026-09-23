@@ -455,7 +455,13 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
   removed at all.
 - **A row goes with a bin** (`Trash2`, `ghost`, `icon-sm`), quiet until the row
   is hovered or the bin is focused, in an **unnamed trailing column 52px
-  wide**. No confirm — a row is not a section (the 3PL creation rules, S2).
+  wide**.
+- **A row's delete asks first — the tick is the "are you sure?"** (Pavan,
+  2026-09-23). The bin swaps, in place, for ✕ cancel over ✓ confirm filling
+  the cell (Figma 28133:1526); the cursor lands on ✕, and Escape or clicking
+  away takes it back. No dialog — the question is asked where the finger
+  already is. **`TableRowRemove`** in `form-layout/table-cells.tsx` is the only
+  way a row is removed; a bin that deletes on one click fails the eval.
 - **The bin says what it removes.** `Remove {name}`, or `Remove {kind} N` while
   the row is blank — "Remove fee 2", never "Remove row 2". Eleven identical
   announcements down a table are eleven questions for a screen reader.
@@ -467,7 +473,8 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
   adds one row.
 
 **Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
-rows and focuses nothing, a remove with no subject, a local cell control.
+rows and focuses nothing, a remove with no subject, a remove that does not
+ask, a local cell control.
 
 ### There is no "last band" alternative to the hanging add
 

@@ -152,6 +152,7 @@ import {
   type OrderLine,
 } from "./orders";
 import { kindTone } from "../statusKind";
+import { TableRowRemove } from "@/components/form-layout/table-cells";
 
 /**
  * 3PL order side sheet — chrome and rhythm from `RecordSheet`, so it is the same
@@ -1046,15 +1047,7 @@ function PricingTypeCell({
       {/* QUIET UNTIL REACHED FOR. A bin on every charge row would be the first
           thing read down a column whose job is to name them. */}
       {onRemove && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Remove ${label}`}
-          className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100 focus-visible:opacity-100"
-          onClick={onRemove}
-        >
-          <Trash2 />
-        </Button>
+        <TableRowRemove layout="inline" aria-label={`Remove ${label}`} onRemove={onRemove} />
       )}
     </div>
   );
@@ -3792,16 +3785,11 @@ export function BrokerOrderSheet({
                     }
                   />
                 </td>
-                <td className="p-0 text-center">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                <td className="relative p-0 text-center">
+                  <TableRowRemove
                     aria-label={`Remove ${f.label || `fee ${i + 1}`}`}
-                    className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                    onClick={() => removeFee(i)}
-                  >
-                    <Trash2 />
-                  </Button>
+                    onRemove={() => removeFee(i)}
+                  />
                 </td>
               </tr>
             ))}
@@ -4865,17 +4853,12 @@ export function BrokerOrderSheet({
                             }
                           />
                         </td>
-                        <td className="p-0 text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
+                        <td className="relative p-0 text-center">
+                          <TableRowRemove
                             aria-label={`Remove ${line.asset || `asset line ${i + 1}`}`}
                             disabled={draft.lines.length === 1}
-                            className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                            onClick={() => removeLine(i)}
-                          >
-                            <Trash2 />
-                          </Button>
+                            onRemove={() => removeLine(i)}
+                          />
                         </td>
                       </tr>
                     );
@@ -5879,7 +5862,7 @@ export function BrokerOrderSheet({
                                 )
                               ) : null}
                             </td>
-                            <td className="p-0 text-center">
+                            <td className="relative p-0 text-center">
                               <DropdownMenu>
                                 {/* A BLANK ROW CAN GO TOO, once it is not the only
                                     row — otherwise an extra one is stuck there. */}

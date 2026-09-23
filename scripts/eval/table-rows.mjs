@@ -12,7 +12,9 @@
     · a file that adds rows (`HangingAdd`) passes `autoFocus` to something —
       the add is followed by the answer, not by a hunt for the row;
     · a row's remove names its subject — never "Remove row N" / "line N";
-    · no local `Cell*` control in the app — the cells are the DS `TableCell*`.
+    · no local `Cell*` control in the app — the cells are the DS `TableCell*`;
+    · a row's remove asks first — it is `TableRowRemove` (✕ / ✓), never a
+      bare bin `Button` labelled "Remove …" (Pavan, 2026-09-23).
 
   WHAT IT DOES NOT DO. Whether the RIGHT cell takes focus, whether a table may
   be emptied, and what a new row starts with are readings (L2), listed in the
@@ -49,6 +51,10 @@ export function check() {
       if (/aria-label=\{?[`"]Remove (?:row|line) /.test(line)) {
         out.push(finding("L1", rel(file), i + 1,
           'a remove with no subject — "Remove {name}", or "Remove {kind} N" while blank', rule));
+      }
+      if (/aria-label=\{`Remove /.test(line) && /<Button\b/.test(lines.slice(Math.max(0, i - 4), i).join("\n"))) {
+        out.push(finding("L1", rel(file), i + 1,
+          "a row bin that removes on one click — use TableRowRemove, which asks ✕ / ✓", rule));
       }
       if (/^\s*(?:export )?function Cell(?:Select|Number|Input|Combobox|MultiSelect)\b/.test(line)) {
         out.push(finding("L1", rel(file), i + 1,

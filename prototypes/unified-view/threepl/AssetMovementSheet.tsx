@@ -7,7 +7,6 @@ import {
   Pencil,
   Plus,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +61,7 @@ import {
   type MovementDirection,
   type MovementEnd,
 } from "./orders";
+import { TableRowRemove } from "@/components/form-layout/table-cells";
 
 /**
  * A column's own filter, on the column. Several values at once.
@@ -1503,22 +1503,17 @@ export function AssetMovementSheet({
                           onChange={(v) => setPeripheral(i, { ownership: v })}
                         />
                       </td>
-                      <td className="p-0 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
+                      <td className="relative p-0 text-center">
+                        <TableRowRemove
                           aria-label={`Remove ${p.name || `peripheral ${i + 1}`}`}
                           disabled={draft.peripherals.length === 1}
-                          className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                          onClick={() =>
+                          onRemove={() =>
                             setDraft((d) => ({
                               ...d,
                               peripherals: d.peripherals.filter((_, k) => k !== i),
                             }))
                           }
-                        >
-                          <Trash2 />
-                        </Button>
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1646,22 +1641,17 @@ export function AssetMovementSheet({
                           onChange={(v) => setItem(i, { unit: v })}
                         />
                       </td>
-                      <td className="p-0 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
+                      <td className="relative p-0 text-center">
+                        <TableRowRemove
                           aria-label={`Remove ${it.name || `item ${i + 1}`}`}
                           disabled={draft.customItems.length === 1}
-                          className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                          onClick={() =>
+                          onRemove={() =>
                             setDraft((d) => ({
                               ...d,
                               customItems: d.customItems.filter((_, k) => k !== i),
                             }))
                           }
-                        >
-                          <Trash2 />
-                        </Button>
+                        />
                       </td>
                     </tr>
                   ))}

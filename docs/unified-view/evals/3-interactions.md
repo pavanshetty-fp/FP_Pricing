@@ -33,12 +33,11 @@ Against `../3-interactions.md` and `docs/ds/interactions/2-rules.md`.
 - [ ] **L1** Every add moves the cursor into the new row. `npm run eval` →
       `table-rows`.
 - [ ] **L1** Every row remove names its subject. Same check.
+- [ ] **L1** Every row remove asks ✕ / ✓ first (`TableRowRemove`). Same check.
 - [ ] **L2** The cursor lands on the right cell — the first one the reader
       has to answer, not a disabled one.
 - [ ] **L2** A table the record cannot do without keeps no bin on its last
       row; a table that may be empty shows padded text when it is.
-- [ ] **L2** Tables of the same kind in two modules have the same columns, in
-      the same order, at the same widths.
 
 ## Feedback
 

@@ -48,6 +48,7 @@ import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { HangingAdd } from "../HangingAdd";
 import {
   SheetField,
+  SheetSectionInset,
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
@@ -71,6 +72,8 @@ import {
   isWorkable,
   computedLabor,
   isUnassigned,
+  syncVisits,
+  type ServiceVisit,
   LANE_OF,
   syncPrimaryAsset,
   type ServiceAssetLine,
@@ -275,162 +278,133 @@ function QuoteRow({
 }
 
 /**
- * LABOUR — TYPED IN HOURS AND MINUTES, WITH THE CLOCK AS THE DEFAULT.
+ * LABOUR — ONE ROW PER VISIT, AND THE TOTAL UNDERNEATH.
  *
- * THE FIELDS ARE ALWAYS THERE (Pavan, 2026-09-23). They used to hide behind
- * an *Adjust*, on the reasoning that a derived figure should be a read-out
- * rather than a field. That holds for a figure nobody argues with — a total,
- * a line's amount — and **labour is not that figure.** It is the number most
- * often corrected on the whole record, and putting the correction behind a
- * press made the common case the hidden one.
+ * A PARTIAL JOB IS VISITED MORE THAN ONCE (Pavan, 2026-09-23). Two hours on
+ * Tuesday and forty minutes on Thursday is not a two-hour-forty job that
+ * began on Tuesday — it is two trips, and the customer is owed the sum of
+ * them with the dates against it. A single pair of boxes could hold the sum
+ * and nothing else, so the sum stopped being checkable the moment there was
+ * more than one trip.
  *
- * SO THE CLOCK IS A DEFAULT, NOT A STATE. Start-to-finish fills the boxes;
- * typing over them is not a mode, it is just typing. "1 h 30" and "1 h 23"
- * are what a technician actually says, and asking them to convert to 1.5 and
- * 1.38 is asking for a rounding error on the invoice.
+ * THE CLOCK FILLS EACH ROW AND EACH ROW CAN BE TYPED OVER — in hours and
+ * minutes, because "1 h 23" is what a technician says and 1.38 is a rounding
+ * error waiting to reach the invoice. Overruling a row keeps that row's clock
+ * reading beside it, so the correction stays reviewable and the OTHER trips
+ * are untouched: the half hour that should not be billed happened on one of
+ * them, and correcting the total would hide which.
  *
- * THE MEASUREMENT STAYS VISIBLE ONCE IT IS OVERRULED, with one press back to
- * it — "1 h 30, clock said 2 h 15" is a sentence somebody can question, and a
- * bare 1 h 30 is not.
+ * A RUNNING VISIT HAS NO STOP TIME and its duration counts up. It is the last
+ * row and there is never more than one.
  */
-function LabourFigure({
-  startedAt,
-  completedAt,
-  override,
-  effective,
-  rate,
+function VisitRow({
+  visit,
+  index,
   locked,
-  onOverride,
-  onRate,
+  onChange,
+  onRemove,
 }: {
-  startedAt: string | null;
-  completedAt: string | null;
-  override: number | null;
-  /** The figure every total reads — the override, or the clock. */
-  effective: number;
-  /** What an hour costs on THIS job. */
-  rate: number;
+  visit: ServiceVisit;
+  index: number;
   locked?: boolean;
-  onOverride: (v: number | null) => void;
-  onRate: (v: number) => void;
+  onChange: (patch: Partial<ServiceVisit>) => void;
+  onRemove?: () => void;
 }) {
-  const measured = computedLabor(startedAt, completedAt);
-  const ran = Boolean(startedAt && completedAt);
-  const shown = splitHours(effective);
-
-  /*
-    WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
-
-    The same problem `TableCellInput` solves: the boxes are controlled by ONE
-    number upstream and hours and minutes are two. Clearing the minutes to
-    type "45" sent an empty string, which became 0, which came straight back —
-    so the field refilled itself mid-keystroke and 45 was unreachable. The
-    buffer holds the literal keystrokes; the parent still receives every one.
-  */
+  const running = visit.endedAt === null;
+  const live = useElapsedHours(running ? visit.startedAt : null);
+  const measured = running ? live : computedLabor(visit.startedAt, visit.endedAt);
+  const hours = visit.override ?? measured;
+  const shown = splitHours(hours);
   const [buf, setBuf] = React.useState<{ h: string; m: string } | null>(null);
-  const hVal = buf ? buf.h : ran || override !== null ? String(shown.h) : "";
-  const mVal = buf ? buf.m : ran || override !== null ? String(shown.m) : "";
 
   const commit = (h: string, m: string) => {
     setBuf({ h, m });
-    if (h.trim() === "" && m.trim() === "") {
-      onOverride(null);
-      return;
-    }
-    onOverride(joinHours(Number(h) || 0, Number(m) || 0));
+    onChange({
+      override:
+        h.trim() === "" && m.trim() === ""
+          ? null
+          : joinHours(Number(h) || 0, Number(m) || 0),
+    });
   };
 
-  return (
-    <div className="grid grid-cols-2 gap-6">
-      <SheetField label="Labour">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={hVal}
-              placeholder="0"
-              disabled={locked}
-              onChange={(e) => commit(e.target.value, mVal)}
-              onBlur={() => setBuf(null)}
-              className="w-16 tabular-nums"
-              aria-label="Labour hours"
-            />
-            <span className="text-sm text-muted-foreground">h</span>
-            <Input
-              type="number"
-              min={0}
-              max={59}
-              inputMode="numeric"
-              value={mVal}
-              placeholder="0"
-              disabled={locked}
-              onChange={(e) => commit(hVal, e.target.value)}
-              onBlur={() => setBuf(null)}
-              className="w-16 tabular-nums"
-              aria-label="Labour minutes"
-            />
-            <span className="text-sm text-muted-foreground">m</span>
-          </div>
-          {/* THE ONLY LINE UNDER THE BOXES REPORTS A DISAGREEMENT — what the
-              clock read, when somebody has typed something else. It is not a
-              guide to the field and it appears only when there is something
-              to say. The explanatory version — "timed from the moment work
-              starts, or type it here" — was removed on 2026-09-23; see the
-              microcopy rule in `docs/ds/ux/2-rules.md`. */}
-          {override !== null && ran && (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              Clock said {formatHours(measured)} ·
-              {!locked && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBuf(null);
-                    onOverride(null);
-                  }}
-                  className="rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  use it
-                </button>
-              )}
-            </p>
-          )}
-        </div>
-      </SheetField>
+  const stamp = (iso: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
 
-      {/* THE RATE IS PER ORDER, NOT PER COMPANY. An after-hours callout, a
-          contract customer and a warranty job are three different numbers, and
-          one global rate meant the difference had to be smuggled in as a fee
-          with a name that explained it. */}
-      <SheetField label="Cost per hour">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">$</span>
+  return (
+    <tr className="group/row h-11 border-b border-border last:border-b-0">
+      <td className="px-3 text-sm tabular-nums text-foreground">
+        {stamp(visit.startedAt)}
+      </td>
+      <td className="px-3 text-sm tabular-nums text-muted-foreground">
+        {running ? "Running" : stamp(visit.endedAt!)}
+      </td>
+      <td className="px-3">
+        <div className="flex items-center justify-end gap-1.5">
           <Input
             type="number"
             min={0}
-            step={5}
-            inputMode="decimal"
-            value={rate === 0 ? "" : rate}
-            placeholder="0"
+            inputMode="numeric"
+            value={buf ? buf.h : String(shown.h)}
             disabled={locked}
-            onChange={(e) => onRate(Math.max(0, Number(e.target.value) || 0))}
-            className="w-24 tabular-nums"
-            aria-label="Cost per hour"
+            onChange={(e) => commit(e.target.value, buf ? buf.m : String(shown.m))}
+            onBlur={() => setBuf(null)}
+            className="h-8 w-14 tabular-nums"
+            aria-label={`Hours on visit ${index + 1}`}
           />
-          {/* A FIGURE WITH NO NAME IS A FIGURE NOBODY TRUSTS. It sat at the
-              card's right edge unlabelled, level with a rate and a duration,
-              and the reader had to work out which of the three it was the
-              product of. (Pavan, 2026-09-23.) */}
-          <span className="ml-auto flex shrink-0 items-baseline gap-2 whitespace-nowrap">
-            <span className="text-xs text-muted-foreground">Total</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">
-              {money(effective * rate)}
-            </span>
-          </span>
+          <span className="text-xs text-muted-foreground">h</span>
+          <Input
+            type="number"
+            min={0}
+            max={59}
+            inputMode="numeric"
+            value={buf ? buf.m : String(shown.m)}
+            disabled={locked}
+            onChange={(e) => commit(buf ? buf.h : String(shown.h), e.target.value)}
+            onBlur={() => setBuf(null)}
+            className="h-8 w-14 tabular-nums"
+            aria-label={`Minutes on visit ${index + 1}`}
+          />
+          <span className="text-xs text-muted-foreground">m</span>
         </div>
-      </SheetField>
-    </div>
+        {visit.override !== null && (
+          /* THE ROW'S OWN CLOCK, KEPT IN VIEW. Not a warning — a correction is
+             a normal thing to make. */
+          <p className="pb-1 text-right text-xs text-muted-foreground">
+            Clock said {formatHours(measured)} ·{" "}
+            {!locked && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBuf(null);
+                  onChange({ override: null });
+                }}
+                className="rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                use it
+              </button>
+            )}
+          </p>
+        )}
+      </td>
+      <td className="p-0 text-center">
+        {onRemove && !locked && !running && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Remove visit ${index + 1}`}
+            className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
+            onClick={onRemove}
+          >
+            <Trash2 />
+          </Button>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -892,16 +866,28 @@ export function ServiceOrderSheet({
    */
   const completeNow = () => {
     const at = nowIso();
-    const startedAt = draft.startedAt ?? draft.arrivedAt ?? at;
+    /* CLOSING THE OPEN VISIT IS WHAT FINISHES THE JOB. If somebody completes
+       an order that was never started — a job done off the app and typed up
+       afterwards — a visit is opened and closed in the same breath, because a
+       job with hours and no trip is a record nobody can audit. */
+    const visits =
+      draft.visits.length > 0 &&
+      draft.visits[draft.visits.length - 1].endedAt === null
+        ? draft.visits.map((v, i) =>
+            i === draft.visits.length - 1 ? { ...v, endedAt: at } : v
+          )
+        : [
+            ...draft.visits,
+            {
+              startedAt: draft.startedAt ?? draft.arrivedAt ?? at,
+              endedAt: at,
+              technicianId: draft.technicianId,
+              override: null,
+            },
+          ];
     const patch = {
       arrivedAt: draft.arrivedAt ?? at,
-      startedAt,
-      completedAt: at,
-      /* THE CLOCK WRITES THE HOURS, unless somebody has already disagreed
-         with it. `labor` is the effective figure every total reads, so it is
-         written here rather than derived at each call site — one number,
-         decided at the one moment both ends of it are known. */
-      labor: draft.laborOverride ?? computedLabor(startedAt, at),
+      ...syncVisits({ visits }),
       signed: true,
       partNeeded: null,
     };
@@ -941,7 +927,22 @@ export function ServiceOrderSheet({
          is saying both at once, and a second button to separate them would be
          inventing a step nobody takes. */
       onSelect: () => {
-        advance("Ongoing", { arrivedAt: nowIso(), startedAt: nowIso() });
+        /* A PRESS OPENS A VISIT. `startedAt` is its mirror and is written by
+           `syncVisits`, never by hand. */
+        advance("Ongoing", {
+          arrivedAt: draft.arrivedAt ?? nowIso(),
+          ...syncVisits({
+            visits: [
+              ...draft.visits,
+              {
+                startedAt: nowIso(),
+                endedAt: null,
+                technicianId: draft.technicianId,
+                override: null,
+              },
+            ],
+          }),
+        });
         toast.success(`${draft.orderNo} — work started`);
       },
     });
@@ -1705,6 +1706,7 @@ export function ServiceOrderSheet({
           it here. */}
       <SheetSection
         title="Labour and cost"
+        flush
         /* THE CLOCK, WHILE IT IS RUNNING (Pavan, 2026-09-23). The technician
            presses Start labour in their app and the dispatcher watches it
            here — which is the only way, short of ringing them, to know a job
@@ -1728,23 +1730,113 @@ export function ServiceOrderSheet({
           ) : undefined
         }
       >
-        <LabourFigure
-          startedAt={draft.startedAt}
-          completedAt={draft.completedAt}
-          override={draft.laborOverride}
-          effective={draft.labor}
-          rate={draft.laborRate}
-          locked={billed}
-          onOverride={(v) => {
-            /* ONE PRESS, TWO FIELDS. `labor` is what every total reads, so it
-               follows the override immediately rather than waiting for the
-               next completion — otherwise the figure on screen and the running
-               total disagree until something else happens. */
-            set("laborOverride", v);
-            set("labor", v ?? computedLabor(draft.startedAt, draft.completedAt));
-          }}
-          onRate={(v) => set("laborRate", v)}
-        />
+        {/* THE RATE SITS ABOVE THE TRIPS, because it is the parameter the
+            column below is multiplied by — read it first and the totals need
+            no explaining. It brings its own inset and puts the rule on the
+            boundary where it meets the table, which is what a flush card asks
+            of anything that is not the table. */}
+        <SheetSectionInset className="border-b border-border">
+          <SheetField label="Cost per hour">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min={0}
+                step={5}
+                inputMode="decimal"
+                value={draft.laborRate === 0 ? "" : draft.laborRate}
+                placeholder="0"
+                disabled={billed}
+                onChange={(e) =>
+                  set("laborRate", Math.max(0, Number(e.target.value) || 0))
+                }
+                className="w-24 tabular-nums"
+                aria-label="Cost per hour"
+              />
+            </div>
+          </SheetField>
+        </SheetSectionInset>
+
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[30%]" />
+            <col className="w-[24%]" />
+            <col />
+            <col className="w-[52px]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border bg-fp-table-header">
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Started</TableRequiredLabel>
+              </th>
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Stopped</TableRequiredLabel>
+              </th>
+              <th className="px-3 py-2.5 text-right">
+                <TableRequiredLabel>On site</TableRequiredLabel>
+              </th>
+              <th aria-hidden />
+            </tr>
+          </thead>
+          <tbody>
+            {draft.visits.length === 0 && (
+              <tr className="h-11 border-b border-border last:border-b-0">
+                <td colSpan={4} className="px-3 text-sm text-muted-foreground">
+                  No visits yet.
+                </td>
+              </tr>
+            )}
+            {draft.visits.map((v, i) => (
+              <VisitRow
+                key={i}
+                visit={v}
+                index={i}
+                locked={billed}
+                onChange={(patch) =>
+                  setDraft((x) =>
+                    x
+                      ? syncVisits({
+                          ...x,
+                          visits: x.visits.map((r, j) =>
+                            j === i ? { ...r, ...patch } : r
+                          ),
+                        })
+                      : x
+                  )
+                }
+                onRemove={
+                  draft.visits.length > 1
+                    ? () =>
+                        setDraft((x) =>
+                          x
+                            ? syncVisits({
+                                ...x,
+                                visits: x.visits.filter((_, j) => j !== i),
+                              })
+                            : x
+                        )
+                    : undefined
+                }
+              />
+            ))}
+          </tbody>
+          {/* THE TOTAL IS A ROW OF THE TABLE, on the same grid as the figures
+              it sums — and it carries the money, because that is the reason
+              anybody adds the hours up. */}
+          {draft.visits.length > 0 && (
+            <tfoot>
+              <tr className="h-11 border-t border-border bg-fp-table-header">
+                <td colSpan={2} className="px-3 text-sm text-muted-foreground">
+                  {draft.visits.length} visit{draft.visits.length === 1 ? "" : "s"}
+                </td>
+                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                  {formatHours(draft.labor)} · {money(draft.labor * draft.laborRate)}
+                </td>
+                <td aria-hidden />
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </SheetSection>
 
       {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a disposal

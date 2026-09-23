@@ -192,6 +192,29 @@ and a box for it is a box to get it wrong in. A **fee has one money column**,
 because a fee's amount IS what was typed — two headers called Amount was the
 part table's shape forced onto something that does not have it.
 
+### Labour is a list of VISITS, and the total is their sum
+
+**SUPERSEDES the single pair of boxes** (2026-09-23). Once `continue` keeps
+one order across trips, "when did the work start" stops having one answer: two
+hours on Tuesday and forty minutes on Thursday is not a two-hour-forty job
+that began on Tuesday.
+
+- **One row per visit — Started · Stopped · On site.** Each row's duration is
+  its own clock and can be typed over in hours and minutes; overruling a row
+  keeps that row's clock reading beside it and leaves the other trips alone.
+  The half hour that should not be billed happened on ONE of them.
+- **The total is a `tfoot` row**, carrying the hours and the money, because
+  that is why anybody adds them up.
+- **A running visit has no stop time** and counts up. Only the last visit may
+  be running, and an invariant says so.
+- **`startedAt`, `completedAt` and `labor` are MIRRORS of the list**,
+  maintained only by `syncVisits`. `completedAt` now means "when somebody last
+  left site", not "is this done" — the status is the only thing that answers
+  the second.
+- **Labour rounds to the MINUTE, not the quarter hour.** It used to round to
+  quarters because labour is billed in them; that died the moment the stamps
+  sat next to the duration and a 55-minute visit read "1 h 0 m".
+
 ### Labour is typed in hours and minutes; the clock fills it in
 
 **SUPERSEDES the single-handle sliders** (2026-09-23). Both were one number

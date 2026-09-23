@@ -358,6 +358,29 @@ export interface Quote {
   approvedAt: string | null;
 }
 
+/**
+ * ONE TRIP TO THE SITE.
+ *
+ * ITS OWN CLOCK AND ITS OWN TECHNICIAN, because across a partial job neither
+ * is the same twice: the second trip may be a different person on a different
+ * day, and a single pair of timestamps cannot hold that.
+ */
+export interface ServiceVisit {
+  /** ISO. A visit exists from the moment somebody starts work. */
+  startedAt: string;
+  /** ISO, or null while it is running. Only the last visit may be running. */
+  endedAt: string | null;
+  /** Who was on it. Null on a fixture old enough not to have said. */
+  technicianId: string | null;
+  /**
+   * The hours somebody typed for THIS visit, overruling its clock.
+   *
+   * PER VISIT, NOT PER ORDER. The half hour that should not be billed happened
+   * on one of the trips, and correcting the total would hide which.
+   */
+  override: number | null;
+}
+
 /** One asset on a visit, with the work it needs and what was reported about it. */
 export interface ServiceAssetLine {
   assetId: string;
@@ -439,11 +462,25 @@ export interface ServiceOrder {
   /** Set when the technician marks arrival. */
   arrivedAt: string | null;
   /**
-   * WHEN WORK ACTUALLY BEGAN — which is not when they arrived (Pavan,
-   * 2026-09-23). Between the two sit the quote and, where the customer has to
-   * agree to it, the wait for that answer. Billing an hour of somebody else's
-   * deliberation as labour is the reason these are two timestamps and not one.
+   * EVERY VISIT, WITH ITS OWN CLOCK (Pavan, 2026-09-23).
+   *
+   * A PARTIAL JOB IS VISITED MORE THAN ONCE, and once `continue` keeps the
+   * same order across trips, "when did the work start" stops having one
+   * answer. Two hours on Tuesday and forty minutes on Thursday is not a
+   * two-hour-forty job that began on Tuesday — it is two visits, and the
+   * customer is owed the sum of them with the dates against it.
+   *
+   * THE LAST ONE IS THE LIVE ONE. A visit with no `endedAt` is running, and
+   * there is never more than one.
    */
+  visits: ServiceVisit[];
+
+  /* ── the current visit, mirrored ────────────────────────────────────────
+     `startedAt` is the LAST visit's start and `completedAt` its end, kept in
+     sync by `syncVisits`. Everything that watches a running job — the
+     dispatcher's timer, the technician's screen, the Record rail — asks about
+     the visit in progress, which is the last one. Nothing else may write
+     them. */
   startedAt: string | null;
 
   /* ── the money ── */
@@ -592,7 +629,14 @@ export function computedLabor(
   if (!startedAt || !completedAt) return 0;
   const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (!Number.isFinite(ms) || ms <= 0) return 0;
-  return Math.max(0.25, Math.round((ms / 3_600_000) * 4) / 4);
+  /* TO THE MINUTE, NOT THE QUARTER HOUR. It used to round to quarters,
+     because labour is BILLED in quarters and a raw 1.7383 is a figure nobody
+     can check. That argument died the moment the figure was displayed as
+     hours and minutes: "1 h 44 m" is perfectly checkable, and with the start
+     and stop times on the same row a 55-minute visit rounded to "1 h 0 m"
+     reads as a bug. (Changed 2026-09-23, when the visits table put the stamps
+     next to the duration for the first time.) */
+  return Math.round(ms / 60_000) / 60;
 }
 
 /**
@@ -639,6 +683,41 @@ export function syncPrimaryAsset<T extends { assets: ServiceAssetLine[] }>(
     assetType: first?.assetType ?? "",
     workType: first?.workType ?? "",
     fault: first?.fault ?? "",
+  };
+}
+
+/* ──────────────────────────────────────────────────────────── the visits ── */
+
+/** What ONE visit comes to — what somebody typed, or what its clock said. */
+export const visitHours = (v: ServiceVisit) =>
+  v.override ?? computedLabor(v.startedAt, v.endedAt);
+
+/** The sum of the trips. This is the figure every total reads. */
+export const totalVisitHours = (visits: ServiceVisit[]) =>
+  visits.reduce((n, v) => n + visitHours(v), 0);
+
+/** The one that is still running, if any. Only ever the last. */
+export const openVisit = (visits: ServiceVisit[]) =>
+  visits.length > 0 && visits[visits.length - 1].endedAt === null
+    ? visits[visits.length - 1]
+    : null;
+
+/**
+ * KEEP THE MIRRORED CLOCK AND THE TOTAL TRUE. Call it after any write to
+ * `visits`.
+ *
+ * ONE PLACE, ON PURPOSE — the same discipline `syncPrimaryAsset` follows. A
+ * mirror maintained at each call site is a mirror that is wrong at one of
+ * them, and the failure is silent: a timer counting from a visit that ended
+ * on Tuesday.
+ */
+export function syncVisits<T extends { visits: ServiceVisit[] }>(o: T) {
+  const last = o.visits[o.visits.length - 1];
+  return {
+    ...o,
+    startedAt: last?.startedAt ?? null,
+    completedAt: last?.endedAt ?? null,
+    labor: Math.round(totalVisitHours(o.visits) * 60) / 60,
   };
 }
 
@@ -884,13 +963,11 @@ function buildOrders(): ServiceOrder[] {
       recorded && i % 6 === 0
         ? Number((0.5 + pick() * 2).toFixed(2))
         : null;
-    const labor =
-      laborOverride ??
-      (status === "Parts pending"
-        ? computedLabor(startedAt, new Date(new Date(startedAt ?? day).getTime() + 45 * 60_000).toISOString())
-        : computedLabor(startedAt, completedAt));
+    /* LABOUR IS THE SUM OF THE TRIPS. It is written here because every total
+       reads it; `syncVisits` is what keeps it true after any later edit. */
+    const labor = 0;
 
-    out.push({
+    out.push(syncVisits({
       id: `so-${i}`,
       orderNo: `SO-${1042 + i * 3}`,
       status,
@@ -942,6 +1019,36 @@ function buildOrders(): ServiceOrder[] {
         : null,
       technicianId,
       arrivedAt,
+      /* THE TRIPS THIS JOB HAS TAKEN. One for most; TWO for a Parts-pending
+         order, because that is exactly what it is — a job that was visited,
+         could not be finished, and is waiting for the next trip. A fixture
+         with only single-visit jobs would leave the accumulating total
+         untested. */
+      visits: !startedAt
+        ? []
+        : status === "Parts pending"
+          ? [
+              {
+                startedAt: new Date(new Date(startedAt).getTime() - 26 * 3_600_000).toISOString(),
+                endedAt: new Date(new Date(startedAt).getTime() - 24.5 * 3_600_000).toISOString(),
+                technicianId,
+                override: null,
+              },
+              {
+                startedAt,
+                endedAt: new Date(new Date(startedAt).getTime() + 55 * 60_000).toISOString(),
+                technicianId,
+                override: null,
+              },
+            ]
+          : [
+              {
+                startedAt,
+                endedAt: completedAt,
+                technicianId,
+                override: laborOverride,
+              },
+            ],
       startedAt,
       assessment:
         started && i % 3 !== 0
@@ -969,7 +1076,7 @@ function buildOrders(): ServiceOrder[] {
       signed: recorded,
       completedAt,
       raisedBy: RAISED_BY[i % RAISED_BY.length],
-    });
+    }));
   }
   return out;
 }
@@ -1019,8 +1126,19 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     if (isRecorded(r.status) && r.labor <= 0) {
       problems.push(`${r.orderNo}: ${r.status} with no labour recorded`);
     }
-    if (isRecorded(r.status) !== (r.completedAt !== null)) {
-      problems.push(`${r.orderNo}: ${r.status} and its completion time disagree`);
+    /* A RECORDED JOB HAS A FINISHED VISIT — but the converse is NOT true any
+       more, and that is the point of visits. "Parts pending" has a finished
+       visit and is not a finished job: `completedAt` is now the mirror of the
+       LAST VISIT'S END, which answers "when did somebody last leave site",
+       not "is this done". The status is the only thing that answers the
+       second, and it should not be inferred from a timestamp. */
+    if (isRecorded(r.status) && !r.visits.some((v) => v.endedAt !== null)) {
+      problems.push(`${r.orderNo}: ${r.status} with no finished visit`);
+    }
+    /* NOTHING UNVISITED HAS A VISIT. Parts pending is the exception on the
+       other side — it is in Open and has been visited. */
+    if (r.visits.length > 0 && !started) {
+      problems.push(`${r.orderNo}: ${r.status} with a visit on it`);
     }
     /* THE INVOICE FOLLOWS THE VISIT, and the sync follows the invoice. BOTH
        Completed statuses are past the visit — "Completed — linked" is a
@@ -1037,6 +1155,26 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     if ((r.status === "Reviewed") !== r.synced) {
       problems.push(`${r.orderNo}: Completed means the invoice reached accounting`);
     }
+    /* THE VISITS AND THE MIRRORED CLOCK AGREE. `startedAt` and `completedAt`
+       are the LAST visit's ends, and `labor` is the sum of them all — three
+       facts derived from one list, which is three chances for a call site to
+       have written one of them by hand. */
+    const last = r.visits[r.visits.length - 1];
+    if ((last?.startedAt ?? null) !== r.startedAt) {
+      problems.push(`${r.orderNo}: startedAt does not match the last visit`);
+    }
+    if ((last?.endedAt ?? null) !== r.completedAt) {
+      problems.push(`${r.orderNo}: completedAt does not match the last visit`);
+    }
+    if (Math.abs(totalVisitHours(r.visits) - r.labor) > 0.02) {
+      problems.push(`${r.orderNo}: labour is not the sum of its visits`);
+    }
+    /* ONLY THE LAST VISIT MAY BE RUNNING. An open visit earlier in the list
+       is a clock nobody will ever stop. */
+    if (r.visits.some((v, i) => v.endedAt === null && i !== r.visits.length - 1)) {
+      problems.push(`${r.orderNo}: a visit before the last one is still running`);
+    }
+
     /* A STALL HAS A REASON, and only a stall has one. */
     if ((r.status === "Parts pending") !== (r.partNeeded !== null)) {
       problems.push(`${r.orderNo}: hold reason and status disagree`);

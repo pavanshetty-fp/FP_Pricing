@@ -22,6 +22,7 @@ import {
   WORK_STATUS_TONE,
   computedLabor,
   formatHours,
+  syncVisits,
   money,
   partsTotal,
   feesTotal,
@@ -610,8 +611,20 @@ function Job({
         <ActionBar
           label="Start labour"
           onPress={() => {
+            /* A PRESS OPENS A VISIT. The dispatcher's timer counts from it,
+               and the order's total is the sum of every one of them. */
             onPatch({
-              startedAt: nowIso(),
+              ...syncVisits({
+                visits: [
+                  ...job.visits,
+                  {
+                    startedAt: nowIso(),
+                    endedAt: null,
+                    technicianId: job.technicianId,
+                    override: null,
+                  },
+                ],
+              }),
               status: "Ongoing" as WorkStatus,
             });
             toast.success("Labour started");
@@ -751,11 +764,19 @@ function Job({
               toast.success(`${job.orderNo} — waiting on a part`);
             } else {
               const at = endedAt ?? nowIso();
+              /* THE VISIT CLOSES; THE TOTAL FOLLOWS. `completedAt` and
+                 `labor` are mirrors of the visit list and are written by
+                 `syncVisits`, never by hand. */
               onPatch({
                 ...patch,
-                completedAt: at,
+                ...syncVisits({
+                  visits: job.visits.map((v, i) =>
+                    i === job.visits.length - 1 && v.endedAt === null
+                      ? { ...v, endedAt: at }
+                      : v
+                  ),
+                }),
                 signed: true,
-                labor: computedLabor(job.startedAt, at),
                 status: cfg.managerApproval ? "Needs approval" : "Completed",
               });
               toast.success(

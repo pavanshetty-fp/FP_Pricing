@@ -24,6 +24,7 @@ import {
   Cog,
   Smartphone,
   SlidersHorizontal,
+  Archive as ArchiveIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -208,6 +209,10 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       items: [
         { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
         { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
+        /* THE OLD VERSIONS OF RECURRING, kept for reference (Pavan,
+           2026-09-23). Recurring Orders IS the rule-based version now, with no
+           version label of its own; V1 and V2 live here, out of its way. */
+        { key: "3pl-recurring-archive", label: "Archive", icon: <ArchiveIcon /> },
       ],
     },
   ],
@@ -1182,13 +1187,11 @@ export function UnifiedView() {
     V1.1 IS THE ONE UNDER DESIGN (Pavan, 2026-09-23) — the rule-based
     direction — so it is what the screen opens on. V1 and V2 are kept, but
     under ARCHIVE: reachable for reference, and out of the way of the version
-    being worked on. `archiveVersion` remembers which archived one was last
-    looked at, so going back to Archive lands where you left it.
+    being worked on. MOVED 2026-09-23 into the drawer: Recurring Orders is
+    V1.1 with no label (it is simply what the screen is), and "Archive", below
+    it, holds V1 and V2 behind a V1 | V2 switch by the title.
   */
-  const [recurringVersion, setRecurringVersion] = React.useState<
-    "v1" | "v1.1" | "v2"
-  >("v1.1");
-  const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
+const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
      where a recurring order is actually made: tick Recurring on the order and
@@ -1387,10 +1390,10 @@ export function UnifiedView() {
          also delivery one, and everything after it is a child of it. V1 (the
          schedule as a RULE that is not an order) is not built yet. */
       case "3pl-recurring-orders":
-        return recurringVersion === "v1" ? (
+        return <RecurringProgramsScreen />;
+      case "3pl-recurring-archive":
+        return archiveVersion === "v1" ? (
           <RecurringRulesScreen onCreateRule={goCreateOrder} />
-        ) : recurringVersion === "v1.1" ? (
-          <RecurringProgramsScreen />
         ) : (
           <RecurringOrdersScreen onCreateRule={goCreateOrder} />
         );
@@ -1420,46 +1423,21 @@ export function UnifiedView() {
                 screen that has two versions. It is not a filter and not a
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
-            {screenKey === "3pl-recurring-orders" && (
-              <div className="flex shrink-0 items-center gap-2 self-center">
-                <ToggleGroup
-                  type="single"
-                  size="sm"
-                  value={recurringVersion === "v1.1" ? "v1.1" : "archive"}
-                  onValueChange={(v) =>
-                    v && setRecurringVersion(v === "archive" ? archiveVersion : "v1.1")
-                  }
-                >
-                  <ToggleGroupItem
-                    value="v1.1"
-                    aria-label="Version 1.1 — one partner across many sites"
-                  >
-                    V1.1
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="archive" aria-label="Archived versions">
-                    Archive
-                  </ToggleGroupItem>
-                </ToggleGroup>
-                {recurringVersion !== "v1.1" && (
-                  <ToggleGroup
-                    type="single"
-                    size="sm"
-                    value={recurringVersion}
-                    onValueChange={(v) => {
-                      if (!v) return;
-                      setArchiveVersion(v as "v1" | "v2");
-                      setRecurringVersion(v as "v1" | "v2");
-                    }}
-                  >
-                    <ToggleGroupItem value="v1" aria-label="Version 1 — rule based, one site">
-                      V1
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="v2" aria-label="Version 2 — parent and child orders">
-                      V2
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                )}
-              </div>
+            {screenKey === "3pl-recurring-archive" && (
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={archiveVersion}
+                onValueChange={(v) => v && setArchiveVersion(v as "v1" | "v2")}
+                className="shrink-0 self-center"
+              >
+                <ToggleGroupItem value="v1" aria-label="Version 1 — rule based, one site">
+                  V1
+                </ToggleGroupItem>
+                <ToggleGroupItem value="v2" aria-label="Version 2 — parent and child orders">
+                  V2
+                </ToggleGroupItem>
+              </ToggleGroup>
             )}
           </div>
         }

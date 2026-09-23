@@ -44,8 +44,10 @@ import {
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
+import { HangingAdd } from "../HangingAdd";
 import {
   SheetField,
+  SheetSectionInset,
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
@@ -68,6 +70,8 @@ import {
   isRecorded,
   isWorkable,
   computedLabor,
+  syncPrimaryAsset,
+  type ServiceAssetLine,
   fittedOf,
   shortfallLabel,
   formatHours,
@@ -140,6 +144,18 @@ function MoneyRow({
    pointing at nothing. */
 const SECTION_INTAKE = "service-order-intake";
 const SECTION_ASSET = "service-order-asset";
+/** The assets table, and the technician — both their own cards since 2026-09-23. */
+const SECTION_ASSETS = "service-order-assets";
+const SECTION_TECH = "service-order-technician";
+
+/** A fresh, empty row for the assets table. */
+const blankAssetLine = (): ServiceAssetLine => ({
+  assetId: "",
+  assetName: "",
+  assetType: "",
+  workType: "",
+  fault: "",
+});
 const SECTION_SCHEDULE = "service-order-schedule";
 
 const STAMP_TIME = new Intl.DateTimeFormat("en-US", {
@@ -695,7 +711,21 @@ export function ServiceOrderSheet({
   };
   const book = WORK_TYPES[draft.workType];
   const shipTos = shipTosFor(draft.customer);
-  const assets = assetsFor(draft.shipTo);
+  const siteAssets = assetsFor(draft.shipTo);
+
+  /* ── the asset rows ─────────────────────────────────────────────────────
+     ONE WRITER, so the mirrored `assetId`/`workType`/`fault` on the order
+     cannot drift from `assets[0]`. Every edit in the table goes through
+     here. */
+  const setAssetLine = (i: number, patch: Partial<ServiceAssetLine>) =>
+    setDraft((x) =>
+      x
+        ? syncPrimaryAsset({
+            ...x,
+            assets: x.assets.map((r, j) => (j === i ? { ...r, ...patch } : r)),
+          })
+        : x
+    );
 
   /* WHO MAY EDIT WHAT, BY STAGE. Intake is the dispatcher's until the job
      starts; the work is the technician's while it is running; past approval
@@ -777,7 +807,9 @@ export function ServiceOrderSheet({
             key: "tech",
             label: "Assign a technician",
             done: Boolean(draft.technicianId),
-            target: SECTION_SCHEDULE,
+            /* ITS OWN CARD SINCE 2026-09-23, so the strip can land on the
+               question rather than on the two dates above it. */
+            target: SECTION_TECH,
           },
         ]
       : []),
@@ -1228,19 +1260,22 @@ export function ServiceOrderSheet({
       </SheetSection>
 
       {/* ──────────────────────────────────── customer, site and asset ───── */}
+      {/* ── CUSTOMER DETAILS ────────────────────────────────────────────
+          SPLIT FROM THE ASSETS (Pavan, 2026-09-23). One card asked two
+          questions that scale differently: WHO and WHERE is answered once,
+          and WHAT IS BROKEN is answered as many times as there are assets on
+          the site. A card that holds both grows one of them and not the
+          other, and the growing half ends up wearing the fixed half's
+          layout. */}
       <SheetSection
         id={SECTION_ASSET}
-        title="Asset"
+        title="Customer details"
         note={
           <SheetSectionNote label="Why it cascades">
-            <p className="text-foreground">
-              Customer, then site, then the asset standing at it.
-            </p>
+            <p className="text-foreground">Customer, then site.</p>
             <p className="mt-1.5 text-muted-foreground">
-              A job is raised against a tank that is already out on rent, so the
-              asset is chosen from the ones deployed at the chosen site rather
-              than typed. A typed asset is a job nobody can trace back to a
-              piece of equipment.
+              The site decides which assets can be on the job at all, which is
+              why it is answered before them and in its own card.
             </p>
           </SheetSectionNote>
         }
@@ -1250,15 +1285,22 @@ export function ServiceOrderSheet({
             <Combobox
               className="w-full"
               value={draft.customer}
-              onValueChange={(v) =>
-                setDraft((d) =>
-                  d
-                    ? { ...d, customer: v, shipTo: "", assetId: "", assetName: "", assetType: "" }
-                    : d
-                )
-              }
+              onValueChange={(v) => {
+                /* THE SITE AND THE ASSETS FALL WITH THE CUSTOMER. A ship-to
+                   belonging to the old customer is worse than an empty one. */
+                setDraft((x) =>
+                  x
+                    ? syncPrimaryAsset({
+                        ...x,
+                        customer: v,
+                        shipTo: "",
+                        assets: [blankAssetLine()],
+                      })
+                    : x
+                );
+              }}
               options={customers}
-              placeholder="Select customer"
+              placeholder="Choose a customer"
               searchPlaceholder="Search customers…"
               disabled={intakeLocked}
             />
@@ -1268,93 +1310,32 @@ export function ServiceOrderSheet({
               className="w-full"
               value={draft.shipTo}
               onValueChange={(v) =>
-                setDraft((d) =>
-                  d ? { ...d, shipTo: v, assetId: "", assetName: "", assetType: "" } : d
+                setDraft((x) =>
+                  x
+                    ? syncPrimaryAsset({
+                        ...x,
+                        shipTo: v,
+                        assets: [blankAssetLine()],
+                      })
+                    : x
                 )
               }
               options={shipTos}
-              placeholder={draft.customer ? "Select ship-to" : "Select a customer first"}
+              placeholder={draft.customer ? "Choose a site" : "Choose a customer first"}
               searchPlaceholder="Search sites…"
               disabled={intakeLocked || !draft.customer}
             />
           </SheetField>
-          <SheetField label="Asset">
-            <Combobox
-              className="w-full"
-              value={draft.assetName}
-              onValueChange={(v) => {
-                const a = assets.find((x) => x.name === v);
-                setDraft((d) =>
-                  d
-                    ? { ...d, assetId: a?.id ?? "", assetName: v, assetType: a?.type ?? "" }
-                    : d
-                );
-              }}
-              options={assets.map((a) => a.name)}
-              placeholder={draft.shipTo ? "Select asset" : "Select a ship-to first"}
-              searchPlaceholder="Search assets…"
-              disabled={intakeLocked || !draft.shipTo}
-            />
-          </SheetField>
-          <SheetField label="Work type">
-            <Combobox
-              className="w-full"
-              value={draft.workType}
-              onValueChange={(v) =>
-                setDraft((d) => {
-                  if (!d) return d;
-                  /* THE PRICE BOOK SEEDS, VISIBLY. Changing the work type
-                     replaces the suggested lines only while nothing has been
-                     recorded — past that they are what somebody actually
-                     fitted, and a dropdown must not throw those away. */
-                  if (!cfg.priceBook || isRecorded(d.status))
-                    return { ...d, workType: v };
-                  const b = WORK_TYPES[v];
-                  return {
-                    ...d,
-                    workType: v,
-                    parts: b.parts.map((p) => ({ ...p })),
-                    fees: b.fees.map((f) => ({ ...f })),
-                  };
-                })
-              }
-              options={WORK_TYPE_NAMES}
-              placeholder="Select work type"
-              disabled={intakeLocked}
-            />
-          </SheetField>
         </div>
-        <div className="mt-4">
-          <SheetField label="Reported fault">
-            <Input
-              value={draft.fault}
-              placeholder="What the customer described"
-              onChange={(e) => set("fault", e.target.value)}
-              disabled={intakeLocked}
-            />
-          </SheetField>
-        </div>
-        {cfg.priceBook && book && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            From the price book —{" "}
-            {book.parts.length
-              ? book.parts.map((p) => `${p.name} (${money(p.cost)})`).join(", ")
-              : "no default parts"}
-            , {book.fees.map((f) => `${f.name} ${money(f.amount)}`).join(", ")}.
-          </p>
-        )}
       </SheetSection>
 
-      {/* ──────────────────────────────────────────── schedule and who ───── */}
-      <SheetSection id={SECTION_SCHEDULE} title="Schedule">
-        {/* DATE AND TIME ARE ONE ANSWER, so they share a row; the technician
-            is a different question and gets its own line under them. */}
+      {/* ── SCHEDULE DETAILS ─────────────────────────────────────────────
+          WHEN, AND NOTHING ELSE. The technician left this card on 2026-09-23:
+          a date and a window are one answer about the JOB, and who goes is an
+          answer about a PERSON — and the second one changes far more often
+          than the first. */}
+      <SheetSection id={SECTION_SCHEDULE} title="Schedule details">
         <div className="grid grid-cols-2 gap-4">
-          {/* THE DS DATE CONTROL, not a native `datetime-local`. The browser's
-              own field draws a calendar glyph this app cannot theme — in dark
-              mode it renders as a pale box that belongs to no palette here —
-              and it is the one field in the sheet that would not have matched
-              the date on the 3PL order. */}
           <SheetField label="Scheduled date">
             <Popover>
               <PopoverTrigger asChild>
@@ -1376,46 +1357,18 @@ export function ServiceOrderSheet({
                   onSelect={(d) => {
                     if (!d) return;
                     const at = new Date(d);
-                    at.setHours(
-                      Math.floor(scheduledMinutes / 60),
-                      scheduledMinutes % 60,
-                      0,
-                      0
-                    );
+                    const prev = draft.scheduledAt ? new Date(draft.scheduledAt) : null;
+                    at.setHours(prev?.getHours() ?? 9, prev?.getMinutes() ?? 0, 0, 0);
                     setDraft((x) =>
-                      x
-                        ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) }
-                        : x
+                      x ? { ...x, scheduledAt: at.toISOString(), dateKey: keyOf(at) } : x
                     );
                   }}
                 />
-                {/* LEAVING IT UNBOOKED IS AN ANSWER, so it is offered here
-                    rather than only by clearing a text field nobody can clear. */}
-                <div className="border-t border-border p-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => set("scheduledAt", null)}
-                  >
-                    Dispatch at the yard team's discretion
-                  </Button>
-                </div>
               </PopoverContent>
             </Popover>
           </SheetField>
-          {/* A PICKER, NOT A SLIDER. An arrival is a time somebody is told, and
-              a customer is told "half past twelve" — a handle on a 24-hour
-              track asks them to aim at it. The window slider earns its track
-              because a window is a span you size; one moment is a value you
-              choose, and the list of them is short. */}
-          {/* A WINDOW, NOT A MOMENT (Pavan, 2026-09-23) — the same control 3PL
-              uses for a delivery window, and for the same reason. A site whose
-              gate opens between 7 and 11 was being filed under a single 7:00 AM
-              nobody could honour, and the four hours of slack lived in a
-              dispatcher's head. Reused rather than rebuilt: two window
-              controls in one app is how two windows come to behave
-              differently. */}
+          {/* A WINDOW, NOT A MOMENT — the same control 3PL uses for a delivery
+              window, and for the same reason. */}
           <TimeWindowSlider
             label="Scheduling window"
             start={scheduledMinutes}
@@ -1438,31 +1391,177 @@ export function ServiceOrderSheet({
             }}
           />
         </div>
-        <div className="mt-4">
-          <SheetField
-            label="Technician"
-            description="Leave unassigned to route to the yard team's queue"
-          >
-            <Combobox
-              className="w-full"
-              value={tech?.name ?? ""}
-              onValueChange={(v) =>
-                set(
-                  "technicianId",
-                  ACTIVE_TECHNICIANS.find((t) => t.name === v)?.id ?? null
-                )
-              }
-              options={ACTIVE_TECHNICIANS.map((t) => t.name)}
-              placeholder="Unassigned"
-              searchPlaceholder="Search technicians…"
-              disabled={workLocked}
-            />
-          </SheetField>
-        </div>
+      </SheetSection>
+
+      {/* ── TECHNICIAN — ITS OWN UNIT (Pavan, 2026-09-23) ────────────────
+          NOT MERGED WITH ANYTHING. Assigning somebody is the act this screen
+          is most often reopened to do, and it was the last line of a card
+          about dates — reachable only by reading past two questions that were
+          already answered. Its own card gives it a heading you can aim at,
+          which is also what lets the pending strip send you here. */}
+      <SheetSection id={SECTION_TECH} title="Technician">
+        <SheetField
+          label="Assigned to"
+          description="Leave unassigned to route to the yard team's queue"
+        >
+          <Combobox
+            className="w-full"
+            value={tech?.name ?? ""}
+            onValueChange={(v) =>
+              set(
+                "technicianId",
+                ACTIVE_TECHNICIANS.find((t) => t.name === v)?.id ?? null
+              )
+            }
+            options={ACTIVE_TECHNICIANS.map((t) => t.name)}
+            placeholder="Unassigned"
+            searchPlaceholder="Search technicians…"
+            disabled={workLocked}
+          />
+        </SheetField>
         {tech && (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {tech.base} · {tech.skills.join(" · ")} · {tech.phone}
           </p>
+        )}
+      </SheetSection>
+
+      {/* ── ASSET DETAILS — A TABLE, BECAUSE A VISIT COVERS SEVERAL ──────
+          One truck goes to one site and works on three skids. As a single
+          asset that was three orders, three call-out fees and three invoices
+          for one trip. The site is the constant and the assets are the
+          variable.
+
+          WORK TYPE AND FAULT ARE COLUMNS, not fields above the table: they
+          belong to the ASSET, not to the visit. A hose swap on one skid and a
+          meter recalibration on the next are the same trip and different
+          jobs. */}
+      <SheetSection
+        id={SECTION_ASSETS}
+        title="Asset details"
+        flush
+        hanging={
+          !intakeLocked ? (
+            <HangingAdd
+              label="Add asset"
+              onClick={() =>
+                setDraft((x) =>
+                  x
+                    ? syncPrimaryAsset({
+                        ...x,
+                        assets: [...x.assets, blankAssetLine()],
+                      })
+                    : x
+                )
+              }
+            />
+          ) : undefined
+        }
+      >
+        <table className="w-full border-separate border-spacing-0 text-sm">
+          <colgroup>
+            <col className="w-[30%]" />
+            <col className="w-[26%]" />
+            <col />
+            <col className="w-[52px]" />
+          </colgroup>
+          <thead>
+            <tr className="bg-fp-table-header [&>th]:border-b [&>th]:border-border">
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Asset</TableRequiredLabel>
+              </th>
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Work type</TableRequiredLabel>
+              </th>
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Reported fault</TableRequiredLabel>
+              </th>
+              <th className="px-3 py-2.5" aria-label="Remove" />
+            </tr>
+          </thead>
+          <tbody>
+            {draft.assets.map((row, i) => (
+              <tr key={i} className="[&>td]:border-b [&>td]:border-border">
+                <td className="px-3 py-1.5">
+                  <Combobox
+                    className="w-full"
+                    value={row.assetName}
+                    onValueChange={(v) => {
+                      const a = siteAssets.find((x) => x.name === v);
+                      setAssetLine(i, {
+                        assetId: a?.id ?? "",
+                        assetName: v,
+                        assetType: a?.type ?? "",
+                      });
+                    }}
+                    options={siteAssets.map((a) => a.name)}
+                    placeholder={draft.shipTo ? "Choose an asset" : "Choose a site first"}
+                    searchPlaceholder="Search assets…"
+                    disabled={intakeLocked || !draft.shipTo}
+                  />
+                </td>
+                <td className="px-3 py-1.5">
+                  <Combobox
+                    className="w-full"
+                    value={row.workType}
+                    onValueChange={(v) => setAssetLine(i, { workType: v })}
+                    options={WORK_TYPE_NAMES}
+                    placeholder="Choose"
+                    searchPlaceholder="Search work types…"
+                    disabled={intakeLocked}
+                  />
+                </td>
+                {/* `relative p-0`, BECAUSE `TableCellInput` IS `absolute
+                    inset-0` — it fills the cell rather than sitting in it, so
+                    the cell has to be the thing it fills. Without the
+                    positioning it escapes the table entirely and lands at the
+                    top of the sheet. */}
+                <td className="relative h-11 p-0">
+                  <TableCellInput
+                    value={row.fault}
+                    placeholder="What the customer described"
+                    onChange={(v) => setAssetLine(i, { fault: v })}
+                    disabled={intakeLocked}
+                  />
+                </td>
+                <td className="px-3 py-1.5 text-right">
+                  {/* THE BIN, BECAUSE A ROW REALLY DOES GO. The last row stays
+                      — emptying the table would leave a card with nothing in
+                      it and no way back but the hanging add. */}
+                  {draft.assets.length > 1 && !intakeLocked && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Remove ${row.assetName || "this asset"}`}
+                      onClick={() =>
+                        setDraft((x) =>
+                          x
+                            ? syncPrimaryAsset({
+                                ...x,
+                                assets: x.assets.filter((_, j) => j !== i),
+                              })
+                            : x
+                        )
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {cfg.priceBook && book && (
+          <SheetSectionInset className="border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              From the price book —{" "}
+              {book.parts.length
+                ? book.parts.map((p) => `${p.name} (${money(p.cost)})`).join(", ")
+                : "no default parts"}
+              , {book.fees.map((f) => `${f.name} ${money(f.amount)}`).join(", ")}.
+            </p>
+          </SheetSectionInset>
         )}
       </SheetSection>
 

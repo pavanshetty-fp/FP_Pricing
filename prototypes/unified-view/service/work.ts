@@ -286,6 +286,16 @@ export interface Quote {
   approvedAt: string | null;
 }
 
+/** One asset on a visit, with the work it needs and what was reported about it. */
+export interface ServiceAssetLine {
+  assetId: string;
+  assetName: string;
+  assetType: string;
+  workType: string;
+  /** What was reported about THIS asset, in the words it was reported in. */
+  fault: string;
+}
+
 export interface ServiceOrder {
   id: string;
   /** SO- series, as 3PL uses D-, M- and the asset orders W-. */
@@ -301,6 +311,27 @@ export interface ServiceOrder {
   state: string;
 
   /* ── what it is about ── */
+  /**
+   * THE ASSETS THIS VISIT COVERS — one row each (Pavan, 2026-09-23).
+   *
+   * A LIST, BECAUSE A VISIT IS. One truck goes to one site and works on three
+   * skids; as a single asset that was three orders, three call-out fees and
+   * three invoices for one trip. The site is the constant and the assets are
+   * the variable, which is why the customer and the assets are now two cards
+   * rather than one.
+   *
+   * EACH ROW CARRIES ITS OWN WORK TYPE AND FAULT, because they belong to the
+   * asset and not to the visit: a hose swap on one skid and a meter
+   * recalibration on the next are the same trip and different jobs.
+   */
+  assets: ServiceAssetLine[];
+
+  /* ── the first asset, mirrored ──────────────────────────────────────────
+     THESE FIVE ARE `assets[0]`, KEPT IN SYNC ON EVERY WRITE. Thirty-eight
+     places read them — board cards, list columns, both technician apps — and
+     rewriting all of them to walk a list would be a day's work for a
+     prototype whose lists are nearly always one long. `syncPrimaryAsset` is
+     the ONE place the mirror is maintained; nothing else may write them. */
   assetId: string;
   assetName: string;
   assetType: string;
@@ -517,6 +548,27 @@ export function formatHours(hours: number): string {
 /** Back the other way, for the two number fields. */
 export const joinHours = (h: number, m: number) =>
   Math.max(0, h) + Math.max(0, Math.min(59, m)) / 60;
+
+/**
+ * KEEP THE MIRRORED ASSET FIELDS TRUE. Call it after any write to `assets`.
+ *
+ * ONE PLACE, ON PURPOSE. A mirror maintained at each call site is a mirror
+ * that is wrong at one of them, and the failure is silent — a board card
+ * naming an asset the order no longer has.
+ */
+export function syncPrimaryAsset<T extends { assets: ServiceAssetLine[] }>(
+  o: T
+): T & Pick<ServiceOrder, "assetId" | "assetName" | "assetType" | "workType" | "fault"> {
+  const first = o.assets[0];
+  return {
+    ...o,
+    assetId: first?.assetId ?? "",
+    assetName: first?.assetName ?? "",
+    assetType: first?.assetType ?? "",
+    workType: first?.workType ?? "",
+    fault: first?.fault ?? "",
+  };
+}
 
 /** The figure to bill: what somebody typed, or failing that what the clock said. */
 export const effectiveLabor = (o: {
@@ -758,6 +810,29 @@ function buildOrders(): ServiceOrder[] {
       state: asset.state ?? "",
       assetId: asset.id,
       assetName: asset.name,
+      assets: [
+        {
+          assetId: asset.id,
+          assetName: asset.name,
+          assetType: asset.assetType,
+          workType,
+          fault: faults[i % faults.length],
+        },
+        /* EVERY NINTH VISIT COVERS A SECOND ASSET, so the table has more than
+           one row in it from the first load. A fixture with only the
+           single-asset case is how a list ships untested. */
+        ...(i % 9 === 0
+          ? [
+              {
+                assetId: `${asset.id}-b`,
+                assetName: `${asset.name.replace(/\d+$/, "").trim()} ${Number(asset.name.match(/\d+$/)?.[0] ?? 0) + 1}`,
+                assetType: asset.assetType,
+                workType: WORK_TYPE_NAMES[(i + 3) % WORK_TYPE_NAMES.length],
+                fault: faults[(i + 2) % faults.length],
+              },
+            ]
+          : []),
+      ],
       assetType: asset.assetType,
       workType,
       fault: faults[i % faults.length],

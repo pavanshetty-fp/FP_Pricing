@@ -687,6 +687,11 @@ export function ServiceWorkScreen() {
       state: "",
       assetId: "",
       assetName: "",
+      /* ONE BLANK ROW, so the table is a table from the first keystroke rather
+         than an empty state somebody has to press to escape. */
+      assets: [
+        { assetId: "", assetName: "", assetType: "", workType, fault: "" },
+      ],
       assetType: "",
       workType,
       fault: "",

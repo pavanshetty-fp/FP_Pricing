@@ -2,6 +2,7 @@ import { RENTAL_ASSETS, type RentalAsset } from "../threepl/directory";
 import type { CodeDiscTone } from "@/components/ui/code-disc";
 import type { LaneColor } from "../threepl/BrokerBoard";
 import { statusTones, type StatusKind } from "../statusKind";
+import { MONEY as money } from "../data";
 
 /*
   SERVICE WORK — the model, the fixture and the invariants.
@@ -614,10 +615,11 @@ export interface ServiceAuditEntry {
 }
 
 /**
- * WHAT CHANGED, IN WORDS — one audit entry. Old value and new, because
- * "Status: Assigned → Ongoing" answers the question the log is opened for and
- * "status changed" only proves somebody was here. Line tables are compared as
- * a whole: the shape of the job is what somebody checks later.
+ * WHAT IS WORTH WRITING DOWN — one audit entry (the list Pavan approved,
+ * 2026-09-23). NOT every save: a log that records each pause in typing is one
+ * nobody reads. It records what changes WHO is on the job, WHEN it happens,
+ * WHAT IT COSTS, or WHAT STAGE it is at — with the old value and the new.
+ * Notes, faults, intake source, contacts and the asset rows are not logged.
  */
 export function diffServiceOrder(a: ServiceOrder, b: ServiceOrder): string[] {
   const out: string[] = [];
@@ -626,35 +628,55 @@ export function diffServiceOrder(a: ServiceOrder, b: ServiceOrder): string[] {
     out.push(`${label}: ${from || "—"} → ${to || "—"}`);
   };
   const tech = (id: string | null) => technicianById(id)?.name ?? "";
-  say("Status", a.status, b.status);
-  say("Priority", a.priority, b.priority);
-  say("Intake", a.source, b.source);
-  say("Customer", a.customer, b.customer);
-  say("Ship-to", a.shipTo, b.shipTo);
+
+  /* STAGE — with the reason where the stage carries one. */
+  if (a.status !== b.status) {
+    if (b.status === "Parts pending") {
+      const owed = shortfallLabel(b.parts);
+      out.push(`Held for parts${owed ? ` · ${owed} owed` : ""}`);
+    } else if (b.status === "Completed" && !a.completedAt && b.completedAt) {
+      out.push("Work recorded");
+    } else say("Status", a.status, b.status);
+  }
+  /* WHO. */
   say("Technician", tech(a.technicianId), tech(b.technicianId));
-  say("Scheduled", a.scheduledAt?.slice(0, 16), b.scheduledAt?.slice(0, 16));
-  const assets = (r: ServiceOrder) =>
-    r.assets.filter((x) => x.assetName || x.workType || x.fault)
-      .map((x) => [x.assetName || "?", x.workType, x.fault].filter(Boolean).join(" — "))
-      .join(" · ");
-  say("Assets", assets(a), assets(b));
-  const parts = (r: ServiceOrder) =>
-    r.parts
-      .map((p) => `${p.name || "?"} ×${p.qty}${p.fittedQty !== undefined ? ` (${p.fittedQty} fitted)` : ""}`)
-      .join(" · ");
-  say("Parts", parts(a), parts(b));
-  const lines = (xs: FeeLine[]) => xs.map((f) => `${f.name || "?"} ${f.amount}`).join(" · ");
-  say("Fees", lines(a.fees), lines(b.fees));
-  say("Additional charges", lines(a.extraCharges), lines(b.extraCharges));
-  say("Labour", a.labor ? formatHours(a.labor) : "", b.labor ? formatHours(b.labor) : "");
+  /* WHEN. */
+  const when = (r: ServiceOrder) =>
+    r.scheduledAt ? `${r.scheduledAt.slice(0, 10)} ${r.scheduledAt.slice(11, 16)}${r.windowEndMin != null ? `–${String(Math.floor(r.windowEndMin / 60)).padStart(2, "0")}:${String(r.windowEndMin % 60).padStart(2, "0")}` : ""}` : "";
+  say("Scheduled", when(a), when(b));
+  /* THE VISITS — each one's start and end, who went and for how long. */
+  for (const v of b.visits) {
+    const was = a.visits.find((x) => x.startedAt === v.startedAt);
+    if (!was) out.push(`Visit started · ${tech(v.technicianId) || "—"}`);
+    if (v.endedAt && !was?.endedAt)
+      out.push(`Visit ended · ${tech(v.technicianId) || "—"} · ${formatHours(visitHours(v))}`);
+  }
+  /* THE QUOTE. */
+  if (!a.quote && b.quote) out.push(`Quote sent · ${money(b.quote.total)}`);
+  if (!a.quote?.approvedAt && b.quote?.approvedAt) out.push("Quote approved");
+  /* WHAT IT COSTS — the rate, a hand correction to the hours, and the
+     bill's lines once the work is recorded (before that they are the plan,
+     and the plan is still being written). */
   say("Labour rate", a.laborRate, b.laborRate);
-  say("Mileage", a.mileage || "", b.mileage || "");
-  if (!a.quote && b.quote) out.push("Quote sent");
-  if (a.quote && !a.quote.approvedAt && b.quote?.approvedAt) out.push("Quote approved");
+  if (a.laborOverride !== b.laborOverride)
+    out.push(
+      b.laborOverride == null
+        ? "Labour: back to the clock"
+        : `Labour corrected: ${formatHours(b.laborOverride)}`
+    );
+  if (isRecorded(a.status)) {
+    const parts = (r: ServiceOrder) => r.parts.map((p) => `${p.name || "?"} ×${p.qty}`).join(" · ");
+    const lines = (xs: FeeLine[]) => xs.map((f) => `${f.name || "?"} ${money(f.amount)}`).join(" · ");
+    say("Parts", parts(a), parts(b));
+    say("Fees", lines(a.fees), lines(b.fees));
+    say("Additional charges", lines(a.extraCharges), lines(b.extraCharges));
+  }
+  /* THE INVOICE. */
   if (!a.invoiceCreated && b.invoiceCreated) out.push("Invoice raised");
   if (!a.synced && b.synced) out.push("Invoice reviewed");
-  if (a.techNotes !== b.techNotes)
-    out.push(`Technician notes: ${!a.techNotes ? "added" : !b.techNotes ? "cleared" : "edited"}`);
+  /* URGENCY — only to or from Urgent; High ↔ Normal changes no plan. */
+  if ((a.priority === "Urgent") !== (b.priority === "Urgent"))
+    say("Priority", a.priority, b.priority);
   return out;
 }
 
@@ -691,7 +713,7 @@ function seedServiceAudit(r: ServiceOrder): ServiceAuditEntry[] {
   }
   const last = r.visits[r.visits.length - 1];
   if (r.status === "Parts pending" && last?.endedAt)
-    e.push({ at: last.endedAt, by: tech(last.technicianId), changes: ["Status: Ongoing → Parts pending"] });
+    e.push({ at: last.endedAt, by: tech(last.technicianId), changes: [`Held for parts${shortfallLabel(r.parts) ? ` · ${shortfallLabel(r.parts)} owed` : ""}`] });
   if (r.completedAt && r.status !== "Parts pending")
     e.push({ at: r.completedAt, by: tech(r.technicianId), changes: ["Work recorded"] });
   if (r.invoicedAt) e.push({ at: r.invoicedAt, by: "Dana Whitfield", changes: ["Invoice raised"] });
@@ -885,7 +907,7 @@ export function quoteableTotal(parts: PartLine[], fees: FeeLine[]): number {
 }
 
 /** One helper, app-wide. */
-export { MONEY as money } from "../data";
+export { money };
 
 /* ------------------------------------------------------------- the fixture */
 

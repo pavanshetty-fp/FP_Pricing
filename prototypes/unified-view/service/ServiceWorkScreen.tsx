@@ -399,12 +399,11 @@ export function ServiceWorkScreen() {
   const cfg = useServiceSettings();
   const [rows, setRowsRaw] = React.useState<ServiceOrder[]>(SERVICE_ORDERS);
   /**
-   * EVERY CHANGE TO AN ORDER IS WRITTEN DOWN (Pavan, 2026-09-23) — the same
-   * change log a 3PL order keeps. One wrapper round the only setter, so no
-   * path that edits an order (the sheet's autosave, the board's acts, the
-   * parts-pending split, creation) can forget to log: each row that differs
-   * from what it was gets an entry listing what changed, in words. A new row
-   * starts its log with "Order created".
+   * THE CHANGE LOG IS WRITTEN HERE (Pavan, 2026-09-23). One wrapper round
+   * the only setter, so no path that edits an order (the sheet's autosave,
+   * the board's acts, the parts-pending split, creation) can forget. It logs
+   * only what `diffServiceOrder` counts as meaningful — the approved list —
+   * so most autosaves write nothing. A new row starts with "Order created".
    */
   const setRows = React.useCallback(
     (fn: (prev: ServiceOrder[]) => ServiceOrder[]) =>
@@ -417,8 +416,21 @@ export function ServiceWorkScreen() {
           if (!before)
             return r.audit.length > 0
               ? r
-              : { ...r, audit: [{ at, by, changes: ["Order created"] }] };
+              : {
+                  ...r,
+                  audit: [
+                    {
+                      at,
+                      by,
+                      changes: [r.status === "Drafted" ? "Order created as a draft" : "Order created"],
+                    },
+                  ],
+                };
           if (before === r) return r;
+          /* A DRAFT BEING FILLED IN WRITES NOTHING — the same rule 3PL
+             follows. What gets logged is the commitment ("Create new order"
+             moves it to Assigned), not every field on the way to it. */
+          if (before.status === "Drafted" && r.status === "Drafted") return r;
           const changes = diffServiceOrder(before, r);
           return changes.length > 0
             ? { ...r, audit: [...r.audit, { at, by, changes }] }

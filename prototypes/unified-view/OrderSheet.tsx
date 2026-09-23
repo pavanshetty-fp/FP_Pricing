@@ -22,6 +22,7 @@ import { TokenMultiSelect } from "./TokenMultiSelect";
 import { formatFullDate } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
 import { STATUS_TONE } from "./FuelOrdersTable";
+import { ActivitySection } from "./activity";
 
 /*
   Order side sheet.
@@ -403,6 +404,8 @@ export function OrderSheet({
               />
             </SheetField>
           </SheetSection>
+
+          {!creating && order && <ActivitySection entries={order.audit} />}
         </div>
 
         {/* Footer — DS sheet footer: border-t, p-4, right-aligned, gap-3. */}

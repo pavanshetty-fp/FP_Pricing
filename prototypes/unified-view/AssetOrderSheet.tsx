@@ -22,6 +22,7 @@ import {
   type AssetOrderStatus,
 } from "./assetOrders";
 import { ASSET_ORDER_STATUS_TONE } from "./assetOrders";
+import { ActivitySection } from "./activity";
 
 /**
  * Asset Order side sheet — the Fuel Orders order sheet's shape, with this
@@ -286,6 +287,8 @@ export function AssetOrderSheet({
           />
         </SheetField>
       </SheetSection>
+
+      {order && <ActivitySection entries={order.audit} />}
     </RecordSheet>
   );
 }

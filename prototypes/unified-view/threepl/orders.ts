@@ -713,13 +713,14 @@ export function isOrderReady(r: BrokerOrder): boolean {
 }
 
 /**
- * WHAT CHANGED, IN WORDS — the diff that becomes one audit entry.
+ * WHAT IS WORTH WRITING DOWN — the diff that becomes one audit entry.
  *
- * It reads fields, not objects, and it says the OLD value as well as the new
- * one: "Status Quoting -> Assigned" answers the question the trail is opened
- * to answer, where "Status changed" only proves someone was here. Fields
- * nobody would ask about later are left out on purpose — a trail that logs
- * everything is one nobody reads.
+ * NOT EVERY SAVE (Pavan, 2026-09-23, the approved list). The log records what
+ * changes the order's STAGE, WHO holds it, WHEN it runs and WHAT IT COSTS —
+ * with the old value and the new, because "Status: Quoting → Assigned"
+ * answers the question the trail is opened for. PO number, contacts, sales
+ * person, job type, tags, instructions, notes, the winter-additive and
+ * partner-email flags are edits, not events, and are left out.
  */
 export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
   const out: string[] = [];
@@ -727,62 +728,56 @@ export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
     if (String(from ?? "") === String(to ?? "")) return;
     out.push(`${label}: ${from || "—"} → ${to || "—"}`);
   };
-  say("Status", a.status, b.status);
-  say("Customer", a.customer.title, b.customer.title);
-  say("Ship to", a.shipTo, b.shipTo);
+  /* STAGE — and why, when the stage is Blocked. */
+  if (a.status !== b.status)
+    out.push(
+      `Status: ${a.status} → ${b.status}${
+        b.status === "Blocked" && b.blockedReason ? ` · ${b.blockedReason}` : ""
+      }`
+    );
+  /* WHEN. */
   say("Planned date", a.date.title, b.date.title);
   say(
     "Delivery window",
     `${a.window.start}–${a.window.end}`,
     `${b.window.start}–${b.window.end}`
   );
-  say("Order type", a.orderType, b.orderType);
-  say("PO number", a.poNumber, b.poNumber);
-  say("POC", a.primaryPoc, b.primaryPoc);
-  say("Second contact", a.secondaryPocs.join(", "), b.secondaryPocs.join(", "));
-  say("Sales person", a.salesperson, b.salesperson);
-  say("Job type", a.jobType, b.jobType);
   say("Urgent", a.urgent ? "yes" : "no", b.urgent ? "yes" : "no");
-  say("Winter additive", a.winterAdditive ? "yes" : "no", b.winterAdditive ? "yes" : "no");
-  say("Partner email", a.notifyVendor ? "on" : "off", b.notifyVendor ? "on" : "off");
-  say("Tags", a.tags.join(", "), b.tags.join(", "));
-  say("Instructions", a.instructions, b.instructions);
-  /* THE NOTE IS RECORDED, NOT REPRINTED. A trail that quotes both halves of a
-     paragraph every time somebody fixes a typo buries the entries that matter,
-     and the note itself is one scroll away on the sheet. */
-  if (a.internalNote !== b.internalNote) {
-    out.push(
-      `Internal note: ${
-        !a.internalNote ? "added" : !b.internalNote ? "cleared" : "edited"
-      }`
-    );
-  }
 
+  /* WHO — asked, answered, holding the order. */
   const names = (ids: string[]) =>
     ids.filter(Boolean).map((id) => VENDORS.find((v) => v.id === id)?.name ?? id);
   say("Vendors invited", names(a.invitedVendorIds).join(", "), names(b.invitedVendorIds).join(", "));
   say("Acknowledged", names(a.acceptedVendorIds).join(", "), names(b.acceptedVendorIds).join(", "));
   say(
-    "Vendor holding the order",
+    "Vendor finalized",
     names(a.vendorId ? [a.vendorId] : []).join(""),
     names(b.vendorId ? [b.vendorId] : []).join("")
   );
 
-  /* LINES ARE COMPARED AS A WHOLE. "Line 2 gallons 400 -> 500" is precise and
-     unreadable next to a reordered list; the shape of the order is what someone
-     is checking, so the shape is what is written down. */
-  const shape = (r: BrokerOrder) =>
-    r.lines
-      .map((l) => `${l.asset || "?"} ${l.product} ${l.topOff ? "top-off" : `${l.gal ?? 0} gal`}`)
-      .join(" · ");
-  say("Products", shape(a), shape(b));
+  /* WHAT — the products and gallons, but only once a price is on them: a
+     change after the quotes are in is what makes those quotes stale. */
+  if (a.quotes.length > 0) {
+    const shape = (r: BrokerOrder) =>
+      r.lines
+        .map((l) => `${l.asset || "?"} ${l.product} ${l.topOff ? "top-off" : `${l.gal ?? 0} gal`}`)
+        .join(" · ");
+    say("Products", shape(a), shape(b));
+  }
+  const delivered = (r: BrokerOrder) =>
+    r.lines.every((l) => l.deliveredGal == null)
+      ? ""
+      : r.lines.map((l) => `${l.asset || "?"} ${l.deliveredGal ?? 0} gal`).join(" · ");
+  say("Delivered", delivered(a), delivered(b));
 
+  /* WHAT IT COSTS — a quote received or rewritten, and the broker's price. */
   const priced = (r: BrokerOrder) =>
     r.quotes
       .map((q) => `${VENDORS.find((v) => v.id === q.vendorId)?.name ?? q.vendorId} ${money2(quoteTotal(q, r.lines))}`)
       .join(" · ");
   say("Vendor pricing", priced(a), priced(b));
-  say("Customer pricing", money2(customerTotal(a.lines)), money2(customerTotal(b.lines)));
+  if (customerTotal(a.lines) > 0 || customerTotal(b.lines) > 0)
+    say("Customer pricing", money2(customerTotal(a.lines)), money2(customerTotal(b.lines)));
   return out;
 }
 

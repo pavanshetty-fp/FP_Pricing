@@ -113,6 +113,8 @@ import type {
 } from "./types";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FUEL_ORDER_GROUP_DIMS } from "./groupDims";
+import { useLoggedRows } from "./activity";
+import { diffFuelOrder } from "./salesActivity";
 
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
@@ -343,7 +345,8 @@ const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
 
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
 function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null }) {
-  const [rows, setRows] = React.useState(FUEL_ORDERS);
+  /* THE SETTER WRITES THE CHANGE LOG (sales, 2026-09-23) — see activity.tsx. */
+  const [rows, setRows] = useLoggedRows(FUEL_ORDERS, diffFuelOrder);
   // Picker options come from the data, so the sheet can't offer a value the
   // table has never seen.
   const uniq = (xs: string[]) => Array.from(new Set(xs));

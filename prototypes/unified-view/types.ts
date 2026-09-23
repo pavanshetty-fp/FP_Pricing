@@ -1,3 +1,5 @@
+import type { ActivityEntry } from "./activity";
+
 /**
  * Sales Console — Fuel Orders types.
  *
@@ -70,6 +72,8 @@ export interface FuelOrder {
   status: FuelOrderStatus;
   /** col "Driver" — `null` renders "— Unassigned" */
   driver: Person | null;
+  /** The change log — see `activity.tsx`. Written by the screen's setter. */
+  audit?: ActivityEntry[];
 }
 
 export type FuelOrderColumnKey =

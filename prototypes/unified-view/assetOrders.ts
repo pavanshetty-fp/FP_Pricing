@@ -1,6 +1,7 @@
 import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "./data";
 import type { TwoLine } from "./types";
 import { statusTones } from "./statusKind";
+import type { ActivityEntry } from "./activity";
 
 /*
   Asset Orders — the second rail destination.
@@ -61,6 +62,8 @@ export interface AssetOrder {
   shipTo: string;
   poNumber: string;
   note: string;
+  /** The change log — see `activity.tsx`. */
+  audit?: ActivityEntry[];
 }
 
 export type AssetOrderColumnKey =

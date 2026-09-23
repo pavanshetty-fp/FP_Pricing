@@ -36,6 +36,8 @@ import {
   type AssetSortState,
   ASSET_ORDER_STATUS_TONE,
 } from "./assetOrders";
+import { useLoggedRows } from "./activity";
+import { diffAssetOrder } from "./salesActivity";
 
 /**
  * Asset Orders list — the same shell as Fuel Orders: preset-view row with the
@@ -73,7 +75,8 @@ const keyOf = (s: ViewState) =>
   JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
 
 export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number } | null } = {}) {
-  const [rows, setRows] = React.useState<AssetOrder[]>(ASSET_ORDERS);
+  /* THE SETTER WRITES THE CHANGE LOG (sales, 2026-09-23) — see activity.tsx. */
+  const [rows, setRows] = useLoggedRows<AssetOrder>(ASSET_ORDERS, diffAssetOrder);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [search, setSearch] = React.useState("");

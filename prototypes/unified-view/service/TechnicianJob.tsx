@@ -9,6 +9,7 @@ import {
   Plus,
   X,
   ArrowLeft,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ import {
 import { useServiceSettings } from "./settings";
 import { useElapsedHours } from "./sheet-parts";
 import { ActionBar, Body, SectionTitle, TopBar } from "./TechnicianMobile";
+import { BottomSheet } from "./TechnicianHome";
 
 /*
   ═══════════════════════════════════════════════════════════════════════════
@@ -94,9 +96,9 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
 
 /* THE THREE ANSWERS PER TASK (Pavan, 2026-09-24). */
 const VERDICTS: { key: Exclude<AssessmentVerdict, "added">; label: string }[] = [
-  { key: "accurate", label: "Confirm fault" },
-  { key: "skip", label: "No fault detected" },
+  { key: "accurate", label: "Faulty as described" },
   { key: "different", label: "Different issue than described" },
+  { key: "skip", label: "No fault detected" },
 ];
 
 /** What a task comes to, in words — the fault confirmed, or what was found instead. */
@@ -298,7 +300,7 @@ export function TechnicianJob({
               assessmentLines: lines,
               /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads. */
               assessment: [
-                count("accurate") && `${count("accurate")} fault confirmed`,
+                count("accurate") && `${count("accurate")} faulty as described`,
                 count("different") && `${count("different")} different issue`,
                 count("added") && `${count("added")} added`,
                 count("skip") && `${count("skip")} no fault`,
@@ -635,7 +637,14 @@ function OrderHeading({ job }: { job: ServiceOrder }) {
   );
 }
 
-/** One line to assess: the verdict, what it needs, a note, photos. */
+/**
+ * ONE TASK TO ASSESS (Pavan, 2026-09-24):
+ *   asset · work type on the left, the kind of job as a chip on the right,
+ *   the reported fault under it, then an "Assessment" dropdown with the three
+ *   answers, and "Add assessment notes" — optional — which opens a bottom
+ *   sheet for a note and photos, kept on Submit and reopened from the same
+ *   button.
+ */
 function AssessmentCard({
   index,
   line,
@@ -650,39 +659,41 @@ function AssessmentCard({
   onChange: (p: Partial<AssessmentLine>) => void;
   onRemove?: () => void;
 }) {
-  const fileRef = React.useRef<HTMLInputElement>(null);
   const added = line.source === "added";
+  const [pickOpen, setPickOpen] = React.useState(false);
+  const [notesOpen, setNotesOpen] = React.useState(false);
+  const chosen = VERDICTS.find((v) => v.key === line.verdict);
+  const hasNotes = line.note.trim().length > 0 || line.photos.length > 0;
+
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
-      <div className="flex items-start justify-between gap-2">
-        {/* THE TASK: its asset, its work type, and the kind of job it is
-            (Pavan, 2026-09-24). */}
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="flex items-center gap-2">
-            <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-foreground">
-              {WORK_TYPE_CATEGORY[line.workType] === "Servicing" ? "Servicing" : "Parts"}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col">
+          {added ? (
+            <span className="text-xs text-muted-foreground">Found on site</span>
+          ) : (
+            <span className="text-sm font-medium text-foreground">
+              {[line.assetName || `Task ${index + 1}`, line.workType].filter(Boolean).join(" · ")}
             </span>
-            {added && <span className="text-xs text-muted-foreground">Found on site</span>}
-          </span>
-          {!added && (
-            <>
-              <span className="text-sm font-medium text-foreground">{line.assetName || `Task ${index + 1}`}</span>
-              <span className="text-xs text-muted-foreground">{line.workType}</span>
-            </>
           )}
         </div>
-        {onRemove && (
-          <button type="button" onClick={onRemove} aria-label="Remove this line" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
-            <X className="size-4" />
-          </button>
-        )}
+        <span className="flex shrink-0 items-center gap-1">
+          <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {WORK_TYPE_CATEGORY[line.workType] === "Servicing" ? "Servicing" : "Replacement"}
+          </span>
+          {onRemove && (
+            <button type="button" onClick={onRemove} aria-label="Remove this task" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+              <X className="size-4" />
+            </button>
+          )}
+        </span>
       </div>
 
       {added ? (
         <>
           <Input value={line.assetName} onChange={(e) => onChange({ assetName: e.target.value })} placeholder="Asset" className="h-11" />
-          {/* THE PHONE'S OWN PICKER — a native select is the mobile control
-              for one choice from a fixed list. */}
+          {/* THE PHONE'S OWN PICKER — a native select for one choice from a
+              fixed list. */}
           <select
             value={line.workType}
             onChange={(e) => onChange({ workType: e.target.value })}
@@ -693,103 +704,154 @@ function AssessmentCard({
               <option key={w} value={w}>{w}</option>
             ))}
           </select>
+          <Textarea value={line.actual} onChange={(e) => onChange({ actual: e.target.value })} rows={2} placeholder="What it needs" className="text-base" />
         </>
       ) : (
+        <div className="rounded-md bg-fp-card-1 px-3 py-2">
+          <p className="text-xs text-muted-foreground">Reported fault</p>
+          <p className="text-sm text-foreground">{line.reported || "—"}</p>
+        </div>
+      )}
+
+      {active && (
         <>
-          <div className="rounded-md bg-fp-card-1 px-3 py-2">
-            <p className="text-xs text-muted-foreground">Reported fault</p>
-            <p className="text-sm text-foreground">{line.reported || "—"}</p>
-          </div>
-          {active && (
-            <div className="flex flex-col gap-1.5">
-              {VERDICTS.map((v) => (
-                <button
-                  key={v.key}
-                  type="button"
-                  aria-pressed={line.verdict === v.key}
-                  onClick={() => onChange({ verdict: v.key })}
-                  className={cn(
-                    "flex h-11 items-center gap-2.5 rounded-md border px-3 text-left text-sm",
-                    line.verdict === v.key
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-fp-outline-1 text-foreground active:bg-accent"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                      line.verdict === v.key ? "border-background" : "border-fp-outline-2"
-                    )}
-                  >
-                    {line.verdict === v.key && <Check className="size-3" />}
-                  </span>
-                  {v.label}
-                </button>
-              ))}
-            </div>
+          {!added && (
+            <button
+              type="button"
+              onClick={() => setPickOpen(true)}
+              aria-label={`Assessment for ${line.assetName}`}
+              className="flex h-11 items-center justify-between rounded-md border border-input bg-transparent px-3 text-left text-sm active:bg-accent dark:bg-input/30"
+            >
+              <span className={chosen ? "text-foreground" : "text-muted-foreground"}>
+                {chosen?.label ?? "Assessment"}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            </button>
           )}
+          <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
+            {hasNotes ? <Check className="size-4" /> : <Plus className="size-4" />}
+            {hasNotes
+              ? `Assessment notes${line.photos.length ? ` · ${line.photos.length} photo${line.photos.length === 1 ? "" : "s"}` : ""}`
+              : "Add assessment notes"}
+          </Button>
         </>
       )}
 
-      {added && (
-        <Textarea
-          value={line.actual}
-          onChange={(e) => onChange({ actual: e.target.value })}
-          rows={2}
-          placeholder="What it needs"
-          className="text-base"
-        />
-      )}
-
-      {/* AFTER AN ANSWER: a note and photos, on every task (Pavan, 2026-09-24). */}
-      {active && line.verdict !== null && (<>
-      <Textarea
-        value={line.note}
-        onChange={(e) => onChange({ note: e.target.value })}
-        rows={2}
-        placeholder={line.verdict === "different" ? "What you found instead" : "Note"}
-        className="text-base"
-      />
-
-      <div className="flex flex-wrap gap-2">
-        {line.photos.map((src, i) => (
-          <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
-            <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+      <BottomSheet open={pickOpen} onClose={() => setPickOpen(false)} title="Assessment">
+        <div className="flex flex-col">
+          {VERDICTS.map((v) => (
             <button
+              key={v.key}
               type="button"
-              aria-label={`Remove photo ${i + 1}`}
-              onClick={() => onChange({ photos: line.photos.filter((p) => p !== src) })}
-              className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+              onClick={() => {
+                onChange({ verdict: v.key });
+                setPickOpen(false);
+              }}
+              className="flex h-11 items-center justify-between rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
             >
-              <X className="size-3" />
+              {v.label}
+              {line.verdict === v.key && <Check className="size-4" />}
             </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
-        >
-          <Camera className="size-4" />
-          Photo
-        </button>
-        {/* `capture` opens the camera on a phone; on a desktop it is a file picker. */}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          hidden
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length) onChange({ photos: [...line.photos, ...files.map((f) => URL.createObjectURL(f))] });
-            e.target.value = "";
-          }}
-        />
-      </div>
-      </>)}
+          ))}
+        </div>
+      </BottomSheet>
+
+      <NotesSheet
+        open={notesOpen}
+        onClose={() => setNotesOpen(false)}
+        title={line.assetName || "Assessment notes"}
+        note={line.note}
+        photos={line.photos}
+        onSubmit={(note, photos) => {
+          onChange({ note, photos });
+          setNotesOpen(false);
+          toast.success("Assessment notes saved");
+        }}
+      />
     </section>
+  );
+}
+
+/**
+ * NOTES AND PHOTOS, IN A BOTTOM SHEET — edited as a draft, kept only on
+ * Submit, so closing the sheet changes nothing.
+ */
+function NotesSheet({
+  open,
+  onClose,
+  title,
+  note,
+  photos,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  note: string;
+  photos: string[];
+  onSubmit: (note: string, photos: string[]) => void;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [draftNote, setDraftNote] = React.useState(note);
+  const [draftPhotos, setDraftPhotos] = React.useState(photos);
+  React.useEffect(() => {
+    if (open) {
+      setDraftNote(note);
+      setDraftPhotos(photos);
+    }
+  }, [open, note, photos]);
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={
+        <Button className="h-11 w-full text-base" onClick={() => onSubmit(draftNote.trim(), draftPhotos)}>
+          Submit
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <Textarea value={draftNote} onChange={(e) => setDraftNote(e.target.value)} rows={4} placeholder="Assessment notes" className="text-base" />
+        <div className="flex flex-wrap gap-2">
+          {draftPhotos.map((src, i) => (
+            <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
+              <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+              <button
+                type="button"
+                aria-label={`Remove photo ${i + 1}`}
+                onClick={() => setDraftPhotos((ps) => ps.filter((p) => p !== src))}
+                className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
+          >
+            <Camera className="size-4" />
+            Photo
+          </button>
+          {/* `capture` opens the camera on a phone; a file picker on desktop. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            hidden
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (files.length) setDraftPhotos((ps) => [...ps, ...files.map((f) => URL.createObjectURL(f))]);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </div>
+    </BottomSheet>
   );
 }
 

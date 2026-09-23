@@ -675,6 +675,8 @@ export interface ServiceOrderSheetProps {
   onOpenChange: (open: boolean) => void;
   onSave: (order: ServiceOrder, next: ServiceOrder) => void;
   onCreate?: (draft: ServiceOrder) => void;
+  /** The first real change on a new order — saves it as a Drafted row. */
+  onCreateDraft?: (draft: ServiceOrder) => void;
   /**
    * The job stopped for a part. It is the screen's act rather than the
    * sheet's, because one of its two outcomes creates a SECOND order — and a
@@ -698,6 +700,7 @@ export function ServiceOrderSheet({
   onOpenChange,
   onSave,
   onCreate,
+  onCreateDraft,
   onPartsPending,
   customers,
   shipTosFor,
@@ -717,6 +720,11 @@ export function ServiceOrderSheet({
   const isJustAdded = (table: string, i: number) =>
     justAdded?.table === table && justAdded.i === i;
   const lastSaved = React.useRef<string | null>(null);
+  /* THE UNTOUCHED NEW FORM, so the first REAL change can be told apart from
+     the form arriving; and whether that change has just been turned into a
+     row, so the row coming back does not rebuild the form mid-keystroke. */
+  const blankSerial = React.useRef<string | null>(null);
+  const promoting = React.useRef(false);
 
   /* BUILD THE DRAFT ONCE PER RECORD, not once per save — the same rule the 3PL
      sheet follows, or the row coming back from the save rebuilds the form the
@@ -725,13 +733,26 @@ export function ServiceOrderSheet({
     if (!open) {
       setDraft(null);
       lastSaved.current = null;
+      blankSerial.current = null;
+      promoting.current = false;
       return;
     }
     if (creating) {
-      setDraft(blankOrder());
+      const blank = blankOrder();
+      blankSerial.current = JSON.stringify(blank);
+      setDraft(blank);
       return;
     }
     if (!order) return;
+    /* THE DRAFT JUST BECAME A ROW. Keep everything typed; take only what the
+       screen gave it — its id, its number, its status and its log. */
+    if (promoting.current) {
+      promoting.current = false;
+      setDraft((d) =>
+        d ? { ...d, id: order.id, orderNo: order.orderNo, status: order.status, audit: order.audit } : { ...order }
+      );
+      return;
+    }
     /* THE ROW COMING BACK FROM OUR OWN SAVE MUST NOT REBUILD THE FORM. It is
        the same object the reader is typing into; rebuilding it would move the
        caret and lose anything typed in the meantime. */
@@ -756,6 +777,18 @@ export function ServiceOrderSheet({
   /* AUTOSAVED, DEBOUNCED — the DS rule for every side sheet with editable
      fields in it (`docs/ds/ux/2-rules.md`, Side-sheet anatomy). A reader who
      has to remember to press Save is a reader who loses work. */
+  /* A NEW ORDER IS SAVED AS A DRAFT ON ITS FIRST REAL CHANGE (Pavan,
+     2026-09-23) — same debounce as every other save. */
+  React.useEffect(() => {
+    if (!creating || !onCreateDraft || !draft || promoting.current) return;
+    if (JSON.stringify(draft) === blankSerial.current) return;
+    const t = window.setTimeout(() => {
+      promoting.current = true;
+      onCreateDraft(draft);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, creating, onCreateDraft]);
+
   React.useEffect(() => {
     if (creating || !order || !draft) return;
     const serialised = JSON.stringify(draft);
@@ -1073,11 +1106,27 @@ export function ServiceOrderSheet({
          act — and on a Parts-pending remainder or a linked order the record
          already exists, so creating it again is a sentence that does not
          parse. */
-      return {
-        label: creating ? "Create Service Order" : "Assign a technician",
-        why: draft.technicianId ? undefined : "Choose a technician first.",
-        onSelect: () => advance("Assigned"),
-      };
+      /* A DRAFT IS COMMITTED BY "CREATE NEW ORDER" (Pavan, 2026-09-23): dead
+         until every required detail is in, and the press moves it to
+         Assigned. Saved at once rather than on the debounce, because the
+         sheet closes on it. A Parts-pending remainder or a linked order
+         already exists, so for those the act is still naming somebody. */
+      return draft.status === "Drafted"
+        ? {
+            label: "Create new order",
+            why: mandatory.find((x) => !x.done)?.label,
+            onSelect: () => {
+              const next = { ...draft, status: "Assigned" as WorkStatus };
+              if (order) onSave(order, next);
+              toast.success(`${draft.orderNo} created and assigned`);
+              onOpenChange(false);
+            },
+          }
+        : {
+            label: "Assign a technician",
+            why: draft.technicianId ? undefined : "Choose a technician first.",
+            onSelect: () => advance("Assigned"),
+          };
     /* THE FIELD APP IS WHERE THE TECHNICIAN WORKS. IT IS NOT THE ONLY PLACE
        THE WORK CAN BE RECORDED (Pavan, 2026-09-23).
 
@@ -1134,7 +1183,9 @@ export function ServiceOrderSheet({
   /* THE REASON THE BUTTON IS DEAD SITS BESIDE IT, never on it. A label that
      states a condition asks the reader to press a fact. */
   const blockedWhy =
-    isUnassigned(draft.status) && !draft.technicianId
+    draft.status === "Drafted"
+      ? nextAct.why
+      : isUnassigned(draft.status) && !draft.technicianId
       ? "Choose a technician before proceeding."
       : /* COMPLETION IS GATED WHEREVER IT IS OFFERED (Pavan, 2026-09-23). It
            used to be exempt while the field app held the job, on the grounds
@@ -1193,7 +1244,7 @@ export function ServiceOrderSheet({
       mode={mode}
       editTitle={`Service order: ${draft.orderNo}`}
       createTitle="New service order"
-      createAction="Create Service Order"
+      createAction="Create new order"
       canSubmit={readyToCreate}
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep — it would
@@ -1227,7 +1278,11 @@ export function ServiceOrderSheet({
       footerBanner={
         <PendingStrip
           pending={pendingSteps}
-          clearLabel="Everything this order needs is filled in"
+          clearLabel={
+            draft.status === "Drafted"
+              ? "All details are collected. Create new order."
+              : "Everything this order needs is filled in"
+          }
         />
       }
       /* THE SECOND OUTCOME OF A VISIT, in the slot for decisions taken at the

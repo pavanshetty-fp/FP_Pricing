@@ -862,7 +862,15 @@ export function ServiceWorkScreen() {
     setRows((prev) => prev.map((r) => (r.id === order.id ? next : r)));
   }, []);
 
-  const createOrder = (draft: ServiceOrder) => {
+  /**
+   * `asDraft` — THE FIRST CHANGE ON A NEW ORDER SAVES IT AS A DRAFT (Pavan,
+   * 2026-09-23). A dispatcher can start an order, leave it and come back; the
+   * row exists from the first real keystroke, in Open as Drafted, and the
+   * sheet stays open on it. It becomes Assigned only on "Create new order",
+   * once every required detail is in. No toast: the header's "Draft saved"
+   * is what reports a save.
+   */
+  const createOrder = (draft: ServiceOrder, asDraft = false) => {
     const no = nextOrderNo();
     const site = RENTAL_ASSETS.find((a) => a.id === draft.assetId);
     const created: ServiceOrder = {
@@ -875,7 +883,7 @@ export function ServiceWorkScreen() {
          when one is not. The form's own button says "Create and assign", and
          leaving the technician blank is how a dispatcher says "the yard team
          will pick it up" — which is exactly what Open means. */
-      status: (draft.technicianId ? "Assigned" : "Drafted") as WorkStatus,
+      status: (asDraft || !draft.technicianId ? "Drafted" : "Assigned") as WorkStatus,
     };
     setRows((prev) => [created, ...prev]);
     /* A NEW ORDER HAS TO BE WHERE THE READER IS LOOKING — the same rule the
@@ -890,6 +898,7 @@ export function ServiceWorkScreen() {
     });
     setCreating(false);
     setOpenId(created.id);
+    if (asDraft) return;
     toast.success(
       created.status === "Assigned"
         ? `${no} created and assigned`
@@ -1360,6 +1369,7 @@ export function ServiceWorkScreen() {
         }}
         onSave={saveOrder}
         onCreate={createOrder}
+        onCreateDraft={(d) => createOrder(d, true)}
         onPartsPending={onPartsPending}
         customers={customers}
         shipTosFor={shipTosFor}

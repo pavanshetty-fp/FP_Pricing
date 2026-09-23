@@ -188,6 +188,55 @@ export const WORK_STATUS_TONE: Record<WorkStatus, StatusTone> = {
   Cancelled: "neutral",
 };
 
+/**
+ * WHAT KIND OF STATE A STATUS IS — the badge's colour (Pavan, 2026-09-23).
+ *
+ * FIVE KINDS, AND THEY ARE ABOUT WHAT THE READER SHOULD DO, not about where
+ * the status sits in the ladder:
+ *
+ *   caution   WAITING ON SOMEBODY — pending, awaiting, not yet looked at
+ *   success   DONE — the thing it was for has happened
+ *   info      SIMPLY TRUE — somebody is on it, it is under way. Asks nothing
+ *   critical  A WARNING, or a state important enough to change a plan
+ *   neutral   NEITHER — a record that exists and is not yet a state
+ *
+ * A DISPATCHER SCANS A BOARD FOR THE YELLOW ONES. That is the whole argument
+ * for colouring these: every badge grey made the column the only thing
+ * carrying meaning, and a column is a place, not a state — a Parts-pending
+ * remainder and a brand-new job sat in Open looking identical.
+ *
+ * NOTHING IS CRITICAL YET, and that is deliberate rather than an oversight:
+ * no status in this lifecycle is a warning. Red stays for the priority badge
+ * and for a state that genuinely goes wrong, so that when it does appear it
+ * is worth looking at.
+ */
+export const WORK_STATUS_KIND: Record<
+  WorkStatus,
+  "caution" | "success" | "info" | "critical" | "neutral"
+> = {
+  /* A record that exists. Nothing has happened to it yet. */
+  Drafted: "neutral",
+  /* Waiting on parts, and on somebody to take the next trip. */
+  "Parts pending": "caution",
+  /* Work spun off another job and waiting for an owner. */
+  "Linked order": "caution",
+  /* Somebody is on it. Both are facts, neither asks anything. */
+  Assigned: "info",
+  "Yet to start": "info",
+  Ongoing: "info",
+  /* Sitting on a manager's desk. */
+  "Needs approval": "caution",
+  Completed: "success",
+  "Completed — linked": "success",
+  /* An invoice nobody has checked. */
+  "Yet to be reviewed": "caution",
+  Reviewed: "success",
+  /* NOT RED. Cancelled is a terminal non-event, not a problem to solve — and
+     a red badge on a lane of them would be the loudest thing on the board
+     saying the least. */
+  Cancelled: "neutral",
+};
+
 /** The DS's `--fp-lane-*` set, the same tokens the 3PL board draws from. */
 export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {
   Drafted: "grey",

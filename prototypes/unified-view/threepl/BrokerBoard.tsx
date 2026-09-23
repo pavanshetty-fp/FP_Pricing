@@ -216,8 +216,14 @@ export interface BoardCardBadge {
    * own hue with the tone's text. A badge on a card is read at a glance from
    * three columns away, so the colour has to carry the difference without
    * becoming the loudest thing on the lane.
+   *
+   * `info` is the fourth: a state that is simply TRUE of the order and asks
+   * nothing of anybody — assigned, under way. It is blue because blue is the
+   * one channel in this system that carries no verdict; grey would say the
+   * state is unremarkable, and half of these are the states a dispatcher
+   * scans for. (Added 2026-09-23.)
    */
-  tone?: "critical" | "neutral" | "caution" | "success";
+  tone?: "critical" | "neutral" | "caution" | "success" | "info";
 }
 
 /** The soft tints, one per tone — the `/10` fill the DS's `StatusChip` uses. */
@@ -225,6 +231,7 @@ const BADGE_TONE: Record<string, string> = {
   caution:
     "border-transparent bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution",
   success: "border-transparent bg-status-success/10 text-status-success",
+  info: "border-transparent bg-fp-banner-accent-info/10 text-fp-banner-accent-info",
 };
 
 export interface BoardCard {

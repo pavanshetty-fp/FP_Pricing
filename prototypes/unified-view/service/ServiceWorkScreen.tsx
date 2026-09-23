@@ -47,6 +47,7 @@ import {
   LABOR_RATE,
   isUnassigned,
   formatHours,
+  WORK_STATUS_KIND,
   splitParts,
   shortfallLabel,
   type PartLine,
@@ -617,7 +618,7 @@ export function ServiceWorkScreen() {
                without it a Parts-pending remainder and a brand-new job are
                two identical cards in one column. */
             badges: [
-              { label: r.status, tone: undefined },
+              { label: r.status, tone: WORK_STATUS_KIND[r.status] },
               ...(r.priority === "Normal"
                 ? []
                 : [

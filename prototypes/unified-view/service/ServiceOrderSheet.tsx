@@ -1089,8 +1089,14 @@ export function ServiceOrderSheet({
   const total = orderTotal(draft);
   const quoteGap = draft.quote ? total - draft.quote.total : 0;
 
-  const readyToCreate =
-    Boolean(draft.customer) && Boolean(draft.shipTo) && Boolean(draft.assetId);
+  /* CUSTOMER DETAILS AND A TECHNICIAN — NOTHING ELSE (Pavan, 2026-09-23).
+     It used to demand an asset, which had already left the mandatory set
+     that morning, and never asked for the technician the strip below was
+     asking for — so the button and the strip disagreed about what was
+     missing. It is now exactly the strip's list: customer, ship-to (both in
+     the Customer card), technician. Asset, work type, fault and the rest can
+     be filled in later. */
+  const readyToCreate = mandatory.every((x) => x.done);
 
   const sources = [...INTAKE_SOURCES, ...(cfg.portalIntake ? [PORTAL_SOURCE] : [])];
 
@@ -1129,7 +1135,10 @@ export function ServiceOrderSheet({
         )
       }
       headerSubtitle={
-        creating ? undefined : `${draft.workType} · ${draft.assetName} · ${draft.shipTo}`
+        creating
+          ? undefined
+          : /* Only what is known — work type and asset can be blank now. */
+            [draft.workType, draft.assetName, draft.shipTo].filter(Boolean).join(" · ")
       }
       /* THE STRIP ABOVE THE FOOTER SAYS WHAT THE ACT IS WAITING ON. A stalled
          job's reason beats a list of missing fields: it is the thing that

@@ -202,9 +202,12 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
       key: "asset",
       heading: "Asset & Fault",
       lines: [
-        ...(off.has("asset.name") ? [] : [{ text: r.assetName, level: 1 as const }]),
-        ...(off.has("asset.type") ? [] : [{ text: r.assetType, level: 3 as const }]),
-        ...(off.has("asset.fault") ? [] : [{ text: r.fault, level: 2 as const }]),
+        /* EACH LINE ONLY IF IT IS KNOWN. Asset and fault are optional at
+           intake, and a heading over three blank lines is a card saying
+           nothing at full height. */
+        ...(off.has("asset.name") || !r.assetName ? [] : [{ text: r.assetName, level: 1 as const }]),
+        ...(off.has("asset.type") || !r.assetType ? [] : [{ text: r.assetType, level: 3 as const }]),
+        ...(off.has("asset.fault") || !r.fault ? [] : [{ text: r.fault, level: 2 as const }]),
       ],
     },
     {
@@ -629,11 +632,16 @@ export function ServiceWorkScreen() {
                     },
                   ]),
             ],
-            code: {
-              text: WORK_TYPE_CODE[r.workType].text,
-              label: r.workType,
-              tone: WORK_TYPE_CODE[r.workType].tone,
-            },
+            /* NO WORK TYPE, NO DISC. Work type left the mandatory set, so a
+               job created from a phone call can have none — and a disc with
+               nothing to stand for would be a guess. */
+            code: WORK_TYPE_CODE[r.workType]
+              ? {
+                  text: WORK_TYPE_CODE[r.workType].text,
+                  label: r.workType,
+                  tone: WORK_TYPE_CODE[r.workType].tone,
+                }
+              : undefined,
             units: cardUnits(r, cardOff[lane.key] ?? EMPTY_SET),
             /* AN ALERT ONLY WHERE SOMETHING IS OUTSTANDING. An alert on every
                card is a border, so the three lanes with nothing waiting on
@@ -1022,6 +1030,8 @@ export function ServiceWorkScreen() {
       case "order":
         return <span className="font-medium tabular-nums">{r.orderNo}</span>;
       case "type":
+        if (!WORK_TYPE_CODE[r.workType])
+          return <span className="text-muted-foreground">—</span>;
         return (
           <CodeDisc
             code={WORK_TYPE_CODE[r.workType].text}

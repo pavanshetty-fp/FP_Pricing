@@ -578,7 +578,7 @@ status sits in its lifecycle.**
 |---|---|---|---|
 | `caution` | **waiting on somebody** — pending, awaiting, not yet looked at | amber | Parts pending · Needs approval · Quoting · Unassigned · Paused |
 | `info` | **simply true, asks nothing** — somebody is on it, it is under way, it exists | blue | Assigned · Ongoing · Scheduled · Active |
-| `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Awarded |
+| `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Finalized |
 | `critical` | **a warning**, or a state important enough to change a plan | red | Blocked · Declined · Compliance expired · Over limit |
 | `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | grey | Draft · Cancelled · Ended · Inactive |
 
@@ -596,7 +596,7 @@ status sits in its lifecycle.**
   them. Paused is `caution` (it waits on somebody to resume), Skipped is
   `neutral`.
 - **A price in is not a thing done.** "Quotation received" is `caution`: it is
-  now the dispatcher's turn to award. `success` is Awarded.
+  now the dispatcher's turn to award. `success` is Finalized.
 - **The normal state says nothing.** Maintenance "OK" is `neutral`; the
   exceptions carry the colour.
 

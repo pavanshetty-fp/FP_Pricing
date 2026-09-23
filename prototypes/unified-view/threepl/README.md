@@ -1,5 +1,10 @@
 # 3PL — the brokerage module
 
+> **ONE NAME FOR THE ACT (Pavan, 2026-09-23): "Finalize vendor"** — the row
+> button, the dialog's confirm, the pending strip, the toast. The state it
+> leaves is **Finalized**. "Award" is retired from every label; older notes
+> below that say "award" mean this act.
+
 The **second module** of the Unified View. Sales was first; this is the same shell
 and the same design system pointed at a different business.
 
@@ -437,7 +442,7 @@ Dispatch and 3PL"*.
   on every row that has priced the order: Status is a fact the row reports,
   Award is the act it offers, and a heading over a column of buttons would be
   the word twice. Awarding sets who holds the order and moves a Quoting order
-  into **Assigned** — and stops there. The awarded row says *Awarded*; every
+  into **Assigned** — and stops there. The finalized row says *Finalized*; every
   other priced row keeps its button, so the choice can be changed right up
   until it is confirmed.
 - **A quote goes stale when the order grows.** A quote prices the lines it was
@@ -457,7 +462,7 @@ Dispatch and 3PL"*.
   price given on a call is a real act for a partner who has not sent one; on a
   row that has already shared a quotation it offered to draft a quote that
   exists.
-- **Awarded is not confirmed, and the footer is the difference.** The footer's
+- **Finalized is not confirmed, and the footer is the difference.** The footer's
   act reads **Confirmed** and is disabled — with *Award a partner in the table
   above* beside it — until one row is awarded. Pressing it settles the pricing
   and moves the order to Completed, which is what the old **Accept quote** did
@@ -756,7 +761,7 @@ that is when it will move to Quoting. Till then, everything is in draft mode."*
 
 Decided 2026-09-17. The sheet is four screens long and only one part of it is
 live at a time. In **Quoting** the work is the partner table; the moment a
-partner is **Awarded** it is the pricing. A stage that moves and leaves the
+partner is **Finalized** it is the pricing. A stage that moves and leaves the
 reader looking at the same paragraph has told them something happened and not
 where — so advancing a stage scrolls the sheet to the section that stage's work
 lives in.
@@ -964,7 +969,7 @@ while the order was a **Draft**, on the argument that past creation the
 mandatory list is spent. True of that list — but not of the strip, whose job is
 to say what stands between the reader and the act in the footer.
 
-Past Draft that is the next act's own reason — *"Award a partner in the table
+Past Draft that is the next act's own reason — *"Finalize a vendor in the table
 above."* — and it was being said in **grey text beside the button** instead:
 the same sentence in a weaker place, with nothing to press. Every reason past
 Draft is about the partner table, so that is where the strip's press goes, and

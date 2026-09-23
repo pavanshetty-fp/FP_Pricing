@@ -2014,7 +2014,7 @@ export function BrokerOrderSheet({
     setDraft((d) => {
       if (!d) return d;
       if (d.vendorId === vendorId) return d;
-      toast.success(`${vendorById(vendorId)?.name ?? "Vendor"} awarded`, {
+      toast.success(`${vendorById(vendorId)?.name ?? "Vendor"} finalized as vendor`, {
         description: "Move the order to Assigned when you are ready.",
       });
       return {
@@ -2527,7 +2527,7 @@ export function BrokerOrderSheet({
                     setFinalizing(v.id);
                   }}
                 >
-                  {draft.vendorId === v.id ? "Awarded" : "Finalize vendor"}
+                  {draft.vendorId === v.id ? "Finalized" : "Finalize vendor"}
                 </Button>
                 </>
               ) : asked ? (
@@ -2915,7 +2915,7 @@ export function BrokerOrderSheet({
                    pressing it will do and says why it cannot yet. */
                 label: "Move to Assigned",
                 onSelect: () => {},
-                why: "Award a partner in the table above.",
+                why: "Finalize a vendor in the table above.",
               }
             : !draft.vendorId
               ? {
@@ -3296,7 +3296,7 @@ export function BrokerOrderSheet({
                     draft.vendorId === vid
                       ? "Holds this order"
                       : draft.vendorId
-                        ? "Not awarded"
+                        ? "Not finalized"
                         : quoteOf(vid)
                           ? "Quotation shared"
                           : "No quotation",
@@ -3945,7 +3945,7 @@ export function BrokerOrderSheet({
               {/* AWARDED, THEN CONFIRMED — the bar says which of the two
                   this order has reached, because between them the choice can
                   still be changed. */}
-              {confirmed ? "Confirmed" : "Awarded"}:{" "}
+              {confirmed ? "Confirmed" : "Finalized"}:{" "}
               {vendorById(draft.vendorId)?.name} holds this order.
             </span>
           </span>
@@ -5843,7 +5843,7 @@ export function BrokerOrderSheet({
                               ) : id && quote ? (
                                 draft.vendorId === id ? (
                                   <StatusChip tone={kindTone("success")} variant="soft">
-                                    Awarded
+                                    Finalized
                                   </StatusChip>
                                 ) : (
                                   <Button
@@ -5852,12 +5852,14 @@ export function BrokerOrderSheet({
                                     disabled={draft.status === "Blocked"}
                                     title={
                                       draft.status === "Blocked"
-                                        ? "A blocked order cannot be awarded"
+                                        ? "A blocked order cannot have a vendor finalized"
                                         : undefined
                                     }
                                     onClick={() => awardFor(id)}
                                   >
-                                    Award
+                                    {/* ONE NAME FOR THE ACT, everywhere it
+                                        appears (Pavan, 2026-09-23). */}
+                                    Finalize vendor
                                   </Button>
                                 )
                               ) : null}
@@ -6596,10 +6598,10 @@ export function BrokerOrderSheet({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Award this order to {vendorById(finalizing ?? "")?.name ?? "this partner"}?
+              Finalize {vendorById(finalizing ?? "")?.name ?? "this partner"} as the vendor?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              They will hold the order. You can award somebody else until it
+              They will hold the order. You can finalize somebody else until it
               moves to Assigned.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -6665,7 +6667,7 @@ export function BrokerOrderSheet({
                 setFinalizing(null);
               }}
             >
-              Award the order
+              Finalize vendor
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

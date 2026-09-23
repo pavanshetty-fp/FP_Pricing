@@ -1177,11 +1177,18 @@ export function UnifiedView() {
     IT LIVES HERE, NOT IN THE SCREEN, because the switch is rendered in the
     PAGE HEADER beside the title. A comparison between two whole screens is a
     fact about which screen you are looking at, and the header is where the
-    app says that. It defaults to V1 because V1 is the one under design.
+    app says that.
+
+    V1.1 IS THE ONE UNDER DESIGN (Pavan, 2026-09-23) — the rule-based
+    direction — so it is what the screen opens on. V1 and V2 are kept, but
+    under ARCHIVE: reachable for reference, and out of the way of the version
+    being worked on. `archiveVersion` remembers which archived one was last
+    looked at, so going back to Archive lands where you left it.
   */
   const [recurringVersion, setRecurringVersion] = React.useState<
     "v1" | "v1.1" | "v2"
-  >("v1");
+  >("v1.1");
+  const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
      where a recurring order is actually made: tick Recurring on the order and
@@ -1414,28 +1421,45 @@ export function UnifiedView() {
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
             {screenKey === "3pl-recurring-orders" && (
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={recurringVersion}
-                onValueChange={(v) =>
-                  v && setRecurringVersion(v as "v1" | "v1.1" | "v2")
-                }
-                className="shrink-0 self-center"
-              >
-                <ToggleGroupItem value="v1" aria-label="Version 1 — rule based, one site">
-                  V1
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="v1.1"
-                  aria-label="Version 1.1 — one partner across many sites"
+              <div className="flex shrink-0 items-center gap-2 self-center">
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  value={recurringVersion === "v1.1" ? "v1.1" : "archive"}
+                  onValueChange={(v) =>
+                    v && setRecurringVersion(v === "archive" ? archiveVersion : "v1.1")
+                  }
                 >
-                  V1.1
-                </ToggleGroupItem>
-                <ToggleGroupItem value="v2" aria-label="Version 2 — parent and child orders">
-                  V2
-                </ToggleGroupItem>
-              </ToggleGroup>
+                  <ToggleGroupItem
+                    value="v1.1"
+                    aria-label="Version 1.1 — one partner across many sites"
+                  >
+                    V1.1
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="archive" aria-label="Archived versions">
+                    Archive
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                {recurringVersion !== "v1.1" && (
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    value={recurringVersion}
+                    onValueChange={(v) => {
+                      if (!v) return;
+                      setArchiveVersion(v as "v1" | "v2");
+                      setRecurringVersion(v as "v1" | "v2");
+                    }}
+                  >
+                    <ToggleGroupItem value="v1" aria-label="Version 1 — rule based, one site">
+                      V1
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="v2" aria-label="Version 2 — parent and child orders">
+                      V2
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+              </div>
             )}
           </div>
         }

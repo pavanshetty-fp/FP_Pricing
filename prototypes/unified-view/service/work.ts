@@ -437,6 +437,9 @@ export interface AssessmentLine {
   verdict: AssessmentVerdict | null;
   /** What it actually needs — required when `different` or `added`. */
   actual: string;
+  /** The assessment note's subject line (Pavan, 2026-09-24). */
+  subject?: string;
+  /** The assessment note's description. */
   note: string;
   /** Photo URLs taken on site. */
   photos: string[];

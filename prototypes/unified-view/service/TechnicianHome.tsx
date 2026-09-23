@@ -190,18 +190,31 @@ export function BottomSheet({
   title,
   children,
   footer,
+  full,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Nearly the whole screen — for writing, not choosing. */
+  full?: boolean;
 }) {
   if (!open) return null;
   return (
     <div className="absolute inset-0 z-40 flex flex-col">
-      <button type="button" aria-label="Close" onClick={onClose} className="min-h-16 flex-1 bg-black/50" />
-      <div className="flex max-h-[85%] flex-col rounded-t-2xl border-t border-fp-outline-1 bg-fp-surface-1a">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className={cn("bg-black/50", full ? "h-10 shrink-0" : "min-h-16 flex-1")}
+      />
+      <div
+        className={cn(
+          "flex flex-col rounded-t-2xl border-t border-fp-outline-1 bg-fp-surface-1a",
+          full ? "min-h-0 flex-1" : "max-h-[85%]"
+        )}
+      >
         <div className="flex justify-center pt-2">
           <span aria-hidden className="h-1 w-10 rounded-full bg-fp-outline-2" />
         </div>
@@ -216,7 +229,7 @@ export function BottomSheet({
             <X className="size-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {children}
         </div>
         {footer && <div className="shrink-0 border-t border-fp-outline-1 p-3">{footer}</div>}

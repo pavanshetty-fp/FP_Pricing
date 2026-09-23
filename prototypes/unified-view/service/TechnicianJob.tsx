@@ -663,7 +663,7 @@ function AssessmentCard({
   const [pickOpen, setPickOpen] = React.useState(false);
   const [notesOpen, setNotesOpen] = React.useState(false);
   const chosen = VERDICTS.find((v) => v.key === line.verdict);
-  const hasNotes = line.note.trim().length > 0 || line.photos.length > 0;
+  const hasNotes = Boolean(line.subject?.trim()) || line.note.trim().length > 0 || line.photos.length > 0;
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
@@ -731,7 +731,7 @@ function AssessmentCard({
           <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
             {hasNotes ? <Check className="size-4" /> : <Plus className="size-4" />}
             {hasNotes
-              ? `Assessment notes${line.photos.length ? ` · ${line.photos.length} photo${line.photos.length === 1 ? "" : "s"}` : ""}`
+              ? `${line.subject?.trim() || "Assessment notes"}${line.photos.length ? ` · ${line.photos.length} photo${line.photos.length === 1 ? "" : "s"}` : ""}`
               : "Add assessment notes"}
           </Button>
         </>
@@ -760,10 +760,11 @@ function AssessmentCard({
         open={notesOpen}
         onClose={() => setNotesOpen(false)}
         title={line.assetName || "Assessment notes"}
+        subject={line.subject ?? ""}
         note={line.note}
         photos={line.photos}
-        onSubmit={(note, photos) => {
-          onChange({ note, photos });
+        onSubmit={(subject, note, photos) => {
+          onChange({ subject, note, photos });
           setNotesOpen(false);
           toast.success("Assessment notes saved");
         }}
@@ -773,13 +774,16 @@ function AssessmentCard({
 }
 
 /**
- * NOTES AND PHOTOS, IN A BOTTOM SHEET — edited as a draft, kept only on
- * Submit, so closing the sheet changes nothing.
+ * ASSESSMENT NOTES, IN A FULL BOTTOM SHEET (Pavan, 2026-09-24) — room to
+ * write: a Subject, a Description that takes the rest of the screen, and
+ * photos. Edited as a draft and kept only on Submit, so closing the sheet
+ * changes nothing.
  */
 function NotesSheet({
   open,
   onClose,
   title,
+  subject,
   note,
   photos,
   onSubmit,
@@ -787,32 +791,51 @@ function NotesSheet({
   open: boolean;
   onClose: () => void;
   title: string;
+  subject: string;
   note: string;
   photos: string[];
-  onSubmit: (note: string, photos: string[]) => void;
+  onSubmit: (subject: string, note: string, photos: string[]) => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [draftSubject, setDraftSubject] = React.useState(subject);
   const [draftNote, setDraftNote] = React.useState(note);
   const [draftPhotos, setDraftPhotos] = React.useState(photos);
   React.useEffect(() => {
     if (open) {
+      setDraftSubject(subject);
       setDraftNote(note);
       setDraftPhotos(photos);
     }
-  }, [open, note, photos]);
+  }, [open, subject, note, photos]);
   return (
     <BottomSheet
       open={open}
+      full
       onClose={onClose}
       title={title}
       footer={
-        <Button className="h-11 w-full text-base" onClick={() => onSubmit(draftNote.trim(), draftPhotos)}>
+        <Button
+          className="h-11 w-full text-base"
+          onClick={() => onSubmit(draftSubject.trim(), draftNote.trim(), draftPhotos)}
+        >
           Submit
         </Button>
       }
     >
-      <div className="flex flex-col gap-3">
-        <Textarea value={draftNote} onChange={(e) => setDraftNote(e.target.value)} rows={4} placeholder="Assessment notes" className="text-base" />
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Subject</span>
+          <Input value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} placeholder="Subject" className="h-11 text-base" />
+        </div>
+        <div className="flex min-h-40 flex-1 flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Description</span>
+          <Textarea
+            value={draftNote}
+            onChange={(e) => setDraftNote(e.target.value)}
+            placeholder="Description"
+            className="min-h-0 flex-1 resize-none text-base"
+          />
+        </div>
         <div className="flex flex-wrap gap-2">
           {draftPhotos.map((src, i) => (
             <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">

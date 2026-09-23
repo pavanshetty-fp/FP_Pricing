@@ -799,7 +799,13 @@ function buildOrders(): ServiceOrder[] {
             return at.toISOString();
           })();
 
-    const started = LANE_OF[status] !== "Open" && status !== "Assigned" && status !== "Cancelled";
+    /* "PARTS PENDING" HAS BEEN VISITED AND IS STILL IN OPEN. It is the one
+       status that is both — a job that could not be finished and went back
+       for somebody to take the next trip — so the seed has to give it an
+       arrival like any other worked job. */
+    const started =
+      status === "Parts pending" ||
+      (LANE_OF[status] !== "Open" && status !== "Assigned" && status !== "Cancelled");
     const recorded = isRecorded(status);
     const billed = LANE_OF[status] === "Completed" || LANE_OF[status] === "Synced";
 
@@ -817,7 +823,14 @@ function buildOrders(): ServiceOrder[] {
           ...(i % 5 === 0 ? [{ ...EXTRA_PARTS[i % EXTRA_PARTS.length] }] : []),
         ]
       : status === "Parts pending"
-        ? book.parts.map((p) => ({ ...p }))
+        ? /* FIVE OF TEN, ON THE RECORD. A Parts-pending order whose lines all
+             came back full would be a stall with nothing outstanding — the
+             fitted quantity is the whole reason it is still open. */
+          book.parts.map((p, k) => ({
+            ...p,
+            qty: Math.max(2, p.qty * 2),
+            fittedQty: k === 0 ? Math.max(1, p.qty) : 0,
+          }))
         : book.parts.map((p) => ({ ...p }));
 
     const fees: FeeLine[] = book.fees.map((f) => ({ ...f }));
@@ -987,9 +1000,14 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     }
     /* ARRIVAL IS WHAT STARTS THE WORK. Nothing past Assigned can be without
        it, and nothing before it can have one. */
-    /* NOTHING IN OPEN OR ASSIGNED HAS BEEN VISITED. Everything past them has
-       — which is what the Working lane means. */
-    const started = !isUnassigned(r.status) && r.status !== "Assigned";
+    /* NOTHING IN OPEN OR ASSIGNED HAS BEEN VISITED — WITH ONE EXCEPTION.
+       "Parts pending" is an order that WAS visited, could not be finished,
+       and went back to Open for somebody to take the next trip. It is the
+       only status that is both unassigned and already worked on, and that is
+       the whole shape of a partial visit. */
+    const started =
+      r.status === "Parts pending" ||
+      (!isUnassigned(r.status) && r.status !== "Assigned");
     if (started && !r.arrivedAt) {
       problems.push(`${r.orderNo}: ${r.status} with no arrival recorded`);
     }

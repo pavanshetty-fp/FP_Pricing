@@ -640,7 +640,7 @@ export function TechnicianApp({
                       told too late. */}
                   <p className="mt-3 rounded-md bg-fp-card-1 px-3 py-2.5 text-xs text-muted-foreground">
                     On submit:{" "}
-                    {cfg.returnMode === "suborder" ? (
+                    {cfg.returnMode === "continue" ? (
                       <>
                         this order goes <strong>Parts-pending</strong> and a
                         linked return visit is created.

@@ -23,26 +23,34 @@ import * as React from "react";
 */
 
 /**
- * WHERE THE UNFITTED PARTS GO (Pavan, 2026-09-23).
+ * WHAT A PARTIAL VISIT DOES (Pavan, 2026-09-23).
  *
- * THE TRIGGER IS A PARTIAL VISIT. The technician turns up, some of what the
- * job needs is on the van and some is not, and they fit what they have. The
- * work that happened stays on this order with the labour it took; the debt
- * has to go somewhere, and there are exactly two somewheres.
+ * THE TRIGGER. Ten parts are needed, five are on the van. The technician fits
+ * the five and marks the job partially completed. The work that happened is
+ * recorded either way; what differs is where the REMAINING five live.
  *
- * `suborder`  — a CHILD OF THE SAME NUMBER, `SO-1045-2`. One fault, one
- *               reference, two visits. The customer rings up about SO-1045
- *               and everything under it is the same conversation.
- * `neworder`  — A NEW ORDER ALTOGETHER, its own number, linked back. Right
- *               where the second visit is scheduled, staffed and invoiced as
- *               its own piece of work.
+ * `continue`  — **THE SAME ORDER, THE SAME NUMBER.** It goes back to OPEN,
+ *               because a second visit needs a technician and a date and
+ *               nobody has picked either yet. Its part list keeps the fitted
+ *               quantities, so the order carries its own progress: five of
+ *               ten, and it is not done until it is ten of ten. One fault,
+ *               one number, however many visits it takes.
+ * `neworder`  — **THIS ONE IS FINISHED; THE REST IS A NEW JOB.** The five
+ *               fitted are complete and the order says so; the five owed
+ *               become an order of their own, with its own number, linked
+ *               back.
  *
- * SUPERSEDES `rollforward` (retired 2026-09-23), which moved the whole order
- * to the next day. It was a reschedule wearing a shortfall's name: it could
- * not say that three of five hoses went on, so the work already done
- * disappeared into a job that now claimed to be happening tomorrow.
+ * THE DIFFERENCE IS WHETHER THE FAULT IS ONE PIECE OF WORK OR TWO — which is
+ * a question about how the business invoices and talks to the customer, not
+ * about the parts. That is why it is a setting and not a choice on the day.
+ *
+ * SUPERSEDES `suborder` (2026-09-23), which made a CHILD record `SO-1048-2`.
+ * That was a third thing nobody asked for: it split one fault into two
+ * records while pretending they were one, so the progress lived on neither.
+ * And it supersedes `rollforward` before it, which just moved the whole order
+ * to tomorrow and could not say that five of ten went on.
  */
-export type ReturnMode = "suborder" | "neworder";
+export type ReturnMode = "continue" | "neworder";
 
 export interface ServiceSettings {
   /**
@@ -105,7 +113,7 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   nativeBilling: true,
   roiFeed: true,
   managerApproval: true,
-  returnMode: "suborder",
+  returnMode: "continue",
   priceBook: true,
   portalIntake: true,
   defaultMileage: 18,

@@ -838,6 +838,23 @@ export function ServiceWorkScreen() {
    * five were needed, which is the only evidence the second visit is a
    * continuation rather than a new problem.
    */
+  /**
+   * A VISIT THAT COULD NOT FIT EVERYTHING (Pavan, 2026-09-23).
+   *
+   * TEN PARTS NEEDED, FIVE ON THE VAN. The five go on and the work is
+   * recorded either way; the setting decides whether the remaining five are
+   * the SAME job or a NEW one.
+   *
+   *   `continue`  The same order, the same number, back to OPEN — because a
+   *               second visit needs a technician and a date and nobody has
+   *               picked either. Its part list keeps the fitted quantities,
+   *               so the order carries its own progress and is not done until
+   *               every line is full.
+   *   `neworder`  This order is finished and says so; the remainder becomes
+   *               an order of its own with its own number, linked back.
+   */
+  const nowIso = () => new Date().toISOString();
+
   const onPartsPending = (
     id: string,
     data: { labor: number; parts: PartLine[]; note?: string }
@@ -847,34 +864,66 @@ export function ServiceWorkScreen() {
 
     const { owed } = splitParts(data.parts);
     /* NOTHING OWED IS NOT A STALL. If every line came back full the job is
-       simply done, and creating an empty follow-up would be filing a debt of
-       nothing. */
+       simply done, and filing a debt of nothing helps nobody. */
     if (owed.length === 0) return;
 
     const shortfall = shortfallLabel(data.parts);
-    const sub = cfg.returnMode === "suborder";
 
-    /* THE CHILD'S NUMBER COUNTS ITS SIBLINGS. A second shortfall on the same
-       order is -3, not a second -2. */
-    const kin = rows.filter((r) => r.orderNo.startsWith(`${order.orderNo}-`)).length;
-    const no = sub ? `${order.orderNo}-${kin + 2}` : nextOrderNo();
+    if (cfg.returnMode === "continue") {
+      /* BACK TO OPEN, AND THAT IS THE WHOLE MOVE. No new record, no new
+         number — the same order, with what it has managed so far recorded on
+         it, waiting for somebody to be put on the next visit.
 
+         THE TECHNICIAN COMES OFF, because Open means nobody is on it and the
+         next visit may well be somebody else. The DATE comes off for the same
+         reason: the day it was booked for has been and gone. */
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: "Parts pending" as WorkStatus,
+                parts: data.parts,
+                labor: data.labor,
+                partNeeded: shortfall,
+                techNotes: data.note ?? r.techNotes,
+                technicianId: null,
+                /* THE CLOCK STOPS BUT THE JOB IS NOT COMPLETE. `startedAt`
+                   stays as the record of the visit that happened;
+                   `completedAt` must not be set or the order would claim to
+                   be finished while it is sitting in Open. */
+                completedAt: null,
+                spawnedReturn: null,
+              }
+            : r
+        )
+      );
+      toast.success(`${order.orderNo} — ${shortfall} still owed`, {
+        description: "Back to Open. Assign somebody for the next visit.",
+      });
+      return;
+    }
+
+    /* A NEW ORDER ALTOGETHER. This one is complete — the five that went on
+       are what it was for — and the remainder is its own piece of work. */
+    const no = nextOrderNo();
     const followUp: ServiceOrder = {
       ...order,
       id: `so-owed-${no}`,
       orderNo: no,
-      status: "Assigned",
+      status: "Drafted",
       /* THE FAULT IS THE DEBT, in the words of the parts. "Return visit" on
          its own tells the next technician nothing about what to bring. */
       fault: `Awaiting parts — ${shortfall}`,
+      assets: order.assets.map((a) => ({ ...a, fault: `Awaiting parts — ${shortfall}` })),
       parts: owed,
       arrivedAt: null,
       startedAt: null,
       assessment: null,
       techNotes: null,
-      /* THE SECOND VISIT STARTS FROM NOTHING. Labour, mileage and the fees
-         already charged belong to the visit that happened; carrying them over
-         would invoice the call-out twice. */
+      /* IT STARTS FROM NOTHING. Labour, mileage and the fees already charged
+         belong to the visit that happened; carrying them would invoice the
+         call-out twice. */
       labor: 0,
       laborOverride: null,
       laborRate: order.laborRate,
@@ -890,6 +939,8 @@ export function ServiceWorkScreen() {
       spawnedReturn: null,
       signed: false,
       completedAt: null,
+      /* NOBODY IS ON IT — that is what Open means, and the invariant checks. */
+      technicianId: null,
       windowEndMin: order.windowEndMin,
     };
 
@@ -901,19 +952,21 @@ export function ServiceWorkScreen() {
               ...r,
               labor: data.labor,
               parts: data.parts,
-              status: "Parts pending" as WorkStatus,
-              partNeeded: shortfall,
+              status: "Completed — linked" as WorkStatus,
+              completedAt: nowIso(),
+              signed: true,
+              partNeeded: null,
               techNotes: data.note ?? r.techNotes,
               spawnedReturn: no,
+              invoiceCreated: cfg.nativeBilling,
+              invoicedAt: cfg.nativeBilling ? nowIso() : null,
             }
           : r
       ),
     ]);
 
-    toast.success(`${order.orderNo} — ${shortfall} still owed`, {
-      description: sub
-        ? `${no} created under the same order.`
-        : `New order ${no} created and linked back.`,
+    toast.success(`${order.orderNo} completed — ${shortfall} moved on`, {
+      description: `New order ${no} carries what is still owed.`,
     });
   };
 

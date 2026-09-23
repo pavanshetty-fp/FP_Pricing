@@ -186,14 +186,14 @@ export function ServiceSettingsScreen() {
                 {(
                   [
                     [
-                      "suborder",
-                      "A sub-order under the same number",
-                      "SO-1045-2. One fault, one reference, two visits — the customer rings about SO-1045 and it is all the same conversation.",
+                      "continue",
+                      "The same order carries on",
+                      "Same number, back to Open. It keeps what has been fitted so far and is not done until every line is full — one fault, one number, however many visits it takes.",
                     ],
                     [
                       "neworder",
-                      "A new order of its own",
-                      "Its own number, linked back. Right where the second visit is scheduled, staffed and invoiced as separate work.",
+                      "This one is done; the rest is a new order",
+                      "The parts that went on are complete and the order says so. What is owed becomes its own order, with its own number, linked back.",
                     ],
                   ] as const
                 ).map(([key, title, detail]) => (

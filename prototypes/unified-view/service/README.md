@@ -21,7 +21,29 @@
 > soonest at the top.
 
 
-> **THE PARTIAL VISIT (2026-09-23).** When a technician fits some of what a
+> **THE PARTIAL VISIT — TWO SCENARIOS (Pavan, 2026-09-23, revised).** Ten
+> parts needed, five on the van. The five go on and the work is recorded
+> either way; `returnMode` decides where the other five live.
+>
+> - **`continue` — the same order carries on.** Same number, back to **Open**,
+>   technician and date cleared, because a second visit needs both and nobody
+>   has picked either. Its part list keeps the fitted quantities, so the order
+>   carries its own progress and is not done until every line is full. **No
+>   second record.**
+> - **`neworder` — this one is done; the rest is a new order.** The parts that
+>   went on are complete and the order says so (`Completed — linked`). What is
+>   owed becomes its own order with its own number, linked back.
+>
+> **`suborder` was wrong and is retired** — it made a child `SO-1048-2`, which
+> split one fault into two records while pretending they were one, so the
+> progress lived on neither. `rollforward` before it just moved the order to
+> tomorrow and could not say that five of ten went on.
+>
+> **"Parts pending" is the one status that is both unassigned and already
+> visited.** The invariants say so explicitly; it is the whole shape of a
+> partial visit.
+
+> **SUPERSEDED — the first pass at the partial visit (2026-09-23).** When a technician fits some of what a
 > job needs and not all of it, the order splits along the PARTS. What went on
 > stays with the labour and mileage it took; what did not becomes a debt, and
 > `returnMode` decides its shape — a **sub-order under the same number**

@@ -2051,9 +2051,9 @@ export function ServiceOrderSheet({
             {heldShortfall ? (
               <>
                 <span className="text-foreground">{heldShortfall}</span>{" "}
-                {cfg.returnMode === "suborder"
-                  ? `will move to a sub-order under ${draft.orderNo} — one fault, one reference, two visits.`
-                  : "will become a new order of its own, linked back to this one."}
+                {cfg.returnMode === "continue"
+                  ? `stays on ${draft.orderNo}, which goes back to Open for somebody to take the next visit.`
+                  : "becomes a new order of its own, and this one is complete."}
               </>
             ) : (
               "Everything the job needed went on. Nothing to carry over."
@@ -2074,9 +2074,9 @@ export function ServiceOrderSheet({
                 setHoldOpen(false);
               }}
             >
-              {cfg.returnMode === "suborder"
-                ? "Create sub-order"
-                : "Create new order"}
+              {cfg.returnMode === "continue"
+                ? "Back to Open"
+                : "Complete and raise the rest"}
             </Button>
           </DialogFooter>
         </DialogContent>

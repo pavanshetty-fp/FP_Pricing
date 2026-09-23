@@ -704,9 +704,9 @@ function Job({
             {/* WHAT HAPPENS NEXT, SAID BEFORE THE PRESS — a technician who
                 finds out afterwards has been told too late. */}
             <p className="text-xs text-muted-foreground">
-              {cfg.returnMode === "suborder"
-                ? "What is left over moves to a sub-order under this same number."
-                : "What is left over becomes a new order, linked back to this one."}
+              {cfg.returnMode === "continue"
+                ? "This order stays open with what is left on it."
+                : "What is left becomes a new order; this one is done."}
             </p>
           </div>
         ) : (

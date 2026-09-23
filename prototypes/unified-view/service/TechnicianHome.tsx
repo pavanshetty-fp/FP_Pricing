@@ -302,6 +302,18 @@ const DATE_LABEL: Record<Exclude<DateFilter, "day">, string> = {
   week: "Next 7 days",
 };
 
+/**
+ * THE STATUS TABS on the jobs list (Pavan, 2026-09-24) — the order's own
+ * statuses, grouped by what they mean to the person holding the phone.
+ */
+const STATUS_TABS: { key: string; label: string; statuses: string[] | null }[] = [
+  { key: "all", label: "All", statuses: null },
+  { key: "upcoming", label: "Upcoming", statuses: ["Drafted", "Assigned", "Yet to start"] },
+  { key: "progress", label: "In progress", statuses: ["Ongoing"] },
+  { key: "parts", label: "Parts pending", statuses: ["Parts pending", "Linked order"] },
+  { key: "done", label: "Done", statuses: ["Needs approval", "Completed", "Completed — linked", "Yet to be reviewed", "Reviewed"] },
+];
+
 const PRIORITY_RANK: Record<string, number> = { Urgent: 0, High: 1, Normal: 2 };
 const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -372,14 +384,17 @@ export function JobsScreen({
   onOpen: (id: string) => void;
   onMenu: () => void;
 }) {
+  const [statusTab, setStatusTab] = React.useState("all");
   const [query, setQuery] = React.useState("");
   const [filters, setFilters] = React.useState<JobFilters>(NO_FILTERS);
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
   const shown = React.useMemo(() => {
     const q = query.trim().toLowerCase();
+    const inTab = STATUS_TABS.find((t) => t.key === statusTab)?.statuses;
     const list = jobs.filter(
       (o) =>
+        (!inTab || inTab.includes(o.status)) &&
         (!q ||
           o.orderNo.toLowerCase().includes(q) ||
           o.customer.toLowerCase().includes(q) ||
@@ -396,7 +411,7 @@ export function JobsScreen({
           ? createdAtOf(b).localeCompare(createdAtOf(a))
           : exec(a).localeCompare(exec(b))
     );
-  }, [jobs, query, filters]);
+  }, [jobs, query, filters, statusTab]);
 
   const chips = appliedChips(filters, setFilters);
   const activeCount = chips.length + (filters.sort !== "execution" ? 1 : 0);
@@ -420,6 +435,30 @@ export function JobsScreen({
         subtitle={`${jobs.length} assigned · ${technician.name}`}
         onMenu={onMenu}
       />
+      {/* STATUS TABS — each with its count, the active one underlined in the
+          brand colour as the web's tabs are. Scrolls sideways on a narrow phone. */}
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-fp-outline-1 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {STATUS_TABS.map((t) => {
+          const n = t.statuses ? jobs.filter((j) => t.statuses!.includes(j.status)).length : jobs.length;
+          const on = statusTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-current={on ? "page" : undefined}
+              onClick={() => setStatusTab(t.key)}
+              className={cn(
+                "relative flex h-11 shrink-0 items-center gap-1.5 px-2.5 text-sm whitespace-nowrap",
+                on ? "font-medium text-foreground" : "text-muted-foreground"
+              )}
+            >
+              {t.label}
+              <span className="text-xs tabular-nums text-muted-foreground">{n}</span>
+              {on && <span aria-hidden className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
+            </button>
+          );
+        })}
+      </nav>
       <div className="flex shrink-0 flex-col gap-2 border-b border-fp-outline-1 px-3 py-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -494,6 +533,7 @@ export function JobsScreen({
                 onClick={() => {
                   setQuery("");
                   setFilters(NO_FILTERS);
+                  setStatusTab("all");
                 }}
               >
                 Clear search and filters

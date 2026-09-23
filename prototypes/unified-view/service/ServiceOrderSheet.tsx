@@ -684,7 +684,7 @@ export interface ServiceOrderSheetProps {
    */
   onPartsPending?: (
     id: string,
-    data: { labor: number; parts: PartLine[]; note?: string }
+    data: { labor: number; parts: PartLine[]; note?: string; mode?: "continue" | "neworder" }
   ) => void;
   customers: string[];
   /** Ship-tos for a chosen customer, and assets for a chosen ship-to. */
@@ -2340,52 +2340,30 @@ export function ServiceOrderSheet({
         order={draft}
         open={fieldOpen}
         onOpenChange={setFieldOpen}
-        onSubmit={(r) => {
+        /* EVERY STEP ON THE PHONE LANDS ON THE ORDER, and the sheet's autosave
+           carries it to the list like any other edit. */
+        onPatch={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}
+        onSplit={(req) => {
+          /* THE VISIT CLOSES FIRST, saved at once — the split below builds on
+             the saved row, and a visit left open would keep the clock running
+             on an order nobody is working. */
           const at = nowIso();
-          if (!r.completed) {
-            /* THE PARTS AND HOURS ARE KEPT EVEN THOUGH THE JOB IS NOT DONE.
-               A technician who fitted two of three parts has spent them. */
-            setDraft((d) =>
-              d
-                ? { ...d, parts: r.parts, fees: r.fees, labor: r.labor, quote: r.quote ?? d.quote }
-                : d
-            );
-            onPartsPending?.(draft.id, {
-              labor: r.labor,
-              parts: r.parts,
+          if (order)
+            onSave(order, {
+              ...draft,
+              ...syncVisits({
+                visits: draft.visits.map((v, i) =>
+                  i === draft.visits.length - 1 && v.endedAt === null ? { ...v, endedAt: at } : v
+                ),
+              }),
             });
-            onOpenChange(false);
-            return;
-          }
-
-          const patch: Partial<ServiceOrder> = {
-            parts: r.parts,
-            fees: r.fees,
-            labor: r.labor,
-            mileage: r.mileage,
-            quote: r.quote ?? draft.quote,
-            arrivedAt: draft.arrivedAt ?? at,
-            completedAt: at,
-            signed: r.signed,
-            partNeeded: null,
-          };
-          if (cfg.managerApproval) {
-            advance("Needs approval", patch);
-            toast.success(`${draft.orderNo} submitted from the field`, {
-              description: "Waiting on a service manager.",
-            });
-          } else {
-            advance("Completed", {
-              ...patch,
-              invoiceCreated: cfg.nativeBilling,
-              invoicedAt: cfg.nativeBilling ? at : null,
-            });
-            toast.success(
-              cfg.nativeBilling
-                ? `${draft.orderNo} submitted — invoice generated`
-                : `${draft.orderNo} submitted and approved`
-            );
-          }
+          onPartsPending?.(draft.id, {
+            labor: draft.labor,
+            parts: req.parts,
+            note: req.note ?? undefined,
+            mode: req.mode,
+          });
+          setFieldOpen(false);
         }}
       />
     </RecordSheet>

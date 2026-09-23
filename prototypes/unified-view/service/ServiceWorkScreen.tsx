@@ -915,7 +915,7 @@ export function ServiceWorkScreen() {
 
   const onPartsPending = (
     id: string,
-    data: { labor: number; parts: PartLine[]; note?: string }
+    data: { labor: number; parts: PartLine[]; note?: string; mode?: "continue" | "neworder" }
   ) => {
     const order = rows.find((r) => r.id === id);
     if (!order) return;
@@ -927,7 +927,8 @@ export function ServiceWorkScreen() {
 
     const shortfall = shortfallLabel(data.parts);
 
-    if (cfg.returnMode === "continue") {
+    /* THE TECHNICIAN MAY CHOOSE, on the phone; the setting is the default. */
+    if ((data.mode ?? cfg.returnMode) === "continue") {
       /* BACK TO OPEN, AND THAT IS THE WHOLE MOVE. No new record, no new
          number — the same order, with what it has managed so far recorded on
          it, waiting for somebody to be put on the next visit.

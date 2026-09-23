@@ -49,6 +49,7 @@ import {
   formatHours,
   WORK_STATUS_KIND,
   splitParts,
+  diffServiceOrder,
   shortfallLabel,
   type PartLine,
 } from "./work";
@@ -396,7 +397,36 @@ function completedLabel(iso: string): string {
 
 export function ServiceWorkScreen() {
   const cfg = useServiceSettings();
-  const [rows, setRows] = React.useState<ServiceOrder[]>(SERVICE_ORDERS);
+  const [rows, setRowsRaw] = React.useState<ServiceOrder[]>(SERVICE_ORDERS);
+  /**
+   * EVERY CHANGE TO AN ORDER IS WRITTEN DOWN (Pavan, 2026-09-23) — the same
+   * change log a 3PL order keeps. One wrapper round the only setter, so no
+   * path that edits an order (the sheet's autosave, the board's acts, the
+   * parts-pending split, creation) can forget to log: each row that differs
+   * from what it was gets an entry listing what changed, in words. A new row
+   * starts its log with "Order created".
+   */
+  const setRows = React.useCallback(
+    (fn: (prev: ServiceOrder[]) => ServiceOrder[]) =>
+      setRowsRaw((prev) => {
+        const next = fn(prev);
+        const at = new Date().toISOString();
+        const by = "Dana Whitfield";
+        return next.map((r) => {
+          const before = prev.find((x) => x.id === r.id);
+          if (!before)
+            return r.audit.length > 0
+              ? r
+              : { ...r, audit: [{ at, by, changes: ["Order created"] }] };
+          if (before === r) return r;
+          const changes = diffServiceOrder(before, r);
+          return changes.length > 0
+            ? { ...r, audit: [...r.audit, { at, by, changes }] }
+            : r;
+        });
+      }),
+    []
+  );
   const [view, setView] = React.useState<ListView>("board");
   const [search, setSearch] = React.useState("");
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
@@ -819,6 +849,7 @@ export function ServiceWorkScreen() {
       signed: false,
       completedAt: null,
       raisedBy: "Dana Whitfield",
+      audit: [],
     };
   }, [cfg.priceBook]);
 
@@ -966,6 +997,9 @@ export function ServiceWorkScreen() {
       id: `so-owed-${no}`,
       orderNo: no,
       status: "Drafted",
+      /* ITS OWN LOG, from its own creation — the parent's history stays on
+         the parent. */
+      audit: [],
       /* THE FAULT IS THE DEBT, in the words of the parts. "Return visit" on
          its own tells the next technician nothing about what to bring. */
       fault: `Awaiting parts — ${shortfall}`,

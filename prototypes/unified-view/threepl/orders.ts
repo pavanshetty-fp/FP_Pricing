@@ -2161,18 +2161,14 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     if (preVendor && (r.vendorId || r.acceptedVendorIds.length)) {
       problems.push(`${r.orderNo}: ${r.status} cannot have an accepted partner`);
     }
-    /* THE TWO ACTS ARE SEPARATE and the lanes turn on the first of them.
-       Quoting = invited, nobody has said yes. Assigned = somebody has. Whether
-       the BROKER has taken a quote is a third thing, and only the stages past
-       the delivery require it. */
-    if (r.status === "Quoting" && r.acceptedVendorIds.length) {
-      problems.push(`${r.orderNo}: Assigned means invited, not accepted`);
-    }
-    if (r.status === "Quoting" && r.vendorId) {
-      problems.push(`${r.orderNo}: Assigned cannot already have a partner`);
-    }
+    /* QUOTING IS THE ROUND ITSELF (rewritten 2026-09-23). This rule predates
+       the status rename and the finalize step: it still said Quoting meant
+       "nobody has accepted", when Quoting is exactly where partners accept,
+       price the order and one of them is finalized — a partner may hold the
+       order before it moves to Assigned. What stays true: a round has to
+       have somebody in it. */
     if (r.status === "Quoting" && r.invitedVendorIds.length === 0) {
-      problems.push(`${r.orderNo}: Assigned with nobody invited`);
+      problems.push(`${r.orderNo}: Quoting with nobody invited`);
     }
     if (!preVendor && r.status !== "Quoting" && r.acceptedVendorIds.length === 0) {
       problems.push(`${r.orderNo}: ${r.status} with nobody having accepted`);
@@ -2191,7 +2187,9 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     /* A QUOTE FOLLOWS AN ACCEPTANCE. A partner cannot price an order it has not
        agreed to take. */
     for (const q of r.quotes) {
-      if (!r.acceptedVendorIds.includes(q.vendorId)) {
+      /* EXCEPT IN A DRAFT, where the broker writes down a price a partner
+         gave on the phone — "Add their quotation" — before anything is sent. */
+      if (r.status !== "Draft" && !r.acceptedVendorIds.includes(q.vendorId)) {
         problems.push(`${r.orderNo}: a quote from a partner that never accepted`);
       }
       for (const ql of q.lines) {

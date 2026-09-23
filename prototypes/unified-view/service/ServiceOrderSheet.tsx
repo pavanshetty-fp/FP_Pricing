@@ -91,7 +91,6 @@ import {
   orderTotal,
   partsTotal,
   technicianById,
-  visitHours,
   type FeeLine,
   type PartLine,
   type ServiceOrder,
@@ -184,75 +183,55 @@ function stampLabel(iso: string): string {
 /**
  * THE ORDER'S ACTIVITY, as a timeline under the Record card (Pavan,
  * 2026-09-23) — the same shape 3PL's order rail uses: a line down the marks,
- * most recent first, the event leading and who/when under it.
- *
- * BUILT FROM WHAT THE ORDER ALREADY RECORDS — visits, the quote, completion,
- * the invoice — because a service order keeps no separate change log yet.
- * Every entry is a fact the record carries with its own timestamp; nothing
- * here is made up to fill the list. Raising the order has no time on the
- * record, so it sits at the foot without one.
+ * most recent first, the change leading and who/when under it. It reads the
+ * order's change log (`audit`), which the screen writes on every save.
  */
-function ServiceActivity({ order }: { order: ServiceOrder }) {
-  type Entry = { at: string | null; text: string; by?: string; icon: React.ReactNode; tone: string };
-  const quiet = "border-border bg-card text-muted-foreground";
+function activityMark(text: string): { icon: React.ReactNode; tone: string } {
   const good = "border-status-success/30 bg-status-success/10 text-status-success";
   const wait = "border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution";
-  const name = (id: string | null) => technicianById(id)?.name;
-  const entries: Entry[] = [];
-  for (const v of order.visits) {
-    entries.push({ at: v.startedAt, text: "Visit started", by: name(v.technicianId), icon: <CircleDot />, tone: quiet });
-    if (v.endedAt)
-      entries.push({
-        at: v.endedAt,
-        text: `Visit ended · ${formatHours(visitHours(v))}`,
-        by: name(v.technicianId),
-        icon: <CircleDot />,
-        tone: quiet,
-      });
-  }
-  if (order.status === "Parts pending") {
-    const last = order.visits[order.visits.length - 1];
-    entries.push({ at: last?.endedAt ?? null, text: "Held for parts", by: name(last?.technicianId ?? null), icon: <PackageX />, tone: wait });
-  }
-  if (order.quote) {
-    entries.push({ at: order.quote.sentAt, text: `Quote sent · ${money(order.quote.total)}`, icon: <FileText />, tone: quiet });
-    if (order.quote.approvedAt)
-      entries.push({ at: order.quote.approvedAt, text: "Quote approved", icon: <CheckCircle2 />, tone: good });
-  }
-  /* A job held for parts has not been recorded as done — its stamp is the
-     hold, said above. */
-  if (order.completedAt && order.status !== "Parts pending")
-    entries.push({ at: order.completedAt, text: "Work recorded", by: name(order.technicianId), icon: <CheckCircle2 />, tone: good });
-  if (order.invoicedAt)
-    entries.push({ at: order.invoicedAt, text: "Invoice raised", icon: <Receipt />, tone: good });
-  entries.sort((x, y) => (y.at ?? "").localeCompare(x.at ?? ""));
-  entries.push({ at: null, text: `Raised · ${order.source}`, by: order.raisedBy, icon: <UserRound />, tone: quiet });
+  const quiet = "border-border bg-card text-muted-foreground";
+  if (/Parts pending/.test(text)) return { icon: <PackageX />, tone: wait };
+  if (/^(Work recorded|Invoice|Quote approved)|→ (Completed|Reviewed)/.test(text))
+    return { icon: <CheckCircle2 />, tone: good };
+  if (/^Quote/.test(text)) return { icon: <FileText />, tone: quiet };
+  if (/^Visit/.test(text)) return { icon: <CircleDot />, tone: quiet };
+  if (/^(Order created|Technician)/.test(text)) return { icon: <UserRound />, tone: quiet };
+  return { icon: <CircleDot />, tone: quiet };
+}
 
+function ServiceActivity({ order }: { order: ServiceOrder }) {
+  const rows = [...order.audit]
+    .reverse()
+    .flatMap((e, i) => e.changes.map((c, j) => ({ e, c, key: `${e.at}-${i}-${j}` })));
+  if (rows.length === 0)
+    return <p className="px-4 py-3 text-sm text-muted-foreground">Nothing has changed yet.</p>;
   return (
     <ol className="flex flex-col px-4 py-3">
-      {entries.map((e, idx) => (
-        <li key={`${e.text}-${idx}`} className="relative flex gap-3 pb-4 last:pb-0">
-          {idx < entries.length - 1 && (
-            <span aria-hidden className="absolute top-7 bottom-0 left-[13px] w-px bg-border" />
-          )}
-          <span
-            className={cn(
-              "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border [&_svg]:size-3.5",
-              e.tone
+      {rows.map(({ e, c, key }, idx) => {
+        const mark = activityMark(c);
+        return (
+          <li key={key} className="relative flex gap-3 pb-4 last:pb-0">
+            {idx < rows.length - 1 && (
+              <span aria-hidden className="absolute top-7 bottom-0 left-[13px] w-px bg-border" />
             )}
-          >
-            {e.icon}
-          </span>
-          <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
-            <span className="text-sm text-foreground">{e.text}</span>
-            {(e.at || e.by) && (
+            <span
+              className={cn(
+                "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border [&_svg]:size-3.5",
+                mark.tone
+              )}
+            >
+              {mark.icon}
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
+              <span className="text-sm break-words text-foreground">{c}</span>
               <span className="text-xs text-muted-foreground">
-                {[e.at && stampLabel(e.at), e.by].filter(Boolean).join(" · ")}
+                {stampLabel(e.at)}
+                {e.by ? ` · ${e.by}` : ""}
               </span>
-            )}
-          </span>
-        </li>
-      ))}
+            </span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -1241,31 +1220,15 @@ export function ServiceOrderSheet({
           : /* Only what is known — work type and asset can be blank now. */
             [draft.workType, draft.assetName, draft.shipTo].filter(Boolean).join(" · ")
       }
-      /* THE STRIP ABOVE THE FOOTER SAYS WHAT THE ACT IS WAITING ON. A stalled
-         job's reason beats a list of missing fields: it is the thing that
-         stopped the work, and the fields can wait behind it. */
+      /* THE STRIP ABOVE THE FOOTER SAYS WHAT THE ACT IS WAITING ON. A
+         Parts-pending job no longer gets its own "Waiting on a part" line here
+         (Pavan, 2026-09-23): the status says it, and the Parts table's Fitted
+         column says which. */
       footerBanner={
-        creating ? (
-          <PendingStrip
-            pending={pendingSteps}
-            clearLabel="Everything this order needs is filled in"
-          />
-        ) : draft.status === "Parts pending" ? (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-foreground">Waiting on a part</span>
-            <span className="text-muted-foreground">
-              {draft.partNeeded}
-              {draft.spawnedReturn
-                ? ` · linked return visit ${draft.spawnedReturn} created`
-                : " · nobody is on it yet"}
-            </span>
-          </div>
-        ) : (
-          <PendingStrip
-            pending={pendingSteps}
-            clearLabel="Everything this order needs is filled in"
-          />
-        )
+        <PendingStrip
+          pending={pendingSteps}
+          clearLabel="Everything this order needs is filled in"
+        />
       }
       /* THE SECOND OUTCOME OF A VISIT, in the slot for decisions taken at the
          moment of committing. A technician does not know which of the two it
@@ -2104,9 +2067,11 @@ export function ServiceOrderSheet({
             </div>
           </RailCard>
 
-          {!creating && (
+          {!creating && order && (
             <RailCard title="Activity" icon={<History />}>
-              <ServiceActivity order={draft} />
+              {/* THE LIVE ROW, not the sheet's draft: the log is written by
+                  the screen on save, and the draft never sees it. */}
+              <ServiceActivity order={order} />
             </RailCard>
           )}
         </aside>

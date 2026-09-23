@@ -599,6 +599,11 @@ const CORE_PRODUCTS: ProductSeed[] = [
   { name: "Gasoline 87 E10", category: "Fuel", unit: "gal", taxable: true, hazmat: "Class 3 · UN1203", basePrice: 3.55, active: true, topOff: true },
   { name: "Gasoline 91 Premium", category: "Fuel", unit: "gal", taxable: true, hazmat: "Class 3 · UN1203", basePrice: 4.12, active: true, topOff: false },
   { name: "Gasoline 87 Non-Ethanol", category: "Fuel", unit: "gal", taxable: true, hazmat: "Class 3 · UN1203", basePrice: 4.34, active: true, topOff: false },
+  /* ORDERABLE, SO LISTED (2026-09-23). Propane sites carry LP tanks on the
+     order fixture, and the guard below threw on every load because the list
+     had no propane at all. Last in the list (both grades), so nothing seeded before it moves. */
+  { name: "Propane HD-5", category: "Fuel", unit: "gal", taxable: true, hazmat: "Class 2.1 · UN1075", basePrice: 2.48, active: true, topOff: true },
+  { name: "Propane Commercial", category: "Fuel", unit: "gal", taxable: true, hazmat: "Class 2.1 · UN1075", basePrice: 2.31, active: true, topOff: true },
 ];
 
 const PRODUCT_FAMILIES = [

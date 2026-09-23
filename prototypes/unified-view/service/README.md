@@ -319,6 +319,15 @@ for.)
   finished job is asked when it RAN, not when it was booked.
 - A lane is only offered the fields it can draw.
 
+## The change log (2026-09-23)
+
+Every service order keeps an `audit` — one entry per save that changed
+something, each change in words with the old value and the new
+("Technician: — → Curtis Nwosu"), the same shape as a 3PL order. It is written
+in ONE place, a wrapper round the screen's row setter, so no path that edits an
+order can forget to log. The rail's **Activity** card, under Record, reads it.
+The fixture's history is seeded from the facts each order already carries.
+
 ## Not built, named rather than faked
 
 - **The customer's portal.** The switch controls whether "Portal request"

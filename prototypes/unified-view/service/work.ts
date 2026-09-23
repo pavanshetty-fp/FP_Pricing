@@ -594,6 +594,108 @@ export interface ServiceOrder {
   signed: boolean;
   completedAt: string | null;
   raisedBy: string;
+  /**
+   * THE ORDER'S CHANGE LOG (Pavan, 2026-09-23) — the same shape as a 3PL
+   * order's `audit`: one entry per save that changed something, oldest first,
+   * each change already in words ("Technician: — → Curtis Nwosu"). Written by
+   * the screen on every change (`diffServiceOrder`), seeded for the fixture
+   * from the facts each order already carries.
+   */
+  audit: ServiceAuditEntry[];
+}
+
+export interface ServiceAuditEntry {
+  /** ISO instant of the save. */
+  at: string;
+  /** Who saved it. */
+  by: string;
+  /** One line per thing that changed, already in words. */
+  changes: string[];
+}
+
+/**
+ * WHAT CHANGED, IN WORDS — one audit entry. Old value and new, because
+ * "Status: Assigned → Ongoing" answers the question the log is opened for and
+ * "status changed" only proves somebody was here. Line tables are compared as
+ * a whole: the shape of the job is what somebody checks later.
+ */
+export function diffServiceOrder(a: ServiceOrder, b: ServiceOrder): string[] {
+  const out: string[] = [];
+  const say = (label: string, from: unknown, to: unknown) => {
+    if (String(from ?? "") === String(to ?? "")) return;
+    out.push(`${label}: ${from || "—"} → ${to || "—"}`);
+  };
+  const tech = (id: string | null) => technicianById(id)?.name ?? "";
+  say("Status", a.status, b.status);
+  say("Priority", a.priority, b.priority);
+  say("Intake", a.source, b.source);
+  say("Customer", a.customer, b.customer);
+  say("Ship-to", a.shipTo, b.shipTo);
+  say("Technician", tech(a.technicianId), tech(b.technicianId));
+  say("Scheduled", a.scheduledAt?.slice(0, 16), b.scheduledAt?.slice(0, 16));
+  const assets = (r: ServiceOrder) =>
+    r.assets.filter((x) => x.assetName || x.workType || x.fault)
+      .map((x) => [x.assetName || "?", x.workType, x.fault].filter(Boolean).join(" — "))
+      .join(" · ");
+  say("Assets", assets(a), assets(b));
+  const parts = (r: ServiceOrder) =>
+    r.parts
+      .map((p) => `${p.name || "?"} ×${p.qty}${p.fittedQty !== undefined ? ` (${p.fittedQty} fitted)` : ""}`)
+      .join(" · ");
+  say("Parts", parts(a), parts(b));
+  const lines = (xs: FeeLine[]) => xs.map((f) => `${f.name || "?"} ${f.amount}`).join(" · ");
+  say("Fees", lines(a.fees), lines(b.fees));
+  say("Additional charges", lines(a.extraCharges), lines(b.extraCharges));
+  say("Labour", a.labor ? formatHours(a.labor) : "", b.labor ? formatHours(b.labor) : "");
+  say("Labour rate", a.laborRate, b.laborRate);
+  say("Mileage", a.mileage || "", b.mileage || "");
+  if (!a.quote && b.quote) out.push("Quote sent");
+  if (a.quote && !a.quote.approvedAt && b.quote?.approvedAt) out.push("Quote approved");
+  if (!a.invoiceCreated && b.invoiceCreated) out.push("Invoice raised");
+  if (!a.synced && b.synced) out.push("Invoice reviewed");
+  if (a.techNotes !== b.techNotes)
+    out.push(`Technician notes: ${!a.techNotes ? "added" : !b.techNotes ? "cleared" : "edited"}`);
+  return out;
+}
+
+/**
+ * THE FIXTURE'S HISTORY, from what each order already records with a time on
+ * it — visits, the hold, the quote, completion, the invoice. Creation is put a
+ * day before the booking: the fixture never stored when an order was raised,
+ * and a log that begins with its second event reads as a log with a gap.
+ */
+function seedServiceAudit(r: ServiceOrder): ServiceAuditEntry[] {
+  const tech = (id: string | null) => technicianById(id)?.name ?? "";
+  const e: ServiceAuditEntry[] = [];
+  const booked = r.scheduledAt ?? `${r.dateKey}T09:00:00`;
+  e.push({
+    at: new Date(new Date(booked).getTime() - 24 * 3_600_000).toISOString(),
+    by: r.raisedBy,
+    changes: [`Order created · ${r.source}`],
+  });
+  const firstTech = r.visits[0]?.technicianId ?? r.technicianId;
+  if (firstTech)
+    e.push({
+      at: new Date(new Date(booked).getTime() - 20 * 3_600_000).toISOString(),
+      by: "Dana Whitfield",
+      changes: [`Technician: — → ${tech(firstTech)}`],
+    });
+  for (const v of r.visits) {
+    e.push({ at: v.startedAt, by: tech(v.technicianId), changes: ["Visit started"] });
+    if (v.endedAt)
+      e.push({ at: v.endedAt, by: tech(v.technicianId), changes: [`Visit ended · ${formatHours(visitHours(v))}`] });
+  }
+  if (r.quote) {
+    e.push({ at: r.quote.sentAt, by: "Dana Whitfield", changes: ["Quote sent"] });
+    if (r.quote.approvedAt) e.push({ at: r.quote.approvedAt, by: r.customer, changes: ["Quote approved"] });
+  }
+  const last = r.visits[r.visits.length - 1];
+  if (r.status === "Parts pending" && last?.endedAt)
+    e.push({ at: last.endedAt, by: tech(last.technicianId), changes: ["Status: Ongoing → Parts pending"] });
+  if (r.completedAt && r.status !== "Parts pending")
+    e.push({ at: r.completedAt, by: tech(r.technicianId), changes: ["Work recorded"] });
+  if (r.invoicedAt) e.push({ at: r.invoicedAt, by: "Dana Whitfield", changes: ["Invoice raised"] });
+  return e.sort((x, y) => x.at.localeCompare(y.at));
 }
 
 /* ----------------------------------------------------------------- money */
@@ -1129,12 +1231,16 @@ function buildOrders(): ServiceOrder[] {
       signed: recorded,
       completedAt,
       raisedBy: RAISED_BY[i % RAISED_BY.length],
+      audit: [],
     }));
   }
   return out;
 }
 
-export const SERVICE_ORDERS: ServiceOrder[] = buildOrders();
+export const SERVICE_ORDERS: ServiceOrder[] = buildOrders().map((r) => ({
+  ...r,
+  audit: seedServiceAudit(r),
+}));
 
 /**
  * THE INVARIANTS, checked against the fixture at boot.

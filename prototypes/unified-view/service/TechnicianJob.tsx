@@ -10,6 +10,7 @@ import {
   Phone,
   Plus,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  WORK_TYPE_CATEGORY,
+  WORK_TYPES,
   WORK_TYPE_NAMES,
   computedLabor,
   formatHours,
@@ -132,6 +135,7 @@ export function TechnicianJob({
     job.parts.map((p) => ({ ...p, fittedQty: p.fittedQty ?? p.qty }))
   );
   const [mode, setMode] = React.useState<"continue" | "neworder">(cfg.returnMode);
+  const [mapOpen, setMapOpen] = React.useState(false);
 
   const assessed = Boolean(job.assessmentLines && assessmentComplete(job.assessmentLines));
   const handedIn = Boolean(job.completedAt) || job.status === "Parts pending" || job.status === "Completed — linked";
@@ -161,8 +165,32 @@ export function TechnicianJob({
   /* ── THE ORDER, BEFORE ARRIVAL ── who it is for and where it is, with the
      two things a technician does from here: go there, or say they are
      there (Pavan, 2026-09-24). */
+  /* NAVIGATION IS A PLACEHOLDER (Pavan, 2026-09-24) — an empty map with the
+     site on it. Routing is the phone's maps app's job, not this one's. */
+  if (mapOpen) {
+    return (
+      <>
+        <header className="flex shrink-0 items-center gap-2 border-b border-fp-outline-1 bg-fp-surface-1a px-3 py-3">
+          <button type="button" onClick={() => setMapOpen(false)} aria-label="Back" className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+            <ArrowLeft className="size-5" />
+          </button>
+          <span className="truncate text-base font-semibold text-foreground">{job.shipTo}</span>
+        </header>
+        <div
+          className="relative flex min-h-0 flex-1 items-center justify-center bg-fp-card-1"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--fp-outline-1) 1px, transparent 1px), linear-gradient(90deg, var(--fp-outline-1) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        >
+          <MapPin className="size-10 fill-primary text-primary-foreground" />
+        </div>
+      </>
+    );
+  }
+
   if (stage === "travel") {
-    const address = [job.shipTo, [job.city, job.state].filter(Boolean).join(", ")].filter(Boolean).join(", ");
     return (
       <>
         <TopBar title="Order details" onBack={onBack} />
@@ -184,8 +212,7 @@ export function TechnicianJob({
           iconAction={{
             icon: <Navigation />,
             label: `Navigate to ${job.shipTo}`,
-            onPress: () =>
-              window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, "_blank", "noopener"),
+            onPress: () => setMapOpen(true),
           }}
         />
       </>
@@ -200,13 +227,16 @@ export function TechnicianJob({
     const open = lines.filter((l) => l.verdict === null).length;
     return (
       <>
-        <TopBar title="Assessment" subtitle={sub} onBack={onBack} />
+        {/* THE PAGE IS THE ORDER (Pavan, 2026-09-24). Assessing is a task
+            done on it, not the name of the screen. */}
+        <TopBar title={job.orderNo} subtitle={`${job.customer} · ${job.shipTo}`} onBack={onBack} />
         <Body>
           {lines.map((l, i) => (
             <AssessmentCard
               key={l.key}
               index={i}
               line={l}
+              orderParts={job.parts}
               onChange={(p) => set(l.key, p)}
               onRemove={l.source === "added" ? () => setLines((ls) => ls.filter((x) => x.key !== l.key)) : undefined}
             />
@@ -602,11 +632,13 @@ function OrderHeading({ job }: { job: ServiceOrder }) {
 function AssessmentCard({
   index,
   line,
+  orderParts,
   onChange,
   onRemove,
 }: {
   index: number;
   line: AssessmentLine;
+  orderParts: PartLine[];
   onChange: (p: Partial<AssessmentLine>) => void;
   onRemove?: () => void;
 }) {
@@ -615,11 +647,21 @@ function AssessmentCard({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col">
-          <span className="text-xs text-muted-foreground">
-            {added ? "Found on site" : `Line ${index + 1} on the order`}
+        {/* THE TASK, LABELLED BY ITS KIND — Servicing, Replacement — from the
+            work type (Pavan, 2026-09-24). */}
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex items-center gap-2">
+            <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-foreground">
+              {WORK_TYPE_CATEGORY[line.workType] ?? "Task"}
+            </span>
+            {added && <span className="text-xs text-muted-foreground">Found on site</span>}
           </span>
-          {!added && <span className="text-sm font-medium text-foreground">{lineTitle(line)}</span>}
+          {!added && (
+            <>
+              <span className="text-sm font-medium text-foreground">{line.workType || `Task ${index + 1}`}</span>
+              <span className="text-xs text-muted-foreground">{line.assetName}</span>
+            </>
+          )}
         </div>
         {onRemove && (
           <button type="button" onClick={onRemove} aria-label="Remove this line" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
@@ -650,6 +692,21 @@ function AssessmentCard({
             <p className="text-xs text-muted-foreground">The order says</p>
             <p className="text-sm text-foreground">{line.reported || "—"}</p>
           </div>
+          {/* SUBTASKS — the parts this kind of work fits, as they are on the
+              order. */}
+          {(() => {
+            const subs = orderParts.filter((p) => WORK_TYPES[line.workType]?.parts.some((b) => b.name === p.name));
+            return subs.length > 0 ? (
+              <ul className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3">
+                {subs.map((p) => (
+                  <li key={p.name} className="text-sm text-foreground">
+                    Fit {p.name}
+                    {p.qty > 1 && <span className="text-muted-foreground"> ×{p.qty}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : null;
+          })()}
           <div className="grid grid-cols-3 gap-1 rounded-md bg-chip p-1">
             {VERDICTS.map((v) => (
               <button

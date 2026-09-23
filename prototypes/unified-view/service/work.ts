@@ -308,6 +308,20 @@ export const WORK_TYPES: Record<
 
 export const WORK_TYPE_NAMES = Object.keys(WORK_TYPES);
 
+/**
+ * WHAT KIND OF JOB A TASK IS — the label on a task card in the technician's
+ * app (Pavan, 2026-09-24): "Servicing", "Replacement". Derived from the work
+ * type, never typed, so two orders for the same work cannot disagree.
+ */
+export const WORK_TYPE_CATEGORY: Record<string, "Servicing" | "Replacement" | "Installation"> = {
+  "Leak check": "Servicing",
+  "Hose swap": "Replacement",
+  "Pump replace": "Replacement",
+  "Nozzle replace": "Replacement",
+  "Monitor install": "Installation",
+  "Tank swap": "Replacement",
+};
+
 /** The disc beside the number, as both order modules already do it. */
 export const WORK_TYPE_CODE: Record<string, { text: string; tone: CodeDiscTone }> = {
   "Leak check": { text: "LC", tone: "pastel-blue" },

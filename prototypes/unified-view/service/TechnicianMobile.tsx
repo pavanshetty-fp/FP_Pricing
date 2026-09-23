@@ -247,6 +247,23 @@ function phoneSeed(all: ServiceOrder[]): ServiceOrder[] {
       const i = out.findIndex((o) => o.id === id);
       out[i] = notStarted(out[i]);
     });
+    /* THE FIRST JOB CARRIES SEVERAL TASKS, so the task cards can be seen as a
+       list (2026-09-24) — most seeded orders have one. Dummy, and only in the
+       phone's copy. */
+    const first = mine[0] && out.findIndex((o) => o.id === mine[0].id);
+    if (first !== undefined && first >= 0 && out[first].assets.length < 3) {
+      const o = out[first];
+      const extra = [
+        { workType: "Leak check", fault: "Weeping at the bottom collar" },
+        { workType: "Hose swap", fault: "Hose kinked and split" },
+      ].map((x, k) => ({
+        assetId: "",
+        assetName: `${o.assetName || "Asset"} — ${k === 0 ? "fill line" : "dispenser"}`,
+        assetType: o.assetType,
+        ...x,
+      }));
+      out[first] = { ...o, assets: [...o.assets, ...extra].slice(0, 3) };
+    }
   }
   return out;
 }

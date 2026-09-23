@@ -49,6 +49,8 @@ import {
   splitParts,
   diffServiceOrder,
   blankServiceOrder,
+  shipTosOf,
+  shipToPlace,
   shortfallLabel,
   type PartLine,
 } from "./work";
@@ -783,17 +785,9 @@ export function ServiceWorkScreen() {
       ).sort(),
     []
   );
-  const shipTosFor = React.useCallback(
-    (customer: string) =>
-      Array.from(
-        new Set(
-          RENTAL_ASSETS.filter((a) => a.customer === customer && a.shipTo).map(
-            (a) => a.shipTo as string
-          )
-        )
-      ).sort(),
-    []
-  );
+  /* THE SHARED LIST — real sites first, then the dummy ones (work.ts). */
+  const shipTosFor = React.useCallback((customer: string) => shipTosOf(customer), []);
+
   const assetsFor = React.useCallback(
     (shipTo: string) =>
       RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
@@ -841,8 +835,8 @@ export function ServiceWorkScreen() {
       ...draft,
       id: `so-new-${no}`,
       orderNo: no,
-      city: site?.city ?? "",
-      state: site?.state ?? "",
+      city: site?.city ?? shipToPlace(draft.shipTo).city,
+      state: site?.state ?? shipToPlace(draft.shipTo).state,
       /* CREATING AND ASSIGNING ARE ONE ACT WHEN A TECHNICIAN IS NAMED, and two
          when one is not. The form's own button says "Create and assign", and
          leaving the technician blank is how a dispatcher says "the yard team

@@ -6,7 +6,6 @@ import {
   MapPin,
   Minus,
   Navigation,
-  Package,
   Plus,
   X,
   ArrowLeft,
@@ -17,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  TASK_KIND_LABEL,
   WORK_TYPE_CATEGORY,
-  WORK_TYPES,
+  type TaskKind,
   WORK_TYPE_NAMES,
   computedLabor,
   formatHours,
@@ -34,7 +34,7 @@ import {
 } from "./work";
 import { useServiceSettings } from "./settings";
 import { useElapsedHours } from "./sheet-parts";
-import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile";
+import { ActionBar, Body, SectionTitle, TopBar } from "./TechnicianMobile";
 
 /*
   ═══════════════════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ const assessmentComplete = (lines: AssessmentLine[]) =>
   lines.every(
     (l) =>
       l.verdict !== null &&
-      ((l.verdict !== "different" && l.verdict !== "added") || l.actual.trim().length > 0)
+      (l.verdict !== "added" || l.actual.trim().length > 0)
   );
 
 /** The order's own requirements, as the lines to assess. */
@@ -92,11 +92,16 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
   }));
 }
 
+/* THE THREE ANSWERS PER TASK (Pavan, 2026-09-24). */
 const VERDICTS: { key: Exclude<AssessmentVerdict, "added">; label: string }[] = [
-  { key: "accurate", label: "As ordered" },
-  { key: "different", label: "Different" },
-  { key: "skip", label: "Not needed" },
+  { key: "accurate", label: "Confirm fault" },
+  { key: "skip", label: "No fault detected" },
+  { key: "different", label: "Different issue than described" },
 ];
+
+/** What a task comes to, in words — the fault confirmed, or what was found instead. */
+const lineWhat = (l: AssessmentLine) =>
+  l.verdict === "accurate" ? l.reported : l.verdict === "different" ? l.note || "Different issue" : l.actual;
 
 /** A job's order line or site finding, as the customer will see it on the quote. */
 const lineTitle = (l: AssessmentLine) => [l.assetName, l.workType].filter(Boolean).join(" · ");
@@ -149,15 +154,13 @@ export function TechnicianJob({
         ? "travel"
         : /* THE CLOCK STARTS BEFORE THE ASSESSMENT (Pavan, 2026-09-24):
              looking at the job is part of the job. */
-          !job.startedAt
-          ? "ready"
-          : !assessed
-            ? "assess"
-            : cfg.fieldQuote && !job.quote
-              ? "quote"
-              : cfg.fieldQuote && job.quote && !job.quote.approvedAt
-                ? "ack"
-                : "work";
+          !assessed
+          ? "assess"
+          : cfg.fieldQuote && !job.quote
+            ? "quote"
+            : cfg.fieldQuote && job.quote && !job.quote.approvedAt
+              ? "ack"
+              : "work";
 
   const sub = `${job.orderNo} · ${job.shipTo}`;
   const toDo = (job.assessmentLines ?? lines).filter((l) => l.verdict !== "skip");
@@ -225,21 +228,22 @@ export function TechnicianJob({
     const open = lines.filter((l) => l.verdict === null).length;
     return (
       <>
-        {/* THE PAGE IS THE ORDER (Pavan, 2026-09-24). Assessing is a task
-            done on it, not the name of the screen. */}
-        <TopBar title={job.orderNo} subtitle={`${job.customer} · ${job.shipTo}`} onBack={onBack} />
+        {/* THE PAGE IS THE ORDER — its number, nothing else (Pavan,
+            2026-09-24). The customer and site were the screen before. */}
+        <TopBar title={job.orderNo} onBack={onBack} />
         <Body>
+          <TaskOverview lines={lines.filter((l) => l.source === "order")} />
           {lines.map((l, i) => (
             <AssessmentCard
               key={l.key}
               index={i}
               line={l}
-              orderParts={job.parts}
+              active={Boolean(job.startedAt)}
               onChange={(p) => set(l.key, p)}
               onRemove={l.source === "added" ? () => setLines((ls) => ls.filter((x) => x.key !== l.key)) : undefined}
             />
           ))}
-          <Button
+          {job.startedAt && <Button
             variant="outline"
             className="h-11 w-full"
             onClick={() =>
@@ -260,8 +264,24 @@ export function TechnicianJob({
             }
           >
             <Plus className="size-4" /> Add something not on the order
-          </Button>
+          </Button>}
         </Body>
+        {/* START WORK FIRST — it starts the clock; the task cards take their
+            answers once it runs (Pavan, 2026-09-24). */}
+        {!job.startedAt ? (
+          <ActionBar
+            label="Start work"
+            disabled={Boolean(busyWith)}
+            note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
+            onPress={() => {
+              onPatch({
+                ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
+                status: "Ongoing" as WorkStatus,
+              });
+              toast.success("Work started");
+            }}
+          />
+        ) : (
         <ActionBar
           label="Save assessment"
           disabled={!ready}
@@ -270,7 +290,7 @@ export function TechnicianJob({
               ? undefined
               : open > 0
                 ? `${open} line${open === 1 ? "" : "s"} still to assess`
-                : "Say what each different or added line needs"
+                : "Say what each added line needs"
           }
           onPress={() => {
             const count = (v: AssessmentVerdict) => lines.filter((l) => l.verdict === v).length;
@@ -278,10 +298,10 @@ export function TechnicianJob({
               assessmentLines: lines,
               /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads. */
               assessment: [
-                count("accurate") && `${count("accurate")} as ordered`,
-                count("different") && `${count("different")} different`,
+                count("accurate") && `${count("accurate")} fault confirmed`,
+                count("different") && `${count("different")} different issue`,
                 count("added") && `${count("added")} added`,
-                count("skip") && `${count("skip")} not needed`,
+                count("skip") && `${count("skip")} no fault`,
               ]
                 .filter(Boolean)
                 .join(" · "),
@@ -289,6 +309,7 @@ export function TechnicianJob({
             toast.success("Assessment saved");
           }}
         />
+        )}
       </>
     );
   }
@@ -310,7 +331,7 @@ export function TechnicianJob({
                     {l.verdict === "added" && <span className="text-muted-foreground"> · found on site</span>}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {l.verdict === "accurate" ? l.reported : l.actual}
+                    {lineWhat(l)}
                   </span>
                 </div>
               ))}
@@ -374,48 +395,6 @@ export function TechnicianJob({
                what is being done. */
             onPatch({ quote: null, assessmentLines: undefined });
             toast("Back to the assessment");
-          }}
-        />
-      </>
-    );
-  }
-
-  /* ── ORDER DETAIL, ON SITE ── everything the order asks for, and the one
-     press that starts the clock. The assessment follows it. */
-  if (stage === "ready") {
-    return (
-      <>
-        <TopBar title="Order details" onBack={onBack} />
-        <Body>
-          <OrderHeading job={job} />
-          <div className="flex flex-col gap-2">
-            <SectionTitle>On the order</SectionTitle>
-            <div className="flex flex-col divide-y divide-fp-outline-1 rounded-lg border border-fp-outline-1 px-3">
-              {linesFromOrder(job).map((l) => (
-                <div key={l.key} className="flex flex-col gap-0.5 py-2">
-                  <span className="text-sm text-foreground">{lineTitle(l)}</span>
-                  {l.reported && <span className="text-xs text-muted-foreground">{l.reported}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-          <Facts
-            items={[
-              { icon: <Package className="size-4" />, label: "Parts", value: job.parts.length ? job.parts.map((p) => `${p.qty} × ${p.name}`).join(", ") : "None on this job" },
-            ]}
-          />
-        </Body>
-        <ActionBar
-          label="Start work"
-          /* ONE ONGOING JOB AT A TIME (Pavan, 2026-09-24). */
-          disabled={Boolean(busyWith)}
-          note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
-          onPress={() => {
-            onPatch({
-              ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
-              status: "Ongoing" as WorkStatus,
-            });
-            toast.success("Work started");
           }}
         />
       </>
@@ -607,6 +586,33 @@ export function TechnicianJob({
 
 /* ───────────────────────────────────────────────────────────── parts ── */
 
+/**
+ * THE DAY'S TASKS AT A GLANCE (Pavan, 2026-09-24) — the dispatcher's lines,
+ * counted by the two kinds of job: servicing equipment, or adding and
+ * replacing parts.
+ */
+function TaskOverview({ lines }: { lines: AssessmentLine[] }) {
+  const kinds: TaskKind[] = ["Servicing", "Parts"];
+  const count = (k: TaskKind) =>
+    lines.filter((l) => (WORK_TYPE_CATEGORY[l.workType] ?? "Parts") === k).length;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-fp-banner-accent-info/30 bg-fp-banner-accent-info/10 p-3">
+      <span className="flex items-baseline justify-between text-sm font-medium text-foreground">
+        Today's tasks
+        <span className="tabular-nums">{lines.length}</span>
+      </span>
+      <div className="flex flex-col gap-1">
+        {kinds.map((k) => (
+          <div key={k} className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{TASK_KIND_LABEL[k]}</span>
+            <span className="tabular-nums text-foreground">{count(k)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Order number, customer and ship-to address — the first thing on an order. */
 function OrderHeading({ job }: { job: ServiceOrder }) {
   return (
@@ -633,13 +639,14 @@ function OrderHeading({ job }: { job: ServiceOrder }) {
 function AssessmentCard({
   index,
   line,
-  orderParts,
+  active,
   onChange,
   onRemove,
 }: {
   index: number;
   line: AssessmentLine;
-  orderParts: PartLine[];
+  /** Work has started — the task takes its answer. Before that it is read-only. */
+  active: boolean;
   onChange: (p: Partial<AssessmentLine>) => void;
   onRemove?: () => void;
 }) {
@@ -648,19 +655,19 @@ function AssessmentCard({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
       <div className="flex items-start justify-between gap-2">
-        {/* THE TASK, LABELLED BY ITS KIND — Servicing, Replacement — from the
-            work type (Pavan, 2026-09-24). */}
+        {/* THE TASK: its asset, its work type, and the kind of job it is
+            (Pavan, 2026-09-24). */}
         <div className="flex min-w-0 flex-col gap-1">
           <span className="flex items-center gap-2">
             <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-foreground">
-              {WORK_TYPE_CATEGORY[line.workType] ?? "Task"}
+              {WORK_TYPE_CATEGORY[line.workType] === "Servicing" ? "Servicing" : "Parts"}
             </span>
             {added && <span className="text-xs text-muted-foreground">Found on site</span>}
           </span>
           {!added && (
             <>
-              <span className="text-sm font-medium text-foreground">{line.workType || `Task ${index + 1}`}</span>
-              <span className="text-xs text-muted-foreground">{line.assetName}</span>
+              <span className="text-sm font-medium text-foreground">{line.assetName || `Task ${index + 1}`}</span>
+              <span className="text-xs text-muted-foreground">{line.workType}</span>
             </>
           )}
         </div>
@@ -690,54 +697,59 @@ function AssessmentCard({
       ) : (
         <>
           <div className="rounded-md bg-fp-card-1 px-3 py-2">
-            <p className="text-xs text-muted-foreground">The order says</p>
+            <p className="text-xs text-muted-foreground">Reported fault</p>
             <p className="text-sm text-foreground">{line.reported || "—"}</p>
           </div>
-          {/* SUBTASKS — the parts this kind of work fits, as they are on the
-              order. */}
-          {(() => {
-            const subs = orderParts.filter((p) => WORK_TYPES[line.workType]?.parts.some((b) => b.name === p.name));
-            return subs.length > 0 ? (
-              <ul className="flex flex-col gap-1 border-l-2 border-fp-outline-1 pl-3">
-                {subs.map((p) => (
-                  <li key={p.name} className="text-sm text-foreground">
-                    Fit {p.name}
-                    {p.qty > 1 && <span className="text-muted-foreground"> ×{p.qty}</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : null;
-          })()}
-          <div className="grid grid-cols-3 gap-1 rounded-md bg-chip p-1">
-            {VERDICTS.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                aria-pressed={line.verdict === v.key}
-                onClick={() => onChange({ verdict: v.key })}
-                className={cn(
-                  "h-10 rounded text-sm",
-                  line.verdict === v.key ? "bg-fp-surface-1a font-medium text-foreground shadow-xs" : "text-muted-foreground"
-                )}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
+          {active && (
+            <div className="flex flex-col gap-1.5">
+              {VERDICTS.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  aria-pressed={line.verdict === v.key}
+                  onClick={() => onChange({ verdict: v.key })}
+                  className={cn(
+                    "flex h-11 items-center gap-2.5 rounded-md border px-3 text-left text-sm",
+                    line.verdict === v.key
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-fp-outline-1 text-foreground active:bg-accent"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                      line.verdict === v.key ? "border-background" : "border-fp-outline-2"
+                    )}
+                  >
+                    {line.verdict === v.key && <Check className="size-3" />}
+                  </span>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      {(line.verdict === "different" || added) && (
+      {added && (
         <Textarea
           value={line.actual}
           onChange={(e) => onChange({ actual: e.target.value })}
           rows={2}
-          placeholder={added ? "What it needs" : "What it actually needs"}
+          placeholder="What it needs"
           className="text-base"
         />
       )}
 
-      <Textarea value={line.note} onChange={(e) => onChange({ note: e.target.value })} rows={2} placeholder="Note" className="text-base" />
+      {/* AFTER AN ANSWER: a note and photos, on every task (Pavan, 2026-09-24). */}
+      {active && line.verdict !== null && (<>
+      <Textarea
+        value={line.note}
+        onChange={(e) => onChange({ note: e.target.value })}
+        rows={2}
+        placeholder={line.verdict === "different" ? "What you found instead" : "Note"}
+        className="text-base"
+      />
 
       <div className="flex flex-wrap gap-2">
         {line.photos.map((src, i) => (
@@ -776,6 +788,7 @@ function AssessmentCard({
           }}
         />
       </div>
+      </>)}
     </section>
   );
 }
@@ -790,7 +803,7 @@ function AssessedWork({ lines }: { lines: AssessmentLine[] }) {
         {lines.map((l) => (
           <div key={l.key} className="flex flex-col gap-0.5 py-2">
             <span className="text-sm text-foreground">{lineTitle(l)}</span>
-            <span className="text-xs text-muted-foreground">{l.verdict === "accurate" ? l.reported : l.actual}</span>
+            <span className="text-xs text-muted-foreground">{lineWhat(l)}</span>
           </div>
         ))}
       </div>

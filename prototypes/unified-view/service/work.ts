@@ -309,17 +309,22 @@ export const WORK_TYPES: Record<
 export const WORK_TYPE_NAMES = Object.keys(WORK_TYPES);
 
 /**
- * WHAT KIND OF JOB A TASK IS — the label on a task card in the technician's
- * app (Pavan, 2026-09-24): "Servicing", "Replacement". Derived from the work
- * type, never typed, so two orders for the same work cannot disagree.
+ * WHAT KIND OF JOB A TASK IS — two kinds (Pavan, 2026-09-24): servicing a
+ * piece of equipment, or adding / replacing parts on it. Derived from the
+ * work type, never typed, so two orders for the same work cannot disagree.
  */
-export const WORK_TYPE_CATEGORY: Record<string, "Servicing" | "Replacement" | "Installation"> = {
+export type TaskKind = "Servicing" | "Parts";
+export const WORK_TYPE_CATEGORY: Record<string, TaskKind> = {
   "Leak check": "Servicing",
-  "Hose swap": "Replacement",
-  "Pump replace": "Replacement",
-  "Nozzle replace": "Replacement",
-  "Monitor install": "Installation",
-  "Tank swap": "Replacement",
+  "Hose swap": "Parts",
+  "Pump replace": "Parts",
+  "Nozzle replace": "Parts",
+  "Monitor install": "Parts",
+  "Tank swap": "Parts",
+};
+export const TASK_KIND_LABEL: Record<TaskKind, string> = {
+  Servicing: "Servicing of equipment",
+  Parts: "Adding or replacing parts",
 };
 
 /** The disc beside the number, as both order modules already do it. */
@@ -1315,12 +1320,60 @@ export const SERVICE_CUSTOMERS: string[] = Array.from(
   new Set(RENTAL_ASSETS.map((a) => a.customer).filter(Boolean) as string[])
 ).sort();
 
+/*
+  DUMMY SHIP-TOS, 3 TO 10 PER CUSTOMER (Pavan, 2026-09-24). The only sites
+  the fixture knew were the ones a rental asset happened to sit at, so most
+  customers had one or none and the order form's Ship-to list came up empty.
+  The real sites come first; the rest are invented, deterministic (a hash of
+  the name, never a random draw), and FLAGGED AS DUMMY here.
+*/
+const SITE_KINDS = ["Yard", "Depot", "Terminal", "Site", "Plant", "Station", "Shop", "Lot"];
+const SITE_PLACES: { city: string; state: string }[] = [
+  { city: "Fresno", state: "CA" }, { city: "Bakersfield", state: "CA" }, { city: "Stockton", state: "CA" },
+  { city: "Reno", state: "NV" }, { city: "Phoenix", state: "AZ" }, { city: "Salt Lake City", state: "UT" },
+  { city: "Boise", state: "ID" }, { city: "Portland", state: "OR" }, { city: "Sacramento", state: "CA" },
+  { city: "Las Vegas", state: "NV" },
+];
+const hashOf = (text: string) => Array.from(text).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+
+const SHIP_TOS: Record<string, { name: string; city: string; state: string }[]> = (() => {
+  const out: Record<string, { name: string; city: string; state: string }[]> = {};
+  const customers = Array.from(new Set(RENTAL_ASSETS.map((a) => a.customer).filter(Boolean) as string[]));
+  for (const c of customers) {
+    const real = Array.from(
+      new Map(
+        RENTAL_ASSETS.filter((a) => a.customer === c && a.shipTo).map((a) => [
+          a.shipTo as string,
+          { name: a.shipTo as string, city: a.city ?? "", state: a.state ?? "" },
+        ])
+      ).values()
+    );
+    const h = hashOf(c);
+    const want = 3 + (h % 8);
+    const stem = c.split(/[ ,]/)[0];
+    const list = [...real];
+    for (let k = 0; list.length < want; k++) {
+      const name = `${stem} ${SITE_KINDS[(h + k) % SITE_KINDS.length]} ${k + 2}`;
+      if (list.some((x) => x.name === name)) continue;
+      const place = SITE_PLACES[(h + k * 3) % SITE_PLACES.length];
+      list.push({ name, ...place });
+    }
+    out[c] = list;
+  }
+  return out;
+})();
+
 export const shipTosOf = (customer: string): string[] =>
-  Array.from(
-    new Set(
-      RENTAL_ASSETS.filter((a) => a.customer === customer && a.shipTo).map((a) => a.shipTo as string)
-    )
-  ).sort();
+  (SHIP_TOS[customer] ?? []).map((x) => x.name);
+
+/** A ship-to's city and state — from its real asset, or its dummy place. */
+export const shipToPlace = (shipTo: string): { city: string; state: string } => {
+  for (const list of Object.values(SHIP_TOS)) {
+    const hit = list.find((x) => x.name === shipTo);
+    if (hit) return { city: hit.city, state: hit.state };
+  }
+  return { city: "", state: "" };
+};
 
 export const assetsAt = (shipTo: string) =>
   RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({

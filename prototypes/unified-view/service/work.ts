@@ -390,6 +390,37 @@ export interface Quote {
   sentAt: string;
   /** Null until the customer says yes on site. */
   approvedAt: string | null;
+  /** Who on the customer's side acknowledged it, on site. */
+  acknowledgedBy?: string;
+}
+
+/**
+ * ONE LINE OF THE ON-SITE ASSESSMENT (Pavan, 2026-09-24).
+ *
+ * The technician compares what the ORDER asks for with what is actually in
+ * front of them, line by line:
+ *   accurate   the requirement is right as ordered
+ *   different  it is there, but not as described — `actual` says what it is
+ *   skip       on the order, needs no attention, can be skipped
+ *   added      not on the order at all — found on site
+ * Each line carries its own note and photos.
+ */
+export type AssessmentVerdict = "accurate" | "different" | "skip" | "added";
+
+export interface AssessmentLine {
+  key: string;
+  /** From the order's asset rows, or found on site. */
+  source: "order" | "added";
+  assetName: string;
+  workType: string;
+  /** What the order said. Empty on an added line. */
+  reported: string;
+  verdict: AssessmentVerdict | null;
+  /** What it actually needs — required when `different` or `added`. */
+  actual: string;
+  note: string;
+  /** Photo URLs taken on site. */
+  photos: string[];
 }
 
 /**
@@ -588,6 +619,8 @@ export interface ServiceOrder {
   techNotes: string | null;
   /** Why it stalled. Only ever set on `Parts-pending`. */
   partNeeded: string | null;
+  /** The on-site assessment, line by line. Absent until it is saved. */
+  assessmentLines?: AssessmentLine[];
   /** The linked return visit this job spawned, or the job that spawned this one. */
   returnOf: string | null;
   spawnedReturn: string | null;

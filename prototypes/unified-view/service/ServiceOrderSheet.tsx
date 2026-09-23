@@ -68,6 +68,8 @@ import {
   isRecorded,
   isWorkable,
   computedLabor,
+  fittedOf,
+  shortfallLabel,
   formatHours,
   splitHours,
   joinHours,
@@ -606,7 +608,10 @@ export interface ServiceOrderSheetProps {
    * sheet's, because one of its two outcomes creates a SECOND order — and a
    * sheet cannot add a row to the list it was opened from.
    */
-  onPartsPending?: (id: string, data: { labor: number; partNeeded: string }) => void;
+  onPartsPending?: (
+    id: string,
+    data: { labor: number; parts: PartLine[]; note?: string }
+  ) => void;
   customers: string[];
   /** Ship-tos for a chosen customer, and assets for a chosen ship-to. */
   shipTosFor: (customer: string) => string[];
@@ -633,7 +638,6 @@ export function ServiceOrderSheet({
   const [fieldOpen, setFieldOpen] = React.useState(false);
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [holdOpen, setHoldOpen] = React.useState(false);
-  const [holdReason, setHoldReason] = React.useState("");
   const lastSaved = React.useRef<string | null>(null);
 
   /* BUILD THE DRAFT ONCE PER RECORD, not once per save — the same rule the 3PL
@@ -1005,6 +1009,10 @@ export function ServiceOrderSheet({
      ESTIMATED is what the visit will add — and the estimate has to come from
      somewhere a customer could be told, so it is whatever has been recorded
      already, or the house assumptions when nothing has. */
+  /* THE DEBT AS A SENTENCE, recomputed as the technician types — it is both
+     the gate on the button and the thing the panel above it says. */
+  const heldShortfall = shortfallLabel(draft.parts);
+
   const quoteFirm = partsSum + feesSum;
   const quoteHours = draft.labor > 0 ? draft.labor : 1.5;
   const quoteMiles = draft.mileage > 0 ? draft.mileage : cfg.defaultMileage;
@@ -1087,41 +1095,9 @@ export function ServiceOrderSheet({
          this is the one that admits it cannot be finished today. */
       footerAside={
         draft.status === "In progress" && onPartsPending ? (
-          <Popover open={holdOpen} onOpenChange={setHoldOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline">Waiting on a part</Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-3">
-              <SheetField label="Part or reason" required>
-                <Input
-                  value={holdReason}
-                  placeholder="e.g. 2-inch pump seal on order"
-                  onChange={(e) => setHoldReason(e.target.value)}
-                />
-              </SheetField>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {cfg.returnMode === "spawn"
-                  ? "A linked return visit will be created, so the second trip is its own job with its own schedule."
-                  : "This job stays open and rolls to tomorrow. No second order is created."}
-              </p>
-              <div className="mt-3 flex justify-end">
-                <Button
-                  size="sm"
-                  disabled={!holdReason.trim()}
-                  onClick={() => {
-                    onPartsPending(draft.id, {
-                      labor: draft.labor,
-                      partNeeded: holdReason.trim(),
-                    });
-                    setHoldOpen(false);
-                    setHoldReason("");
-                  }}
-                >
-                  Save as parts-pending
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Button variant="outline" onClick={() => setHoldOpen(true)}>
+            Some parts unavailable
+          </Button>
         ) : undefined
       }
       footerPrimary={
@@ -1876,6 +1852,108 @@ export function ServiceOrderSheet({
         </DialogContent>
       </Dialog>
 
+      {/* WHAT WENT ON, AND WHAT IS STILL OWED (Pavan, 2026-09-23).
+
+          IT WAS A REASON BOX — one line of free text saying what was missing.
+          That could not describe the case it exists for: a job needing five
+          hoses and finding three. The work done, the money owed and the second
+          visit's shopping list all depend on the QUANTITIES, and prose cannot
+          carry them to the follow-up order.
+
+          SO THE QUESTION IS ASKED PER LINE, and it starts at "all of them" —
+          the normal answer — so a technician who fitted everything but one
+          washer changes one number rather than confirming the rest. */}
+      <Dialog open={holdOpen} onOpenChange={setHoldOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>What went on today?</DialogTitle>
+            <DialogDescription>
+              Everything left over moves to a follow-up. The work already done
+              stays on {draft.orderNo}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-hidden rounded-md border border-fp-outline-1">
+            <div className="flex items-baseline gap-3 border-b border-border bg-fp-surface-1a px-3 py-2">
+              <span className="flex-1 text-xs font-medium text-foreground">Part</span>
+              <span className="w-20 text-right text-xs font-medium text-foreground">Fitted</span>
+              <span className="w-16 text-right text-xs font-medium text-foreground">Needed</span>
+            </div>
+            {draft.parts.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No parts on this job.
+              </p>
+            ) : (
+              draft.parts.map((pt, i) => (
+                <div
+                  key={`${pt.name}-${i}`}
+                  className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-b-0"
+                >
+                  <span className="flex-1 text-sm text-foreground">{pt.name}</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={pt.qty}
+                    inputMode="numeric"
+                    value={fittedOf(pt)}
+                    onChange={(e) => {
+                      const v = Math.max(0, Math.min(pt.qty, Number(e.target.value) || 0));
+                      set(
+                        "parts",
+                        draft.parts.map((x, j) =>
+                          j === i ? { ...x, fittedQty: v } : x
+                        )
+                      );
+                    }}
+                    className="w-20 tabular-nums"
+                    aria-label={`Fitted quantity for ${pt.name}`}
+                  />
+                  <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">
+                    {pt.qty}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* WHAT THE PRESS WILL DO, BEFORE THE PRESS. Two very different
+              things happen behind one button depending on a setting, and a
+              technician who finds out afterwards has been told too late. */}
+          <div className="rounded-md bg-fp-card-1 px-3 py-2.5 text-xs text-muted-foreground">
+            {heldShortfall ? (
+              <>
+                <span className="text-foreground">{heldShortfall}</span>{" "}
+                {cfg.returnMode === "suborder"
+                  ? `will move to a sub-order under ${draft.orderNo} — one fault, one reference, two visits.`
+                  : "will become a new order of its own, linked back to this one."}
+              </>
+            ) : (
+              "Everything the job needed went on. Nothing to carry over."
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHoldOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!heldShortfall}
+              onClick={() => {
+                onPartsPending?.(draft.id, {
+                  labor: draft.labor,
+                  parts: draft.parts,
+                });
+                setHoldOpen(false);
+              }}
+            >
+              {cfg.returnMode === "suborder"
+                ? "Create sub-order"
+                : "Create new order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <TechnicianApp
         order={draft}
         open={fieldOpen}
@@ -1892,7 +1970,7 @@ export function ServiceOrderSheet({
             );
             onPartsPending?.(draft.id, {
               labor: r.labor,
-              partNeeded: r.partNeeded ?? "",
+              parts: r.parts,
             });
             onOpenChange(false);
             return;

@@ -150,9 +150,20 @@ export type IntakeSource = (typeof INTAKE_SOURCES)[number] | typeof PORTAL_SOURC
 
 export interface PartLine {
   name: string;
+  /** How many the job needs. */
   qty: number;
   /** Per unit. */
   cost: number;
+  /**
+   * HOW MANY WERE ACTUALLY FITTED (Pavan, 2026-09-23). `undefined` means "all
+   * of them", which is the normal case and keeps every existing line valid.
+   *
+   * A NUMBER, NOT A FLAG, because the real shortfall is usually partial:
+   * a job needing five hoses and finding three is the case that makes the
+   * whole follow-up worth modelling. A boolean would force the technician to
+   * choose between claiming all five or none.
+   */
+  fittedQty?: number;
 }
 
 export interface FeeLine {
@@ -416,6 +427,46 @@ export interface ServiceOrder {
 
 export const partsTotal = (parts: PartLine[]) =>
   parts.reduce((n, p) => n + p.cost * p.qty, 0);
+
+/* ───────────────────────────────────────── parts that did not turn up ── */
+
+/** How many of this line actually went on. Absent means all of them. */
+export const fittedOf = (p: PartLine) => p.fittedQty ?? p.qty;
+
+/** True once somebody has said this line was short. */
+export const isShort = (p: PartLine) => fittedOf(p) < p.qty;
+
+/**
+ * WHAT WAS FITTED, AND WHAT IS STILL OWED — the same list, split in two.
+ *
+ * THE SPLIT IS THE WHOLE FEATURE. A job that needed five hoses and fitted
+ * three is not "pending a part": it is a visit that did most of the work and
+ * a debt of two hoses. The first order keeps what it did and what that cost;
+ * the follow-up carries the debt and nothing else.
+ *
+ * A ZERO-QUANTITY LINE IS DROPPED from both sides rather than carried as a
+ * line worth nothing — an invoice with "Hose 1\" ×0" on it is a line the
+ * customer has to ask about.
+ */
+export function splitParts(parts: PartLine[]): {
+  fitted: PartLine[];
+  owed: PartLine[];
+} {
+  const fitted: PartLine[] = [];
+  const owed: PartLine[] = [];
+  for (const p of parts) {
+    const got = Math.max(0, Math.min(p.qty, fittedOf(p)));
+    if (got > 0) fitted.push({ ...p, qty: got, fittedQty: undefined });
+    if (p.qty - got > 0) owed.push({ ...p, qty: p.qty - got, fittedQty: undefined });
+  }
+  return { fitted, owed };
+}
+
+/** The shortfall as a sentence — "2 × Hose 1\"", for a label or a fault line. */
+export const shortfallLabel = (parts: PartLine[]) =>
+  splitParts(parts)
+    .owed.map((p) => `${p.qty} × ${p.name}`)
+    .join(", ");
 export const feesTotal = (fees: FeeLine[]) =>
   fees.reduce((n, f) => n + (f.amount || 0), 0);
 export const laborTotal = (hours: number) => hours * LABOR_RATE;

@@ -162,6 +162,75 @@ export function ServiceSettingsScreen() {
               checked={cfg.portalIntake}
               onChange={(v) => setServiceSetting("portalIntake", v)}
             />
+            {/* THE ONE SETTING THAT IS A CHOICE, NOT A SWITCH (Pavan,
+                2026-09-23). It had no control at all — the value existed, four
+                screens read it, and nobody could change it, which is the
+                quietest way for a setting to be wrong everywhere at once.
+
+                TWO OPTIONS, SPELLED OUT, because the difference is not a
+                degree of the same thing: one keeps a single reference for one
+                fault, the other makes the second visit a piece of work in its
+                own right. A toggle labelled "linked" would make the reader
+                guess which. */}
+            <div className="flex flex-col gap-3 py-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="text-sm font-medium text-foreground">
+                  When a visit cannot fit everything
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  The work that happened stays on the order, with the labour it
+                  took. Where the parts still owed go is this choice.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {(
+                  [
+                    [
+                      "suborder",
+                      "A sub-order under the same number",
+                      "SO-1045-2. One fault, one reference, two visits — the customer rings about SO-1045 and it is all the same conversation.",
+                    ],
+                    [
+                      "neworder",
+                      "A new order of its own",
+                      "Its own number, linked back. Right where the second visit is scheduled, staffed and invoiced as separate work.",
+                    ],
+                  ] as const
+                ).map(([key, title, detail]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setServiceSetting("returnMode", key)}
+                    className={cn(
+                      "flex items-start gap-3 rounded-md border p-3 text-left transition-colors",
+                      cfg.returnMode === key
+                        ? "border-primary bg-accent"
+                        : "border-fp-outline-1 hover:bg-accent/50"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+                        cfg.returnMode === key
+                          ? "border-primary"
+                          : "border-fp-outline-2"
+                      )}
+                    >
+                      {cfg.returnMode === key && (
+                        <span className="size-2 rounded-full bg-primary" />
+                      )}
+                    </span>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm text-foreground">{title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {detail}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* A NUMBER AMONG SWITCHES, and it belongs here anyway (Pavan,
                 2026-09-23). It answers the same kind of question the switches
                 do — what does this yard assume, so nobody has to type it —

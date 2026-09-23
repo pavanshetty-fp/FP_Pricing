@@ -22,7 +22,27 @@ import * as React from "react";
   having to know this module has settings.
 */
 
-export type ReturnMode = "spawn" | "rollforward";
+/**
+ * WHERE THE UNFITTED PARTS GO (Pavan, 2026-09-23).
+ *
+ * THE TRIGGER IS A PARTIAL VISIT. The technician turns up, some of what the
+ * job needs is on the van and some is not, and they fit what they have. The
+ * work that happened stays on this order with the labour it took; the debt
+ * has to go somewhere, and there are exactly two somewheres.
+ *
+ * `suborder`  — a CHILD OF THE SAME NUMBER, `SO-1045-2`. One fault, one
+ *               reference, two visits. The customer rings up about SO-1045
+ *               and everything under it is the same conversation.
+ * `neworder`  — A NEW ORDER ALTOGETHER, its own number, linked back. Right
+ *               where the second visit is scheduled, staffed and invoiced as
+ *               its own piece of work.
+ *
+ * SUPERSEDES `rollforward` (retired 2026-09-23), which moved the whole order
+ * to the next day. It was a reschedule wearing a shortfall's name: it could
+ * not say that three of five hoses went on, so the work already done
+ * disappeared into a job that now claimed to be happening tomorrow.
+ */
+export type ReturnMode = "suborder" | "neworder";
 
 export interface ServiceSettings {
   /**
@@ -39,11 +59,7 @@ export interface ServiceSettings {
    * approves itself the moment the technician submits.
    */
   managerApproval: boolean;
-  /**
-   * What happens when a job stalls for a part. `spawn` creates a linked
-   * return-visit order and leaves this one Parts-pending; `rollforward` keeps
-   * this order and moves it to the next day.
-   */
+  /** Where the parts a visit could not fit go. See `ReturnMode`. */
   returnMode: ReturnMode;
   /** ON: a work type arrives with its usual parts and a suggested fee. */
   priceBook: boolean;
@@ -89,7 +105,7 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   nativeBilling: true,
   roiFeed: true,
   managerApproval: true,
-  returnMode: "spawn",
+  returnMode: "suborder",
   priceBook: true,
   portalIntake: true,
   defaultMileage: 18,
@@ -124,7 +140,7 @@ export const SETTINGS_PROFILES: {
       nativeBilling: false,
       roiFeed: false,
       managerApproval: false,
-      returnMode: "rollforward",
+      returnMode: "neworder",
       priceBook: false,
       portalIntake: false,
       defaultMileage: 0,

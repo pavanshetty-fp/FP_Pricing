@@ -1,6 +1,14 @@
 # Service Work — the service-order module
 
 
+> **THE PARTIAL VISIT (2026-09-23).** When a technician fits some of what a
+> job needs and not all of it, the order splits along the PARTS. What went on
+> stays with the labour and mileage it took; what did not becomes a debt, and
+> `returnMode` decides its shape — a **sub-order under the same number**
+> (`SO-1048-2`, one fault, one reference, two visits) or a **new order of its
+> own**, linked back. `rollforward` was retired: it moved the whole order to
+> the next day and could not say that three of five hoses went on.
+
 > **CHANGE LIST OF 2026-09-23 — read
 > `docs/unified-view/service/changes-2026-09-23.md` before touching this
 > module.** Seventeen requested changes, analysed: two already built, five

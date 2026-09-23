@@ -44,6 +44,9 @@ import {
   type ServiceOrder,
   type WorkStatus,
   LABOR_RATE,
+  splitParts,
+  shortfallLabel,
+  type PartLine,
 } from "./work";
 
 /**
@@ -762,89 +765,109 @@ export function ServiceWorkScreen() {
     );
   };
 
-  const patch = (id: string, p: Partial<ServiceOrder>) =>
+  const _patch = (id: string, p: Partial<ServiceOrder>) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...p } : r)));
+  void _patch;
 
 
 
 
 
+  /**
+   * A VISIT THAT COULD NOT FIT EVERYTHING (Pavan, 2026-09-23).
+   *
+   * THE ORDER SPLITS IN TWO, ALONG THE PARTS. What went on stays here with
+   * the labour it took and the miles it took to get here — that work happened
+   * and somebody is owed for it. What did not go on becomes a debt, and the
+   * setting decides what shape the debt takes:
+   *
+   *   `suborder`  a child of the same number — SO-1045-2. One fault, one
+   *               reference, two visits.
+   *   `neworder`  its own number, linked back, scheduled and invoiced as its
+   *               own piece of work.
+   *
+   * THE FIRST ORDER KEEPS ITS FULL PART LIST, with the fitted quantities
+   * recorded on it. Trimming it to what was fitted would erase the fact that
+   * five were needed, which is the only evidence the second visit is a
+   * continuation rather than a new problem.
+   */
   const onPartsPending = (
     id: string,
-    data: { labor: number; partNeeded: string }
+    data: { labor: number; parts: PartLine[]; note?: string }
   ) => {
     const order = rows.find((r) => r.id === id);
     if (!order) return;
-    if (cfg.returnMode === "spawn") {
-      /* A LINKED RETURN VISIT IS ITS OWN JOB. The second trip has its own
-         schedule, its own technician and its own labour, so rolling it into
-         the first would make one record describe two visits. */
-      const no = nextOrderNo();
-      const returnVisit: ServiceOrder = {
-        ...order,
-        id: `so-ret-${no}`,
-        orderNo: no,
-        status: "Assigned",
-        workType: order.workType,
-        fault: `Return visit — ${data.partNeeded}`,
-        arrivedAt: null,
-        assessment: null,
-        techNotes: null,
-        parts: [],
-        labor: 0,
-        laborOverride: null,
-        laborRate: order.laborRate,
-        startedAt: null,
-        windowEndMin: order.windowEndMin,
-        mileage: 0,
-        quote: null,
-        extraCharges: [],
-        invoiceCreated: false,
-        invoicedAt: null,
-        synced: false,
-        partNeeded: null,
-        returnOf: order.orderNo,
-        spawnedReturn: null,
-        signed: false,
-        completedAt: null,
-      };
-      setRows((prev) => [
-        returnVisit,
-        ...prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                labor: data.labor,
-                status: "Parts-pending" as WorkStatus,
-                partNeeded: data.partNeeded,
-                spawnedReturn: no,
-              }
-            : r
-        ),
-      ]);
-      toast.success(`${order.orderNo} parts-pending`, {
-        description: `Linked return visit ${no} created.`,
-      });
-    } else {
-      /* ROLL FORWARD: the same order, tomorrow. No second record, which is
-         what a business that does not want two invoices for one fault wants. */
-      const next = fromKey(order.dateKey);
-      next.setDate(next.getDate() + 1);
-      patch(id, {
-        labor: data.labor,
-        status: "Parts-pending",
-        partNeeded: data.partNeeded,
-        dateKey: dateKeyOf(next),
-        scheduledAt: order.scheduledAt
-          ? new Date(
-              new Date(order.scheduledAt).getTime() + 86_400_000
-            ).toISOString()
-          : null,
-      });
-      toast.success(`${order.orderNo} rolled to the next day`, {
-        description: "Same order, no second visit created.",
-      });
-    }
+
+    const { owed } = splitParts(data.parts);
+    /* NOTHING OWED IS NOT A STALL. If every line came back full the job is
+       simply done, and creating an empty follow-up would be filing a debt of
+       nothing. */
+    if (owed.length === 0) return;
+
+    const shortfall = shortfallLabel(data.parts);
+    const sub = cfg.returnMode === "suborder";
+
+    /* THE CHILD'S NUMBER COUNTS ITS SIBLINGS. A second shortfall on the same
+       order is -3, not a second -2. */
+    const kin = rows.filter((r) => r.orderNo.startsWith(`${order.orderNo}-`)).length;
+    const no = sub ? `${order.orderNo}-${kin + 2}` : nextOrderNo();
+
+    const followUp: ServiceOrder = {
+      ...order,
+      id: `so-owed-${no}`,
+      orderNo: no,
+      status: "Assigned",
+      /* THE FAULT IS THE DEBT, in the words of the parts. "Return visit" on
+         its own tells the next technician nothing about what to bring. */
+      fault: `Awaiting parts — ${shortfall}`,
+      parts: owed,
+      arrivedAt: null,
+      startedAt: null,
+      assessment: null,
+      techNotes: null,
+      /* THE SECOND VISIT STARTS FROM NOTHING. Labour, mileage and the fees
+         already charged belong to the visit that happened; carrying them over
+         would invoice the call-out twice. */
+      labor: 0,
+      laborOverride: null,
+      laborRate: order.laborRate,
+      mileage: 0,
+      fees: [],
+      quote: null,
+      extraCharges: [],
+      invoiceCreated: false,
+      invoicedAt: null,
+      synced: false,
+      partNeeded: null,
+      returnOf: order.orderNo,
+      spawnedReturn: null,
+      signed: false,
+      completedAt: null,
+      windowEndMin: order.windowEndMin,
+    };
+
+    setRows((prev) => [
+      followUp,
+      ...prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              labor: data.labor,
+              parts: data.parts,
+              status: "Parts-pending" as WorkStatus,
+              partNeeded: shortfall,
+              techNotes: data.note ?? r.techNotes,
+              spawnedReturn: no,
+            }
+          : r
+      ),
+    ]);
+
+    toast.success(`${order.orderNo} — ${shortfall} still owed`, {
+      description: sub
+        ? `${no} created under the same order.`
+        : `New order ${no} created and linked back.`,
+    });
   };
 
   /* ──────────────────────────────────────────────────────── the table ───── */

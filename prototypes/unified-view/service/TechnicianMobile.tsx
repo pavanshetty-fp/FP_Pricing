@@ -651,9 +651,9 @@ function Job({
             {/* WHAT HAPPENS NEXT, SAID BEFORE THE PRESS — a technician who
                 finds out afterwards has been told too late. */}
             <p className="text-xs text-muted-foreground">
-              {cfg.returnMode === "spawn"
-                ? "A return visit will be raised and linked to this job."
-                : "This job moves to the next day and keeps its number."}
+              {cfg.returnMode === "suborder"
+                ? "What is left over moves to a sub-order under this same number."
+                : "What is left over becomes a new order, linked back to this one."}
             </p>
           </div>
         ) : (

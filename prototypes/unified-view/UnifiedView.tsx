@@ -24,7 +24,6 @@ import {
   Cog,
   Smartphone,
   SlidersHorizontal,
-  Archive as ArchiveIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -209,10 +208,6 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       items: [
         { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
         { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
-        /* THE OLD VERSIONS OF RECURRING, kept for reference (Pavan,
-           2026-09-23). Recurring Orders IS the rule-based version now, with no
-           version label of its own; V1 and V2 live here, out of its way. */
-        { key: "3pl-recurring-archive", label: "Archive", icon: <ArchiveIcon /> },
       ],
     },
   ],
@@ -1187,11 +1182,14 @@ export function UnifiedView() {
     V1.1 IS THE ONE UNDER DESIGN (Pavan, 2026-09-23) — the rule-based
     direction — so it is what the screen opens on. V1 and V2 are kept, but
     under ARCHIVE: reachable for reference, and out of the way of the version
-    being worked on. MOVED 2026-09-23 into the drawer: Recurring Orders is
-    V1.1 with no label (it is simply what the screen is), and "Archive", below
-    it, holds V1 and V2 behind a V1 | V2 switch by the title.
+    being worked on. Recurring Orders is V1.1 with no label — it is simply
+    what the screen is. V1 and V2 are TUCKED AWAY (Pavan, 2026-09-23): a
+    faint "Archive" link in the screen's footer opens them, with a V1 | V2
+    switch and a way back by the title. Not in the navigation — they are
+    kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
+  const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
      where a recurring order is actually made: tick Recurring on the order and
@@ -1242,6 +1240,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const activeSub = subItems.find((i) => i.key === subKey) ?? null;
   /** The screen is the drawer's selection when there is one, else the rail's. */
   const screenKey = subKey ?? navKey;
+  /* Leaving Recurring closes its archive, so coming back opens the live screen. */
+  React.useEffect(() => {
+    if (screenKey !== "3pl-recurring-orders") setRecurringArchive(false);
+  }, [screenKey]);
 
   /**
    * Switching module lands on that module's FIRST destination. Keeping the old
@@ -1390,8 +1392,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
          also delivery one, and everything after it is a child of it. V1 (the
          schedule as a RULE that is not an order) is not built yet. */
       case "3pl-recurring-orders":
-        return <RecurringProgramsScreen />;
-      case "3pl-recurring-archive":
+        if (!recurringArchive)
+          return <RecurringProgramsScreen onOpenArchive={() => setRecurringArchive(true)} />;
         return archiveVersion === "v1" ? (
           <RecurringRulesScreen onCreateRule={goCreateOrder} />
         ) : (
@@ -1423,13 +1425,14 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                 screen that has two versions. It is not a filter and not a
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
-            {screenKey === "3pl-recurring-archive" && (
-              <ToggleGroup
+            {screenKey === "3pl-recurring-orders" && recurringArchive && (
+              <span className="flex shrink-0 items-center gap-2 self-center">
+                <span className="text-sm text-muted-foreground">Archive</span>
+                <ToggleGroup
                 type="single"
                 size="sm"
                 value={archiveVersion}
                 onValueChange={(v) => v && setArchiveVersion(v as "v1" | "v2")}
-                className="shrink-0 self-center"
               >
                 <ToggleGroupItem value="v1" aria-label="Version 1 — rule based, one site">
                   V1
@@ -1438,6 +1441,15 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                   V2
                 </ToggleGroupItem>
               </ToggleGroup>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => setRecurringArchive(false)}
+                >
+                  Close archive
+                </Button>
+              </span>
             )}
           </div>
         }

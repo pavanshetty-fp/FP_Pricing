@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Network, SearchX } from "lucide-react";
+import { Network, SearchX, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +210,12 @@ const PROGRAM_SEARCH_FIELDS: {
   },
 ];
 
-export function RecurringProgramsScreen() {
+export function RecurringProgramsScreen({
+  onOpenArchive,
+}: {
+  /** The old versions (V1, V2), kept for reference — see the footer. */
+  onOpenArchive?: () => void;
+} = {}) {
   const [programs, setPrograms] =
     React.useState<RecurringProgram[]>(RECURRING_PROGRAMS);
   const [openId, setOpenId] = React.useState<string | null>(null);
@@ -672,6 +677,20 @@ export function RecurringProgramsScreen() {
             {rows.reduce((s, p) => s + liveTargets(p).length, 0)} live lanes
           </Badge>
           across {rows.length} {rows.length === 1 ? "programme" : "programmes"}
+          {/* THE ARCHIVE IS TUCKED AWAY ON PURPOSE (Pavan, 2026-09-23). V1
+              and V2 are kept to refer back to until they are kept or deleted
+              for good — so the way in is the quietest thing on the screen,
+              not a place in the navigation. */}
+          {onOpenArchive && (
+            <button
+              type="button"
+              onClick={onOpenArchive}
+              className="ml-2 flex items-center gap-1 rounded-sm text-xs text-muted-foreground/60 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Archive className="size-3" />
+              Archive
+            </button>
+          )}
         </span>
         <TablePagination
           page={safePage}

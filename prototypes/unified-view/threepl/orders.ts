@@ -1708,6 +1708,26 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       }
     }
 
+    /* THE STAGES PAST COMPLETED, which the branch above stopped reaching when
+       the statuses were renamed (it still asks for "Accounting…"). Verified
+       and Synced orders shipped with no delivered gallons and no price — an
+       invoice with nothing on it. Fixed 2026-09-23 BY INDEX, not by moving
+       them into the branch above: that branch draws from `pick()`, and the
+       extra draws would have reshuffled the whole fixture. */
+    if (status === "Verified" || status === "Partially Synced" || status === "Synced") {
+      lines.forEach((l, k) => {
+        l.deliveredGal = l.gal ?? 50 + ((i + k) % 20) * 25;
+        l.pricePerGal = Number((3.1 + ((i + k) % 9) * 0.09).toFixed(3));
+        const margin = Number((0.18 + ((i + k) % 7) * 0.05).toFixed(3));
+        const rate: Record<string, number> = {
+          margin,
+          tax: Number((l.pricePerGal * 0.06).toFixed(3)),
+          fee: Number((margin * 0.12).toFixed(3)),
+        };
+        l.charges = l.charges.map((c) => ({ ...c, perGal: rate[c.id] ?? 0 }));
+      });
+    }
+
     const { vendorId, invitedVendorIds, acceptedVendorIds } = vendorStateFor(
       i,
       status,
@@ -1804,6 +1824,45 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
         })),
         freight: 180 + (i % 9) * 30,
       });
+    }
+
+    /* A PRICED QUOTE MEANS A PRICED ORDER (Pavan, 2026-09-23). An order with a
+       partner's price on it but none of the broker's showed the customer
+       paying only the order fees — D-104970 read $145 against an $8,815 quote,
+       a −$8,670 "expected profit" no broker would ever be looking at. Once a
+       quote is in, the broker has priced their side too: the dearest quote's
+       rate plus a markup, so the comparison is always against a sale.
+
+       DERIVED, NOT DRAWN — no `pick()`, for the same reason as above. */
+    if (quotes.length > 0) {
+      lines.forEach((l, k) => {
+        if (l.pricePerGal !== undefined) return;
+        const dearest = Math.max(...quotes.map((q) => q.lines[k]?.ratePerGal ?? 0));
+        l.pricePerGal = Number((dearest + 0.35 + ((i + k) % 4) * 0.05).toFixed(3));
+        const margin = Number((0.22 + ((i + k) % 5) * 0.03).toFixed(3));
+        const rate: Record<string, number> = {
+          margin,
+          tax: Number((l.pricePerGal * 0.06).toFixed(3)),
+          fee: Number((margin * 0.12).toFixed(3)),
+        };
+        l.charges = l.charges.map((c) => ({ ...c, perGal: rate[c.id] ?? 0 }));
+      });
+
+      /* AND THE SALE COVERS THE DEAREST QUOTE, whatever stage the order is
+         in. A per-gallon markup cannot promise that on its own: freight is
+         charged once, so on a small load it outweighs any markup, and the
+         settled prices drawn for finished orders were never compared with the
+         quotes at all. Top the price up to 10% over the dearest quote, spread
+         across the gallons. Derived — still no `pick()`. */
+      const worst = Math.max(...quotes.map((q) => quoteTotal(q, lines)));
+      const sale = lines.reduce((sum, l) => sum + customerLineTotal(l), 0);
+      const gallons = lines.reduce((sum, l) => sum + billableGal(l), 0);
+      if (gallons > 0 && sale < worst * 1.1) {
+        const lift = (worst * 1.1 - sale) / gallons;
+        for (const l of lines) {
+          l.pricePerGal = Number(((l.pricePerGal ?? 0) + lift).toFixed(3));
+        }
+      }
     }
 
     /* SEEDED SO ALL THREE SHOW, and BY INDEX rather than by `pick()`. Every
@@ -2057,7 +2116,10 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
      reached accounting. */
   rows.forEach((r, k) => {
     if (k % 11 !== 4) return;
-    if (r.status.startsWith("Accounting") || r.status === "Completed") return;
+    /* Past Completed the order has reached accounting and cannot be
+       cancelled. (Was `startsWith("Accounting")`, a name retired in the
+       status rename, so Verified and Synced orders were being cancelled.) */
+    if (["Completed", "Verified", "Partially Synced", "Synced"].includes(r.status)) return;
     r.status = "Cancelled";
     r.blockedReason = null;
     r.audit = [

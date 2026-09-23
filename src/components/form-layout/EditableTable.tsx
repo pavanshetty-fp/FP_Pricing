@@ -172,8 +172,13 @@ export function EditableTable() {
 
   return (
     <div>
-      {/* Bottom-left corner squared so the Add chip connects as an extension. */}
-      <div className="overflow-hidden rounded-md rounded-bl-none border border-border">
+      {/* Bottom-left corner squared so the Add chip connects as an extension.
+          T2 — the component IS the unit, ruled correct 2026-09-22 (7-variants
+          §3); the attribute is how the boxed-tables check remembers that. */}
+      <div
+        data-table-variant="T2"
+        className="overflow-hidden rounded-md rounded-bl-none border border-border"
+      >
         <table className="w-full table-fixed border-collapse">
           {/* Last column is pinned to exactly 52px (the delete/confirm control).
               The four data columns keep their 26/22/26/26 proportions; in a

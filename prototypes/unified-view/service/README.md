@@ -203,6 +203,11 @@ that began on Tuesday.
   its own clock and can be typed over in hours and minutes; overruling a row
   keeps that row's clock reading beside it and leaves the other trips alone.
   The half hour that should not be billed happened on ONE of them.
+- **Each row names its technician**, because a partial job's second trip is
+  often somebody else — an order that records two visits and one name cannot
+  say who did which half. The board card lists them all: the assignee with its
+  detail line, then anybody who VISITED but is not on it now, as
+  "<name> — earlier visit".
 - **The total is a `tfoot` row**, carrying the hours and the money, because
   that is why anybody adds them up.
 - **A running visit has no stop time** and counts up. Only the last visit may

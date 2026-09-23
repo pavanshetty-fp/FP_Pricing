@@ -1028,16 +1028,22 @@ function buildOrders(): ServiceOrder[] {
         ? []
         : status === "Parts pending"
           ? [
+              /* TWO TRIPS, TWO PEOPLE. A Parts-pending order has nobody on it
+                 NOW — it is in Open — but somebody was on each of the visits
+                 that happened, and on a second trip it is usually not the
+                 same somebody. A fixture where both visits name one person
+                 would leave the card's "earlier visit" line untested. */
               {
                 startedAt: new Date(new Date(startedAt).getTime() - 26 * 3_600_000).toISOString(),
                 endedAt: new Date(new Date(startedAt).getTime() - 24.5 * 3_600_000).toISOString(),
-                technicianId,
+                technicianId: ACTIVE_TECHNICIANS[i % ACTIVE_TECHNICIANS.length].id,
                 override: null,
               },
               {
                 startedAt,
                 endedAt: new Date(new Date(startedAt).getTime() + 55 * 60_000).toISOString(),
-                technicianId,
+                technicianId:
+                  ACTIVE_TECHNICIANS[(i + 2) % ACTIVE_TECHNICIANS.length].id,
                 override: null,
               },
             ]

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Wrench, SearchX, CalendarOff } from "lucide-react";
+import { Wrench, SearchX, CalendarOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CodeDisc } from "@/components/ui/code-disc";
@@ -46,6 +46,7 @@ import {
   type WorkStatus,
   LABOR_RATE,
   isUnassigned,
+  formatHours,
   splitParts,
   shortfallLabel,
   type PartLine,
@@ -107,7 +108,7 @@ const COLUMNS: ListColumn<Col>[] = [
   /* ── Available, not shown by default. ── */
   { key: "source", label: "Intake Source", width: 165, sortable: true },
   { key: "raisedBy", label: "Raised By", width: 160, sortable: true },
-  { key: "labor", label: "Labour (h)", width: 110, sortable: true, align: "right" },
+  { key: "labor", label: "Labour", width: 110, sortable: true, align: "right" },
   { key: "invoice", label: "Invoice", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -226,7 +227,11 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
       parts: r.completedAt
         ? [
             completedLabel(r.completedAt),
-            ...(r.labor > 0 ? [`${r.labor} h on site`] : []),
+            /* `formatHours`, NOT THE RAW NUMBER. Labour stopped rounding to
+               quarter hours on 2026-09-23, so this printed
+               "2.4166666666666665 h on site" — a figure that is more precise
+               than anybody asked for and less readable than either. */
+            ...(r.labor > 0 ? [`${formatHours(r.labor)} on site`] : []),
           ]
         : [],
     },
@@ -238,14 +243,41 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
         off.has("technician.total") || !isRecorded(r.status)
           ? undefined
           : money(orderTotal(r)),
-      lines: tech
-        ? [
-            ...(off.has("technician.name") ? [] : [{ text: tech.name, level: 1 as const }]),
-            ...(off.has("technician.detail")
-              ? []
-              : [{ text: `${tech.base} · ${tech.skills.join(" · ")}`, level: 3 as const }]),
-          ]
-        : [{ text: "Nobody assigned", level: 3 as const }],
+      /* EVERY TECHNICIAN WHO HAS BEEN ON IT (Pavan, 2026-09-23). A partial
+         job's second trip is often somebody else, and a card naming only the
+         current assignee credits one person with both halves — or, once the
+         order has gone back to Open, nobody with either.
+
+         THE ASSIGNEE COMES FIRST AND KEEPS ITS DETAIL LINE; anybody who has
+         VISITED but is not on it now follows, named and nothing more, because
+         what the reader wants from them is the name. */
+      lines: (() => {
+        const past = Array.from(
+          new Set(
+            r.visits
+              .map((v) => v.technicianId)
+              .filter((id): id is string => Boolean(id) && id !== r.technicianId)
+          )
+        )
+          .map((id) => technicianById(id))
+          .filter(Boolean);
+
+        if (!tech && past.length === 0) {
+          return [{ text: "No technician assigned", level: 3 as const }];
+        }
+        return [
+          ...(tech && !off.has("technician.name")
+            ? [{ text: tech.name, level: 1 as const }]
+            : []),
+          ...(tech && !off.has("technician.detail")
+            ? [{ text: `${tech.base} · ${tech.skills.join(" · ")}`, level: 3 as const }]
+            : []),
+          ...past.map((t) => ({
+            text: `${t!.name} — earlier visit`,
+            level: 3 as const,
+          })),
+        ];
+      })(),
     },
   ];
   return units.filter((u) => {
@@ -631,8 +663,17 @@ export function ServiceWorkScreen() {
                for neither. */
             footerAction: isUnassigned(r.status)
               ? {
-                  label: "Nobody assigned",
-                  actionLabel: "Assign a technician",
+                  label: "No technician assigned",
+                  /* THE ICON CARRIES THE ACT AND THE WORD NAMES IT. "Assign"
+                     beside a person is read before it is read — and the
+                     footer's own line already says what is missing, so the
+                     button repeating "a technician" was the same noun twice
+                     in one strip. (Pavan, 2026-09-23.) */
+                  actionLabel: (
+                    <>
+                      <UserPlus /> Assign
+                    </>
+                  ),
                   actionVariant: "outline" as const,
                   onAction: () => {
                     setOpenId(r.id);
@@ -1037,7 +1078,7 @@ export function ServiceWorkScreen() {
         return r.raisedBy;
       case "labor":
         return r.labor > 0 ? (
-          <span className="tabular-nums">{r.labor}</span>
+          <span className="tabular-nums">{formatHours(r.labor)}</span>
         ) : (
           <span className="text-muted-foreground">—</span>
         );

@@ -278,7 +278,13 @@ export interface BoardCard {
   footerAction?: {
     label: string;
     /** Absent = the row is a status line, waiting on the other side. */
-    actionLabel?: string;
+    /**
+     * A NODE, NOT A STRING (2026-09-23). The act sometimes wants an icon
+     * beside its word — "Assign" with a person is read before it is read —
+     * and a `string` forced every such control to be a bare word or a
+     * bespoke footer.
+     */
+    actionLabel?: React.ReactNode;
     actionVariant?: "success" | "outline";
     onAction?: () => void;
     /** Quiet, with a tick — the ball is not in our court. */

@@ -343,6 +343,21 @@ function VisitRow({
       <td className="px-3 text-sm tabular-nums text-muted-foreground">
         {running ? "Running" : stamp(visit.endedAt!)}
       </td>
+      <td className="relative p-0">
+        <TableCellCombobox
+          value={technicianById(visit.technicianId)?.name ?? ""}
+          options={ACTIVE_TECHNICIANS.map((t) => t.name)}
+          placeholder="Unrecorded"
+          disabled={locked}
+          aria-label={`Technician on visit ${index + 1}`}
+          onChange={(v) =>
+            onChange({
+              technicianId:
+                ACTIVE_TECHNICIANS.find((t) => t.name === v)?.id ?? null,
+            })
+          }
+        />
+      </td>
       <td className="px-3">
         <div className="flex items-center justify-end gap-1.5">
           <Input
@@ -1759,7 +1774,8 @@ export function ServiceOrderSheet({
 
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[30%]" />
+            <col className="w-[24%]" />
+            <col className="w-[20%]" />
             <col className="w-[24%]" />
             <col />
             <col className="w-[52px]" />
@@ -1772,6 +1788,13 @@ export function ServiceOrderSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Stopped</TableRequiredLabel>
               </th>
+              {/* WHOSE TRIP IT WAS (Pavan, 2026-09-23). On a partial job the
+                  second visit is often somebody else, and an order that
+                  records two visits and one name is an order that cannot say
+                  who did which half. */}
+              <th className="px-3 py-2.5 text-left">
+                <TableRequiredLabel>Technician</TableRequiredLabel>
+              </th>
               <th className="px-3 py-2.5 text-right">
                 <TableRequiredLabel>On site</TableRequiredLabel>
               </th>
@@ -1781,7 +1804,7 @@ export function ServiceOrderSheet({
           <tbody>
             {draft.visits.length === 0 && (
               <tr className="h-11 border-b border-border last:border-b-0">
-                <td colSpan={4} className="px-3 text-sm text-muted-foreground">
+                <td colSpan={5} className="px-3 text-sm text-muted-foreground">
                   No visits yet.
                 </td>
               </tr>
@@ -1826,7 +1849,7 @@ export function ServiceOrderSheet({
           {draft.visits.length > 0 && (
             <tfoot>
               <tr className="h-11 border-t border-border bg-fp-table-header">
-                <td colSpan={2} className="px-3 text-sm text-muted-foreground">
+                <td colSpan={3} className="px-3 text-sm text-muted-foreground">
                   {draft.visits.length} visit{draft.visits.length === 1 ? "" : "s"}
                 </td>
                 <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">

@@ -290,11 +290,39 @@ export interface ServiceOrder {
   technicianId: string | null;
   /** Set when the technician marks arrival. */
   arrivedAt: string | null;
+  /**
+   * WHEN WORK ACTUALLY BEGAN — which is not when they arrived (Pavan,
+   * 2026-09-23). Between the two sit the quote and, where the customer has to
+   * agree to it, the wait for that answer. Billing an hour of somebody else's
+   * deliberation as labour is the reason these are two timestamps and not one.
+   */
+  startedAt: string | null;
 
   /* ── the money ── */
   parts: PartLine[];
-  /** Hours on site. 0 until the work is recorded. */
+  /**
+   * Hours on site, and **the effective figure every total reads.** 0 until
+   * the work is recorded.
+   *
+   * IT IS DERIVED, AND IT CAN BE OVERRULED (Pavan, 2026-09-23 — "computed
+   * with an override"). On completion it is `startedAt → completedAt`, which
+   * is a fact nobody has to remember to type. `laborOverride` is what a
+   * person typed instead, and it wins — because a clock cannot know about the
+   * half hour spent moving a truck that should not be billed, and a computed
+   * figure nobody can correct is one people work around by not starting the
+   * job in the app.
+   */
   labor: number;
+  /**
+   * The typed figure, when somebody has disagreed with the clock. `null` means
+   * nobody has, and `labor` is whatever the clock said.
+   *
+   * KEPT SEPARATE FROM `labor` rather than just writing over it, so the screen
+   * can show BOTH — what was measured and what is being billed. Overwriting
+   * loses the measurement, and the measurement is the thing that makes the
+   * correction reviewable.
+   */
+  laborOverride: number | null;
   /** Miles. Billable on the invoice only. */
   mileage: number;
   /** Set by the dispatcher at intake, added to by the technician. */
@@ -328,6 +356,34 @@ export const partsTotal = (parts: PartLine[]) =>
 export const feesTotal = (fees: FeeLine[]) =>
   fees.reduce((n, f) => n + (f.amount || 0), 0);
 export const laborTotal = (hours: number) => hours * LABOR_RATE;
+
+/**
+ * WHAT THE CLOCK SAYS — start of work to completion, in quarter hours.
+ *
+ * QUARTER HOURS BECAUSE THAT IS HOW LABOUR IS BILLED, and a raw 1.7383 would
+ * be a figure the reader has to round in their head before they can check it.
+ * Rounding here means the number on screen is the number on the invoice.
+ *
+ * Returns 0 rather than null when either end is missing: a job that has not
+ * been started and finished has no measured labour, which is a different
+ * thing from "we do not know" only in a sentence nobody reads.
+ */
+export function computedLabor(
+  startedAt: string | null,
+  completedAt: string | null
+): number {
+  if (!startedAt || !completedAt) return 0;
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.max(0.25, Math.round((ms / 3_600_000) * 4) / 4);
+}
+
+/** The figure to bill: what somebody typed, or failing that what the clock said. */
+export const effectiveLabor = (o: {
+  laborOverride: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+}) => o.laborOverride ?? computedLabor(o.startedAt, o.completedAt);
 export const mileageTotal = (miles: number) => miles * MILEAGE_RATE;
 
 /**
@@ -501,11 +557,12 @@ function buildOrders(): ServiceOrder[] {
     /* After-hours is the commonest fee a technician adds on site. */
     if (recorded && i % 7 === 0) fees.push({ name: "After-hours callout", amount: 75 });
 
-    const labor = recorded
-      ? Number((0.75 + pick() * 3).toFixed(2))
-      : status === "Parts-pending"
-        ? Number((0.5 + pick() * 1).toFixed(2))
-        : 0;
+    /* WORK BEGINS AFTER THE ARRIVAL, not at it — the gap is the walk round the
+       asset and, on a quoted job, the wait for the customer's answer. */
+    const startedAt =
+      started && arrivedAt
+        ? new Date(new Date(arrivedAt).getTime() + 18 * 60_000).toISOString()
+        : null;
     const mileage = recorded ? Math.round(pick() * 40) : 0;
 
     /* A QUOTE ONLY EXISTS WHERE ONE WAS SENT, and it is a snapshot of the
@@ -529,6 +586,20 @@ function buildOrders(): ServiceOrder[] {
           return at.toISOString();
         })()
       : null;
+
+    /* EVERY SIXTH RECORDED JOB HAS BEEN CORRECTED BY HAND, so the screen has
+       both cases in it from the first load: a figure the clock produced, and
+       one somebody disagreed with. A fixture with only the happy case is how
+       an override ships untested. */
+    const laborOverride =
+      recorded && i % 6 === 0
+        ? Number((0.5 + pick() * 2).toFixed(2))
+        : null;
+    const labor =
+      laborOverride ??
+      (status === "Parts-pending"
+        ? computedLabor(startedAt, new Date(new Date(startedAt ?? day).getTime() + 45 * 60_000).toISOString())
+        : computedLabor(startedAt, completedAt));
 
     out.push({
       id: `so-${i}`,
@@ -554,8 +625,10 @@ function buildOrders(): ServiceOrder[] {
       scheduledAt: scheduled,
       technicianId,
       arrivedAt,
+      startedAt,
       parts,
       labor,
+      laborOverride,
       mileage,
       fees,
       quote,

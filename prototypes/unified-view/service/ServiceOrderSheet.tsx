@@ -3,10 +3,8 @@ import {
   Plus,
   Trash2,
   Calendar as CalendarIcon,
-  Download,
   Receipt,
   History,
-  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -42,7 +40,7 @@ import {
 import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
-import { MeasureSlider, RailCard, RailRow } from "./sheet-parts";
+import { RailCard, RailRow } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import { TechnicianApp } from "./TechnicianApp";
 import { TIME_OPTIONS } from "../threepl/orders";
@@ -60,6 +58,7 @@ import {
   isRecorded,
   isWorkable,
   laborTotal,
+  computedLabor,
   mileageTotal,
   money,
   orderTotal,
@@ -154,6 +153,149 @@ function stampLabel(iso: string): string {
  * quantity column is optional: a name, a number, and a way to take the row
  * away. Written out twice they would have drifted.
  */
+/**
+ * LABOUR — WHAT THE CLOCK SAID, AND WHAT IS BEING BILLED.
+ *
+ * COMPUTED WITH AN OVERRIDE (Pavan, 2026-09-23). The hours are start-of-work
+ * to completion, which is a fact nobody has to remember to type. But a clock
+ * cannot know about the half hour spent moving a truck that should not be
+ * billed, so somebody has to be able to disagree with it — and **a computed
+ * figure nobody can correct is one people work around by not starting the job
+ * in the app at all.**
+ *
+ * A READ-OUT, NOT A DISABLED FIELD. The DS rule, and it matters most here: a
+ * greyed input still looks like a field promising an edit, and its dimming
+ * makes the number the hardest thing in the section to read. So the measured
+ * figure is text, and the edit is a control of its own that says what it does.
+ *
+ * WHEN IT IS OVERRULED, BOTH ARE SHOWN. The measurement does not disappear
+ * behind the correction — keeping it is what makes the correction reviewable,
+ * and "1.5 h, measured 2.25 h" is a sentence somebody can question. Clearing
+ * goes back to the clock rather than to zero, because zero is not what
+ * "never mind" means.
+ *
+ * BEFORE THE JOB HAS RUN there is nothing to measure and nothing to correct,
+ * so it says so rather than showing 0 h — zero hours is a claim about a visit
+ * that has not happened.
+ */
+function LabourFigure({
+  startedAt,
+  completedAt,
+  override,
+  effective,
+  locked,
+  onOverride,
+}: {
+  startedAt: string | null;
+  completedAt: string | null;
+  override: number | null;
+  /** The figure every total reads — the override, or the clock. */
+  effective: number;
+  /** Past billing, the argument is over. */
+  locked?: boolean;
+  onOverride: (v: number | null) => void;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  const [typed, setTyped] = React.useState("");
+  const measured = computedLabor(startedAt, completedAt);
+  const ran = Boolean(startedAt && completedAt);
+
+  const commit = () => {
+    const n = Number(typed);
+    onOverride(typed.trim() === "" || !Number.isFinite(n) || n < 0 ? null : n);
+    setEditing(false);
+  };
+
+  return (
+    <SheetField label="Labour">
+      <div className="flex min-h-9 items-center gap-2">
+        {editing ? (
+          <>
+            <Input
+              autoFocus
+              type="number"
+              min={0}
+              step={0.25}
+              inputMode="decimal"
+              value={typed}
+              placeholder={String(measured || 0)}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => {
+                /* STOPPED, NOT JUST HANDLED. Enter in here means "I have
+                   finished typing this number"; left to bubble it reached the
+                   sheet and closed the whole thing, losing the order the
+                   reader was looking at. Escape is the same story one level
+                   up — it should leave the FIELD, not the sheet. */
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  commit();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEditing(false);
+                }
+              }}
+              className="w-24 tabular-nums"
+              aria-label="Labour hours"
+            />
+            <span className="text-sm text-muted-foreground">h</span>
+            <Button variant="ghost" size="sm" onClick={commit}>
+              Done
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* THE FIGURE NEVER WRAPS. It is the one thing in the row worth
+                reading, and at a narrow sheet width "2.5 h" was breaking
+                across two lines while the rate beside it stayed whole. */}
+            <span className="shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
+              {ran || override !== null ? `${effective} h` : "\u2014"}
+            </span>
+            {override !== null && ran && (
+              /* THE MEASUREMENT, KEPT IN VIEW. Not a warning — a correction is
+                 a normal thing to make — so it is muted text and not a tone. */
+              <span className="text-xs text-muted-foreground">
+                measured {measured} h
+              </span>
+            )}
+            {!ran && override === null && (
+              <span className="text-xs text-muted-foreground">
+                Timed from the moment work starts.
+              </span>
+            )}
+            <span className="ml-auto shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+              {money(LABOR_RATE)}/h · {money(laborTotal(effective))}
+            </span>
+            {!locked && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTyped(override !== null ? String(override) : "");
+                  setEditing(true);
+                }}
+              >
+                {override === null ? "Adjust" : "Change"}
+              </Button>
+            )}
+            {override !== null && !locked && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOverride(null)}
+              >
+                Use measured
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </SheetField>
+  );
+}
+
 function LineTable({
   rows,
   onChange,
@@ -598,16 +740,30 @@ export function ServiceOrderSheet({
     if (draft.status === "Assigned")
       return {
         label: "Start work",
-        onSelect: () => advance("In progress", { arrivedAt: nowIso() }),
+        /* BOTH TIMESTAMPS, because from dispatch these are one press. The
+           technician's app tells arrival and starting apart — it has a quote
+           and a wait between them — but somebody starting a job from this
+           sheet is saying both things at once, and inventing a second button
+           to separate them would be inventing a step nobody takes. */
+        onSelect: () =>
+          advance("In progress", { arrivedAt: nowIso(), startedAt: nowIso() }),
       };
     if (isWorkable(draft.status)) {
       return {
         label: draft.status === "Parts-pending" ? "Resume and complete" : "Mark complete",
         onSelect: () => {
           const at = nowIso();
+          const startedAt = draft.startedAt ?? draft.arrivedAt ?? at;
           const patch = {
             arrivedAt: draft.arrivedAt ?? at,
+            startedAt,
             completedAt: at,
+            /* THE CLOCK WRITES THE HOURS, unless somebody has already
+               disagreed with it. `labor` is the effective figure every total
+               reads, so it is written here rather than derived at each call
+               site — one number, decided at the one moment both ends of it
+               are known. */
+            labor: draft.laborOverride ?? computedLabor(startedAt, at),
             signed: true,
             partNeeded: null,
           };
@@ -1201,51 +1357,66 @@ export function ServiceOrderSheet({
         />
       </SheetSection>
 
-      <SheetSection
-        title="Labour and mileage"
-        note={
-          <SheetSectionNote label="Why sliders">
-            <p className="text-foreground">
-              Both are one number, so both get one handle.
-            </p>
-            <p className="mt-1.5 text-muted-foreground">
-              The same control the delivery window uses, minus the second
-              handle — a window is a start and an end, four hours is not. The
-              figure is printed beside the label rather than estimated from
-              where the handle sits, and what it costs sits at the other edge,
-              because that is the reason anybody moves it.
-            </p>
-          </SheetSectionNote>
-        }
-      >
-        {/* SIDE BY SIDE, 24px APART. They are two halves of one answer — what
-            the visit cost in time and in travel — and stacked they read as two
-            unrelated questions with the parts table's rhythm between them.
-            Every other pair of fields in this sheet is a two-column row; these
-            are the same kind of pair. */}
+      {/* LABOUR IS MEASURED; MILEAGE IS TYPED (Pavan, 2026-09-23). They were a
+          matched pair of sliders because both were one number somebody
+          entered. Only one of them still is: labour is now the clock reading
+          from the moment work started to the moment it was completed, and a
+          slider for a derived figure is a control that invites you to
+          contradict a measurement without saying you are.
+
+          SO THEY STOPPED BEING A PAIR. The DS rule is that a derived value is
+          a READ-OUT, never a disabled field — a greyed input still looks like
+          a field promising an edit, and its dimming makes the value the
+          hardest thing in the section to read. */}
+      <SheetSection title="Labour and mileage">
         <div className="grid grid-cols-2 gap-6">
-          <MeasureSlider
-            label="Labour"
-            value={draft.labor}
-            onChange={(v) => set("labor", v)}
-            max={12}
-            step={0.25}
-            format={(v) => `${v} h`}
-            ticks={[0, 3, 6, 9, 12]}
-            trailing={`${money(LABOR_RATE)}/h · ${money(laborSum)}`}
-            aria-label="Labour hours"
+          <LabourFigure
+            startedAt={draft.startedAt}
+            completedAt={draft.completedAt}
+            override={draft.laborOverride}
+            effective={draft.labor}
+            locked={billed}
+            onOverride={(v) => {
+              /* ONE PRESS, TWO FIELDS. `labor` is what every total reads, so
+                 it follows the override immediately rather than waiting for
+                 the next completion — otherwise the figure on screen and the
+                 running total disagree until something else happens. */
+              set("laborOverride", v);
+              set(
+                "labor",
+                v ?? computedLabor(draft.startedAt, draft.completedAt)
+              );
+            }}
           />
-          <MeasureSlider
+          <SheetField
             label="Mileage"
-            value={draft.mileage}
-            onChange={(v) => set("mileage", v)}
-            max={200}
-            step={1}
-            format={(v) => `${v} mi`}
-            ticks={[0, 50, 100, 150, 200]}
-            trailing={`${money(MILEAGE_RATE)}/mi · ${money(mileageSum)}`}
-            aria-label="Mileage"
-          />
+            description={
+              cfg.defaultMileage > 0 && draft.mileage === cfg.defaultMileage
+                ? "The standard trip, from settings."
+                : undefined
+            }
+          >
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={draft.mileage === 0 ? "" : draft.mileage}
+                placeholder="0"
+                disabled={billed}
+                onChange={(e) =>
+                  set("mileage", Math.max(0, Number(e.target.value) || 0))
+                }
+                className="w-28 tabular-nums"
+                aria-label="Mileage in miles"
+              />
+              <span className="text-sm text-muted-foreground">mi</span>
+              <span className="ml-auto text-sm tabular-nums text-muted-foreground">
+                {money(MILEAGE_RATE)}/mi · {money(mileageSum)}
+              </span>
+            </div>
+          </SheetField>
         </div>
       </SheetSection>
 
@@ -1329,64 +1500,6 @@ export function ServiceOrderSheet({
             )}
           </RailCard>
 
-          <RailCard title="Billing" icon={<FileText />}>
-            <div className="flex flex-col divide-y divide-border">
-              <RailRow
-                label="Invoice"
-                value={
-                  draft.invoiceCreated ? (
-                    <StatusChip tone="success">Raised</StatusChip>
-                  ) : billed ? (
-                    <StatusChip tone="failed">Not generated</StatusChip>
-                  ) : (
-                    <span className="text-muted-foreground">
-                      {cfg.nativeBilling ? "On approval" : "Raised by hand"}
-                    </span>
-                  )
-                }
-              />
-              {draft.invoiceCreated && (
-                <RailRow
-                  label="Accounting"
-                  value={
-                    draft.synced ? (
-                      <StatusChip tone="success">Synced</StatusChip>
-                    ) : (
-                      <StatusChip tone="processing">Next sync</StatusChip>
-                    )
-                  }
-                />
-              )}
-              <RailRow
-                label="Approval"
-                value={
-                  <span className="text-muted-foreground">
-                    {cfg.managerApproval ? "Manager signs off" : "Automatic"}
-                  </span>
-                }
-              />
-              {cfg.roiFeed && (
-                <RailRow
-                  label="Asset payback"
-                  value={
-                    <span className="text-muted-foreground">Fed by this job</span>
-                  }
-                />
-              )}
-            </div>
-            {draft.invoiceCreated && (
-              <div className="border-t border-border p-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => toast.success(`${draft.orderNo} invoice downloaded`)}
-                >
-                  <Download /> Download invoice
-                </Button>
-              </div>
-            )}
-          </RailCard>
 
           <RailCard title="Record" icon={<History />}>
             <div className="flex flex-col divide-y divide-border">

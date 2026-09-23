@@ -690,9 +690,14 @@ export function ServiceWorkScreen() {
       scheduledAt: tomorrow.toISOString(),
       technicianId: null,
       arrivedAt: null,
+      startedAt: null,
       parts: cfg.priceBook ? book.parts.map((p) => ({ ...p })) : [],
       labor: 0,
-      mileage: 0,
+      laborOverride: null,
+      /* PRE-FILLED FROM SETTINGS (Pavan, 2026-09-23). Most yards bill a
+         standard trip; typing the same number on every job is a question the
+         settings have already answered. It stays editable — see the sheet. */
+      mileage: cfg.defaultMileage,
       fees: cfg.priceBook ? book.fees.map((f) => ({ ...f })) : [],
       quote: null,
       extraCharges: [],
@@ -780,6 +785,8 @@ export function ServiceWorkScreen() {
         arrivedAt: null,
         parts: [],
         labor: 0,
+        laborOverride: null,
+        startedAt: null,
         mileage: 0,
         quote: null,
         extraCharges: [],

@@ -63,6 +63,17 @@ export interface ServiceSettings {
    */
   techApp: boolean;
   /**
+   * THE TRIP EVERY JOB IS ASSUMED TO TAKE, in miles, pre-filled on a new
+   * order (Pavan, 2026-09-23). Most yards bill a standard call-out distance
+   * and typing the same number on every job is a question the settings have
+   * already answered. **It is a default, not a lock** — dispatch or sales can
+   * type over it on any order.
+   *
+   * 0 means "no default" and the field starts empty, which is the right
+   * answer for a yard whose jobs are genuinely all different distances.
+   */
+  defaultMileage: number;
+  /**
    * ON: before work starts the technician sends the customer a quote — parts
    * plus fees — for on-site approval. OFF: work starts straight from dispatch
    * and everything settles on the invoice afterwards.
@@ -81,6 +92,7 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   returnMode: "spawn",
   priceBook: true,
   portalIntake: true,
+  defaultMileage: 18,
   techApp: true,
   fieldQuote: true,
 };
@@ -115,6 +127,7 @@ export const SETTINGS_PROFILES: {
       returnMode: "rollforward",
       priceBook: false,
       portalIntake: false,
+      defaultMileage: 0,
       techApp: false,
       fieldQuote: false,
     },

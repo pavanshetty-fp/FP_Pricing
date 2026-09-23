@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DEFAULT_SETTINGS,
   SETTINGS_PROFILES,
@@ -161,6 +162,42 @@ export function ServiceSettingsScreen() {
               checked={cfg.portalIntake}
               onChange={(v) => setServiceSetting("portalIntake", v)}
             />
+            {/* A NUMBER AMONG SWITCHES, and it belongs here anyway (Pavan,
+                2026-09-23). It answers the same kind of question the switches
+                do — what does this yard assume, so nobody has to type it —
+                and a settings page that sent one default somewhere else would
+                be a second place to look. */}
+            <div className="flex items-start justify-between gap-6 py-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="text-sm font-medium text-foreground">
+                  Standard trip
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Pre-filled as the mileage on every new job, and editable on
+                  any of them. Zero leaves the field empty, which is the right
+                  answer where no two jobs are the same distance.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  value={cfg.defaultMileage === 0 ? "" : cfg.defaultMileage}
+                  placeholder="0"
+                  onChange={(e) =>
+                    setServiceSetting(
+                      "defaultMileage",
+                      Math.max(0, Number(e.target.value) || 0)
+                    )
+                  }
+                  className="w-24 tabular-nums"
+                  aria-label="Standard trip in miles"
+                />
+                <span className="text-sm text-muted-foreground">mi</span>
+              </div>
+            </div>
           </div>
 
           {/* THE ONE RULE THAT IS NOT A SWITCH, said where the switches are —

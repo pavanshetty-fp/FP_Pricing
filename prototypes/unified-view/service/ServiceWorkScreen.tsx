@@ -50,6 +50,7 @@ import {
   blankServiceOrder,
   ticketFrom,
   shipTosOf,
+  assetsAt,
   shipToPlace,
   type PartLine,
 } from "./work";
@@ -104,7 +105,7 @@ const COLUMNS: ListColumn<Col>[] = [
   { key: "customer", label: "Customer", width: 200, sortable: true },
   { key: "shipTo", label: "Site", width: 180, sortable: true },
   { key: "asset", label: "Asset", width: 180, sortable: true },
-  { key: "fault", label: "Reported Fault", width: 250, sortable: true },
+  { key: "fault", label: "Description", width: 250, sortable: true },
   { key: "scheduled", label: "Scheduled", width: 175, sortable: true },
   { key: "technician", label: "Technician", width: 165, sortable: true },
   { key: "priority", label: "Priority", width: 110, sortable: true },
@@ -127,7 +128,7 @@ const SEARCH_FIELDS = [
   { key: "customer", label: "Customer" },
   { key: "shipTo", label: "Site" },
   { key: "asset", label: "Asset" },
-  { key: "fault", label: "Reported Fault" },
+  { key: "fault", label: "Description" },
   { key: "technician", label: "Technician" },
   { key: "order", label: "Service Order #" },
 ];
@@ -759,15 +760,8 @@ export function ServiceWorkScreen() {
   /* THE SHARED LIST — real sites first, then the dummy ones (work.ts). */
   const shipTosFor = React.useCallback((customer: string) => shipTosOf(customer), []);
 
-  const assetsFor = React.useCallback(
-    (shipTo: string) =>
-      RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
-        id: a.id,
-        name: a.name,
-        type: a.assetType,
-      })),
-    []
-  );
+  /* THE SHARED LIST — real assets first, then sample ones (work.ts). */
+  const assetsFor = React.useCallback((shipTo: string) => assetsAt(shipTo), []);
 
   /** A blank order, with the price book's lines already in it if it is on. */
   const blankOrder = React.useCallback(

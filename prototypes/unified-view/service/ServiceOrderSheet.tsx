@@ -64,6 +64,10 @@ import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
 import { useServiceSettings, type ReturnMode } from "./settings";
+import { INVENTORY } from "./catalog";
+
+/** THE PARTS TO PICK FROM (2026-09-24) — the shelf, with each part's cost. */
+const PART_OPTIONS = INVENTORY.map((p) => ({ name: p.part, amount: p.cost }));
 import { TechnicianApp } from "./TechnicianApp";
 import {
   visitHours,
@@ -375,7 +379,7 @@ function LineTable({
    * A LIST TO PICK THE NAME FROM, or type one (Pavan, 2026-09-24) — the
    * standard fees. Picking a listed name brings its amount; it stays editable.
    */
-  nameOptions?: FeeLine[];
+  nameOptions?: { name: string; amount: number }[];
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
   onRemove: (i: number) => void;
@@ -466,8 +470,13 @@ function LineTable({
                       autoFocus={i === focusRow}
                       aria-label={`${nameLabel} for row ${i + 1}`}
                       onChange={(v) => {
+                        /* A LISTED NAME BRINGS ITS PRICE — a part's unit cost, a
+                           fee's amount. Either stays editable. */
                         const listed = nameOptions.find((f) => f.name === v);
-                        onChange(i, listed ? { name: v, amount: listed.amount } : { name: v });
+                        onChange(
+                          i,
+                          !listed ? { name: v } : "cost" in r ? { name: v, cost: listed.amount } : { name: v, amount: listed.amount }
+                        );
                       }}
                     />
                   ) : (
@@ -1784,7 +1793,8 @@ export function ServiceOrderSheet({
           withQty
           readOnly={workLocked}
           nameLabel="Part"
-          namePlaceholder="Part"
+          nameOptions={PART_OPTIONS}
+          namePlaceholder="Pick or type a part"
           emptyLabel="No parts on this job."
           total={partsSum}
           onChange={(i, p) => setLine("parts", i, p)}

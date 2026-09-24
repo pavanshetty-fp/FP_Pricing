@@ -51,6 +51,10 @@ import {
   type WorkStatus,
 } from "./work";
 import { useServiceSettings, type ReturnMode } from "./settings";
+import { INVENTORY } from "./catalog";
+
+/** The shelf, for part-name suggestions. */
+const PART_OPTIONS = INVENTORY.map((p) => ({ name: p.part, cost: p.cost }));
 import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile";
 import { BottomSheet } from "./TechnicianHome";
 import { PendingStrip, type PendingItem } from "../PendingStrip";
@@ -1218,11 +1222,29 @@ function TaskParts({
   return (
     <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
       <span className="text-xs font-medium text-muted-foreground">Parts</span>
+      <datalist id="tech-part-options">
+        {PART_OPTIONS.map((x) => (
+          <option key={x.name} value={x.name} />
+        ))}
+      </datalist>
       {parts.length === 0 && <p className="text-sm text-muted-foreground">No parts.</p>}
       {parts.map((p, i) => (
         <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
           <div className="flex items-center gap-2">
-            <Input value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} placeholder="Part" aria-label={`Part ${i + 1}`} className="h-11 flex-1" autoFocus={!p.name} />
+            {/* SUGGESTS FROM THE SHELF (2026-09-24); a listed part brings its
+                cost when none is set. Anything can still be typed. */}
+            <Input
+              value={p.name}
+              list="tech-part-options"
+              onChange={(e) => {
+                const listed = PART_OPTIONS.find((x) => x.name === e.target.value);
+                setPart(i, listed && !p.cost ? { name: e.target.value, cost: listed.cost } : { name: e.target.value });
+              }}
+              placeholder="Part"
+              aria-label={`Part ${i + 1}`}
+              className="h-11 flex-1"
+              autoFocus={!p.name}
+            />
             <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => onChange(parts.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
               <X className="size-4" />
             </button>

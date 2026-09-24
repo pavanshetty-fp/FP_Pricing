@@ -1459,12 +1459,35 @@ export const shipToPlace = (shipTo: string): { city: string; state: string } => 
   return { city: "", state: "" };
 };
 
-export const assetsAt = (shipTo: string) =>
-  RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
+/*
+  DUMMY ASSETS, 3 TO 10 PER SHIP-TO (Pavan, 2026-09-24). Only the real sites
+  had rental assets, so on every invented site the Asset list came up empty.
+  The real assets come first; the rest are invented and deterministic (a hash
+  of the site's name) — sample data, not the fleet.
+*/
+const DUMMY_ASSET_TYPES = ["Bulk Tank", "Skid Tank", "DEF Tote", "Dispensing Unit", "Pump Cart", "Lube Skid", "Nozzle Assembly"];
+const assetCache = new Map<string, { id: string; name: string; type: string }[]>();
+
+export const assetsAt = (shipTo: string): { id: string; name: string; type: string }[] => {
+  if (!shipTo) return [];
+  const hit = assetCache.get(shipTo);
+  if (hit) return hit;
+  const list = RENTAL_ASSETS.filter((a) => a.shipTo === shipTo).map((a) => ({
     id: a.id,
     name: a.name,
-    type: a.assetType,
+    type: a.assetType as string,
   }));
+  const h = hashOf(shipTo);
+  const want = Math.max(list.length, 3 + (h % 8));
+  for (let k = 0; list.length < want; k++) {
+    const type = DUMMY_ASSET_TYPES[(h + k) % DUMMY_ASSET_TYPES.length];
+    const name = `${type} ${100 + ((h >>> 3) + k * 37) % 900}`;
+    if (list.some((x) => x.name === name)) continue;
+    list.push({ id: `dm-${h}-${k}`, name, type });
+  }
+  assetCache.set(shipTo, list);
+  return list;
+};
 
 const keyOfDay = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

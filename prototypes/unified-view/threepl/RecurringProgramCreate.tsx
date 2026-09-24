@@ -479,11 +479,11 @@ export function RecurringProgramCreate({
     []
   );
 
+  /* "Same date every month" is answered by its dates, not the day badges. */
   const daysPicked =
-    draft.frequency.dayMode === "daily" ||
-    draft.frequency.days.length > 0 ||
-    (draft.frequency.repeat === "monthly" &&
-      draft.frequency.monthlyMode === "everyMonth");
+    draft.frequency.repeat === "monthly" && draft.frequency.monthlyMode === "everyMonth"
+      ? (draft.frequency.monthDates ?? []).length > 0
+      : draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0;
 
   /* EVERY PRODUCT HAS TO LOAD SOMEWHERE. With rows keyed on the account
      rather than the product, a product can now fall off the table entirely —

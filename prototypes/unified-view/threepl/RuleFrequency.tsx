@@ -75,6 +75,11 @@ export interface RuleFrequency {
   yearlyMode: YearlyMode;
   /** 0-based, for `specificMonths`. */
   months: number[];
+  /**
+   * THE DATES, for "Same date every month" (Pavan, 2026-09-24) — one or
+   * several, 1–31, and the rule runs on those dates every month.
+   */
+  monthDates: number[];
   /** `null` is "no end date", and it is the default. */
   endKey: string | null;
 }
@@ -88,9 +93,14 @@ export function blankFrequency(): RuleFrequency {
     monthlyMode: "firstWeek",
     yearlyMode: "firstMonth",
     months: [0],
+    monthDates: [1],
     endKey: null,
   };
 }
+
+/** 1st, 2nd, 3rd, 4th… */
+const ordinal = (n: number) =>
+  `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
 
 const nthWeekdayOfMonth = (d: Date) => Math.floor((d.getDate() - 1) / 7) + 1;
 
@@ -127,13 +137,23 @@ export function toSchedule(f: RuleFrequency): Schedule {
     if (f.monthlyMode === "everyMonth") {
       /* THE SAME DATE EACH MONTH — no weekday pattern at all, so the badge row
          would light nothing and say nothing. One word instead. */
+      /* THE PICKED DATES, EVERY MONTH (Pavan, 2026-09-24) — it said `true`
+         for every day, which cut an order daily. A date past the month's end
+         (the 31st in April) falls on the month's last day, so no month is
+         skipped. */
+      const dates = [...(f.monthDates ?? [])].sort((a, b) => a - b);
       return {
-        raw: "monthly:date",
-        label: "Same date every month",
+        raw: `monthly:date:${dates.join(",")}`,
+        label: dates.length
+          ? `Every month on the ${listNames(dates.map(ordinal))}`
+          : "Same date every month",
         days: [],
         badge: "Monthly",
-        cadence: "Once a month, on its start date",
-        hits: () => true,
+        cadence: `${dates.length} ${dates.length === 1 ? "date" : "dates"} a month`,
+        hits: (d) => {
+          const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+          return dates.some((x) => Math.min(x, last) === d.getDate());
+        },
       };
     }
     const firstOnly = f.monthlyMode === "firstWeek";
@@ -411,6 +431,43 @@ export function RuleFrequencyPicker({
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {value.repeat === "monthly" && value.monthlyMode === "everyMonth" && (
+        <div className="flex flex-col gap-1.5">
+          <div className="grid w-fit grid-cols-7 gap-1">
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => {
+              const on = (value.monthDates ?? []).includes(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={`The ${ordinal(n)}`}
+                  onClick={() =>
+                    set(
+                      "monthDates",
+                      on
+                        ? value.monthDates.filter((x) => x !== n)
+                        : [...(value.monthDates ?? []), n].sort((a, b) => a - b)
+                    )
+                  }
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-md text-sm font-medium tabular-nums transition-colors",
+                    on
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-fp-card-1 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+          {(value.monthDates ?? []).length === 0 && (
+            <p className="text-xs text-status-failed">Pick at least one date.</p>
+          )}
         </div>
       )}
 

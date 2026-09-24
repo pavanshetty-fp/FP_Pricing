@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useSavedViews } from "./useSavedViews";
 import {
   Fuel,
   ClipboardList,
@@ -89,7 +90,6 @@ import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import {
   FuelOrdersViewBar,
   viewStateKey,
-  type SavedView,
   type ViewState,
 } from "./FuelOrdersViewBar";
 import {
@@ -383,9 +383,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<FuelOrdersView>("table");
-  const [views, setViews] = React.useState<SavedView[]>([]);
-  const [activeViewId, setActiveViewId] = React.useState<string | null>(null);
-  const viewSeq = React.useRef(0);
 
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -404,7 +401,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     []
   );
 
-  const activeView = views.find((v) => v.id === activeViewId) ?? null;
   const applyState = (st: ViewState) => {
     setSearch(st.search);
     setSort(
@@ -422,32 +418,6 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     setColQuery(st.colQuery);
     g.setGrouping(st.groupBy ?? []);
     setPage(1);
-  };
-
-  const applyView = (id: string) => {
-    const v = views.find((x) => x.id === id);
-    if (!v) return;
-    applyState(v.state);
-    setActiveViewId(id);
-  };
-  const resetToDefault = () => {
-    applyState(defaultState);
-    setActiveViewId(null);
-  };
-  const createView = (name: string) => {
-    const id = `view-${++viewSeq.current}`;
-    setViews((prev) => [...prev, { id, name, state: current }]);
-    setActiveViewId(id);
-  };
-  const renameView = (id: string, name: string) =>
-    setViews((prev) => prev.map((v) => (v.id === id ? { ...v, name } : v)));
-  const updateView = (id: string) =>
-    setViews((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, state: current } : v))
-    );
-  const deleteView = (id: string) => {
-    setViews((prev) => prev.filter((v) => v.id !== id));
-    if (activeViewId === id) setActiveViewId(null);
   };
 
   const toggleColumn = (key: FuelOrderColumnKey) =>
@@ -561,9 +531,15 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     groupBy: g.groupBy,
   };
 
-  const dirty =
-    viewStateKey(current) !==
-    viewStateKey(activeView ? activeView.state : defaultState);
+  /* THE SHARED SAVED-VIEWS HOOK (2026-09-24) — this screen had its own copy,
+     so it missed the rule every other list follows: a view keeps its unsaved
+     changes when you leave it, and pressing the tab you are on reverts it. */
+  const savedViews = useSavedViews({
+    current,
+    defaultState,
+    keyOf: viewStateKey,
+    apply: applyState,
+  });
 
 
   // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
@@ -784,15 +760,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
-        views={views}
-        activeId={activeViewId}
-        dirty={dirty}
-        onApply={applyView}
-        onResetToDefault={resetToDefault}
-        onCreate={createView}
-        onRename={renameView}
-        onUpdate={updateView}
-        onDelete={deleteView}
+        {...savedViews}
         onCreateOrder={() => setCreating(true)}
       />
 

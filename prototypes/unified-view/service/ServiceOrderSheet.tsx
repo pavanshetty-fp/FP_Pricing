@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ClipboardList,
   Plus,
   CornerDownRight,
   Clock,
@@ -2065,6 +2066,46 @@ export function ServiceOrderSheet({
               )}
             </div>
           </RailCard>
+
+          {/* THE TECHNICIAN'S ASSESSMENT, and the permission it may ask for
+              (Pavan, 2026-09-24) — once the quote is approved an edit needs
+              the dispatcher's yes, given here. */}
+          {draft.siteAssessment?.submittedAt && (
+            <RailCard title="Assessment" icon={<ClipboardList />}>
+              <div className="flex flex-col gap-3 px-4 py-3">
+                <p className="line-clamp-4 text-sm text-foreground">
+                  {new DOMParser().parseFromString(draft.siteAssessment.html.replace(/<\/(li|p|div)>|<br\s*\/?>/gi, "; "), "text/html").body.textContent?.replace(/(;\s*)+$/, "")}
+                </p>
+                {draft.siteAssessment.photos.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {draft.siteAssessment.photos.length} photo{draft.siteAssessment.photos.length === 1 ? "" : "s"}
+                  </span>
+                )}
+                {draft.siteAssessment.editRequestedAt && !draft.siteAssessment.editAllowed && (
+                  <div className="flex items-center justify-between gap-2 rounded-md bg-fp-banner-accent-caution/10 px-3 py-2">
+                    <span className="text-sm text-foreground">
+                      {technicianById(draft.technicianId)?.name ?? "The technician"} asked to edit
+                    </span>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => {
+                        setDraft((d) =>
+                          d && d.siteAssessment ? { ...d, siteAssessment: { ...d.siteAssessment, editAllowed: true } } : d
+                        );
+                        toast.success("Edit allowed", { description: "The technician can change the assessment once." });
+                      }}
+                    >
+                      Allow edit
+                    </Button>
+                  </div>
+                )}
+                {draft.siteAssessment.editAllowed && (
+                  <span className="text-xs text-muted-foreground">Edit allowed · waiting on the technician</span>
+                )}
+              </div>
+            </RailCard>
+          )}
 
           {draft.visits.length > 0 && (
             <RailCard title="Visits" icon={<Clock />}>

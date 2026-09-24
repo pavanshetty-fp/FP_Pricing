@@ -703,11 +703,19 @@ export interface ServiceOrder {
   assessmentLines?: AssessmentLine[];
   /**
    * THE SITE ASSESSMENT (Pavan, 2026-09-24) — ONE for the visit, not one per
-   * task: rich-text notes and photos. It is the FIRST STEP and it is FINAL:
-   * once `submittedAt` is set nothing edits it, and no quote can be generated
-   * before it is. Until then it is a draft that saves itself.
+   * task: rich-text notes and photos. It is the FIRST STEP: no quote goes
+   * before it is submitted. It stays EDITABLE until the customer approves the
+   * quote; after that an edit needs the dispatcher's permission.
    */
-  siteAssessment?: { html: string; photos: string[]; submittedAt: string | null };
+  siteAssessment?: {
+    html: string;
+    photos: string[];
+    submittedAt: string | null;
+    /** AFTER APPROVAL, EDITING ASKS FIRST (Pavan, 2026-09-24): the request… */
+    editRequestedAt?: string | null;
+    /** …and the dispatcher's yes, good for one editing session. */
+    editAllowed?: boolean;
+  };
   /** The linked return visit this job spawned, or the job that spawned this one. */
   returnOf: string | null;
   spawnedReturn: string | null;

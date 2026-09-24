@@ -256,6 +256,40 @@ export function TechnicianJob({
       onPress={resumeWork}
     />
   );
+  /* THE ASSESSMENT SHEET — on the job screen and, after approval, the work
+     screen, where editing becomes a request. */
+  const [assessOpen, setAssessOpen] = React.useState(false);
+  const assessmentSheet = (
+    <SiteAssessmentSheet
+      open={assessOpen}
+      onClose={() => setAssessOpen(false)}
+      value={job.siteAssessment}
+      approved={Boolean(job.quote?.approvedAt)}
+      onSave={(html, photos) => {
+        const was = job.siteAssessment;
+        onPatch({
+          siteAssessment: {
+            html,
+            photos,
+            submittedAt: was?.submittedAt ?? null,
+            /* A granted edit is one session: closing the sheet uses it up. */
+            editRequestedAt: null,
+            editAllowed: false,
+          },
+          ...(was?.submittedAt ? { assessment: plainText(html).slice(0, 140) || null } : {}),
+        });
+      }}
+      onSubmit={(html, photos) => {
+        onPatch({ siteAssessment: { html, photos, submittedAt: nowIso() } });
+        setAssessOpen(false);
+        toast.success("Assessment submitted");
+      }}
+      onRequestEdit={() => {
+        if (job.siteAssessment) onPatch({ siteAssessment: { ...job.siteAssessment, editRequestedAt: nowIso() } });
+        toast("Edit requested", { description: "The dispatcher can allow it on the order." });
+      }}
+    />
+  );
   const pauseSheet = <PauseSheet open={pauseOpen} onClose={() => setPauseOpen(false)} onPause={(r) => { pauseWork(r); setPauseOpen(false); }} />;
 
   const [lines, setLinesRaw] = React.useState<AssessmentLine[]>(
@@ -277,7 +311,6 @@ export function TechnicianJob({
   const [mapOpen, setMapOpen] = React.useState(false);
   const [ticketOpen, setTicketOpen] = React.useState(false);
   const [breakupOpen, setBreakupOpen] = React.useState(false);
-  const [assessOpen, setAssessOpen] = React.useState(false);
 
   /* THE ASSESSMENT IS THE FIRST STEP (Pavan, 2026-09-24): the quote waits on
      a SUBMITTED site assessment, not on a verdict per task. */
@@ -580,17 +613,7 @@ export function TechnicianJob({
           sent={sent}
         />
         {pauseSheet}
-        <SiteAssessmentSheet
-          open={assessOpen}
-          onClose={() => setAssessOpen(false)}
-          value={job.siteAssessment}
-          onDraft={(html, photos) => onPatch({ siteAssessment: { html, photos, submittedAt: null } })}
-          onSubmit={(html, photos) => {
-            onPatch({ siteAssessment: { html, photos, submittedAt: nowIso() } });
-            setAssessOpen(false);
-            toast.success("Assessment submitted");
-          }}
-        />
+        {assessmentSheet}
         </>
         )}
       </>
@@ -603,6 +626,9 @@ export function TechnicianJob({
       <>
         <TopBar title="Work in progress" subtitle={sub} onBack={onBack} aside={timer} />
         <Body>
+          {job.siteAssessment?.submittedAt && (
+            <SiteAssessmentRow value={job.siteAssessment} onOpen={() => setAssessOpen(true)} />
+          )}
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-semibold tabular-nums text-foreground">{formatHours(elapsed)}</span>
             <span className="text-sm text-muted-foreground">{paused ? "paused" : "so far"}</span>
@@ -636,6 +662,7 @@ export function TechnicianJob({
           />
         )}
         {pauseSheet}
+        {assessmentSheet}
       </>
     );
   }
@@ -1676,137 +1703,126 @@ function RichText({
 
 /**
  * THE SITE ASSESSMENT, IN A FULL SHEET (Pavan, 2026-09-24). Rich-text notes
- * and photos. It SAVES ITSELF as a draft on close — side sheets autosave —
- * and has one act, "Submit assessment", which asks first because it is
- * final. Once submitted the sheet only reads.
+ * and photos, saved as they are written. "Submit assessment" is the first
+ * step before a quote — and NOT final: it can be reopened and changed until
+ * the customer approves the quote. After that the sheet reads, and editing
+ * is a request the dispatcher allows.
  */
 function SiteAssessmentSheet({
   open,
   onClose,
   value,
-  onDraft,
+  approved,
+  onSave,
   onSubmit,
+  onRequestEdit,
 }: {
   open: boolean;
   onClose: () => void;
   value: ServiceOrder["siteAssessment"];
-  onDraft: (html: string, photos: string[]) => void;
+  /** The customer has approved the quote — edits now need permission. */
+  approved: boolean;
+  /** Keep what is written — a draft, or changes to a submitted one. */
+  onSave: (html: string, photos: string[]) => void;
   onSubmit: (html: string, photos: string[]) => void;
+  onRequestEdit: () => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [html, setHtml] = React.useState(value?.html ?? "");
   const [photos, setPhotos] = React.useState(value?.photos ?? []);
-  const [confirming, setConfirming] = React.useState(false);
   const submitted = Boolean(value?.submittedAt);
+  const editable = !approved || Boolean(value?.editAllowed);
   React.useEffect(() => {
     if (open) {
       setHtml(value?.html ?? "");
       setPhotos(value?.photos ?? []);
-      setConfirming(false);
     }
-    // Re-read only on opening; while open this sheet owns the draft.
+    // Re-read only on opening; while open this sheet owns the text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const empty = plainText(html).length === 0;
   const close = () => {
-    if (!submitted) onDraft(html, photos);
+    if (editable) onSave(html, photos);
     onClose();
   };
   return (
-    <>
-      <BottomSheet
-        open={open && !confirming}
-        full
-        onClose={close}
-        title="Assessment"
-        footer={
-          submitted ? undefined : (
-            <Button className="h-11 w-full text-base" disabled={empty} onClick={() => setConfirming(true)}>
-              Submit assessment
-            </Button>
-          )
-        }
-      >
-        {submitted ? (
-          <div className="flex flex-col gap-4">
-            <span className="text-xs text-muted-foreground">
-              Submitted {timeFmt.format(new Date(value!.submittedAt!))}
-            </span>
-            <div
-              className="text-base text-foreground [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
-              dangerouslySetInnerHTML={{ __html: value!.html }}
-            />
-            {value!.photos.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {value!.photos.map((src, i) => (
-                  <img key={src} src={src} alt={`Photo ${i + 1}`} className="size-16 rounded-md border border-fp-outline-1 object-cover" />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <RichText initial={value?.html ?? ""} onChange={setHtml} placeholder="What you found on site" />
+    <BottomSheet
+      open={open}
+      full
+      onClose={close}
+      title="Assessment"
+      footer={
+        !submitted ? (
+          <Button className="h-11 w-full text-base" disabled={empty} onClick={() => onSubmit(html, photos)}>
+            Submit assessment
+          </Button>
+        ) : !editable ? (
+          <Button variant="outline" className="h-11 w-full text-base" disabled={Boolean(value?.editRequestedAt)} onClick={onRequestEdit}>
+            {value?.editRequestedAt ? "Edit requested" : "Request to edit"}
+          </Button>
+        ) : undefined
+      }
+    >
+      {!editable ? (
+        <div className="flex flex-col gap-4">
+          <span className="text-xs text-muted-foreground">
+            Submitted {timeFmt.format(new Date(value!.submittedAt!))}
+          </span>
+          <div
+            className="text-base text-foreground [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+            dangerouslySetInnerHTML={{ __html: value!.html }}
+          />
+          {value!.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {photos.map((src, i) => (
-                <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
-                  <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
-                  <button
-                    type="button"
-                    aria-label={`Remove photo ${i + 1}`}
-                    onClick={() => setPhotos((ps) => ps.filter((p) => p !== src))}
-                    className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </div>
+              {value!.photos.map((src, i) => (
+                <img key={src} src={src} alt={`Photo ${i + 1}`} className="size-16 rounded-md border border-fp-outline-1 object-cover" />
               ))}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
-              >
-                <Camera className="size-4" />
-                Photo
-              </button>
-              {/* `capture` opens the camera on a phone; a file picker on desktop. */}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                hidden
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  if (files.length) setPhotos((ps) => [...ps, ...files.map((f) => URL.createObjectURL(f))]);
-                  e.target.value = "";
-                }}
-              />
             </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <RichText initial={value?.html ?? ""} onChange={setHtml} placeholder="What you found on site" />
+          <div className="flex flex-wrap gap-2">
+            {photos.map((src, i) => (
+              <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
+                <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+                <button
+                  type="button"
+                  aria-label={`Remove photo ${i + 1}`}
+                  onClick={() => setPhotos((ps) => ps.filter((p) => p !== src))}
+                  className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
+            >
+              <Camera className="size-4" />
+              Photo
+            </button>
+            {/* `capture` opens the camera on a phone; a file picker on desktop. */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              hidden
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (files.length) setPhotos((ps) => [...ps, ...files.map((f) => URL.createObjectURL(f))]);
+                e.target.value = "";
+              }}
+            />
           </div>
-        )}
-      </BottomSheet>
-
-      {/* FINAL, SO IT ASKS (Pavan, 2026-09-24). */}
-      <BottomSheet
-        open={open && confirming}
-        onClose={() => setConfirming(false)}
-        title="Submit assessment?"
-        footer={
-          <div className="flex flex-col gap-2">
-            <Button className="h-11 w-full text-base" onClick={() => onSubmit(html, photos)}>
-              Submit
-            </Button>
-            <Button variant="outline" className="h-11 w-full text-base" onClick={() => setConfirming(false)}>
-              Keep editing
-            </Button>
-          </div>
-        }
-      >
-        <p className="text-sm text-muted-foreground">This is your final assessment. It can't be changed after you submit it.</p>
-      </BottomSheet>
-    </>
+        </div>
+      )}
+    </BottomSheet>
   );
 }
 

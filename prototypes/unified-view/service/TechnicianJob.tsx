@@ -27,9 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  TASK_KIND_LABEL,
   WORK_TYPE_CATEGORY,
-  type TaskKind,
   WORK_TYPE_NAMES,
   WORK_TYPES,
   assetsAt,
@@ -460,7 +458,6 @@ export function TechnicianJob({
           )}
           {/* 2 · THE JOBS — the dispatcher's and any added on site, each with
               its own parts. */}
-          <TaskOverview lines={lines.filter((l) => l.source === "order")} />
           {lines.map((l, i) => (
             <AssessmentCard
               key={l.key}
@@ -811,33 +808,6 @@ export function TechnicianJob({
 }
 
 /* ───────────────────────────────────────────────────────────── parts ── */
-
-/**
- * THE DAY'S TASKS AT A GLANCE (Pavan, 2026-09-24) — the dispatcher's lines,
- * counted by the two kinds of job: servicing equipment, or adding and
- * replacing parts.
- */
-function TaskOverview({ lines }: { lines: AssessmentLine[] }) {
-  const kinds: TaskKind[] = ["Servicing", "Parts"];
-  const count = (k: TaskKind) =>
-    lines.filter((l) => (WORK_TYPE_CATEGORY[l.workType] ?? "Parts") === k).length;
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border border-fp-banner-accent-info/30 bg-fp-banner-accent-info/10 p-3">
-      <span className="flex items-baseline justify-between text-sm font-medium text-foreground">
-        Today's tasks
-        <span className="tabular-nums">{lines.length}</span>
-      </span>
-      <div className="flex flex-col gap-1">
-        {kinds.map((k) => (
-          <div key={k} className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{TASK_KIND_LABEL[k]}</span>
-            <span className="tabular-nums text-foreground">{count(k)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /** Order number, customer and ship-to address — the first thing on an order. */
 const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });

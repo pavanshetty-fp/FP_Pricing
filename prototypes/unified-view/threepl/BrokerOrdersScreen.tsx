@@ -902,10 +902,39 @@ interface ViewState {
    *  kinds were a tab row; a view still captures the same narrowing, plus every
    *  other facet it now sits beside. */
   facets: string[];
+  /* WHAT THE SCREEN WAS LEFT SHOWING (Pavan, 2026-09-24) — a view retains
+     every change made on the screen, not just the table's. Optional so a
+     view saved before them still applies. */
+  /** The filter row's boxes, by column key. */
+  colFilters?: Record<string, string>;
+  /** Card fields switched off, per lane, as sorted keys. */
+  cardOff?: Record<string, string[]>;
+  /** Board, table or map. */
+  mode?: ListView;
+  /** Each lane's own sort. */
+  laneSort?: Record<string, string | undefined>;
 }
 
 const keyOf = (s: ViewState) =>
-  JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
+  JSON.stringify({
+    ...s,
+    hidden: [...s.hidden].sort(),
+    /* Empty boxes are no filter — typing then clearing one is not a change. */
+    colFilters: Object.fromEntries(
+      Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
+    ),
+    laneSort: Object.fromEntries(
+      Object.entries(s.laneSort ?? {}).filter(([, v]) => v).sort(([a], [b]) => a.localeCompare(b))
+    ),
+  });
+
+/** Card fields as plain sorted arrays, so a view can hold and compare them. */
+const cardOffToArrays = (c: Record<string, Set<string>>) =>
+  Object.fromEntries(
+    Object.keys(c)
+      .sort()
+      .map((k) => [k, [...c[k]].sort()])
+  );
 
 export function BrokerOrdersScreen({
   focus,
@@ -1021,13 +1050,19 @@ export function BrokerOrdersScreen({
     colScope,
     colQuery,
     facets: [...facetSel].sort(),
+    colFilters,
+    cardOff: cardOffToArrays(cardOff),
+    mode: view,
+    laneSort,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
       search: "",
       sortKey: null,
       sortDir: null,
-      hidden: [],
+      /* THE SCREEN'S OWN DEFAULT HIDDEN SET — it was `[]`, so Default read
+         as changed the moment the screen opened. */
+      hidden: [...BROKER_HIDDEN_BY_DEFAULT],
       columnOrder: [],
       columnWidths: {},
       pageSize: 25,
@@ -1036,6 +1071,10 @@ export function BrokerOrdersScreen({
       colScope: "customer",
       colQuery: "",
       facets: [],
+      colFilters: {},
+      cardOff: cardOffToArrays(initialCardOff()),
+      mode: "board",
+      laneSort: {},
     }),
     []
   );
@@ -1059,6 +1098,17 @@ export function BrokerOrdersScreen({
     setColScope(s.colScope);
     setColQuery(s.colQuery);
     setFacetSel(new Set(s.facets ?? []));
+    const filters = s.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
+    if (s.cardOff) {
+      setCardOff(
+        Object.fromEntries(Object.entries(s.cardOff).map(([k, v]) => [k, new Set(v)]))
+      );
+    } else setCardOff(initialCardOff());
+    if (s.mode) setView(s.mode);
+    setLaneSort(s.laneSort ?? {});
     setPage(1);
   };
 

@@ -1462,6 +1462,7 @@ export function BrokerOrderSheet({
   } | null>(null);
   /** The partner a Finalize press is asking about, until it is confirmed. */
   const [finalizing, setFinalizing] = React.useState<string | null>(null);
+  const [confirmChangeVendor, setConfirmChangeVendor] = React.useState(false);
   /** The fold over the partners not yet in the round. Shut until asked for. */
   const [showMorePartners, setShowMorePartners] = React.useState(false);
   /**
@@ -2048,11 +2049,10 @@ export function BrokerOrderSheet({
      out is the order again. The quote stays on the row until a new one
      replaces it — taking it away would leave the reader with no idea what the
      partner had said before the change. */
-  const resendInvitation = (vendorId: string) =>
-    toast.success(
-      `Updated details sent to ${vendorById(vendorId)?.name ?? "vendor"}`,
-      { description: "Waiting on a revised quotation." }
-    );
+  /* RESEND OPENS THE EMAIL (Pavan, 2026-09-24) — the broker may change the
+     wording or not, and sends from the sheet. It used to toast and send
+     nothing. */
+  const resendInvitation = (vendorId: string) => openInvite([vendorId], true);
 
   /* THE TERMINAL EXIT. Available from any live stage and from none of the dead
      ones — an order already cancelled or already through accounting has nothing
@@ -5990,7 +5990,18 @@ export function BrokerOrderSheet({
           <SheetSectionInset>
             <div className="flex items-start gap-2 rounded-md border border-fp-outline-1 p-3">
               <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
-              <VendorRow id={holdingVendorId} />
+              <div className="min-w-0 flex-1">
+                <VendorRow id={holdingVendorId} />
+              </div>
+              {/* THE DEAL CAN FALL THROUGH (Pavan, 2026-09-24) — a finalized
+                  vendor is changeable while the order is Assigned: back to
+                  Quoting, where every quote is still on the table and more
+                  partners can be invited. */}
+              {draft.status === "Assigned" && (
+                <Button size="xs" variant="outline" onClick={() => setConfirmChangeVendor(true)}>
+                  Change vendor
+                </Button>
+              )}
             </div>
             {(() => {
               const q = quotes.find((x) => x.vendorId === holdingVendorId);
@@ -6550,7 +6561,19 @@ export function BrokerOrderSheet({
           })}
           facts={inviteFacts}
           onSend={(ids) => {
-            inviteAndQuote(ids);
+            if (inviting.resend) {
+              /* A RESEND reaches the partner again but changes no row: they
+                 are already invited. Said out loud, because nothing on the
+                 table moves to show it happened. */
+              setDraft((d) => (d ? { ...d, quoteRequested: true } : d));
+              const names = ids.map((id) => vendorById(id)?.name ?? "partner");
+              toast.success(
+                names.length === 1 ? `Invitation resent to ${names[0]}` : `Invitation resent to ${names.length} partners`,
+                { description: "Awaiting quotation." }
+              );
+            } else {
+              inviteAndQuote(ids);
+            }
             setInviting(null);
           }}
         />
@@ -6673,6 +6696,36 @@ export function BrokerOrderSheet({
               }}
             >
               Finalize vendor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmChangeVendor} onOpenChange={setConfirmChangeVendor}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change vendor on {order?.orderNo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {vendorById(holdingVendorId ?? "")?.name ?? "The vendor"} no longer holds the order. It moves back to
+              Quoting with every quote kept.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep vendor</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const was = vendorById(holdingVendorId ?? "")?.name ?? "Vendor";
+                /* The holder leaves acceptedVendorIds too — otherwise it would
+                   still read as the one holding the order. Its quote stays. */
+                setDraft((d) =>
+                  d
+                    ? { ...d, vendorId: null, status: "Quoting", acceptedVendorIds: d.acceptedVendorIds.filter((id) => id !== holdingVendorId) }
+                    : d
+                );
+                toast.success(`${was} released`, { description: "Back in Quoting — finalize another vendor or invite more." });
+              }}
+            >
+              Change vendor
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

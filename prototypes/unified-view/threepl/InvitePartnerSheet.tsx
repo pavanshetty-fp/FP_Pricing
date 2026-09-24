@@ -280,7 +280,7 @@ export function InvitePartnerSheet({
           ? `${resend ? "Resend to" : "Invite"} ${one.name}`
           : `Invite ${targets.length} partners`
       }
-      createAction="Send invitation"
+      createAction={resend ? "Resend invitation" : "Send invitation"}
       showCancel={false}
       canSubmit={!nothingToSend}
       onSubmit={() => onSend(targets.map((t) => t.id))}
@@ -295,7 +295,9 @@ export function InvitePartnerSheet({
           <Send />
           {targets.length > 1
             ? `Send ${targets.length} invitations`
-            : "Send invitation"}
+            : resend
+              ? "Resend invitation"
+              : "Send invitation"}
         </Button>
       }
     >

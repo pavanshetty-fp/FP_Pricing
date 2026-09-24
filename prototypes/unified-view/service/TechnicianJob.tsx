@@ -1308,9 +1308,11 @@ function QtyInput({ value, onChange, label }: { value: number; onChange: (v: num
  */
 function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void; locked?: boolean }) {
   const setFee = (i: number, p: Partial<FeeLine>) => onChange(fees.map((x, j) => (j === i ? { ...x, ...p } : x)));
-  /* WHICH FEES ARE TYPED — a name off the list, or "Other fee" just chosen. */
-  const [other, setOther] = React.useState<Set<number>>(() => new Set());
-  const isOther = (f: FeeLine, i: number) => other.has(i) || (Boolean(f.name) && !FEE_BOOK.some((b) => b.name === f.name));
+  /* "OTHER FEE" NAMES IT IN A SHEET (Pavan, 2026-09-24) — the name typed
+     there becomes the fee's own option in its dropdown. */
+  const [naming, setNaming] = React.useState<number | null>(null);
+  const [draftName, setDraftName] = React.useState("");
+  const custom = (f: FeeLine) => Boolean(f.name) && !FEE_BOOK.some((b) => b.name === f.name);
   const field = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
   if (locked) {
     return (
@@ -1335,29 +1337,21 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
             <button
               type="button"
               aria-label={`Remove ${f.name || `fee ${i + 1}`}`}
-              onClick={() => {
-                onChange(fees.filter((_, j) => j !== i));
-                setOther((o) => new Set([...o].filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))));
-              }}
+              onClick={() => onChange(fees.filter((_, j) => j !== i))}
               className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent"
             >
               <X className="size-4" />
             </button>
           </div>
           <select
-            value={isOther(f, i) ? "__other" : f.name}
+            value={f.name}
             onChange={(e) => {
               const v = e.target.value;
               if (v === "__other") {
-                setOther((o) => new Set(o).add(i));
-                setFee(i, { name: "" });
+                setDraftName(custom(f) ? f.name : "");
+                setNaming(i);
                 return;
               }
-              setOther((o) => {
-                const n = new Set(o);
-                n.delete(i);
-                return n;
-              });
               const listed = FEE_BOOK.find((b) => b.name === v);
               setFee(i, listed ? { name: listed.name, amount: listed.amount } : { name: v });
             }}
@@ -1370,11 +1364,9 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
                 {b.name}
               </option>
             ))}
+            {custom(f) && <option value={f.name}>{f.name}</option>}
             <option value="__other">Other fee</option>
           </select>
-          {isOther(f, i) && (
-            <Input value={f.name} onChange={(e) => setFee(i, { name: e.target.value })} placeholder="Fee name" aria-label={`Name of fee ${i + 1}`} className="h-11" autoFocus />
-          )}
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
             <Input
@@ -1391,6 +1383,28 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
       <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange([...fees, { name: "", amount: 0 }])}>
         <Plus className="size-4" /> Add fee
       </Button>
+      <BottomSheet
+        open={naming !== null}
+        onClose={() => setNaming(null)}
+        title="Other fee"
+        footer={
+          <Button
+            className="h-11 w-full text-base"
+            disabled={!draftName.trim()}
+            onClick={() => {
+              if (naming !== null) setFee(naming, { name: draftName.trim() });
+              setNaming(null);
+            }}
+          >
+            Apply
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Fee name</span>
+          <Input value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder="Parking" className="h-11 text-base" autoFocus />
+        </div>
+      </BottomSheet>
     </div>
   );
 }

@@ -282,6 +282,19 @@ export interface FeeLine {
  * usually needs and the fee it usually carries. With the price book off, both
  * are typed by hand and the work type is only a name.
  */
+/**
+ * THE STANDARD FEES (Pavan, 2026-09-24) — what the technician picks from when
+ * adding a fee on site; "Other" types a one-off. Every amount stays editable.
+ * INVENTED until the price book (Service Work point 16) holds the real list.
+ */
+export const FEE_BOOK: FeeLine[] = [
+  { name: "Service call fee", amount: 100 },
+  { name: "After-hours callout", amount: 150 },
+  { name: "Emergency surcharge", amount: 200 },
+  { name: "Trip charge", amount: 75 },
+  { name: "Disposal fee", amount: 45 },
+];
+
 export const WORK_TYPES: Record<
   string,
   { parts: PartLine[]; fees: FeeLine[] }
@@ -464,6 +477,8 @@ export interface AssessmentLine {
    * become the order's parts, and so the quote.
    */
   parts?: PartLine[];
+  /** THE TICK (Pavan, 2026-09-24): the technician has confirmed this job's parts. */
+  partsConfirmed?: boolean;
 }
 
 /**
@@ -487,6 +502,12 @@ export interface ServiceVisit {
    * on one of the trips, and correcting the total would hide which.
    */
   override: number | null;
+  /**
+   * PAUSES (Pavan, 2026-09-24) — a break, waiting on the customer, fetching
+   * a part. Paused time is NOT labour, so a visit's hours leave it out.
+   * `until` is null while the pause is running.
+   */
+  pauses?: { at: string; until: string | null; reason: string }[];
 }
 
 /** One asset on a visit, with the work it needs and what was reported about it. */
@@ -929,8 +950,22 @@ export function syncPrimaryAsset<T extends { assets: ServiceAssetLine[] }>(
 /* ──────────────────────────────────────────────────────────── the visits ── */
 
 /** What ONE visit comes to — what somebody typed, or what its clock said. */
+/** Hours spent paused on a visit; a running pause counts up to `now`. */
+export function pausedHours(v: ServiceVisit, now: string = new Date().toISOString()): number {
+  return (v.pauses ?? []).reduce((h, p) => {
+    const end = p.until ?? v.endedAt ?? now;
+    const ms = new Date(end).getTime() - new Date(p.at).getTime();
+    return h + (ms > 0 ? ms / 3_600_000 : 0);
+  }, 0);
+}
+
+/** Is the visit paused right now? */
+export const pausedNow = (v: ServiceVisit | undefined) =>
+  Boolean(v && v.endedAt === null && v.pauses?.some((p) => p.until === null));
+
 export const visitHours = (v: ServiceVisit) =>
-  v.override ?? computedLabor(v.startedAt, v.endedAt);
+  v.override ??
+  Math.max(0, Math.round((computedLabor(v.startedAt, v.endedAt) - pausedHours(v)) * 60) / 60);
 
 /** The sum of the trips. This is the figure every total reads. */
 export const totalVisitHours = (visits: ServiceVisit[]) =>

@@ -3,6 +3,9 @@ import {
   Bold,
   Building2,
   ClipboardList,
+  Pause,
+  Play,
+  Send,
   List,
   ListOrdered,
   CalendarDays,
@@ -30,7 +33,6 @@ import {
   WORK_TYPE_NAMES,
   WORK_TYPES,
   assetsAt,
-  computedLabor,
   formatHours,
   money,
   quoteableTotal,
@@ -39,13 +41,18 @@ import {
   type AssessmentLine,
   type FeeLine,
   type PartLine,
+  type ServiceVisit,
+  FEE_BOOK,
+  pausedHours,
+  pausedNow,
+  visitHours,
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
 import { useServiceSettings } from "./settings";
-import { useElapsedHours } from "./sheet-parts";
 import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile";
 import { BottomSheet } from "./TechnicianHome";
+import { PendingStrip, type PendingItem } from "../PendingStrip";
 
 /*
   ═══════════════════════════════════════════════════════════════════════════
@@ -94,19 +101,34 @@ function partsOfTasks(lines: AssessmentLine[]): PartLine[] {
   return out;
 }
 
-/** A running clock, to the second. */
-function useClock(startedAt: string | null): string {
+/**
+ * THE VISIT'S CLOCK, to the second — worked time only: paused time is left
+ * out (Pavan, 2026-09-24). Ticks while the visit runs and is not paused.
+ */
+function useVisitClock(visit: ServiceVisit | undefined): { label: string; hours: number } {
   const [, tick] = React.useReducer((n: number) => n + 1, 0);
+  const live = Boolean(visit && visit.endedAt === null);
   React.useEffect(() => {
-    if (!startedAt) return undefined;
+    if (!live) return undefined;
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [startedAt]);
-  if (!startedAt) return "00:00:00";
-  const secs = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  }, [live]);
+  if (!visit) return { label: "00:00:00", hours: 0 };
+  const end = visit.endedAt ? new Date(visit.endedAt).getTime() : Date.now();
+  const ms = end - new Date(visit.startedAt).getTime() - pausedHours(visit) * 3_600_000;
+  const secs = Math.max(0, Math.floor(ms / 1000));
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}`;
+  return {
+    label: `${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}`,
+    hours: secs / 3600,
+  };
 }
+
+/* WHY A PAUSE (Pavan, 2026-09-24). */
+const PAUSE_REASONS = ["Break", "Waiting on customer", "Fetching a part", "Other"];
+
+/* COMMON SKIP REASONS (Pavan, 2026-09-24) — pick one, type one, or both. */
+const SKIP_REASONS = ["Not needed", "Customer declined", "No access", "Parts unavailable"];
 
 type Stage = "travel" | "assess" | "quote" | "ack" | "ready" | "work" | "complete" | "done";
 
@@ -176,7 +198,47 @@ export function TechnicianJob({
   onSplit: (req: SplitRequest) => void;
 }) {
   const cfg = useServiceSettings();
-  const elapsed = useElapsedHours(job.startedAt && !job.completedAt ? job.startedAt : null);
+  /* THE CURRENT VISIT — its clock, and whether it is paused. */
+  const visit = job.visits[job.visits.length - 1];
+  const { label: clock, hours: elapsed } = useVisitClock(job.completedAt ? undefined : visit);
+  const paused = pausedNow(visit);
+  const setVisit = (v: ServiceVisit) =>
+    onPatch(syncVisits({ visits: job.visits.map((x, i) => (i === job.visits.length - 1 ? v : x)) }));
+  const pauseWork = (reason: string) => {
+    if (!visit) return;
+    setVisit({ ...visit, pauses: [...(visit.pauses ?? []), { at: nowIso(), until: null, reason }] });
+    toast(`Paused · ${reason}`);
+  };
+  const resumeWork = () => {
+    if (!visit) return;
+    setVisit({ ...visit, pauses: (visit.pauses ?? []).map((p) => (p.until === null ? { ...p, until: nowIso() } : p)) });
+    toast.success("Work resumed");
+  };
+  const [pauseOpen, setPauseOpen] = React.useState(false);
+  /** The timer in the bar — tap to pause; tap again, or Resume, to carry on. */
+  const timer = job.startedAt && !job.completedAt && (
+    <button
+      type="button"
+      onClick={() => (paused ? resumeWork() : setPauseOpen(true))}
+      aria-label={paused ? "Resume work" : "Pause work"}
+      className={cn(
+        "flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium tabular-nums active:bg-accent",
+        paused ? "bg-fp-banner-accent-caution/15 text-fp-banner-accent-caution" : "bg-fp-card-1 text-foreground"
+      )}
+    >
+      {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5 text-muted-foreground" />}
+      {clock}
+    </button>
+  );
+  /** While paused, the one act is Resume. */
+  const pausedBar = paused && (
+    <ActionBar
+      note={`Paused · ${(visit?.pauses ?? []).find((p) => p.until === null)?.reason ?? ""}`}
+      label="Resume work"
+      onPress={resumeWork}
+    />
+  );
+  const pauseSheet = <PauseSheet open={pauseOpen} onClose={() => setPauseOpen(false)} onPause={(r) => { pauseWork(r); setPauseOpen(false); }} />;
 
   const [lines, setLinesRaw] = React.useState<AssessmentLine[]>(
     () => job.assessmentLines ?? draftLines.get(job.id) ?? linesFromOrder(job)
@@ -187,7 +249,6 @@ export function TechnicianJob({
       draftLines.set(job.id, v);
       return v;
     });
-  const clock = useClock(job.startedAt && !job.completedAt ? job.startedAt : null);
   const [ending, setEnding] = React.useState<"full" | "partial" | null>(null);
   const [endedAt, setEndedAt] = React.useState<string | null>(null);
   const [notes, setNotes] = React.useState(job.techNotes ?? "");
@@ -300,7 +361,17 @@ export function TechnicianJob({
       setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
     const submitted = Boolean(job.siteAssessment?.submittedAt);
     const unnamed = lines.filter((l) => l.source === "added" && !l.assetName.trim()).length;
-    const ready = submitted && unnamed === 0;
+    const unconfirmed = lines.filter((l) => l.verdict !== "skip" && !l.partsConfirmed).length;
+    const ready = submitted && unnamed === 0 && unconfirmed === 0;
+    /* THE PENDING STEPS, IN ORDER (Pavan, 2026-09-24). The first three hold
+       the quote back; the last two only remind. */
+    const pending: PendingItem[] = [
+      !submitted && { key: "assess", label: "Submit the assessment" },
+      unnamed > 0 && { key: "name", label: `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added` },
+      unconfirmed > 0 && { key: "parts", label: `Confirm parts on ${unconfirmed === 1 ? "1 job" : `${unconfirmed} jobs`}` },
+      job.fees.length === 0 && { key: "fees", label: "Add fees" },
+      (job.siteAssessment?.photos.length ?? 0) === 0 && { key: "photo", label: "Add a photo to the assessment" },
+    ].filter((x): x is PendingItem => Boolean(x));
     /* SENT AND WAITING — the customer is deciding offline, so what they were
        sent is what stays on screen: jobs and money lock until it is approved
        or rejected. */
@@ -308,6 +379,31 @@ export function TechnicianJob({
     const editable = Boolean(job.startedAt) && !sent;
     const total = quoteableTotal(partsOfTasks(lines), job.fees);
     const setFees = (fees: FeeLine[]) => onPatch({ fees });
+    /** SEND THE QUOTE — the primary act, and the breakup sheet's too. A quote
+        already out goes again with the same figures. */
+    const sendQuote = () => {
+      if (sent && job.quote) {
+        onPatch({ quote: { ...job.quote, sentAt: nowIso() } });
+        toast.success("Quote sent again");
+        return;
+      }
+      /* THE JOBS' PARTS ARE THE ORDER'S PARTS from here — the technician
+         has confirmed every one against the site. */
+      const parts = partsOfTasks(lines);
+      onPatch({
+        parts,
+        assessmentLines: lines,
+        /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads — the
+           start of the technician's own notes. */
+        assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
+        /* A QUOTE IS A STORED SNAPSHOT, never recomputed. */
+        quote: cfg.fieldQuote
+          ? { parts: parts.map((p) => ({ ...p })), fees: job.fees.map((f) => ({ ...f })), total, sentAt: nowIso(), approvedAt: null }
+          : job.quote,
+      });
+      draftLines.delete(job.id);
+      toast.success(cfg.fieldQuote ? "Quote sent to customer" : "Saved");
+    };
     return (
       <>
         {/* THE PAGE IS THE ORDER — its number, nothing else (Pavan,
@@ -317,14 +413,8 @@ export function TechnicianJob({
           onBack={onBack}
           aside={
             <>
-              {/* THE TIMER, IN THE BAR (Pavan, 2026-09-24) — visible for as
-                  long as the clock runs. */}
-              {job.startedAt && (
-                <span className="flex items-center gap-1.5 rounded-full bg-fp-card-1 px-2.5 py-1 text-sm font-medium tabular-nums text-foreground" aria-label="Time on this job">
-                  <Clock className="size-3.5 text-muted-foreground" />
-                  {clock}
-                </span>
-              )}
+              {/* THE TIMER, IN THE BAR (Pavan, 2026-09-24) — tap to pause. */}
+              {timer}
               {/* A NEW TICKET IS THE ONE THING HERE — a plus, not a ···
                   menu (Pavan, 2026-09-24). */}
               {onCreateTicket && (
@@ -409,8 +499,15 @@ export function TechnicianJob({
               toast.success("Work started");
             }}
           />
+        ) : paused ? (
+          pausedBar
         ) : (
         <>
+        {!sent && pending.length > 0 && (
+          <div className="shrink-0 border-t border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5">
+            <PendingStrip pending={pending} />
+          </div>
+        )}
         {/* THE TOTAL, ABOVE THE CTA (Pavan, 2026-09-24) — the jobs' parts
             plus the order's fees; tap for the breakup. */}
         <button
@@ -446,34 +543,20 @@ export function TechnicianJob({
           <ActionBar
             label={cfg.fieldQuote ? "Send quote to customer" : "Continue to work"}
             disabled={!ready}
-            note={
-              ready
-                ? undefined
-                : !submitted
-                  ? "Submit the assessment first"
-                  : `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added`
-            }
-            onPress={() => {
-              /* THE JOBS' PARTS ARE THE ORDER'S PARTS from here — the
-                 technician has cross-checked every one against the site. */
-              const parts = partsOfTasks(lines);
-              onPatch({
-                parts,
-                assessmentLines: lines,
-                /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads —
-                   the start of the technician's own notes. */
-                assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
-                /* A QUOTE IS A STORED SNAPSHOT, never recomputed. */
-                quote: cfg.fieldQuote
-                  ? { parts: parts.map((p) => ({ ...p })), fees: job.fees.map((f) => ({ ...f })), total, sentAt: nowIso(), approvedAt: null }
-                  : job.quote,
-              });
-              draftLines.delete(job.id);
-              toast.success(cfg.fieldQuote ? "Quote sent to customer" : "Saved");
-            }}
+            onPress={() => sendQuote()}
           />
         )}
-        <BreakupSheet open={breakupOpen} onClose={() => setBreakupOpen(false)} lines={lines} fees={job.fees} />
+        <BreakupSheet
+          open={breakupOpen}
+          onClose={() => setBreakupOpen(false)}
+          lines={lines}
+          fees={job.fees}
+          /* SENDING FROM HERE TOO (Pavan, 2026-09-24) — not the primary, but
+             always to hand once the quote can go. */
+          onSend={cfg.fieldQuote && (sent || ready) ? () => { sendQuote(); setBreakupOpen(false); } : undefined}
+          sent={sent}
+        />
+        {pauseSheet}
         <SiteAssessmentSheet
           open={assessOpen}
           onClose={() => setAssessOpen(false)}
@@ -495,21 +578,26 @@ export function TechnicianJob({
   if (stage === "work") {
     return (
       <>
-        <TopBar title="Work in progress" subtitle={sub} onBack={onBack} />
+        <TopBar title="Work in progress" subtitle={sub} onBack={onBack} aside={timer} />
         <Body>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-semibold tabular-nums text-foreground">{formatHours(elapsed)}</span>
-            <span className="text-sm text-muted-foreground">so far</span>
+            <span className="text-sm text-muted-foreground">{paused ? "paused" : "so far"}</span>
           </div>
           <AssessedWork lines={toDo} />
         </Body>
-        <ActionBar
-          label="Mark as complete"
-          onPress={() => {
-            setEndedAt(nowIso());
-            setEnding("full");
-          }}
-        />
+        {paused ? (
+          pausedBar
+        ) : (
+          <ActionBar
+            label="Mark as complete"
+            onPress={() => {
+              setEndedAt(nowIso());
+              setEnding("full");
+            }}
+          />
+        )}
+        {pauseSheet}
       </>
     );
   }
@@ -517,7 +605,8 @@ export function TechnicianJob({
   /* ── COMPLETE ── fully, or partly with parts missing. */
   if (stage === "complete") {
     const owed = parts.reduce((n, p) => n + (p.qty - (p.fittedQty ?? p.qty)), 0);
-    const hours = job.startedAt && endedAt ? computedLabor(job.startedAt, endedAt) : 0;
+    /* WORKED HOURS — paused time is not labour. */
+    const hours = visit && endedAt ? visitHours({ ...visit, endedAt }) : 0;
     return (
       <>
         <TopBar title="Mark as complete" subtitle={sub} onBack={() => setEnding(null)} />
@@ -632,7 +721,11 @@ export function TechnicianJob({
           note={ending === "partial" && owed === 0 ? "Nothing is owed — lower what was fitted, or choose Everything done" : undefined}
           onPress={() => {
             const at = endedAt ?? nowIso();
-            const closed = job.visits.map((v, i) => (i === job.visits.length - 1 && v.endedAt === null ? { ...v, endedAt: at } : v));
+            const closed = job.visits.map((v, i) =>
+              i === job.visits.length - 1 && v.endedAt === null
+                ? { ...v, endedAt: at, pauses: (v.pauses ?? []).map((p) => (p.until === null ? { ...p, until: at } : p)) }
+                : v
+            );
             if (ending === "partial") {
               onPatch({ ...syncVisits({ visits: closed }) });
               onSplit({ mode, parts, note: notes.trim() || null });
@@ -789,12 +882,14 @@ function AssessmentCard({
   onRemove?: () => void;
 }) {
   const added = line.source === "added";
-  /* THE TICK waits on what "done" means for a job now the verdict is gone.
-     Numbers until then; a skipped job's number is struck. */
-  const done = false;
+  /* THE TICK = PARTS CONFIRMED (Pavan, 2026-09-24, option B). A skipped
+     job's number is struck instead. */
   const skipped = line.verdict === "skip";
+  const done = Boolean(line.partsConfirmed) && !skipped;
   const [skipOpen, setSkipOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
+  const [reasonPick, setReasonPick] = React.useState<string | null>(null);
+  const skipReason = [reasonPick, reason.trim()].filter(Boolean).join(" — ");
   return (
     <div className="flex items-start gap-3">
     {/* NUMBERED, THEN TICKED (Pavan, 2026-09-24) — each task's number on
@@ -876,7 +971,10 @@ function AssessmentCard({
             parts={line.parts ?? []}
             workType={line.workType}
             locked={locked}
-            onChange={(parts) => onChange({ parts })}
+            confirmed={Boolean(line.partsConfirmed)}
+            /* A change to the list takes the confirmation back. */
+            onChange={(parts) => onChange({ parts, partsConfirmed: false })}
+            onConfirm={() => onChange({ partsConfirmed: true })}
           />
           {!locked && !added && (
             <Button variant="ghost" className="h-11 self-start px-2 text-muted-foreground" onClick={() => setSkipOpen(true)}>
@@ -893,11 +991,12 @@ function AssessmentCard({
         footer={
           <Button
             className="h-11 w-full text-base"
-            disabled={!reason.trim()}
+            disabled={!skipReason}
             onClick={() => {
-              onChange({ verdict: "skip", note: reason.trim() });
+              onChange({ verdict: "skip", note: skipReason });
               setSkipOpen(false);
               setReason("");
+              setReasonPick(null);
               toast("Job skipped");
             }}
           >
@@ -905,9 +1004,25 @@ function AssessmentCard({
           </Button>
         }
       >
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-3">
           <span className="text-sm font-medium text-foreground">Reason</span>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} placeholder="Not needed — the hose was replaced last month" className="text-base" />
+          <div className="flex flex-wrap gap-2">
+            {SKIP_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={reasonPick === r}
+                onClick={() => setReasonPick(reasonPick === r ? null : r)}
+                className={cn(
+                  "h-9 rounded-full border px-3 text-sm",
+                  reasonPick === r ? "border-foreground bg-foreground text-background" : "border-fp-outline-1 text-foreground active:bg-accent"
+                )}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Add details" className="text-base" />
         </div>
       </BottomSheet>
     </section>
@@ -1038,9 +1153,13 @@ function TaskParts({
   parts,
   workType,
   locked,
+  confirmed,
   onChange,
+  onConfirm,
 }: {
   locked?: boolean;
+  confirmed?: boolean;
+  onConfirm?: () => void;
   parts: PartLine[];
   workType: string;
   onChange: (parts: PartLine[]) => void;
@@ -1102,6 +1221,18 @@ function TaskParts({
       >
         <Plus className="size-4" /> Add part
       </Button>
+      {/* THE TICK (Pavan, 2026-09-24) — the technician says this list is
+          right. Editing it again takes the tick back. */}
+      {onConfirm &&
+        (confirmed ? (
+          <span className="flex h-11 items-center gap-1.5 text-sm text-fp-banner-accent-success">
+            <Check className="size-4" /> Parts confirmed
+          </span>
+        ) : (
+          <Button variant="outline" className="h-11" onClick={onConfirm}>
+            <Check className="size-4" /> Confirm parts
+          </Button>
+        ))}
     </div>
   );
 }
@@ -1109,6 +1240,7 @@ function TaskParts({
 /** THE ORDER'S FEES (Deepika, 2026-09-24) — one section, one or many; a name and an amount each. */
 function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void; locked?: boolean }) {
   const setFee = (i: number, p: Partial<FeeLine>) => onChange(fees.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const [picking, setPicking] = React.useState(false);
   if (locked) {
     return (
       <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
@@ -1148,9 +1280,39 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
           </div>
         </div>
       ))}
-      <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange([...fees, { name: "", amount: 0 }])}>
+      <Button variant="ghost" className="h-11 self-start px-2" onClick={() => setPicking(true)}>
         <Plus className="size-4" /> Add fee
       </Button>
+      {/* THE STANDARD FEES, OR A TYPED ONE (Pavan, 2026-09-24). The amount
+          stays editable either way. */}
+      <BottomSheet open={picking} onClose={() => setPicking(false)} title="Add fee">
+        <div className="flex flex-col">
+          {FEE_BOOK.map((f) => (
+            <button
+              key={f.name}
+              type="button"
+              onClick={() => {
+                onChange([...fees, { ...f }]);
+                setPicking(false);
+              }}
+              className="flex h-11 items-center justify-between rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
+            >
+              {f.name}
+              <span className="tabular-nums text-muted-foreground">{money(f.amount)}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              onChange([...fees, { name: "", amount: 0 }]);
+              setPicking(false);
+            }}
+            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
+          >
+            <Plus className="size-4 text-muted-foreground" /> Other fee
+          </button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }
@@ -1161,11 +1323,16 @@ function BreakupSheet({
   onClose,
   lines,
   fees,
+  onSend,
+  sent,
 }: {
   open: boolean;
   onClose: () => void;
   lines: AssessmentLine[];
   fees: { name: string; amount: number }[];
+  /** Send (or send again) the quote from here. Absent when it cannot go yet. */
+  onSend?: () => void;
+  sent?: boolean;
 }) {
   const tasks = lines
     .map((l, i) => ({
@@ -1176,7 +1343,18 @@ function BreakupSheet({
     .filter((t) => t.l.verdict !== "skip" && t.parts.length > 0);
   const total = quoteableTotal(partsOfTasks(lines), fees);
   return (
-    <BottomSheet open={open} onClose={onClose} title="Quote total">
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title="Quote total"
+      footer={
+        onSend && (
+          <Button variant="outline" className="h-11 w-full text-base" onClick={onSend}>
+            <Send className="size-4" /> {sent ? "Send quote again" : "Send quote to customer"}
+          </Button>
+        )
+      }
+    >
       <div className="flex flex-col gap-4">
         {tasks.length === 0 && <p className="text-sm text-muted-foreground">No parts yet.</p>}
         {tasks.map(({ l, n, parts }) => (
@@ -1224,6 +1402,61 @@ function KindChip({ workType }: { workType: string }) {
     <Badge variant={servicing ? "pastel-violet" : "pastel-amber"} className="shrink-0">
       {servicing ? "Servicing" : "Replacement"}
     </Badge>
+  );
+}
+
+/** PAUSE, WITH A REASON (Pavan, 2026-09-24). Paused time is not labour. */
+function PauseSheet({
+  open,
+  onClose,
+  onPause,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPause: (reason: string) => void;
+}) {
+  const [pick, setPick] = React.useState<string | null>(null);
+  const [other, setOther] = React.useState("");
+  React.useEffect(() => {
+    if (open) {
+      setPick(null);
+      setOther("");
+    }
+  }, [open]);
+  const reason = pick === "Other" ? other.trim() || "Other" : pick;
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title="Pause work"
+      footer={
+        <Button className="h-11 w-full text-base" disabled={!reason} onClick={() => reason && onPause(reason)}>
+          <Pause className="size-4" /> Pause
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          {PAUSE_REASONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={pick === r}
+              onClick={() => setPick(r)}
+              className={cn(
+                "h-9 rounded-full border px-3 text-sm",
+                pick === r ? "border-foreground bg-foreground text-background" : "border-fp-outline-1 text-foreground active:bg-accent"
+              )}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+        {pick === "Other" && (
+          <Input value={other} onChange={(e) => setOther(e.target.value)} placeholder="Reason" className="h-11 text-base" autoFocus />
+        )}
+      </div>
+    </BottomSheet>
   );
 }
 

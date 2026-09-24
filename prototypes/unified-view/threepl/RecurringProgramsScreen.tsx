@@ -53,6 +53,7 @@ import {
   programMoney,
   programPartnerLabel,
   programVendors,
+  usePrograms,
   waitingTargets,
   type RecurringProgram,
 } from "./recurringPrograms";
@@ -216,8 +217,8 @@ export function RecurringProgramsScreen({
   /** The old versions (V1, V2), kept for reference — see the footer. */
   onOpenArchive?: () => void;
 } = {}) {
-  const [programs, setPrograms] =
-    React.useState<RecurringProgram[]>(RECURRING_PROGRAMS);
+  /* THE SHARED LIST — Delivery Orders cuts its recurring orders from it. */
+  const [programs, setPrograms] = usePrograms();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [search, setSearch] = React.useState("");

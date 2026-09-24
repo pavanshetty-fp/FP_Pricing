@@ -1,3 +1,4 @@
+import * as React from "react";
 import { DATE_FMT, dateKeyOf, startOfDay } from "../data";
 import { CUSTOMERS } from "../customers";
 import type { TwoLine } from "../types";
@@ -528,3 +529,47 @@ export const fmtKey = (key: string) =>
 /** One money format across the programme screens. */
 /** Re-exported so the programme screens keep one import. One helper, app-wide. */
 export { MONEY } from "../data";
+
+/* ---------------------------------------------------------------------------
+ * ONE LIST OF RULES, SHARED (Pavan, 2026-09-24). The rules screen edits it and
+ * Delivery Orders reads it to cut orders, so it lives here rather than in
+ * either screen's state — a rule made on one has to be seen by the other.
+ * ------------------------------------------------------------------------ */
+
+let programStore: RecurringProgram[] = RECURRING_PROGRAMS;
+const programListeners = new Set<() => void>();
+
+export function setPrograms(
+  next: RecurringProgram[] | ((prev: RecurringProgram[]) => RecurringProgram[])
+) {
+  programStore = typeof next === "function" ? next(programStore) : next;
+  programListeners.forEach((l) => l());
+}
+
+export function usePrograms(): [RecurringProgram[], typeof setPrograms] {
+  const list = React.useSyncExternalStore(
+    (l) => {
+      programListeners.add(l);
+      return () => programListeners.delete(l);
+    },
+    () => programStore
+  );
+  return [list, setPrograms];
+}
+
+/** Stopped rules cut nothing. Upcoming starts cutting on its start date. */
+const RUNNING: SeriesStatus[] = ["Upcoming", "Active"];
+
+/** Does this rule cut orders on this day? */
+export function programRunsOn(p: RecurringProgram, day: Date): boolean {
+  const key = dateKeyOf(day);
+  return (
+    RUNNING.includes(p.status) &&
+    key >= p.startKey &&
+    (p.endKey === null || key <= p.endKey) &&
+    p.schedule.hits(day)
+  );
+}
+
+/* THE SHIP-TOS THAT GET AN ORDER are `liveTargets` above — a rule can be
+   partly live (decision 4, 2026-09-21). */

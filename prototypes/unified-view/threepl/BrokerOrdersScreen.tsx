@@ -90,6 +90,8 @@ import {
   MOVEMENT_ROUTE,
   type MovementDirection,
 } from "./orders";
+import { cuttableDays, ordersFromPrograms } from "./recurringOrders";
+import { usePrograms } from "./recurringPrograms";
 import { RENTAL_ASSETS } from "./directory";
 import { money } from "./directoryCore";
 
@@ -1114,6 +1116,24 @@ export function BrokerOrdersScreen({
 
   const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
 
+  /* RECURRING RULES CUT THEIR ORDERS HERE (Pavan, 2026-09-24) — for every
+     day the board is looking at, today to a week ahead. Each order is cut
+     once; see `recurringOrders.ts`. */
+  const [programs] = usePrograms();
+  React.useEffect(() => {
+    const days = cuttableDays(range.from, range.to);
+    if (days.length === 0) return;
+    setRows((prev) => {
+      const fresh = ordersFromPrograms(
+        programs,
+        days,
+        new Set(prev.map((r) => r.id)),
+        Math.max(...prev.map((r) => Number(r.orderNo.slice(2)) || 0)) + 1
+      );
+      return fresh.length ? [...fresh, ...prev] : prev;
+    });
+  }, [programs, range]);
+
   // A global-search hit lands here: open that order's sheet on arrival.
   React.useEffect(() => {
     if (!focus) return;
@@ -1192,6 +1212,9 @@ export function BrokerOrdersScreen({
            nobody picked from the list. */
         pass("orderTypes", [
           ...(r.urgent ? ["Urgent Orders"] : []),
+          /* RECURRING came back as a filter when the tabs folded into this
+             facet — it had been dropped. */
+          ...(r.kind === "Recurring" ? ["Recurring"] : []),
           r.orderType === "Asset Movement" ? "Movement" : r.orderType,
         ]),
         pass("status", [r.status === "Draft" ? "Created / Draft" : r.status]),

@@ -1283,6 +1283,7 @@ const STATE_ABBR: Record<string, string> = {
  */
 export const ORDER_TYPE_FILTERS = [
   "Urgent Orders",
+  "Recurring",
   "Movement",
   "Core",
   "Delivery",

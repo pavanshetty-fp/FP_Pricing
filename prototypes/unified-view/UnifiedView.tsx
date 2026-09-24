@@ -1,4 +1,12 @@
 import * as React from "react";
+import {
+  AgreementsScreen,
+  ComplianceScreen,
+  MaintenanceScreen,
+  PartsScreen,
+  PerformanceScreen,
+  PriceBookScreen,
+} from "./service/PlatformScreens";
 import { useSavedViews } from "./useSavedViews";
 import {
   Fuel,
@@ -24,6 +32,11 @@ import {
   HardHat,
   Cog,
   Smartphone,
+  BookOpen,
+  Package,
+  CalendarClock,
+  ShieldCheck,
+  Gauge,
   SlidersHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -187,6 +200,16 @@ const SERVICE_NAV: NavItem[] = [
      person signs into; it is on the rail so it can be SHOWN, not because
      dispatch would ever open it. */
   { key: "service-tech-app", label: "Technician App", icon: <Smartphone /> },
+  /* THE PLATFORM'S REFERENCE SCREENS (Pavan and Deepika, 2026-09-24), after
+     Anirudh's unified design — what orders price from, the shelf, the plans
+     customers are on, the recurring work and the certificates, and how the
+     team is doing. */
+  { key: "service-price-book", label: "Price Book", icon: <BookOpen /> },
+  { key: "service-parts", label: "Parts", icon: <Package /> },
+  { key: "service-agreements", label: "Agreements", icon: <FileSignature /> },
+  { key: "service-maintenance", label: "Maintenance", icon: <CalendarClock /> },
+  { key: "service-compliance", label: "Compliance", icon: <ShieldCheck /> },
+  { key: "service-performance", label: "Performance", icon: <Gauge /> },
   /* THE MODULE'S OWN SWITCH POINTS, not the app's Settings page — that one
      will govern several modules and is held back pending it. These change what
      the flow IS, so they belong where the flow is. */
@@ -1354,6 +1377,18 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <TechnicianMobile />;
       case "service-settings":
         return <ServiceSettingsScreen />;
+      case "service-price-book":
+        return <PriceBookScreen />;
+      case "service-parts":
+        return <PartsScreen />;
+      case "service-agreements":
+        return <AgreementsScreen />;
+      case "service-maintenance":
+        return <MaintenanceScreen />;
+      case "service-compliance":
+        return <ComplianceScreen />;
+      case "service-performance":
+        return <PerformanceScreen />;
       case "3pl-vendors":
         return <BrokerVendorsScreen {...dirProps("3pl-vendors")} />;
       case "3pl-customers":

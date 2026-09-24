@@ -12,7 +12,8 @@ import {
 import { TablePagination } from "@/components/tables-layout";
 import { ListToolbar } from "../ListToolbar";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
-import { SERVICE_ORDERS, TECHNICIANS, type Technician } from "./work";
+import { TECHNICIANS, type ServiceOrder, type Technician } from "./work";
+import { useServiceOrders } from "./store";
 import { ACTIVE_KIND, kindTone } from "../statusKind";
 
 /**
@@ -70,8 +71,8 @@ const TECH_SEARCH_FIELDS = [
  * and counting it here would make a technician look busy for work they
  * finished last week.
  */
-function openJobsFor(id: string): number {
-  return SERVICE_ORDERS.filter(
+function openJobsFor(rows: ServiceOrder[], id: string): number {
+  return rows.filter(
     (r) =>
       r.technicianId === id &&
       (r.status === "Assigned" ||
@@ -91,9 +92,11 @@ export function TechniciansScreen() {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
 
+  /* COUNTED OFF THE SHARED ORDERS (2026-09-24), so it moves as jobs move. */
+  const [orders] = useServiceOrders();
   const open = React.useMemo(
-    () => Object.fromEntries(TECHNICIANS.map((t) => [t.id, openJobsFor(t.id)])),
-    []
+    () => Object.fromEntries(TECHNICIANS.map((t) => [t.id, openJobsFor(orders, t.id)])),
+    [orders]
   );
 
   const filtered = React.useMemo(() => {

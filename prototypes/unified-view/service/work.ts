@@ -275,6 +275,8 @@ export interface PartLine {
 export interface FeeLine {
   name: string;
   amount: number;
+  /** Set when the fee was added on a task on site — the task's key. */
+  task?: string;
 }
 
 /**
@@ -453,8 +455,19 @@ export interface AssessmentLine {
     assetName: string;
     workType: string;
     description: string;
-    parts: PartLine[];
+    /** Retired — a task's parts now live on the task, whatever the answer. */
+    parts?: PartLine[];
   };
+  /**
+   * THE TASK'S PARTS, WITH A COST EACH (Pavan, 2026-09-24) — one or many, on
+   * every answer: added when faulty as described, what the real issue needs
+   * when different, cross-checked when no fault. Prefilled from the price
+   * book for the work type when the answer is first picked. Together they
+   * become the order's parts, and so the quote.
+   */
+  parts?: PartLine[];
+  /** THE TASK'S FEES (Pavan, 2026-09-24) — one or many, beside its parts. */
+  fees?: FeeLine[];
 }
 
 /**

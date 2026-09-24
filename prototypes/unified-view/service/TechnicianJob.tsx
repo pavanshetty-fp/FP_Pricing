@@ -1,5 +1,7 @@
 import * as React from "react";
 import {
+  Building2,
+  CalendarDays,
   Camera,
   Check,
   Clock,
@@ -10,11 +12,12 @@ import {
   X,
   ArrowLeft,
   ChevronDown,
-  MoreHorizontal,
+  ChevronRight,
   StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,13 +37,14 @@ import {
   syncVisits,
   type AssessmentLine,
   type AssessmentVerdict,
+  type FeeLine,
   type PartLine,
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
 import { useServiceSettings } from "./settings";
 import { useElapsedHours } from "./sheet-parts";
-import { ActionBar, Body, SectionTitle, TopBar } from "./TechnicianMobile";
+import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile";
 import { BottomSheet } from "./TechnicianHome";
 
 /*
@@ -67,6 +71,58 @@ import { BottomSheet } from "./TechnicianHome";
   is every job.
 */
 
+/* AN UNSAVED ASSESSMENT SURVIVES LEAVING THE SCREEN (Pavan, 2026-09-24) —
+   a task answered and then left still shows its tick on the way back. Held
+   per order for the session; "Save assessment" is still what records it. */
+const draftLines = new Map<string, AssessmentLine[]>();
+
+/** A task is done once it has its answer — and, when added on site, what it needs. */
+const taskDone = (l: AssessmentLine) =>
+  l.verdict !== null &&
+  (l.verdict !== "added" || l.actual.trim().length > 0) &&
+  (l.verdict !== "different" || Boolean(l.found?.description.trim()));
+
+/** The price book's parts for a work type — where a task's parts list starts. */
+const bookParts = (workType: string): PartLine[] => (WORK_TYPES[workType]?.parts ?? []).map((p) => ({ ...p }));
+
+/** Every answered task's fees, each tagged with its task. */
+const feesOfTasks = (lines: AssessmentLine[]): FeeLine[] =>
+  lines.flatMap((l) =>
+    l.verdict === null ? [] : (l.fees ?? []).filter((f) => f.name.trim()).map((f) => ({ name: f.name, amount: f.amount, task: l.key }))
+  );
+
+/** The order's own fees — what the dispatcher put on, not what a task added. */
+const orderFeesOf = (fees: FeeLine[]) => fees.filter((f) => !f.task);
+
+/** Every answered task's parts, as one list — the same part at the same price adds up. */
+function partsOfTasks(lines: AssessmentLine[]): PartLine[] {
+  const out: PartLine[] = [];
+  for (const l of lines) {
+    if (l.verdict === null) continue;
+    for (const p of l.parts ?? []) {
+      if (!p.name.trim()) continue;
+      const hit = out.find((x) => x.name === p.name && x.cost === p.cost);
+      if (hit) hit.qty += p.qty;
+      else out.push({ name: p.name, qty: p.qty, cost: p.cost });
+    }
+  }
+  return out;
+}
+
+/** A running clock, to the second. */
+function useClock(startedAt: string | null): string {
+  const [, tick] = React.useReducer((n: number) => n + 1, 0);
+  React.useEffect(() => {
+    if (!startedAt) return undefined;
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+  if (!startedAt) return "00:00:00";
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}`;
+}
+
 type Stage = "travel" | "assess" | "quote" | "ack" | "ready" | "work" | "complete" | "done";
 
 const nowIso = () => new Date().toISOString();
@@ -77,7 +133,8 @@ const assessmentComplete = (lines: AssessmentLine[]) =>
   lines.every(
     (l) =>
       l.verdict !== null &&
-      (l.verdict !== "added" || l.actual.trim().length > 0)
+      (l.verdict !== "added" || l.actual.trim().length > 0) &&
+      (l.verdict !== "different" || Boolean(l.found?.description.trim()))
   );
 
 /** The order's own requirements, as the lines to assess. */
@@ -150,9 +207,16 @@ export function TechnicianJob({
   const cfg = useServiceSettings();
   const elapsed = useElapsedHours(job.startedAt && !job.completedAt ? job.startedAt : null);
 
-  const [lines, setLines] = React.useState<AssessmentLine[]>(
-    () => job.assessmentLines ?? linesFromOrder(job)
+  const [lines, setLinesRaw] = React.useState<AssessmentLine[]>(
+    () => job.assessmentLines ?? draftLines.get(job.id) ?? linesFromOrder(job)
   );
+  const setLines = (next: React.SetStateAction<AssessmentLine[]>) =>
+    setLinesRaw((prev) => {
+      const v = typeof next === "function" ? next(prev) : next;
+      draftLines.set(job.id, v);
+      return v;
+    });
+  const clock = useClock(job.startedAt && !job.completedAt ? job.startedAt : null);
   const [ackBy, setAckBy] = React.useState(job.quote?.acknowledgedBy ?? "");
   const [ending, setEnding] = React.useState<"full" | "partial" | null>(null);
   const [endedAt, setEndedAt] = React.useState<string | null>(null);
@@ -162,8 +226,8 @@ export function TechnicianJob({
   );
   const [mode, setMode] = React.useState<"continue" | "neworder">(cfg.returnMode);
   const [mapOpen, setMapOpen] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const [ticketOpen, setTicketOpen] = React.useState(false);
+  const [breakupOpen, setBreakupOpen] = React.useState(false);
 
   const assessed = Boolean(job.assessmentLines && assessmentComplete(job.assessmentLines));
   const handedIn = Boolean(job.completedAt) || job.status === "Parts pending" || job.status === "Completed — linked";
@@ -235,14 +299,16 @@ export function TechnicianJob({
   if (stage === "travel") {
     return (
       <>
-        <TopBar title="Order details" onBack={onBack} />
+        {/* THE ORDER NUMBER IS THE TITLE (Pavan, 2026-09-24) — never
+            "Order details". */}
+        <TopBar title={job.orderNo} onBack={onBack} />
         <Body>
-          {/* THE THREE THINGS, AND ONLY THEM (Pavan, 2026-09-24): order
-              number, customer, ship-to name and address. From here the
-              technician is either there, or on the way. */}
+          {/* OPEN, NOT CARDED (Pavan, 2026-09-24): customer, ship-to, and
+              when it is booked for — date and window. */}
           <OrderHeading job={job} />
         </Body>
         <ActionBar
+          note={arrivalTiming(job) ?? undefined}
           label="Arrived at site"
           onPress={() => {
             onPatch({ arrivedAt: nowIso() });
@@ -272,16 +338,28 @@ export function TechnicianJob({
           title={job.orderNo}
           onBack={onBack}
           aside={
-            onCreateTicket && (
-              <button
-                type="button"
-                aria-label="More actions"
-                onClick={() => setMenuOpen(true)}
-                className="flex size-11 shrink-0 items-center justify-center rounded-md text-foreground active:bg-accent"
-              >
-                <MoreHorizontal className="size-5" />
-              </button>
-            )
+            <>
+              {/* THE TIMER, IN THE BAR (Pavan, 2026-09-24) — visible for as
+                  long as the clock runs. */}
+              {job.startedAt && (
+                <span className="flex items-center gap-1.5 rounded-full bg-fp-card-1 px-2.5 py-1 text-sm font-medium tabular-nums text-foreground" aria-label="Time on this job">
+                  <Clock className="size-3.5 text-muted-foreground" />
+                  {clock}
+                </span>
+              )}
+              {/* A NEW TICKET IS THE ONE THING HERE — a plus, not a ···
+                  menu (Pavan, 2026-09-24). */}
+              {onCreateTicket && (
+                <button
+                  type="button"
+                  aria-label="Create new ticket"
+                  onClick={() => setTicketOpen(true)}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-foreground active:bg-accent"
+                >
+                  <Plus className="size-5" />
+                </button>
+              )}
+            </>
           }
         />
         <Body>
@@ -324,7 +402,7 @@ export function TechnicianJob({
             answers once it runs (Pavan, 2026-09-24). */}
         {!job.startedAt ? (
           <ActionBar
-            label="Start work"
+            label="Start the timer"
             disabled={Boolean(busyWith)}
             note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
             onPress={() => {
@@ -332,33 +410,43 @@ export function TechnicianJob({
                 ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
                 status: "Ongoing" as WorkStatus,
               });
-              toast.success("Work started");
+              toast.success("Timer started");
             }}
           />
         ) : (
+        <>
+        {/* THE TOTAL, ABOVE THE CTA (Pavan, 2026-09-24) — every task's
+            parts plus the order's fees; tap for the breakup. */}
+        <button
+          type="button"
+          onClick={() => setBreakupOpen(true)}
+          className="flex shrink-0 items-center justify-between gap-2 border-t border-fp-outline-1 bg-fp-card-1 px-4 py-3 text-left active:bg-accent"
+        >
+          <span className="text-sm text-muted-foreground">Quote total</span>
+          <span className="flex items-center gap-1 text-base font-semibold tabular-nums text-foreground">
+            {money(quoteableTotal(partsOfTasks(lines), [...orderFeesOf(job.fees), ...feesOfTasks(lines)]))}
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </span>
+        </button>
         <ActionBar
-          label="Save assessment"
+          label="Generate quote"
           disabled={!ready}
           note={
             ready
               ? undefined
               : open > 0
-                ? `${open} line${open === 1 ? "" : "s"} still to assess`
-                : "Say what each added line needs"
+                ? `${open} task${open === 1 ? "" : "s"} still to assess`
+                : "Describe the issue on each task"
           }
           onPress={() => {
             const count = (v: AssessmentVerdict) => lines.filter((l) => l.verdict === v).length;
-            /* PARTS FOUND ON SITE JOIN THE ORDER, so the quote and the
-               completion carry them. Same part on two lines adds up. */
-            const found = lines.flatMap((l) => (l.verdict === "different" ? (l.found?.parts ?? []) : [])).filter((p) => p.name.trim());
-            const parts = [...job.parts.map((p) => ({ ...p }))];
-            for (const f of found) {
-              const hit = parts.find((p) => p.name === f.name);
-              if (hit) hit.qty += f.qty;
-              else parts.push({ ...f });
-            }
+            /* THE TASKS' PARTS ARE THE ORDER'S PARTS from here — the
+               technician has cross-checked every one against the site. */
             onPatch({
-              parts,
+              parts: partsOfTasks(lines),
+              /* The order's own fees, then each task's — replaced, never
+                 appended, so generating twice cannot count a fee twice. */
+              fees: [...orderFeesOf(job.fees), ...feesOfTasks(lines)],
               assessmentLines: lines,
               /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads. */
               assessment: [
@@ -370,22 +458,13 @@ export function TechnicianJob({
                 .filter(Boolean)
                 .join(" · "),
             });
-            toast.success("Assessment saved");
+            draftLines.delete(job.id);
+            toast.success("Quote generated");
           }}
         />
+        <BreakupSheet open={breakupOpen} onClose={() => setBreakupOpen(false)} lines={lines} fees={orderFeesOf(job.fees)} />
+        </>
         )}
-        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title={job.orderNo}>
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              setTicketOpen(true);
-            }}
-            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
-          >
-            <Plus className="size-4 text-muted-foreground" /> Create new ticket
-          </button>
-        </BottomSheet>
       </>
     );
   }
@@ -704,24 +783,64 @@ function TaskOverview({ lines }: { lines: AssessmentLine[] }) {
 }
 
 /** Order number, customer and ship-to address — the first thing on an order. */
+const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+const timeFmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+
+/** The booked window as two Dates — the end shares the start's day. */
+function windowOf(job: ServiceOrder): { start: Date; end: Date } | null {
+  if (!job.scheduledAt) return null;
+  const start = new Date(job.scheduledAt);
+  const end = new Date(start);
+  if (job.windowEndMin != null) end.setHours(Math.floor(job.windowEndMin / 60), job.windowEndMin % 60, 0, 0);
+  return { start, end };
+}
+
+/**
+ * EARLY OR LATE, ABOVE THE CTA (Pavan, 2026-09-24) — only when the
+ * technician is outside the booked window; inside it, nothing.
+ */
+function arrivalTiming(job: ServiceOrder, now = new Date()): string | null {
+  const w = windowOf(job);
+  if (!w) return null;
+  const sameDay = w.start.toDateString() === now.toDateString();
+  if (now < w.start) {
+    return sameDay
+      ? `You're ${formatHours((w.start.getTime() - now.getTime()) / 3_600_000)} early · window opens at ${timeFmt.format(w.start)}`
+      : `You're early · this order is booked for ${dateFmt.format(w.start)}`;
+  }
+  if (now > w.end) {
+    return sameDay
+      ? `You're ${formatHours((now.getTime() - w.end.getTime()) / 3_600_000)} late · window closed at ${timeFmt.format(w.end)}`
+      : `You're late · this order was booked for ${dateFmt.format(w.start)}`;
+  }
+  return null;
+}
+
 function OrderHeading({ job }: { job: ServiceOrder }) {
+  const w = windowOf(job);
+  const address = [job.city, job.state].filter(Boolean).join(", ");
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
-      <span className="text-xs tabular-nums text-muted-foreground">{job.orderNo}</span>
-      <span className="text-base font-semibold text-foreground">{job.customer}</span>
-      <span className="flex items-start gap-1.5 text-sm text-muted-foreground">
-        <MapPin className="mt-0.5 size-4 shrink-0" />
-        <span>
-          {job.shipTo}
-          {(job.city || job.state) && (
+    <Facts
+      items={[
+        { icon: <Building2 className="size-4" />, label: "Customer", value: job.customer },
+        {
+          icon: <MapPin className="size-4" />,
+          label: "Ship-to",
+          value: (
             <>
-              <br />
-              {[job.city, job.state].filter(Boolean).join(", ")}
+              {job.shipTo}
+              {address && <span className="block text-muted-foreground">{address}</span>}
             </>
-          )}
-        </span>
-      </span>
-    </div>
+          ),
+        },
+        { icon: <CalendarDays className="size-4" />, label: "Scheduled date", value: w ? dateFmt.format(w.start) : "Any day" },
+        {
+          icon: <Clock className="size-4" />,
+          label: "Scheduled window",
+          value: w ? (job.windowEndMin != null ? `${timeFmt.format(w.start)} – ${timeFmt.format(w.end)}` : timeFmt.format(w.start)) : "Any time",
+        },
+      ]}
+    />
   );
 }
 
@@ -755,8 +874,21 @@ function AssessmentCard({
   const chosen = VERDICTS.find((v) => v.key === line.verdict);
   const hasNotes = Boolean(line.subject?.trim()) || line.note.trim().length > 0 || line.photos.length > 0;
 
+  const done = taskDone(line);
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+    <div className="flex items-start gap-3">
+    {/* NUMBERED, THEN TICKED (Pavan, 2026-09-24) — each task's number on
+        its left, replaced by a tick once the task has its answer. */}
+    <span
+      aria-label={done ? `Task ${index + 1} done` : `Task ${index + 1}`}
+      className={cn(
+        "mt-3 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+        done ? "bg-status-success text-background" : "border border-fp-outline-2 text-muted-foreground"
+      )}
+    >
+      {done ? <Check className="size-3.5" /> : index + 1}
+    </span>
+    <section className="flex min-w-0 flex-1 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
       {added ? (
         <>
           <div className="flex items-center justify-between gap-2">
@@ -822,12 +954,20 @@ function AssessmentCard({
           {line.verdict === "different" && !added && (
             <FoundIssue
               value={
-                line.found ?? { assetName: line.assetName, workType: line.workType, description: "", parts: [] }
+                line.found ?? { assetName: line.assetName, workType: line.workType, description: "" }
               }
               siteAssets={siteAssets}
               onChange={(found) => onChange({ found })}
             />
           )}
+          {line.verdict !== null && (
+            <TaskParts
+              parts={line.parts ?? []}
+              workType={line.found?.workType ?? line.workType}
+              onChange={(parts) => onChange({ parts })}
+            />
+          )}
+          {line.verdict !== null && <TaskFees fees={line.fees ?? []} onChange={(fees) => onChange({ fees })} />}
           <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
             {hasNotes ? <StickyNote className="size-4" /> : <Plus className="size-4" />}
             {hasNotes
@@ -844,7 +984,7 @@ function AssessmentCard({
               key={v.key}
               type="button"
               onClick={() => {
-                onChange({ verdict: v.key });
+                onChange({ verdict: v.key, parts: line.parts ?? bookParts(line.workType) });
                 setPickOpen(false);
               }}
               className="flex h-11 items-center justify-between rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
@@ -870,6 +1010,7 @@ function AssessmentCard({
         }}
       />
     </section>
+    </div>
   );
 }
 
@@ -1002,8 +1143,6 @@ function FoundIssue({
 }) {
   const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
   const set = (p: Partial<typeof value>) => onChange({ ...value, ...p });
-  const setPart = (i: number, p: Partial<PartLine>) =>
-    set({ parts: value.parts.map((x, j) => (j === i ? { ...x, ...p } : x)) });
   return (
     <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
       <span className="text-xs font-medium text-muted-foreground">What you found</span>
@@ -1023,44 +1162,184 @@ function FoundIssue({
         ))}
       </select>
       <Textarea value={value.description} onChange={(e) => set({ description: e.target.value })} rows={3} placeholder="Description" className="text-base" />
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">Parts</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9"
-            onClick={() => {
-              /* THE PRICE BOOK'S PART FOR THIS KIND OF ISSUE FIRST, when there
-                 is one and it is not already listed; a blank line otherwise. */
-              const book = WORK_TYPES[value.workType]?.parts.find((b) => !value.parts.some((p) => p.name === b.name));
-              set({ parts: [...value.parts, book ? { ...book } : { name: "", qty: 1, cost: 0 }] });
-            }}
-          >
-            <Plus className="size-4" /> Add part
-          </Button>
-        </div>
-        {value.parts.length === 0 && <p className="text-sm text-muted-foreground">No parts needed.</p>}
-        {value.parts.map((p, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Input value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} placeholder="Part" aria-label={`Part ${i + 1}`} className="h-11 flex-1" />
-            <Stepper value={p.qty} max={99} label={`Quantity of ${p.name || `part ${i + 1}`}`} onChange={(v) => setPart(i, { qty: Math.max(1, v) })} />
-            <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => set({ parts: value.parts.filter((_, j) => j !== i) })} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
-              <X className="size-4" />
-            </button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
-/** Servicing or Replacement — the kind of job, from the work type. */
-function KindChip({ workType }: { workType: string }) {
+/**
+ * A TASK'S PARTS, EACH WITH ITS COST (Pavan, 2026-09-24) — one or many.
+ * Name and remove on top; quantity and unit cost under. The amounts are in
+ * the breakup behind the total — the row has no room for a third figure.
+ */
+function TaskParts({
+  parts,
+  workType,
+  onChange,
+}: {
+  parts: PartLine[];
+  workType: string;
+  onChange: (parts: PartLine[]) => void;
+}) {
+  const setPart = (i: number, p: Partial<PartLine>) => onChange(parts.map((x, j) => (j === i ? { ...x, ...p } : x)));
   return (
-    <span className="shrink-0 rounded-full border border-fp-outline-1 bg-fp-surface-1a px-2 py-0.5 text-[11px] font-medium text-foreground">
-      {WORK_TYPE_CATEGORY[workType] === "Servicing" ? "Servicing" : "Replacement"}
-    </span>
+    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
+      <span className="text-xs font-medium text-muted-foreground">Parts</span>
+      {parts.length === 0 && <p className="text-sm text-muted-foreground">No parts.</p>}
+      {parts.map((p, i) => (
+        <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
+          <div className="flex items-center gap-2">
+            <Input value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} placeholder="Part" aria-label={`Part ${i + 1}`} className="h-11 flex-1" autoFocus={!p.name} />
+            <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => onChange(parts.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Stepper value={p.qty} max={99} label={`Quantity of ${p.name || `part ${i + 1}`}`} onChange={(v) => setPart(i, { qty: Math.max(1, v) })} />
+            <div className="relative min-w-0 flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={p.cost === 0 ? "" : p.cost}
+                onChange={(e) => setPart(i, { cost: Math.max(0, Number(e.target.value) || 0) })}
+                placeholder="0"
+                aria-label={`Cost of ${p.name || `part ${i + 1}`}, each`}
+                className="h-11 pl-6 tabular-nums"
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+      <Button
+        variant="ghost"
+        className="h-11 self-start px-2"
+        onClick={() => {
+          /* THE PRICE BOOK'S NEXT PART FOR THIS WORK TYPE, when there is one
+             not yet listed; a blank line otherwise. */
+          const book = WORK_TYPES[workType]?.parts.find((b) => !parts.some((p) => p.name === b.name));
+          onChange([...parts, book ? { ...book } : { name: "", qty: 1, cost: 0 }]);
+        }}
+      >
+        <Plus className="size-4" /> Add part
+      </Button>
+    </div>
+  );
+}
+
+/** A TASK'S FEES (Pavan, 2026-09-24) — one or many; a name and an amount each. */
+function TaskFees({ fees, onChange }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void }) {
+  const setFee = (i: number, p: Partial<FeeLine>) => onChange(fees.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
+      <span className="text-xs font-medium text-muted-foreground">Fees</span>
+      {fees.length === 0 && <p className="text-sm text-muted-foreground">No fees.</p>}
+      {fees.map((f, i) => (
+        <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
+          <div className="flex items-center gap-2">
+            <Input value={f.name} onChange={(e) => setFee(i, { name: e.target.value })} placeholder="Fee" aria-label={`Fee ${i + 1}`} className="h-11 flex-1" autoFocus={!f.name} />
+            <button type="button" aria-label={`Remove ${f.name || `fee ${i + 1}`}`} onClick={() => onChange(fees.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              value={f.amount === 0 ? "" : f.amount}
+              onChange={(e) => setFee(i, { amount: Math.max(0, Number(e.target.value) || 0) })}
+              placeholder="0"
+              aria-label={`Amount of ${f.name || `fee ${i + 1}`}`}
+              className="h-11 pl-6 tabular-nums"
+            />
+          </div>
+        </div>
+      ))}
+      <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange([...fees, { name: "", amount: 0 }])}>
+        <Plus className="size-4" /> Add fee
+      </Button>
+    </div>
+  );
+}
+
+/** THE BREAKUP behind the quote total — task by task, then the fees. */
+function BreakupSheet({
+  open,
+  onClose,
+  lines,
+  fees,
+}: {
+  open: boolean;
+  onClose: () => void;
+  lines: AssessmentLine[];
+  fees: { name: string; amount: number }[];
+}) {
+  const tasks = lines
+    .map((l, i) => ({
+      l,
+      n: i + 1,
+      parts: (l.parts ?? []).filter((p) => p.name.trim()),
+      taskFees: (l.fees ?? []).filter((f) => f.name.trim()),
+    }))
+    .filter((t) => t.l.verdict !== null && t.parts.length + t.taskFees.length > 0);
+  const total = quoteableTotal(partsOfTasks(lines), [...fees, ...feesOfTasks(lines)]);
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Quote total">
+      <div className="flex flex-col gap-4">
+        {tasks.length === 0 && <p className="text-sm text-muted-foreground">No parts or fees on the tasks yet.</p>}
+        {tasks.map(({ l, n, parts, taskFees }) => (
+          <div key={l.key} className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-foreground">
+              {n}. {lineTitle(l) || `Task ${n}`}
+            </span>
+            {parts.map((p, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  {p.name} · {p.qty} × {money(p.cost)}
+                </span>
+                <span className="tabular-nums text-foreground">{money(p.qty * p.cost)}</span>
+              </div>
+            ))}
+            {taskFees.map((f, i) => (
+              <div key={`f-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">{f.name}</span>
+                <span className="tabular-nums text-foreground">{money(f.amount)}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+        {fees.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-foreground">Order fees</span>
+            {fees.map((f, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">{f.name}</span>
+                <span className="tabular-nums text-foreground">{money(f.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-baseline justify-between border-t border-border pt-3">
+          <span className="text-sm font-medium text-foreground">Total</span>
+          <span className="text-lg font-semibold tabular-nums text-foreground">{money(total)}</span>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+/** Servicing or Replacement — the kind of job, from the work type. */
+/* THE KIND, IN COLOUR (Pavan, 2026-09-24) — the DS's pastel badges:
+   Servicing purple (violet), Replacement orange (amber). Categorical, so
+   the colour tells the two apart and says nothing about state. */
+function KindChip({ workType }: { workType: string }) {
+  const servicing = WORK_TYPE_CATEGORY[workType] === "Servicing";
+  return (
+    <Badge variant={servicing ? "pastel-violet" : "pastel-amber"} className="shrink-0">
+      {servicing ? "Servicing" : "Replacement"}
+    </Badge>
   );
 }
 

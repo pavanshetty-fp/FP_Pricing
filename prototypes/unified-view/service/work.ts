@@ -668,6 +668,13 @@ export interface ServiceOrder {
   partNeeded: string | null;
   /** The on-site assessment, line by line. Absent until it is saved. */
   assessmentLines?: AssessmentLine[];
+  /**
+   * THE SITE ASSESSMENT (Pavan, 2026-09-24) — ONE for the visit, not one per
+   * task: rich-text notes and photos. It is the FIRST STEP and it is FINAL:
+   * once `submittedAt` is set nothing edits it, and no quote can be generated
+   * before it is. Until then it is a draft that saves itself.
+   */
+  siteAssessment?: { html: string; photos: string[]; submittedAt: string | null };
   /** The linked return visit this job spawned, or the job that spawned this one. */
   returnOf: string | null;
   spawnedReturn: string | null;

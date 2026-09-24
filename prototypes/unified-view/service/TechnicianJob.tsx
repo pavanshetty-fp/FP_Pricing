@@ -1,6 +1,10 @@
 import * as React from "react";
 import {
+  Bold,
   Building2,
+  ClipboardList,
+  List,
+  ListOrdered,
   CalendarDays,
   Camera,
   Check,
@@ -11,9 +15,7 @@ import {
   Plus,
   X,
   ArrowLeft,
-  ChevronDown,
   ChevronRight,
-  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,7 +38,6 @@ import {
   shortfallLabel,
   syncVisits,
   type AssessmentLine,
-  type AssessmentVerdict,
   type FeeLine,
   type PartLine,
   type ServiceOrder,
@@ -76,19 +77,13 @@ import { BottomSheet } from "./TechnicianHome";
    per order for the session; "Save assessment" is still what records it. */
 const draftLines = new Map<string, AssessmentLine[]>();
 
-/** A task is done once it has its answer — and, when added on site, what it needs. */
-const taskDone = (l: AssessmentLine) =>
-  l.verdict !== null &&
-  (l.verdict !== "added" || l.actual.trim().length > 0) &&
-  (l.verdict !== "different" || Boolean(l.found?.description.trim()));
-
 /** The price book's parts for a work type — where a task's parts list starts. */
 const bookParts = (workType: string): PartLine[] => (WORK_TYPES[workType]?.parts ?? []).map((p) => ({ ...p }));
 
 /** Every answered task's fees, each tagged with its task. */
 const feesOfTasks = (lines: AssessmentLine[]): FeeLine[] =>
   lines.flatMap((l) =>
-    l.verdict === null ? [] : (l.fees ?? []).filter((f) => f.name.trim()).map((f) => ({ name: f.name, amount: f.amount, task: l.key }))
+    l.verdict === "skip" ? [] : (l.fees ?? []).filter((f) => f.name.trim()).map((f) => ({ name: f.name, amount: f.amount, task: l.key }))
   );
 
 /** The order's own fees — what the dispatcher put on, not what a task added. */
@@ -98,7 +93,7 @@ const orderFeesOf = (fees: FeeLine[]) => fees.filter((f) => !f.task);
 function partsOfTasks(lines: AssessmentLine[]): PartLine[] {
   const out: PartLine[] = [];
   for (const l of lines) {
-    if (l.verdict === null) continue;
+    if (l.verdict === "skip") continue;
     for (const p of l.parts ?? []) {
       if (!p.name.trim()) continue;
       const hit = out.find((x) => x.name === p.name && x.cost === p.cost);
@@ -127,16 +122,6 @@ type Stage = "travel" | "assess" | "quote" | "ack" | "ready" | "work" | "complet
 
 const nowIso = () => new Date().toISOString();
 
-/** The assessment is settled when every line has a verdict and says what it needs where it must. */
-const assessmentComplete = (lines: AssessmentLine[]) =>
-  lines.length > 0 &&
-  lines.every(
-    (l) =>
-      l.verdict !== null &&
-      (l.verdict !== "added" || l.actual.trim().length > 0) &&
-      (l.verdict !== "different" || Boolean(l.found?.description.trim()))
-  );
-
 /** The order's own requirements, as the lines to assess. */
 function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
   const rows = job.assets.filter((a) => a.assetName || a.fault || a.workType);
@@ -153,15 +138,9 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
     actual: "",
     note: "",
     photos: [],
+    parts: bookParts(a.workType),
   }));
 }
-
-/* THE THREE ANSWERS PER TASK (Pavan, 2026-09-24). */
-const VERDICTS: { key: Exclude<AssessmentVerdict, "added">; label: string }[] = [
-  { key: "accurate", label: "Faulty as described" },
-  { key: "different", label: "Different issue than described" },
-  { key: "skip", label: "No fault detected" },
-];
 
 /** What a task comes to, in words — the fault confirmed, or what was found instead. */
 const lineWhat = (l: AssessmentLine) =>
@@ -169,7 +148,9 @@ const lineWhat = (l: AssessmentLine) =>
     ? l.reported
     : l.verdict === "different"
       ? [l.found?.workType, l.found?.description || l.note].filter(Boolean).join(" — ") || "Different issue"
-      : l.actual;
+      : l.source === "added"
+        ? l.actual
+        : l.reported;
 
 /** A job's order line or site finding, as the customer will see it on the quote. */
 const lineTitle = (l: AssessmentLine) => [l.assetName, l.workType].filter(Boolean).join(" · ");
@@ -228,8 +209,11 @@ export function TechnicianJob({
   const [mapOpen, setMapOpen] = React.useState(false);
   const [ticketOpen, setTicketOpen] = React.useState(false);
   const [breakupOpen, setBreakupOpen] = React.useState(false);
+  const [assessOpen, setAssessOpen] = React.useState(false);
 
-  const assessed = Boolean(job.assessmentLines && assessmentComplete(job.assessmentLines));
+  /* THE ASSESSMENT IS THE FIRST STEP (Pavan, 2026-09-24): the quote waits on
+     a SUBMITTED site assessment, not on a verdict per task. */
+  const assessed = Boolean(job.assessmentLines && job.siteAssessment?.submittedAt);
   const handedIn = Boolean(job.completedAt) || job.status === "Parts pending" || job.status === "Completed — linked";
 
   const stage: Stage = handedIn
@@ -328,8 +312,9 @@ export function TechnicianJob({
   if (stage === "assess") {
     const set = (key: string, patch: Partial<AssessmentLine>) =>
       setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-    const ready = assessmentComplete(lines);
-    const open = lines.filter((l) => l.verdict === null).length;
+    const submitted = Boolean(job.siteAssessment?.submittedAt);
+    const unnamed = lines.filter((l) => l.source === "added" && !l.assetName.trim()).length;
+    const ready = submitted && unnamed === 0;
     return (
       <>
         {/* THE PAGE IS THE ORDER — its number, nothing else (Pavan,
@@ -363,6 +348,14 @@ export function TechnicianJob({
           }
         />
         <Body>
+          {/* THE ASSESSMENT FIRST — one for the visit, above the jobs
+              (Pavan, 2026-09-24, option B). */}
+          {job.startedAt && (
+            <SiteAssessmentRow
+              value={job.siteAssessment}
+              onOpen={() => setAssessOpen(true)}
+            />
+          )}
           <TaskOverview lines={lines.filter((l) => l.source === "order")} />
           {lines.map((l, i) => (
             <AssessmentCard
@@ -370,7 +363,6 @@ export function TechnicianJob({
               index={i}
               line={l}
               active={Boolean(job.startedAt)}
-              siteAssets={assetsAt(job.shipTo).map((a) => a.name)}
               onChange={(p) => set(l.key, p)}
               onRemove={l.source === "added" ? () => setLines((ls) => ls.filter((x) => x.key !== l.key)) : undefined}
             />
@@ -402,7 +394,7 @@ export function TechnicianJob({
             answers once it runs (Pavan, 2026-09-24). */}
         {!job.startedAt ? (
           <ActionBar
-            label="Start the timer"
+            label="Start work"
             disabled={Boolean(busyWith)}
             note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
             onPress={() => {
@@ -410,7 +402,7 @@ export function TechnicianJob({
                 ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
                 status: "Ongoing" as WorkStatus,
               });
-              toast.success("Timer started");
+              toast.success("Work started");
             }}
           />
         ) : (
@@ -434,12 +426,11 @@ export function TechnicianJob({
           note={
             ready
               ? undefined
-              : open > 0
-                ? `${open} task${open === 1 ? "" : "s"} still to assess`
-                : "Describe the issue on each task"
+              : !submitted
+                ? "Submit the assessment first"
+                : `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added`
           }
           onPress={() => {
-            const count = (v: AssessmentVerdict) => lines.filter((l) => l.verdict === v).length;
             /* THE TASKS' PARTS ARE THE ORDER'S PARTS from here — the
                technician has cross-checked every one against the site. */
             onPatch({
@@ -448,21 +439,26 @@ export function TechnicianJob({
                  appended, so generating twice cannot count a fee twice. */
               fees: [...orderFeesOf(job.fees), ...feesOfTasks(lines)],
               assessmentLines: lines,
-              /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads. */
-              assessment: [
-                count("accurate") && `${count("accurate")} faulty as described`,
-                count("different") && `${count("different")} different issue`,
-                count("added") && `${count("added")} added`,
-                count("skip") && `${count("skip")} no fault`,
-              ]
-                .filter(Boolean)
-                .join(" · "),
+              /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads —
+                 now the start of the technician's own notes. */
+              assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
             });
             draftLines.delete(job.id);
             toast.success("Quote generated");
           }}
         />
         <BreakupSheet open={breakupOpen} onClose={() => setBreakupOpen(false)} lines={lines} fees={orderFeesOf(job.fees)} />
+        <SiteAssessmentSheet
+          open={assessOpen}
+          onClose={() => setAssessOpen(false)}
+          value={job.siteAssessment}
+          onDraft={(html, photos) => onPatch({ siteAssessment: { html, photos, submittedAt: null } })}
+          onSubmit={(html, photos) => {
+            onPatch({ siteAssessment: { html, photos, submittedAt: nowIso() } });
+            setAssessOpen(false);
+            toast.success("Assessment submitted");
+          }}
+        />
         </>
         )}
       </>
@@ -845,36 +841,29 @@ function OrderHeading({ job }: { job: ServiceOrder }) {
 }
 
 /**
- * ONE TASK TO ASSESS (Pavan, 2026-09-24):
- *   asset · work type on the left, the kind of job as a chip on the right,
- *   the reported fault under it, then an "Assessment" dropdown with the three
- *   answers, and "Add assessment notes" — optional — which opens a bottom
- *   sheet for a note and photos, kept on Submit and reopened from the same
- *   button.
+ * ONE JOB (Pavan, 2026-09-24): asset · work type, the kind of job as a chip,
+ * the reported fault — then, once work has started, its parts and fees.
+ * NO VERDICT AND NO NOTES PER JOB any more: the assessment is one for the
+ * whole visit (`SiteAssessmentSheet`).
  */
 function AssessmentCard({
   index,
   line,
   active,
-  siteAssets,
   onChange,
   onRemove,
 }: {
   index: number;
   line: AssessmentLine;
-  siteAssets: string[];
   /** Work has started — the task takes its answer. Before that it is read-only. */
   active: boolean;
   onChange: (p: Partial<AssessmentLine>) => void;
   onRemove?: () => void;
 }) {
   const added = line.source === "added";
-  const [pickOpen, setPickOpen] = React.useState(false);
-  const [notesOpen, setNotesOpen] = React.useState(false);
-  const chosen = VERDICTS.find((v) => v.key === line.verdict);
-  const hasNotes = Boolean(line.subject?.trim()) || line.note.trim().length > 0 || line.photos.length > 0;
-
-  const done = taskDone(line);
+  /* THE TICK waits on what "done" means for a job now the verdict is gone —
+     skipped, or fitted — which is the next change. Numbers until then. */
+  const done = false;
   return (
     <div className="flex items-start gap-3">
     {/* NUMBERED, THEN TICKED (Pavan, 2026-09-24) — each task's number on
@@ -938,77 +927,14 @@ function AssessmentCard({
 
       {active && (
         <>
-          {!added && (
-            <button
-              type="button"
-              onClick={() => setPickOpen(true)}
-              aria-label={`Assessment for ${line.assetName}`}
-              className="flex h-11 items-center justify-between rounded-md border border-input bg-transparent px-3 text-left text-sm active:bg-accent dark:bg-input/30"
-            >
-              <span className={chosen ? "text-foreground" : "text-muted-foreground"}>
-                {chosen?.label ?? "Assessment"}
-              </span>
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-            </button>
-          )}
-          {line.verdict === "different" && !added && (
-            <FoundIssue
-              value={
-                line.found ?? { assetName: line.assetName, workType: line.workType, description: "" }
-              }
-              siteAssets={siteAssets}
-              onChange={(found) => onChange({ found })}
-            />
-          )}
-          {line.verdict !== null && (
-            <TaskParts
-              parts={line.parts ?? []}
-              workType={line.found?.workType ?? line.workType}
-              onChange={(parts) => onChange({ parts })}
-            />
-          )}
-          {line.verdict !== null && <TaskFees fees={line.fees ?? []} onChange={(fees) => onChange({ fees })} />}
-          <Button variant="ghost" className="h-11 justify-start px-2" onClick={() => setNotesOpen(true)}>
-            {hasNotes ? <StickyNote className="size-4" /> : <Plus className="size-4" />}
-            {hasNotes
-              ? `${line.subject?.trim() || "Assessment notes"}${line.photos.length ? ` · ${line.photos.length} photo${line.photos.length === 1 ? "" : "s"}` : ""}`
-              : "Add assessment notes"}
-          </Button>
+          <TaskParts
+            parts={line.parts ?? []}
+            workType={line.workType}
+            onChange={(parts) => onChange({ parts })}
+          />
+          <TaskFees fees={line.fees ?? []} onChange={(fees) => onChange({ fees })} />
         </>
       )}
-
-      <BottomSheet open={pickOpen} onClose={() => setPickOpen(false)} title="Assessment">
-        <div className="flex flex-col">
-          {VERDICTS.map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              onClick={() => {
-                onChange({ verdict: v.key, parts: line.parts ?? bookParts(line.workType) });
-                setPickOpen(false);
-              }}
-              className="flex h-11 items-center justify-between rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
-            >
-              {v.label}
-              {line.verdict === v.key && <Check className="size-4" />}
-            </button>
-          ))}
-        </div>
-      </BottomSheet>
-
-      <NotesSheet
-        open={notesOpen}
-        onClose={() => setNotesOpen(false)}
-        title={line.assetName || "Assessment notes"}
-        subject={line.subject ?? ""}
-        note={line.note}
-        photos={line.photos}
-        onSubmit={(subject, note, photos) => {
-          onChange({ subject, note, photos });
-          setNotesOpen(false);
-          toast.success("Assessment notes saved");
-        }}
-      />
     </section>
     </div>
   );
@@ -1129,44 +1055,6 @@ function NewTicket({
 }
 
 /**
- * WHAT WAS ACTUALLY FOUND, when it is a different issue (Pavan, 2026-09-24):
- * the asset, the type of issue, a description, and the parts it needs.
- */
-function FoundIssue({
-  value,
-  siteAssets,
-  onChange,
-}: {
-  value: NonNullable<AssessmentLine["found"]>;
-  siteAssets: string[];
-  onChange: (v: NonNullable<AssessmentLine["found"]>) => void;
-}) {
-  const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
-  const set = (p: Partial<typeof value>) => onChange({ ...value, ...p });
-  return (
-    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
-      <span className="text-xs font-medium text-muted-foreground">What you found</span>
-      {siteAssets.length > 0 ? (
-        <select value={value.assetName} onChange={(e) => set({ assetName: e.target.value })} aria-label="Asset" className={field}>
-          <option value="">Asset</option>
-          {siteAssets.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-      ) : (
-        <Input value={value.assetName} onChange={(e) => set({ assetName: e.target.value })} placeholder="Asset" className="h-11" />
-      )}
-      <select value={value.workType} onChange={(e) => set({ workType: e.target.value })} aria-label="Type of issue" className={field}>
-        {WORK_TYPE_NAMES.map((w) => (
-          <option key={w} value={w}>{w}</option>
-        ))}
-      </select>
-      <Textarea value={value.description} onChange={(e) => set({ description: e.target.value })} rows={3} placeholder="Description" className="text-base" />
-    </div>
-  );
-}
-
-/**
  * A TASK'S PARTS, EACH WITH ITS COST (Pavan, 2026-09-24) — one or many.
  * Name and remove on top; quantity and unit cost under. The amounts are in
  * the breakup behind the total — the row has no room for a third figure.
@@ -1283,7 +1171,7 @@ function BreakupSheet({
       parts: (l.parts ?? []).filter((p) => p.name.trim()),
       taskFees: (l.fees ?? []).filter((f) => f.name.trim()),
     }))
-    .filter((t) => t.l.verdict !== null && t.parts.length + t.taskFees.length > 0);
+    .filter((t) => t.l.verdict !== "skip" && t.parts.length + t.taskFees.length > 0);
   const total = quoteableTotal(partsOfTasks(lines), [...fees, ...feesOfTasks(lines)]);
   return (
     <BottomSheet open={open} onClose={onClose} title="Quote total">
@@ -1343,108 +1231,260 @@ function KindChip({ workType }: { workType: string }) {
   );
 }
 
+/** The words in a piece of rich text, without its markup. */
+function plainText(html: string): string {
+  if (!html) return "";
+  /* Each line or bullet ends with "; ", so two points never run together. */
+  const marked = html.replace(/<\/(li|p|div)>|<br\s*\/?>/gi, "; ");
+  const doc = new DOMParser().parseFromString(marked, "text/html");
+  return (doc.body.textContent ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/(;\s*)+/g, "; ")
+    .replace(/^[;\s]+|[;\s]+$/g, "");
+}
+
 /**
- * ASSESSMENT NOTES, IN A FULL BOTTOM SHEET (Pavan, 2026-09-24) — room to
- * write: a Subject, a Description that takes the rest of the screen, and
- * photos. Edited as a draft and kept only on Submit, so closing the sheet
- * changes nothing.
+ * THE ASSESSMENT ROW (Pavan, 2026-09-24, option B) — one compact row above
+ * the jobs that opens the full sheet. It says where the assessment stands:
+ * not started, a draft, or submitted.
  */
-function NotesSheet({
+function SiteAssessmentRow({
+  value,
+  onOpen,
+}: {
+  value: ServiceOrder["siteAssessment"];
+  onOpen: () => void;
+}) {
+  const text = plainText(value?.html ?? "");
+  const photos = value?.photos.length ?? 0;
+  const submitted = Boolean(value?.submittedAt);
+  const summary = [text && (text.length > 48 ? `${text.slice(0, 48)}…` : text), photos && `${photos} photo${photos === 1 ? "" : "s"}`]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border p-3 text-left active:bg-accent",
+        submitted ? "border-fp-outline-1 bg-fp-surface-1a" : "border-foreground bg-fp-surface-1a"
+      )}
+    >
+      {submitted ? (
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-status-success text-background">
+          <Check className="size-3.5" />
+        </span>
+      ) : (
+        <ClipboardList className="size-5 shrink-0 text-foreground" />
+      )}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="text-sm font-medium text-foreground">
+          Assessment{submitted ? " · Submitted" : text || photos ? " · Draft" : ""}
+        </span>
+        <span className="truncate text-xs text-muted-foreground">{summary || "Add what you found on site"}</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+    </button>
+  );
+}
+
+/**
+ * A SMALL RICH-TEXT FIELD — bold, bullets, a numbered list (Pavan,
+ * 2026-09-24). Uncontrolled: the markup is read back on every input, and only
+ * seeded when it opens, so the caret never jumps.
+ */
+function RichText({
+  initial,
+  onChange,
+  placeholder,
+}: {
+  initial: string;
+  onChange: (html: string) => void;
+  placeholder: string;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.innerHTML = initial;
+    // Seeded once per opening — see the note above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const act = (command: string) => {
+    ref.current?.focus();
+    document.execCommand(command);
+    onChange(ref.current?.innerHTML ?? "");
+  };
+  const tools: { command: string; label: string; icon: React.ReactNode }[] = [
+    { command: "bold", label: "Bold", icon: <Bold className="size-4" /> },
+    { command: "insertUnorderedList", label: "Bullet list", icon: <List className="size-4" /> },
+    { command: "insertOrderedList", label: "Numbered list", icon: <ListOrdered className="size-4" /> },
+  ];
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-input dark:bg-input/30">
+      <div className="flex shrink-0 gap-1 border-b border-fp-outline-1 p-1">
+        {tools.map((t) => (
+          <button
+            key={t.command}
+            type="button"
+            aria-label={t.label}
+            /* mousedown, so the text keeps its selection */
+            onMouseDown={(e) => {
+              e.preventDefault();
+              act(t.command);
+            }}
+            className="flex size-11 items-center justify-center rounded-md text-foreground active:bg-accent"
+          >
+            {t.icon}
+          </button>
+        ))}
+      </div>
+      <div
+        ref={ref}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={placeholder}
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder={placeholder}
+        onInput={(e) => onChange((e.target as HTMLDivElement).innerHTML)}
+        className="min-h-40 flex-1 overflow-y-auto px-3 py-2 text-base text-foreground outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+      />
+    </div>
+  );
+}
+
+/**
+ * THE SITE ASSESSMENT, IN A FULL SHEET (Pavan, 2026-09-24). Rich-text notes
+ * and photos. It SAVES ITSELF as a draft on close — side sheets autosave —
+ * and has one act, "Submit assessment", which asks first because it is
+ * final. Once submitted the sheet only reads.
+ */
+function SiteAssessmentSheet({
   open,
   onClose,
-  title,
-  subject,
-  note,
-  photos,
+  value,
+  onDraft,
   onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
-  title: string;
-  subject: string;
-  note: string;
-  photos: string[];
-  onSubmit: (subject: string, note: string, photos: string[]) => void;
+  value: ServiceOrder["siteAssessment"];
+  onDraft: (html: string, photos: string[]) => void;
+  onSubmit: (html: string, photos: string[]) => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
-  const [draftSubject, setDraftSubject] = React.useState(subject);
-  const [draftNote, setDraftNote] = React.useState(note);
-  const [draftPhotos, setDraftPhotos] = React.useState(photos);
+  const [html, setHtml] = React.useState(value?.html ?? "");
+  const [photos, setPhotos] = React.useState(value?.photos ?? []);
+  const [confirming, setConfirming] = React.useState(false);
+  const submitted = Boolean(value?.submittedAt);
   React.useEffect(() => {
     if (open) {
-      setDraftSubject(subject);
-      setDraftNote(note);
-      setDraftPhotos(photos);
+      setHtml(value?.html ?? "");
+      setPhotos(value?.photos ?? []);
+      setConfirming(false);
     }
-  }, [open, subject, note, photos]);
+    // Re-read only on opening; while open this sheet owns the draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const empty = plainText(html).length === 0;
+  const close = () => {
+    if (!submitted) onDraft(html, photos);
+    onClose();
+  };
   return (
-    <BottomSheet
-      open={open}
-      full
-      onClose={onClose}
-      title={title}
-      footer={
-        <Button
-          className="h-11 w-full text-base"
-          onClick={() => onSubmit(draftSubject.trim(), draftNote.trim(), draftPhotos)}
-        >
-          Submit
-        </Button>
-      }
-    >
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Subject</span>
-          <Input value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} placeholder="Subject" className="h-11 text-base" />
-        </div>
-        <div className="flex min-h-40 flex-1 flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Description</span>
-          <Textarea
-            value={draftNote}
-            onChange={(e) => setDraftNote(e.target.value)}
-            placeholder="Description"
-            className="min-h-0 flex-1 resize-none text-base"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {draftPhotos.map((src, i) => (
-            <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
-              <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+    <>
+      <BottomSheet
+        open={open && !confirming}
+        full
+        onClose={close}
+        title="Assessment"
+        footer={
+          submitted ? undefined : (
+            <Button className="h-11 w-full text-base" disabled={empty} onClick={() => setConfirming(true)}>
+              Submit assessment
+            </Button>
+          )
+        }
+      >
+        {submitted ? (
+          <div className="flex flex-col gap-4">
+            <span className="text-xs text-muted-foreground">
+              Submitted {timeFmt.format(new Date(value!.submittedAt!))}
+            </span>
+            <div
+              className="text-base text-foreground [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+              dangerouslySetInnerHTML={{ __html: value!.html }}
+            />
+            {value!.photos.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {value!.photos.map((src, i) => (
+                  <img key={src} src={src} alt={`Photo ${i + 1}`} className="size-16 rounded-md border border-fp-outline-1 object-cover" />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
+            <RichText initial={value?.html ?? ""} onChange={setHtml} placeholder="What you found on site" />
+            <div className="flex flex-wrap gap-2">
+              {photos.map((src, i) => (
+                <div key={src} className="relative size-16 overflow-hidden rounded-md border border-fp-outline-1">
+                  <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`Remove photo ${i + 1}`}
+                    onClick={() => setPhotos((ps) => ps.filter((p) => p !== src))}
+                    className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
               <button
                 type="button"
-                aria-label={`Remove photo ${i + 1}`}
-                onClick={() => setDraftPhotos((ps) => ps.filter((p) => p !== src))}
-                className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+                onClick={() => fileRef.current?.click()}
+                className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
               >
-                <X className="size-3" />
+                <Camera className="size-4" />
+                Photo
               </button>
+              {/* `capture` opens the camera on a phone; a file picker on desktop. */}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                hidden
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) setPhotos((ps) => [...ps, ...files.map((f) => URL.createObjectURL(f))]);
+                  e.target.value = "";
+                }}
+              />
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-fp-outline-2 text-[11px] text-muted-foreground active:bg-accent"
-          >
-            <Camera className="size-4" />
-            Photo
-          </button>
-          {/* `capture` opens the camera on a phone; a file picker on desktop. */}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            hidden
-            onChange={(e) => {
-              const files = Array.from(e.target.files ?? []);
-              if (files.length) setDraftPhotos((ps) => [...ps, ...files.map((f) => URL.createObjectURL(f))]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-      </div>
-    </BottomSheet>
+          </div>
+        )}
+      </BottomSheet>
+
+      {/* FINAL, SO IT ASKS (Pavan, 2026-09-24). */}
+      <BottomSheet
+        open={open && confirming}
+        onClose={() => setConfirming(false)}
+        title="Submit assessment?"
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button className="h-11 w-full text-base" onClick={() => onSubmit(html, photos)}>
+              Submit
+            </Button>
+            <Button variant="outline" className="h-11 w-full text-base" onClick={() => setConfirming(false)}>
+              Keep editing
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground">This is your final assessment. It can't be changed after you submit it.</p>
+      </BottomSheet>
+    </>
   );
 }
 

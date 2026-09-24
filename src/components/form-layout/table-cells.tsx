@@ -367,8 +367,10 @@ export interface TableCellMultiSelectProps {
  * height as it was filled, and a column whose rows are different heights stops
  * being scannable, which is the only reason to put this in a table at all.
  *
- * The popover STAYS OPEN on pick, because choosing several things one dismissal
- * at a time is the slowest possible way to choose several things.
+ * CHECKBOX ROWS AND AN APPLY (Pavan, 2026-09-24). A list with a trailing tick
+ * reads as single-select — the reader picks one and stops (`MultiSelectList`
+ * explains why). Ticks are a draft while the list is open; Apply commits them
+ * in one go, and closing without it changes nothing.
  */
 export function TableCellMultiSelect({
   values,
@@ -381,6 +383,8 @@ export function TableCellMultiSelect({
   autoFocus,
 }: TableCellMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  /* THE DRAFT — what is ticked while the list is open. */
+  const [draft, setDraft] = React.useState<string[]>(values);
 
   const summary =
     values.length === 0
@@ -390,12 +394,16 @@ export function TableCellMultiSelect({
         : `${values.length} ${unitLabel}${unitLabel.endsWith("s") ? "" : "s"}`;
 
   const toggle = (opt: string) =>
-    onChange(
-      values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt]
-    );
+    setDraft((d) => (d.includes(opt) ? d.filter((v) => v !== opt) : [...d, opt]));
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        if (o) setDraft(values);
+        setOpen(o);
+      }}
+    >
       <PopoverTrigger asChild disabled={disabled}>
         <button
           type="button"
@@ -426,14 +434,39 @@ export function TableCellMultiSelect({
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>
               {options.map((opt) => (
-                <CommandItem key={opt} value={opt} onSelect={() => toggle(opt)}>
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  onSelect={() => toggle(opt)}
+                  aria-checked={draft.includes(opt)}
+                  icon={
+                    <Checkbox
+                      checked={draft.includes(opt)}
+                      className="pointer-events-none"
+                      tabIndex={-1}
+                    />
+                  }
+                >
                   <span className="flex-1 truncate">{opt}</span>
-                  {values.includes(opt) && <Check className="size-4 shrink-0" />}
                 </CommandItem>
               ))}
             </CommandGroup>
           </CommandList>
         </Command>
+        <div className="flex items-center justify-between gap-2 border-t border-border p-2">
+          <span className="text-xs text-muted-foreground">
+            {draft.length} selected
+          </span>
+          <Button
+            size="sm"
+            onClick={() => {
+              onChange(options.filter((o) => draft.includes(o)));
+              setOpen(false);
+            }}
+          >
+            Apply
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

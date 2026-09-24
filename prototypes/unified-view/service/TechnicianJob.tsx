@@ -150,7 +150,10 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
      skipped on its own. The asset name repeats. */
   return src.flatMap((a, i) =>
     /* THE MAIN ROW AND ITS SUB-ROWS — each with its own description. */
-    jobsOf({ workType: a.workType, fault: a.fault, subJobs: "subJobs" in a ? a.subJobs : undefined }).map((j, k) => ({ a, i, j, k }))
+    jobsOf({ workType: a.workType, fault: a.fault, subJobs: "subJobs" in a ? a.subJobs : undefined })
+      /* A sub-row not yet given a work type is not a job yet. */
+      .filter((j, k) => k === 0 || j.workType)
+      .map((j, k) => ({ a, i, j, k }))
   ).map(({ a, i, j, k }) => ({
     key: `o-${i}-${k}`,
     source: "order",

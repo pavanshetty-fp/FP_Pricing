@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Plus,
   CornerDownRight,
   Clock,
   Calendar as CalendarIcon,
@@ -1675,8 +1676,25 @@ export function ServiceOrderSheet({
                 return (
                   <tr key={`sub-${k}`} className="group/row h-11 border-b border-border bg-fp-card-1/40 last:border-b-0">
                     <td className="relative p-0">
-                      <span className="flex h-11 items-center pl-6 text-muted-foreground" aria-hidden>
-                        <CornerDownRight className="size-4" />
+                      <span className="flex h-11 items-center gap-2 pl-6 text-muted-foreground">
+                        <CornerDownRight className="size-4 shrink-0" aria-hidden />
+                        {/* MORE WORK ON THE SAME ASSET, from the group's last
+                            line (Pavan, 2026-09-24) — quiet until the row is
+                            reached for, like the row's bin. */}
+                        {k === (row.subJobs ?? []).length - 1 && !intakeLocked && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAssetLine(i, {
+                                subJobs: [...(row.subJobs ?? []), { workType: "", fault: "" }],
+                              })
+                            }
+                            aria-label={`Add work type to ${row.assetName || `asset ${i + 1}`}`}
+                            className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-foreground opacity-0 outline-none transition-opacity hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 group-hover/row:opacity-100"
+                          >
+                            <Plus className="size-3.5" /> Add work type
+                          </button>
+                        )}
                       </span>
                     </td>
                     <td className="relative p-0">

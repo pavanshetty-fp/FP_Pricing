@@ -457,7 +457,7 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
      gets a badge: on a lane called Synced, a card saying "Synced" is a label
      repeating its own heading, and what the reader is looking for is the
      exception. */
-  if (r.status === "Partially Synced") out.push({ label: "Partially Synced", tone: "caution" });
+  if (r.status === "Partially Synced") out.push({ label: "Partially Synced", tone: "critical" });
   return out;
 }
 
@@ -579,12 +579,13 @@ const BOARD_LANES: {
   { key: "Quoting", statuses: ["Quoting"] },
   { key: "Assigned", statuses: ["Assigned"] },
   { key: "Completed", statuses: ["Completed"] },
+  /* THE OPTIONAL HOLD between delivery and accounting (Pavan, 2026-09-24). */
+  { key: "Review", statuses: ["Review"] },
   { key: "Verified", statuses: ["Verified"] },
   /* PARTIALLY SYNCED RIDES WITH SYNCED, and it is the one place a lane still
-     holds two statuses. It is not a stage of its own — some of the order
-     reached accounting and some did not, which is a fact about the hand-off
-     rather than a place in the lifecycle — and the card's badge is what says
-     which of the two a row is. */
+     holds two statuses. It is not a stage of its own — the sync was tried and
+     failed, an error on the hand-off rather than a place in the lifecycle —
+     and the card's red badge and alert are what say so. */
   { key: "Synced", statuses: ["Partially Synced", "Synced"] },
   { key: "Cancelled", statuses: ["Cancelled"], apart: true },
   { key: "Blocked", statuses: ["Blocked"] },
@@ -646,8 +647,18 @@ function laneCardAlert(
         : `${n === 1 ? "A partner" : `${n} partners`} accepted`,
     };
   }
+  /* A QUEUE, NOT AN ACT. Nobody pushes it; the accounting system pulls it. */
   if (r.status === "Verified") {
-    return { status: "default", text: "Ready to export" };
+    return { status: "default", text: "Awaiting accounting" };
+  }
+  /* THE ERROR MESSAGE IS THE USEFUL PART, so it is on the card, not buried. */
+  if (r.status === "Partially Synced") {
+    return {
+      status: "warning",
+      text: r.syncError ?? "Sync failed",
+      actionLabel: "Review",
+      onAction: onOpen,
+    };
   }
   return undefined;
 }
@@ -715,7 +726,7 @@ function fieldsForLane(laneKey: string | null) {
   );
 }
 
-const DELIVERED_LANE_KEYS = new Set(["Completed", "Verified", "Synced"]);
+const DELIVERED_LANE_KEYS = new Set(["Completed", "Review", "Verified", "Synced"]);
 
 /** One shared empty set, so a lane with nothing hidden does not allocate. */
 const EMPTY_SET: ReadonlySet<string> = new Set<string>();
@@ -783,6 +794,7 @@ const LANE_FIELD_DEFAULTS: Record<string, string[]> = {
   Quoting: SCHEDULE_FIELDS,
   Assigned: SCHEDULE_FIELDS,
   Completed: SCHEDULE_FIELDS,
+  Review: SCHEDULE_FIELDS,
   Verified: SCHEDULE_FIELDS,
   Synced: SCHEDULE_FIELDS,
 };
@@ -1444,6 +1456,7 @@ export function BrokerOrdersScreen({
               instructions: draft.instructions,
               internalNote: draft.internalNote,
               winterAdditive: draft.winterAdditive,
+              syncError: draft.status === "Partially Synced" ? draft.syncError ?? null : null,
               notifyVendor: draft.notifyVendor,
               /* EVERYTHING THE SHEET COLLECTS AND THE ORDER MODELS. These six
                  were missing, so a save kept the customer and the lines and

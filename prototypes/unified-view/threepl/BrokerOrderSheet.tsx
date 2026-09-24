@@ -150,6 +150,7 @@ import {
   type BrokerOrderType,
   type BrokerStatus,
   type OrderLine,
+  isDelivered,
 } from "./orders";
 import { kindTone } from "../statusKind";
 import { TableRowRemove } from "@/components/form-layout/table-cells";
@@ -520,6 +521,8 @@ export interface BrokerOrderDraft {
   internalNote: string;
   /** The whole load is a winter blend — one flag for the order, not per line. */
   winterAdditive: boolean;
+  /** The accounting system's message, while the order is Partially Synced. */
+  syncError?: string | null;
   /** Invoices, BOLs, tickets — see `OrderDocument`. */
   documents: OrderDocument[];
   instructions: string;
@@ -562,11 +565,8 @@ export interface BrokerOrderDraft {
  */
 function seedDocuments(o: BrokerOrder): OrderDocument[] {
   const n = Number(o.orderNo.replace(/\D/g, "")) || 0;
-  const stage = ["Completed", "Verified", "Partially Synced", "Synced"].includes(
-    o.status
-  );
-  if (!["Assigned", "Completed", "Verified", "Partially Synced", "Synced"].includes(o.status))
-    return [];
+  const stage = isDelivered(o.status);
+  if (o.status !== "Assigned" && !stage) return [];
   const docs: OrderDocument[] = [
     {
       id: `${o.id}-bol`,
@@ -638,6 +638,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     notifyVendor: o.notifyVendor,
     internalNote: o.internalNote,
     winterAdditive: o.winterAdditive,
+    syncError: o.syncError ?? null,
     instructions: o.instructions,
     recurring: o.kind === "Recurring",
     recurrenceFrom: o.recurrence
@@ -1212,8 +1213,8 @@ function PricingCell({
  * business calls the stages, and what is left of the difference is this list:
  * the order they happen in, and the two exits that are not stages at all.
  *
- * PARTIALLY SYNCED IS STILL NOT A STAGE. It is a status — some of the order
- * reached accounting and some did not — and it stands at the same place on the
+ * PARTIALLY SYNCED IS STILL NOT A STAGE. It is a status — the sync was tried
+ * and failed — and it stands at the same place on the
  * bar as Synced, because a bar is about position and there is one position to
  * be in. `stageOf` is the whole of what is left between the two lists.
  *
@@ -1227,6 +1228,7 @@ const ORDER_STAGES: Stage[] = [
   { key: "Quoting", label: "Quoting" },
   { key: "Assigned", label: "Assigned" },
   { key: "Completed", label: "Completed" },
+  { key: "Review", label: "Review" },
   { key: "Verified", label: "Verified" },
   { key: "Synced", label: "Synced" },
 ];
@@ -2269,7 +2271,9 @@ export function BrokerOrderSheet({
     setDraft((d) => {
       if (!d) return d;
       toast.success(`${order?.orderNo ?? "Order"} → ${status}`);
-      return { ...d, status };
+      /* The accounting error belongs to the failed attempt; leaving the
+         status clears it. */
+      return { ...d, status, syncError: status === "Partially Synced" ? d.syncError : null };
     });
 
   /* THE TABLE'S SELECTION IS TRANSIENT, and starts empty. Adding a partner is
@@ -2705,6 +2709,7 @@ export function BrokerOrderSheet({
   const LOCKED_STAGES: BrokerStatus[] = [
     "Assigned",
     "Completed",
+    "Review",
     "Verified",
     "Partially Synced",
     "Synced",
@@ -2717,7 +2722,13 @@ export function BrokerOrderSheet({
    * partner's ticket and is usually not the same number. Everything in this
    * unit is that number times a rate, so it is typed here.
    */
-  const deliveredEditable = draft.status === "Completed";
+  /* REVIEW AND A FAILED SYNC ARE BOTH FOR FIXING THE NUMBERS (2026-09-24):
+     a hold for "these look off", and an error to put right before a retry.
+     Both would be useless if the numbers could not be corrected in them. */
+  const deliveredEditable =
+    draft.status === "Completed" ||
+    draft.status === "Review" ||
+    draft.status === "Partially Synced";
   /** The vendor unit settles at the same moment and for the same reason. */
   const vendorSettled = locked;
   /** Whoever is carrying it: the awarded partner, else the one who accepted. */
@@ -2882,16 +2893,17 @@ export function BrokerOrderSheet({
                   if (order) onSave(order, next);
                 },
               }
-            : draft.status === "Completed"
+            : draft.status === "Completed" || draft.status === "Review"
             ? {
                 label: "Move to Verified",
                 onSelect: () => advance("Verified"),
               }
-            : draft.status === "Verified" ||
-                draft.status === "Partially Synced"
+            : draft.status === "Partially Synced"
               ? {
-                  label: "Mark accounting synced",
-                  onSelect: () => advance("Synced"),
+                  /* BACK INTO THE QUEUE. The accounting system picks it up
+                     again on its own schedule. */
+                  label: "Retry sync",
+                  onSelect: () => advance("Verified"),
                 }
               : {
                   label: "Push to dispatch",
@@ -2933,16 +2945,15 @@ export function BrokerOrderSheet({
                      outstanding is the price. */
                   why: "Awaiting quotation.",
                 }
-              : draft.status === "Completed"
+              : draft.status === "Completed" || draft.status === "Review"
                 ? {
                     label: "Move to Verified",
                     onSelect: () => advance("Verified"),
                   }
-                : draft.status === "Verified" ||
-                    draft.status === "Partially Synced"
+                : draft.status === "Partially Synced"
                   ? {
-                      label: "Mark accounting synced",
-                      onSelect: () => advance("Synced"),
+                      label: "Retry sync",
+                      onSelect: () => advance("Verified"),
                     }
                   : {
                       label: "Push to dispatch",
@@ -2951,6 +2962,27 @@ export function BrokerOrderSheet({
                           description: "The order is on the dispatch board.",
                         }),
                     };
+  /* ONLY THE ACCOUNTING SYSTEM MARKS AN ORDER SYNCED (Pavan, 2026-09-24).
+     Verified is a queue it pulls from on its own schedule; the broker has no
+     button to hurry it, so the footer carries the wait. */
+  const awaitingAccounting = draft.status === "Verified";
+  /* THE OTHER WAYS OUT, in the footer's ··· beside the primary — the same
+     shape the Service sheet uses. Review is reversible both ways; a failed
+     sync can be retried (the primary), sent to review, or marked synced once
+     the issue is fixed outside. */
+  const sheetActs: { label: string; onSelect: () => void }[] =
+    creating
+      ? []
+      : draft.status === "Completed"
+        ? [{ label: "Send to review", onSelect: () => advance("Review") }]
+        : draft.status === "Review"
+          ? [{ label: "Send back to Completed", onSelect: () => advance("Completed") }]
+          : draft.status === "Partially Synced"
+            ? [
+                { label: "Send to review", onSelect: () => advance("Review") },
+                { label: "Mark synced", onSelect: () => advance("Synced") },
+              ]
+            : [];
   const nextActBlocked =
     draft.status === "Blocked"
       ? "Blocked on credit"
@@ -4091,13 +4123,35 @@ export function BrokerOrderSheet({
           <span className="text-sm text-muted-foreground">
             Awaiting completion
           </span>
+        ) : awaitingAccounting ? (
+          <span className="text-sm text-muted-foreground">
+            Awaiting accounting
+          </span>
         ) : (
         /* THE REASON IS NOT REPEATED HERE. It is on the strip above the
            footer, where it is a sentence you can press rather than a grey note
            you cannot. */
-        <Button disabled={nextActOff} onClick={nextAct.onSelect}>
-          {nextAct.label}
-        </Button>
+        <div className="flex items-center gap-2">
+          {sheetActs.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="More actions">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {sheetActs.map((a) => (
+                  <DropdownMenuItem key={a.label} onSelect={a.onSelect}>
+                    {a.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button disabled={nextActOff} onClick={nextAct.onSelect}>
+            {nextAct.label}
+          </Button>
+        </div>
         )
       }
       /*
@@ -4150,6 +4204,22 @@ export function BrokerOrderSheet({
             <span className="text-xs text-muted-foreground">
               A blocked order cannot be sent to a vendor. Clear the credit hold in
               Settings, then invite a delivery partner.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* A FAILED SYNC LEADS THE SHEET, like a credit hold: the accounting
+          system's own message is the useful part and must not be buried. */}
+      {draft.status === "Partially Synced" && (
+        <div className="-mb-6 flex items-start gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
+          <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-failed" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">
+              Accounting sync failed
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {draft.syncError ?? "No message returned."}
             </span>
           </div>
         </div>

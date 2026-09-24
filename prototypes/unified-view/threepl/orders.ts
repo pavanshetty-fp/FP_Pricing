@@ -15,6 +15,8 @@ import { statusTones } from "../statusKind";
     • The seven-stage lifecycle and its exact order (§5.2 "Order Stages"), with
       the core progression stated as
         Draft -> Quoting -> Assigned -> Completed -> Verified -> Synced
+      with Review added 2026-09-24 between Completed and Verified, from the
+      engine doc ("Recurring Orders - 3PL", After delivery).
       and BLOCKED positioned between Created and Assigned ("Order is blocked due
       to a customer credit issue").
     • The order-type filter tabs All / Regular / Recurring / Movement (§5.2
@@ -53,11 +55,19 @@ export type BrokerStatus =
   | "Quoting"
   | "Assigned"
   | "Completed"
+  /* THE OPTIONAL HOLD. "These numbers look off" — somebody is checking them
+     before accounting sees them. Reversible both ways: back to Completed, or
+     approved on to Verified. (Pavan, 2026-09-24, from the engine doc.) */
+  | "Review"
+  /* VERIFIED IS A QUEUE, NOT AN ACT. Approved, and waiting for the accounting
+     system to pull it on its own schedule. Nobody here marks it synced — the
+     accounting system reports back, and its answer sets the next status. */
   | "Verified"
-  /* PARTIAL IS A STATUS BUT NOT A LANE. Some of the order reached accounting
-     and some did not, so there is work left — it sits in the Sync Ready lane
-     with a badge rather than getting a lane of its own. A lane per outcome of
-     one step is how a board grows past being readable. */
+  /* PARTIALLY SYNCED IS AN ERROR, NOT PROGRESS. The sync was tried and it
+     failed; the accounting system's message is stored in `syncError`. Three
+     ways out: retry (back to Verified), send to Review, or mark synced once
+     the issue is fixed. It is a status but not a lane — it shares the Synced
+     lane with a badge. (Pavan, 2026-09-24.) */
   | "Partially Synced"
   | "Synced"
   /* THE TERMINAL EXIT. Not a stage of the work — a way out of it — which is
@@ -71,6 +81,7 @@ export type BrokerStatus =
  */
 export const DELIVERED_STATUSES: BrokerStatus[] = [
   "Completed",
+  "Review",
   "Verified",
   "Partially Synced",
   "Synced",
@@ -87,6 +98,7 @@ export const BROKER_STATUSES: BrokerStatus[] = [
   "Quoting",
   "Assigned",
   "Completed",
+  "Review",
   "Verified",
   "Synced",
   "Cancelled",
@@ -666,6 +678,9 @@ export interface BrokerOrder {
   completedAt: string | null;
   /** Only ever set on `Blocked` — the credit reason shown on the card. */
   blockedReason: string | null;
+  /** Only ever set on `Partially Synced` — the accounting system's own error
+   *  message, shown on the order. Cleared when the order leaves that status. */
+  syncError?: string | null;
   /** Movement orders only. */
   movement: {
     direction: MovementDirection;
@@ -732,7 +747,11 @@ export function diffOrder(a: BrokerOrder, b: BrokerOrder): string[] {
   if (a.status !== b.status)
     out.push(
       `Status: ${a.status} → ${b.status}${
-        b.status === "Blocked" && b.blockedReason ? ` · ${b.blockedReason}` : ""
+        b.status === "Blocked" && b.blockedReason
+          ? ` · ${b.blockedReason}`
+          : b.status === "Partially Synced" && b.syncError
+            ? ` · ${b.syncError}`
+            : ""
       }`
     );
   /* WHEN. */
@@ -1138,6 +1157,7 @@ export const BROKER_STATUS_FILTERS = [
   "Quoting",
   "Assigned",
   "Completed",
+  "Review",
   "Verified",
   "Partially Synced",
   "Synced",
@@ -1289,6 +1309,16 @@ export const ORDER_TYPE_FILTERS = [
   "Delivery",
   "Emergency",
   "Extraction",
+];
+
+/* WHAT THE ACCOUNTING SYSTEM SAYS WHEN A SYNC FAILS. INVENTED — plausible
+   back-office rejections, so a Partially Synced order has a real reason to
+   show. The message is the useful part of that status. */
+export const SYNC_ERRORS = [
+  "Customer account not found in accounting — create or map the customer first.",
+  "Item \"Dyed Diesel\" has no income account mapped.",
+  "Invoice date falls in a closed accounting period.",
+  "Tax code \"TX-FUEL-06\" is inactive in accounting.",
 ];
 
 export const CREATED_BY = [
@@ -1710,7 +1740,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
        invoice with nothing on it. Fixed 2026-09-23 BY INDEX, not by moving
        them into the branch above: that branch draws from `pick()`, and the
        extra draws would have reshuffled the whole fixture. */
-    if (status === "Verified" || status === "Partially Synced" || status === "Synced") {
+    if (status === "Review" || status === "Verified" || status === "Partially Synced" || status === "Synced") {
       lines.forEach((l, k) => {
         l.deliveredGal = l.gal ?? 50 + ((i + k) % 20) * 25;
         l.pricePerGal = Number((3.1 + ((i + k) % 9) * 0.09).toFixed(3));
@@ -2085,6 +2115,24 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       if (k % 3 === 0) r.urgent = true;
     });
 
+  /* REVIEW IS NOT IN THE ROTATION EITHER — adding it there would reshuffle
+     the whole fixture — so every third Completed order is sent to review
+     here instead. */
+  rows
+    .filter((r) => r.status === "Completed")
+    .forEach((r, k) => {
+      if (k % 3 !== 1) return;
+      r.status = "Review";
+      r.audit = [
+        ...r.audit,
+        {
+          at: new Date(Date.now() - 2_700_000).toISOString(),
+          by: CREATED_BY[k % CREATED_BY.length],
+          changes: ["Status: Completed → Review"],
+        },
+      ];
+    });
+
   /* SO DOES PARTIALLY SYNCED, and for the same reason: it is not in the status
      rotation the generator walks, so without this the badge that distinguishes
      it inside the Synced lane would never appear on the board. Every third
@@ -2095,6 +2143,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     .forEach((r, k) => {
       if (k % 3 !== 1) return;
       r.status = "Partially Synced";
+      r.syncError = SYNC_ERRORS[k % SYNC_ERRORS.length];
       r.audit = [
         ...r.audit,
         {
@@ -2115,7 +2164,7 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     /* Past Completed the order has reached accounting and cannot be
        cancelled. (Was `startsWith("Accounting")`, a name retired in the
        status rename, so Verified and Synced orders were being cancelled.) */
-    if (["Completed", "Verified", "Partially Synced", "Synced"].includes(r.status)) return;
+    if (isDelivered(r.status)) return;
     r.status = "Cancelled";
     r.blockedReason = null;
     r.audit = [
@@ -2204,6 +2253,9 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     }
     if ((r.status === "Blocked") !== (r.blockedReason !== null)) {
       problems.push(`${r.orderNo}: blocked reason and status disagree`);
+    }
+    if ((r.status === "Partially Synced") !== Boolean(r.syncError)) {
+      problems.push(`${r.orderNo}: sync error and status disagree`);
     }
     /* A FALLBACK CONTACT THAT IS THE CONTACT IS NOT A FALLBACK, and a blank
        row in the list is not a person — both come from a form that lets you
@@ -2432,6 +2484,7 @@ export const BROKER_LANE_COLOR: Record<BrokerStatus, LaneColorName> = {
   Quoting: "blue",
   Assigned: "cyan",
   Completed: "green",
+  Review: "orange",
   Verified: "yellow",
   "Partially Synced": "yellow",
   Synced: "purple",
@@ -2469,10 +2522,12 @@ export const BROKER_STATUS_TONE = statusTones<BrokerStatus>({
   /* A partner is on it. True, and asks nothing. */
   Assigned: "info",
   Completed: "success",
+  /* Somebody is checking the numbers — waiting on a person. */
+  Review: "caution",
   /* A human has agreed the numbers — the part that needed a person is done. */
   Verified: "success",
-  /* Some lines reached accounting and some did not: somebody has to look. */
-  "Partially Synced": "caution",
+  /* The sync was tried and failed. A problem to fix, not a step forward. */
+  "Partially Synced": "critical",
   Synced: "success",
   Cancelled: "neutral",
 });

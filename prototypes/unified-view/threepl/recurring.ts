@@ -391,7 +391,7 @@ function history(
   );
   /* The settled statuses, cycled by index so every one of them is reachable
      somewhere in the fixture rather than left to chance. */
-  const settled: BrokerStatus[] = ["Completed", "Verified", "Synced"];
+  const settled: BrokerStatus[] = ["Completed", "Review", "Verified", "Synced"];
   return past.slice(-HISTORY_KEPT).map((d, k) => ({
     date: d,
     status: settled[(seedIndex + k) % settled.length],

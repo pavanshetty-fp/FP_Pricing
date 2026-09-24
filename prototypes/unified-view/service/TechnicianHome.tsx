@@ -1070,7 +1070,7 @@ export function NewOrderScreen({
               />
               <ChoiceField label="Work type" value={a.workType} placeholder="Choose" onPress={() => setPicker({ kind: "workType", i })} />
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">Reported fault</span>
+                <span className="text-sm font-medium text-foreground">Description</span>
                 <Textarea
                   value={a.fault}
                   placeholder="What the customer described"

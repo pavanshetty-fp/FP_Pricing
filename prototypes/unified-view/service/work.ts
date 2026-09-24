@@ -515,10 +515,21 @@ export interface ServiceAssetLine {
   assetId: string;
   assetName: string;
   assetType: string;
+  /** The FIRST of `workTypes` — kept because every card, filter and total reads it. */
   workType: string;
-  /** What was reported about THIS asset, in the words it was reported in. */
+  /**
+   * SEVERAL WORK TYPES ON ONE ASSET (Deepika and Pavan, 2026-09-24) — a pump
+   * replace and a leak check on the same tank. Absent on older rows, which
+   * have just `workType`. On the phone each becomes its own job.
+   */
+  workTypes?: string[];
+  /** THE DESCRIPTION (was "Reported fault", 2026-09-24) — optional, and often not a fault. */
   fault: string;
 }
+
+/** Every work type on an asset line, old rows included. */
+export const workTypesOf = (a: { workType: string; workTypes?: string[] }) =>
+  a.workTypes && a.workTypes.length > 0 ? a.workTypes : a.workType ? [a.workType] : [];
 
 export interface ServiceOrder {
   id: string;

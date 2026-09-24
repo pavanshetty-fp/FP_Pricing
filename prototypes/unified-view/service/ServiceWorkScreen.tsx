@@ -203,7 +203,7 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
     {
       kind: "stack" as const,
       key: "asset",
-      heading: "Asset & Fault",
+      heading: "Asset details",
       lines: [
         /* EACH LINE ONLY IF IT IS KNOWN. Asset and fault are optional at
            intake, and a heading over three blank lines is a card saying
@@ -300,10 +300,10 @@ const CARD_UNITS = [
   { key: "customer.account", label: "Account", group: "customer" },
   { key: "customer.site", label: "Site", group: "customer" },
   { key: "customer.city", label: "City and state", group: "customer" },
-  { key: "asset", label: "Asset & Fault" },
+  { key: "asset", label: "Asset details" },
   { key: "asset.name", label: "Asset name", group: "asset" },
   { key: "asset.type", label: "Asset type", group: "asset" },
-  { key: "asset.fault", label: "Reported fault", group: "asset" },
+  { key: "asset.fault", label: "Description", group: "asset" },
   { key: "schedule", label: "Scheduled" },
   { key: "schedule.time", label: "Time", group: "schedule" },
   { key: "schedule.date", label: "Date", group: "schedule" },

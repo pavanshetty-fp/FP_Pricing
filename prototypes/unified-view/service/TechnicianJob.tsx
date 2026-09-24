@@ -42,6 +42,7 @@ import {
   type FeeLine,
   type PartLine,
   type ServiceVisit,
+  workTypesOf,
   FEE_BOOK,
   pausedHours,
   pausedNow,
@@ -140,17 +141,22 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
   const src = rows.length
     ? rows
     : [{ assetName: job.assetName, workType: job.workType, fault: job.fault }];
-  return src.map((a, i) => ({
-    key: `o-${i}`,
+  /* ONE JOB PER WORK TYPE (Pavan, 2026-09-24, option A) — an asset with a
+     pump replace and a leak check is two jobs, each priced, confirmed or
+     skipped on its own. The asset name repeats. */
+  return src.flatMap((a, i) =>
+    (workTypesOf(a).length ? workTypesOf(a) : [""]).map((w, k) => ({ a, i, w, k }))
+  ).map(({ a, i, w, k }) => ({
+    key: `o-${i}-${k}`,
     source: "order",
     assetName: a.assetName || "Asset",
-    workType: a.workType,
+    workType: w,
     reported: a.fault,
     verdict: null,
     actual: "",
     note: "",
     photos: [],
-    parts: bookParts(a.workType),
+    parts: bookParts(w),
   }));
 }
 
@@ -945,7 +951,7 @@ function AssessmentCard({
             <KindChip workType={line.workType} />
           </div>
           <div className="flex flex-col border-t border-fp-outline-1 pt-2">
-            <span className="text-xs text-muted-foreground">Reported fault</span>
+            <span className="text-xs text-muted-foreground">Description</span>
             <span className="text-sm text-foreground">{line.reported || "—"}</span>
           </div>
         </div>
@@ -1100,7 +1106,7 @@ function NewTicket({
               ) : (
                 <Input value={sv.assetName} onChange={(e) => setService(i, { assetName: e.target.value })} placeholder="Asset" className="h-11" />
               )}
-              <Textarea value={sv.fault} onChange={(e) => setService(i, { fault: e.target.value })} rows={2} placeholder="Reported fault" className="text-base" />
+              <Textarea value={sv.fault} onChange={(e) => setService(i, { fault: e.target.value })} rows={2} placeholder="Description (optional)" className="text-base" />
             </div>
           ))}
         </div>

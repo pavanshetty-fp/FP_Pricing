@@ -45,7 +45,7 @@ import {
 import {
   TableCellCombobox,
   TableCellInput,
-  TableCellSelect,
+  TableCellMultiSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
@@ -63,6 +63,7 @@ import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
 import { useServiceSettings } from "./settings";
 import { TechnicianApp } from "./TechnicianApp";
 import {
+  workTypesOf,
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
   MILEAGE_RATE,
@@ -1642,7 +1643,9 @@ export function ServiceOrderSheet({
                 <TableRequiredLabel>Work type</TableRequiredLabel>
               </th>
               <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Reported fault</TableRequiredLabel>
+                {/* DESCRIPTION, NOT "REPORTED FAULT" (Deepika, 2026-09-24) —
+                    often it is not a fault. Optional. */}
+                <TableRequiredLabel>Description</TableRequiredLabel>
               </th>
               <th aria-hidden />
             </tr>
@@ -1679,21 +1682,24 @@ export function ServiceOrderSheet({
                   />
                 </td>
                 <td className="relative p-0">
-                  <TableCellSelect
-                    value={row.workType}
+                  {/* SEVERAL PER ASSET (2026-09-24). The first stays the
+                      row's `workType`, which everything else reads. */}
+                  <TableCellMultiSelect
+                    values={workTypesOf(row)}
                     options={WORK_TYPE_NAMES}
                     placeholder="Select"
+                    unitLabel="work type"
                     disabled={intakeLocked}
-                    aria-label={`Work type for row ${i + 1}`}
-                    onChange={(v) => setAssetLine(i, { workType: v })}
+                    aria-label={`Work types for row ${i + 1}`}
+                    onChange={(v) => setAssetLine(i, { workTypes: v, workType: v[0] ?? "" })}
                   />
                 </td>
                 <td className="relative p-0">
                   <TableCellInput
                     value={row.fault}
-                    placeholder="What the customer described"
+                    placeholder="Optional"
                     disabled={intakeLocked}
-                    aria-label={`Reported fault for row ${i + 1}`}
+                    aria-label={`Description for row ${i + 1}`}
                     onChange={(v) => setAssetLine(i, { fault: v })}
                   />
                 </td>

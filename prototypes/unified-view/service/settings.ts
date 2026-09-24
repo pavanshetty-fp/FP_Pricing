@@ -50,7 +50,18 @@ import * as React from "react";
  * And it supersedes `rollforward` before it, which just moved the whole order
  * to tomorrow and could not say that five of ten went on.
  */
-export type ReturnMode = "continue" | "neworder";
+/*
+ * THREE OUTCOMES (Deepika and Pavan, 2026-09-24):
+ *   `rollover`  the SAME order, pushed to the next day: details kept, same
+ *               technician, still Assigned, with a Parts pending callout.
+ *   `neworder`  this one is complete; a NEW Open order (no technician, no
+ *               date) carries the rest, the notes and the jobs — linked both
+ *               ways.
+ *   `queue`     this one is complete; the rest waits in the dispatcher's
+ *               queue as a Parts pending order — no link, no rollover.
+ * Replaces `continue` (back to Open on the same number).
+ */
+export type ReturnMode = "rollover" | "neworder" | "queue";
 
 export interface ServiceSettings {
   /**
@@ -113,7 +124,7 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   nativeBilling: true,
   roiFeed: true,
   managerApproval: true,
-  returnMode: "continue",
+  returnMode: "rollover",
   priceBook: true,
   portalIntake: true,
   defaultMileage: 18,

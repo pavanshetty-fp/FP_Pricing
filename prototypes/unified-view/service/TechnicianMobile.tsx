@@ -6,13 +6,11 @@ import { Button } from "@/components/ui/button";
 import {
   TECHNICIANS,
   blankServiceOrder,
-  shortfallLabel,
-  splitParts,
   ticketFrom,
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
-import { useServiceOrders } from "./store";
+import { resolveShortfall, useServiceOrders } from "./store";
 import { useServiceSettings } from "./settings";
 import { JobsScreen, MenuDrawer, NewOrderScreen, TabBar, type HomeTab } from "./TechnicianHome";
 import { TechnicianJob, type SplitRequest } from "./TechnicianJob";
@@ -254,82 +252,18 @@ export function TechnicianMobile() {
    *   neworder  this one is completed; what is owed becomes a NEW order,
    *             linked back, starting from nothing but the owed parts
    */
+  /**
+   * PARTLY DONE — PARTS MISSING. The same three outcomes the dispatch screen
+   * has (`resolveShortfall`), chosen by the technician in the moment.
+   */
   const split = (job: ServiceOrder, req: SplitRequest) => {
-    const { owed } = splitParts(req.parts);
-    const shortfall = shortfallLabel(req.parts);
-    const at = nowIso();
-    const by = technician.name;
-    if (req.mode === "continue") {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === job.id
-            ? {
-                ...o,
-                status: "Parts pending" as WorkStatus,
-                parts: req.parts,
-                partNeeded: shortfall,
-                techNotes: req.note ?? o.techNotes,
-                technicianId: null,
-                completedAt: null,
-                audit: [...o.audit, { at, by, changes: [`Held for parts · ${shortfall} owed`] }],
-              }
-            : o
-        )
-      );
-      toast.success(`${job.orderNo} — ${shortfall} still owed`, { description: "The order stays open for the next visit." });
-      return;
-    }
-    const no = nextOrderNo();
-    const followUp: ServiceOrder = {
-      ...job,
-      id: `so-m-${no}`,
-      orderNo: no,
-      status: "Drafted",
-      fault: `Awaiting parts — ${shortfall}`,
-      assets: job.assets.map((a) => ({ ...a, fault: `Awaiting parts — ${shortfall}` })),
-      parts: owed,
-      arrivedAt: null,
-      visits: [],
-      startedAt: null,
-      assessment: null,
-      assessmentLines: undefined,
-      techNotes: null,
-      labor: 0,
-      laborOverride: null,
-      mileage: 0,
-      fees: [],
-      quote: null,
-      extraCharges: [],
-      invoiceCreated: false,
-      invoicedAt: null,
-      synced: false,
-      partNeeded: null,
-      returnOf: job.orderNo,
-      spawnedReturn: null,
-      signed: false,
-      completedAt: null,
-      technicianId: null,
-      raisedBy: by,
-      audit: [{ at, by, changes: [`Order created · the rest of ${job.orderNo}`] }],
-    };
-    setOrders((prev) => [
-      followUp,
-      ...prev.map((o) =>
-        o.id === job.id
-          ? {
-              ...o,
-              status: "Completed — linked" as WorkStatus,
-              parts: req.parts,
-              techNotes: req.note ?? o.techNotes,
-              completedAt: at,
-              signed: true,
-              spawnedReturn: no,
-              audit: [...o.audit, { at, by, changes: [`Completed · ${shortfall} moved to ${no}`] }],
-            }
-          : o
-      ),
-    ]);
-    toast.success(`${job.orderNo} completed`, { description: `New order ${no} carries ${shortfall}.` });
+    let said = { title: "", description: "" };
+    setOrders((prev) => {
+      const out = resolveShortfall(prev, job.id, { parts: req.parts, note: req.note, mode: req.mode, nativeBilling: cfg.nativeBilling });
+      said = out;
+      return out.rows;
+    });
+    if (said.title) toast.success(said.title, { description: said.description });
   };
 
   const nextOrderNo = () =>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Clock,
   Calendar as CalendarIcon,
   MoreHorizontal,
   Receipt,
@@ -60,9 +61,11 @@ import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet"
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
-import { useServiceSettings } from "./settings";
+import { useServiceSettings, type ReturnMode } from "./settings";
 import { TechnicianApp } from "./TechnicianApp";
 import {
+  visitHours,
+  FEE_BOOK,
   workTypesOf,
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
@@ -75,18 +78,14 @@ import {
   feesTotal,
   isRecorded,
   isWorkable,
-  computedLabor,
   isUnassigned,
   syncVisits,
-  type ServiceVisit,
   LANE_OF,
   syncPrimaryAsset,
   type ServiceAssetLine,
   fittedOf,
   shortfallLabel,
   formatHours,
-  splitHours,
-  joinHours,
   mileageTotal,
   money,
   orderTotal,
@@ -339,144 +338,19 @@ function QuoteRow({
   );
 }
 
-/**
- * LABOUR — ONE ROW PER VISIT, AND THE TOTAL UNDERNEATH.
- *
- * A PARTIAL JOB IS VISITED MORE THAN ONCE (Pavan, 2026-09-23). Two hours on
- * Tuesday and forty minutes on Thursday is not a two-hour-forty job that
- * began on Tuesday — it is two trips, and the customer is owed the sum of
- * them with the dates against it. A single pair of boxes could hold the sum
- * and nothing else, so the sum stopped being checkable the moment there was
- * more than one trip.
- *
- * THE CLOCK FILLS EACH ROW AND EACH ROW CAN BE TYPED OVER — in hours and
- * minutes, because "1 h 23" is what a technician says and 1.38 is a rounding
- * error waiting to reach the invoice. Overruling a row keeps that row's clock
- * reading beside it, so the correction stays reviewable and the OTHER trips
- * are untouched: the half hour that should not be billed happened on one of
- * them, and correcting the total would hide which.
- *
- * A RUNNING VISIT HAS NO STOP TIME and its duration counts up. It is the last
- * row and there is never more than one.
- */
-function VisitRow({
-  visit,
-  index,
-  locked,
-  onChange,
-  onRemove,
-}: {
-  visit: ServiceVisit;
-  index: number;
-  locked?: boolean;
-  onChange: (patch: Partial<ServiceVisit>) => void;
-  onRemove?: () => void;
-}) {
-  const running = visit.endedAt === null;
-  const live = useElapsedHours(running ? visit.startedAt : null);
-  const measured = running ? live : computedLabor(visit.startedAt, visit.endedAt);
-  const hours = visit.override ?? measured;
-  const shown = splitHours(hours);
-  const [buf, setBuf] = React.useState<{ h: string; m: string } | null>(null);
 
-  const commit = (h: string, m: string) => {
-    setBuf({ h, m });
-    onChange({
-      override:
-        h.trim() === "" && m.trim() === ""
-          ? null
-          : joinHours(Number(h) || 0, Number(m) || 0),
-    });
-  };
-
-  const stamp = (iso: string) =>
-    new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(new Date(iso));
-
-  return (
-    <tr className="group/row h-11 border-b border-border last:border-b-0">
-      <td className="px-3 text-sm tabular-nums text-foreground">
-        {stamp(visit.startedAt)}
-      </td>
-      <td className="px-3 text-sm tabular-nums text-muted-foreground">
-        {running ? "Running" : stamp(visit.endedAt!)}
-      </td>
-      <td className="relative p-0">
-        <TableCellCombobox
-          value={technicianById(visit.technicianId)?.name ?? ""}
-          options={ACTIVE_TECHNICIANS.map((t) => t.name)}
-          placeholder="Unrecorded"
-          disabled={locked}
-          aria-label={`Technician on visit ${index + 1}`}
-          onChange={(v) =>
-            onChange({
-              technicianId:
-                ACTIVE_TECHNICIANS.find((t) => t.name === v)?.id ?? null,
-            })
-          }
-        />
-      </td>
-      <td className="px-3">
-        <div className="flex items-center justify-end gap-1.5">
-          <Input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={buf ? buf.h : String(shown.h)}
-            disabled={locked}
-            onChange={(e) => commit(e.target.value, buf ? buf.m : String(shown.m))}
-            onBlur={() => setBuf(null)}
-            className="h-8 w-14 tabular-nums"
-            aria-label={`Hours on visit ${index + 1}`}
-          />
-          <span className="text-xs text-muted-foreground">h</span>
-          <Input
-            type="number"
-            min={0}
-            max={59}
-            inputMode="numeric"
-            value={buf ? buf.m : String(shown.m)}
-            disabled={locked}
-            onChange={(e) => commit(buf ? buf.h : String(shown.h), e.target.value)}
-            onBlur={() => setBuf(null)}
-            className="h-8 w-14 tabular-nums"
-            aria-label={`Minutes on visit ${index + 1}`}
-          />
-          <span className="text-xs text-muted-foreground">m</span>
-        </div>
-        {visit.override !== null && (
-          /* THE ROW'S OWN CLOCK, KEPT IN VIEW. Not a warning — a correction is
-             a normal thing to make. */
-          <p className="pb-1 text-right text-xs text-muted-foreground">
-            Clock said {formatHours(measured)} ·{" "}
-            {!locked && (
-              <button
-                type="button"
-                onClick={() => {
-                  setBuf(null);
-                  onChange({ override: null });
-                }}
-                className="rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                use it
-              </button>
-            )}
-          </p>
-        )}
-      </td>
-      <td className="relative p-0 text-center">
-        {onRemove && !locked && !running && (
-          <TableRowRemove
-            aria-label={`Remove visit ${index + 1}`}
-            onRemove={onRemove}
-          />
-        )}
-      </td>
-    </tr>
+/** Another order's number as a link — opens it. */
+function OrderLink({ no, onOpen }: { no: string; onOpen?: (no: string) => void }) {
+  return onOpen ? (
+    <button
+      type="button"
+      onClick={() => onOpen(no)}
+      className="rounded-sm text-foreground underline decoration-current/40 underline-offset-4 outline-none hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      {no}
+    </button>
+  ) : (
+    <span>{no}</span>
   );
 }
 
@@ -492,7 +366,13 @@ function LineTable({
   total,
   focusRow,
   showFitted,
+  nameOptions,
 }: {
+  /**
+   * A LIST TO PICK THE NAME FROM, or type one (Pavan, 2026-09-24) — the
+   * standard fees. Picking a listed name brings its amount; it stays editable.
+   */
+  nameOptions?: FeeLine[];
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
   onRemove: (i: number) => void;
@@ -574,13 +454,28 @@ function LineTable({
                     {r.name || "—"}
                   </span>
                 ) : (
-                  <TableCellInput
-                    value={r.name}
-                    placeholder={namePlaceholder}
-                    autoFocus={i === focusRow}
-                    aria-label={`${nameLabel} for row ${i + 1}`}
-                    onChange={(v) => onChange(i, { name: v })}
-                  />
+                  nameOptions ? (
+                    <TableCellCombobox
+                      value={r.name}
+                      options={nameOptions.map((f) => f.name)}
+                      creatable
+                      placeholder={namePlaceholder}
+                      autoFocus={i === focusRow}
+                      aria-label={`${nameLabel} for row ${i + 1}`}
+                      onChange={(v) => {
+                        const listed = nameOptions.find((f) => f.name === v);
+                        onChange(i, listed ? { name: v, amount: listed.amount } : { name: v });
+                      }}
+                    />
+                  ) : (
+                    <TableCellInput
+                      value={r.name}
+                      placeholder={namePlaceholder}
+                      autoFocus={i === focusRow}
+                      aria-label={`${nameLabel} for row ${i + 1}`}
+                      onChange={(v) => onChange(i, { name: v })}
+                    />
+                  )
                 )}
               </td>
               {withQty && (
@@ -687,13 +582,15 @@ export interface ServiceOrderSheetProps {
    */
   onPartsPending?: (
     id: string,
-    data: { labor: number; parts: PartLine[]; note?: string; mode?: "continue" | "neworder" }
+    data: { labor: number; parts: PartLine[]; note?: string; mode?: ReturnMode }
   ) => void;
   customers: string[];
   /** Ship-tos for a chosen customer, and assets for a chosen ship-to. */
   shipTosFor: (customer: string) => string[];
   assetsFor: (shipTo: string) => { id: string; name: string; type: string }[];
   blankOrder: () => ServiceOrder;
+  /** Open another order by its number — the related order's link. */
+  onOpenOrder?: (orderNo: string) => void;
 }
 
 export function ServiceOrderSheet({
@@ -706,6 +603,7 @@ export function ServiceOrderSheet({
   onCreateDraft,
   onCreateTicket,
   onPartsPending,
+  onOpenOrder,
   customers,
   shipTosFor,
   assetsFor,
@@ -914,6 +812,14 @@ export function ServiceOrderSheet({
       label: "Choose a ship-to site",
       done: Boolean(draft.shipTo),
       target: SECTION_ASSET,
+    },
+    /* THE SCHEDULING WINDOW IS MANDATORY (Deepika and Pavan, 2026-09-24):
+       customer, ship-to, window and technician are the whole required set. */
+    {
+      key: "window",
+      label: "Set the scheduling window",
+      done: Boolean(draft.scheduledAt) && draft.windowEndMin != null,
+      target: SECTION_SCHEDULE,
     },
     /* ASSET AND WORK TYPE LEFT THIS LIST ON 2026-09-23, because they left the
        mandatory set. A job can exist knowing only the customer and the fault,
@@ -1258,6 +1164,11 @@ export function ServiceOrderSheet({
         creating ? undefined : (
           <span className="flex items-center gap-2">
             <StatusChip tone={WORK_STATUS_TONE[draft.status]}>{draft.status}</StatusChip>
+            {/* ROLLED OVER FOR PARTS (Deepika, 2026-09-24) — not a normal
+                Assigned order, and the header says so. */}
+            {draft.partNeeded && (draft.status === "Assigned" || draft.status === "Ongoing") && (
+              <StatusChip tone={WORK_STATUS_TONE["Parts pending"]}>Parts pending</StatusChip>
+            )}
             {draft.priority !== "Normal" && (
               <Badge variant={draft.priority === "Urgent" ? "destructive" : "secondary"}>
                 {draft.priority}
@@ -1505,7 +1416,7 @@ export function ServiceOrderSheet({
           than the first. */}
       <SheetSection id={SECTION_SCHEDULE} title="Schedule details">
         <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Scheduled date">
+          <SheetField label="Scheduled date" required>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -1539,6 +1450,7 @@ export function ServiceOrderSheet({
           {/* A WINDOW, NOT A MOMENT — the same control 3PL uses for a delivery
               window, and for the same reason. */}
           <TimeWindowSlider
+            required
             label="Scheduling window"
             start={scheduledMinutes}
             end={draft.windowEndMin ?? scheduledMinutes + 180}
@@ -1571,6 +1483,7 @@ export function ServiceOrderSheet({
       <SheetSection id={SECTION_TECH} title="Technician">
         <SheetField
           label="Assigned to"
+          required
         >
           <Combobox
             className="w-full"
@@ -1837,7 +1750,8 @@ export function ServiceOrderSheet({
           rows={draft.fees}
           readOnly={billed}
           nameLabel="Fee"
-          namePlaceholder="Fee name, e.g. Service call fee"
+          nameOptions={FEE_BOOK}
+          namePlaceholder="Pick or type a fee"
           emptyLabel="No fees on this job."
           total={feesSum}
           onChange={(i, p) => setLine("fees", i, p)}
@@ -1911,94 +1825,20 @@ export function ServiceOrderSheet({
           </SheetField>
         </SheetSectionInset>
 
-        <table className="w-full table-fixed border-collapse">
-          <colgroup>
-            <col className="w-[24%]" />
-            <col className="w-[20%]" />
-            <col className="w-[24%]" />
-            <col />
-            <col className="w-[52px]" />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-border bg-fp-table-header">
-              <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Started</TableRequiredLabel>
-              </th>
-              <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Stopped</TableRequiredLabel>
-              </th>
-              {/* WHOSE TRIP IT WAS (Pavan, 2026-09-23). On a partial job the
-                  second visit is often somebody else, and an order that
-                  records two visits and one name is an order that cannot say
-                  who did which half. */}
-              <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Technician</TableRequiredLabel>
-              </th>
-              <th className="px-3 py-2.5 text-right">
-                <TableRequiredLabel>On site</TableRequiredLabel>
-              </th>
-              <th aria-hidden />
-            </tr>
-          </thead>
-          <tbody>
-            {draft.visits.length === 0 && (
-              <tr className="h-11 border-b border-border last:border-b-0">
-                <td colSpan={5} className="px-3 text-sm text-muted-foreground">
-                  No visits yet.
-                </td>
-              </tr>
-            )}
-            {draft.visits.map((v, i) => (
-              <VisitRow
-                key={i}
-                visit={v}
-                index={i}
-                locked={billed}
-                onChange={(patch) =>
-                  setDraft((x) =>
-                    x
-                      ? syncVisits({
-                          ...x,
-                          visits: x.visits.map((r, j) =>
-                            j === i ? { ...r, ...patch } : r
-                          ),
-                        })
-                      : x
-                  )
-                }
-                onRemove={
-                  draft.visits.length > 1
-                    ? () =>
-                        setDraft((x) =>
-                          x
-                            ? syncVisits({
-                                ...x,
-                                visits: x.visits.filter((_, j) => j !== i),
-                              })
-                            : x
-                        )
-                    : undefined
-                }
-              />
-            ))}
-          </tbody>
-          {/* THE TOTAL IS A ROW OF THE TABLE, on the same grid as the figures
-              it sums — and it carries the money, because that is the reason
-              anybody adds the hours up. */}
-          {draft.visits.length > 0 && (
-            <tfoot>
-              <tr className="h-11 border-t border-border bg-fp-table-header">
-                <td colSpan={3} className="px-3 text-sm text-muted-foreground">
-                  {draft.visits.length} visit{draft.visits.length === 1 ? "" : "s"}
-                </td>
-                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
-                  {formatHours(draft.labor)} · {money(draft.labor * draft.laborRate)}
-                </td>
-                <td aria-hidden />
-              </tr>
-            </tfoot>
-          )}
-        </table>
+        {/* THE VISITS LEFT THE FORM (Deepika, 2026-09-24) — started, stopped,
+            who and how long read as fields to fill in. The card keeps the rate
+            and what the labour comes to; the visits are a summary in the rail,
+            and a continuation links to the order it continues. */}
+        <SheetSectionInset>
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="text-muted-foreground">
+              Labour · {draft.visits.length} visit{draft.visits.length === 1 ? "" : "s"}
+            </span>
+            <span className="font-medium tabular-nums text-foreground">
+              {formatHours(draft.labor)} · {money(draft.labor * draft.laborRate)}
+            </span>
+          </div>
+        </SheetSectionInset>
       </SheetSection>
 
       {/* CHARGES ADDED WHEN THE INVOICE WAS RAISED — a return trip, a disposal
@@ -2122,14 +1962,35 @@ export function ServiceOrderSheet({
                   )
                 }
               />
+              {/* A LINK, NOT A COPY (Deepika, 2026-09-24): the related order
+                  opens on a press; its details stay on it. */}
               {draft.returnOf && (
-                <RailRow label="Return visit for" value={draft.returnOf} />
+                <RailRow label="Continues" value={<OrderLink no={draft.returnOf} onOpen={onOpenOrder} />} />
               )}
               {draft.spawnedReturn && (
-                <RailRow label="Return visit created" value={draft.spawnedReturn} />
+                <RailRow label="Continued in" value={<OrderLink no={draft.spawnedReturn} onOpen={onOpenOrder} />} />
               )}
             </div>
           </RailCard>
+
+          {draft.visits.length > 0 && (
+            <RailCard title="Visits" icon={<Clock />}>
+              <div className="flex flex-col divide-y divide-border">
+                {draft.visits.map((v, i) => (
+                  <RailRow
+                    key={i}
+                    label={
+                      <span className="flex flex-col">
+                        <span className="text-foreground">{technicianById(v.technicianId)?.name ?? "—"}</span>
+                        <span className="text-xs">{stampLabel(v.startedAt)}</span>
+                      </span>
+                    }
+                    value={v.endedAt ? formatHours(visitHours(v)) : "Running"}
+                  />
+                ))}
+              </div>
+            </RailCard>
+          )}
 
           {!creating && order && (
             <RailCard title="Activity" icon={<History />}>
@@ -2314,9 +2175,11 @@ export function ServiceOrderSheet({
             {heldShortfall ? (
               <>
                 <span className="text-foreground">{heldShortfall}</span>{" "}
-                {cfg.returnMode === "continue"
-                  ? `stays on ${draft.orderNo}, which goes back to Open for somebody to take the next visit.`
-                  : "becomes a new order of its own, and this one is complete."}
+                {cfg.returnMode === "rollover"
+                  ? `stays on ${draft.orderNo}, which rolls over to tomorrow with the same technician.`
+                  : cfg.returnMode === "neworder"
+                    ? "becomes a new Open order, linked back, and this one is complete."
+                    : "waits in the queue as a Parts pending order, and this one is complete."}
               </>
             ) : (
               "Everything the job needed went on. Nothing to carry over."
@@ -2337,9 +2200,11 @@ export function ServiceOrderSheet({
                 setHoldOpen(false);
               }}
             >
-              {cfg.returnMode === "continue"
-                ? "Back to Open"
-                : "Complete and raise the rest"}
+              {cfg.returnMode === "rollover"
+                ? "Roll over to tomorrow"
+                : cfg.returnMode === "neworder"
+                  ? "Complete and create linked order"
+                  : "Complete and queue the rest"}
             </Button>
           </DialogFooter>
         </DialogContent>

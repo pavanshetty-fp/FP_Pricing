@@ -50,7 +50,7 @@ import {
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
-import { useServiceSettings } from "./settings";
+import { useServiceSettings, type ReturnMode } from "./settings";
 import { ActionBar, Body, Facts, SectionTitle, TopBar } from "./TechnicianMobile";
 import { BottomSheet } from "./TechnicianHome";
 import { PendingStrip, type PendingItem } from "../PendingStrip";
@@ -180,7 +180,7 @@ export interface TicketRequest {
 }
 
 export interface SplitRequest {
-  mode: "continue" | "neworder";
+  mode: ReturnMode;
   parts: PartLine[];
   note: string | null;
 }
@@ -261,7 +261,7 @@ export function TechnicianJob({
   const [parts, setParts] = React.useState<PartLine[]>(() =>
     job.parts.map((p) => ({ ...p, fittedQty: p.fittedQty ?? p.qty }))
   );
-  const [mode, setMode] = React.useState<"continue" | "neworder">(cfg.returnMode);
+  const [mode, setMode] = React.useState<ReturnMode>(cfg.returnMode);
   const [mapOpen, setMapOpen] = React.useState(false);
   const [ticketOpen, setTicketOpen] = React.useState(false);
   const [breakupOpen, setBreakupOpen] = React.useState(false);
@@ -342,6 +342,12 @@ export function TechnicianJob({
         <Body>
           {/* OPEN, NOT CARDED (Pavan, 2026-09-24): customer, ship-to, and
               when it is booked for — date and window. */}
+          {/* A RETURN VISIT SAYS SO (2026-09-24) — rolled over for parts. */}
+          {job.partNeeded && (
+            <div className="rounded-lg border border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10 px-3 py-2.5 text-sm text-foreground">
+              <span className="font-medium">Parts pending</span> · {job.partNeeded}
+            </div>
+          )}
           <OrderHeading job={job} />
         </Body>
         <ActionBar
@@ -594,6 +600,21 @@ export function TechnicianJob({
         </Body>
         {paused ? (
           pausedBar
+        ) : !visit || visit.endedAt !== null ? (
+          /* A ROLLED-OVER JOB, BACK ON SITE (2026-09-24) — the last visit
+             closed yesterday, so today's work starts a visit of its own. */
+          <ActionBar
+            label="Start work"
+            disabled={Boolean(busyWith)}
+            note={busyWith ? `${busyWith} is ongoing — complete it first` : job.partNeeded ? `Parts pending · ${job.partNeeded}` : undefined}
+            onPress={() => {
+              onPatch({
+                ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
+                status: "Ongoing" as WorkStatus,
+              });
+              toast.success("Work started");
+            }}
+          />
         ) : (
           <ActionBar
             label="Mark as complete"
@@ -689,8 +710,10 @@ export function TechnicianJob({
                 <SectionTitle>What happens to the rest</SectionTitle>
                 {(
                   [
-                    ["continue", "Linked order", "This order stays open for the next visit, with what is still owed on it."],
-                    ["neworder", "New order", "This order is completed; what is still owed becomes a new order."],
+                    /* THE THREE OUTCOMES (Deepika and Pavan, 2026-09-24). */
+                    ["rollover", "Roll over", "Same order tomorrow, with you on it."],
+                    ["neworder", "New linked order", "This one is completed; the rest is a new order for the dispatcher."],
+                    ["queue", "Complete and queue", "This one is completed; the rest waits as Parts pending."],
                   ] as const
                 ).map(([k, title, desc]) => (
                   <button
@@ -722,7 +745,7 @@ export function TechnicianJob({
           </div>
         </Body>
         <ActionBar
-          label={ending === "partial" ? (mode === "continue" ? "Complete — keep order open" : "Complete — create new order") : "Complete job"}
+          label={ending === "partial" ? (mode === "rollover" ? "Complete — roll over" : mode === "neworder" ? "Complete — create linked order" : "Complete — queue the rest") : "Complete job"}
           disabled={ending === "partial" && (owed === 0 || parts.some((p) => !p.name.trim()))}
           note={ending === "partial" && owed === 0 ? "Nothing is owed — lower what was fitted, or choose Everything done" : undefined}
           onPress={() => {
@@ -735,12 +758,18 @@ export function TechnicianJob({
             if (ending === "partial") {
               onPatch({ ...syncVisits({ visits: closed }) });
               onSplit({ mode, parts, note: notes.trim() || null });
+              /* LEAVE THE COMPLETION SCREEN. A rolled-over job is tomorrow's
+                 job again, so the technician goes back to the list; the other
+                 two close this order and land on its done screen. */
+              setEnding(null);
+              if (mode === "rollover") onBack();
               return;
             }
             onPatch({
               techNotes: notes.trim() || null,
               ...syncVisits({ visits: closed }),
               signed: true,
+              partNeeded: null,
               status: cfg.managerApproval ? "Needs approval" : "Completed",
             });
             toast.success(cfg.managerApproval ? `${job.orderNo} sent for approval` : `${job.orderNo} completed`);

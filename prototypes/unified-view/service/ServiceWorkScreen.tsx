@@ -51,10 +51,10 @@ import {
   ticketFrom,
   shipTosOf,
   shipToPlace,
-  shortfallLabel,
   type PartLine,
 } from "./work";
-import { useServiceOrders } from "./store";
+import { resolveShortfall, useServiceOrders } from "./store";
+import type { ReturnMode } from "./settings";
 import { kindTone } from "../statusKind";
 
 /**
@@ -632,6 +632,11 @@ export function ServiceWorkScreen() {
                two identical cards in one column. */
             badges: [
               { label: r.status, tone: WORK_STATUS_KIND[r.status] },
+              /* A ROLLED-OVER ORDER IS NOT A NORMAL ASSIGNED ONE (Deepika,
+                 2026-09-24) — it says Parts pending beside its status. */
+              ...(r.partNeeded && (r.status === "Assigned" || r.status === "Ongoing")
+                ? [{ label: "Parts pending", tone: WORK_STATUS_KIND["Parts pending"] }]
+                : []),
               ...(r.priority === "Normal"
                 ? []
                 : [
@@ -871,126 +876,25 @@ export function ServiceWorkScreen() {
    *   `neworder`  This order is finished and says so; the remainder becomes
    *               an order of its own with its own number, linked back.
    */
-  const nowIso = () => new Date().toISOString();
-
   const onPartsPending = (
     id: string,
-    data: { labor: number; parts: PartLine[]; note?: string; mode?: "continue" | "neworder" }
+    data: { labor: number; parts: PartLine[]; note?: string; mode?: ReturnMode }
   ) => {
-    const order = rows.find((r) => r.id === id);
-    if (!order) return;
-
-    const { owed } = splitParts(data.parts);
-    /* NOTHING OWED IS NOT A STALL. If every line came back full the job is
-       simply done, and filing a debt of nothing helps nobody. */
-    if (owed.length === 0) return;
-
-    const shortfall = shortfallLabel(data.parts);
-
-    /* THE TECHNICIAN MAY CHOOSE, on the phone; the setting is the default. */
-    if ((data.mode ?? cfg.returnMode) === "continue") {
-      /* BACK TO OPEN, AND THAT IS THE WHOLE MOVE. No new record, no new
-         number — the same order, with what it has managed so far recorded on
-         it, waiting for somebody to be put on the next visit.
-
-         THE TECHNICIAN COMES OFF, because Open means nobody is on it and the
-         next visit may well be somebody else. The DATE comes off for the same
-         reason: the day it was booked for has been and gone. */
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                status: "Parts pending" as WorkStatus,
-                parts: data.parts,
-                labor: data.labor,
-                partNeeded: shortfall,
-                techNotes: data.note ?? r.techNotes,
-                technicianId: null,
-                /* THE CLOCK STOPS BUT THE JOB IS NOT COMPLETE. `startedAt`
-                   stays as the record of the visit that happened;
-                   `completedAt` must not be set or the order would claim to
-                   be finished while it is sitting in Open. */
-                completedAt: null,
-                spawnedReturn: null,
-              }
-            : r
-        )
+    /* NOTHING OWED IS NOT A STALL — the job is simply done. */
+    if (splitParts(data.parts).owed.length === 0) return;
+    /* ONE PLACE DECIDES WHAT "THE REST" BECOMES — `resolveShortfall`, shared
+       with the phone. The technician may choose; the setting is the default. */
+    let said = { title: "", description: "" };
+    setRows((prev) => {
+      const out = resolveShortfall(
+        prev.map((r) => (r.id === id ? { ...r, labor: data.labor } : r)),
+        id,
+        { parts: data.parts, note: data.note, mode: data.mode ?? cfg.returnMode, nativeBilling: cfg.nativeBilling }
       );
-      toast.success(`${order.orderNo} — ${shortfall} still owed`, {
-        description: "Back to Open. Assign somebody for the next visit.",
-      });
-      return;
-    }
-
-    /* A NEW ORDER ALTOGETHER. This one is complete — the five that went on
-       are what it was for — and the remainder is its own piece of work. */
-    const no = nextOrderNo();
-    const followUp: ServiceOrder = {
-      ...order,
-      id: `so-owed-${no}`,
-      orderNo: no,
-      status: "Drafted",
-      /* ITS OWN LOG, from its own creation — the parent's history stays on
-         the parent. */
-      audit: [],
-      /* THE FAULT IS THE DEBT, in the words of the parts. "Return visit" on
-         its own tells the next technician nothing about what to bring. */
-      fault: `Awaiting parts — ${shortfall}`,
-      assets: order.assets.map((a) => ({ ...a, fault: `Awaiting parts — ${shortfall}` })),
-      parts: owed,
-      arrivedAt: null,
-      visits: [],
-      startedAt: null,
-      assessment: null,
-      techNotes: null,
-      /* IT STARTS FROM NOTHING. Labour, mileage and the fees already charged
-         belong to the visit that happened; carrying them would invoice the
-         call-out twice. */
-      labor: 0,
-      laborOverride: null,
-      laborRate: order.laborRate,
-      mileage: 0,
-      fees: [],
-      quote: null,
-      extraCharges: [],
-      invoiceCreated: false,
-      invoicedAt: null,
-      synced: false,
-      partNeeded: null,
-      returnOf: order.orderNo,
-      spawnedReturn: null,
-      signed: false,
-      completedAt: null,
-      /* NOBODY IS ON IT — that is what Open means, and the invariant checks. */
-      technicianId: null,
-      windowEndMin: order.windowEndMin,
-    };
-
-    setRows((prev) => [
-      followUp,
-      ...prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              labor: data.labor,
-              parts: data.parts,
-              status: "Completed — linked" as WorkStatus,
-              completedAt: nowIso(),
-              signed: true,
-              partNeeded: null,
-              techNotes: data.note ?? r.techNotes,
-              spawnedReturn: no,
-              invoiceCreated: cfg.nativeBilling,
-              invoicedAt: cfg.nativeBilling ? nowIso() : null,
-            }
-          : r
-      ),
-    ]);
-
-    toast.success(`${order.orderNo} completed — ${shortfall} moved on`, {
-      description: `New order ${no} carries what is still owed.`,
+      said = out;
+      return out.rows;
     });
+    if (said.title) toast.success(said.title, { description: said.description });
   };
 
   /* ──────────────────────────────────────────────────────── the table ───── */
@@ -1293,6 +1197,13 @@ export function ServiceWorkScreen() {
           setOpenId(null);
         }}
         onSave={saveOrder}
+        onOpenOrder={(no) => {
+          const r = rows.find((x) => x.orderNo === no);
+          if (r) {
+            setCreating(false);
+            setOpenId(r.id);
+          }
+        }}
         onCreate={createOrder}
         onCreateDraft={(d) => createOrder(d, true)}
         onCreateTicket={(from, req) => {

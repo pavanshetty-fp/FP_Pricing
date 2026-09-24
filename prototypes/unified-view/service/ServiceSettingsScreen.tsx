@@ -186,14 +186,19 @@ export function ServiceSettingsScreen() {
                 {(
                   [
                     [
-                      "continue",
-                      "The same order carries on",
-                      "Same number, back to Open. It keeps what has been fitted so far and is not done until every line is full — one fault, one number, however many visits it takes.",
+                      "rollover",
+                      "Roll over to the next day",
+                      "The same order, same technician, the next day. It stays Assigned and shows Parts pending.",
                     ],
                     [
                       "neworder",
-                      "This one is done; the rest is a new order",
-                      "The parts that went on are complete and the order says so. What is owed becomes its own order, with its own number, linked back.",
+                      "Complete it; the rest is a linked order",
+                      "This order is complete. The rest becomes a new Open order with no technician or date, carrying the notes, linked both ways.",
+                    ],
+                    [
+                      "queue",
+                      "Complete it; queue the rest",
+                      "This order is complete. The rest waits in the queue as a Parts pending order for the dispatcher. No link.",
                     ],
                   ] as const
                 ).map(([key, title, detail]) => (

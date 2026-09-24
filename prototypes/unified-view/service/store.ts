@@ -1,6 +1,11 @@
 import * as React from "react";
+import type { ReturnMode } from "./settings";
 import {
   SERVICE_ORDERS,
+  shortfallLabel,
+  splitParts,
+  type PartLine,
+  type WorkStatus,
   TECHNICIANS,
   diffServiceOrder,
   type ServiceOrder,
@@ -121,4 +126,127 @@ export function useServiceOrders(): [ServiceOrder[], typeof setServiceOrders] {
     () => store
   );
   return [rows, setServiceOrders];
+}
+
+/** The next free order number. */
+export const nextServiceOrderNo = (rows: ServiceOrder[]) =>
+  `SO-${Math.max(...rows.map((r) => Number(r.orderNo.slice(3)) || 0)) + 1}`;
+
+const keyOfDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * PARTS MISSING — THE THREE OUTCOMES, in one place (2026-09-24). The board,
+ * the order sheet and the phone all call this, so they cannot disagree about
+ * what "the rest" becomes. The visit has already been closed by the caller.
+ * Returns the new rows and what to tell the reader.
+ */
+export function resolveShortfall(
+  rows: ServiceOrder[],
+  id: string,
+  data: { parts: PartLine[]; note?: string | null; mode: ReturnMode; nativeBilling: boolean }
+): { rows: ServiceOrder[]; title: string; description: string } {
+  const order = rows.find((r) => r.id === id);
+  if (!order) return { rows, title: "", description: "" };
+  const { owed } = splitParts(data.parts);
+  const shortfall = shortfallLabel(data.parts);
+  const at = new Date().toISOString();
+  const note = data.note ?? order.techNotes;
+
+  /* ROLLED OVER — the same order tomorrow, everything kept. */
+  if (data.mode === "rollover") {
+    /* THE DAY AFTER THE VISIT — tomorrow — at the booking's own time of day. */
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    if (order.scheduledAt) {
+      const t = new Date(order.scheduledAt);
+      next.setHours(t.getHours(), t.getMinutes(), 0, 0);
+    }
+    return {
+      rows: rows.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: "Assigned" as WorkStatus,
+              parts: data.parts,
+              /* THE CALLOUT: an Assigned order that is not a normal one. */
+              partNeeded: shortfall,
+              techNotes: note,
+              arrivedAt: null,
+              completedAt: null,
+              scheduledAt: next.toISOString(),
+              dateKey: keyOfDay(next),
+            }
+          : r
+      ),
+      title: `${order.orderNo} rolled over to tomorrow`,
+      description: `${shortfall} still owed · same technician.`,
+    };
+  }
+
+  /* THE REST, AS ITS OWN ORDER — shared by the two outcomes that close this
+     one. It starts from nothing but what is owed: labour, mileage and fees
+     belong to the visit that happened. No technician and no date. */
+  const no = nextServiceOrderNo(rows);
+  const linked = data.mode === "neworder";
+  const rest: ServiceOrder = {
+    ...order,
+    id: `so-owed-${no}`,
+    orderNo: no,
+    status: (linked ? "Linked order" : "Parts pending") as WorkStatus,
+    audit: [],
+    fault: `Awaiting parts — ${shortfall}`,
+    assets: order.assets.map((a) => ({ ...a, fault: `Awaiting parts — ${shortfall}` })),
+    parts: owed,
+    arrivedAt: null,
+    visits: [],
+    startedAt: null,
+    assessment: null,
+    assessmentLines: undefined,
+    siteAssessment: undefined,
+    /* THE PREVIOUS TECHNICIAN'S NOTES GO WITH IT, so whoever takes it knows. */
+    techNotes: note,
+    labor: 0,
+    laborOverride: null,
+    mileage: 0,
+    fees: [],
+    quote: null,
+    extraCharges: [],
+    invoiceCreated: false,
+    invoicedAt: null,
+    synced: false,
+    partNeeded: shortfall,
+    returnOf: linked ? order.orderNo : null,
+    spawnedReturn: null,
+    signed: false,
+    completedAt: null,
+    technicianId: null,
+    scheduledAt: null,
+    dateKey: keyOfDay(new Date()),
+  };
+  return {
+    rows: [
+      rest,
+      ...rows.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              parts: data.parts,
+              status: (linked ? "Completed — linked" : "Completed") as WorkStatus,
+              completedAt: at,
+              signed: true,
+              partNeeded: null,
+              techNotes: note,
+              spawnedReturn: linked ? no : null,
+              invoiceCreated: data.nativeBilling,
+              invoicedAt: data.nativeBilling ? at : null,
+            }
+          : r
+      ),
+    ],
+    title: `${order.orderNo} completed`,
+    description: linked
+      ? `New order ${no} carries ${shortfall}, linked back.`
+      : `${no} waits in the queue as Parts pending — ${shortfall}.`,
+  };
 }

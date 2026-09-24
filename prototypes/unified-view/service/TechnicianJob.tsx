@@ -1,5 +1,9 @@
 import * as React from "react";
 import {
+  SkipForward,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
   Bold,
   Building2,
   ClipboardList,
@@ -183,6 +187,8 @@ const lineTitle = (l: AssessmentLine) => [l.assetName, l.workType].filter(Boolea
 export interface TicketRequest {
   assets: { assetId: string; assetName: string; assetType: string; workType: string; fault: string }[];
   fees: { name: string; amount: number }[];
+  /** PARTS ON A TICKET FROM SITE (Pavan, 2026-09-24). */
+  parts: PartLine[];
 }
 
 export interface SplitRequest {
@@ -379,14 +385,12 @@ export function TechnicianJob({
       setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
     const submitted = Boolean(job.siteAssessment?.submittedAt);
     const unnamed = lines.filter((l) => l.source === "added" && !l.assetName.trim()).length;
-    const unconfirmed = lines.filter((l) => l.verdict !== "skip" && !l.partsConfirmed).length;
-    const ready = submitted && unnamed === 0 && unconfirmed === 0;
+    const ready = submitted && unnamed === 0;
     /* THE PENDING STEPS, IN ORDER (Pavan, 2026-09-24). The first three hold
        the quote back; the last two only remind. */
     const pending: PendingItem[] = [
       !submitted && { key: "assess", label: "Submit the assessment" },
       unnamed > 0 && { key: "name", label: `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added` },
-      unconfirmed > 0 && { key: "parts", label: `Confirm parts on ${unconfirmed === 1 ? "1 job" : `${unconfirmed} jobs`}` },
       job.fees.length === 0 && { key: "fees", label: "Add fees" },
       (job.siteAssessment?.photos.length ?? 0) === 0 && { key: "photo", label: "Add a photo to the assessment" },
     ].filter((x): x is PendingItem => Boolean(x));
@@ -895,40 +899,41 @@ function AssessmentCard({
   onRemove?: () => void;
 }) {
   const added = line.source === "added";
-  /* THE TICK = PARTS CONFIRMED (Pavan, 2026-09-24, option B). A skipped
-     job's number is struck instead. */
   const skipped = line.verdict === "skip";
-  const done = Boolean(line.partsConfirmed) && !skipped;
   const [skipOpen, setSkipOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const [reasonPick, setReasonPick] = React.useState<string | null>(null);
   const skipReason = [reasonPick, reason.trim()].filter(Boolean).join(" — ");
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const canMenu = active && !locked && (added ? Boolean(onRemove) : !skipped);
   return (
-    <div className="flex items-start gap-3">
-    {/* NUMBERED, THEN TICKED (Pavan, 2026-09-24) — each task's number on
-        its left, replaced by a tick once the task has its answer. */}
-    <span
-      aria-label={done ? `Task ${index + 1} done` : `Task ${index + 1}`}
-      className={cn(
-        "mt-3 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-        done ? "bg-status-success text-background" : "border border-fp-outline-2 text-muted-foreground"
-      )}
-    >
-      {done ? <Check className="size-3.5" /> : <span className={cn(skipped && "line-through")}>{index + 1}</span>}
-    </span>
-    <section className="flex min-w-0 flex-1 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+      {/* A TITLE PER JOB, NOT A NUMBER IN THE GUTTER (Pavan, 2026-09-24) —
+          "Service 1, Service 2…", the card end to end, and its acts behind
+          ··· (Skip job, or Delete job for one added on site). */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">Service {index + 1}</span>
+          {skipped && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Skipped</span>
+          )}
+        </span>
+        {canMenu && (
+          <button
+            type="button"
+            aria-label={`Service ${index + 1} actions`}
+            onClick={() => setMenuOpen(true)}
+            className="-my-2 -mr-2 flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent"
+          >
+            <MoreHorizontal className="size-5" />
+          </button>
+        )}
+      </div>
       {added ? (
         <>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">Found on site</span>
-            <span className="flex items-center gap-1">
-              <KindChip workType={line.workType} />
-              {onRemove && (
-                <button type="button" onClick={onRemove} aria-label="Remove this task" className="flex size-11 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
-                  <X className="size-4" />
-                </button>
-              )}
-            </span>
+            <KindChip workType={line.workType} />
           </div>
           <Input value={line.assetName} onChange={(e) => onChange({ assetName: e.target.value })} placeholder="Asset" className="h-11" />
           {/* THE PHONE'S OWN PICKER — a native select for one choice from a
@@ -968,7 +973,7 @@ function AssessmentCard({
           stays on the order with its label and the reason. */}
       {skipped && (
         <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
-          <span className="w-fit rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Skipped</span>
+          <span className="text-xs text-muted-foreground">Reason</span>
           <span className="text-sm text-foreground">{line.note}</span>
           {!locked && (
             <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange({ verdict: null, note: "" })}>
@@ -980,22 +985,43 @@ function AssessmentCard({
 
       {active && !skipped && (
         <>
+          {/* NO CONFIRM (Pavan, 2026-09-24) — a part on the card is a part
+              the job needs; a second yes adds nothing. */}
           <TaskParts
             parts={line.parts ?? []}
             workType={line.workType}
             locked={locked}
-            confirmed={Boolean(line.partsConfirmed)}
-            /* A change to the list takes the confirmation back. */
-            onChange={(parts) => onChange({ parts, partsConfirmed: false })}
-            onConfirm={() => onChange({ partsConfirmed: true })}
+            onChange={(parts) => onChange({ parts })}
           />
-          {!locked && !added && (
-            <Button variant="ghost" className="h-11 self-start px-2 text-muted-foreground" onClick={() => setSkipOpen(true)}>
-              Skip job
-            </Button>
-          )}
         </>
       )}
+
+      <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title={`Service ${index + 1}`}>
+        {added ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              onRemove?.();
+              toast("Job deleted");
+            }}
+            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-destructive active:bg-accent"
+          >
+            <X className="size-4" /> Delete job
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              setSkipOpen(true);
+            }}
+            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
+          >
+            <SkipForward className="size-4 text-muted-foreground" /> Skip job
+          </button>
+        )}
+      </BottomSheet>
 
       <BottomSheet
         open={skipOpen}
@@ -1039,7 +1065,6 @@ function AssessmentCard({
         </div>
       </BottomSheet>
     </section>
-    </div>
   );
 }
 
@@ -1061,6 +1086,7 @@ function NewTicket({
   const blankService = () => ({ assetId: "", assetName: "", assetType: "", workType: WORK_TYPE_NAMES[0], fault: "" });
   const [services, setServices] = React.useState([blankService()]);
   const [fees, setFees] = React.useState<{ name: string; amount: number }[]>([]);
+  const [ticketParts, setTicketParts] = React.useState<PartLine[]>([]);
   const setService = (i: number, p: Partial<ReturnType<typeof blankService>>) =>
     setServices((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
@@ -1118,6 +1144,12 @@ function NewTicket({
           ))}
         </div>
 
+        {/* PARTS, SO THE TICKET SAYS WHAT TO BRING (Pavan, 2026-09-24). */}
+        <div className="flex flex-col gap-3">
+          <SectionTitle>Parts</SectionTitle>
+          <TaskParts parts={ticketParts} workType={services[0]?.workType ?? ""} onChange={setTicketParts} />
+        </div>
+
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <SectionTitle>Additional fees</SectionTitle>
@@ -1150,6 +1182,7 @@ function NewTicket({
           onCreate({
             assets: services,
             fees: fees.filter((f) => f.name.trim() || f.amount > 0),
+            parts: ticketParts.filter((p) => p.name.trim()),
           })
         }
       />
@@ -1158,21 +1191,18 @@ function NewTicket({
 }
 
 /**
- * A TASK'S PARTS, EACH WITH ITS COST (Pavan, 2026-09-24) — one or many.
- * Name and remove on top; quantity and unit cost under. The amounts are in
- * the breakup behind the total — the row has no room for a third figure.
+ * A JOB'S PARTS (Pavan, 2026-09-24). Each part is titled "Part 1, Part 2…"
+ * with its remove on the title line; under it the name, then quantity (1 by
+ * default, arrows inside the field) and the price — the line's amount, which
+ * follows the quantity. Editing the price sets the unit cost.
  */
 function TaskParts({
   parts,
   workType,
   locked,
-  confirmed,
   onChange,
-  onConfirm,
 }: {
   locked?: boolean;
-  confirmed?: boolean;
-  onConfirm?: () => void;
   parts: PartLine[];
   workType: string;
   onChange: (parts: PartLine[]) => void;
@@ -1194,46 +1224,55 @@ function TaskParts({
   }
   return (
     <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
-      <span className="text-xs font-medium text-muted-foreground">Parts</span>
       <datalist id="tech-part-options">
         {PART_OPTIONS.map((x) => (
           <option key={x.name} value={x.name} />
         ))}
       </datalist>
-      {parts.length === 0 && <p className="text-sm text-muted-foreground">No parts.</p>}
+      {parts.length === 0 && (
+        <>
+          <span className="text-xs font-medium text-muted-foreground">Parts</span>
+          <p className="text-sm text-muted-foreground">No parts.</p>
+        </>
+      )}
       {parts.map((p, i) => (
         <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
-          <div className="flex items-center gap-2">
-            {/* SUGGESTS FROM THE SHELF (2026-09-24); a listed part brings its
-                cost when none is set. Anything can still be typed. */}
-            <Input
-              value={p.name}
-              list="tech-part-options"
-              onChange={(e) => {
-                const listed = PART_OPTIONS.find((x) => x.name === e.target.value);
-                setPart(i, listed && !p.cost ? { name: e.target.value, cost: listed.cost } : { name: e.target.value });
-              }}
-              placeholder="Part"
-              aria-label={`Part ${i + 1}`}
-              className="h-11 flex-1"
-              autoFocus={!p.name}
-            />
-            <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => onChange(parts.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+          <div className="-my-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Part {i + 1}</span>
+            <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => onChange(parts.filter((_, j) => j !== i))} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
               <X className="size-4" />
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            <Stepper value={p.qty} max={99} label={`Quantity of ${p.name || `part ${i + 1}`}`} onChange={(v) => setPart(i, { qty: Math.max(1, v) })} />
-            <div className="relative min-w-0 flex-1">
+          {/* SUGGESTS FROM THE SHELF; a listed part brings its cost. */}
+          <Input
+            value={p.name}
+            list="tech-part-options"
+            onChange={(e) => {
+              const listed = PART_OPTIONS.find((x) => x.name === e.target.value);
+              setPart(i, listed && !p.cost ? { name: e.target.value, cost: listed.cost } : { name: e.target.value });
+            }}
+            placeholder="Part"
+            aria-label={`Part ${i + 1}`}
+            className="h-11"
+            autoFocus={!p.name}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <QtyInput
+              value={p.qty}
+              label={`Quantity of ${p.name || `part ${i + 1}`}`}
+              onChange={(q) => setPart(i, { qty: q })}
+            />
+            <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
               <Input
-                type="number"
                 inputMode="decimal"
-                min={0}
-                value={p.cost === 0 ? "" : p.cost}
-                onChange={(e) => setPart(i, { cost: Math.max(0, Number(e.target.value) || 0) })}
-                placeholder="0"
-                aria-label={`Cost of ${p.name || `part ${i + 1}`}, each`}
+                value={p.cost * p.qty === 0 ? "" : String(Math.round(p.cost * p.qty * 100) / 100)}
+                onChange={(e) => {
+                  const total = Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, "")) || 0);
+                  setPart(i, { cost: p.qty > 0 ? total / p.qty : total });
+                }}
+                placeholder="Price"
+                aria-label={`Price of ${p.name || `part ${i + 1}`}`}
                 className="h-11 pl-6 tabular-nums"
               />
             </div>
@@ -1252,18 +1291,30 @@ function TaskParts({
       >
         <Plus className="size-4" /> Add part
       </Button>
-      {/* THE TICK (Pavan, 2026-09-24) — the technician says this list is
-          right. Editing it again takes the tick back. */}
-      {onConfirm &&
-        (confirmed ? (
-          <span className="flex h-11 items-center gap-1.5 text-sm text-fp-banner-accent-success">
-            <Check className="size-4" /> Parts confirmed
-          </span>
-        ) : (
-          <Button variant="outline" className="h-11" onClick={onConfirm}>
-            <Check className="size-4" /> Confirm parts
-          </Button>
-        ))}
+    </div>
+  );
+}
+
+/** QUANTITY — a plain field, 1 by default, with up and down inside it. */
+function QtyInput({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+  return (
+    <div className="relative">
+      <Input
+        inputMode="numeric"
+        value={value ? String(value) : ""}
+        onChange={(e) => onChange(Math.max(1, Math.min(999, Number(e.target.value.replace(/[^0-9]/g, "")) || 1)))}
+        placeholder="Quantity"
+        aria-label={label}
+        className="h-11 pr-11 tabular-nums"
+      />
+      <div className="absolute inset-y-0 right-0 flex w-10 flex-col border-l border-input">
+        <button type="button" aria-label="One more" onClick={() => onChange(Math.min(999, value + 1))} className="flex flex-1 items-center justify-center text-muted-foreground active:bg-accent">
+          <ChevronUp className="size-3.5" />
+        </button>
+        <button type="button" aria-label="One fewer" disabled={value <= 1} onClick={() => onChange(Math.max(1, value - 1))} className="flex flex-1 items-center justify-center border-t border-input text-muted-foreground active:bg-accent disabled:opacity-40">
+          <ChevronDown className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1376,6 +1427,7 @@ function BreakupSheet({
   return (
     <BottomSheet
       open={open}
+      full
       onClose={onClose}
       title="Quote total"
       footer={

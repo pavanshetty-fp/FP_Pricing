@@ -477,8 +477,6 @@ export interface AssessmentLine {
    * become the order's parts, and so the quote.
    */
   parts?: PartLine[];
-  /** THE TICK (Pavan, 2026-09-24): the technician has confirmed this job's parts. */
-  partsConfirmed?: boolean;
 }
 
 /**
@@ -1559,7 +1557,7 @@ export function blankServiceOrder(opts: {
  */
 export function ticketFrom(
   from: ServiceOrder,
-  req: { assets: ServiceAssetLine[]; fees: FeeLine[] },
+  req: { assets: ServiceAssetLine[]; fees: FeeLine[]; parts?: PartLine[] },
   orderNo: string,
   by: string
 ): ServiceOrder {
@@ -1582,6 +1580,7 @@ export function ticketFrom(
     workType: first?.workType ?? "",
     fault: first?.fault ?? "",
     fees: req.fees,
+    parts: req.parts ?? [],
     scheduledAt: now.toISOString(),
     dateKey: keyOfDay(now),
     windowEndMin: now.getHours() * 60 + now.getMinutes() + 120,

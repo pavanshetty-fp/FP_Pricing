@@ -2070,7 +2070,7 @@ export function ServiceOrderSheet({
           {/* THE TECHNICIAN'S ASSESSMENT, and the permission it may ask for
               (Pavan, 2026-09-24) — once the quote is approved an edit needs
               the dispatcher's yes, given here. */}
-          {draft.siteAssessment?.submittedAt && (
+          {(draft.siteAssessment?.submittedAt || draft.siteAssessment?.html) && (
             <RailCard title="Assessment" icon={<ClipboardList />}>
               <div className="flex flex-col gap-3 px-4 py-3">
                 <p className="line-clamp-4 text-sm text-foreground">

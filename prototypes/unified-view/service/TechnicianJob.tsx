@@ -416,16 +416,15 @@ export function TechnicianJob({
   if (stage === "assess") {
     const set = (key: string, patch: Partial<AssessmentLine>) =>
       setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-    const submitted = Boolean(job.siteAssessment?.submittedAt);
     const unnamed = lines.filter((l) => l.source === "added" && !l.assetName.trim()).length;
-    const ready = submitted && unnamed === 0;
+    /* THE ASSESSMENT IS OPTIONAL (Pavan, 2026-09-24) — and so are its
+       photos. The quote waits only on naming any job added on site. */
+    const ready = unnamed === 0;
     /* THE PENDING STEPS, IN ORDER (Pavan, 2026-09-24). The first three hold
        the quote back; the last two only remind. */
     const pending: PendingItem[] = [
-      !submitted && { key: "assess", label: "Submit the assessment" },
       unnamed > 0 && { key: "name", label: `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added` },
       job.fees.length === 0 && { key: "fees", label: "Add fees" },
-      (job.siteAssessment?.photos.length ?? 0) === 0 && { key: "photo", label: "Add a photo to the assessment" },
     ].filter((x): x is PendingItem => Boolean(x));
     /* SENT AND WAITING — the customer is deciding offline, so what they were
        sent is what stays on screen: jobs and money lock until it is approved
@@ -626,7 +625,7 @@ export function TechnicianJob({
       <>
         <TopBar title="Work in progress" subtitle={sub} onBack={onBack} aside={timer} />
         <Body>
-          {job.siteAssessment?.submittedAt && (
+          {(job.siteAssessment?.submittedAt || job.siteAssessment?.html) && (
             <SiteAssessmentRow value={job.siteAssessment} onOpen={() => setAssessOpen(true)} />
           )}
           <div className="flex items-baseline gap-2">

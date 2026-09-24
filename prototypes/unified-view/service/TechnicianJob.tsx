@@ -499,10 +499,12 @@ export function TechnicianJob({
           {/* 3 · FEES — ONE section for the order, not one per job (Deepika,
               2026-09-24). The dispatcher's fees are already in it. */}
           {job.startedAt && (
-            <div className="flex flex-col gap-2">
-              <SectionTitle>Fees</SectionTitle>
+            /* THE FEES UNIT, SHAPED LIKE A SERVICE CARD (Pavan, 2026-09-24) —
+               the main box, each fee a card inside it. */
+            <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+              <span className="text-sm font-semibold text-foreground">Fees</span>
               <TaskFees fees={job.fees} onChange={setFees} locked={!editable} />
-            </div>
+            </section>
           )}
         </Body>
         {/* START WORK FIRST — it starts the clock; the jobs take their parts
@@ -1144,37 +1146,16 @@ function NewTicket({
           ))}
         </div>
 
-        {/* PARTS, SO THE TICKET SAYS WHAT TO BRING (Pavan, 2026-09-24). */}
-        <div className="flex flex-col gap-3">
-          <SectionTitle>Parts</SectionTitle>
+        {/* PARTS AND FEES, THE SAME UNITS AS THE JOB SCREEN (Pavan,
+            2026-09-24) — a main box each, every item its own card. */}
+        <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+          <span className="text-sm font-semibold text-foreground">Parts</span>
           <TaskParts parts={ticketParts} workType={services[0]?.workType ?? ""} onChange={setTicketParts} titled={false} />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <SectionTitle>Additional fees</SectionTitle>
-            <Button variant="ghost" size="sm" className="h-9" onClick={() => setFees((xs) => [...xs, { name: "", amount: 0 }])}>
-              <Plus className="size-4" /> Add fee
-            </Button>
-          </div>
-          {fees.length === 0 && <p className="text-sm text-muted-foreground">No additional fees.</p>}
-          {fees.map((f, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input value={f.name} onChange={(e) => setFees((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} placeholder="Fee" aria-label={`Fee ${i + 1}`} className="h-11 flex-1" />
-              <Input
-                inputMode="decimal"
-                value={f.amount ? String(f.amount) : ""}
-                onChange={(e) => setFees((xs) => xs.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value.replace(/[^0-9.]/g, "")) || 0 } : x)))}
-                placeholder="0.00"
-                aria-label={`Amount of ${f.name || `fee ${i + 1}`}`}
-                className="h-11 w-24 tabular-nums"
-              />
-              <button type="button" aria-label={`Remove ${f.name || `fee ${i + 1}`}`} onClick={() => setFees((xs) => xs.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+        </section>
+        <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
+          <span className="text-sm font-semibold text-foreground">Fees</span>
+          <TaskFees fees={fees} onChange={setFees} />
+        </section>
       </Body>
       <ActionBar
         label="Create ticket"
@@ -1226,21 +1207,18 @@ function TaskParts({
     );
   }
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
+    <div className="flex flex-col gap-2">
       <datalist id="tech-part-options">
         {PART_OPTIONS.map((x) => (
           <option key={x.name} value={x.name} />
         ))}
       </datalist>
-      {parts.length === 0 && (
-        <>
-          {titled && <span className="text-xs font-medium text-muted-foreground">Parts</span>}
-          <p className="text-sm text-muted-foreground">No parts.</p>
-        </>
-      )}
+      {titled && <span className="text-xs font-medium text-muted-foreground">Parts</span>}
+      {parts.length === 0 && <p className="text-sm text-muted-foreground">No parts.</p>}
       {parts.map((p, i) => (
-        <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
-          <div className="-my-1 flex items-center justify-between">
+        /* EACH PART ITS OWN CARD, like each fee (Pavan, 2026-09-24). */
+        <div key={i} className="flex flex-col gap-2 rounded-md bg-fp-card-1 p-3">
+          <div className="-my-2 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Part {i + 1}</span>
             <button type="button" aria-label={`Remove ${p.name || `part ${i + 1}`}`} onClick={() => onChange(parts.filter((_, j) => j !== i))} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
               <X className="size-4" />
@@ -1322,13 +1300,21 @@ function QtyInput({ value, onChange, label }: { value: number; onChange: (v: num
   );
 }
 
-/** THE ORDER'S FEES (Deepika, 2026-09-24) — one section, one or many; a name and an amount each. */
+/**
+ * THE ORDER'S FEES (Pavan, 2026-09-24) — the same shape as the parts: each
+ * fee its own card, "Fee 1…" with its remove on that line, a dropdown of the
+ * standard fees or "Other fee" to type one, and the amount. "Add fee" adds a
+ * card; it does not open a picker.
+ */
 function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void; locked?: boolean }) {
   const setFee = (i: number, p: Partial<FeeLine>) => onChange(fees.map((x, j) => (j === i ? { ...x, ...p } : x)));
-  const [picking, setPicking] = React.useState(false);
+  /* WHICH FEES ARE TYPED — a name off the list, or "Other fee" just chosen. */
+  const [other, setOther] = React.useState<Set<number>>(() => new Set());
+  const isOther = (f: FeeLine, i: number) => other.has(i) || (Boolean(f.name) && !FEE_BOOK.some((b) => b.name === f.name));
+  const field = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
   if (locked) {
     return (
-      <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
+      <div className="flex flex-col gap-1">
         {fees.length === 0 && <p className="text-sm text-muted-foreground">No fees.</p>}
         {fees.map((f, i) => (
           <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
@@ -1340,64 +1326,71 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
     );
   }
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
+    <div className="flex flex-col gap-2">
       {fees.length === 0 && <p className="text-sm text-muted-foreground">No fees.</p>}
       {fees.map((f, i) => (
-        <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
-          <div className="flex items-center gap-2">
-            <Input value={f.name} onChange={(e) => setFee(i, { name: e.target.value })} placeholder="Fee" aria-label={`Fee ${i + 1}`} className="h-11 flex-1" autoFocus={!f.name} />
-            <button type="button" aria-label={`Remove ${f.name || `fee ${i + 1}`}`} onClick={() => onChange(fees.filter((_, j) => j !== i))} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent">
+        <div key={i} className="flex flex-col gap-2 rounded-md bg-fp-card-1 p-3">
+          <div className="-my-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Fee {i + 1}</span>
+            <button
+              type="button"
+              aria-label={`Remove ${f.name || `fee ${i + 1}`}`}
+              onClick={() => {
+                onChange(fees.filter((_, j) => j !== i));
+                setOther((o) => new Set([...o].filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))));
+              }}
+              className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground active:bg-accent"
+            >
               <X className="size-4" />
             </button>
           </div>
+          <select
+            value={isOther(f, i) ? "__other" : f.name}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__other") {
+                setOther((o) => new Set(o).add(i));
+                setFee(i, { name: "" });
+                return;
+              }
+              setOther((o) => {
+                const n = new Set(o);
+                n.delete(i);
+                return n;
+              });
+              const listed = FEE_BOOK.find((b) => b.name === v);
+              setFee(i, listed ? { name: listed.name, amount: listed.amount } : { name: v });
+            }}
+            aria-label={`Fee ${i + 1}`}
+            className={field}
+          >
+            <option value="">Select fee</option>
+            {FEE_BOOK.map((b) => (
+              <option key={b.name} value={b.name}>
+                {b.name}
+              </option>
+            ))}
+            <option value="__other">Other fee</option>
+          </select>
+          {isOther(f, i) && (
+            <Input value={f.name} onChange={(e) => setFee(i, { name: e.target.value })} placeholder="Fee name" aria-label={`Name of fee ${i + 1}`} className="h-11" autoFocus />
+          )}
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
             <Input
-              type="number"
               inputMode="decimal"
-              min={0}
-              value={f.amount === 0 ? "" : f.amount}
-              onChange={(e) => setFee(i, { amount: Math.max(0, Number(e.target.value) || 0) })}
-              placeholder="0"
+              value={f.amount === 0 ? "" : String(f.amount)}
+              onChange={(e) => setFee(i, { amount: Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, "")) || 0) })}
+              placeholder="Amount"
               aria-label={`Amount of ${f.name || `fee ${i + 1}`}`}
               className="h-11 pl-6 tabular-nums"
             />
           </div>
         </div>
       ))}
-      <Button variant="ghost" className="h-11 self-start px-2" onClick={() => setPicking(true)}>
+      <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange([...fees, { name: "", amount: 0 }])}>
         <Plus className="size-4" /> Add fee
       </Button>
-      {/* THE STANDARD FEES, OR A TYPED ONE (Pavan, 2026-09-24). The amount
-          stays editable either way. */}
-      <BottomSheet open={picking} onClose={() => setPicking(false)} title="Add fee">
-        <div className="flex flex-col">
-          {FEE_BOOK.map((f) => (
-            <button
-              key={f.name}
-              type="button"
-              onClick={() => {
-                onChange([...fees, { ...f }]);
-                setPicking(false);
-              }}
-              className="flex h-11 items-center justify-between rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
-            >
-              {f.name}
-              <span className="tabular-nums text-muted-foreground">{money(f.amount)}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              onChange([...fees, { name: "", amount: 0 }]);
-              setPicking(false);
-            }}
-            className="flex h-11 items-center gap-2 rounded-md px-2 text-left text-sm text-foreground active:bg-accent"
-          >
-            <Plus className="size-4 text-muted-foreground" /> Other fee
-          </button>
-        </div>
-      </BottomSheet>
     </div>
   );
 }

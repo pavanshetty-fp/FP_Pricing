@@ -42,7 +42,7 @@ import {
   type FeeLine,
   type PartLine,
   type ServiceVisit,
-  workTypesOf,
+  jobsOf,
   FEE_BOOK,
   pausedHours,
   pausedNow,
@@ -145,18 +145,19 @@ function linesFromOrder(job: ServiceOrder): AssessmentLine[] {
      pump replace and a leak check is two jobs, each priced, confirmed or
      skipped on its own. The asset name repeats. */
   return src.flatMap((a, i) =>
-    (workTypesOf(a).length ? workTypesOf(a) : [""]).map((w, k) => ({ a, i, w, k }))
-  ).map(({ a, i, w, k }) => ({
+    /* THE MAIN ROW AND ITS SUB-ROWS — each with its own description. */
+    jobsOf({ workType: a.workType, fault: a.fault, subJobs: "subJobs" in a ? a.subJobs : undefined }).map((j, k) => ({ a, i, j, k }))
+  ).map(({ a, i, j, k }) => ({
     key: `o-${i}-${k}`,
     source: "order",
     assetName: a.assetName || "Asset",
-    workType: w,
-    reported: a.fault,
+    workType: j.workType,
+    reported: j.fault,
     verdict: null,
     actual: "",
     note: "",
     photos: [],
-    parts: bookParts(w),
+    parts: bookParts(j.workType),
   }));
 }
 

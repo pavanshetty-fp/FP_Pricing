@@ -515,21 +515,28 @@ export interface ServiceAssetLine {
   assetId: string;
   assetName: string;
   assetType: string;
-  /** The FIRST of `workTypes` — kept because every card, filter and total reads it. */
+  /** The MAIN row's work type — every card, filter and total reads it. */
   workType: string;
-  /**
-   * SEVERAL WORK TYPES ON ONE ASSET (Deepika and Pavan, 2026-09-24) — a pump
-   * replace and a leak check on the same tank. Absent on older rows, which
-   * have just `workType`. On the phone each becomes its own job.
-   */
-  workTypes?: string[];
   /** THE DESCRIPTION (was "Reported fault", 2026-09-24) — optional, and often not a fault. */
   fault: string;
+  /**
+   * MORE WORK ON THE SAME ASSET, AS SUB-ROWS (Pavan, 2026-09-24) — a pump
+   * replace and a leak check on one tank. Each has its own work type and
+   * description and sits nested under the asset's main row. On the phone
+   * every one is its own job.
+   */
+  subJobs?: { workType: string; fault: string }[];
 }
 
-/** Every work type on an asset line, old rows included. */
-export const workTypesOf = (a: { workType: string; workTypes?: string[] }) =>
-  a.workTypes && a.workTypes.length > 0 ? a.workTypes : a.workType ? [a.workType] : [];
+/** An asset line's jobs — the main row, then its sub-rows. */
+export const jobsOf = (a: { workType: string; fault: string; subJobs?: { workType: string; fault: string }[] }) => [
+  { workType: a.workType, fault: a.fault },
+  ...(a.subJobs ?? []),
+];
+
+/** Every work type on an asset line, in order. */
+export const workTypesOf = (a: { workType: string; fault: string; subJobs?: { workType: string; fault: string }[] }) =>
+  jobsOf(a).map((j) => j.workType).filter(Boolean);
 
 export interface ServiceOrder {
   id: string;

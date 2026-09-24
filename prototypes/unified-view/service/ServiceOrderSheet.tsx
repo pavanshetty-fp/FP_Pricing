@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  CornerDownRight,
   Clock,
   Calendar as CalendarIcon,
   MoreHorizontal,
@@ -47,6 +48,7 @@ import {
   TableCellCombobox,
   TableCellInput,
   TableCellMultiSelect,
+  TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
@@ -67,6 +69,7 @@ import {
   visitHours,
   FEE_BOOK,
   workTypesOf,
+  jobsOf,
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
   MILEAGE_RATE,
@@ -1565,10 +1568,8 @@ export function ServiceOrderSheet({
           </thead>
           <tbody>
             {draft.assets.map((row, i) => (
-              <tr
-                key={i}
-                className="group/row h-11 border-b border-border last:border-b-0"
-              >
+              <React.Fragment key={i}>
+              <tr className="group/row h-11 border-b border-border last:border-b-0">
                 {/* `relative p-0` ON EVERY CELL — the TableCell* controls are
                     `absolute inset-0` and FILL the cell rather than sitting in
                     it. That is the whole idiom: a cell is editable ground, not
@@ -1595,16 +1596,34 @@ export function ServiceOrderSheet({
                   />
                 </td>
                 <td className="relative p-0">
-                  {/* SEVERAL PER ASSET (2026-09-24). The first stays the
-                      row's `workType`, which everything else reads. */}
+                  {/* SEVERAL PER ASSET, NESTED (Pavan, 2026-09-24). This
+                      cell picks the asset's whole set; the first is this
+                      row's, and each one after it becomes a sub-row below
+                      with its own description. Descriptions already typed
+                      follow their work type. */}
                   <TableCellMultiSelect
                     values={workTypesOf(row)}
+                    summary={row.workType || undefined}
                     options={WORK_TYPE_NAMES}
                     placeholder="Select"
                     unitLabel="work type"
                     disabled={intakeLocked}
                     aria-label={`Work types for row ${i + 1}`}
-                    onChange={(v) => setAssetLine(i, { workTypes: v, workType: v[0] ?? "" })}
+                    onChange={(v) => {
+                      const all = jobsOf(row);
+                      const kept = all.filter((j) => j.workType && v.includes(j.workType));
+                      const added = v
+                        .filter((w) => !all.some((j) => j.workType === w))
+                        .map((w) => ({ workType: w, fault: "" }));
+                      const list = [...kept, ...added];
+                      /* A description typed before any work type stays on the row. */
+                      if (list[0] && !all[0].workType) list[0] = { ...list[0], fault: list[0].fault || all[0].fault };
+                      setAssetLine(i, {
+                        workType: list[0]?.workType ?? "",
+                        fault: list[0]?.fault ?? row.fault,
+                        subJobs: list.slice(1),
+                      });
+                    }}
                   />
                 </td>
                 <td className="relative p-0">
@@ -1638,6 +1657,52 @@ export function ServiceOrderSheet({
                   )}
                 </td>
               </tr>
+              {/* THE SUB-ROWS — more work on the same asset, nested under it. */}
+              {(row.subJobs ?? []).map((sj, k) => {
+                const setSub = (patch: Partial<{ workType: string; fault: string }>) =>
+                  setAssetLine(i, {
+                    subJobs: (row.subJobs ?? []).map((x, j) => (j === k ? { ...x, ...patch } : x)),
+                  });
+                return (
+                  <tr key={`sub-${k}`} className="group/row h-11 border-b border-border bg-fp-card-1/40 last:border-b-0">
+                    <td className="relative p-0">
+                      <span className="flex h-11 items-center pl-6 text-muted-foreground" aria-hidden>
+                        <CornerDownRight className="size-4" />
+                      </span>
+                    </td>
+                    <td className="relative p-0">
+                      <TableCellSelect
+                        value={sj.workType}
+                        options={WORK_TYPE_NAMES.filter((w) => w === sj.workType || !workTypesOf(row).includes(w))}
+                        placeholder="Select"
+                        disabled={intakeLocked}
+                        aria-label={`Work type ${k + 2} for row ${i + 1}`}
+                        onChange={(v) => setSub({ workType: v })}
+                      />
+                    </td>
+                    <td className="relative p-0">
+                      <TableCellInput
+                        value={sj.fault}
+                        placeholder="Optional"
+                        disabled={intakeLocked}
+                        aria-label={`Description ${k + 2} for row ${i + 1}`}
+                        onChange={(v) => setSub({ fault: v })}
+                      />
+                    </td>
+                    <td className="relative p-0 text-center">
+                      {!intakeLocked && (
+                        <TableRowRemove
+                          aria-label={`Remove ${sj.workType || "work type"} from ${row.assetName || `asset ${i + 1}`}`}
+                          onRemove={() =>
+                            setAssetLine(i, { subJobs: (row.subJobs ?? []).filter((_, j) => j !== k) })
+                          }
+                        />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

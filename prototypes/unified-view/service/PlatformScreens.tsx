@@ -260,7 +260,7 @@ export function MaintenanceScreen() {
         orderNo: no,
         customer: p.customer,
         shipTo: p.shipTo,
-        assets: [{ assetId: p.assetId, assetName: p.asset, assetType: p.assetType, workType: p.task, workTypes: [p.task], fault: `Scheduled maintenance · ${p.no}` }],
+        assets: [{ assetId: p.assetId, assetName: p.asset, assetType: p.assetType, workType: p.task, fault: `Scheduled maintenance · ${p.no}` }],
       });
       return [order, ...prev];
     });

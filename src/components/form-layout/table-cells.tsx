@@ -348,6 +348,8 @@ export interface TableCellMultiSelectProps {
    * away, and on the `title` for a pointer that hovers.
    */
   unitLabel?: string;
+  /** What the closed cell prints, when the caller shows the rest elsewhere (e.g. as sub-rows). */
+  summary?: string;
   onChange: (next: string[]) => void;
   /**
    * Take focus when the cell MOUNTS — pass it to the first editable cell of a
@@ -378,6 +380,7 @@ export function TableCellMultiSelect({
   placeholder = "Select",
   disabled,
   unitLabel = "selected",
+  summary: summaryOverride,
   onChange,
   "aria-label": ariaLabel,
   autoFocus,
@@ -387,11 +390,12 @@ export function TableCellMultiSelect({
   const [draft, setDraft] = React.useState<string[]>(values);
 
   const summary =
-    values.length === 0
+    summaryOverride ??
+    (values.length === 0
       ? placeholder
       : values.length === 1
         ? values[0]
-        : `${values.length} ${unitLabel}${unitLabel.endsWith("s") ? "" : "s"}`;
+        : `${values.length} ${unitLabel}${unitLabel.endsWith("s") ? "" : "s"}`);
 
   const toggle = (opt: string) =>
     setDraft((d) => (d.includes(opt) ? d.filter((v) => v !== opt) : [...d, opt]));

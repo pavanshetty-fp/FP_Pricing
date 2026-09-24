@@ -1147,7 +1147,7 @@ function NewTicket({
         {/* PARTS, SO THE TICKET SAYS WHAT TO BRING (Pavan, 2026-09-24). */}
         <div className="flex flex-col gap-3">
           <SectionTitle>Parts</SectionTitle>
-          <TaskParts parts={ticketParts} workType={services[0]?.workType ?? ""} onChange={setTicketParts} />
+          <TaskParts parts={ticketParts} workType={services[0]?.workType ?? ""} onChange={setTicketParts} titled={false} />
         </div>
 
         <div className="flex flex-col gap-3">
@@ -1201,7 +1201,10 @@ function TaskParts({
   workType,
   locked,
   onChange,
+  titled = true,
 }: {
+  /** False where the section already has its own "Parts" title. */
+  titled?: boolean;
   locked?: boolean;
   parts: PartLine[];
   workType: string;
@@ -1231,7 +1234,7 @@ function TaskParts({
       </datalist>
       {parts.length === 0 && (
         <>
-          <span className="text-xs font-medium text-muted-foreground">Parts</span>
+          {titled && <span className="text-xs font-medium text-muted-foreground">Parts</span>}
           <p className="text-sm text-muted-foreground">No parts.</p>
         </>
       )}

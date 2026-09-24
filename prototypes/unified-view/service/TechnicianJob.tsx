@@ -30,7 +30,6 @@ import {
   WORK_TYPE_NAMES,
   WORK_TYPES,
   assetsAt,
-  technicianById,
   computedLabor,
   formatHours,
   money,
@@ -79,15 +78,6 @@ const draftLines = new Map<string, AssessmentLine[]>();
 
 /** The price book's parts for a work type — where a task's parts list starts. */
 const bookParts = (workType: string): PartLine[] => (WORK_TYPES[workType]?.parts ?? []).map((p) => ({ ...p }));
-
-/** Every answered task's fees, each tagged with its task. */
-const feesOfTasks = (lines: AssessmentLine[]): FeeLine[] =>
-  lines.flatMap((l) =>
-    l.verdict === "skip" ? [] : (l.fees ?? []).filter((f) => f.name.trim()).map((f) => ({ name: f.name, amount: f.amount, task: l.key }))
-  );
-
-/** The order's own fees — what the dispatcher put on, not what a task added. */
-const orderFeesOf = (fees: FeeLine[]) => fees.filter((f) => !f.task);
 
 /** Every answered task's parts, as one list — the same part at the same price adds up. */
 function partsOfTasks(lines: AssessmentLine[]): PartLine[] {
@@ -198,7 +188,6 @@ export function TechnicianJob({
       return v;
     });
   const clock = useClock(job.startedAt && !job.completedAt ? job.startedAt : null);
-  const [ackBy, setAckBy] = React.useState(job.quote?.acknowledgedBy ?? "");
   const [ending, setEnding] = React.useState<"full" | "partial" | null>(null);
   const [endedAt, setEndedAt] = React.useState<string | null>(null);
   const [notes, setNotes] = React.useState(job.techNotes ?? "");
@@ -213,7 +202,6 @@ export function TechnicianJob({
 
   /* THE ASSESSMENT IS THE FIRST STEP (Pavan, 2026-09-24): the quote waits on
      a SUBMITTED site assessment, not on a verdict per task. */
-  const assessed = Boolean(job.assessmentLines && job.siteAssessment?.submittedAt);
   const handedIn = Boolean(job.completedAt) || job.status === "Parts pending" || job.status === "Completed — linked";
 
   const stage: Stage = handedIn
@@ -224,17 +212,15 @@ export function TechnicianJob({
         ? "travel"
         : /* THE CLOCK STARTS BEFORE THE ASSESSMENT (Pavan, 2026-09-24):
              looking at the job is part of the job. */
-          !assessed
+          /* ONE ON-SITE SCREEN until the quote is approved (Pavan,
+             2026-09-24): assessment, jobs, fees, then Send quote → Quote
+             approved. Approval is what moves it on to the work. */
+          !job.assessmentLines || (cfg.fieldQuote && !job.quote?.approvedAt)
           ? "assess"
-          : cfg.fieldQuote && !job.quote
-            ? "quote"
-            : cfg.fieldQuote && job.quote && !job.quote.approvedAt
-              ? "ack"
-              : "work";
+          : "work";
 
   const sub = `${job.orderNo} · ${job.shipTo}`;
   const toDo = (job.assessmentLines ?? lines).filter((l) => l.verdict !== "skip");
-  const skipped = (job.assessmentLines ?? lines).filter((l) => l.verdict === "skip");
 
   /* ── THE ORDER, BEFORE ARRIVAL ── who it is for and where it is, with the
      two things a technician does from here: go there, or say they are
@@ -315,6 +301,13 @@ export function TechnicianJob({
     const submitted = Boolean(job.siteAssessment?.submittedAt);
     const unnamed = lines.filter((l) => l.source === "added" && !l.assetName.trim()).length;
     const ready = submitted && unnamed === 0;
+    /* SENT AND WAITING — the customer is deciding offline, so what they were
+       sent is what stays on screen: jobs and money lock until it is approved
+       or rejected. */
+    const sent = Boolean(job.quote?.sentAt) && !job.quote?.approvedAt;
+    const editable = Boolean(job.startedAt) && !sent;
+    const total = quoteableTotal(partsOfTasks(lines), job.fees);
+    const setFees = (fees: FeeLine[]) => onPatch({ fees });
     return (
       <>
         {/* THE PAGE IS THE ORDER — its number, nothing else (Pavan,
@@ -348,14 +341,15 @@ export function TechnicianJob({
           }
         />
         <Body>
-          {/* THE ASSESSMENT FIRST — one for the visit, above the jobs
-              (Pavan, 2026-09-24, option B). */}
+          {/* 1 · THE ASSESSMENT FIRST — one for the visit (option B). */}
           {job.startedAt && (
             <SiteAssessmentRow
               value={job.siteAssessment}
               onOpen={() => setAssessOpen(true)}
             />
           )}
+          {/* 2 · THE JOBS — the dispatcher's and any added on site, each with
+              its own parts. */}
           <TaskOverview lines={lines.filter((l) => l.source === "order")} />
           {lines.map((l, i) => (
             <AssessmentCard
@@ -363,11 +357,12 @@ export function TechnicianJob({
               index={i}
               line={l}
               active={Boolean(job.startedAt)}
+              locked={!editable}
               onChange={(p) => set(l.key, p)}
               onRemove={l.source === "added" ? () => setLines((ls) => ls.filter((x) => x.key !== l.key)) : undefined}
             />
           ))}
-          {job.startedAt && <Button
+          {editable && <Button
             variant="outline"
             className="h-11 w-full"
             onClick={() =>
@@ -383,15 +378,24 @@ export function TechnicianJob({
                   actual: "",
                   note: "",
                   photos: [],
+                  parts: [],
                 },
               ])
             }
           >
-            <Plus className="size-4" /> Add something not on the order
+            <Plus className="size-4" /> Add a job
           </Button>}
+          {/* 3 · FEES — ONE section for the order, not one per job (Deepika,
+              2026-09-24). The dispatcher's fees are already in it. */}
+          {job.startedAt && (
+            <div className="flex flex-col gap-2">
+              <SectionTitle>Fees</SectionTitle>
+              <TaskFees fees={job.fees} onChange={setFees} locked={!editable} />
+            </div>
+          )}
         </Body>
-        {/* START WORK FIRST — it starts the clock; the task cards take their
-            answers once it runs (Pavan, 2026-09-24). */}
+        {/* START WORK FIRST — it starts the clock; the jobs take their parts
+            once it runs (Pavan, 2026-09-24). */}
         {!job.startedAt ? (
           <ActionBar
             label="Start work"
@@ -407,8 +411,8 @@ export function TechnicianJob({
           />
         ) : (
         <>
-        {/* THE TOTAL, ABOVE THE CTA (Pavan, 2026-09-24) — every task's
-            parts plus the order's fees; tap for the breakup. */}
+        {/* THE TOTAL, ABOVE THE CTA (Pavan, 2026-09-24) — the jobs' parts
+            plus the order's fees; tap for the breakup. */}
         <button
           type="button"
           onClick={() => setBreakupOpen(true)}
@@ -416,38 +420,60 @@ export function TechnicianJob({
         >
           <span className="text-sm text-muted-foreground">Quote total</span>
           <span className="flex items-center gap-1 text-base font-semibold tabular-nums text-foreground">
-            {money(quoteableTotal(partsOfTasks(lines), [...orderFeesOf(job.fees), ...feesOfTasks(lines)]))}
+            {money(total)}
             <ChevronRight className="size-4 text-muted-foreground" />
           </span>
         </button>
-        <ActionBar
-          label="Generate quote"
-          disabled={!ready}
-          note={
-            ready
-              ? undefined
-              : !submitted
-                ? "Submit the assessment first"
-                : `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added`
-          }
-          onPress={() => {
-            /* THE TASKS' PARTS ARE THE ORDER'S PARTS from here — the
-               technician has cross-checked every one against the site. */
-            onPatch({
-              parts: partsOfTasks(lines),
-              /* The order's own fees, then each task's — replaced, never
-                 appended, so generating twice cannot count a fee twice. */
-              fees: [...orderFeesOf(job.fees), ...feesOfTasks(lines)],
-              assessmentLines: lines,
-              /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads —
-                 now the start of the technician's own notes. */
-              assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
-            });
-            draftLines.delete(job.id);
-            toast.success("Quote generated");
-          }}
-        />
-        <BreakupSheet open={breakupOpen} onClose={() => setBreakupOpen(false)} lines={lines} fees={orderFeesOf(job.fees)} />
+        {sent ? (
+          /* THE CUSTOMER DECIDES OFFLINE (Pavan, 2026-09-24); the technician
+             records the answer. Approved is what makes the quote done. */
+          <ActionBar
+            note="Quote sent · waiting on the customer"
+            label="Quote approved"
+            onPress={() => {
+              onPatch({ quote: job.quote ? { ...job.quote, approvedAt: nowIso() } : null });
+              toast.success("Quote approved");
+            }}
+            secondary="Quote rejected"
+            onSecondary={() => {
+              /* BACK TO THE JOBS, unlocked — a new price is a change to what
+                 is being done. The assessment stays submitted. */
+              onPatch({ quote: null, assessmentLines: undefined });
+              toast("Quote rejected", { description: "Change the jobs or fees and send it again." });
+            }}
+          />
+        ) : (
+          <ActionBar
+            label={cfg.fieldQuote ? "Send quote to customer" : "Continue to work"}
+            disabled={!ready}
+            note={
+              ready
+                ? undefined
+                : !submitted
+                  ? "Submit the assessment first"
+                  : `Name the ${unnamed === 1 ? "job" : `${unnamed} jobs`} you added`
+            }
+            onPress={() => {
+              /* THE JOBS' PARTS ARE THE ORDER'S PARTS from here — the
+                 technician has cross-checked every one against the site. */
+              const parts = partsOfTasks(lines);
+              onPatch({
+                parts,
+                assessmentLines: lines,
+                /* THE ONE-LINE SUMMARY the dispatcher's sheet already reads —
+                   the start of the technician's own notes. */
+                assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
+                /* A QUOTE IS A STORED SNAPSHOT, never recomputed. */
+                quote: cfg.fieldQuote
+                  ? { parts: parts.map((p) => ({ ...p })), fees: job.fees.map((f) => ({ ...f })), total, sentAt: nowIso(), approvedAt: null }
+                  : job.quote,
+              });
+              draftLines.delete(job.id);
+              toast.success(cfg.fieldQuote ? "Quote sent to customer" : "Saved");
+            }}
+          />
+        )}
+        <BreakupSheet open={breakupOpen} onClose={() => setBreakupOpen(false)} lines={lines} fees={job.fees} />
         <SiteAssessmentSheet
           open={assessOpen}
           onClose={() => setAssessOpen(false)}
@@ -461,107 +487,6 @@ export function TechnicianJob({
         />
         </>
         )}
-      </>
-    );
-  }
-
-  /* ── QUOTE ── built from the assessment. */
-  if (stage === "quote") {
-    const total = quoteableTotal(job.parts, job.fees);
-    return (
-      <>
-        <TopBar title="Quote" subtitle={sub} onBack={onBack} />
-        <Body>
-          <div className="flex flex-col gap-2">
-            <SectionTitle>The work</SectionTitle>
-            <div className="flex flex-col divide-y divide-fp-outline-1">
-              {toDo.map((l) => (
-                <div key={l.key} className="flex flex-col gap-0.5 py-2">
-                  <span className="text-sm text-foreground">
-                    {lineTitle(l)}
-                    {l.verdict === "added" && <span className="text-muted-foreground"> · found on site</span>}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {lineWhat(l)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {skipped.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Not needed: {skipped.map(lineTitle).join(", ")}
-              </p>
-            )}
-          </div>
-          <PriceLines title="Parts" rows={job.parts.map((p) => ({ label: `${p.name}${p.qty > 1 ? ` ×${p.qty}` : ""}`, value: p.cost * p.qty }))} empty="No parts on this job." />
-          <PriceLines title="Fees" rows={job.fees.map((f) => ({ label: f.name, value: f.amount }))} empty="No fees." />
-          <div className="flex items-baseline justify-between border-t border-border pt-3">
-            <span className="text-sm font-medium text-foreground">Quote</span>
-            <span className="text-lg font-semibold tabular-nums text-foreground">{money(total)}</span>
-          </div>
-        </Body>
-        <ActionBar
-          label="Share quote with customer"
-          onPress={() => {
-            onPatch({
-              quote: { parts: job.parts.map((p) => ({ ...p })), fees: job.fees.map((f) => ({ ...f })), total, sentAt: nowIso(), approvedAt: null },
-            });
-            toast.success("Quote shared");
-          }}
-          /* ACKNOWLEDGED ON THE CUSTOMER'S BEHALF (Pavan, 2026-09-24) — for a
-             customer who agreed but is not there to confirm. The quote is
-             still recorded in full; the acknowledgement says who gave it. */
-          secondary="Acknowledge on behalf of the customer"
-          onSecondary={() => {
-            const at = nowIso();
-            const tech = technicianById(job.technicianId)?.name ?? "Technician";
-            onPatch({
-              quote: {
-                parts: job.parts.map((p) => ({ ...p })),
-                fees: job.fees.map((f) => ({ ...f })),
-                total,
-                sentAt: at,
-                approvedAt: at,
-                acknowledgedBy: `${tech}, on behalf of the customer`,
-              },
-            });
-            toast.success("Acknowledged on behalf of the customer");
-          }}
-        />
-      </>
-    );
-  }
-
-  /* ── ACKNOWLEDGEMENT ── taken on site, with a name against it. */
-  if (stage === "ack") {
-    return (
-      <>
-        <TopBar title="Customer acknowledgement" subtitle={sub} onBack={onBack} />
-        <Body>
-          <div className="flex items-baseline justify-between rounded-lg border border-fp-outline-1 bg-fp-card-1 p-3">
-            <span className="text-sm text-muted-foreground">Quote shared</span>
-            <span className="text-base font-semibold tabular-nums text-foreground">{money(job.quote?.total ?? 0)}</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <SectionTitle>Acknowledged by</SectionTitle>
-            <Input value={ackBy} onChange={(e) => setAckBy(e.target.value)} placeholder="Customer's name" className="h-11 text-base" />
-          </div>
-        </Body>
-        <ActionBar
-          label="Customer acknowledged"
-          disabled={ackBy.trim().length === 0}
-          onPress={() => {
-            onPatch({ quote: job.quote ? { ...job.quote, approvedAt: nowIso(), acknowledgedBy: ackBy.trim() } : null });
-            toast.success("Acknowledged");
-          }}
-          secondary="They want changes"
-          onSecondary={() => {
-            /* BACK TO THE ASSESSMENT — a change to the price is a change to
-               what is being done. */
-            onPatch({ quote: null, assessmentLines: undefined });
-            toast("Back to the assessment");
-          }}
-        />
       </>
     );
   }
@@ -850,9 +775,12 @@ function AssessmentCard({
   index,
   line,
   active,
+  locked,
   onChange,
   onRemove,
 }: {
+  /** The quote is out with the customer — the job reads, it does not edit. */
+  locked: boolean;
   index: number;
   line: AssessmentLine;
   /** Work has started — the task takes its answer. Before that it is read-only. */
@@ -861,9 +789,12 @@ function AssessmentCard({
   onRemove?: () => void;
 }) {
   const added = line.source === "added";
-  /* THE TICK waits on what "done" means for a job now the verdict is gone —
-     skipped, or fitted — which is the next change. Numbers until then. */
+  /* THE TICK waits on what "done" means for a job now the verdict is gone.
+     Numbers until then; a skipped job's number is struck. */
   const done = false;
+  const skipped = line.verdict === "skip";
+  const [skipOpen, setSkipOpen] = React.useState(false);
+  const [reason, setReason] = React.useState("");
   return (
     <div className="flex items-start gap-3">
     {/* NUMBERED, THEN TICKED (Pavan, 2026-09-24) — each task's number on
@@ -875,7 +806,7 @@ function AssessmentCard({
         done ? "bg-status-success text-background" : "border border-fp-outline-2 text-muted-foreground"
       )}
     >
-      {done ? <Check className="size-3.5" /> : index + 1}
+      {done ? <Check className="size-3.5" /> : <span className={cn(skipped && "line-through")}>{index + 1}</span>}
     </span>
     <section className="flex min-w-0 flex-1 flex-col gap-3 rounded-lg border border-fp-outline-1 bg-fp-surface-1a p-3">
       {added ? (
@@ -925,16 +856,60 @@ function AssessmentCard({
         </div>
       )}
 
-      {active && (
+      {/* SKIPPED, NEVER DELETED (Pavan and Deepika, 2026-09-24) — the job
+          stays on the order with its label and the reason. */}
+      {skipped && (
+        <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
+          <span className="w-fit rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Skipped</span>
+          <span className="text-sm text-foreground">{line.note}</span>
+          {!locked && (
+            <Button variant="ghost" className="h-11 self-start px-2" onClick={() => onChange({ verdict: null, note: "" })}>
+              Undo skip
+            </Button>
+          )}
+        </div>
+      )}
+
+      {active && !skipped && (
         <>
           <TaskParts
             parts={line.parts ?? []}
             workType={line.workType}
+            locked={locked}
             onChange={(parts) => onChange({ parts })}
           />
-          <TaskFees fees={line.fees ?? []} onChange={(fees) => onChange({ fees })} />
+          {!locked && !added && (
+            <Button variant="ghost" className="h-11 self-start px-2 text-muted-foreground" onClick={() => setSkipOpen(true)}>
+              Skip job
+            </Button>
+          )}
         </>
       )}
+
+      <BottomSheet
+        open={skipOpen}
+        onClose={() => setSkipOpen(false)}
+        title="Skip this job?"
+        footer={
+          <Button
+            className="h-11 w-full text-base"
+            disabled={!reason.trim()}
+            onClick={() => {
+              onChange({ verdict: "skip", note: reason.trim() });
+              setSkipOpen(false);
+              setReason("");
+              toast("Job skipped");
+            }}
+          >
+            Skip job
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Reason</span>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} placeholder="Not needed — the hose was replaced last month" className="text-base" />
+        </div>
+      </BottomSheet>
     </section>
     </div>
   );
@@ -1062,13 +1037,29 @@ function NewTicket({
 function TaskParts({
   parts,
   workType,
+  locked,
   onChange,
 }: {
+  locked?: boolean;
   parts: PartLine[];
   workType: string;
   onChange: (parts: PartLine[]) => void;
 }) {
   const setPart = (i: number, p: Partial<PartLine>) => onChange(parts.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  if (locked) {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
+        <span className="text-xs font-medium text-muted-foreground">Parts</span>
+        {parts.filter((p) => p.name.trim()).length === 0 && <p className="text-sm text-muted-foreground">No parts.</p>}
+        {parts.filter((p) => p.name.trim()).map((p, i) => (
+          <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="text-foreground">{p.name} · {p.qty} × {money(p.cost)}</span>
+            <span className="tabular-nums text-foreground">{money(p.qty * p.cost)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
       <span className="text-xs font-medium text-muted-foreground">Parts</span>
@@ -1115,12 +1106,24 @@ function TaskParts({
   );
 }
 
-/** A TASK'S FEES (Pavan, 2026-09-24) — one or many; a name and an amount each. */
-function TaskFees({ fees, onChange }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void }) {
+/** THE ORDER'S FEES (Deepika, 2026-09-24) — one section, one or many; a name and an amount each. */
+function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees: FeeLine[]) => void; locked?: boolean }) {
   const setFee = (i: number, p: Partial<FeeLine>) => onChange(fees.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  if (locked) {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-fp-outline-1 p-3">
+        {fees.length === 0 && <p className="text-sm text-muted-foreground">No fees.</p>}
+        {fees.map((f, i) => (
+          <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="text-foreground">{f.name}</span>
+            <span className="tabular-nums text-foreground">{money(f.amount)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2 rounded-md border border-fp-outline-1 p-3">
-      <span className="text-xs font-medium text-muted-foreground">Fees</span>
       {fees.length === 0 && <p className="text-sm text-muted-foreground">No fees.</p>}
       {fees.map((f, i) => (
         <div key={i} className="flex flex-col gap-2 border-b border-fp-outline-1 pb-3 last:border-b-0 last:pb-0">
@@ -1169,15 +1172,14 @@ function BreakupSheet({
       l,
       n: i + 1,
       parts: (l.parts ?? []).filter((p) => p.name.trim()),
-      taskFees: (l.fees ?? []).filter((f) => f.name.trim()),
     }))
-    .filter((t) => t.l.verdict !== "skip" && t.parts.length + t.taskFees.length > 0);
-  const total = quoteableTotal(partsOfTasks(lines), [...fees, ...feesOfTasks(lines)]);
+    .filter((t) => t.l.verdict !== "skip" && t.parts.length > 0);
+  const total = quoteableTotal(partsOfTasks(lines), fees);
   return (
     <BottomSheet open={open} onClose={onClose} title="Quote total">
       <div className="flex flex-col gap-4">
-        {tasks.length === 0 && <p className="text-sm text-muted-foreground">No parts or fees on the tasks yet.</p>}
-        {tasks.map(({ l, n, parts, taskFees }) => (
+        {tasks.length === 0 && <p className="text-sm text-muted-foreground">No parts yet.</p>}
+        {tasks.map(({ l, n, parts }) => (
           <div key={l.key} className="flex flex-col gap-1">
             <span className="text-sm font-medium text-foreground">
               {n}. {lineTitle(l) || `Task ${n}`}
@@ -1190,17 +1192,11 @@ function BreakupSheet({
                 <span className="tabular-nums text-foreground">{money(p.qty * p.cost)}</span>
               </div>
             ))}
-            {taskFees.map((f, i) => (
-              <div key={`f-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="text-muted-foreground">{f.name}</span>
-                <span className="tabular-nums text-foreground">{money(f.amount)}</span>
-              </div>
-            ))}
           </div>
         ))}
         {fees.length > 0 && (
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-foreground">Order fees</span>
+            <span className="text-sm font-medium text-foreground">Fees</span>
             {fees.map((f, i) => (
               <div key={i} className="flex items-baseline justify-between gap-2 text-sm">
                 <span className="text-muted-foreground">{f.name}</span>
@@ -1501,23 +1497,6 @@ function AssessedWork({ lines }: { lines: AssessmentLine[] }) {
             <span className="text-xs text-muted-foreground">{lineWhat(l)}</span>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function PriceLines({ title, rows, empty }: { title: string; rows: { label: string; value: number }[]; empty: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <SectionTitle>{title}</SectionTitle>
-      <div className="flex flex-col divide-y divide-fp-outline-1">
-        {rows.map((r, i) => (
-          <div key={`${r.label}-${i}`} className="flex items-baseline gap-3 py-2">
-            <span className="flex-1 text-sm text-foreground">{r.label}</span>
-            <span className="text-sm tabular-nums text-foreground">{money(r.value)}</span>
-          </div>
-        ))}
-        {rows.length === 0 && <p className="py-2 text-sm text-muted-foreground">{empty}</p>}
       </div>
     </div>
   );

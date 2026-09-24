@@ -275,8 +275,6 @@ export interface PartLine {
 export interface FeeLine {
   name: string;
   amount: number;
-  /** Set when the fee was added on a task on site — the task's key. */
-  task?: string;
 }
 
 /**
@@ -466,8 +464,6 @@ export interface AssessmentLine {
    * become the order's parts, and so the quote.
    */
   parts?: PartLine[];
-  /** THE TASK'S FEES (Pavan, 2026-09-24) — one or many, beside its parts. */
-  fees?: FeeLine[];
 }
 
 /**

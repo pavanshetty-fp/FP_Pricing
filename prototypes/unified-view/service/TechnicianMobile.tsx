@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  SERVICE_ORDERS,
   TECHNICIANS,
   blankServiceOrder,
   shortfallLabel,
@@ -13,6 +12,7 @@ import {
   type ServiceOrder,
   type WorkStatus,
 } from "./work";
+import { useServiceOrders } from "./store";
 import { useServiceSettings } from "./settings";
 import { JobsScreen, MenuDrawer, NewOrderScreen, TabBar, type HomeTab } from "./TechnicianHome";
 import { TechnicianJob, type SplitRequest } from "./TechnicianJob";
@@ -212,67 +212,6 @@ export const SectionTitle = ({ children }: { children: React.ReactNode }) => (
 
 /* ───────────────────────────────────────────────────────────── the shell ── */
 
-/** An order put back to before anybody started it. */
-const notStarted = (o: ServiceOrder): ServiceOrder => ({
-  ...o,
-  status: "Assigned",
-  arrivedAt: null,
-  startedAt: null,
-  visits: [],
-  completedAt: null,
-  labor: 0,
-  laborOverride: null,
-  quote: null,
-  assessment: null,
-  assessmentLines: undefined,
-  signed: false,
-  invoiceCreated: false,
-  invoicedAt: null,
-  synced: false,
-  partNeeded: null,
-  parts: o.parts.map(({ fittedQty: _f, ...p }) => p),
-});
-
-/**
- * THE PHONE'S OWN COPY OF THE JOBS, arranged for a technician's day (Pavan,
- * 2026-09-24): each technician's FIRST TWO jobs are Yet to start, and NOBODY
- * STARTS WITH AN ONGOING JOB — only one may be Ongoing at a time, so a
- * seeded one would block starting either of them. The first job started
- * becomes the one Ongoing.
- */
-function phoneSeed(all: ServiceOrder[]): ServiceOrder[] {
-  const out = all.map((o) => ({ ...o }));
-  for (const t of TECHNICIANS) {
-    const mine = out
-      .filter((o) => o.technicianId === t.id && o.status !== "Cancelled")
-      .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
-    const reset = new Set(mine.slice(0, 2).map((o) => o.id));
-    for (const o of mine) if (o.status === "Ongoing") reset.add(o.id);
-    reset.forEach((id) => {
-      const i = out.findIndex((o) => o.id === id);
-      out[i] = notStarted(out[i]);
-    });
-    /* THE FIRST JOB CARRIES SEVERAL TASKS, so the task cards can be seen as a
-       list (2026-09-24) — most seeded orders have one. Dummy, and only in the
-       phone's copy. */
-    const first = mine[0] && out.findIndex((o) => o.id === mine[0].id);
-    if (first !== undefined && first >= 0 && out[first].assets.length < 3) {
-      const o = out[first];
-      const extra = [
-        { workType: "Leak check", fault: "Weeping at the bottom collar" },
-        { workType: "Hose swap", fault: "Hose kinked and split" },
-      ].map((x, k) => ({
-        assetId: "",
-        assetName: `${o.assetName || "Asset"} — ${k === 0 ? "fill line" : "dispenser"}`,
-        assetType: o.assetType,
-        ...x,
-      }));
-      out[first] = { ...o, assets: [...o.assets, ...extra].slice(0, 3) };
-    }
-  }
-  return out;
-}
-
 export function TechnicianMobile() {
   /* ITS OWN COPY OF THE JOBS. This app is a separate product and, in the real
      one, a separate client talking to the same API — so it keeps its own
@@ -281,7 +220,10 @@ export function TechnicianMobile() {
      rather than pretending at a sync nothing behind this prototype does. */
   const cfg = useServiceSettings();
   const [tech, setTech] = React.useState(TECHNICIANS[0].id);
-  const [orders, setOrders] = React.useState<ServiceOrder[]>(() => phoneSeed(SERVICE_ORDERS));
+  /* THE SAME ORDERS AS THE DISPATCH BOARD (Pavan, 2026-09-24) — what the
+     technician does here is what the dispatcher sees, and the other way
+     round. Changes are logged under the technician's name. */
+  const [orders, setShared] = useServiceOrders();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState<HomeTab>("jobs");
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -298,6 +240,8 @@ export function TechnicianMobile() {
   /* ONE ONGOING JOB AT A TIME (Pavan, 2026-09-24) — the other it blocks. */
   const ongoing = jobs.find((j) => j.status === "Ongoing" && j.id !== openId);
   const technician = TECHNICIANS.find((t) => t.id === tech)!;
+  /** Every phone write goes to the shared orders, logged as this technician. */
+  const setOrders = (fn: (prev: ServiceOrder[]) => ServiceOrder[]) => setShared(fn, technician.name);
 
   const patch = (id: string, p: Partial<ServiceOrder>) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...p } : o)));

@@ -4,24 +4,22 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { RecordSheet } from "../RecordSheet";
 import { TokenMultiSelect } from "../TokenMultiSelect";
+import { HangingAdd } from "../HangingAdd";
+import { TableCellSelect, TableRequiredLabel } from "@/components/form-layout";
+import { TableRowRemove } from "@/components/form-layout/table-cells";
 import { PendingStrip } from "../PendingStrip";
 import { dateKeyOf, startOfDay } from "../data";
 import { CUSTOMERS } from "../customers";
 import {
   LOADING_ACCOUNTS,
   PRODUCTS,
-  loadOptions,
+  suppliersOf,
+  terminalsOf,
   defaultLineCharges,
   type OrderLine,
 } from "./orders";
@@ -92,16 +90,11 @@ export interface ProgramDraft {
   frequency: RuleFrequency;
   loadOrder: boolean;
   /**
-   * A ROW IS AN ACCOUNT, NOT A PRODUCT. One loading number usually carries
-   * the whole load, so the default is a single row holding every product;
-   * a second row exists only when some product has to load somewhere else.
+   * A ROW PER LOADING ACCOUNT (Pavan, 2026-09-25). An account carries several
+   * products and may load from several terminals and suppliers, so the rule
+   * picks accounts; the terminals, suppliers and products are the account's.
    */
-  loadRows: {
-    products: string[];
-    terminal: string;
-    supplier: string;
-    loadingAccount: string;
-  }[];
+  loadRows: { loadingAccount: string }[];
   startKey: string;
   signatureOnDelivery: boolean;
   targets: ProgramTarget[];
@@ -150,16 +143,24 @@ function Card({
   title,
   aside,
   flush,
+  hanging,
   children,
 }: {
   title: string;
   aside?: React.ReactNode;
   /** For content that is itself a table — the card's edge is its edge. */
   flush?: boolean;
+  /** The add that hangs off the card's bottom-left — DS ui §10f. */
+  hanging?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  return (
-    <section className="shrink-0 overflow-hidden rounded-md border border-fp-outline-1">
+  const card = (
+    <section
+      className={cn(
+        "shrink-0 overflow-hidden rounded-md border border-fp-outline-1",
+        hanging && "rounded-bl-none"
+      )}
+    >
       <header className="flex items-center justify-between gap-3 border-b border-fp-outline-1 px-4 py-3">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         {aside}
@@ -167,47 +168,16 @@ function Card({
       <div className={flush ? undefined : "p-4"}>{children}</div>
     </section>
   );
-}
-
-const DASH = "—";
-
-type LoadRow = ProgramDraft["loadRows"][number];
-
-/** Whether one account can carry every product on a row. */
-const accountCarries = (name: string, products: string[]) => {
-  const a = LOADING_ACCOUNTS.find((x) => x.name === name);
-  return Boolean(a && products.every((pr) => a.products.includes(pr)));
-};
-
-/**
- * KEEPING THE ROWS AND THE PRODUCT LIST HONEST. Rows are keyed on the
- * account now, so a product added to the rule has to land somewhere — the
- * first row, because one number carrying everything is the normal case — and
- * a product taken off has to leave every row. An account that no longer
- * carries what is on its row stops being an answer and is cleared.
- */
-function syncLoadRows(rows: LoadRow[], products: string[]): LoadRow[] {
-  const kept = rows
-    .map((r) => ({
-      ...r,
-      products: r.products.filter((pr) => products.includes(pr)),
-    }))
-    .filter((r) => r.products.length > 0);
-  const assigned = new Set(kept.flatMap((r) => r.products));
-  const missing = products.filter((pr) => !assigned.has(pr));
-  const base: LoadRow[] =
-    kept.length > 0
-      ? kept
-      : [{ products: [], terminal: "", supplier: "", loadingAccount: "" }];
-  return base
-    .map((r, i) =>
-      i === 0 ? { ...r, products: [...r.products, ...missing] } : r
-    )
-    .map((r) =>
-      r.loadingAccount && !accountCarries(r.loadingAccount, r.products)
-        ? { ...r, loadingAccount: "", terminal: "", supplier: "" }
-        : r
-    );
+  return hanging ? (
+    <div className="flex shrink-0 flex-col">
+      {card}
+      <div className="flex w-full items-center justify-between gap-4">
+        {hanging}
+      </div>
+    </div>
+  ) : (
+    card
+  );
 }
 
 /* ---------------------------------------------------------------------------
@@ -406,6 +376,12 @@ export function RecurringProgramCreate({
   const [step, setStep] = React.useState<1 | 2>(1);
   const [draft, setDraft] = React.useState<ProgramDraft>(blankProgramDraft);
   const [picking, setPicking] = React.useState(false);
+  /* MARK AS WINTER BLEND (Pavan, 2026-09-25). On, the product chips above
+     become pickable and the picked ones get a blue outline. Starts on when
+     the draft already carries winter products. */
+  const [winterOn, setWinterOn] = React.useState(
+    () => draft.winterProducts.length > 0
+  );
   const [q, setQ] = React.useState("");
 
   /* THE DRAFT SURVIVES A CLOSE, but a fresh Create starts clean — reopening
@@ -462,10 +438,6 @@ export function RecurringProgramCreate({
     );
   }, [firstParty, vendors]);
 
-  /** Accounts carrying EVERY product on the row — one number, one load. */
-  const accountsFor = (products: string[]) =>
-    products.length > 0 ? (loadOptions(products).accounts as string[]) : [];
-
   /** Partners who can take work at all. The table lists these. */
   const eligible = React.useMemo(
     () => VENDORS.filter((v) => v.active && v.approvedForAssignment),
@@ -485,17 +457,28 @@ export function RecurringProgramCreate({
       ? (draft.frequency.monthDates ?? []).length > 0
       : draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0;
 
-  /* EVERY PRODUCT HAS TO LOAD SOMEWHERE. With rows keyed on the account
-     rather than the product, a product can now fall off the table entirely —
-     so the check is coverage, not just a filled-in cell. */
-  const assignedProducts = new Set(draft.loadRows.flatMap((l) => l.products));
+  /* A ROW PER ACCOUNT. There is always at least one row to pick into. */
+  const loadRows =
+    draft.loadRows.length > 0 ? draft.loadRows : [{ loadingAccount: "" }];
+  const accountOf = (name: string) =>
+    LOADING_ACCOUNTS.find((a) => a.name === name);
+  const setLoadAccount = (i: number, name: string) =>
+    set(
+      "loadRows",
+      loadRows.map((r, j) => (j === i ? { loadingAccount: name } : r))
+    );
+  /* [the new row's index] — its account cell takes the cursor (§10f Rows). */
+  const [newLoadRow, setNewLoadRow] = React.useState<number | null>(null);
+  const loadCovered = new Set(
+    loadRows.flatMap((r) => accountOf(r.loadingAccount)?.products ?? [])
+  );
+  /* EVERY ROW NAMES AN ACCOUNT, and every product on the rule loads from one
+     of them. */
   const loadDone =
     !draft.loadOrder ||
     (draft.products.length > 0 &&
-      draft.products.every((p) => assignedProducts.has(p)) &&
-      draft.loadRows.every(
-        (l) => l.products.length > 0 && Boolean(l.loadingAccount)
-      ));
+      loadRows.every((r) => Boolean(r.loadingAccount)) &&
+      draft.products.every((p) => loadCovered.has(p)));
 
   const stepOneDone =
     (firstParty || draft.vendorIds.length > 0) &&
@@ -854,7 +837,9 @@ export function RecurringProgramCreate({
             </Card>
           )}
 
-          <Card title="Products">
+          {/* FLUSH (Pavan, 2026-09-24): the Add products unit runs edge to
+              edge, with no card padding round it. */}
+          <Card title="Products" flush>
             {/* TOKENS, because a rule can carry more than one product and a
                 select cannot say so. The same control the order sheet uses for
                 tags — pick from a list, each choice becomes a chip you can
@@ -864,6 +849,20 @@ export function RecurringProgramCreate({
               value={draft.products}
               addLabel="Add products"
               searchPlaceholder="Search products…"
+              flush
+              highlighted={winterOn ? draft.winterProducts : []}
+              highlightLabel="Winter blend"
+              onChipClick={
+                winterOn
+                  ? (prod) =>
+                      set(
+                        "winterProducts",
+                        draft.winterProducts.includes(prod)
+                          ? draft.winterProducts.filter((w) => w !== prod)
+                          : [...draft.winterProducts, prod]
+                      )
+                  : undefined
+              }
               onChange={(next) =>
                 setDraft((d) => ({
                   ...d,
@@ -875,224 +874,173 @@ export function RecurringProgramCreate({
                   winterProducts: d.winterProducts.filter((w) =>
                     next.includes(w)
                   ),
-                  loadRows: d.loadOrder ? syncLoadRows(d.loadRows, next) : [],
                   targets: [],
                 }))
               }
             />
 
-            {/* WINTER BLEND IS MAPPED PER PRODUCT, not per rule. One rule can
-                carry diesel and unleaded, and only one of them takes an
-                additive — a single order-level tick would additive both. */}
+            {/* WINTER BLEND IS MAPPED PER PRODUCT, not per rule — one rule
+                can carry diesel and unleaded and only one takes an additive.
+                The toggle turns the chips above into the picker. */}
             {draft.products.length > 0 && (
-              <div className="mt-4 flex flex-col gap-2">
-                <span className="text-sm font-medium text-foreground">
-                  Winter blend
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {draft.products.map((prod) => {
-                    const on = draft.winterProducts.includes(prod);
-                    return (
-                      <button
-                        key={prod}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() =>
-                          set(
-                            "winterProducts",
-                            on
-                              ? draft.winterProducts.filter((w) => w !== prod)
-                              : [...draft.winterProducts, prod]
-                          )
-                        }
-                        className={cn(
-                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                          on
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-fp-card-1 text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {prod}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="border-t border-fp-outline-1 p-4">
+                <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+                  <Switch
+                    checked={winterOn}
+                    onCheckedChange={(on) => {
+                      setWinterOn(on);
+                      if (!on) set("winterProducts", []);
+                    }}
+                  />
+                  Mark as winter blend
+                </label>
               </div>
             )}
           </Card>
 
-          {/* THE LOAD ORDER. A ROW IS ONE LOADING NUMBER, and it carries as
-              many of the rule's products as that account can — which is the
-              usual case: one number, one load, several products on the truck.
-              A second row exists only because some product has to load
-              somewhere the first account cannot reach. */}
+          {/* THE LOAD ORDER, BY ACCOUNT (Pavan, 2026-09-25). Pick a loading
+              account; its terminals, suppliers and products follow, read-only.
+              Products not on this rule show disabled. Not the delivery
+              order's per-product table: a rule is drawn up by account. */}
           <Card
             title="Load order"
-            flush={draft.loadOrder && draft.loadRows.length > 0}
-          >
-            <div
-              className={cn(
-                draft.loadOrder && draft.loadRows.length > 0 && "p-4 pb-0"
-              )}
-            >
-              <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
-                <Checkbox
-                  checked={draft.loadOrder}
-                  onCheckedChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      loadOrder: v === true,
-                      loadRows:
-                        v === true ? syncLoadRows([], d.products) : [],
-                    }))
-                  }
+            flush={draft.loadOrder && draft.products.length > 0}
+            hanging={
+              /* NOTHING LEFT TO ADD, OR A BLANK ROW ALREADY — no add. */
+              draft.loadOrder &&
+              draft.products.length > 0 &&
+              loadRows.every((r) => r.loadingAccount) &&
+              loadRows.length < LOADING_ACCOUNTS.length ? (
+                <HangingAdd
+                  label="Add loading account"
+                  onClick={() => {
+                    setNewLoadRow(loadRows.length);
+                    set("loadRows", [...loadRows, { loadingAccount: "" }]);
+                  }}
                 />
-                We buy the product — this rule carries a load order
-              </label>
-            </div>
-
+              ) : undefined
+            }
+          >
+            {/* NO "WE BUY THE PRODUCT" TICK (Pavan, 2026-09-25) — a rule
+                always carries a load order. */}
             {draft.loadOrder &&
               (draft.products.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Choose a product first.
                 </p>
               ) : (
-                <div className="mt-4 overflow-hidden border-t border-fp-outline-1">
-                  <table className="w-full text-sm">
+                <div>
+                  <table className="w-full table-fixed border-collapse">
+                    <colgroup>
+                      <col className="w-[26%]" />
+                      <col />
+                      <col />
+                      <col className="w-[34%]" />
+                      <col className="w-[52px]" />
+                    </colgroup>
                     <thead>
-                      <tr className="border-b border-fp-outline-1 bg-fp-table-header">
-                        {["Products", "Loading account", "Terminal", "Supplier"].map(
-                          (h) => (
-                            <th
-                              key={h}
-                              className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                            >
-                              {h}
-                            </th>
-                          )
-                        )}
-                        <th className="w-10 px-3 py-2" />
+                      <tr className="border-b border-border bg-fp-table-header">
+                        <th className="px-3 py-2.5 text-left">
+                          <TableRequiredLabel required>Loading Account</TableRequiredLabel>
+                        </th>
+                        <th className="px-3 py-2.5 text-left">
+                          <TableRequiredLabel>Terminals</TableRequiredLabel>
+                        </th>
+                        <th className="px-3 py-2.5 text-left">
+                          <TableRequiredLabel>Suppliers</TableRequiredLabel>
+                        </th>
+                        <th className="px-3 py-2.5 text-left">
+                          <TableRequiredLabel>Products</TableRequiredLabel>
+                        </th>
+                        <th aria-hidden />
                       </tr>
                     </thead>
                     <tbody>
-                      {draft.loadRows.map((row, i) => {
-                        /* A PRODUCT LOADS ONCE. What the other rows have
-                           taken is not on offer here, so the table cannot be
-                           made to say two accounts carry the same gallon. */
+                      {loadRows.map((row, i) => {
+                        const account = accountOf(row.loadingAccount);
+                        /* AN ACCOUNT IS PICKED ONCE — the other rows' are not
+                           on offer here. */
                         const taken = new Set(
-                          draft.loadRows.flatMap((l, j) =>
-                            j === i ? [] : l.products
+                          loadRows.flatMap((r, j) =>
+                            j === i || !r.loadingAccount ? [] : [r.loadingAccount]
                           )
                         );
-                        const offer = draft.products.filter(
-                          (pr) => !taken.has(pr)
+                        const offer = LOADING_ACCOUNTS.map((a) => a.name).filter(
+                          (n) => !taken.has(n)
                         );
-                        const accounts = accountsFor(row.products);
                         return (
                           <tr
                             key={i}
-                            className="border-b border-fp-outline-1 align-top last:border-0"
+                            className="group/row border-b border-border align-top last:border-b-0"
                           >
-                            <td className="px-3 py-2">
-                              <TokenMultiSelect
+                            <td className="relative h-11 p-0">
+                              <TableCellSelect
+                                value={row.loadingAccount}
                                 options={offer}
-                                value={row.products}
-                                addLabel="Add products"
-                                searchPlaceholder="Search products…"
-                                onChange={(next) =>
-                                  set(
-                                    "loadRows",
-                                    draft.loadRows.map((l, j) =>
-                                      j === i
-                                        ? accountCarries(l.loadingAccount, next)
-                                          ? { ...l, products: next }
-                                          : {
-                                              ...l,
-                                              products: next,
-                                              loadingAccount: "",
-                                              terminal: "",
-                                              supplier: "",
-                                            }
-                                        : l
-                                    )
-                                  )
-                                }
+                                placeholder="Account"
+                                autoFocus={newLoadRow === i}
+                                aria-label={`Loading account ${i + 1}`}
+                                onChange={(v) => setLoadAccount(i, v)}
                               />
                             </td>
-                            <td className="px-3 py-2">
-                              {row.products.length > 0 &&
-                              accounts.length === 0 ? (
-                                /* NO ONE NUMBER COVERS THE ROW. It is a real
-                                   dead end rather than an empty list, so it
-                                   says so where the answer would go. */
-                                <span className="flex items-center gap-1.5 py-1.5 text-xs text-status-failed">
-                                  <AlertTriangle className="size-3.5" />
-                                  No account carries all of these
+                            {/* READ-ONLY: what the account loads from, every
+                                one of them. */}
+                            <td className="px-3 py-3 text-sm text-foreground">
+                              {account
+                                ? terminalsOf(account).map((t) => (
+                                    <span key={t} className="block">
+                                      {t}
+                                    </span>
+                                  ))
+                                : null}
+                            </td>
+                            <td className="px-3 py-3 text-sm text-foreground">
+                              {account
+                                ? suppliersOf(account).map((t) => (
+                                    <span key={t} className="block">
+                                      {t}
+                                    </span>
+                                  ))
+                                : null}
+                            </td>
+                            {/* EVERY PRODUCT THE ACCOUNT CARRIES. Those not on
+                                this rule are shown but disabled. */}
+                            <td className="px-3 py-2.5">
+                              {account && (
+                                <span className="flex flex-wrap gap-1.5">
+                                  {account.products.map((pr) => {
+                                    const onRule = draft.products.includes(pr);
+                                    return (
+                                      <span
+                                        key={pr}
+                                        aria-disabled={!onRule || undefined}
+                                        className={cn(
+                                          "inline-flex items-center rounded-md border border-border bg-fp-surface-1b px-1.5 py-0.5 text-sm",
+                                          onRule
+                                            ? "text-foreground"
+                                            : "text-muted-foreground opacity-50"
+                                        )}
+                                      >
+                                        {pr}
+                                      </span>
+                                    );
+                                  })}
                                 </span>
-                              ) : (
-                                <Select
-                                  value={row.loadingAccount}
-                                  onValueChange={(v) => {
-                                    const a = LOADING_ACCOUNTS.find(
-                                      (x) => x.name === v
-                                    );
-                                    set(
-                                      "loadRows",
-                                      draft.loadRows.map((l, j) =>
-                                        j === i
-                                          ? {
-                                              ...l,
-                                              loadingAccount: v,
-                                              terminal: a?.terminal ?? "",
-                                              supplier: a?.supplier ?? "",
-                                            }
-                                          : l
-                                      )
-                                    );
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8">
-                                    <SelectValue placeholder="Choose an account" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {accounts.map((a) => (
-                                      <SelectItem key={a} value={a}>
-                                        {a}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
                               )}
                             </td>
-                            <td className="px-3 py-3.5 text-muted-foreground">
-                              {row.terminal || DASH}
-                            </td>
-                            <td className="px-3 py-3.5 text-muted-foreground">
-                              {row.supplier || DASH}
-                            </td>
-                            <td className="px-3 py-2">
-                              {draft.loadRows.length > 1 && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label="Remove this loading account"
-                                  onClick={() =>
+                            <td className="px-2 py-2">
+                              {/* THE LAST ROW STAYS — a load order needs one
+                                  account (§10f Rows). */}
+                              {loadRows.length > 1 && (
+                                <TableRowRemove
+                                  aria-label={`Remove ${row.loadingAccount || `loading account ${i + 1}`}`}
+                                  onRemove={() =>
                                     set(
                                       "loadRows",
-                                      /* ITS PRODUCTS GO BACK ON THE FIRST ROW
-                                         rather than off the rule — removing an
-                                         account is not removing a product. */
-                                      syncLoadRows(
-                                        draft.loadRows.filter(
-                                          (_, j) => j !== i
-                                        ),
-                                        draft.products
-                                      )
+                                      loadRows.filter((_, j) => j !== i)
                                     )
                                   }
-                                >
-                                  <Trash2 />
-                                </Button>
+                                />
                               )}
                             </td>
                           </tr>
@@ -1100,32 +1048,6 @@ export function RecurringProgramCreate({
                       })}
                     </tbody>
                   </table>
-                  {/* NOTHING LEFT TO SPLIT, SO NOTHING TO PRESS. Once every
-                      product has its own account there is no further split to
-                      make, and a dead button with no reason beside it is worse
-                      than no button. */}
-                  {draft.loadRows.length < draft.products.length && (
-                  <div className="border-t border-fp-outline-1 p-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        set("loadRows", [
-                          ...draft.loadRows,
-                          {
-                            products: [],
-                            terminal: "",
-                            supplier: "",
-                            loadingAccount: "",
-                          },
-                        ])
-                      }
-                    >
-                      <Plus />
-                      Add a loading account
-                    </Button>
-                  </div>
-                  )}
                 </div>
               ))}
           </Card>

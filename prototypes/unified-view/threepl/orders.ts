@@ -295,8 +295,15 @@ export function chargeLabel(c: LineCharge, all: LineCharge[]): string {
  */
 export interface LoadingAccount {
   name: string;
+  /** The account's first terminal and supplier — what the delivery order
+   *  sheet's per-product selects offer. */
   terminal: string;
   supplier: string;
+  /** EVERY terminal and supplier the account can load from, when it has more
+   *  than one (Pavan, 2026-09-25). Read through `terminalsOf`/`suppliersOf`.
+   *  INVENTED — the extra names are sample data. */
+  terminals?: string[];
+  suppliers?: string[];
   /** What can be loaded on this account. A line's product must be in here. */
   products: string[];
 }
@@ -306,6 +313,8 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
     name: "Greensbro Premium",
     terminal: "Greensbro KM2",
     supplier: "Liberty P56",
+    terminals: ["Greensbro KM2", "Lib Washington 124"],
+    suppliers: ["Liberty P56", "Sunrise Energy"],
     products: ["Dyed Diesel", "Clear Diesel #2"],
   },
   {
@@ -324,6 +333,7 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
     name: "Washington Contract",
     terminal: "Lib Washington 124",
     supplier: "Sunrise Energy",
+    suppliers: ["Sunrise Energy", "Liberty P56"],
     products: ["Dyed Diesel", "Unleaded 87", "DEF Bulk"],
   },
   {
@@ -336,11 +346,18 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
     name: "Kern Retail",
     terminal: "Kern River T4",
     supplier: "Sunrise Energy",
+    terminals: ["Kern River T4", "Bakersfield Rack 2"],
+    suppliers: ["Sunrise Energy", "Pioneer Distributing", "Valley Fuels"],
     products: ["Unleaded 87", "Unleaded 91", "Dyed Diesel"],
   },
 ];
 
 const uniqueSorted = (xs: string[]) => [...new Set(xs)].sort();
+
+/** Every terminal an account loads from. */
+export const terminalsOf = (a: LoadingAccount) => a.terminals ?? [a.terminal];
+/** Every supplier an account buys from. */
+export const suppliersOf = (a: LoadingAccount) => a.suppliers ?? [a.supplier];
 
 /** See the note at `loadOrder` in the seed. Null means no load order exists. */
 function seedLoadOrder(

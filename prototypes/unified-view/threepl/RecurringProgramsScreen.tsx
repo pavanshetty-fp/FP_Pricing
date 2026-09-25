@@ -39,7 +39,10 @@ import { downloadCsv } from "../csv";
 import { DATE_FMT } from "../data";
 import {
   LINE_BUSINESSES,
+  LOADING_ACCOUNTS,
   SERVICE_LINES,
+  suppliersOf,
+  terminalsOf,
   type ServiceLine,
 } from "./orders";
 import { VENDORS } from "./vendors";
@@ -721,7 +724,24 @@ export function RecurringProgramsScreen({
             vendorIds: d.vendorIds,
             jobType: d.jobType,
             loadOrder: d.loadOrder,
-            loadRows: d.loadRows,
+            /* A row per account; the stored rule keeps the account's
+               products that are on the rule, and all its terminals and
+               suppliers. */
+            loadRows: d.loadOrder
+              ? d.loadRows.flatMap((r) => {
+                  const a = LOADING_ACCOUNTS.find((x) => x.name === r.loadingAccount);
+                  return a
+                    ? [
+                        {
+                          products: a.products.filter((p) => d.products.includes(p)),
+                          terminal: terminalsOf(a).join(" / "),
+                          supplier: suppliersOf(a).join(" / "),
+                          loadingAccount: a.name,
+                        },
+                      ]
+                    : [];
+                })
+              : [],
             products: d.products,
             winterProducts: d.winterProducts,
             serviceLine: line,

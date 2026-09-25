@@ -59,6 +59,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { InvitePartnerSheet } from "./InvitePartnerSheet";
 import { VendorQuoteSheet } from "./VendorQuoteSheet";
+import { LoadOrderTable } from "./LoadOrderTable";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -120,7 +121,6 @@ import {
   SALESPEOPLE,
   SALES_CONTACTS,
   SHIP_TO_SITES,
-  loadOptions,
   isAllTopOff,
   quoteFreight,
   quoteChargeTotal,
@@ -4641,31 +4641,21 @@ export function BrokerOrderSheet({
           />
         </div>
 
-        {/* A RULE BETWEEN THE TWO ROWS (Pavan, 2026-09-17), with 12px either
-            side. They are different questions — WHEN this one goes out, then
-            whether it goes out again — and four controls in one grid read as
-            one block of four.
-
-            IT SPLITS THE GRID RATHER THAN SITTING IN IT. A full-width row
-            inside the grid cannot be 12 from both neighbours: the tracks are
-            laid out on the 16px gap and a negative margin moves the rule
-            within its track rather than moving the row after it, so it lands
-            12 above and 20 below. Between two grids, in the section's flex
-            column, the margin pulls both ways and 12/12 is what it is. */}
-        <div className="-my-1 h-px bg-border" aria-hidden />
-
-        <div className="grid grid-cols-9 gap-4">
+        {/* NO RULE BETWEEN THE TWO ROWS, and only the section's 16px gap
+            (Pavan, 2026-09-25) — replaces the 2026-09-17 rule with 12px
+            either side. */}
+        <div className="grid grid-cols-9 items-end gap-4">
           {/* A CHECKBOX, NOT A YES/NO LIST (Pavan, 2026-09-17). Opening a menu
               to choose between Yes and No is two gestures to say one thing, and
               the field had to carry a label as well as the word "No" to be read
               at all. Ticked or not is the whole question.
 
               THE LABEL IS THE CONTROL'S, so the field carries none — and no
-              asterisk: a box that is off is answered, not empty. The 26px lifts
-              it onto the line of the inputs beside it (label 20 + the field
-              gap), so a row of controls still reads as one row. */}
+              asterisk: a box that is off is answered, not empty. The row's
+              `items-end` sits it on the line of the Frequency input beside it,
+              without a top offset that would widen the gap above. */}
           <SheetField className="col-span-4">
-            <label className="mt-[26px] flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
+            <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
               <Checkbox
                 checked={draft.recurring}
                 onCheckedChange={(v) => {
@@ -5022,119 +5012,9 @@ export function BrokerOrderSheet({
               </Button>
             </div>
           ) : (
-            <div>
-              <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                  <col className="w-[44px]" />
-                  <col className="w-[26%]" />
-                  <col />
-                  <col />
-                  <col />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border bg-fp-table-header">
-                    {/* No label: what the tick means is stated by the rows it
-                        dims, and a header for it would name the exception. */}
-                    <th aria-hidden />
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Product</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Terminal</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Supplier</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel required>Loading Account</TableRequiredLabel>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadRows.map((row) => {
-                    /* Narrowed by THIS product, then by what is chosen above. */
-                    const opts = loadOptions(
-                      [row.product],
-                      row.terminal,
-                      row.supplier
-                    );
-                    const on = !row.excluded;
-                    return (
-                      <tr
-                        key={row.product}
-                        className="h-11 border-b border-border last:border-b-0"
-                      >
-                        {/* SET ASIDE, NOT DELETED. The product is still on the
-                            delivery order, so a deleted row would come back
-                            blank on the next render. Unticking dims the row and
-                            disables its cells, keeping whatever was already
-                            chosen for the moment someone ticks it again. */}
-                        <td className="px-3">
-                          <Checkbox
-                            checked={on}
-                            onCheckedChange={(c) =>
-                              setLoadRow(row.product, { excluded: c !== true })
-                            }
-                            aria-label={`Include ${row.product} in the load order`}
-                          />
-                        </td>
-                        <td
-                          className={cn(
-                            "truncate px-3 text-sm",
-                            on ? "text-foreground" : "text-muted-foreground line-through"
-                          )}
-                        >
-                          {row.product}
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={row.terminal ?? ""}
-                            options={opts.terminals}
-                            placeholder="Terminal"
-                            disabled={!on}
-                            aria-label={`Terminal for ${row.product}`}
-                            onChange={(v) =>
-                              setLoadRow(row.product, {
-                                terminal: v,
-                                supplier: undefined,
-                                loadingAccount: undefined,
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={row.supplier ?? ""}
-                            options={opts.suppliers}
-                            placeholder="Supplier"
-                            disabled={!on}
-                            aria-label={`Supplier for ${row.product}`}
-                            onChange={(v) =>
-                              setLoadRow(row.product, {
-                                supplier: v,
-                                loadingAccount: undefined,
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="relative p-0">
-                          <TableCellSelect
-                            value={row.loadingAccount ?? ""}
-                            options={opts.accounts}
-                            placeholder="Account"
-                            disabled={!on}
-                            aria-label={`Loading account for ${row.product}`}
-                            onChange={(v) =>
-                              setLoadRow(row.product, { loadingAccount: v })
-                            }
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            /* THE SHARED UNIT — the Create recurring rule sheet draws the
+               same table (Pavan, 2026-09-25). */
+            <LoadOrderTable rows={loadRows} onChange={setLoadRow} />
           )}
         </SheetSection>
       )}

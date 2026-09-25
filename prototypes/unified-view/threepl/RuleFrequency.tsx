@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,13 +273,25 @@ export function RuleFrequencyPicker({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* ONE LINE: the days on the left, a divider, then Repeat and its
+          continuation (Pavan, 2026-09-25). There was room on the right, and
+          two rows made one question read as two. The end date stays below. */}
+      {/* 60px between the days and Repeat, no divider (Pavan, 2026-09-25).
+          Repeat and its continuation sit 16px apart, each filling its half. */}
+      <div className="flex items-stretch gap-15">
       {daysApply && (
-        <div className="flex flex-col gap-3">
+        <div className="flex shrink-0 flex-col gap-3">
           {/* THE BADGES ARE THE ANSWER, and Daily is a shortcut over them
               rather than a second way of answering. Touching a day while all
               seven are lit takes that day out, which is what "not daily any
               more" means — so the switch follows the badges and never has to
               be turned off by hand. */}
+          {/* LABELLED LIKE THE FIELDS BESIDE IT (Pavan, 2026-09-25), so the
+              badges start on the same line as the Repeat select. */}
+          <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">
+            Select day/s
+          </span>
           <DayBadges
             value={days}
             onChange={(next) => {
@@ -291,6 +303,7 @@ export function RuleFrequencyPicker({
               });
             }}
           />
+          </div>
           <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
             <Switch
               checked={value.dayMode === "daily"}
@@ -318,13 +331,14 @@ export function RuleFrequencyPicker({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] content-start gap-4">
         <Row label="Repeat">
           <Select
             value={value.repeat}
             onValueChange={(v) => set("repeat", v as Repeat)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -348,7 +362,7 @@ export function RuleFrequencyPicker({
                 set("times", next);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -368,7 +382,7 @@ export function RuleFrequencyPicker({
               value={value.monthlyMode}
               onValueChange={(v) => set("monthlyMode", v as MonthlyMode)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -392,7 +406,7 @@ export function RuleFrequencyPicker({
               value={value.yearlyMode}
               onValueChange={(v) => set("yearlyMode", v as YearlyMode)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -407,8 +421,8 @@ export function RuleFrequencyPicker({
           </Row>
         )}
       </div>
-
-      {/* WEEKLY, MORE THAN ONCE — a time per drop. Two deliveries on one day
+      {/* WEEKLY, MORE THAN ONCE — a time per drop, under Repeat so it reads
+          as part of it (Pavan, 2026-09-25). Two deliveries on one day
           is a real arrangement and the day badges cannot say it. */}
       {value.repeat === "weekly" && value.times.length > 1 && (
         <div className="flex flex-wrap gap-3">
@@ -433,6 +447,8 @@ export function RuleFrequencyPicker({
           ))}
         </div>
       )}
+      </div>
+      </div>
 
       {value.repeat === "monthly" && value.monthlyMode === "everyMonth" && (
         <div className="flex flex-col gap-1.5">
@@ -521,9 +537,11 @@ export function RuleFrequencyPicker({
           </Button>
         ) : (
           <div className="flex items-center gap-2">
+            {/* AS WIDE AS THE DAY BUTTONS ABOVE — seven 32px buttons and six
+                4px gaps, 248px (Pavan, 2026-09-25). */}
             <Input
               type="date"
-              className="w-[170px]"
+              className="w-62"
               value={value.endKey}
               aria-label="End date"
               onChange={(e) => e.target.value && set("endKey", e.target.value)}
@@ -532,9 +550,10 @@ export function RuleFrequencyPicker({
               variant="ghost"
               size="icon-sm"
               aria-label="Remove the end date"
+              className="text-muted-foreground hover:text-destructive"
               onClick={() => set("endKey", null)}
             >
-              <X />
+              <Trash2 />
             </Button>
           </div>
         )}

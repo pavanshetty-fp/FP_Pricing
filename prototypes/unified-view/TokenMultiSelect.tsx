@@ -47,6 +47,15 @@ export interface TokenMultiSelectProps {
   addLabel: string;
   /** Search field placeholder, e.g. "Search tags...". */
   searchPlaceholder: string;
+  /** Sits edge to edge inside a card: no border, no radius, no inset of its
+   *  own — the card's edge is its edge. */
+  flush?: boolean;
+  /** Chips drawn with a blue outline — e.g. the products marked winter blend. */
+  highlighted?: string[];
+  /** A small word shown inside a highlighted chip, e.g. "Winter blend". */
+  highlightLabel?: string;
+  /** When set, clicking a chip calls this instead of opening the list. */
+  onChipClick?: (opt: string) => void;
 }
 
 export function TokenMultiSelect({
@@ -55,6 +64,10 @@ export function TokenMultiSelect({
   onChange,
   addLabel,
   searchPlaceholder,
+  flush,
+  highlighted,
+  highlightLabel,
+  onChipClick,
 }: TokenMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -74,16 +87,41 @@ export function TokenMultiSelect({
             "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-2 py-2 text-left outline-none transition-colors",
             "hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50",
             "data-[state=open]:border-ring",
+            /* FLUSH IS THE BOX, NOT THE CONTENT. The unit meets the card's
+               edges, but the chips inside keep the card's 16px inset — a chip
+               touching the edge reads as cut off. (Pavan, 2026-09-25.) */
+            flush && "rounded-none border-0 px-4 py-2 hover:bg-fp-surface-1a focus-visible:ring-inset",
             value.length === 0 && "justify-center"
           )}
         >
           {value.map((opt) => (
             <span
               key={opt}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-fp-surface-1b py-1 pr-1 pl-1.5 text-sm"
+              role={onChipClick ? "button" : undefined}
+              aria-pressed={onChipClick ? Boolean(highlighted?.includes(opt)) : undefined}
+              onClick={
+                onChipClick
+                  ? (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onChipClick(opt);
+                    }
+                  : undefined
+              }
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-border bg-fp-surface-1b py-1 pr-1 pl-1.5 text-sm",
+                onChipClick && "cursor-pointer hover:border-fp-outline-2",
+                highlighted?.includes(opt) &&
+                  "border-fp-banner-accent-info hover:border-fp-banner-accent-info"
+              )}
             >
               <InitialBadge label={opt} />
               {opt}
+              {highlightLabel && highlighted?.includes(opt) && (
+                <span className="rounded-sm bg-fp-banner-accent-info/10 px-1 text-xs text-fp-banner-accent-info">
+                  {highlightLabel}
+                </span>
+              )}
               <span
                 role="button"
                 tabIndex={-1}

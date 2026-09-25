@@ -223,6 +223,16 @@ mistakes, and Checks derive from these.
 | `--border` (`--fp-stroke-hairline`) | `#d4d4d8` zinc/300 | 1.48:1 | a structural divider — page header, tab strip, table edge and row rules, sidebar edge |
 | `--input` (`--fp-stroke-field`) · `--fp-outline-2` | `#c4c4c9` | 1.74:1 | a field's boundary, and the rim that has to beat a card's (hover / active) |
 
+- **A CARD'S RIM IS `--fp-outline-1`, AND THAT IS NOT NEGOTIABLE PER COMPONENT**
+  (settled 2026-09-22). `SheetSection` drew `border-border` — the divider
+  weight — round its outside for months, so a card sat heavier on the page than
+  the lines inside it, and two components disagreed about what a card's edge
+  is. In DARK the two tokens carry the same value (`#363c45`), which is exactly
+  why it went unnoticed: it is a light-mode difference only.
+  - **Open, and measured rather than guessed:** a card's title band still
+    divides on `--border` (`#d4d4d8`), now heavier than the card's own rim
+    (`#e2e5ea`). Defensible — a divider is structural and a rim is quiet — but
+    nobody has ruled on it.
 - **A field border does more work than a divider**, which is why they are not one
   value. In light an `Input` is `bg-transparent` — only dark gets `dark:bg-input/30`
   — so the border is the *only* thing that makes a field a field; a divider merely
@@ -393,6 +403,348 @@ saved views.
 
 ---
 
+## 10c. Wherever data is a TABLE, the whole action unit ships with it
+
+Added 2026-09-19, from the Recurring Orders screens. Revised the same day,
+because the first version of this rule was written too small — see *How this
+was got wrong*, below.
+
+**A table is not a table plus optional chrome.** The unit below is what a list
+IS in this app. A screen that ships a table without it has not saved anything;
+it has made a second thing for people to learn.
+
+### The unit, top to bottom
+
+| Row | What it carries | Component |
+| --- | --- | --- |
+| **Scope shelf** | Preset/saved views · the line and the business inside it · Export · the create CTA | `FuelOrdersViewBar` + `useSavedViews` |
+| **Toolbar** | Search · filters · the view switch · the column tools | `ListToolbar` |
+| **Chips** | What is currently applied, said out loud | `FilterChips` |
+| **The table** | | |
+| **Footer** | The page position | `TablePagination` |
+
+- **Scope is not a filter.** The line and the business say WHICH LIST; the
+  filter panel narrows the list you are on. They look similar and sit near each
+  other, and conflating them is how a reader ends up with a narrowing they
+  cannot see. Default means *nothing applied*, and that has to include the
+  scope shelf.
+- **The CTA goes where creation actually happens**, which is not always this
+  screen. A recurring order is created by ticking Recurring on a delivery
+  order, so Recurring Orders' CTA navigates to that form rather than growing a
+  second one. Two forms making one record is two forms that will drift.
+- **Export means the rows you are looking at** — filtered, searched, sorted,
+  all pages. One implementation (`csv.ts`), because the quoting is the same
+  everywhere and a second copy is a second set of bugs.
+- **The page position is not a count.** "24 rules" does not say which 24 and
+  offers no way to the next page.
+- **A control with nothing behind it is switched OFF by flag, never omitted by
+  silence.** This is §10 at the toolbar's own level, and it is why `mapView`
+  and `boardView` exist: a list of standing arrangements has no lanes and no
+  pins, so it draws neither, and the omission is written down in the call.
+- **A fact about the list that a count cannot carry sits beside the
+  pagination** — "showing deliveries from today through one month out" is true
+  of the list, not of any row.
+
+### How this was got wrong
+
+Worth keeping, because the failure repeats. Three screens shipped a table with
+a search box and one filter button, then grew the rest of the unit one piece at
+a time as each omission was pointed at.
+
+The cause was not forgetting. It was **defining the unit from what had been
+built rather than from the reference screen**. Delivery Orders has carried the
+whole unit for weeks; nobody looked at it. Then the first version of this rule
+wrote down that too-small definition as law, which would have propagated it.
+
+**So: before shipping a list, open the closest existing list and match it row
+for row.** The unit is the table above, not whatever the last screen happened
+to need.
+
+### Quick filters — when a split earns a control of its own
+
+Added 2026-09-21. `ListToolbar` takes a `quickFilters` slot at the **head of
+the left cluster — before the search box**, because it is the coarsest cut on
+the row: it decides WHICH SET you are then searching and filtering inside.
+Left to right then matches the order somebody actually narrows — pick the
+book, then find the row.
+
+A split belongs there only when all three are true:
+
+- **It is exhaustive and short** — All plus two or three, no more.
+- **A reader changes it several times a session.** Opening a panel, ticking a
+  box and closing it again is the wrong amount of work for something flipped
+  that often; anything flipped once a week stays a facet.
+- **It divides the list into different jobs**, not different values. First
+  party and third party operations are two books with two people worrying
+  about them; a product is a value you look up.
+
+**It matches the row it sits in — `h-8`**, the same as the search field and
+the Filters button. A control a pixel off on a row of three reads as a
+mistake, and nobody can say why.
+
+**It is `variant="outline"` with the default `spacing={0}`** — the DS's own
+joined segmented control, which draws the box round the set and the hairlines
+between the segments. Without them the three read as three buttons that happen
+to sit together rather than as one choice with three answers, and nothing on
+screen says only one of them can be true.
+
+### The composition is part of the component
+
+The same failure recurred one step down. The scope shelf was added to both
+screens and read as a crowded band, because the component went in without the
+layout around it: the reference wraps the toolbar and the chips in one
+`mt-4 shrink-0` shelf, and the table gets its own `mt-4` below that. Dropped in
+bare, the view bar and the toolbar sat flush.
+
+**A list's vertical rhythm is fixed, and it is part of the unit:**
+
+```
+<FuelOrdersViewBar … />              ← the scope shelf, flush to the header
+<div className="mt-4 shrink-0">      ← ONE shelf for the toolbar + the chips
+  <ListToolbar … />
+  <FilterChips …>…</FilterChips>
+</div>
+<div className="relative mt-4 min-h-0 flex-1">  ← the table
+<div className="mt-4 shrink-0">      ← the page position
+```
+
+Copying a control without the box it lives in is the same mistake as copying
+half the controls. Take the composition, not the component.
+
+## 10e. Group a table's columns only when the groups outlive the reader
+
+Added 2026-09-21, from removing the groups on Recurring Orders V1 the week
+after adding them.
+
+A two-tier header reads beautifully and takes three things away:
+
+- **A column can only move inside its group.** The reader who wants two
+  columns side by side cannot have them if the groups disagree.
+- **The header costs two rows on every screen**, forever, for a label that is
+  read once.
+- **It asserts a relationship** — that Terminal belongs with Partner and not
+  with Product — which is the author's model, not necessarily the reader's.
+
+`useTableColumns` and `TableColumnHeader` — order, widths, the resize guard,
+the sort glyph, all of it — are unusable grouped, because the hook knows
+nothing about groups. Everything has to be rebuilt by hand and constrained.
+
+**So group only where the groups are the point** (V1.1's programme list is
+one partner's terms, coverage and economics — three genuinely separate
+questions about one row). Everywhere else, flat and equal.
+
+**And when a group goes, its heading hands meaning back to the labels.**
+*Vendor* and *Customer* under a "Pricing" heading became *Vendor Price* and
+*Customer Price* the moment the heading went, because *Customer* already
+named a different column.
+
+## 10f. THE BOXED TABLE UNIT
+
+> **READ `7-variants.md` §3 FIRST.** There are three table forms — in a unit,
+> its own unit, and the list — and this rule is about the first. A table that
+> IS its own box is not breaking it; a table that draws its own box INSIDE a
+> card is. Stating this as one rule was the error, and the check that enforced
+> it flagged two correct components on its first run.
+
+Added 2026-09-21, settled 2026-09-22 on the Vendor table. **One shape, every
+time a table sits inside a box** — a card, a `SheetSection`, a panel. Editable
+or read-only, one row or forty.
+
+### The shape, top to bottom
+
+1. **The box's header band** — the section's title on its tinted strip. This
+   is the unit's name.
+2. **The table, flush.** No border, no radius, no inset of its own. Its edges
+   ARE the box's edges, and its column-header row sits directly under the
+   title band.
+3. **The hanging add**, when the table can grow — a tab below the box's
+   bottom-left corner, OUTSIDE it, with that corner squared so the two join.
+4. **An acts band**, when there is an act on the whole list (Send, Export) —
+   inside the box, right-aligned, with a top rule, and rendered **only when it
+   has something in it**.
+5. **A flag about the whole table rides the hanging row's right end** — level
+   with the add, outside the card, nothing drawn around it. Winter additive on
+   the Delivery Order table is the case: it is a property of the LOAD, not of
+   a row, so it cannot sit in the table, and stacked below the add it read as
+   a third thing rather than as part of the unit. (Added 2026-09-22.)
+6. **Anything else is outside the box entirely**, with 24px to it — settings
+   that are about the ORDER rather than about this table, a note. See the
+   Vendor unit's two toggles, which are about the invitation.
+
+### Why each part
+
+- **A table set inside a padded card is a box in a box.** The card draws a
+  rim, a tinted band and a rounded corner; the table draws its own a few
+  pixels inside. Two lines say one thing, and the gap between them belongs to
+  neither.
+- **The add hangs rather than banding.** A full-width strip draws a rule
+  across the whole card to carry one small act, and what it reads as is an
+  empty extra row of the table.
+- **The add is filled, not outlined** — the table's own header tint, so it
+  continues the table. An outline is a second box under a card that already
+  has one, which is the nesting this rule exists to remove.
+- **A plus, and the words on hover or keyboard focus.** The row it adds is one
+  of many. The `aria-label` is always the full phrase — the collapsed state is
+  a visual economy, never a nameless control.
+- **Square on top, rounded below**, or a radius shows a notch where the card
+  ends.
+
+### When the add cannot aim — it becomes a cell
+
+**A card holding SEVERAL tables has no single bottom-left corner to hang
+from.** The order's pricing unit is one band per product; a hanging add on that
+card's corner could only ever add to one of them, and which one would be a
+guess the reader has to make.
+
+**So the add becomes a CELL OF THE MATRIX** — in the column that names the
+thing being added, styled exactly like its siblings: a rule on top, no inset of
+its own, and the button carrying the padding. It is not the full-width band
+this rule forbids; it is one cell of a grid that happens to hold a control
+instead of a value. (Added 2026-09-22, on the charge rows.)
+
+**One control, not one per kind.** Three kinds of charge get one *Add charge*
+with a menu, because three separate adds would be three controls for one act.
+
+**An add with nothing left to add is not rendered.** Once every product has its
+own loading account there is no further split to make, and a dead button with
+no reason beside it is worse than no button.
+
+### The cells — `TableCell*`, never a bare form control
+
+Added 2026-09-23, after one sheet ended up holding two different table shapes.
+
+**`TableCellInput` · `TableCellSelect` · `TableCellCombobox` ·
+`TableCellMultiSelect`.** They are `absolute inset-0` and **fill** the cell
+rather than sitting in it, and their `<td>` is `relative p-0`. That is the
+whole idiom: **a cell is editable ground, not a box with a field parked inside
+it.**
+
+- **A `<Combobox>` dropped into a `<td>` brings its own border, its own radius
+  and its own padding**, so the row reads as a form with columns rather than as
+  a table. Beside a table that uses the cell controls, the two do not look like
+  the same component — because they are not.
+- **Without `relative` on the cell the control escapes the table altogether.**
+  Measured, not theorised: a fault cell landed at the top of the sheet, over a
+  section heading two cards above it.
+- **A read-only cell is plain text with the cell's own inset** (`px-3`), not a
+  disabled control.
+- **A CELL WHOSE VALUE IS A PAIR IS THE ONE CASE THE `TableCell*` SET CANNOT
+  HOLD.** A duration is two numbers — `1 h 30 m` — and a single full-bleed
+  field cannot be two boxes. Such a cell keeps the table's inset and row
+  height and puts the pair inside it, at `h-8`, with the units as muted text.
+  **It is a gap, not an exception: the answer is a `TableCellDuration` in the
+  DS**, and the same shape will come round again for a range and for a
+  quantity-plus-unit. Found 2026-09-23, on the service visits table, by the
+  check that enforces the rule.
+
+### Rows — adding one, and taking one away
+
+Added 2026-09-23, after an audit of all seventeen editable tables in Unified
+View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
+
+- **A new row goes at the bottom**, every time. The add hangs below the last
+  row, so the row it makes appears where the eye already is.
+- **The cursor goes into the new row's first editable cell.** The add is
+  followed by the answer, not by a hunt for the row it made. Found broken in
+  all seventeen tables — after every add, focus stayed on the add button. The
+  `TableCell*` controls take `autoFocus`; it acts on MOUNT only, so passing it
+  to the row just added never re-focuses a row that was already there.
+- **An add with nothing left to add is not rendered** (see "When the add cannot
+  aim"). The sales product table used to fall back to the first product, so the
+  last press made a duplicate line.
+- **A blank row is not added twice.** If the table already holds an unfilled
+  row, the add takes the cursor to it. Two blank rows is a table asking the same
+  question twice, and on the 3PL vendor table the second one could not be
+  removed at all.
+- **A row goes with a bin** (`Trash2`, `ghost`, `icon-sm`), quiet until the row
+  is hovered or the bin is focused, in an **unnamed trailing column 52px
+  wide**.
+- **A row's delete asks first — the tick is the "are you sure?"** (Pavan,
+  2026-09-23). The bin swaps, in place, for ✕ cancel over ✓ confirm filling
+  the cell (Figma 28133:1526); the cursor lands on ✕, and Escape or clicking
+  away takes it back. No dialog — the question is asked where the finger
+  already is. **`TableRowRemove`** in `form-layout/table-cells.tsx` is the only
+  way a row is removed; a bin that deletes on one click fails the eval.
+- **The bin says what it removes.** `Remove {name}`, or `Remove {kind} N` while
+  the row is blank — "Remove fee 2", never "Remove row 2". Eleven identical
+  announcements down a table are eleven questions for a screen reader.
+- **Whether the last row can go depends on whether the table may be empty.**
+  A table the record cannot do without (products on an order, assets on a
+  job) keeps no bin on its last row. A table that may be empty (fees, parts,
+  charges) lets the last row go, and the empty table is padded text.
+- **A hanging add's label is singular** — "Add product", "Add fee". Each press
+  adds one row.
+
+**Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
+rows and focuses nothing, a remove with no subject, a remove that does not
+ask, a local cell control.
+
+### There is no "last band" alternative to the hanging add
+
+**The add hangs. Always.** A rule in Unified View's own layouts document said
+the opposite — *"the Add row is the table's last band … a flush table inside a
+card does not have a squared corner"* — and its eval asserted that version, so
+for a month the app had both shapes and the check blessed the wrong one.
+
+**The parenthetical was the error: the card squares its own corner.** That is
+precisely what `SheetSection`'s `hanging` does.
+
+### What the table does NOT give up
+
+Its row rules, its header fill and its `tfoot` total stay. Those separate rows
+from each other, which is a different job from separating the table from its
+container.
+
+### The parts that are not the table
+
+Anything inside a flush box that is not the table brings its own 16px inset,
+and the boundary where it meets the table carries the rule (`border-t` /
+`border-b`). The rule belongs to the boundary, and only the call site knows
+which side it is on.
+
+**An empty table is padded text, not a dashed box.** A dashed rectangle inside
+the card is the same nesting again.
+
+### Where the flags live
+
+On the components, not on every call site — `SheetSection`'s `flush` and
+`hanging`, and a table that declares it fills its section. A rule nobody has
+to remember is a rule that holds.
+
+### Checked, not remembered
+
+`npm run eval:boxed-tables` scans the source for every violation of the above
+and exits non-zero. Run it with the layouts eval; it is the countable half of
+that segment.
+
+## 10d. A sticky table header needs separated borders
+
+Added 2026-09-21, from the Recurring Orders tables. Cost an hour; worth the
+paragraph.
+
+Tailwind's preflight sets `border-collapse: collapse` on every table. In that
+mode Chrome does two things that make a sticky header impossible to get right:
+
+- it **ignores z-index on the table, the `<thead>` and the rows**, so a
+  `sticky z-20` header holds its position but paints UNDERNEATH the body — it
+  hit-tests on top and renders beneath, and a scrolled row can be read straight
+  through it;
+- it **refuses `position: sticky` on a cell**, so moving the stickiness to the
+  `<th>` to get the z-index back means the header stops sticking at all.
+
+Collapsed, a table can hold its header still or paint it above the body, never
+both.
+
+**So a table with a sticky header sets `border-separate border-spacing-0`, and
+the header sticks on its CELLS** — `sticky top-0` on the first header row, and
+`top-<height of that row>` on a second tier. The cost is that a border on a
+`<tr>` stops painting, so the row rule moves onto the cells
+(`[&>td]:border-b`), which is where the header's borders already were.
+
+**A two-tier header also needs the line between the tiers.** Without it the
+group words and the column words read as one crowded block instead of a heading
+over its columns.
+
 ## 10b. The DS ships hues; the application binds meaning
 
 Added 2026-09-18. The DS already says a chip renders neutral until a usage rule
@@ -415,6 +767,53 @@ binding is written down.**
 - **A count of one meaning is a badge nobody needs.** "Normal" priority, a
   status that repeats its own lane heading, a placing on a board of one — if
   every row carries the same chip, the chip says nothing. Render the absence.
+
+### A status is coloured by its KIND — what the reader should do about it
+
+Added 2026-09-23, from the service board; applies to every module of every
+application — sales, 3PL, service and whatever is added next. Confirmed by
+Pavan on screen before it was written down.
+
+**Five kinds. They are about what the reader has to do, not about where the
+status sits in its lifecycle.**
+
+| Kind | Means | Drawn in | Examples |
+|---|---|---|---|
+| `caution` | **waiting on somebody** — pending, awaiting, not yet looked at | amber | Parts pending · Needs approval · Quoting · Unassigned · Paused |
+| `info` | **simply true, asks nothing** — somebody is on it, it is under way, it exists | blue | Assigned · Ongoing · Scheduled · Active |
+| `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Finalized |
+| `critical` | **a warning**, or a state important enough to change a plan | red | Blocked · Declined · Compliance expired · Over limit |
+| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | grey | Draft · Cancelled · Ended · Inactive |
+
+- **A column is a place, not a state.** Every badge grey made the lane the only
+  thing carrying meaning, and in one lane a job waiting on parts and a
+  brand-new job looked identical. A dispatcher scans a board for the amber ones.
+- **Being active is `info`, not `success`.** Nothing has been achieved by a
+  customer existing. Green is kept for a thing that is DONE, so that it means
+  something when it appears.
+- **Cancelled is not red.** It is a terminal non-event, not a problem to solve,
+  and a lane of red badges would be the loudest thing on the board saying the
+  least. Red stays for the state that genuinely goes wrong — and a lifecycle
+  with no such state has no red, which is correct rather than an oversight.
+- **A decision is not a fault.** Paused and Skipped were red; somebody chose
+  them. Paused is `caution` (it waits on somebody to resume), Skipped is
+  `neutral`.
+- **A price in is not a thing done.** "Quotation received" is `caution`: it is
+  now the dispatcher's turn to award. `success` is Finalized.
+- **The normal state says nothing.** Maintenance "OK" is `neutral`; the
+  exceptions carry the colour.
+
+**An application declares KINDS, never tones.** `StatusChip`'s tones are the
+DS's channels and their names are hues in disguise (`processing` is amber). A
+map written in them is a map written in colours — which is how "Assigned" came
+to be green in one module, amber in another and blue in a third, each author
+reaching for a swatch. The DS's `StatusChip` ships `info` (blue, on
+`--fp-banner-accent-info`) as its fifth channel for this rule.
+
+**Checked, not remembered.** In Unified View, `prototypes/unified-view/statusKind.ts`
+holds the kind → tone map and nothing else names a tone; `npm run eval` fails a
+chip or a map that does (`scripts/eval/status-kinds.mjs`). Which kind a given
+status is stays a reading — the binding table in the application's own docs.
 
 ## 11. A status is its word
 
@@ -497,6 +896,8 @@ Anti-patterns for the visual surface, each pointing back to [`2-rules.md`](2-rul
 - **Radius** — ❌ `rounded-[5px]` · ✅ the scale: `rounded-md` (buttons/inputs), `rounded-lg` (cards).
 - **Icons** — ❌ Tabler / Hugeicons / Phosphor / Remix / emoji · ✅ `lucide-react` only.
 - **Light mock** — ❌ copy the white cards / a foreign palette · ✅ re-map every color to FP tokens (dark-primary). Translate, don't trace.
+- **Recolouring an `outline` Button** — ❌ `hover:bg-status-success` alone · ✅ name the dark half too: `hover:bg-status-success dark:hover:bg-status-success`. The `outline` variant ships `dark:hover:bg-input/50`; that is the same specificity and stacks LATER, so in dark it wins and the fill never changes colour — while `hover:text-*-foreground` still applies, landing near-black text on the variant's own grey fill. The symptom is a hover state **less readable than the resting one**. (Found 2026-09-22 on Finalize vendor.)
+- **A sticky bar in the surface it sits on** — ❌ `bg-popover` on a bar inside a `bg-popover` sheet · ✅ a step away from it (`bg-fp-card-1`). Opaque is not the same as distinguishable: nothing scrolls through it, but nothing says it is pinned either, and its top rule reads as one more row rule. (Found 2026-09-22 on the pricing totals bar.)
 
 
 ---
@@ -604,7 +1005,7 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 - **Rail (tier-1)** — 52px `bg-rail`, hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does not change on expand; 52px footprint reserved, no reflow). **Navigation only** — the brand lives in the top bar; a **module switcher** sits at the rail's top (opens in-place and pins the rail open).
 - **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
 - **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
-- **Data table** — `rounded-md` with an **outer stroke** `border border-border` (follows the `border` token → FP/Outline 1); header on `bg-fp-surface-1a`; horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the `<thead>` is `sticky top-0 z-20` (put stickiness on `thead`, not the `th` cells — th-level sticky is unreliable with collapsed borders), and the header cells carry a **solid `bg-fp-surface-1a`** + bottom hairline so rows scroll *under* the titles, never through them.
+- **Data table** — `rounded-md` with an **outer stroke** `border border-border` (the structural-divider weight — see Strokes; it is NOT `--fp-outline-1`, which is a card's rim); header on **`bg-fp-table-header`** (never `bg-fp-surface-1a` — in light both that and the content layer are `#ffffff`, and a header that is only a hairline stops being a header the moment the first row has one too); horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the table sets **`border-separate border-spacing-0`** and the header sticks on its **CELLS** — `sticky top-0` on the first header row, `top-<height>` on a second tier (see §10d: collapsed, Chrome ignores z-index on the table and its rows, so a `sticky z-20` `<thead>` paints *underneath* the body; the row rule moves onto the cells with `[&>td]:border-b`), and the header cells carry a **solid `bg-fp-table-header`** + bottom hairline so rows scroll *under* the titles, never through them.
 - **Status chip** — one component, three treatments, via `StatusChip` (`ui/status-chip.tsx`): `dot` (token-coloured dot, neutral label — the quietest, for dense grids), `text` (dot **and** label share the tone via `bg-current`, no fill), `soft` (`bg-status-*/10` + tone text — the canonical treatment for a state that must be noticed, same recipe as the `destructive` Badge variant). The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
 - **Pastel code disc** — a 22px pastel circle carrying a 12px initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(Both pastel pairs were chosen in the repo and measure AAA; extending the set is a one-line change per pair — measure the pair before adding it. See `00-meta/token-provenance.md`.)*
 - **Bulk-attribute edit** — never a popover that commits on click. Three tiers by cardinality (scalar → single input; one-value-per-row → searchable select; a collection per row → multi-select), each opening a **dialog**, each taking the same two-step shape via `BulkEditDialog` (`components/bulk-edit/`): (1) picker, header leading with **scope + count**, primary gated until a value is picked; (2) per-row **before/after** preview, title becomes "View Summary", footer becomes `Go back` / `Confirm`; (3) commit → **toast**. Destructive replaces arm before they commit. **Why both steps earn their keep:** the operator must see the state that *already exists* on the target before piling onto it — `StandingItems` surfaces that standing state in step 1, `BeforeAfterTable` shows the delta in step 2. Collapsing to one step removes the only chance to notice you are about to replace something. `before` renders muted + `line-through` so a row reads as a replacement, with an em-dash fallback so "had nothing" and "had something" stay distinct. The dialog always reopens on step 1 — reopening mid-flow would offer a Confirm for a value the operator can no longer see. Body scrolls at `max-h-[55vh]`; header and footer stay put. **Inner panels use `bg-fp-surface-1b`, not `bg-fp-card-1`** — measured against the dialog's own `bg-background`, card-1 is only [6,3,6] away in light (near-invisible) while surface-1b is [16,16,20] light / [19,24,32] dark.
@@ -1497,13 +1898,45 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     NEXT ACT on the record — the one thing that moves it on from where it is.
     A primary that says "Update" on a sheet that has already updated is a
     button for a job that is done.
+- **CREATE AND EDIT ARE THE SAME SHEET.** `mode="create"` swaps the title and
+  the primary's label and the caller seeds a blank draft; everything else is
+  the edit sheet. One layout to learn, and no create form that can drift from
+  the record it makes. A separate create screen is how two descriptions of one
+  record come to exist. (Promoted from Unified View, 2026-09-22.)
+- **A SHEET OPENED OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so
+  `100vw − 112px`. The 56px is what tells a reader a sheet is over something; a
+  second sheet at the same inset covers the first exactly and reads as the SAME
+  sheet having changed its contents. The extra 56 leaves a strip of the sheet
+  underneath showing, which says "there is one of these behind this one" in the
+  only language the stack has. (Added 2026-09-22.)
+- **A MEMBERSHIP GATE LIVES IN THE PICKER, AND NOWHERE ELSE.** When an earlier
+  choice decides what may be added — a partner's service area deciding which
+  ship-tos exist — the picker offers nothing outside it, and **its empty state
+  names the gate**: "Nothing matches inside this partner's area" is a different
+  sentence from "No results", and only one of them tells the reader why. A gate
+  enforced after the press, by an error, is a gate that let somebody do the
+  work first.
+  - **A COLLISION IS FLAGGED, NOT BLOCKED.** Something already claimed
+    elsewhere shows the clash inline on its own row, and its add drops from
+    `default` to `outline` — still pressable. The system knows the fact; only
+    the person knows whether it is a mistake. Blocking here is the system
+    overruling a judgement it does not have the information to make.
+  (Both promoted from Unified View, 2026-09-22.)
 - **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
   of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
-  columns have to be scrolled to be read. Both clamp to `100vw − 60px`, because
-  60px-from-the-edge is the **most** a sheet may take, not the width it should be —
-  a sheet that eats a wide monitor turns two-column pairs into a hunt across the
-  screen and leaves nothing of the list it came from. `xwide` is **1120px**, for
-  a step whose tables run past six columns.
+  columns have to be scrolled to be read. `xwide` is **1120px**, for a step whose
+  tables run past six columns. These are the **most** a sheet may take, not a
+  width to grow into — a form that eats a wide monitor turns two-column pairs
+  into a hunt across the screen and leaves nothing of the list it came from.
+- **The gap is 56px and it is the one constant.** Every size clamps to
+  `100vw − 56px`, so no sheet reaches the edge and none overflows a small
+  screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
+  drawer.
+- **A creation sheet fills to `100vw − 56px`** (Pavan, 2026-09-25) — creating
+  a rule, an order, a customer, anything. The widths above are for opening an
+  existing record; a sheet that makes something new takes the full width less
+  the gap. An export or a partner's quote borrows create mode without making
+  anything and keeps its cap.
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while
@@ -1513,11 +1946,20 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
-- **`xxwide` is 1440px, and it exists for exactly one shape: a step that is TWO
-  COLUMNS** — what you fill in on the left, what that makes on the right. A
-  sheet does not get this size for being long; it gets it for being split. The
-  rail costs the left column 340px plus a 24px gap, and at `xwide` that comes
-  straight out of table columns already at their minimum.
+- **`xxwide` FILLS — `100vw − 56px`, no cap — and it exists for exactly one
+  shape: a step that is TWO COLUMNS** — what you fill in on the left, what that
+  makes on the right. A sheet does not get this size for being long; it gets it
+  for being split.
+  - **Why this one is not capped.** Its width was never a chosen number. The
+    rail is fixed at 340px plus a 24px gap; everything else the viewport has
+    belongs to the tables, which at `xwide` were already at their minimum. A
+    fixed 1440 left a strip of the list showing on a wide screen and the sheet
+    read as having stopped short of something. Changed from 1440 on 2026-09-21.
+  - **The cap argument does not apply to it.** What a cap protects is a FORM —
+    label-to-control pairs stretched across a monitor. A two-column step has no
+    such pairs to stretch: the left is tables, the right is a fixed rail.
+  - Below the fold-back width the step is one column again and stops needing
+    any of this.
 - **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
   type into it?** Editable sections go left, in the sequence you fill them.
   What the record HAS BECOME goes right — derived, read-only, true whether or
@@ -1549,7 +1991,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     see the interactions rules on the disabled primary. A clause standing
     permanently beside the button is a sentence read on every visit, including
     the ones where nothing is wrong.
-- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `MandatoryStepsBanner`
+- **WHAT THE RECORD IS MISSING GETS A STRIP, NOT A LIST.** `PendingStrip`
   in `footerBanner`: one outstanding item at a time, with a counter and chevrons
   to step through them, so three missing fields cost one line rather than three.
   Each label is the INSTRUCTION — "Choose a customer", not "Customer" — because
@@ -1568,8 +2010,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     scrolls the section into view and **blinks its outline once** — after a
     scroll the eye is on the movement, not on the thing that moved, and "it is
     this one" is a different statement from "here is some of the form".
-    Twice: once reads as a render glitch, three times as an error. The ring
-    leaves no trace, because nothing about the record changed.
+    **Once, not twice** (changed 2026-09-22): two flashes is a thing asking to
+    be watched, one is a thing pointing at itself and then getting out of the
+    way — and the reader is already looking, because the scroll took them
+    there. The ring leaves no trace, because nothing about the record changed.
+  - **A thing that is not one box flashes a FILL, not an outline.** A column of
+    a grid is a stack of separate cells, and an outline round each of them is a
+    ladder rather than a column. Every cell carries `data-blink="<name>"` and
+    they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
+    2026-09-22.)
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a
@@ -1618,6 +2067,30 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   centres a taller child, which overflows the box without growing it. That holds
   for any control put there, so the 16 cannot drift again the next time a
   section gains an action. **Measure from the text, and measure it on screen.**
+- **HELPER TEXT IS NOT A DEFAULT. IT IS EXCEPTIONAL, AND IT IS NOT A GUIDE.**
+  (Pavan, 2026-09-23 — said more than once before it was written down, which
+  is the reason it is written down.)
+  - **A line of prose under a field is allowed for a STATE**: something is
+    missing, something is wrong, something disagrees with something else, or a
+    value came from somewhere the reader did not put it. Those are facts about
+    THIS record at THIS moment, and they appear only while they are true.
+  - **It is NOT allowed to explain how the field works.** "Timed from the
+    moment work starts, or type it here." "Leave unassigned to route to the
+    yard team's queue." Those teach the control, and **a control that needs
+    teaching under every instance is a control that is wrong** — the label and
+    the placeholder carry it, or the design does.
+  - **Instructional copy is added when it is ASKED FOR, never on the way
+    past.** A designer adding one line per field is adding a paragraph to the
+    screen without ever deciding to.
+  - **The sanctioned place for an explanation is behind an affordance** —
+    `SheetSectionNote`, a popover on click. Read at the moment somebody
+    wonders, which is rarely the moment they first arrive.
+  - **A settings screen is the exception that proves it**: there, explaining
+    what an option does IS the content, not a gloss on it.
+- **A FIGURE HAS A NAME.** A number at the edge of a card, level with the
+  fields that produce it, makes the reader work out which of them it is the
+  product of. Label it — `Total`, `Estimated`, `Owed` — in the muted channel,
+  with the figure in the foreground one. (Added 2026-09-23.)
 - **Helper text is 4px from its control**, not at the field gap — see
   `interactions/2-rules` §2b.
 - **A table header has its own ground** — `bg-fp-table-header`, never
@@ -1658,6 +2131,40 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   makes the value the hardest text in the section to read. Give each value its own
   copy button where it is something people carry elsewhere (a number to a dialler,
   an address to a mail client) — one control over a pair hands over both.
+
+## Mobile — the first five rules
+
+Added 2026-09-23, from the technician's app, which is this system's **first
+phone product**. Everything else in these documents assumes a pointer and a
+wide viewport; none of it was written down as an assumption, which is how a
+desktop rule comes to be applied to a phone by accident.
+
+**These five are what one app settled.** They are not a mobile design system;
+they are the floor, and the next phone screen either follows them or says why.
+
+1. **ONE THING PER SCREEN.** A phone has no room for a form and its context at
+   once, so a screen asks one question and the answer moves you on. The side
+   sheet's stack of sections becomes a sequence, not a scroll — a scroll nobody
+   reaches the end of is a form nobody finishes.
+2. **THE ACT IS PINNED TO THE BOTTOM, FULL WIDTH.** The desktop rule holds —
+   the primary is the next act and there is only ever one — and what changes is
+   where it sits: the one place a thumb reaches without regripping. A second
+   act goes ABOVE it, full width too, because two half-width buttons are two
+   targets neither of which is comfortable.
+3. **NOTHING DEPENDS ON HOVER.** There is no hover. Every state a control has
+   must be reachable by press, and anything the desktop app reveals on hover —
+   a label sliding out of a collapsed add, a row's delete — is permanent here
+   or it does not exist.
+4. **TARGETS ARE 44px** (`h-11`, `size-11`). Gloved hands, a truck cab,
+   sunlight. A floor, not a preference.
+5. **BACK IS IN THE HEADER, AND IT IS THE ONLY WAY BACK.** There is no browser
+   chrome to escape with, so every screen past the first carries one.
+
+**A phone product gets its own shell, not the app's.** The rail, the drawer and
+the top bar are a desktop shell; a phone does not get a 56px rail. And when a
+phone product is shown INSIDE the desktop app for review, it renders in a
+device frame rather than stretching — stretched it stops being the thing it is,
+and the first question anybody asks is about the layout instead of the flow.
 
 ## Layout laws
 
@@ -2074,7 +2581,9 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
-- [ ] Sheet width matches the shape (560 / 864 / 1120 / 1440) and is chosen per step. (S3)
+- [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)
+- [ ] Every sheet and nested drawer clamps to `100vw − 56px`. (S3)
+- [ ] Every CREATION sheet fills to `100vw − 56px` (112 at level 2), not a cap.
 - [ ] The strip above the footer shows one outstanding item at a time, under a fixed subject, and each item reaches its section. (S4)
 
 
@@ -2366,6 +2875,32 @@ for the one below. Label→control keeps the field's own rhythm; control→helpe
   **yellow/neutral = info** (missing data). Diagnostics are **non-blocking**
   by default — Confirm stays enabled and the user proceeds on judgment;
   block only for hard-safety or destructive operations.
+
+### 3c. Pointing at something without moving the reader
+
+Added 2026-09-22, from Unified View's pending strip.
+
+- **Travel, then point.** Bringing a section into view and flashing it are two
+  statements — "here" and then "it is this one" — and they must not overlap,
+  or the flash reads as the scroll still going. The flash waits for the travel
+  to finish.
+- **Once, not twice.** Two flashes is a thing asking to be watched; one is a
+  thing pointing at itself and then getting out of the way. The reader is
+  already looking — the scroll took them there. Three times reads as an error,
+  and a ring that stays is a *state*, which is a lie when nothing about the
+  record changed.
+- **A thing that is not one box flashes a FILL, not an outline.** A column of a
+  grid is a stack of separate cells, and an outline round each of them is a
+  ladder rather than a column. `blinkGroup` flashes `.fp-attention-fill` across
+  every cell carrying `data-blink="<name>"`, which reads as the one unit it is.
+- **Nothing takes focus.** Inside a focus-trapped sheet, focusing the target
+  makes the trap restore *its* scroll position, which fights the travel — and
+  `behavior: "smooth"` is cancelled by the same trap, so the scroll is a hand-
+  run rAF loop on the scrollport. Known gap: a keyboard reader is shown the
+  section and still has to Tab to it.
+- **Reduced motion keeps the point and drops the blink.** The outline or fill
+  arrives with a `step-end` transition and fades — the statement survives
+  without the flash.
 
 ## 4. Tables (list & data)
 
@@ -3155,6 +3690,50 @@ for the rule each check derives from. (This is also the rubric the
 - [ ] Reduced motion respected; charts render without mount animation.
 - [ ] A disabled control says why on the press, never in a clause beside it.
 - [ ] No board card drags between lanes; card units disappear with their lines; only outstanding cards carry an alert.
+
+## When two rules disagree — the 2026-09-23 lesson
+
+**One sheet ended up holding two different tables.** One had the hanging add
+and boxed controls in its cells; the other had a full-width add band and
+borderless cells. Both were built by somebody reading the documents.
+
+### What actually went wrong
+
+1. **THE CHILD CONTRADICTED THE PARENT, IN WRITING.** `docs/ds/ui/2-rules.md`
+   §10f says the add hangs off the card's corner. `docs/unified-view/
+   2-layouts.md` said *"the Add row is the table's last band"* — and gave a
+   reason that sounded right: a flush table inside a card has no squared corner
+   to hang from. It does; `hanging` squares it.
+2. **THE EVAL ASSERTED THE CHILD'S VERSION.** `evals/2-layouts.md` carried
+   *"The Add row is the table's last band"* as a check. **A check that enforces
+   the wrong rule is worse than no check**, because it makes the wrong answer
+   look reviewed.
+3. **NO RULE COVERED THE INSIDE OF A CELL.** §10f governed the box — rims,
+   radii, the add, the empty state — and said nothing about what goes in a
+   `<td>`. So a bare `Combobox` in a cell broke no written rule.
+4. **THE SCRIPT MISSED THE BAND BECAUSE THE LABEL WAS A VARIABLE.** It matched
+   `>Add part<` and not `{addLabel}`. **A check that only catches literals is a
+   check you escape by extracting a prop.**
+
+### The rules that came out of it
+
+- **A CHILD DOCUMENT MAY NOT RESTATE A PARENT RULE — ONLY POINT AT IT.** A
+  restatement is a copy, and a copy is a thing that can drift while looking
+  authoritative. Where the child needs to say something, it says the BINDING
+  and links the rule.
+- **EVERY CHILD ASSERTION CITES THE DS RULE IT TESTS** (already the rule for
+  module evals since 2026-09-22; this is why it matters). **An assertion with
+  no citation is one nobody can check against the parent** — and the one that
+  caused this had none.
+- **WHEN A DOC AND A SOURCE COMMENT DISAGREE, BOTH ARE SUSPECT.** The comment
+  in `LineTable` argued its own case in detail and was wrong; detail is not
+  evidence.
+- **A CHECK MATCHES SHAPE, NOT SPELLING.** Structure — an icon, a handler, a
+  class — survives refactoring; a literal string does not.
+- **THE CONTRADICTION WAS FINDABLE IN ONE GREP.** `grep -rn "last band" docs/`
+  would have shown both documents disagreeing at any point in that month.
+  **Before writing a rule, grep for its subject across `docs/` — if two files
+  already say something, one of them is wrong.**
 
 
 ---

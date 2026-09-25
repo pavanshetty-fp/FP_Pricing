@@ -11,7 +11,10 @@ import path from "node:path";
 // separate entry (prototypes/unified-view) and a separate output (dist-unified),
 // always single-file. The prototype consumes the DS via the `@` alias; it is not
 // a section of the gallery, so the two never share a bundle.
-const unified = process.env.UNIFIED === "1";
+const unified = process.env.UNIFIED === "1" || process.env.SERVICE === "1";
+// SERVICE=1 is the Unified View locked to the Service Work module
+// (prototypes/unified-view/service.html), built to dist-service/service.html.
+const service = process.env.SERVICE === "1";
 const singleFile = process.env.SINGLEFILE === "1" || unified;
 
 // https://vite.dev/config/
@@ -28,8 +31,15 @@ export default defineConfig({
     ? {
         root: path.resolve(__dirname, "prototypes/unified-view"),
         build: {
-          outDir: path.resolve(__dirname, "dist-unified"),
+          outDir: path.resolve(__dirname, service ? "dist-service" : "dist-unified"),
           emptyOutDir: true,
+          ...(service
+            ? {
+                rollupOptions: {
+                  input: path.resolve(__dirname, "prototypes/unified-view/service.html"),
+                },
+              }
+            : {}),
         },
         // Fixed, distinct ports so the two apps can never be mistaken for one
         // another: 4300 = Unified View source, 4173 = the built artifact.

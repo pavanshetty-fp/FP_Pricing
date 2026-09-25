@@ -1510,15 +1510,20 @@ export const assetsAt = (shipTo: string): { id: string; name: string; type: stri
 const keyOfDay = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/** A blank order, booked for 9 tomorrow, with the price book's lines if it is on. */
+/**
+ * A blank order, booked for 9 tomorrow. NO WORK TYPE, NO PARTS, NO FEES
+ * (Pavan, 2026-09-25) — it used to pick the first work type silently and
+ * bring its price-book fee. Parts and fees now arrive when a work type is
+ * picked (see `addBookLines` in the order sheet). `priceBook` is kept for the
+ * callers; it no longer seeds anything here.
+ */
 export function blankServiceOrder(opts: {
   priceBook: boolean;
   raisedBy: string;
   technicianId?: string | null;
   source?: IntakeSource;
 }): ServiceOrder {
-  const workType = WORK_TYPE_NAMES[0];
-  const book = WORK_TYPES[workType];
+  const workType = "";
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(9, 0, 0, 0);
@@ -1547,11 +1552,11 @@ export function blankServiceOrder(opts: {
     startedAt: null,
     assessment: null,
     techNotes: null,
-    parts: opts.priceBook ? book.parts.map((p) => ({ ...p })) : [],
+    parts: [],
     labor: 0,
     laborOverride: null,
     laborRate: LABOR_RATE,
-    fees: opts.priceBook ? book.fees.map((f) => ({ ...f })) : [],
+    fees: [],
     quote: null,
     extraCharges: [],
     invoiceCreated: false,

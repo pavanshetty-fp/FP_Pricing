@@ -1149,9 +1149,15 @@ function readEntityBoot(): { module: string; nav: string; sub: string; record: s
   return { module: "3pl", nav: "3pl-directory", sub: dest, record: p.get("record") };
 }
 
-export function UnifiedView() {
-  const boot = React.useRef(readEntityBoot()).current;
-  const [moduleKey, setModuleKey] = React.useState(() => boot?.module ?? readStoredModule());
+/**
+ * `only` LOCKS THE APP TO ONE MODULE (Pavan, 2026-09-25) — the standalone
+ * Service Work build (`service.html`, `npm run build:service`). The switcher
+ * lists just that module, and the stored module is ignored.
+ */
+export function UnifiedView({ only }: { only?: string } = {}) {
+  const boot = React.useRef(only ? null : readEntityBoot()).current;
+  const startModule = React.useRef(only ?? boot?.module ?? readStoredModule()).current;
+  const [moduleKey, setModuleKey] = React.useState(startModule);
   /* Two nav levels, two pieces of state. `navKey` is the RAIL selection
      (Tier-1); `subKey` is the DRAWER selection (Tier-2) and is null for a rail
      item that has no second level — which is every Sales destination. The
@@ -1195,10 +1201,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const [returnTo, setReturnTo] = React.useState<string | null>(null);
 
   const [navKey, setNavKey] = React.useState(
-    () => boot?.nav ?? MODULE_NAV[readStoredModule()]?.[0]?.key ?? ""
+    () => boot?.nav ?? MODULE_NAV[startModule]?.[0]?.key ?? ""
   );
   const [subKey, setSubKey] = React.useState<string | null>(
-    () => boot?.sub ?? firstSubKey(MODULE_NAV[readStoredModule()]?.[0]?.key ?? "")
+    () => boot?.sub ?? firstSubKey(MODULE_NAV[startModule]?.[0]?.key ?? "")
   );
 
   /** Selecting a rail item lands on the first destination inside its drawer. */
@@ -1245,6 +1251,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
    * are unique per module — there is no equivalent destination to carry over.
    */
   const switchModule = (key: string) => {
+    /* A LOCKED BUILD STAYS IN ITS MODULE. */
+    if (only && key !== only) return;
     setModuleKey(key);
     goToArea(MODULE_NAV[key]?.[0]?.key ?? "");
     try {
@@ -1309,6 +1317,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
 
   /** A search hit is a (module, destination, record) address. */
   const goTo = (m: string, nav: string, recordId: string | null) => {
+    /* A search hit in another module goes nowhere in a locked build. */
+    if (only && m !== only) return;
     setModuleKey(m);
     /* A search hit names a DESTINATION, which may live one level down. Resolve
        it to its rail item so the rail and the drawer agree about where we are. */
@@ -1478,7 +1488,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
             onNavigate={goToArea}
             activeModule={moduleKey}
             onModuleChange={switchModule}
-            modules={APP_MODULES}
+            modules={only ? APP_MODULES.filter((m) => m.key === only) : APP_MODULES}
           />
         }
         /* TIER 2 — rendered only where the active rail item declares a second

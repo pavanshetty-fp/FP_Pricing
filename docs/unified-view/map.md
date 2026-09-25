@@ -56,6 +56,8 @@ session reads first.
 |---|---|
 | `3pl/creation.md` | **the continuation document for 3PL.** Every component a creation flow uses, filed by layer, with its spacing, colour, addition, subtraction and interaction |
 | `3pl/evals-creation.md` | the same, as assertions — **each one naming the DS rule it tests** |
+| `service/PRD.md` | **the continuation document for Service Work** — who uses it, the settings, the order and its stages, every screen and flow, the decisions not to re-open, the owner's working agreements, and the known gaps |
+| `service/evals.md` | the same, as assertions — each one naming the rule it tests |
 
 Three rules govern this layer:
 

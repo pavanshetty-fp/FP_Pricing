@@ -634,6 +634,16 @@ export function ServiceOrderSheet({
   /* SEND THE QUOTE WITH CREATE (Pavan, 2026-09-25) — a tick beside Create
      new order, so one press does both. */
   const [quoteOnCreate, setQuoteOnCreate] = React.useState(false);
+  /* OPENED AS A NEW ORDER THIS TIME (Pavan, 2026-09-25). The sheet switches
+     to edit mode once the draft is saved, so `creating` alone cannot say it;
+     this holds for the whole visit and clears on close. While it is true the
+     Record card is not shown — nobody has "raised" an order that is still
+     being written, and its facts only mean something when it is revisited. */
+  const [openedNew, setOpenedNew] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) setOpenedNew(false);
+    else if (creating) setOpenedNew(true);
+  }, [open, creating]);
   /* THE ROW JUST ADDED, so its first cell can take the cursor (DS ui §10f,
      "Rows"). Mount-only on the cell's side, so rows already there are never
      re-focused and this never needs clearing. */
@@ -758,21 +768,28 @@ export function ServiceOrderSheet({
         : x
     );
 
-  /* THE PRICE BOOK'S PARTS FOLLOW THE WORK TYPE (Deepika, 2026-09-25). A work
-     type picked on a row brings the parts its price-book entry lists, once;
-     a work type with no entry brings nothing. Parts already on the order are
-     not doubled, and nothing is taken away when a work type is dropped —
-     the list may have been edited since. */
-  const addBookParts = (types: string[]) => {
+  /* THE PRICE BOOK FOLLOWS THE WORK TYPE (Deepika and Pavan, 2026-09-25). A
+     work type picked on a row brings the parts AND fees its price-book entry
+     lists, once; a work type with no entry brings nothing. Lines already on
+     the order are not doubled, and nothing is taken away when a work type is
+     dropped — the list may have been edited since. */
+  const addBookLines = (types: string[]) => {
     if (!cfg.priceBook) return;
     setDraft((x) => {
       if (!x) return x;
-      const add: PartLine[] = [];
-      for (const w of types)
+      const parts: PartLine[] = [];
+      const fees: FeeLine[] = [];
+      for (const w of types) {
         for (const p of WORK_TYPES[w]?.parts ?? [])
-          if (!x.parts.some((q) => q.name === p.name) && !add.some((q) => q.name === p.name))
-            add.push({ ...p });
-      return add.length > 0 ? { ...x, parts: [...x.parts, ...add] } : x;
+          if (!x.parts.some((q) => q.name === p.name) && !parts.some((q) => q.name === p.name))
+            parts.push({ ...p });
+        for (const f of WORK_TYPES[w]?.fees ?? [])
+          if (!x.fees.some((q) => q.name === f.name) && !fees.some((q) => q.name === f.name))
+            fees.push({ ...f });
+      }
+      return parts.length + fees.length > 0
+        ? { ...x, parts: [...x.parts, ...parts], fees: [...x.fees, ...fees] }
+        : x;
     });
   };
 
@@ -1616,12 +1633,8 @@ export function ServiceOrderSheet({
             disabled={workLocked}
           />
         </SheetField>
-        {tech && (
-          <p className="text-sm text-muted-foreground">
-            {/* No home yard once assigned (Pavan, 2026-09-25). */}
-            {tech.skills.join(" · ")} · {tech.phone}
-          </p>
-        )}
+        {/* NO LINE UNDER THE PICKER (Pavan, 2026-09-25) — the skills and
+            phone were added without being asked for. */}
       </SheetSection>
 
       {/* ── ASSET DETAILS — A TABLE, BECAUSE A VISIT COVERS SEVERAL ──────
@@ -1695,7 +1708,9 @@ export function ServiceOrderSheet({
                     taken={draft.assets
                       .filter((_, j) => j !== i)
                       .map((r) => r.assetName)}
-                    placeholder={draft.shipTo ? "Select" : "Site first"}
+                    /* SAYS IT IS OPTIONAL (Pavan, 2026-09-25) — "Select" read
+                       as a field that had to be filled. */
+                    placeholder={draft.shipTo ? "NA (non-mandatory)" : "Site first"}
                     disabled={intakeLocked || !draft.shipTo}
                     autoFocus={isJustAdded("assets", i)}
                     aria-label={`Asset for row ${i + 1}`}
@@ -1737,7 +1752,7 @@ export function ServiceOrderSheet({
                         fault: list[0]?.fault ?? row.fault,
                         subJobs: list.slice(1),
                       });
-                      addBookParts(added.map((a) => a.workType));
+                      addBookLines(added.map((a) => a.workType));
                     }}
                   />
                 </td>
@@ -1811,7 +1826,7 @@ export function ServiceOrderSheet({
                         aria-label={`Work type ${k + 2} for row ${i + 1}`}
                         onChange={(v) => {
                           setSub({ workType: v });
-                          addBookParts([v]);
+                          addBookLines([v]);
                         }}
                       />
                     </td>
@@ -2214,6 +2229,7 @@ export function ServiceOrderSheet({
           </RailCard>
 
 
+          {!openedNew && (
           <RailCard title="Record" icon={<History />}>
             <div className="flex flex-col divide-y divide-border">
               <RailRow label="Raised by" value={draft.raisedBy} />
@@ -2254,6 +2270,7 @@ export function ServiceOrderSheet({
               )}
             </div>
           </RailCard>
+          )}
 
           {/* THE TECHNICIAN'S ASSESSMENT, and the permission it may ask for
               (Pavan, 2026-09-24) — once the quote is approved an edit needs

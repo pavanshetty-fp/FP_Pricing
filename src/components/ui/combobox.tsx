@@ -101,6 +101,12 @@ export interface ComboboxProps {
    * pushes it out of the box.
    */
   trailing?: React.ReactNode;
+  /**
+   * AN OPTIONAL FIELD CAN BE EMPTIED AGAIN (DS ux §Forms, 2026-09-25). Names
+   * the empty choice — "No technician" — shown first in the list; picking it
+   * sets the value to "". Leave unset on a required field.
+   */
+  clearLabel?: string;
   /** Trigger classes — width lives here, as it does on `SelectTrigger`. */
   className?: string;
   contentClassName?: string;
@@ -127,6 +133,7 @@ export function Combobox({
   createLabel = (q) => `Create “${q}”`,
   optionAction,
   trailing,
+  clearLabel,
   className,
   contentClassName,
   align = "start",
@@ -217,6 +224,12 @@ export function Combobox({
               </CommandGroup>
             )}
             <CommandGroup>
+              {clearLabel && (
+                <CommandItem value={`__clear__ ${clearLabel}`} onSelect={() => choose("")}>
+                  <Check className={cn("size-4 shrink-0", value === "" ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate text-muted-foreground">{clearLabel}</span>
+                </CommandItem>
+              )}
               {items.map((o) => (
                 <CommandItem
                   key={o.value}

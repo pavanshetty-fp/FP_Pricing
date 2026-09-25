@@ -54,7 +54,7 @@ export interface InviteOrderFacts {
  * wrong. As chips each address is its own object: added on Enter or a comma,
  * removed on its own ×, and one bad one is visibly one bad one.
  */
-function EmailChips({
+export function EmailChips({
   value,
   onChange,
   placeholder,

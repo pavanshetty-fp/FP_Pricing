@@ -276,6 +276,22 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   copy button where it is something people carry elsewhere (a number to a dialler,
   an address to a mail client) — one control over a pair hands over both.
 
+## Forms — an optional field can be emptied again
+
+**Every optional picker offers its empty choice, first in the list, named for
+what it means — "No asset", "No technician".** (Pavan, 2026-09-25.) A field that
+starts empty must be able to go back to empty: once something is picked, the
+list without an empty choice leaves no way to say "none" except deleting the
+row or the record. `Combobox` and `TableCellCombobox` take `clearLabel` for
+this. A **required** field gets no empty choice.
+
+**A new record's footer may carry "Save as Draft".** (Pavan, 2026-09-25.) The
+sheet still autosaves; on a record that is still a draft, *Save as Draft* is
+the outline secondary to the LEFT of the commit act (e.g. *Move to Assigned*),
+and it closes the sheet with the record parked as a draft. It is the one
+exception to "no Save" in Side-sheet anatomy, and it exists only while the
+record is a draft.
+
 ## Mobile — the first five rules
 
 Added 2026-09-23, from the technician's app, which is this system's **first

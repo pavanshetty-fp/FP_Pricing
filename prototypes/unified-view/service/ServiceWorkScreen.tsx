@@ -398,8 +398,30 @@ function completedLabel(iso: string): string {
 
 /* ------------------------------------------------------------- the screen */
 
-export function ServiceWorkScreen() {
-  const cfg = useServiceSettings();
+/**
+ * `flow` FIXES THE TECHNICIAN-APP SETTING for this board and its sheet
+ * (Pavan, 2026-09-25): "dispatch" is the no-technician-app flow, "app" the
+ * one with it. Unset, the Service Settings switch decides.
+ */
+export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) {
+  const cfg0 = useServiceSettings();
+  const cfg = React.useMemo(
+    () => (flow ? { ...cfg0, techApp: flow === "app" } : cfg0),
+    [cfg0, flow]
+  );
+  /* JOB DAY (Pavan, 2026-09-25): with no technician app, an assigned order
+     moves into the Working lane — called Job day there — on its work date. */
+  const todayKey = dateKeyOf(new Date());
+  const jobDay = (r: ServiceOrder) =>
+    flow === "dispatch" && r.status === "Assigned" && r.dateKey <= todayKey;
+  const isLate = (r: ServiceOrder) => {
+    if (flow === "dispatch" || r.startedAt || !r.scheduledAt) return false;
+    if (r.status !== "Assigned" && r.status !== "Yet to start") return false;
+    const end = new Date(r.scheduledAt);
+    const endMin = r.windowEndMin ?? end.getHours() * 60 + end.getMinutes() + 180;
+    end.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+    return end.getTime() < Date.now();
+  };
   /* THE SHARED ORDERS (Pavan, 2026-09-24) — the technician's phone reads and
      writes the same list, and the change log is written in the store. */
   const [rows, setShared] = useServiceOrders();
@@ -574,7 +596,13 @@ export function ServiceWorkScreen() {
     () =>
       WORK_LANES.map((lane) => {
         const held = new Set<WorkStatus>(lane.statuses);
-        let cards = filtered.filter((r) => held.has(r.status));
+        let cards = filtered.filter((r) =>
+          lane.key === "Working"
+            ? held.has(r.status) || jobDay(r)
+            : lane.key === "Assigned"
+              ? held.has(r.status) && !jobDay(r)
+              : held.has(r.status)
+        );
         const when = (r: ServiceOrder) => r.scheduledAt ?? "9999";
 
         /* WORKING IS TODAY'S WORK, SO IT SORTS BY WHAT IS NEXT (Pavan,
@@ -617,12 +645,13 @@ export function ServiceWorkScreen() {
           default:
             break;
         }
+        const laneTitle = flow === "dispatch" && lane.key === "Working" ? "Job day" : lane.key;
         return {
           key: lane.key,
-          title: lane.key,
+          title: laneTitle,
           color: WORK_LANE_COLOR[lane.statuses[lane.statuses.length - 1]],
           apart: lane.apart,
-          emptyLabel: `Nothing ${lane.key.toLowerCase()}`,
+          emptyLabel: `Nothing ${laneTitle.toLowerCase()}`,
           cards: cards.map((r) => ({
             id: r.id,
             title: r.orderNo,
@@ -638,6 +667,10 @@ export function ServiceWorkScreen() {
               ...(r.partNeeded && (r.status === "Assigned" || r.status === "Ongoing")
                 ? [{ label: "Parts pending", tone: WORK_STATUS_KIND["Parts pending"] }]
                 : []),
+              /* LATE (Pavan, 2026-09-25) — the window has closed and nobody
+                 has started. Only with the technician app: without it,
+                 nobody knows whether the job started late or early. */
+              ...(isLate(r) ? [{ label: "Late", tone: "critical" as const }] : []),
               ...(r.priority === "Normal"
                 ? []
                 : [
@@ -1179,6 +1212,12 @@ export function ServiceWorkScreen() {
       </div>
 
       <ServiceOrderSheet
+        flow={flow}
+        onDiscard={(id) => {
+          setRows((prev) => prev.filter((r) => r.id !== id));
+          setOpenId(null);
+          setCreating(false);
+        }}
         order={openOrder}
         mode={creating ? "create" : "edit"}
         open={creating || openId !== null}

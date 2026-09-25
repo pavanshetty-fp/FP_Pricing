@@ -429,14 +429,17 @@ export function TechnicianJob({
     /* SENT AND WAITING — the customer is deciding offline, so what they were
        sent is what stays on screen: jobs and money lock until it is approved
        or rejected. */
-    const sent = Boolean(job.quote?.sentAt) && !job.quote?.approvedAt;
+    const sent = Boolean(job.quote?.sentAt) && !job.quote?.approvedAt && !job.quote?.rejectedAt;
+    /* REJECTED STAYS ON THE ORDER, FLAGGED (Pavan and Deepika, 2026-09-25):
+       it is not cancelled; the jobs unlock for revision and it goes again. */
+    const rejected = Boolean(job.quote?.rejectedAt);
     const editable = Boolean(job.startedAt) && !sent;
     const total = quoteableTotal(partsOfTasks(lines), job.fees);
     const setFees = (fees: FeeLine[]) => onPatch({ fees });
     /** SEND THE QUOTE — the primary act, and the breakup sheet's too. A quote
         already out goes again with the same figures. */
-    const sendQuote = () => {
-      if (sent && job.quote) {
+    const sendQuote = (onBehalf = false) => {
+      if (sent && job.quote && !onBehalf) {
         onPatch({ quote: { ...job.quote, sentAt: nowIso() } });
         toast.success("Quote sent again");
         return;
@@ -452,11 +455,22 @@ export function TechnicianJob({
         assessment: plainText(job.siteAssessment?.html ?? "").slice(0, 140) || null,
         /* A QUOTE IS A STORED SNAPSHOT, never recomputed. */
         quote: cfg.fieldQuote
-          ? { parts: parts.map((p) => ({ ...p })), fees: job.fees.map((f) => ({ ...f })), total, sentAt: nowIso(), approvedAt: null }
+          ? {
+              parts: parts.map((p) => ({ ...p })),
+              fees: job.fees.map((f) => ({ ...f })),
+              total,
+              sentAt: nowIso(),
+              /* APPROVED ON THE CUSTOMER'S BEHALF — they said yes on site,
+                 nothing is sent (Pavan, 2026-09-25). */
+              approvedAt: onBehalf ? nowIso() : null,
+              approvedBy: onBehalf ? ("on-behalf" as const) : undefined,
+            }
           : job.quote,
       });
       draftLines.delete(job.id);
-      toast.success(cfg.fieldQuote ? "Quote sent to customer" : "Saved");
+      toast.success(
+        !cfg.fieldQuote ? "Saved" : onBehalf ? "Quote approved on the customer's behalf" : "Quote sent to customer"
+      );
     };
     return (
       <>
@@ -485,6 +499,11 @@ export function TechnicianJob({
           }
         />
         <Body>
+          {rejected && (
+            <div className="rounded-lg border border-status-failed/30 bg-status-failed/10 px-3 py-2.5 text-sm text-foreground">
+              <span className="font-medium">Quote rejected</span> · needs revision
+            </div>
+          )}
           {/* 1 · THE ASSESSMENT FIRST — one for the visit (option B). */}
           {job.startedAt && (
             <SiteAssessmentRow
@@ -583,22 +602,25 @@ export function TechnicianJob({
             note="Quote sent · waiting on the customer"
             label="Quote approved"
             onPress={() => {
-              onPatch({ quote: job.quote ? { ...job.quote, approvedAt: nowIso() } : null });
+              onPatch({ quote: job.quote ? { ...job.quote, approvedAt: nowIso(), approvedBy: "customer" } : null });
               toast.success("Quote approved");
             }}
             secondary="Quote rejected"
             onSecondary={() => {
-              /* BACK TO THE JOBS, unlocked — a new price is a change to what
-                 is being done. The assessment stays submitted. */
-              onPatch({ quote: null, assessmentLines: undefined });
-              toast("Quote rejected", { description: "Change the jobs or fees and send it again." });
+              /* KEPT, FLAGGED FOR REVISION — the jobs unlock; it goes again. */
+              onPatch({ quote: job.quote ? { ...job.quote, rejectedAt: nowIso() } : null });
+              toast("Quote rejected — needs revision");
             }}
           />
         ) : (
           <ActionBar
-            label={cfg.fieldQuote ? "Send quote to customer" : "Continue to work"}
+            label={
+              !cfg.fieldQuote ? "Continue to work" : rejected ? "Send revised quote" : "Send quote to customer"
+            }
             disabled={!ready}
             onPress={() => sendQuote()}
+            secondary={cfg.fieldQuote ? "Customer approved on site" : undefined}
+            onSecondary={cfg.fieldQuote ? () => sendQuote(true) : undefined}
           />
         )}
         <BreakupSheet

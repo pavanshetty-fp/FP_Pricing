@@ -2132,6 +2132,22 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   copy button where it is something people carry elsewhere (a number to a dialler,
   an address to a mail client) — one control over a pair hands over both.
 
+## Forms — an optional field can be emptied again
+
+**Every optional picker offers its empty choice, first in the list, named for
+what it means — "No asset", "No technician".** (Pavan, 2026-09-25.) A field that
+starts empty must be able to go back to empty: once something is picked, the
+list without an empty choice leaves no way to say "none" except deleting the
+row or the record. `Combobox` and `TableCellCombobox` take `clearLabel` for
+this. A **required** field gets no empty choice.
+
+**A new record's footer may carry "Save as Draft".** (Pavan, 2026-09-25.) The
+sheet still autosaves; on a record that is still a draft, *Save as Draft* is
+the outline secondary to the LEFT of the commit act (e.g. *Move to Assigned*),
+and it closes the sheet with the record parked as a draft. It is the one
+exception to "no Save" in Side-sheet anatomy, and it exists only while the
+record is a draft.
+
 ## Mobile — the first five rules
 
 Added 2026-09-23, from the technician's app, which is this system's **first
@@ -2579,6 +2595,8 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
 - [ ] Every side sheet with an editable field autosaves, shows the draft chip, and has no Save / Update / Cancel. (S1)
 - [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
+- [ ] Every optional picker has its empty choice first ("No asset", "No technician"); required pickers have none. (Forms)
+- [ ] A draft record's footer may show *Save as Draft* as the outline secondary left of the commit act; nowhere else is there a Save. (Forms)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
 - [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)

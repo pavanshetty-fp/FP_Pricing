@@ -13,6 +13,8 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
 - [ ] Every side sheet with an editable field autosaves, shows the draft chip, and has no Save / Update / Cancel. (S1)
 - [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
+- [ ] Every optional picker has its empty choice first ("No asset", "No technician"); required pickers have none. (Forms)
+- [ ] A draft record's footer may show *Save as Draft* as the outline secondary left of the commit act; nowhere else is there a Save. (Forms)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
 - [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)

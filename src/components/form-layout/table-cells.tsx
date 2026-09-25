@@ -484,6 +484,16 @@ export interface TableCellComboboxProps {
   /** Allow a value that is not in `options`, offered as its own item. */
   creatable?: boolean;
   /**
+   * The words on the right of the typed-value row — "Add as fee". The typed
+   * text sits on the left (Pavan, 2026-09-25). Default "Add".
+   */
+  createLabel?: string;
+  /**
+   * AN OPTIONAL CELL CAN BE EMPTIED AGAIN (DS ux §Forms, 2026-09-25) — the
+   * empty choice, e.g. "No asset", shown first; picking it sets "".
+   */
+  clearLabel?: string;
+  /**
    * Values already used by OTHER rows of the same table. Shown ticked and
    * unselectable rather than hidden: removing them would make the list change
    * length as you fill the table, and someone looking for an asset they already
@@ -516,6 +526,8 @@ export function TableCellCombobox({
   placeholder = "Select",
   disabled,
   creatable,
+  createLabel = "Add",
+  clearLabel,
   taken,
   onChange,
   "aria-label": ariaLabel,
@@ -571,9 +583,20 @@ export function TableCellCombobox({
           />
           <CommandList>
             {typedIsNew && (
-              <CommandGroup heading="New">
+              <CommandGroup>
+                {/* WHAT WAS TYPED ON THE LEFT, THE ACT ON THE RIGHT (Pavan,
+                    2026-09-25) — it read "Use “…”". */}
                 <CommandItem value={query} onSelect={() => choose(query.trim())}>
-                  Use “{query.trim()}”
+                  <span className="min-w-0 flex-1 truncate">{query.trim()}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{createLabel}</span>
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {clearLabel && !query.trim() && (
+              <CommandGroup>
+                <CommandItem value="__clear__" onSelect={() => choose("")}>
+                  <span className="flex-1 truncate text-muted-foreground">{clearLabel}</span>
+                  {!value && <Check className="size-4 shrink-0" />}
                 </CommandItem>
               </CommandGroup>
             )}

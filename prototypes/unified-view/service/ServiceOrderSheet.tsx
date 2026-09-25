@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   ClipboardList,
-  Plus,
   CornerDownRight,
   Clock,
   Calendar as CalendarIcon,
@@ -50,7 +49,6 @@ import {
   TableCellCombobox,
   TableCellInput,
   TableCellMultiSelect,
-  TableCellSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
@@ -72,6 +70,26 @@ import { INVENTORY } from "./catalog";
 const PART_OPTIONS = INVENTORY.map((p) => ({ name: p.part, amount: p.cost }));
 import { TechnicianApp } from "./TechnicianApp";
 import { RichText } from "./TechnicianJob";
+import {
+  CompleteDialog,
+  InvoiceSummarySheet,
+  OnBehalfDialog,
+  PaymentDetails,
+  TechnicianEmailSheet,
+} from "./DispatchFlow";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ImagePlus, Wallet, CircleAlert } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { downloadInvoice } from "./invoicePdf";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   visitHours,
@@ -100,6 +118,7 @@ import {
   orderTotal,
   partsTotal,
   technicianById,
+  contactsFor,
   type FeeLine,
   type PartLine,
   type ServiceOrder,
@@ -161,7 +180,6 @@ function MoneyRow({
 /* THE SECTIONS THE STRIP CAN SEND SOMEBODY TO. Named here rather than typed
    at each call site, so a section that is renamed cannot leave the strip
    pointing at nothing. */
-const SECTION_INTAKE = "service-order-intake";
 const SECTION_ASSET = "service-order-asset";
 /** The assets table, and the technician — both their own cards since 2026-09-23. */
 const SECTION_ASSETS = "service-order-assets";
@@ -376,7 +394,10 @@ function LineTable({
   focusRow,
   showFitted,
   nameOptions,
+  noTotal,
 }: {
+  /** No total row — a list that is not billed (parts not available). */
+  noTotal?: boolean;
   /**
    * A LIST TO PICK THE NAME FROM, or type one (Pavan, 2026-09-24) — the
    * standard fees. Picking a listed name brings its amount; it stays editable.
@@ -468,6 +489,7 @@ function LineTable({
                       value={r.name}
                       options={nameOptions.map((f) => f.name)}
                       creatable
+                      createLabel={`Add as ${nameLabel.toLowerCase()}`}
                       placeholder={namePlaceholder}
                       autoFocus={i === focusRow}
                       aria-label={`${nameLabel} for row ${i + 1}`}
@@ -557,7 +579,7 @@ function LineTable({
         {/* THE TOTAL IS A ROW OF THE TABLE, not a caption under it — a sum
             lives in the column it sums, on the same grid as the numbers above
             it. Only once there is something to add up. */}
-        {rows.length > 0 && (
+        {rows.length > 0 && !noTotal && (
           <tfoot>
             <tr className="h-11 border-t border-border bg-fp-table-header">
               <td
@@ -605,6 +627,10 @@ export interface ServiceOrderSheetProps {
   blankOrder: () => ServiceOrder;
   /** Open another order by its number — the related order's link. */
   onOpenOrder?: (orderNo: string) => void;
+  /** "dispatch" = no technician app; "app" = with one. Fixes the setting. */
+  flow?: "dispatch" | "app";
+  /** Throw a draft away — the row goes. */
+  onDiscard?: (id: string) => void;
 }
 
 export function ServiceOrderSheet({
@@ -622,8 +648,21 @@ export function ServiceOrderSheet({
   shipTosFor,
   assetsFor,
   blankOrder,
+  flow,
+  onDiscard,
 }: ServiceOrderSheetProps) {
-  const cfg = useServiceSettings();
+  const cfg0 = useServiceSettings();
+  const cfg = flow ? { ...cfg0, techApp: flow === "app" } : cfg0;
+  /* THE NO-TECHNICIAN-APP FLOW (Pavan, 2026-09-25) — see DispatchFlow.tsx. */
+  const dispatch = flow === "dispatch";
+  const [techEmailOpen, setTechEmailOpen] = React.useState(false);
+  const [onBehalfOpen, setOnBehalfOpen] = React.useState(false);
+  const [invoiceOpen, setInvoiceOpen] = React.useState(false);
+  const [completeOpen, setCompleteOpen] = React.useState(false);
+  /* A rolled-over job's partial invoice (Pavan, 2026-09-25). */
+  const [partialOpen, setPartialOpen] = React.useState(false);
+  const [confirmCancel, setConfirmCancel] = React.useState(false);
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const creating = mode === "create";
   const [draft, setDraft] = React.useState<ServiceOrder | null>(null);
   const [fieldOpen, setFieldOpen] = React.useState(false);
@@ -704,6 +743,20 @@ export function ServiceOrderSheet({
      between a closed sheet and an open one. */
   const running = Boolean(draft?.startedAt) && !draft?.completedAt;
   const elapsed = useElapsedHours(running ? (draft?.startedAt ?? null) : null);
+
+  /* THE ASSESSMENT IS HIGHLIGHTED ONCE when it first appears empty. */
+  const [flashAssess, setFlashAssess] = React.useState(false);
+  const assessShown =
+    Boolean(draft) && (flow === "dispatch" ? Boolean(draft?.onBehalfAt) : Boolean(draft?.startedAt));
+  const assessEmpty = !draft?.siteAssessment?.html;
+  React.useEffect(() => {
+    if (!assessShown || !assessEmpty) return;
+    setFlashAssess(true);
+    const t = window.setTimeout(() => setFlashAssess(false), 1600);
+    return () => window.clearTimeout(t);
+    // Once per appearance — not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessShown]);
 
   /* AUTOSAVED, DEBOUNCED — the DS rule for every side sheet with editable
      fields in it (`docs/ds/ux/2-rules.md`, Side-sheet anatomy). A reader who
@@ -797,7 +850,19 @@ export function ServiceOrderSheet({
      starts; the work is the technician's while it is running; past approval
      the record is what was billed and nothing on it moves. */
   const intakeLocked = !isUnassigned(draft.status) && draft.status !== "Assigned";
-  const workLocked = isRecorded(draft.status) || draft.status === "Cancelled";
+  /* NO-APP FLOW: the dispatcher is recording the job once "Job completed"
+     is confirmed; once the job is marked completed nothing moves. */
+  const recording = dispatch && Boolean(draft.onBehalfAt) && draft.status === "Ongoing";
+  const dispatchDone =
+    dispatch &&
+    (LANE_OF[draft.status] === "Completed" ||
+      LANE_OF[draft.status] === "Synced" ||
+      draft.status === "Cancelled");
+  const workLocked = dispatch
+    ? dispatchDone
+    : isRecorded(draft.status) || draft.status === "Cancelled";
+  /** The work table: editable at intake, and again while recording. */
+  const assetsLocked = dispatch ? dispatchDone || (!recording && intakeLocked) : intakeLocked;
   /* PAST THE VISIT, THE RECORD IS WHAT WAS BILLED. Both the Completed lane
      and the Synced lane are past it. */
   const billed =
@@ -807,7 +872,7 @@ export function ServiceOrderSheet({
      site. Labour and mileage are not fees and never appear at intake — nobody
      knows them yet. */
   const setLine = (
-    field: "parts" | "fees" | "extraCharges",
+    field: "parts" | "fees" | "extraCharges" | "unavailableParts",
     i: number,
     patch: Record<string, unknown>
   ) =>
@@ -815,30 +880,30 @@ export function ServiceOrderSheet({
       d
         ? {
             ...d,
-            [field]: (d[field] as (PartLine | FeeLine)[]).map((r, j) =>
+            [field]: ((d[field] ?? []) as (PartLine | FeeLine)[]).map((r, j) =>
               j === i ? { ...r, ...patch } : r
             ),
           }
         : d
     );
-  const addLine = (field: "parts" | "fees" | "extraCharges") => {
-    if (draft) setJustAdded({ table: field, i: (draft[field] as unknown[]).length });
+  const addLine = (field: "parts" | "fees" | "extraCharges" | "unavailableParts") => {
+    if (draft) setJustAdded({ table: field, i: ((draft[field] ?? []) as unknown[]).length });
     setDraft((d) =>
       d
         ? {
             ...d,
             [field]:
-              field === "parts"
-                ? [...d.parts, { name: "", qty: 1, cost: 0 }]
+              field === "parts" || field === "unavailableParts"
+                ? [...((d[field] ?? []) as PartLine[]), { name: "", qty: 1, cost: 0 }]
                 : [...(d[field] as FeeLine[]), { name: "", amount: 0 }],
           }
         : d
     );
   };
-  const removeLine = (field: "parts" | "fees" | "extraCharges", i: number) =>
+  const removeLine = (field: "parts" | "fees" | "extraCharges" | "unavailableParts", i: number) =>
     setDraft((d) =>
       d
-        ? { ...d, [field]: (d[field] as unknown[]).filter((_, j) => j !== i) }
+        ? { ...d, [field]: ((d[field] ?? []) as unknown[]).filter((_, j) => j !== i) }
         : d
     );
 
@@ -916,7 +981,7 @@ export function ServiceOrderSheet({
      primary and Start work sits beside it; once the quote is out, the primary
      becomes Mark as completed. With the app on they stay in the ···, because
      the technician is the one running the job. */
-  const upfront = !cfg.techApp;
+  const upfront = !cfg.techApp && !dispatch;
   const preStart =
     (draft.status === "Assigned" || draft.status === "Yet to start") && !draft.startedAt;
   /** The primary is the quote, not completion. */
@@ -933,7 +998,7 @@ export function ServiceOrderSheet({
    * disabled primary was cheerfully reporting all clear. The strip follows
    * the act, not the form.
    */
-  const pendingSteps = quoteFirst
+  const pendingSteps = quoteFirst || (dispatch && !isUnassigned(draft.status))
     ? []
     : isWorkable(draft.status)
     ? completionMissing.map((label, i) => ({
@@ -1048,14 +1113,24 @@ export function ServiceOrderSheet({
 
   /* THE QUOTE IS BEFORE THE WORK (Deepika, 2026-09-25) — once work has
      started there is nothing to quote; what is left is the final bill. */
-  const canQuote = !creating && Boolean(draft.customer) && !draft.startedAt && !isRecorded(draft.status);
+  const canQuote =
+    !creating &&
+    Boolean(draft.customer) &&
+    !draft.startedAt &&
+    !isRecorded(draft.status) &&
+    draft.status !== "Awaiting approval" &&
+    !draft.quote?.approvedAt;
 
   const sheetActs: { label: string; onSelect: () => void }[] = [];
-  if (preStart && !upfront) sheetActs.push({ label: "Start work", onSelect: startWork });
+  if (preStart && !upfront && !dispatch) sheetActs.push({ label: "Start work", onSelect: startWork });
   /* A DRAFT SENDS ITS QUOTE WITH THE TICK BESIDE CREATE, not from here. */
   if (canQuote && !quoteFirst && draft.status !== "Drafted")
     sheetActs.push({
-      label: draft.quote ? "Resend quote to customer" : "Send quote to customer",
+      label: draft.quote?.rejectedAt
+        ? "Send revised quote"
+        : draft.quote
+          ? "Resend quote to customer"
+          : "Send quote to customer",
       onSelect: () => setQuoteOpen(true),
     });
   if (cfg.techApp && isWorkable(draft.status))
@@ -1066,15 +1141,117 @@ export function ServiceOrderSheet({
           : "Resume in technician app",
       onSelect: () => setFieldOpen(true),
     });
+  /* CANCEL, IN THE ··· (Pavan, 2026-09-25) — from Assigned through Job day,
+     confirmed, because it cannot be walked back here. */
+  if (
+    !creating &&
+    ["Assigned", "Yet to start", "Ongoing", "Awaiting approval"].includes(draft.status)
+  )
+    sheetActs.push({ label: "Cancel order", onSelect: () => setConfirmCancel(true) });
+  /* THE INVOICE THE CUSTOMER HAS, as a file (Pavan, 2026-09-25). */
+  if (dispatch && draft.status === "Awaiting approval")
+    sheetActs.push({ label: "Download invoice", onSelect: () => downloadInvoice(draft) });
+  /* DISCARD A DRAFT (2026-09-25) — autosave keeps every draft otherwise. */
+  if (draft.status === "Drafted" && order && onDiscard)
+    sheetActs.push({ label: "Discard draft", onSelect: () => setConfirmDiscard(true) });
+
   /* THE FINAL BILL, once the work is recorded — the full amount, labour
      included (Deepika, 2026-09-25). */
-  if (!creating && isRecorded(draft.status))
+  if (!creating && isRecorded(draft.status) && !dispatch)
     sheetActs.push({
       label: draft.finalBillSentAt ? "Resend final bill to customer" : "Send final bill to customer",
       onSelect: () => setBillOpen(true),
     });
 
+  /* SAVE AS DRAFT (Pavan, 2026-09-25) — the secondary beside Move to
+     Assigned. The sheet autosaves anyway; this is the explicit way out that
+     says the order is parked, not lost. */
+  const isDraft = creating || draft.status === "Drafted";
+  const saveAsDraft = () => {
+    if (order) onSave(order, draft);
+    else if (creating && onCreateDraft && JSON.stringify(draft) !== blankSerial.current)
+      onCreateDraft(draft);
+    if (order || JSON.stringify(draft) !== blankSerial.current)
+      toast.success(`${order?.orderNo ?? "Order"} saved as a draft`);
+    onOpenChange(false);
+  };
+
+  /* ── THE NO-APP LADDER'S ACTS ─────────────────────────────────────────── */
+  const unavailable = (draft.unavailableParts ?? []).filter((p) => p.name.trim());
+  const shortfallChoice = draft.shortfallChoice ?? "neworder";
+  /** Everything needed, owed marked as not fitted — what `resolveShortfall` reads. */
+  const withOwed = () => [
+    ...draft.parts.map((p) => ({ ...p, fittedQty: p.qty })),
+    ...unavailable.map((p) => ({ ...p, fittedQty: 0 })),
+  ];
+  /** Sending the email is what moves the order to Assigned. */
+  const sendToTechnician = () => {
+    const next = {
+      ...draft,
+      status: "Assigned" as WorkStatus,
+      techEmailedAt: nowIso(),
+      ...(quoteOnCreate ? { quote: buildQuote(draft) } : {}),
+    };
+    if (order) onSave(order, next);
+    toast.success(`${draft.orderNo} assigned — details emailed to ${technicianById(draft.technicianId)?.name ?? "the technician"}`);
+    onOpenChange(false);
+  };
+  /** Completed — and the follow-up order, when parts were missing. */
+  const completeDispatch = () => {
+    const at = nowIso();
+    const done = {
+      ...draft,
+      status: "Completed" as WorkStatus,
+      completedAt: at,
+      invoiceCreated: true,
+      invoicedAt: draft.invoicedAt ?? at,
+    };
+    if (unavailable.length > 0 && order) {
+      onSave(order, done);
+      onPartsPending?.(draft.id, { labor: draft.labor, parts: withOwed(), mode: "neworder" });
+      onOpenChange(false);
+      return;
+    }
+    setDraft(done);
+    toast.success(`${draft.orderNo} completed`);
+  };
+  const rollOver = (partialSent = false) => {
+    if (!order) return;
+    const parts = withOwed();
+    onSave(order, {
+      ...draft,
+      parts,
+      unavailableParts: [],
+      onBehalfAt: null,
+      partialInvoiceSentAt: partialSent ? nowIso() : draft.partialInvoiceSentAt ?? null,
+    });
+    onPartsPending?.(draft.id, { labor: draft.labor, parts, mode: "rollover" });
+    onOpenChange(false);
+  };
+
   const nextAct: { label: string; onSelect: () => void; why?: string } = (() => {
+    /* THE NO-TECHNICIAN-APP LADDER (Pavan, 2026-09-25). */
+    if (dispatch && draft.status === "Drafted")
+      return {
+        label: "Move to Assigned",
+        why: mandatory.find((x) => !x.done)?.label,
+        onSelect: () => setTechEmailOpen(true),
+      };
+    if (dispatch && (draft.status === "Assigned" || draft.status === "Yet to start"))
+      return { label: "Job completed", onSelect: () => setOnBehalfOpen(true) };
+    if (dispatch && draft.status === "Ongoing")
+      return unavailable.length > 0 && shortfallChoice === "rollover"
+        ? /* A ROLLED-OVER JOB CAN SHARE A PARTIAL INVOICE (Pavan, 2026-09-25)
+             for the work done so far; the rest follows the next visit. */
+          { label: "Partial invoice & roll over", onSelect: () => setPartialOpen(true) }
+        : { label: "Send invoice to customer", onSelect: () => setInvoiceOpen(true) };
+    if (dispatch && draft.status === "Awaiting approval")
+      return { label: "Mark as completed", onSelect: () => setCompleteOpen(true) };
+    if (dispatch && dispatchDone && draft.status !== "Cancelled")
+      return {
+        label: "Download invoice",
+        onSelect: () => downloadInvoice(draft),
+      };
     if (draft.status === "Cancelled")
       return {
         label: "Reopen",
@@ -1100,7 +1277,7 @@ export function ServiceOrderSheet({
          already exists, so for those the act is still naming somebody. */
       return draft.status === "Drafted"
         ? {
-            label: "Create new order",
+            label: "Move to Assigned",
             why: mandatory.find((x) => !x.done)?.label,
             onSelect: () => {
               const next = {
@@ -1173,7 +1350,7 @@ export function ServiceOrderSheet({
       };
     return {
       label: "Download invoice",
-      onSelect: () => toast.success(`${draft.orderNo} invoice downloaded`),
+      onSelect: () => downloadInvoice(draft),
     };
   })();
 
@@ -1188,7 +1365,7 @@ export function ServiceOrderSheet({
            used to be exempt while the field app held the job, on the grounds
            that the hours were recorded there — but dispatch can complete a job
            now, so the gate has to be true on this screen too. */
-        isWorkable(draft.status) && !quoteFirst && completionMissing.length > 0
+        isWorkable(draft.status) && !quoteFirst && !dispatch && completionMissing.length > 0
         ? completionMissing[0]
         : nextAct.why;
 
@@ -1249,6 +1426,75 @@ export function ServiceOrderSheet({
 
   const sources = [...INTAKE_SOURCES, ...(cfg.portalIntake ? [PORTAL_SOURCE] : [])];
 
+  /* THE SITE ASSESSMENT — rich text, plus the technician's photos uploaded
+     by whoever records it (Pavan and Deepika, 2026-09-25). */
+  const assessLocked = dispatch ? dispatchDone : billed;
+  const setAssessment = (patch: Partial<NonNullable<ServiceOrder["siteAssessment"]>>) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            siteAssessment: { html: "", photos: [], submittedAt: null, ...d.siteAssessment, ...patch },
+          }
+        : d
+    );
+  const photos = draft.siteAssessment?.photos ?? [];
+  const assessmentSection = (
+    <SheetSection
+      title="Site assessment"
+      /* HIGHLIGHTED ONCE when it first appears, empty — it is the first
+         thing to add (Pavan, 2026-09-25). */
+      className={cn(
+        "transition-shadow duration-700",
+        flashAssess && "ring-2 ring-primary/60"
+      )}
+    >
+      <RichText
+        key={draft.id}
+        desktop
+        disabled={assessLocked}
+        initial={draft.siteAssessment?.html ?? ""}
+        placeholder="What was found on site"
+        onChange={(html) => setAssessment({ html })}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        {photos.map((src, i) => (
+          <span key={`${src}-${i}`} className="group/ph relative">
+            <img src={src} alt={`Site photo ${i + 1}`} className="size-16 rounded-md border border-fp-outline-1 object-cover" />
+            {!assessLocked && (
+              <button
+                type="button"
+                aria-label={`Remove photo ${i + 1}`}
+                onClick={() => setAssessment({ photos: photos.filter((_, j) => j !== i) })}
+                className="absolute -top-1.5 -right-1.5 hidden size-5 items-center justify-center rounded-full border border-border bg-card text-xs text-muted-foreground group-hover/ph:flex hover:text-destructive"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+        {!assessLocked && (
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm text-foreground hover:bg-accent">
+            <ImagePlus className="size-4" />
+            Upload photos
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (files.length)
+                  setAssessment({ photos: [...photos, ...files.map((f) => URL.createObjectURL(f))] });
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+      </div>
+    </SheetSection>
+  );
+
   return (
     <RecordSheet
       /* THE SIZE THAT EXISTS FOR EXACTLY THIS SHAPE: tables on the left, a
@@ -1303,7 +1549,7 @@ export function ServiceOrderSheet({
           pending={pendingSteps}
           clearLabel={
             draft.status === "Drafted"
-              ? "All details are collected. Create new order."
+              ? "All details are collected. Move to Assigned."
               : "Everything this order needs is filled in"
           }
         />
@@ -1324,14 +1570,30 @@ export function ServiceOrderSheet({
             />
             Send quote to customer
           </label>
-        ) : draft.status === "Ongoing" && onPartsPending ? (
+        ) : recording && unavailable.length > 0 ? (
+          /* PARTS NOT AVAILABLE — WHAT HAPPENS TO THEM (Pavan, 2026-09-25),
+             in the bottom bar beside the act it changes. */
+          <RadioGroup
+            value={shortfallChoice}
+            onValueChange={(v) => set("shortfallChoice", v as "neworder" | "rollover")}
+            className="flex items-center gap-5"
+            aria-label="Parts not available"
+          >
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <RadioGroupItem value="neworder" /> Create new order
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <RadioGroupItem value="rollover" /> Rollover
+            </label>
+          </RadioGroup>
+        ) : draft.status === "Ongoing" && onPartsPending && !dispatch ? (
           <Button variant="outline" onClick={() => setHoldOpen(true)}>
             Some parts unavailable
           </Button>
         ) : undefined
       }
       footerPrimary={
-        creating ? undefined : blockedWhy ? (
+        blockedWhy ? (
           /* THE REASON IS ON THE BUTTON, NOT BESIDE IT.
              A clause standing permanently next to the primary is a sentence
              the reader has to read on every visit to the sheet, including the
@@ -1367,6 +1629,11 @@ export function ServiceOrderSheet({
             {upfront && preStart && (
               <Button variant="outline" onClick={startWork}>
                 Start work
+              </Button>
+            )}
+            {isDraft && (
+              <Button variant="outline" onClick={saveAsDraft}>
+                Save as Draft
               </Button>
             )}
             <Tooltip>
@@ -1415,6 +1682,11 @@ export function ServiceOrderSheet({
                 Start work
               </Button>
             )}
+            {isDraft && (
+              <Button variant="outline" onClick={saveAsDraft}>
+                Save as Draft
+              </Button>
+            )}
             <Button onClick={nextAct.onSelect}>{nextAct.label}</Button>
           </div>
         )
@@ -1426,6 +1698,26 @@ export function ServiceOrderSheet({
       {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-10">
+      {/* NO-APP FLOW: THE ASSESSMENT IS THE FIRST THING RECORDED (Pavan,
+          2026-09-25), so it leads the form once "Job completed" is confirmed. */}
+      {/* A REJECTED QUOTE IS FLAGGED, NOT CANCELLED (Pavan and Deepika,
+          2026-09-25): revise the work or prices, then send a revised quote. */}
+      {draft.quote?.rejectedAt && !draft.quote.approvedAt && (
+        <div className="-mb-6 flex items-center gap-2 rounded-md border border-status-failed/30 bg-status-failed/10 p-3">
+          <CircleAlert className="size-4 shrink-0 text-status-failed" />
+          <span className="flex-1 text-sm font-medium text-foreground">Quote rejected — needs revision</span>
+          {canQuote && (
+            <Button size="sm" variant="outline" onClick={() => setQuoteOpen(true)}>
+              Send revised quote
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* WITH THE APP, AFTER START WORK — also at the top (Deepika and
+          Pavan, 2026-09-25); never before, so Assigned and Working differ. */}
+      {!creating && (dispatch ? Boolean(draft.onBehalfAt) : Boolean(draft.startedAt)) && assessmentSection}
+
       {/* ──────────────────────────────────── customer, site and asset ───── */}
       {/* ── CUSTOMER DETAILS ────────────────────────────────────────────
           SPLIT FROM THE ASSETS (Pavan, 2026-09-23). One card asked two
@@ -1461,6 +1753,7 @@ export function ServiceOrderSheet({
                         ...x,
                         customer: v,
                         shipTo: "",
+                        poc: null,
                         assets: [blankAssetLine()],
                       })
                     : x
@@ -1493,32 +1786,24 @@ export function ServiceOrderSheet({
               disabled={intakeLocked || !draft.customer}
             />
           </SheetField>
-        </div>
-      </SheetSection>
-
-      {/* THE WATERFALL (Deepika, 2026-09-25): customer and ship-to first; the
-          rest of the form arrives once both are answered, because almost
-          everything below depends on the site. */}
-      {draft.customer && draft.shipTo && (
-        <>
-      {/* ───────────────────────────────────────────────────── intake ───── */}
-      <SheetSection
-        id={SECTION_INTAKE}
-        title="Intake"
-        note={
-          <SheetSectionNote label="About intake">
-            Where the job came from is the one fact about it nobody can work out
-            afterwards, so it is asked for first and kept on the record.
-            {!cfg.portalIntake && (
-              <span className="mt-1.5 block">
-                The customer portal is off, so intake is keyed here — from a
-                call, a rep, or a flagged inspection.
-              </span>
-            )}
-          </SheetSectionNote>
-        }
-      >
-        <div className="grid grid-cols-2 gap-4">
+          {/* THE CUSTOMER'S POINT OF CONTACT (Deepika, 2026-09-25) — the quote
+              and the invoice go to them. */}
+          <SheetField label="Point of contact">
+            <Combobox
+              className="w-full"
+              value={draft.poc?.name ?? ""}
+              onValueChange={(v) =>
+                set("poc", contactsFor(draft.customer).find((c) => c.name === v) ?? null)
+              }
+              options={contactsFor(draft.customer).map((c) => ({ value: c.name, description: c.email }))}
+              placeholder={draft.customer ? "Choose a contact" : "Choose a customer first"}
+              searchPlaceholder="Search contacts…"
+              clearLabel="No contact"
+              disabled={intakeLocked || !draft.customer}
+            />
+          </SheetField>
+          {/* INTAKE JOINED THIS CARD (Pavan, 2026-09-25) — one unit for who,
+              where, how it came in and how urgent. */}
           <SheetField label="Intake source" required>
             <Combobox
               className="w-full"
@@ -1541,6 +1826,12 @@ export function ServiceOrderSheet({
           </SheetField>
         </div>
       </SheetSection>
+
+      {/* THE WATERFALL (Deepika, 2026-09-25): customer and ship-to first; the
+          rest of the form arrives once both are answered, because almost
+          everything below depends on the site. */}
+      {draft.customer && draft.shipTo && (
+        <>
 
       {/* ── SCHEDULE DETAILS ─────────────────────────────────────────────
           WHEN, AND NOTHING ELSE. The technician left this card on 2026-09-23:
@@ -1585,6 +1876,7 @@ export function ServiceOrderSheet({
           <TimeWindowSlider
             required
             label="Scheduling window"
+            disabled={workLocked}
             start={scheduledMinutes}
             end={draft.windowEndMin ?? scheduledMinutes + 180}
             aria-label="Scheduling window"
@@ -1614,10 +1906,9 @@ export function ServiceOrderSheet({
           already answered. Its own card gives it a heading you can aim at,
           which is also what lets the pending strip send you here. */}
       <SheetSection id={SECTION_TECH} title="Technician">
-        <SheetField
-          label="Assigned to"
-          required
-        >
+        {/* NOT MANDATORY (Pavan, 2026-09-25): an order can be saved as a
+            draft with nobody on it; only Move to Assigned needs a name. */}
+        <SheetField label="Assigned to">
           <Combobox
             className="w-full"
             value={tech?.name ?? ""}
@@ -1630,6 +1921,7 @@ export function ServiceOrderSheet({
             options={ACTIVE_TECHNICIANS.map((t) => t.name)}
             placeholder="Unassigned"
             searchPlaceholder="Search technicians…"
+            clearLabel="No technician"
             disabled={workLocked}
           />
         </SheetField>
@@ -1652,7 +1944,7 @@ export function ServiceOrderSheet({
         title="Asset details"
         flush
         hanging={
-          !intakeLocked ? (
+          !assetsLocked ? (
             <HangingAdd
               label="Add asset"
               onClick={() => {
@@ -1670,20 +1962,24 @@ export function ServiceOrderSheet({
           ) : undefined
         }
       >
+        {/* WORK TYPE FIRST, ASSET SECOND (Pavan and Deepika, 2026-09-25) —
+            the asset is optional, so it no longer leads the row. EVERY work-type
+            cell, sub-rows included, is the same checkbox list: ticking more
+            from any row of an asset's group adds more sub-rows to that group. */}
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[32%]" />
-            <col className="w-[26%]" />
+            <col className="w-[28%]" />
+            <col className="w-[30%]" />
             <col />
             <col className="w-[52px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Asset</TableRequiredLabel>
+                <TableRequiredLabel>Work type</TableRequiredLabel>
               </th>
               <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel>Work type</TableRequiredLabel>
+                <TableRequiredLabel>Asset</TableRequiredLabel>
               </th>
               <th className="px-3 py-2.5 text-left">
                 {/* DESCRIPTION, NOT "REPORTED FAULT" (Deepika, 2026-09-24) —
@@ -1694,13 +1990,45 @@ export function ServiceOrderSheet({
             </tr>
           </thead>
           <tbody>
-            {draft.assets.map((row, i) => (
+            {draft.assets.map((row, i) => {
+              /* ONE WRITER FOR THE GROUP'S WORK TYPES, used by every row of it.
+                 The first type is the row's own; each after it is a sub-row.
+                 Descriptions already typed follow their work type. */
+              const setGroupTypes = (v: string[]) => {
+                const all = jobsOf(row);
+                const kept = all.filter((j) => j.workType && v.includes(j.workType));
+                const added = v
+                  .filter((w) => !all.some((j) => j.workType === w))
+                  .map((w) => ({ workType: w, fault: "" }));
+                const list = [...kept, ...added];
+                /* A description typed before any work type stays on the row. */
+                if (list[0] && !all[0].workType) list[0] = { ...list[0], fault: list[0].fault || all[0].fault };
+                setAssetLine(i, {
+                  workType: list[0]?.workType ?? "",
+                  fault: list[0]?.fault ?? row.fault,
+                  subJobs: list.slice(1),
+                });
+                addBookLines(added.map((a) => a.workType));
+              };
+              return (
               <React.Fragment key={i}>
               <tr className="group/row h-11 border-b border-border last:border-b-0">
                 {/* `relative p-0` ON EVERY CELL — the TableCell* controls are
                     `absolute inset-0` and FILL the cell rather than sitting in
                     it. That is the whole idiom: a cell is editable ground, not
                     a box with a field parked inside it. */}
+                <td className="relative p-0">
+                  <TableCellMultiSelect
+                    values={workTypesOf(row)}
+                    summary={row.workType || undefined}
+                    options={WORK_TYPE_NAMES}
+                    placeholder="NA (non-mandatory)"
+                    unitLabel="work type"
+                    disabled={assetsLocked}
+                    aria-label={`Work types for row ${i + 1}`}
+                    onChange={setGroupTypes}
+                  />
+                </td>
                 <td className="relative p-0">
                   <TableCellCombobox
                     value={row.assetName}
@@ -1711,7 +2039,9 @@ export function ServiceOrderSheet({
                     /* SAYS IT IS OPTIONAL (Pavan, 2026-09-25) — "Select" read
                        as a field that had to be filled. */
                     placeholder={draft.shipTo ? "NA (non-mandatory)" : "Site first"}
-                    disabled={intakeLocked || !draft.shipTo}
+                    /* AN OPTIONAL PICK CAN BE UNDONE (DS ux §Forms). */
+                    clearLabel="No asset"
+                    disabled={assetsLocked || !draft.shipTo}
                     autoFocus={isJustAdded("assets", i)}
                     aria-label={`Asset for row ${i + 1}`}
                     onChange={(v) => {
@@ -1725,52 +2055,19 @@ export function ServiceOrderSheet({
                   />
                 </td>
                 <td className="relative p-0">
-                  {/* SEVERAL PER ASSET, NESTED (Pavan, 2026-09-24). This
-                      cell picks the asset's whole set; the first is this
-                      row's, and each one after it becomes a sub-row below
-                      with its own description. Descriptions already typed
-                      follow their work type. */}
-                  <TableCellMultiSelect
-                    values={workTypesOf(row)}
-                    summary={row.workType || undefined}
-                    options={WORK_TYPE_NAMES}
-                    placeholder="Select"
-                    unitLabel="work type"
-                    disabled={intakeLocked}
-                    aria-label={`Work types for row ${i + 1}`}
-                    onChange={(v) => {
-                      const all = jobsOf(row);
-                      const kept = all.filter((j) => j.workType && v.includes(j.workType));
-                      const added = v
-                        .filter((w) => !all.some((j) => j.workType === w))
-                        .map((w) => ({ workType: w, fault: "" }));
-                      const list = [...kept, ...added];
-                      /* A description typed before any work type stays on the row. */
-                      if (list[0] && !all[0].workType) list[0] = { ...list[0], fault: list[0].fault || all[0].fault };
-                      setAssetLine(i, {
-                        workType: list[0]?.workType ?? "",
-                        fault: list[0]?.fault ?? row.fault,
-                        subJobs: list.slice(1),
-                      });
-                      addBookLines(added.map((a) => a.workType));
-                    }}
-                  />
-                </td>
-                <td className="relative p-0">
                   <TableCellInput
                     value={row.fault}
                     placeholder="Optional"
-                    disabled={intakeLocked}
+                    disabled={assetsLocked}
                     aria-label={`Description for row ${i + 1}`}
                     onChange={(v) => setAssetLine(i, { fault: v })}
                   />
                 </td>
                 <td className="relative p-0 text-center">
                   {/* QUIET UNTIL THE ROW IS REACHED FOR, like every other row
-                      delete in this app. A column of bins down a table reads
-                      as the table's purpose. The last row keeps none — an
-                      empty table has no way back but the add. */}
-                  {draft.assets.length > 1 && !intakeLocked && (
+                      delete in this app. The last row keeps none — an empty
+                      table has no way back but the add. */}
+                  {draft.assets.length > 1 && !assetsLocked && (
                     <TableRowRemove
                       aria-label={`Remove ${row.assetName || `asset ${i + 1}`}`}
                       onRemove={() =>
@@ -1796,51 +2093,34 @@ export function ServiceOrderSheet({
                 return (
                   <tr key={`sub-${k}`} className="group/row h-11 border-b border-border bg-fp-card-1/40 last:border-b-0">
                     <td className="relative p-0">
-                      <span className="flex h-11 items-center gap-2 pl-6 text-muted-foreground">
-                        <CornerDownRight className="size-4 shrink-0" aria-hidden />
-                        {/* MORE WORK ON THE SAME ASSET, from the group's last
-                            line (Pavan, 2026-09-24) — quiet until the row is
-                            reached for, like the row's bin. */}
-                        {k === (row.subJobs ?? []).length - 1 && !intakeLocked && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAssetLine(i, {
-                                subJobs: [...(row.subJobs ?? []), { workType: "", fault: "" }],
-                              })
-                            }
-                            aria-label={`Add work type to ${row.assetName || `asset ${i + 1}`}`}
-                            className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-foreground opacity-0 outline-none transition-opacity hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 group-hover/row:opacity-100"
-                          >
-                            <Plus className="size-3.5" /> Add work type
-                          </button>
-                        )}
-                      </span>
+                      <TableCellMultiSelect
+                        values={workTypesOf(row)}
+                        summary={sj.workType || undefined}
+                        options={WORK_TYPE_NAMES}
+                        placeholder="NA (non-mandatory)"
+                        unitLabel="work type"
+                        disabled={assetsLocked}
+                        aria-label={`Work types for row ${i + 1}, line ${k + 2}`}
+                        onChange={setGroupTypes}
+                      />
                     </td>
                     <td className="relative p-0">
-                      <TableCellSelect
-                        value={sj.workType}
-                        options={WORK_TYPE_NAMES.filter((w) => w === sj.workType || !workTypesOf(row).includes(w))}
-                        placeholder="Select"
-                        disabled={intakeLocked}
-                        aria-label={`Work type ${k + 2} for row ${i + 1}`}
-                        onChange={(v) => {
-                          setSub({ workType: v });
-                          addBookLines([v]);
-                        }}
-                      />
+                      {/* SAME ASSET AS THE ROW ABOVE. */}
+                      <span className="flex h-11 items-center pl-6 text-muted-foreground">
+                        <CornerDownRight className="size-4 shrink-0" aria-hidden />
+                      </span>
                     </td>
                     <td className="relative p-0">
                       <TableCellInput
                         value={sj.fault}
                         placeholder="Optional"
-                        disabled={intakeLocked}
+                        disabled={assetsLocked}
                         aria-label={`Description ${k + 2} for row ${i + 1}`}
                         onChange={(v) => setSub({ fault: v })}
                       />
                     </td>
                     <td className="relative p-0 text-center">
-                      {!intakeLocked && (
+                      {!assetsLocked && (
                         <TableRowRemove
                           aria-label={`Remove ${sj.workType || "work type"} from ${row.assetName || `asset ${i + 1}`}`}
                           onRemove={() =>
@@ -1853,50 +2133,17 @@ export function ServiceOrderSheet({
                 );
               })}
               </React.Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </SheetSection>
 
-      {/* THE SITE ASSESSMENT, FROM DISPATCH (Deepika, 2026-09-25) — the same
-          rich-text notes the phone takes. Optional, and open once the work has
-          started or the scheduled time has come: somebody has to have been on
-          site. The dispatcher or a salesperson types what the technician rang
-          in. */}
-      {(Boolean(draft.startedAt) ||
-        (draft.scheduledAt !== null && new Date(draft.scheduledAt) <= new Date())) &&
-        !creating && (
-          <SheetSection title="Site assessment">
-            <RichText
-              key={draft.id}
-              desktop
-              disabled={billed}
-              initial={draft.siteAssessment?.html ?? ""}
-              placeholder="What was found on site"
-              onChange={(html) =>
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        siteAssessment: {
-                          photos: [],
-                          submittedAt: null,
-                          ...d.siteAssessment,
-                          html,
-                        },
-                      }
-                    : d
-                )
-              }
-            />
-            {(draft.siteAssessment?.photos.length ?? 0) > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {draft.siteAssessment!.photos.length} photo
-                {draft.siteAssessment!.photos.length === 1 ? "" : "s"} from the technician
-              </span>
-            )}
-          </SheetSection>
-        )}
+      {/* THE SITE ASSESSMENT, with the technician's app: once work has
+          started or the scheduled time has come. With no app it leads the
+          form instead — see `assessmentSection` above Customer details. */}
+      {/* (With the app, the assessment now also leads the form — after Start
+          work — see above Customer details.) */}
 
       {/* ──────────────────────────────────────────── the quote, if sent ─── */}
       {draft.quote && (
@@ -1934,6 +2181,38 @@ export function ServiceOrderSheet({
               <MoneyRow label="Quoted" value={money(draft.quote.total)} bold />
             </div>
           </div>
+          {/* THE CUSTOMER'S ANSWER (Pavan and Deepika, 2026-09-25): approved
+              after it was sent, approved on their behalf (offline), or
+              rejected — which keeps the order open for a revised quote. */}
+          {draft.quote.approvedAt ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {draft.quote.approvedBy === "on-behalf"
+                ? "Approved on the customer's behalf"
+                : "Approved by the customer"}
+            </p>
+          ) : !draft.quote.rejectedAt && !workLocked ? (
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  set("quote", { ...draft.quote!, rejectedAt: nowIso() });
+                  toast("Quote rejected — needs revision");
+                }}
+              >
+                Customer rejected
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  set("quote", { ...draft.quote!, approvedAt: nowIso(), approvedBy: "customer" });
+                  toast.success("Quote approved");
+                }}
+              >
+                Customer approved
+              </Button>
+            </div>
+          ) : null}
           {isRecorded(draft.status) && (
             <p className="mt-3 text-sm text-muted-foreground">
               {quoteGap > 0.005 ? (
@@ -1982,6 +2261,36 @@ export function ServiceOrderSheet({
           showFitted={draft.visits.some((v) => v.endedAt)}
         />
       </SheetSection>
+
+      {/* PARTS THE JOB NEEDED THAT WERE NOT THERE (Pavan, 2026-09-25). Not
+          billed here; what happens to them is chosen in the bottom bar —
+          a new linked order, or roll this one over. */}
+      {dispatch && (recording || unavailable.length > 0) && (
+        <SheetSection
+          title="Parts not available"
+          flush
+          hanging={
+            recording ? (
+              <HangingAdd label="Add part" onClick={() => addLine("unavailableParts")} />
+            ) : undefined
+          }
+        >
+          <LineTable
+            rows={draft.unavailableParts ?? []}
+            withQty
+            noTotal
+            readOnly={!recording}
+            nameLabel="Part"
+            nameOptions={PART_OPTIONS}
+            namePlaceholder="Pick or type a part"
+            emptyLabel="Nothing missing."
+            total={0}
+            onChange={(i, p) => setLine("unavailableParts", i, p)}
+            onRemove={(i) => removeLine("unavailableParts", i)}
+            focusRow={justAdded?.table === "unavailableParts" ? justAdded.i : undefined}
+          />
+        </SheetSection>
+      )}
 
       <SheetSection
         title="Fees"
@@ -2149,7 +2458,7 @@ export function ServiceOrderSheet({
           title="Additional charges"
           flush
           hanging={
-            draft.status !== "Completed" ? (
+            draft.status !== "Completed" && !dispatch ? (
               <HangingAdd
                 label="Add charge"
                 onClick={() => addLine("extraCharges")}
@@ -2159,7 +2468,7 @@ export function ServiceOrderSheet({
         >
           <LineTable
             rows={draft.extraCharges}
-            readOnly={draft.status === "Completed"}
+            readOnly={draft.status === "Completed" || dispatch}
             nameLabel="Charge"
             namePlaceholder="Charge name, e.g. Return trip"
               emptyLabel="No additional charges."
@@ -2228,6 +2537,14 @@ export function ServiceOrderSheet({
             )}
           </RailCard>
 
+
+          {/* WHAT ACCOUNTING SAYS WAS PAID, against the invoice (Pavan,
+              2026-09-25). */}
+          {draft.payment && (
+            <RailCard title="Payment" icon={<Wallet />}>
+              <PaymentDetails order={draft} invoiced={total} />
+            </RailCard>
+          )}
 
           {!openedNew && (
           <RailCard title="Record" icon={<History />}>
@@ -2361,6 +2678,7 @@ export function ServiceOrderSheet({
             <DialogDescription>
               {draft.orderNo} · {draft.workType || "Service"}
               {draft.assetName ? ` · ${draft.assetName}` : ""}
+              {draft.poc ? ` · to ${draft.poc.name} (${draft.poc.email})` : ""}
             </DialogDescription>
           </DialogHeader>
 
@@ -2390,11 +2708,23 @@ export function ServiceOrderSheet({
             <Button variant="outline" onClick={() => setQuoteOpen(false)}>
               Close
             </Button>
+            {/* THE CUSTOMER SAID YES OFFLINE — approve on their behalf, nothing
+                sent (Pavan, 2026-09-25). */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                set("quote", { ...buildQuote(draft), approvedAt: nowIso(), approvedBy: "on-behalf" });
+                setQuoteOpen(false);
+                toast.success("Quote approved on the customer's behalf");
+              }}
+            >
+              Approve on customer's behalf
+            </Button>
             <Button
               onClick={() => {
                 set("quote", buildQuote(draft));
                 setQuoteOpen(false);
-                toast.success(`Quote sent to ${draft.customer}`);
+                toast.success(`Quote sent to ${draft.poc?.name ?? draft.customer}`);
               }}
             >
               Send quote
@@ -2546,6 +2876,98 @@ export function ServiceOrderSheet({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {dispatch && (
+        <>
+          <TechnicianEmailSheet
+            order={draft}
+            open={techEmailOpen}
+            onOpenChange={setTechEmailOpen}
+            onSend={sendToTechnician}
+          />
+          <OnBehalfDialog
+            open={onBehalfOpen}
+            onOpenChange={setOnBehalfOpen}
+            onConfirm={() => {
+              advance("Ongoing", { onBehalfAt: nowIso(), arrivedAt: draft.arrivedAt ?? nowIso() });
+              toast.success(`${draft.orderNo} — recording the job`);
+            }}
+          />
+          <InvoiceSummarySheet
+            order={draft}
+            open={invoiceOpen}
+            onOpenChange={setInvoiceOpen}
+            onChange={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}
+            onSend={() => {
+              advance("Awaiting approval", { invoiceSentAt: nowIso() });
+              toast.success(`Invoice sent to ${draft.customer}`);
+            }}
+            onApproved={completeDispatch}
+          />
+          <InvoiceSummarySheet
+            partial
+            order={draft}
+            open={partialOpen}
+            onOpenChange={setPartialOpen}
+            onChange={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}
+            onSend={() => {
+              toast.success(`Partial invoice sent to ${draft.poc?.name ?? draft.customer}`);
+              rollOver(true);
+            }}
+            onApproved={() => rollOver(false)}
+          />
+          <CompleteDialog
+            order={draft}
+            open={completeOpen}
+            onOpenChange={setCompleteOpen}
+            onChange={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}
+            onConfirm={completeDispatch}
+          />
+        </>
+      )}
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel {draft.orderNo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It leaves the working lanes. It can be reopened later as a draft.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep order</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                advance("Cancelled");
+                toast.success(`${draft.orderNo} cancelled`);
+              }}
+            >
+              Cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard {draft.orderNo}?</AlertDialogTitle>
+            <AlertDialogDescription>The draft is deleted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep draft</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                onDiscard?.(draft.id);
+                onOpenChange(false);
+                toast.success(`${draft.orderNo} discarded`);
+              }}
+            >
+              Discard draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <TechnicianApp
         order={draft}

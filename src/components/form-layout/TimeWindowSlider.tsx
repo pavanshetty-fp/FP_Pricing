@@ -80,6 +80,8 @@ export interface TimeWindowSliderProps {
   label?: React.ReactNode;
   /** Marks the label with the destructive asterisk the DS forms already use. */
   required?: boolean;
+  /** Read-only — a record past the point where its schedule can move. */
+  disabled?: boolean;
   className?: string;
   "aria-label"?: string;
 }
@@ -91,6 +93,7 @@ export function TimeWindowSlider({
   minSpan = 60,
   label,
   required,
+  disabled,
   className,
   "aria-label": ariaLabel = "Delivery window",
 }: TimeWindowSliderProps) {
@@ -145,6 +148,7 @@ export function TimeWindowSlider({
           step={STEP_MIN}
           minStepsBetweenThumbs={minSpan / STEP_MIN}
           value={[start, end]}
+          disabled={disabled}
           onValueChange={([a, b]) => onChange(a, b)}
         />
 

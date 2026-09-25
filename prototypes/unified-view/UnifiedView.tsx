@@ -250,6 +250,18 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       ],
     },
   ],
+  /* TWO FLOWS, SIDE BY SIDE (Pavan, 2026-09-25) — the same orders, run with
+     no technician app (the dispatcher records everything) or with one. Each
+     entry fixes the technician-app setting for the board and sheet under it. */
+  "service-work-orders": [
+    {
+      label: "Flows",
+      items: [
+        { key: "service-orders-dispatch", label: "No Technician App", icon: <ClipboardList /> },
+        { key: "service-orders-app", label: "With Technician App", icon: <Smartphone /> },
+      ],
+    },
+  ],
 };
 
 /** First destination inside an area's drawer, for landing on arrival. */
@@ -1380,7 +1392,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
           />
         );
       case "service-work-orders":
-        return <ServiceWorkScreen />;
+      case "service-orders-dispatch":
+        return <ServiceWorkScreen key="dispatch" flow="dispatch" />;
+      case "service-orders-app":
+        return <ServiceWorkScreen key="app" flow="app" />;
       case "service-technicians":
         return <TechniciansScreen />;
       case "service-tech-app":

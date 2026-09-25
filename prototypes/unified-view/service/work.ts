@@ -100,12 +100,21 @@ export type WorkStatus =
   | "Yet to start"
   | "Ongoing"
   | "Needs approval"
+  /* THE CUSTOMER HAS THE INVOICE and has not said yes yet (Pavan,
+     2026-09-25 — the no-technician-app flow). */
+  | "Awaiting approval"
   /* Completed — the visit is over */
   | "Completed"
   | "Completed — linked"
   /* Synced — the money has been looked at */
   | "Yet to be reviewed"
   | "Reviewed"
+  /* PAYMENT, AS ACCOUNTING REPORTS IT (Pavan, 2026-09-25). Set by the
+     accounting system, never pressed in the app. */
+  | "Awaiting payment"
+  | "Payment received"
+  | "Payment delayed"
+  | "Unpaid"
   | "Cancelled";
 
 export const WORK_STATUSES: WorkStatus[] = [
@@ -116,10 +125,15 @@ export const WORK_STATUSES: WorkStatus[] = [
   "Yet to start",
   "Ongoing",
   "Needs approval",
+  "Awaiting approval",
   "Completed",
   "Completed — linked",
   "Yet to be reviewed",
   "Reviewed",
+  "Awaiting payment",
+  "Payment received",
+  "Payment delayed",
+  "Unpaid",
   "Cancelled",
 ];
 
@@ -131,9 +145,9 @@ export const WORK_LANES: {
 }[] = [
   { key: "Open", statuses: ["Drafted", "Parts pending", "Linked order"] },
   { key: "Assigned", statuses: ["Assigned"] },
-  { key: "Working", statuses: ["Yet to start", "Ongoing", "Needs approval"] },
+  { key: "Working", statuses: ["Yet to start", "Ongoing", "Awaiting approval", "Needs approval"] },
   { key: "Completed", statuses: ["Completed", "Completed — linked"] },
-  { key: "Synced", statuses: ["Yet to be reviewed", "Reviewed"] },
+  { key: "Synced", statuses: ["Awaiting payment", "Payment delayed", "Unpaid", "Payment received", "Yet to be reviewed", "Reviewed"] },
   { key: "Cancelled", statuses: ["Cancelled"], apart: true },
 ];
 
@@ -208,11 +222,19 @@ export const WORK_STATUS_KIND: Record<WorkStatus, StatusKind> = {
   Ongoing: "info",
   /* Sitting on a manager's desk. */
   "Needs approval": "caution",
+  /* Waiting on the customer to accept the invoice. */
+  "Awaiting approval": "caution",
   Completed: "success",
   "Completed — linked": "success",
   /* An invoice nobody has checked. */
   "Yet to be reviewed": "caution",
   Reviewed: "success",
+  /* PAYMENT — waiting is caution; late is still somebody else's move;
+     UNPAID is the severe case and the only red on the board. */
+  "Awaiting payment": "caution",
+  "Payment received": "success",
+  "Payment delayed": "caution",
+  Unpaid: "critical",
   /* NOT RED. Cancelled is a terminal non-event, not a problem to solve — and
      a red badge on a lane of them would be the loudest thing on the board
      saying the least. */
@@ -231,10 +253,15 @@ export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {
   "Yet to start": "blue",
   Ongoing: "cyan",
   "Needs approval": "violet",
+  "Awaiting approval": "violet",
   Completed: "green",
   "Completed — linked": "green",
   "Yet to be reviewed": "violet",
   Reviewed: "purple",
+  "Awaiting payment": "purple",
+  "Payment received": "purple",
+  "Payment delayed": "purple",
+  Unpaid: "purple",
   Cancelled: "red",
 };
 
@@ -405,6 +432,30 @@ export const technicianById = (id: string | null) =>
 
 export const ACTIVE_TECHNICIANS = TECHNICIANS.filter((t) => t.active);
 
+/**
+ * THE CUSTOMER'S CONTACTS — who a quote or invoice goes to. INVENTED: two
+ * per customer, derived from the name so the same customer always has the
+ * same people.
+ */
+const CONTACT_NAMES = ["Maria Lopez", "James Carter", "Priya Nair", "Tom Becker", "Aisha Khan", "Luis Ortega", "Hannah Reid", "Sam Wu"];
+export function contactsFor(customer: string): { name: string; email: string; phone: string }[] {
+  if (!customer) return [];
+  const seed = [...customer].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const domain = customer.toLowerCase().replace(/[^a-z]+/g, "").slice(0, 16) + ".com";
+  return [0, 1].map((k) => {
+    const name = CONTACT_NAMES[(seed + k * 3) % CONTACT_NAMES.length];
+    return {
+      name,
+      email: `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@${domain}`,
+      phone: `+1 559-555-${String(1000 + ((seed * (k + 7)) % 9000)).slice(0, 4)}`,
+    };
+  });
+}
+
+/** Where the job details go. INVENTED — first.last at the service domain. */
+export const technicianEmail = (t: Technician) =>
+  `${t.name.toLowerCase().replace(/[^a-z]+/g, ".")}@fleetpanda-service.com`;
+
 /* ------------------------------------------------------- the service order */
 
 /**
@@ -429,6 +480,14 @@ export interface Quote {
   laborRate?: number;
   /** Who on the customer's side acknowledged it, on site. */
   acknowledgedBy?: string;
+  /**
+   * HOW IT WAS APPROVED (Pavan, 2026-09-25): by the customer after it was
+   * sent, or offline — the customer said yes and it was approved on their
+   * behalf without sending anything. Never called "skip".
+   */
+  approvedBy?: "customer" | "on-behalf";
+  /** Rejected by the customer. The order stays open, flagged for revision. */
+  rejectedAt?: string | null;
 }
 
 /**
@@ -677,6 +736,27 @@ export interface ServiceOrder {
    * agreed before work; this is what it came to.
    */
   finalBillSentAt?: string | null;
+
+  /* ── THE NO-TECHNICIAN-APP FLOW (Pavan, 2026-09-25) ── */
+  /** The customer's point of contact — where the quote and invoice go. */
+  poc?: { name: string; email: string; phone: string } | null;
+  /** A rolled-over job's partial invoice was shared (Pavan, 2026-09-25). */
+  partialInvoiceSentAt?: string | null;
+  /** The job details and report form were emailed to the technician. */
+  techEmailedAt?: string | null;
+  /** The dispatcher acknowledged they are recording the job on the
+   *  technician's behalf ("Job completed"). */
+  onBehalfAt?: string | null;
+  /** Parts the job needed that were not available on the day. */
+  unavailableParts?: PartLine[];
+  /** What happens to them: a new linked order, or roll this one over. */
+  shortfallChoice?: "neworder" | "rollover";
+  /** The invoice was sent to the customer for approval. */
+  invoiceSentAt?: string | null;
+  /** The trail — emails, screenshots, documents — attached along the way. */
+  attachments?: { name: string; kind: "image" | "document"; addedAt: string; stage: string }[];
+  /** What accounting reported as received. Only on "Payment received". */
+  payment?: { amount: number; paidAt: string; method: string; reference: string };
   /** Charges added at the moment the invoice was raised. */
   extraCharges: FeeLine[];
   /** Raised — automatically on approval, or by hand. */
@@ -1616,10 +1696,46 @@ export function ticketFrom(
 export const createdAtOf = (o: ServiceOrder): string =>
   o.audit[0]?.at ?? o.scheduledAt ?? `${o.dateKey}T00:00:00`;
 
-export const SERVICE_ORDERS: ServiceOrder[] = buildOrders().map((r) => ({
-  ...r,
-  audit: seedServiceAudit(r),
-}));
+/* PAYMENT ON THE SYNCED ORDERS (Pavan, 2026-09-25). Accounting's answer,
+   seeded by index so every one of the four states is on the board. A paid
+   order carries its transaction; one in three pays short, so the comparison
+   with the invoice total has something to show. INVENTED. */
+const PAY_STATES: WorkStatus[] = ["Payment received", "Awaiting payment", "Payment delayed", "Unpaid"];
+const PAY_METHODS = ["ACH transfer", "Card", "Check", "Wire"];
+function withPayment(r: ServiceOrder, k: number): ServiceOrder {
+  if (r.status !== "Reviewed" && r.status !== "Yet to be reviewed") return r;
+  /* AN INVOICE NOT YET ISSUED CANNOT HAVE BEEN PAID. */
+  const issued = new Date(r.invoicedAt ?? r.completedAt ?? Date.now()).getTime();
+  const status =
+    issued > Date.now() - 86_400_000 && PAY_STATES[k % PAY_STATES.length] === "Payment received"
+      ? "Awaiting payment"
+      : PAY_STATES[k % PAY_STATES.length];
+  if (status !== "Payment received") return { ...r, status };
+  const due = orderTotal(r);
+  const paidAt = new Date(r.invoicedAt ?? r.completedAt ?? new Date().toISOString());
+  paidAt.setDate(paidAt.getDate() + 6);
+  /* Never in the future — a payment is something that has happened. */
+  if (paidAt.getTime() > Date.now()) paidAt.setTime(Date.now() - 3_600_000);
+  return {
+    ...r,
+    status,
+    synced: true,
+    payment: {
+      amount: k % 3 === 2 ? Math.round(due * 0.9 * 100) / 100 : due,
+      paidAt: paidAt.toISOString(),
+      method: PAY_METHODS[k % PAY_METHODS.length],
+      reference: `TXN-${String(48200 + k * 37).padStart(6, "0")}`,
+    },
+  };
+}
+
+export const SERVICE_ORDERS: ServiceOrder[] = (() => {
+  let k = 0;
+  return buildOrders().map((r) => {
+    const paid = r.status === "Reviewed" || r.status === "Yet to be reviewed" ? withPayment(r, k++) : r;
+    return { ...paid, audit: seedServiceAudit(paid) };
+  });
+})();
 
 /**
  * THE INVARIANTS, checked against the fixture at boot.

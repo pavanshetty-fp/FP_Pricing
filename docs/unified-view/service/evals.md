@@ -37,7 +37,11 @@ report it, don't change it).
 - [ ] **L1** Only *Customer details* renders until customer and ship-to are both set. — *prd §6 waterfall*
 - [ ] **L1** The empty asset cell reads "NA (non-mandatory)" (after a site is chosen). — *prd §6*
 - [ ] **L1** Picking a work type adds its price-book parts **and** fees once; nothing is doubled; nothing is removed when the work type is dropped. — *prd §4.2*
-- [ ] **L1** Create is gated on exactly customer, ship-to, window and technician; the pending strip names the first missing one. — *prd §6; ds ux next-act ladder*
+- [ ] **L1** *Move to Assigned* is gated on exactly customer, ship-to, window and technician; the pending strip names the first missing one. *Save as Draft* (outline, left of it) is always available on a draft. — *prd §6; ds ux §Forms*
+- [ ] **L1** Intake source and priority are in the Customer details card; there is no separate Intake card. — *prd §6*
+- [ ] **L1** Asset table columns: work type, asset, description; every work-type cell (sub-rows too) is the checkbox multi-select. — *prd §6*
+- [ ] **L1** Asset and technician pickers offer "No asset" / "No technician" first. — *ds ux §Forms*
+- [ ] **L1** A typed fee or part name shows the text left and "Add as fee" / "Add as part" right. — *prd §6*
 - [ ] **L1** The "Send quote to customer" tick shows only on a Drafted order; ticked, Create writes the quote too. — *prd §4.2*
 - [ ] **L1** The Record card doesn't render while an order is being written; it does when the order is reopened. — *prd §6*
 - [ ] **L1** No line of technician detail under the technician picker. — *prd §6*
@@ -75,6 +79,28 @@ report it, don't change it).
 - [ ] **L1** Pause asks a reason; paused time isn't billed. — *prd §6*
 - [ ] **L1** Parts missing offers the three outcomes of §5.6, using the company setting as the default. — *prd §5.6*
 - [ ] **L2** Anything the phone keeps only on the device, which the dispatcher can't see, is listed in PRD §8. — *prd §8*
+
+## S8 — no technician app flow
+
+- [ ] **L1** Service Orders has a drawer: No Technician App · With Technician App; each fixes the technician-app setting for its board and sheet. — *prd §5.1a*
+- [ ] **L1** No-app: Move to Assigned opens the technician email; only sending it moves the order to Assigned. — *prd §5.8*
+- [ ] **L1** No-app: the Working lane reads "Job day" and holds assigned orders whose date has come. — *prd §5.8*
+- [ ] **L1** "Job completed" asks the on-behalf acknowledgement before recording starts; Confirm stays disabled until it is ticked. — *prd §5.8*
+- [ ] **L1** While recording, Site assessment (with photo upload) is the first section; the work table is editable. — *prd §5.8*
+- [ ] **L1** Parts not available shows Create new order / Rollover in the bottom bar; Rollover makes the act "Roll over to tomorrow". — *prd §5.8*
+- [ ] **L1** The invoice summary's primary is "Send invoice to customer" (→ Awaiting approval), or "Mark as completed" when approve-on-behalf is ticked. — *prd §5.8*
+- [ ] **L1** A completed no-app order has no editable control; a paid one shows the Payment card against the invoice total. — *prd §5.8*
+- [ ] **L1** Payment statuses have no button anywhere in the app. — *prd §6*
+
+## S9 — quote answers, cancel, invoice
+
+- [ ] **L1** The quote dialog offers *Approve on customer's behalf* beside *Send quote*; a sent quote offers *Customer approved* / *Customer rejected*; no control says "skip". — *prd §6*
+- [ ] **L1** A rejected quote leaves the status unchanged, shows the red "Quote rejected — needs revision" banner and *Send revised quote*. — *prd §6*
+- [ ] **L1** Rollover with parts not available leads to the partial invoice with *Send and roll over* / *Roll over without sending*. — *prd §6*
+- [ ] **L1** *Cancel order* is in the footer ··· for Assigned, Yet to start, Ongoing, Awaiting approval, behind a confirm; *Discard draft* for a Drafted order. — *prd §6*
+- [ ] **L1** *Late* appears only in the technician-app flow, only on Assigned/Yet to start orders past their window with no start. — *prd §6*
+- [ ] **L1** *Download invoice* saves a PDF whose totals equal the sheet's Summary. — *prd §6*
+- [ ] **L1** Point of contact sits in the customer card, is optional, and offers "No contact". — *prd §6; ds ux §Forms*
 
 ## S7 — standalone build
 

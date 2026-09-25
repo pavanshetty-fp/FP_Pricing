@@ -252,7 +252,8 @@ has while looking at any part of the form.
 
 **Widths:** `narrow` 560 (stacked fields) · `wide` 864 (tables) · `xwide` 1120
 (tables past six columns) · `xxwide` fills to `100vw − 56px` (two columns). **Per step, not per
-sheet.**
+sheet.** **A creation sheet fills to `100vw − 56px` whatever its size** (Pavan,
+2026-09-25) — the caps are for opening an existing record.
 
 **A SHEET OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so `100vw − 112px`
 (Pavan, 2026-09-22). The 56px is what tells a reader a sheet is over

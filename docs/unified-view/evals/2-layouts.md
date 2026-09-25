@@ -121,6 +121,8 @@ Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
       wide tables · `xxwide` fills for two columns. Per step, not per sheet.
 - [ ] **L1** Every sheet and nested drawer clamps to `100vw − 56px` — one
       number, no 60s left anywhere.
+- [ ] **L2** Every CREATION sheet (a rule, an order, a customer…) fills to
+      `100vw − 56px`, not a cap. DS ui/7-variants §1 "A creation sheet fills".
 - [ ] **L2** At 1900 the two-column step leaves exactly 56px and no strip of
       the list behind it; at 760 it folds to one column with no sideways
       scroll.

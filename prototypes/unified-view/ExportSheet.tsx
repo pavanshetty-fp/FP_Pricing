@@ -122,6 +122,7 @@ export function ExportSheet({
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
+      fill={false}
       editTitle={title}
       createTitle={title}
       createAction="Export"

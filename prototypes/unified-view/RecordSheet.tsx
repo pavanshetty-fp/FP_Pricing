@@ -65,6 +65,14 @@ export interface RecordSheetProps {
    */
   size?: "compact" | "narrow" | "wide" | "xwide" | "xxwide";
   /**
+   * A CREATION SHEET FILLS (Pavan, 2026-09-25). Creating a rule, an order, a
+   * customer — anything — takes the full width less the 56px gap, whatever
+   * `size` says; `size` then only governs the same sheet when it is edited.
+   * Defaults to `mode === "create"`. Pass `false` for a sheet that borrows
+   * create mode without making anything (an export, a partner's quote).
+   */
+  fill?: boolean;
+  /**
    * HOW DEEP IN THE STACK THIS SHEET IS. `2` is a sheet opened OVER another
    * one — the invitation over an order, a partner's quote over an order.
    *
@@ -299,6 +307,7 @@ export function DraftStatusChip({
 
 export function RecordSheet({
   size = "narrow",
+  fill,
   level = 1,
   open,
   onOpenChange,
@@ -321,6 +330,7 @@ export function RecordSheet({
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
+  const fills = size === "xxwide" || (fill ?? creating);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -334,8 +344,8 @@ export function RecordSheet({
         }
         className={cn(
           "gap-0 p-0",
-          size === "xxwide"
-            ? /* THE TWO-COLUMN STEP FILLS. It is the one shape whose width is
+          fills
+            ? /* THE TWO-COLUMN STEP FILLS, and so does every CREATION sheet. It is the one shape whose width is
                  not a number somebody chose — tables on the left and a fixed
                  rail on the right, and every pixel the viewport has goes to
                  the tables. Capped at 1440 it left a strip of list showing on

@@ -145,6 +145,7 @@ export function VendorQuoteSheet({
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
+      fill={false}
       editTitle={`${vendorName} · Pricing`}
       createTitle={`${vendorName} · Pricing`}
       createAction="Accept"

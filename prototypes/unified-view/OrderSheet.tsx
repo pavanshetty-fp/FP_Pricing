@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { CalendarDays, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -180,7 +181,13 @@ export function OrderSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-[560px] gap-0 p-0 sm:max-w-[560px]"
+        /* A CREATION SHEET FILLS, less the 56px gap (Pavan, 2026-09-25). */
+        className={cn(
+          "gap-0 p-0",
+          creating
+            ? "w-[calc(100vw-56px)] sm:max-w-[calc(100vw-56px)]"
+            : "w-[560px] sm:max-w-[560px]"
+        )}
       >
         {/* Header — the order number when editing, "Create Order" when there is
             no order yet. The status chip rides along in both: it is DERIVED (an

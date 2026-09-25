@@ -97,7 +97,7 @@ report it, don't change it).
 - [ ] **L1** The quote dialog offers *Approve on customer's behalf* beside *Send quote*; a sent quote offers *Customer approved* / *Customer rejected*; no control says "skip". — *prd §6*
 - [ ] **L1** A rejected quote leaves the status unchanged, shows the red "Quote rejected — needs revision" banner and *Send revised quote*. — *prd §6*
 - [ ] **L1** Rollover with parts not available leads to the partial invoice with *Send and roll over* / *Roll over without sending*. — *prd §6*
-- [ ] **L1** *Cancel order* is in the footer ··· for Assigned, Yet to start, Ongoing, Awaiting approval, behind a confirm; *Discard draft* for a Drafted order. — *prd §6*
+- [ ] **L1** *Cancel order* is in the footer ··· for every Open status and Assigned, Yet to start, Ongoing, Awaiting approval, behind a confirm; *Discard draft* for a Drafted order. — *prd §6*
 - [ ] **L1** *Late* appears only in the technician-app flow, only on Assigned/Yet to start orders past their window with no start. — *prd §6*
 - [ ] **L1** *Download invoice* saves a PDF whose totals equal the sheet's Summary. — *prd §6*
 - [ ] **L1** Point of contact sits in the customer card, is optional, and offers "No contact". — *prd §6; ds ux §Forms*

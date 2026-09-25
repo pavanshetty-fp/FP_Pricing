@@ -286,7 +286,7 @@ is the end** of the order.
 - **Quote is kept in the no-app flow** (tick on a draft; ··· once assigned).
 - **Rollover shares a partial invoice:** with parts not available and Rollover chosen, the act is *Partial invoice & roll over* → the partial invoice (work done, owed parts not charged) → **Send and roll over** or **Roll over without sending**.
 - **Point of contact** on the order (customer card, optional, "No contact" empties it); the quote and invoice go to them.
-- **Cancel order** sits in the footer ··· from Assigned through Job day (confirmed); **Discard draft** in the ··· of a draft (confirmed, deletes it).
+- **Cancel order** sits in the footer ··· from Open (unassigned, drafts included) through Job day (confirmed); **Discard draft** in the ··· of a draft (confirmed, deletes it).
 - **Late badge** on a card whose window has closed with nobody started — **technician-app flow only**; without the app nobody knows if it was late or early.
 - **Download invoice** downloads a real one-page PDF (`service/invoicePdf.ts`), also from the ··· while awaiting approval.
 
@@ -315,7 +315,7 @@ module.
 Worked through one at a time. Broken loops first.
 
 **Broken loops**
-- ~~No cancel or discard~~ — cancel (Assigned → Job day) and discard draft added 2026-09-25. Cancel from Open is still not offered.
+- ~~No cancel or discard~~ — cancel (Open → Job day) and discard draft added 2026-09-25.
 - *Yet to be reviewed* has no way forward to Reviewed.
 - *Completed — linked* can't raise an invoice.
 - Board card buttons: *Review* does nothing; *Assign* only opens the sheet.

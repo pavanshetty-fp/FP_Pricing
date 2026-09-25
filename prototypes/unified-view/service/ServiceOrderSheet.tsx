@@ -1141,11 +1141,13 @@ export function ServiceOrderSheet({
           : "Resume in technician app",
       onSelect: () => setFieldOpen(true),
     });
-  /* CANCEL, IN THE ··· (Pavan, 2026-09-25) — from Assigned through Job day,
-     confirmed, because it cannot be walked back here. */
+  /* CANCEL, IN THE ··· (Pavan, 2026-09-25) — from Open (unassigned, drafts
+     included) through Job day, confirmed. Recorded work cannot be cancelled. */
   if (
     !creating &&
-    ["Assigned", "Yet to start", "Ongoing", "Awaiting approval"].includes(draft.status)
+    order &&
+    (isUnassigned(draft.status) ||
+      ["Assigned", "Yet to start", "Ongoing", "Awaiting approval"].includes(draft.status))
   )
     sheetActs.push({ label: "Cancel order", onSelect: () => setConfirmCancel(true) });
   /* THE INVOICE THE CUSTOMER HAS, as a file (Pavan, 2026-09-25). */

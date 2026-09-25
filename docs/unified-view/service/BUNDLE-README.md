@@ -14,9 +14,19 @@ every rule and eval that governs it.
 | `docs/unified-view/service/changes-2026-09-23.md` | decision history |
 | `docs/apply-design-system.md` | the whole design system in one file (generated) |
 | `docs/ds/` | the design system's source rules: `ui/`, `ux/`, `interactions/`, `00-meta/` |
-| `docs/unified-view/` | how this product uses the DS: `map.md`, components, layouts, interactions, and the `evals/` segments |
+| `docs/unified-view/` | how this product uses the DS: `map.md`, components, layouts, interactions, and the `evals/` segments (Service Work docs only — other modules' docs are left out) |
 | `skills/` | packaged Claude skills for the DS and its heuristics eval — **older snapshots (June–August 2026); where they disagree with `docs/`, the docs win** |
 | `VERSION.txt` | the source repository and commit this bundle was built from |
+
+## Rules are locked — tweaks only
+
+The design-system and Unified View rules in `docs/` are **read-only** for
+anyone working from this bundle. Screens can be tweaked within them; a rule
+cannot be changed. If something needs a rule changed, raise it with Pavan.
+
+The code lives in **github.com/pavanshetty-fp/FP_Service-Work** (ask Pavan
+for access) — its `GETTING-STARTED.md` sets up Claude Code, and it enforces
+the lock.
 
 ## The order of authority
 

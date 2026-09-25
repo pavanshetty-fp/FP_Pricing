@@ -26,6 +26,8 @@ rm -f "$OUT/docs/ds/build-bundle.sh"
 cp -R docs/unified-view "$OUT/docs/unified-view"
 # Past eval runs are working notes, not rules.
 rm -rf "$OUT/docs/unified-view/evals/results"
+# SERVICE WORK ONLY (Pavan, 2026-09-25): other modules' docs stay out.
+rm -rf "$OUT/docs/unified-view/3pl"
 rm -f "$OUT/docs/unified-view/service/BUNDLE-README.md"
 
 # An AI opening this folder reads CLAUDE.md first.
@@ -38,6 +40,15 @@ decisions and §7 working agreements are binding), then
 `docs/apply-design-system.md` before building any screen. Check work against
 `docs/unified-view/service/evals.md` and `docs/unified-view/evals/`.
 Authority: docs/ds > docs/unified-view > service/PRD.md.
+
+## Rules are locked — a strict no to changing them
+
+Everything under `docs/ds/`, `docs/apply-design-system.md`, the Unified View
+`map`/`components`/`layouts`/`interactions` docs and every eval is a RULE
+owned by Pavan Shetty. Read them; never change them. Tweaks to Service Work
+screens within the rules are fine. If a request would change or break a rule,
+stop, name the rule and where it is written, and tell the user to raise it
+with Pavan. PRD §6 may be updated; §7 may not.
 EOF
 
 for s in fp-ds-2026.skill fp-ds-heuristics-eval.skill; do

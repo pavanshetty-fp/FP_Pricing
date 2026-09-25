@@ -71,6 +71,8 @@ import { INVENTORY } from "./catalog";
 /** THE PARTS TO PICK FROM (2026-09-24) — the shelf, with each part's cost. */
 const PART_OPTIONS = INVENTORY.map((p) => ({ name: p.part, amount: p.cost }));
 import { TechnicianApp } from "./TechnicianApp";
+import { RichText } from "./TechnicianJob";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   visitHours,
   FEE_BOOK,
@@ -78,7 +80,6 @@ import {
   jobsOf,
   ACTIVE_TECHNICIANS,
   INTAKE_SOURCES,
-  MILEAGE_RATE,
   PORTAL_SOURCE,
   PRIORITIES,
   WORK_TYPES,
@@ -95,7 +96,6 @@ import {
   fittedOf,
   shortfallLabel,
   formatHours,
-  mileageTotal,
   money,
   orderTotal,
   partsTotal,
@@ -629,6 +629,11 @@ export function ServiceOrderSheet({
   const [fieldOpen, setFieldOpen] = React.useState(false);
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [holdOpen, setHoldOpen] = React.useState(false);
+  /* THE FINAL BILL, after the work (Deepika, 2026-09-25). */
+  const [billOpen, setBillOpen] = React.useState(false);
+  /* SEND THE QUOTE WITH CREATE (Pavan, 2026-09-25) — a tick beside Create
+     new order, so one press does both. */
+  const [quoteOnCreate, setQuoteOnCreate] = React.useState(false);
   /* THE ROW JUST ADDED, so its first cell can take the cursor (DS ui §10f,
      "Rows"). Mount-only on the cell's side, so rows already there are never
      re-focused and this never needs clearing. */
@@ -753,6 +758,24 @@ export function ServiceOrderSheet({
         : x
     );
 
+  /* THE PRICE BOOK'S PARTS FOLLOW THE WORK TYPE (Deepika, 2026-09-25). A work
+     type picked on a row brings the parts its price-book entry lists, once;
+     a work type with no entry brings nothing. Parts already on the order are
+     not doubled, and nothing is taken away when a work type is dropped —
+     the list may have been edited since. */
+  const addBookParts = (types: string[]) => {
+    if (!cfg.priceBook) return;
+    setDraft((x) => {
+      if (!x) return x;
+      const add: PartLine[] = [];
+      for (const w of types)
+        for (const p of WORK_TYPES[w]?.parts ?? [])
+          if (!x.parts.some((q) => q.name === p.name) && !add.some((q) => q.name === p.name))
+            add.push({ ...p });
+      return add.length > 0 ? { ...x, parts: [...x.parts, ...add] } : x;
+    });
+  };
+
   /* WHO MAY EDIT WHAT, BY STAGE. Intake is the dispatcher's until the job
      starts; the work is the technician's while it is running; past approval
      the record is what was billed and nothing on it moves. */
@@ -871,6 +894,17 @@ export function ServiceOrderSheet({
     !draft.technicianId && "Say who did the work.",
   ].filter(Boolean) as string[];
 
+  /* NO TECHNICIAN APP, SO DISPATCH RUNS THE JOB (Deepika and Pavan,
+     2026-09-25). The acts come out of the ··· and up front: Send quote is the
+     primary and Start work sits beside it; once the quote is out, the primary
+     becomes Mark as completed. With the app on they stay in the ···, because
+     the technician is the one running the job. */
+  const upfront = !cfg.techApp;
+  const preStart =
+    (draft.status === "Assigned" || draft.status === "Yet to start") && !draft.startedAt;
+  /** The primary is the quote, not completion. */
+  const quoteFirst = upfront && preStart && !draft.quote;
+
   /**
    * THE STRIP SAYS WHAT THE PRIMARY IS WAITING ON — whatever the primary
    * currently is (DS: the footer's three slots).
@@ -882,7 +916,9 @@ export function ServiceOrderSheet({
    * disabled primary was cheerfully reporting all clear. The strip follows
    * the act, not the form.
    */
-  const pendingSteps = isWorkable(draft.status)
+  const pendingSteps = quoteFirst
+    ? []
+    : isWorkable(draft.status)
     ? completionMissing.map((label, i) => ({
         key: `done-${i}`,
         label,
@@ -941,7 +977,7 @@ export function ServiceOrderSheet({
           ];
     const patch = {
       arrivedAt: draft.arrivedAt ?? at,
-      ...syncVisits({ visits }),
+      ...syncVisits({ visits, laborOverride: draft.laborOverride }),
       signed: true,
       partNeeded: null,
     };
@@ -971,37 +1007,40 @@ export function ServiceOrderSheet({
    * which is what the primary is for. A button each would turn the footer
    * into a toolbar and make the primary just another control on it.
    */
-  const sheetActs: { label: string; onSelect: () => void }[] = [];
-  if (draft.status === "Assigned")
-    sheetActs.push({
-      label: "Start work",
-      /* BOTH TIMESTAMPS, because from dispatch these are one press. The
-         technician's app tells arrival and starting apart — it has a quote
-         and a wait between them — but somebody starting a job from this sheet
-         is saying both at once, and a second button to separate them would be
-         inventing a step nobody takes. */
-      onSelect: () => {
-        /* A PRESS OPENS A VISIT. `startedAt` is its mirror and is written by
-           `syncVisits`, never by hand. */
-        advance("Ongoing", {
-          arrivedAt: draft.arrivedAt ?? nowIso(),
-          ...syncVisits({
-            visits: [
-              ...draft.visits,
-              {
-                startedAt: nowIso(),
-                endedAt: null,
-                technicianId: draft.technicianId,
-                override: null,
-              },
-            ],
-          }),
-        });
-        toast.success(`${draft.orderNo} — work started`);
-      },
+  /** From dispatch, arrival and start are one press — see the ··· note. */
+  const startWork = () => {
+    /* A PRESS OPENS A VISIT. `startedAt` is its mirror and is written by
+       `syncVisits`, never by hand. */
+    advance("Ongoing", {
+      arrivedAt: draft.arrivedAt ?? nowIso(),
+      ...syncVisits({
+        laborOverride: draft.laborOverride,
+        visits: [
+          ...draft.visits,
+          {
+            startedAt: nowIso(),
+            endedAt: null,
+            technicianId: draft.technicianId,
+            override: null,
+          },
+        ],
+      }),
     });
-  if (!creating && draft.customer)
-    sheetActs.push({ label: "Send quote to customer", onSelect: () => setQuoteOpen(true) });
+    toast.success(`${draft.orderNo} — work started`);
+  };
+
+  /* THE QUOTE IS BEFORE THE WORK (Deepika, 2026-09-25) — once work has
+     started there is nothing to quote; what is left is the final bill. */
+  const canQuote = !creating && Boolean(draft.customer) && !draft.startedAt && !isRecorded(draft.status);
+
+  const sheetActs: { label: string; onSelect: () => void }[] = [];
+  if (preStart && !upfront) sheetActs.push({ label: "Start work", onSelect: startWork });
+  /* A DRAFT SENDS ITS QUOTE WITH THE TICK BESIDE CREATE, not from here. */
+  if (canQuote && !quoteFirst && draft.status !== "Drafted")
+    sheetActs.push({
+      label: draft.quote ? "Resend quote to customer" : "Send quote to customer",
+      onSelect: () => setQuoteOpen(true),
+    });
   if (cfg.techApp && isWorkable(draft.status))
     sheetActs.push({
       label:
@@ -1009,6 +1048,13 @@ export function ServiceOrderSheet({
           ? "Open technician app"
           : "Resume in technician app",
       onSelect: () => setFieldOpen(true),
+    });
+  /* THE FINAL BILL, once the work is recorded — the full amount, labour
+     included (Deepika, 2026-09-25). */
+  if (!creating && isRecorded(draft.status))
+    sheetActs.push({
+      label: draft.finalBillSentAt ? "Resend final bill to customer" : "Send final bill to customer",
+      onSelect: () => setBillOpen(true),
     });
 
   const nextAct: { label: string; onSelect: () => void; why?: string } = (() => {
@@ -1040,9 +1086,17 @@ export function ServiceOrderSheet({
             label: "Create new order",
             why: mandatory.find((x) => !x.done)?.label,
             onSelect: () => {
-              const next = { ...draft, status: "Assigned" as WorkStatus };
+              const next = {
+                ...draft,
+                status: "Assigned" as WorkStatus,
+                ...(quoteOnCreate ? { quote: buildQuote(draft) } : {}),
+              };
               if (order) onSave(order, next);
-              toast.success(`${draft.orderNo} created and assigned`);
+              toast.success(
+                quoteOnCreate
+                  ? `${draft.orderNo} created — quote sent to ${draft.customer}`
+                  : `${draft.orderNo} created and assigned`
+              );
               onOpenChange(false);
             },
           }
@@ -1064,6 +1118,8 @@ export function ServiceOrderSheet({
        So the sheet keeps the whole ladder and the technician's app becomes a
        convenience rather than a gate. "Open technician app" moves to the ···,
        where it belongs: a thing you can do, not the thing to do. */
+    if (quoteFirst)
+      return { label: "Send quote to customer", onSelect: () => setQuoteOpen(true) };
     if (draft.status === "Assigned")
       return {
         /* MARK AS COMPLETED, NOT "START WORK" — starting is in the ···, where
@@ -1115,7 +1171,7 @@ export function ServiceOrderSheet({
            used to be exempt while the field app held the job, on the grounds
            that the hours were recorded there — but dispatch can complete a job
            now, so the gate has to be true on this screen too. */
-        isWorkable(draft.status) && completionMissing.length > 0
+        isWorkable(draft.status) && !quoteFirst && completionMissing.length > 0
         ? completionMissing[0]
         : nextAct.why;
 
@@ -1123,7 +1179,6 @@ export function ServiceOrderSheet({
 
   const partsSum = partsTotal(draft.parts);
   const laborSum = draft.labor * draft.laborRate;
-  const mileageSum = mileageTotal(draft.mileage);
   const feesSum = feesTotal(draft.fees);
   const extraSum = feesTotal(draft.extraCharges);
 
@@ -1137,10 +1192,32 @@ export function ServiceOrderSheet({
   const heldShortfall = shortfallLabel(draft.parts);
 
 
+  /* THE QUOTE IS THE FIXED PART (Deepika, 2026-09-25): parts, fees and the
+     labour RATE. Hours and miles are not known before the work and land on
+     the final bill. */
   const quoteFirm = partsSum + feesSum;
-  const quoteHours = draft.labor > 0 ? draft.labor : 1.5;
-  const quoteMiles = draft.mileage > 0 ? draft.mileage : cfg.defaultMileage;
-  const quoteEstimate = quoteHours * draft.laborRate + quoteMiles * MILEAGE_RATE;
+  const buildQuote = (d: ServiceOrder) => ({
+    parts: d.parts.map((x) => ({ ...x })),
+    fees: d.fees.map((x) => ({ ...x })),
+    total: partsTotal(d.parts) + feesTotal(d.fees),
+    laborRate: d.laborRate,
+    sentAt: nowIso(),
+    approvedAt: null,
+  });
+  /** The clock's figure, before anybody typed over it. */
+  const measuredLabor = syncVisits({ visits: draft.visits }).labor;
+  const setLaborTyped = (hours: number | null) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            laborOverride: hours,
+            labor: hours ?? syncVisits({ visits: d.visits }).labor,
+          }
+        : d
+    );
+  const laborH = Math.floor(draft.labor);
+  const laborM = Math.round((draft.labor - laborH) * 60);
   const total = orderTotal(draft);
   const quoteGap = draft.quote ? total - draft.quote.total : 0;
 
@@ -1220,7 +1297,17 @@ export function ServiceOrderSheet({
          of the same form — the primary is the one that finishes the job, and
          this is the one that admits it cannot be finished today. */
       footerAside={
-        draft.status === "Ongoing" && onPartsPending ? (
+        draft.status === "Drafted" && draft.customer ? (
+          /* ONE PRESS, BOTH ACTS (Pavan, 2026-09-25): ticked, Create new
+             order also sends the quote. */
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+            <Checkbox
+              checked={quoteOnCreate}
+              onCheckedChange={(v) => setQuoteOnCreate(v === true)}
+            />
+            Send quote to customer
+          </label>
+        ) : draft.status === "Ongoing" && onPartsPending ? (
           <Button variant="outline" onClick={() => setHoldOpen(true)}>
             Some parts unavailable
           </Button>
@@ -1259,6 +1346,11 @@ export function ServiceOrderSheet({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+            )}
+            {upfront && preStart && (
+              <Button variant="outline" onClick={startWork}>
+                Start work
+              </Button>
             )}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1301,6 +1393,11 @@ export function ServiceOrderSheet({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {upfront && preStart && (
+              <Button variant="outline" onClick={startWork}>
+                Start work
+              </Button>
+            )}
             <Button onClick={nextAct.onSelect}>{nextAct.label}</Button>
           </div>
         )
@@ -1312,47 +1409,6 @@ export function ServiceOrderSheet({
       {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-10">
-      {/* ───────────────────────────────────────────────────── intake ───── */}
-      <SheetSection
-        id={SECTION_INTAKE}
-        title="Intake"
-        note={
-          <SheetSectionNote label="About intake">
-            Where the job came from is the one fact about it nobody can work out
-            afterwards, so it is asked for first and kept on the record.
-            {!cfg.portalIntake && (
-              <span className="mt-1.5 block">
-                The customer portal is off, so intake is keyed here — from a
-                call, a rep, or a flagged inspection.
-              </span>
-            )}
-          </SheetSectionNote>
-        }
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Intake source" required>
-            <Combobox
-              className="w-full"
-              value={draft.source}
-              onValueChange={(v) => set("source", v as ServiceOrder["source"])}
-              options={sources}
-              placeholder="Select source"
-              disabled={intakeLocked}
-            />
-          </SheetField>
-          <SheetField label="Priority" required>
-            <Combobox
-              className="w-full"
-              value={draft.priority}
-              onValueChange={(v) => set("priority", v as ServiceOrder["priority"])}
-              options={[...PRIORITIES]}
-              placeholder="Select priority"
-              disabled={intakeLocked}
-            />
-          </SheetField>
-        </div>
-      </SheetSection>
-
       {/* ──────────────────────────────────── customer, site and asset ───── */}
       {/* ── CUSTOMER DETAILS ────────────────────────────────────────────
           SPLIT FROM THE ASSETS (Pavan, 2026-09-23). One card asked two
@@ -1418,6 +1474,52 @@ export function ServiceOrderSheet({
               placeholder={draft.customer ? "Choose a site" : "Choose a customer first"}
               searchPlaceholder="Search sites…"
               disabled={intakeLocked || !draft.customer}
+            />
+          </SheetField>
+        </div>
+      </SheetSection>
+
+      {/* THE WATERFALL (Deepika, 2026-09-25): customer and ship-to first; the
+          rest of the form arrives once both are answered, because almost
+          everything below depends on the site. */}
+      {draft.customer && draft.shipTo && (
+        <>
+      {/* ───────────────────────────────────────────────────── intake ───── */}
+      <SheetSection
+        id={SECTION_INTAKE}
+        title="Intake"
+        note={
+          <SheetSectionNote label="About intake">
+            Where the job came from is the one fact about it nobody can work out
+            afterwards, so it is asked for first and kept on the record.
+            {!cfg.portalIntake && (
+              <span className="mt-1.5 block">
+                The customer portal is off, so intake is keyed here — from a
+                call, a rep, or a flagged inspection.
+              </span>
+            )}
+          </SheetSectionNote>
+        }
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <SheetField label="Intake source" required>
+            <Combobox
+              className="w-full"
+              value={draft.source}
+              onValueChange={(v) => set("source", v as ServiceOrder["source"])}
+              options={sources}
+              placeholder="Select source"
+              disabled={intakeLocked}
+            />
+          </SheetField>
+          <SheetField label="Priority" required>
+            <Combobox
+              className="w-full"
+              value={draft.priority}
+              onValueChange={(v) => set("priority", v as ServiceOrder["priority"])}
+              options={[...PRIORITIES]}
+              placeholder="Select priority"
+              disabled={intakeLocked}
             />
           </SheetField>
         </div>
@@ -1516,7 +1618,8 @@ export function ServiceOrderSheet({
         </SheetField>
         {tech && (
           <p className="text-sm text-muted-foreground">
-            {tech.base} · {tech.skills.join(" · ")} · {tech.phone}
+            {/* No home yard once assigned (Pavan, 2026-09-25). */}
+            {tech.skills.join(" · ")} · {tech.phone}
           </p>
         )}
       </SheetSection>
@@ -1634,6 +1737,7 @@ export function ServiceOrderSheet({
                         fault: list[0]?.fault ?? row.fault,
                         subJobs: list.slice(1),
                       });
+                      addBookParts(added.map((a) => a.workType));
                     }}
                   />
                 </td>
@@ -1705,7 +1809,10 @@ export function ServiceOrderSheet({
                         placeholder="Select"
                         disabled={intakeLocked}
                         aria-label={`Work type ${k + 2} for row ${i + 1}`}
-                        onChange={(v) => setSub({ workType: v })}
+                        onChange={(v) => {
+                          setSub({ workType: v });
+                          addBookParts([v]);
+                        }}
                       />
                     </td>
                     <td className="relative p-0">
@@ -1736,6 +1843,46 @@ export function ServiceOrderSheet({
         </table>
       </SheetSection>
 
+      {/* THE SITE ASSESSMENT, FROM DISPATCH (Deepika, 2026-09-25) — the same
+          rich-text notes the phone takes. Optional, and open once the work has
+          started or the scheduled time has come: somebody has to have been on
+          site. The dispatcher or a salesperson types what the technician rang
+          in. */}
+      {(Boolean(draft.startedAt) ||
+        (draft.scheduledAt !== null && new Date(draft.scheduledAt) <= new Date())) &&
+        !creating && (
+          <SheetSection title="Site assessment">
+            <RichText
+              key={draft.id}
+              desktop
+              disabled={billed}
+              initial={draft.siteAssessment?.html ?? ""}
+              placeholder="What was found on site"
+              onChange={(html) =>
+                setDraft((d) =>
+                  d
+                    ? {
+                        ...d,
+                        siteAssessment: {
+                          photos: [],
+                          submittedAt: null,
+                          ...d.siteAssessment,
+                          html,
+                        },
+                      }
+                    : d
+                )
+              }
+            />
+            {(draft.siteAssessment?.photos.length ?? 0) > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {draft.siteAssessment!.photos.length} photo
+                {draft.siteAssessment!.photos.length === 1 ? "" : "s"} from the technician
+              </span>
+            )}
+          </SheetSection>
+        )}
+
       {/* ──────────────────────────────────────────── the quote, if sent ─── */}
       {draft.quote && (
         <SheetSection
@@ -1743,18 +1890,13 @@ export function ServiceOrderSheet({
           note={
             <SheetSectionNote label="Quote vs invoice">
               <p className="text-foreground">
-                A quote is parts and the predefined fee, agreed on site before
-                the work starts.
+                A quote is the fixed part — parts, fees and the labour rate —
+                agreed before the work starts.
               </p>
               <p className="mt-1.5 text-muted-foreground">
-                It cannot carry labour or mileage — at the moment it was sent
-                nobody knew how long the job would take or how far the van went.
-                Those land on the invoice, which is why the invoice can be
-                larger than the quote and why both stay on the record.
-              </p>
-              <p className="mt-1.5 text-muted-foreground">
-                Read-only here: a quote is sent from the technician's own app,
-                on site, and this is the record of what was agreed.
+                The hours are not known yet. They land on the final
+                bill, which is why it can be larger than the quote and why both
+                stay on the record.
               </p>
             </SheetSectionNote>
           }
@@ -1770,8 +1912,11 @@ export function ServiceOrderSheet({
             {draft.quote.fees.map((f, i) => (
               <MoneyRow key={`qf-${i}`} label={f.name} value={money(f.amount)} />
             ))}
+            {draft.quote.laborRate != null && (
+              <MoneyRow label="Labour" value={`${money(draft.quote.laborRate)} / hour`} />
+            )}
             <div className="mt-2 border-t border-fp-outline-1 pt-2">
-              <MoneyRow label="Quoted on site" value={money(draft.quote.total)} bold />
+              <MoneyRow label="Quoted" value={money(draft.quote.total)} bold />
             </div>
           </div>
           {isRecorded(draft.status) && (
@@ -1780,7 +1925,7 @@ export function ServiceOrderSheet({
                 <>
                   The invoice is{" "}
                   <span className="font-medium text-foreground">{money(quoteGap)}</span>{" "}
-                  more than the quote — actual labour, mileage and anything extra
+                  more than the quote — actual labour and anything extra
                   the job turned out to need.
                 </>
               ) : (
@@ -1897,40 +2042,85 @@ export function ServiceOrderSheet({
             no explaining. It brings its own inset and puts the rule on the
             boundary where it meets the table, which is what a flush card asks
             of anything that is not the table. */}
+        {/* RATE AND HOURS, ONE ROW (Deepika and Pavan, 2026-09-25). The
+            dispatcher can type the hours — the phone's clock is the default,
+            not the only source. Mileage is gone from the module (Pavan,
+            2026-09-25). */}
         <SheetSectionInset className="border-b border-border">
-          <SheetField label="Cost per hour">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">$</span>
-              <Input
-                type="number"
-                min={0}
-                step={5}
-                inputMode="decimal"
-                value={draft.laborRate === 0 ? "" : draft.laborRate}
-                placeholder="0"
-                disabled={billed}
-                onChange={(e) =>
-                  set("laborRate", Math.max(0, Number(e.target.value) || 0))
-                }
-                className="w-24 tabular-nums"
-                aria-label="Cost per hour"
-              />
-            </div>
-          </SheetField>
+          <div className="grid grid-cols-2 gap-4">
+            <SheetField label="Cost per hour">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step={5}
+                  inputMode="decimal"
+                  value={draft.laborRate === 0 ? "" : draft.laborRate}
+                  placeholder="0"
+                  disabled={billed}
+                  onChange={(e) =>
+                    set("laborRate", Math.max(0, Number(e.target.value) || 0))
+                  }
+                  className="w-24 tabular-nums"
+                  aria-label="Cost per hour"
+                />
+              </div>
+            </SheetField>
+            <SheetField label="Hours worked">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.labor === 0 && draft.laborOverride == null ? "" : laborH}
+                  placeholder="0"
+                  disabled={billed}
+                  onChange={(e) => {
+                    const h = e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0));
+                    setLaborTyped(h == null && laborM === 0 ? null : (h ?? 0) + laborM / 60);
+                  }}
+                  className="w-16 tabular-nums"
+                  aria-label="Hours worked"
+                />
+                <span className="text-sm text-muted-foreground">h</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  step={5}
+                  inputMode="numeric"
+                  value={draft.labor === 0 && draft.laborOverride == null ? "" : laborM}
+                  placeholder="0"
+                  disabled={billed}
+                  onChange={(e) => {
+                    const m = e.target.value === "" ? null : Math.min(59, Math.max(0, Math.floor(Number(e.target.value) || 0)));
+                    setLaborTyped(m == null && laborH === 0 ? null : laborH + (m ?? 0) / 60);
+                  }}
+                  className="w-16 tabular-nums"
+                  aria-label="Minutes worked"
+                />
+                <span className="text-sm text-muted-foreground">m</span>
+              </div>
+            </SheetField>
+          </div>
         </SheetSectionInset>
 
-        {/* THE VISITS LEFT THE FORM (Deepika, 2026-09-24) — started, stopped,
-            who and how long read as fields to fill in. The card keeps the rate
-            and what the labour comes to; the visits are a summary in the rail,
-            and a continuation links to the order it continues. */}
+        {/* WHAT THEY COME TO. "0 visits" is gone (2026-09-25); when typed hours
+            disagree with the clock, the clock's figure is shown beside them. */}
         <SheetSectionInset>
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="text-muted-foreground">
-              Labour · {draft.visits.length} visit{draft.visits.length === 1 ? "" : "s"}
-            </span>
-            <span className="font-medium tabular-nums text-foreground">
-              {formatHours(draft.labor)} · {money(draft.labor * draft.laborRate)}
-            </span>
+          <div className="flex flex-col gap-1.5 text-sm">
+            <div className="flex items-baseline justify-between">
+              <span className="text-muted-foreground">
+                Labour
+                {draft.laborOverride != null && measuredLabor > 0 && Math.abs(measuredLabor - draft.labor) > 0.01
+                  ? ` · measured ${formatHours(measuredLabor)}`
+                  : ""}
+              </span>
+              <span className="font-medium tabular-nums text-foreground">
+                {formatHours(draft.labor)} · {money(laborSum)}
+              </span>
+            </div>
           </div>
         </SheetSectionInset>
       </SheetSection>
@@ -1966,6 +2156,8 @@ export function ServiceOrderSheet({
         </SheetSection>
       )}
 
+        </>
+      )}
         </div>
 
         {/* ── THE RAIL: WHAT THE ORDER HAS BECOME ──────────────────────────
@@ -1992,10 +2184,6 @@ export function ServiceOrderSheet({
                 label={`Labour — ${formatHours(draft.labor)}`}
                 value={money(laborSum)}
               />
-              <RailRow
-                label={`Mileage — ${draft.mileage} mi`}
-                value={money(mileageSum)}
-              />
               <RailRow label="Fees" value={money(feesSum)} />
               {extraSum > 0 && (
                 <RailRow label="Additional charges" value={money(extraSum)} />
@@ -2009,7 +2197,7 @@ export function ServiceOrderSheet({
             {draft.quote && (
               <div className="border-t border-border px-4 py-3">
                 <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">Quoted on site</span>
+                  <span className="text-sm text-muted-foreground">Quoted</span>
                   <span className="text-sm tabular-nums text-foreground">
                     {money(draft.quote.total)}
                   </span>
@@ -2017,7 +2205,7 @@ export function ServiceOrderSheet({
                 {isRecorded(draft.status) && (
                   <p className="mt-1.5 text-xs text-muted-foreground">
                     {quoteGap > 0.005
-                      ? `${money(quoteGap)} more than the quote — actual labour, mileage and anything extra the job needed.`
+                      ? `${money(quoteGap)} more than the quote — actual labour and anything extra the job needed.`
                       : "The job came in at the quoted figure."}
                   </p>
                 )}
@@ -2070,17 +2258,11 @@ export function ServiceOrderSheet({
           {/* THE TECHNICIAN'S ASSESSMENT, and the permission it may ask for
               (Pavan, 2026-09-24) — once the quote is approved an edit needs
               the dispatcher's yes, given here. */}
-          {(draft.siteAssessment?.submittedAt || draft.siteAssessment?.html) && (
+          {/* THE ASSESSMENT TEXT MOVED INTO THE FORM (2026-09-25); the rail
+              keeps only the technician's request to edit it. */}
+          {draft.siteAssessment && (draft.siteAssessment.editRequestedAt || draft.siteAssessment.editAllowed) && (
             <RailCard title="Assessment" icon={<ClipboardList />}>
               <div className="flex flex-col gap-3 px-4 py-3">
-                <p className="line-clamp-4 text-sm text-foreground">
-                  {new DOMParser().parseFromString(draft.siteAssessment.html.replace(/<\/(li|p|div)>|<br\s*\/?>/gi, "; "), "text/html").body.textContent?.replace(/(;\s*)+$/, "")}
-                </p>
-                {draft.siteAssessment.photos.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {draft.siteAssessment.photos.length} photo{draft.siteAssessment.photos.length === 1 ? "" : "s"}
-                  </span>
-                )}
                 {draft.siteAssessment.editRequestedAt && !draft.siteAssessment.editAllowed && (
                   <div className="flex items-center justify-between gap-2 rounded-md bg-fp-banner-accent-caution/10 px-3 py-2">
                     <span className="text-sm text-foreground">
@@ -2165,54 +2347,26 @@ export function ServiceOrderSheet({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4">
-            <div className="overflow-hidden rounded-md border border-fp-outline-1">
-              <div className="border-b border-border bg-fp-surface-1a px-3 py-2">
-                <span className="text-xs font-medium text-foreground">
-                  Known now
-                </span>
-              </div>
-              <QuoteRow label="Parts" value={partsSum} />
-              <QuoteRow label="Fees" value={feesSum} />
-              <QuoteRow label="Firm subtotal" value={quoteFirm} strong />
-            </div>
-
-            <div className="overflow-hidden rounded-md border border-fp-outline-1">
-              <div className="border-b border-border bg-fp-surface-1a px-3 py-2">
-                <span className="text-xs font-medium text-foreground">
-                  Estimated — not known until the job has run
-                </span>
-              </div>
+          {/* THE FIXED PART ONLY (Deepika, 2026-09-25): parts, fees and what an
+              hour of labour costs. The hours themselves land on the final bill. */}
+          <div className="overflow-hidden rounded-md border border-fp-outline-1">
+            {draft.parts.map((p, i) => (
               <QuoteRow
-                label={`Labour — ${formatHours(quoteHours)} at ${money(draft.laborRate)}/h`}
-                value={quoteHours * draft.laborRate}
-                approx
+                key={`qp-${i}`}
+                label={p.qty > 1 ? `${p.name || "Part"} × ${p.qty}` : p.name || "Part"}
+                value={p.cost * p.qty}
               />
-              <QuoteRow
-                label={`Mileage — ${quoteMiles} mi at ${money(MILEAGE_RATE)}/mi`}
-                value={quoteMiles * MILEAGE_RATE}
-                approx
-              />
-              <QuoteRow label="Estimated subtotal" value={quoteEstimate} approx strong />
-            </div>
-
-            <div className="flex items-baseline justify-between border-t border-border pt-3">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground">
-                  Estimated total
-                </span>
-                {/* SAID ONCE, WHERE THE NUMBER IS. A caveat at the top of a
-                    quote is read before the figure it is about and forgotten
-                    by the time the reader reaches it. */}
-                <span className="text-xs text-muted-foreground">
-                  Approximate. The invoice will carry the hours and miles
-                  actually used.
-                </span>
-              </div>
-              <span className="text-lg font-semibold tabular-nums text-foreground">
-                ~{money(quoteFirm + quoteEstimate)}
+            ))}
+            {draft.fees.map((f, i) => (
+              <QuoteRow key={`qf-${i}`} label={f.name || "Fee"} value={f.amount} />
+            ))}
+            <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
+              <span className="text-sm text-muted-foreground">Labour</span>
+              <span className="shrink-0 text-sm tabular-nums text-foreground">
+                {money(draft.laborRate)} / hour
               </span>
             </div>
+            <QuoteRow label="Quote total" value={quoteFirm} strong />
           </div>
 
           <DialogFooter>
@@ -2221,18 +2375,50 @@ export function ServiceOrderSheet({
             </Button>
             <Button
               onClick={() => {
-                set("quote", {
-                  parts: draft.parts.map((x) => ({ ...x })),
-                  fees: draft.fees.map((x) => ({ ...x })),
-                  total: quoteFirm + quoteEstimate,
-                  sentAt: nowIso(),
-                  approvedAt: null,
-                });
+                set("quote", buildQuote(draft));
                 setQuoteOpen(false);
                 toast.success(`Quote sent to ${draft.customer}`);
               }}
             >
               Send quote
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* THE FINAL BILL (Deepika, 2026-09-25) — after the work, the whole
+          amount: parts, the labour actually worked and fees. */}
+      <Dialog open={billOpen} onOpenChange={setBillOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Final bill for {draft.customer}</DialogTitle>
+            <DialogDescription>
+              {draft.orderNo} · {draft.workType || "Service"}
+              {draft.assetName ? ` · ${draft.assetName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-hidden rounded-md border border-fp-outline-1">
+            <QuoteRow label="Parts" value={partsSum} />
+            <QuoteRow
+              label={`Labour — ${formatHours(draft.labor)} at ${money(draft.laborRate)}/h`}
+              value={laborSum}
+            />
+            <QuoteRow label="Fees" value={feesSum} />
+            {extraSum > 0 && <QuoteRow label="Additional charges" value={extraSum} />}
+            <QuoteRow label="Total" value={total} strong />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBillOpen(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                set("finalBillSentAt", nowIso());
+                setBillOpen(false);
+                toast.success(`Final bill sent to ${draft.customer}`);
+              }}
+            >
+              Send final bill
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2361,6 +2547,7 @@ export function ServiceOrderSheet({
             onSave(order, {
               ...draft,
               ...syncVisits({
+                laborOverride: draft.laborOverride,
                 visits: draft.visits.map((v, i) =>
                   i === draft.visits.length - 1 && v.endedAt === null ? { ...v, endedAt: at } : v
                 ),

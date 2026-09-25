@@ -221,7 +221,7 @@ export function TechnicianJob({
   const { label: clock, hours: elapsed } = useVisitClock(job.completedAt ? undefined : visit);
   const paused = pausedNow(visit);
   const setVisit = (v: ServiceVisit) =>
-    onPatch(syncVisits({ visits: job.visits.map((x, i) => (i === job.visits.length - 1 ? v : x)) }));
+    onPatch(syncVisits({ laborOverride: job.laborOverride, visits: job.visits.map((x, i) => (i === job.visits.length - 1 ? v : x)) }));
   const pauseWork = (reason: string) => {
     if (!visit) return;
     setVisit({ ...visit, pauses: [...(visit.pauses ?? []), { at: nowIso(), until: null, reason }] });
@@ -548,7 +548,7 @@ export function TechnicianJob({
             note={busyWith ? `${busyWith} is ongoing — complete it first` : undefined}
             onPress={() => {
               onPatch({
-                ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
+                ...syncVisits({ laborOverride: job.laborOverride, visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
                 status: "Ongoing" as WorkStatus,
               });
               toast.success("Work started");
@@ -645,7 +645,7 @@ export function TechnicianJob({
             note={busyWith ? `${busyWith} is ongoing — complete it first` : job.partNeeded ? `Parts pending · ${job.partNeeded}` : undefined}
             onPress={() => {
               onPatch({
-                ...syncVisits({ visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
+                ...syncVisits({ laborOverride: job.laborOverride, visits: [...job.visits, { startedAt: nowIso(), endedAt: null, technicianId: job.technicianId, override: null }] }),
                 status: "Ongoing" as WorkStatus,
               });
               toast.success("Work started");
@@ -793,7 +793,7 @@ export function TechnicianJob({
                 : v
             );
             if (ending === "partial") {
-              onPatch({ ...syncVisits({ visits: closed }) });
+              onPatch({ ...syncVisits({ laborOverride: job.laborOverride, visits: closed }) });
               onSplit({ mode, parts, note: notes.trim() || null });
               /* LEAVE THE COMPLETION SCREEN. A rolled-over job is tomorrow's
                  job again, so the technician goes back to the list; the other
@@ -804,7 +804,7 @@ export function TechnicianJob({
             }
             onPatch({
               techNotes: notes.trim() || null,
-              ...syncVisits({ visits: closed }),
+              ...syncVisits({ laborOverride: job.laborOverride, visits: closed }),
               signed: true,
               partNeeded: null,
               status: cfg.managerApproval ? "Needs approval" : "Completed",
@@ -1641,14 +1641,20 @@ function SiteAssessmentRow({
  * 2026-09-24). Uncontrolled: the markup is read back on every input, and only
  * seeded when it opens, so the caret never jumps.
  */
-function RichText({
+export function RichText({
   initial,
   onChange,
   placeholder,
+  desktop,
+  disabled,
 }: {
   initial: string;
   onChange: (html: string) => void;
   placeholder: string;
+  /** The dispatcher sheet's size — 32px tools and body text, not the phone's
+   *  44px touch targets (2026-09-25). */
+  desktop?: boolean;
+  disabled?: boolean;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -1679,7 +1685,11 @@ function RichText({
               e.preventDefault();
               act(t.command);
             }}
-            className="flex size-11 items-center justify-center rounded-md text-foreground active:bg-accent"
+            disabled={disabled}
+            className={cn(
+              "flex items-center justify-center rounded-md text-foreground active:bg-accent disabled:opacity-50",
+              desktop ? "size-8 hover:bg-accent" : "size-11"
+            )}
           >
             {t.icon}
           </button>
@@ -1690,11 +1700,14 @@ function RichText({
         role="textbox"
         aria-multiline="true"
         aria-label={placeholder}
-        contentEditable
+        contentEditable={!disabled}
         suppressContentEditableWarning
         data-placeholder={placeholder}
         onInput={(e) => onChange((e.target as HTMLDivElement).innerHTML)}
-        className="min-h-40 flex-1 overflow-y-auto px-3 py-2 text-base text-foreground outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+        className={cn(
+          "flex-1 overflow-y-auto px-3 py-2 text-foreground outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5",
+          desktop ? "min-h-28 text-sm" : "min-h-40 text-base"
+        )}
       />
     </div>
   );

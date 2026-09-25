@@ -208,7 +208,6 @@ export function resolveShortfall(
     techNotes: note,
     labor: 0,
     laborOverride: null,
-    mileage: 0,
     fees: [],
     quote: null,
     extraCharges: [],

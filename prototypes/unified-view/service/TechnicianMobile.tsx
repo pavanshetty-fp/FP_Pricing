@@ -273,14 +273,13 @@ export function TechnicianMobile() {
     () =>
       blankServiceOrder({
         priceBook: cfg.priceBook,
-        defaultMileage: cfg.defaultMileage,
         raisedBy: technician.name,
         /* THE PERSON RAISING IT IS THE ONE WHO WILL DO IT, unless they say
            otherwise — and what they found it on is an inspection. */
         technicianId: technician.id,
         source: "Flagged inspection",
       }),
-    [cfg.priceBook, cfg.defaultMileage, technician]
+    [cfg.priceBook, technician]
   );
 
   return (

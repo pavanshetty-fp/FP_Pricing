@@ -768,12 +768,9 @@ export function ServiceWorkScreen() {
     (): ServiceOrder =>
       blankServiceOrder({
         priceBook: cfg.priceBook,
-        /* PRE-FILLED FROM SETTINGS (Pavan, 2026-09-23). Most yards bill a
-           standard trip; it stays editable — see the sheet. */
-        defaultMileage: cfg.defaultMileage,
         raisedBy: "Dana Whitfield",
       }),
-    [cfg.priceBook, cfg.defaultMileage]
+    [cfg.priceBook]
   );
 
   /* ───────────────────────────────────────────────────────── the acts ───── */

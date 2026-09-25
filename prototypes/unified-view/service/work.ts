@@ -360,7 +360,6 @@ export type Priority = (typeof PRIORITIES)[number];
 
 /** INVENTED, and flagged. Both are what the invoice is worked out from. */
 export const LABOR_RATE = 95;
-export const MILEAGE_RATE = 1.5;
 
 /* ------------------------------------------------------------ technicians */
 
@@ -422,6 +421,12 @@ export interface Quote {
   sentAt: string;
   /** Null until the customer says yes on site. */
   approvedAt: string | null;
+  /**
+   * WHAT AN HOUR WILL COST (Deepika, 2026-09-25). The quote before work is
+   * the FIXED part — parts, fees and the labour RATE; the hours are not known
+   * yet and land on the final bill.
+   */
+  laborRate?: number;
   /** Who on the customer's side acknowledged it, on site. */
   acknowledgedBy?: string;
 }
@@ -662,12 +667,16 @@ export interface ServiceOrder {
    * difference had to be smuggled in as a fee with a name that explained it.
    */
   laborRate: number;
-  /** Miles. Billable on the invoice only. */
-  mileage: number;
   /** Set by the dispatcher at intake, added to by the technician. */
   fees: FeeLine[];
   /** Present only where a quote was sent on site. */
   quote: Quote | null;
+  /**
+   * THE FINAL BILL (Deepika, 2026-09-25) — sent after the work is done, with
+   * the full amount including the actual labour. The quote is what was
+   * agreed before work; this is what it came to.
+   */
+  finalBillSentAt?: string | null;
   /** Charges added at the moment the invoice was raised. */
   extraCharges: FeeLine[];
   /** Raised — automatically on approval, or by hand. */
@@ -1010,13 +1019,18 @@ export const openVisit = (visits: ServiceVisit[]) =>
  * them, and the failure is silent: a timer counting from a visit that ended
  * on Tuesday.
  */
-export function syncVisits<T extends { visits: ServiceVisit[] }>(o: T) {
+export function syncVisits<
+  T extends { visits: ServiceVisit[]; laborOverride?: number | null }
+>(o: T) {
   const last = o.visits[o.visits.length - 1];
   return {
     ...o,
     startedAt: last?.startedAt ?? null,
     completedAt: last?.endedAt ?? null,
-    labor: Math.round(totalVisitHours(o.visits) * 60) / 60,
+    /* HOURS THE DISPATCHER TYPED WIN (Deepika and Pavan, 2026-09-25) — the
+       clock is the default, not the only source. Callers pass the order's
+       `laborOverride` so a new visit does not wipe a typed figure. */
+    labor: o.laborOverride ?? Math.round(totalVisitHours(o.visits) * 60) / 60,
   };
 }
 
@@ -1026,7 +1040,6 @@ export const effectiveLabor = (o: {
   startedAt: string | null;
   completedAt: string | null;
 }) => o.laborOverride ?? computedLabor(o.startedAt, o.completedAt);
-export const mileageTotal = (miles: number) => miles * MILEAGE_RATE;
 
 /**
  * WHAT THE JOB COMES TO. Parts, labour, mileage, fees, and anything added when
@@ -1037,7 +1050,6 @@ export function orderTotal(o: ServiceOrder): number {
   return (
     partsTotal(o.parts) +
     o.labor * o.laborRate +
-    mileageTotal(o.mileage) +
     feesTotal(o.fees) +
     feesTotal(o.extraCharges)
   );
@@ -1244,7 +1256,8 @@ function buildOrders(): ServiceOrder[] {
         : arrivedAt
           ? new Date(new Date(arrivedAt).getTime() + 18 * 60_000).toISOString()
           : null;
-    const mileage = recorded ? Math.round(pick() * 40) : 0;
+    /* Mileage removed (Pavan, 2026-09-25); the draw stays so the fixture does not reshuffle. */
+    void (recorded ? pick() : 0);
 
     /* A QUOTE ONLY EXISTS WHERE ONE WAS SENT, and it is a snapshot of the
        BOOK parts and fees — never the extra part found later, and never the
@@ -1379,7 +1392,6 @@ function buildOrders(): ServiceOrder[] {
       labor,
       laborOverride,
       laborRate: LABOR_RATE,
-      mileage,
       fees,
       quote,
       extraCharges: [],
@@ -1501,7 +1513,6 @@ const keyOfDay = (d: Date) =>
 /** A blank order, booked for 9 tomorrow, with the price book's lines if it is on. */
 export function blankServiceOrder(opts: {
   priceBook: boolean;
-  defaultMileage: number;
   raisedBy: string;
   technicianId?: string | null;
   source?: IntakeSource;
@@ -1540,7 +1551,6 @@ export function blankServiceOrder(opts: {
     labor: 0,
     laborOverride: null,
     laborRate: LABOR_RATE,
-    mileage: opts.defaultMileage,
     fees: opts.priceBook ? book.fees.map((f) => ({ ...f })) : [],
     quote: null,
     extraCharges: [],
@@ -1572,7 +1582,7 @@ export function ticketFrom(
   const now = new Date();
   const first = req.assets[0];
   return {
-    ...blankServiceOrder({ priceBook: false, defaultMileage: 0, raisedBy: by, technicianId: from.technicianId, source: "Flagged inspection" }),
+    ...blankServiceOrder({ priceBook: false, raisedBy: by, technicianId: from.technicianId, source: "Flagged inspection" }),
     id: `so-t-${orderNo}`,
     orderNo,
     status: "Assigned",

@@ -253,7 +253,7 @@ export function MaintenanceScreen() {
     let no = "";
     setServiceOrders((prev) => {
       no = nextServiceOrderNo(prev);
-      const base = blankServiceOrder({ priceBook: cfg.priceBook, defaultMileage: cfg.defaultMileage, raisedBy: "Dana Whitfield", source: "Flagged inspection" });
+      const base = blankServiceOrder({ priceBook: cfg.priceBook, raisedBy: "Dana Whitfield", source: "Flagged inspection" });
       const order = syncPrimaryAsset({
         ...base,
         id: `so-mp-${no}`,

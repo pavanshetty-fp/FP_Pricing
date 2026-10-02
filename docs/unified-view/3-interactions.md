@@ -119,7 +119,12 @@ one thing stuttering.
 ## 7. Lists
 
 - **Search matches the whole row; a column search matches one column.** Two
-  different questions, two controls.
+  different questions, two controls. **Search by column is a filter row under
+  the header** in every table, every module — DS `ui/2-rules.md` §10g
+  (2026-10-01).
+- **Every column sorts**, asc → desc → unsorted.
+- **One view, no view switch** — a table-only list shows no Table icon; the
+  Board icon appears only where a board exists (DS §10h).
 - **A narrowing that is on is visible as a chip**, and the chip removes it.
 - **Applying a filter resets to page 1.** A filter that leaves you on page 4 of
   a 2-page result is a list that appears empty.

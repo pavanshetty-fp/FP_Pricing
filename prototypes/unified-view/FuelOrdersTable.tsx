@@ -12,6 +12,7 @@ import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   HoverCard,
   HoverCardContent,
@@ -21,6 +22,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -73,6 +75,39 @@ export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = statusTones({
   /* Waiting on a dispatcher to give it a driver. */
   Unassigned: "caution",
 });
+
+/**
+ * WHAT EACH COLUMN PRINTS, as text a header box can match — the same rule as
+ * `brokerColumnText` in 3PL: a box under a header matches what is written
+ * above the rows beneath it. Lists match every value, not only the ones the
+ * cell has room for — the rest are one hover away behind its `+N`.
+ */
+export function fuelOrderColumnText(r: FuelOrder, key: FuelOrderColumnKey): string {
+  switch (key) {
+    case "order":
+      return r.orderNo;
+    case "type":
+      return `${r.type.code} ${r.type.label}`;
+    case "customer":
+      return `${r.customer.title} ${r.customer.description}`;
+    case "products":
+      return r.products.map((p) => p.name).join(" ");
+    case "qtyGal":
+      return `${QTY_FMT.format(r.qtyGal)} gal`;
+    case "date":
+      return `${r.date.title} ${r.date.description}`;
+    case "planned":
+      return r.planned ? `${r.planned.date} ${r.planned.time}` : "";
+    case "status":
+      return r.status;
+    case "driver":
+      return r.driver ? r.driver.name : "Unassigned";
+    case "tags":
+      return r.tags.join(" ");
+    default:
+      return "";
+  }
+}
 
 function TwoLine({ title, description }: TwoLineData) {
   return (
@@ -390,6 +425,14 @@ export interface FuelOrdersTableProps {
   /** Reader-set column widths in px, by key. Same dual-mode as the order. */
   columnWidths?: Record<string, number>;
   onResizeColumns?: (next: Record<string, number>) => void;
+  /**
+   * The filter row under the headers — one box per column, AND-ed. Same
+   * contract and same look as `ListTableProps.columnFilters`; this table is
+   * its own, so it draws its own copy of the row.
+   */
+  columnFilters?: Record<string, string>;
+  onColumnFilterChange?: (key: FuelOrderColumnKey, value: string) => void;
+  showColumnFilters?: boolean;
 }
 
 /**
@@ -415,6 +458,9 @@ export function FuelOrdersTable({
   onReorderColumns,
   columnWidths,
   onResizeColumns,
+  columnFilters,
+  onColumnFilterChange,
+  showColumnFilters = false,
 }: FuelOrdersTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = rows.some((r) => selectedIds.has(r.id));
@@ -506,6 +552,35 @@ export function FuelOrdersTable({
               );
             })}
           </TableRow>
+          {showColumnFilters && onColumnFilterChange && (
+            /* THE SECOND HEADER ROW — a copy of ListTable's, kept identical:
+               it sticks with the headers it belongs to, on a band quieter than
+               the header so the boxes read as something you do to the columns
+               rather than part of their names. */
+            <TableRow className="h-11 hover:bg-transparent">
+              {visibleColumns.map((col) => (
+                <TableHead
+                  key={col.key}
+                  className={cn(
+                    "border-b border-fp-outline-1 bg-fp-surface-1b px-2",
+                    col.key === "actions" && "sticky right-0 z-30"
+                  )}
+                >
+                  {col.label ? (
+                    <Input
+                      value={columnFilters?.[col.key] ?? ""}
+                      onChange={(e) => onColumnFilterChange(col.key, e.target.value)}
+                      /* No placeholder where the word would be cut. */
+                      placeholder={cols.widthOf(col) >= 96 ? "Filter…" : ""}
+                      aria-label={`Filter by ${col.label}`}
+                      data-no-row-open
+                      className="h-7 rounded-md px-2.5 text-xs shadow-none"
+                    />
+                  ) : null}
+                </TableHead>
+              ))}
+            </TableRow>
+          )}
         </TableHeader>
         <TableBody>
           {(nodes ??

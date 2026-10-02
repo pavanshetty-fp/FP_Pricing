@@ -75,11 +75,12 @@ import {
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
+  ColumnFilterChips,
   ColumnSearchChip,
   FuelOrdersToolbar,
   type FuelOrdersView,
 } from "./FuelOrdersToolbar";
-import { FuelOrdersTable, STATUS_TONE } from "./FuelOrdersTable";
+import { FuelOrdersTable, STATUS_TONE, fuelOrderColumnText } from "./FuelOrdersTable";
 import { OrderMapView } from "./OrderMapView";
 import { AssetOrdersScreen } from "./AssetOrdersScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -354,6 +355,19 @@ const ACCOUNT_PAGES: Record<string, string> = {
   settings: "Settings",
 };
 
+/** The shared view state plus the filter row's boxes, by column key. Optional
+ *  so a view saved before the row still applies. */
+type FuelViewState = ViewState & { colFilters?: Record<string, string> };
+
+const fuelViewStateKey = (s: FuelViewState) =>
+  JSON.stringify([
+    viewStateKey(s),
+    /* Empty boxes are no filter — typing then clearing one is not a change. */
+    Object.entries(s.colFilters ?? {})
+      .filter(([, v]) => v.trim() !== "")
+      .sort(([a], [b]) => a.localeCompare(b)),
+  ]);
+
 /** Columns the column-visibility menu can toggle (everything with a label). */
 const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
   key: c.key,
@@ -418,8 +432,15 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<FuelOrdersView>("table");
+  /** One box per column, under the headers — see `FuelOrdersTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
 
-  const defaultState: ViewState = React.useMemo(
+  const defaultState: FuelViewState = React.useMemo(
     () => ({
       search: "",
       sortKey: null,
@@ -432,11 +453,12 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       colScope: "customer",
       colQuery: "",
       groupBy: [],
+      colFilters: {},
     }),
     []
   );
 
-  const applyState = (st: ViewState) => {
+  const applyState = (st: FuelViewState) => {
     setSearch(st.search);
     setSort(
       st.sortKey && st.sortDir
@@ -451,6 +473,10 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     setDate(new Date(y, m - 1, d));
     setColScope(st.colScope);
     setColQuery(st.colQuery);
+    const filters = st.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
     g.setGrouping(st.groupBy ?? []);
     setPage(1);
   };
@@ -486,9 +512,16 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
       onDate.filter(
         (r) =>
           (!query || matchesFuelOrder(r, query)) &&
-          (!cq || matchesFuelOrderIn(r, cq, colScope))
+          (!cq || matchesFuelOrderIn(r, cq, colScope)) &&
+          /* AND-ed, and each box matches the text its own column PRINTS —
+             see `fuelOrderColumnText`. */
+          activeColFilters.every(([key, value]) =>
+            fuelOrderColumnText(r, key as FuelOrderColumnKey)
+              .toLowerCase()
+              .includes(value.trim().toLowerCase())
+          )
       ),
-    [onDate, query, cq, colScope]
+    [onDate, query, cq, colScope, activeColFilters]
   );
   const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
 
@@ -552,7 +585,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
 
   /* A view captures the state a user would otherwise have to rebuild by
      hand. Declared after the grouping hook because it reads from it. */
-  const current: ViewState = {
+  const current: FuelViewState = {
     search,
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
@@ -564,6 +597,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     colScope,
     colQuery,
     groupBy: g.groupBy,
+    colFilters,
   };
 
   /* THE SHARED SAVED-VIEWS HOOK (2026-09-24) — this screen had its own copy,
@@ -572,7 +606,7 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
   const savedViews = useSavedViews({
     current,
     defaultState,
-    keyOf: viewStateKey,
+    keyOf: fuelViewStateKey,
     apply: applyState,
   });
 
@@ -820,6 +854,24 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
             setColQuery(v);
             setPage(1);
           }}
+          /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only:
+             board and map have no columns to type under. */
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view !== "table"
+              ? undefined
+              : () =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row clears it: a narrowing with no boxes on
+                       screen would be one nobody could see. */
+                    if (open) {
+                      setColFilters({});
+                      setPage(1);
+                    }
+                    return !open;
+                  })
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
           /* Same switch as 3PL, same order: table, board, map. */
@@ -843,6 +895,14 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
           colQuery={colQuery}
           onClear={() => {
             setColQuery("");
+            setPage(1);
+          }}
+        />
+        <ColumnFilterChips
+          columns={TOGGLE_COLUMNS}
+          filters={activeColFilters}
+          onClear={(key) => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
             setPage(1);
           }}
         />
@@ -959,7 +1019,9 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
                 </Button>
               </EmptyContent>
             </Empty>
-          ) : sorted.length === 0 ? (
+          ) : /* THE ROW STAYS WHILE IT IS OPEN — an empty result would
+                 otherwise take the boxes being typed in away with the table. */
+            sorted.length === 0 && !colFiltersOpen ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -1018,6 +1080,12 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
               onOpenOrder={(row) => setOpenOrderId(row.id)}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

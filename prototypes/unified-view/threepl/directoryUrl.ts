@@ -21,7 +21,7 @@ export type UrlState = Record<string, string | number | string[] | null | undefi
 
 const OWNED = [
   "entity", "q", "page", "pageSize", "sortBy", "sortDir", "group", "cols",
-  "colScope", "colQuery", "filters", "record",
+  "colScope", "colQuery", "colFilters", "filters", "record",
 ] as const;
 
 export function readUrl(): Record<string, string> {

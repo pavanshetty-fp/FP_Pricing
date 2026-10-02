@@ -18,16 +18,12 @@ export interface AppShellProps {
    * unlabelled icons beside a 52px strip of unlabelled icons is two things to
    * read where the rail is already the one you aim at.
    *
-   * SO THE RAIL IS THE HANDLE FOR BOTH. Hover it and the pair comes out
-   * together — the rail widens to its labels, the drawer arrives beside it.
-   * One gesture, in the direction the nav has always been.
-   *
-   * THEY STACK PARENT OVER CHILD. The expanded rail lies over the expanded
-   * drawer, because the rail is the level above: you went left to reach it,
-   * and the thing you went past should not be drawn on top of where you
-   * arrived. What is left showing is the drawer's right-hand edge, and that
-   * edge is the way down a level — cross onto it and the rail falls back to
-   * 52px on its own, leaving the drawer whole.
+   * ONE DRAWER AT A TIME (Pavan, 2026-10-01). Hovering the rail opens the
+   * rail ONLY — the second drawer stays away, so the menu items can be read
+   * and clicked with nothing sliding out beside them. CLICKING a menu item is
+   * what brings the second drawer out, and the rail collapses back to 52px in
+   * the same moment (NavRail's own "picking is finishing"). Hover the rail
+   * again and the second drawer goes away: you are choosing again.
    *
    * IT FLOATS RATHER THAN PUSHES. Reflowing the content layer every time the
    * pointer crossed the rail would make the thing you are reading move while
@@ -123,6 +119,11 @@ export function AppShell({
   const railBox = React.useRef<HTMLDivElement>(null);
   const drawerBox = React.useRef<HTMLDivElement>(null);
   const hideAt = React.useRef<number | undefined>(undefined);
+  /* TRUE FROM A CLICK ON A RAIL ITEM UNTIL THE POINTER LEAVES THE RAIL.
+     The pointer is still on the rail just after the click, and without this
+     the next move would read as "hovering the rail" and put the drawer away
+     again. */
+  const picked = React.useRef(false);
 
   const open = React.useCallback(() => {
     window.clearTimeout(hideAt.current);
@@ -164,9 +165,14 @@ export function AppShell({
       t instanceof Node && Boolean(box?.contains(t));
     const move = (e: PointerEvent) => {
       if (within(railBox.current, e.target)) {
+        /* On the rail: the rail is the only drawer — unless an item was
+           just clicked and the pointer has not moved off yet. */
         stay();
-        setExpanded(true);
-      } else if (within(drawerBox.current, e.target)) {
+        if (!picked.current) setExpanded(false);
+        return;
+      }
+      picked.current = false;
+      if (within(drawerBox.current, e.target)) {
         stay();
       } else {
         arm();
@@ -186,7 +192,16 @@ export function AppShell({
        for another second is the shell arguing with them. Outside both boxes,
        it goes straight away. */
     const dismiss = (e: PointerEvent) => {
-      if (within(railBox.current, e.target) || within(drawerBox.current, e.target)) {
+      if (within(drawerBox.current, e.target)) return;
+      if (within(railBox.current, e.target)) {
+        /* A MENU ITEM PRESSED — the second drawer's cue. The module switcher
+           is not a menu item and leaves it alone. */
+        const t = e.target as Element;
+        if (t.closest("nav li button")) {
+          stay();
+          picked.current = true;
+          setExpanded(true);
+        }
         return;
       }
       stay();

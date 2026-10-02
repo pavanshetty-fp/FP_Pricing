@@ -226,7 +226,7 @@ what decides whether a new screen should reuse it.
 
 | Component | Level | For |
 |---|---|---|
-| `ListToolbar` | organism | the one row of list controls: search · filters · date scope · view switch · column tools (table only) · card fields (board only) |
+| `ListToolbar` | organism | the one row of list controls: search · filters · date scope · view switch (only with 2+ views; `boardView` is opt-in) · column tools (table only; Search by column = the filter-row toggle) · card fields (board only) |
 | `ListTable` | organism | every table in the app — movable, resizable columns, a pinned open-chevron, an optional column-filter row |
 | `ListFilters` / `FilterChips` | organism | the facet panel that stages until Apply, and the shelf of what is currently on |
 | `FuelOrdersViewBar` | organism | presets · saved views · the create menu · export |

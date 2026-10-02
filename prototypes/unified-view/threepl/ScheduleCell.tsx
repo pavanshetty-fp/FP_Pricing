@@ -47,26 +47,35 @@ const DAYS = [
 export function ScheduleCell({
   schedule,
   className,
+  roomy = false,
 }: {
   schedule: Schedule;
   className?: string;
+  /** Bigger day badges and more air — the Recurring Orders list (Pavan,
+      2026-10-01: "too tight"). */
+  roomy?: boolean;
 }) {
   const on = new Set(schedule.days);
   const live = DAYS.filter((_, i) => on.has(i)).map((d) => d.name);
 
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+    <div className={cn("flex min-w-0 flex-col", roomy ? "gap-1.5" : "gap-1", className)}>
       {schedule.badge ? (
         /* ONE WORD IN PLACE OF THE ROW. Sized to match a lit day badge so the
            column keeps one rhythm whichever shape a row takes. */
-        <span className="inline-flex h-5 w-fit items-center rounded-sm bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
+        <span
+          className={cn(
+            "inline-flex w-fit items-center rounded-sm bg-primary px-1.5 font-medium text-primary-foreground",
+            roomy ? "h-6 text-xs" : "h-5 text-[11px]"
+          )}
+        >
           {schedule.badge}
         </span>
       ) : (
         <Tooltip>
           <TooltipTrigger asChild>
             <div
-              className="flex w-fit cursor-default gap-0.5"
+              className={cn("flex w-fit cursor-default", roomy ? "gap-1" : "gap-0.5")}
               role="img"
               aria-label={
                 live.length > 0
@@ -79,7 +88,8 @@ export function ScheduleCell({
                   key={i}
                   aria-hidden
                   className={cn(
-                    "flex size-5 items-center justify-center rounded-sm text-[11px] font-medium tabular-nums",
+                    "flex items-center justify-center rounded-sm font-medium tabular-nums",
+                    roomy ? "size-6 text-xs" : "size-5 text-[11px]",
                     on.has(i)
                       ? "bg-primary text-primary-foreground"
                       : /* AN UNLIT DAY IS STILL A DAY. Dropping it would make

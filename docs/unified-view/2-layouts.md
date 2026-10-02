@@ -44,14 +44,14 @@ headings in the rail.**
 item has a second level. An area with no second level renders no drawer and the
 content layer takes the full width.
 
-### The peek — locked 2026-09-15, after four iterations
+### The peek — one drawer at a time (Pavan, 2026-10-01; replaces the 2026-09-15 lock)
 
 - At rest only the 52px rail is visible; the drawer has **no footprint**.
-- Hover the rail → the rail expands to 256 **and the drawer comes out with
-  it**, rail drawn OVER drawer (z-30 over z-20).
-- Cross onto the drawer's exposed right edge → the rail collapses to 52, the
-  drawer stays whole.
-- Leave both → 500ms → both away.
+- **Hover the rail → only the rail (drawer 1) expands to 256.** Drawer 2 stays
+  away, so the menu items can be read and clicked.
+- **Click a menu item → drawer 1 collapses to 52 and drawer 2 comes out.**
+- Hover the rail again → drawer 2 goes away; you are choosing again.
+- Leave both → 500ms → drawer 2 away.
 - **A press outside both panels closes them at once.** The 500ms clock is grace
   for a pointer that may come back; a `pointerdown` outside clears it.
 

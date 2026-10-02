@@ -2209,6 +2209,7 @@ export function BrokerOrdersScreen({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          boardView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -2369,7 +2370,9 @@ export function BrokerOrdersScreen({
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {/* THE ROW STAYS WHEN NOTHING MATCHES — the boxes are what the
+              reader has to change to get the rows back (§10g). */}
+          {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
             <BrokerBoard

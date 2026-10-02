@@ -81,6 +81,32 @@ function openJobsFor(rows: ServiceOrder[], id: string): number {
   ).length;
 }
 
+/**
+ * WHAT A COLUMN PRINTS, as text — what its filter box matches, because the
+ * reader types what they read. Kept beside `renderCell` in meaning: change
+ * what a cell shows and this follows.
+ */
+function techColumnText(t: Technician, key: TechColumnKey, openJobs: number): string {
+  switch (key) {
+    case "name":
+      return t.name;
+    case "base":
+      return t.base;
+    case "skills":
+      return t.skills.join(" ");
+    case "open":
+      return String(openJobs);
+    case "capacity":
+      return String(t.dailyCapacity);
+    case "phone":
+      return t.phone;
+    case "status":
+      return t.active ? "Active" : "Inactive";
+    default:
+      return "";
+  }
+}
+
 export function TechniciansScreen() {
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<ListSort<TechColumnKey> | null>(null);
@@ -89,6 +115,13 @@ export function TechniciansScreen() {
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   const [colScope, setColScope] = React.useState("name");
   const [colQuery, setColQuery] = React.useState("");
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
 
@@ -101,11 +134,20 @@ export function TechniciansScreen() {
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return TECHNICIANS;
-    return TECHNICIANS.filter((t) =>
-      [t.name, t.base, t.skills.join(" ")].join(" ").toLowerCase().includes(q)
+    if (!q && activeColFilters.length === 0) return TECHNICIANS;
+    return TECHNICIANS.filter(
+      (t) =>
+        (!q ||
+          [t.name, t.base, t.skills.join(" ")].join(" ").toLowerCase().includes(q)) &&
+        /* AND, as on the 3PL board — each box matches what its own column
+           prints (`techColumnText`). */
+        activeColFilters.every(([key, value]) =>
+          techColumnText(t, key as TechColumnKey, open[t.id] ?? 0)
+            .toLowerCase()
+            .includes(value.trim().toLowerCase())
+        )
     );
-  }, [search]);
+  }, [search, activeColFilters, open]);
 
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
@@ -209,6 +251,20 @@ export function TechniciansScreen() {
           onColScopeChange={setColScope}
           colQuery={colQuery}
           onColQueryChange={setColQuery}
+          /* THE ROW, NOT THE POPOVER — the 3PL board's column search. */
+          columnFiltersOpen={colFiltersOpen}
+          onToggleColumnFilters={() =>
+            setColFiltersOpen((wasOpen) => {
+              /* CLOSING THE ROW PUTS THE TABLE BACK — a narrowing with no box
+                 on screen saying so is one nobody can find. */
+              if (wasOpen) {
+                setColFilters({});
+                setPage(1);
+              }
+              return !wasOpen;
+            })
+          }
+          columnFilterCount={activeColFilters.length}
           view="table"
           onViewChange={() => {}}
         />
@@ -216,11 +272,13 @@ export function TechniciansScreen() {
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {/* THE ROW STAYS WHILE IT IS OPEN — an empty result is what the boxes
+             did, and the boxes are how you undo it. */}
+          {sorted.length === 0 && !colFiltersOpen ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  {search ? <SearchX /> : <HardHat />}
+                  {search || activeColFilters.length ? <SearchX /> : <HardHat />}
                 </EmptyMedia>
                 <EmptyTitle>No technicians match</EmptyTitle>
                 <EmptyDescription>
@@ -250,6 +308,12 @@ export function TechniciansScreen() {
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
               openLabel={(t) => `Open ${t.name}`}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

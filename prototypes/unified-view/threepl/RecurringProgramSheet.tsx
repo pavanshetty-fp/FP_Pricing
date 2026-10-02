@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, Info, MapPinOff, Plus, Search } from "lucide-react";
+import { AlertTriangle, Info, MapPinOff, Pencil, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -446,12 +446,15 @@ export function RecurringProgramSheet({
   open,
   onOpenChange,
   onChange,
+  onEdit,
 }: {
   program: RecurringProgram | null;
   all: RecurringProgram[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onChange: (next: RecurringProgram) => void;
+  /** Reopen the rule in its form. Offered only while it has made no order. */
+  onEdit?: (p: RecurringProgram) => void;
 }) {
   const [adding, setAdding] = React.useState(false);
 
@@ -475,9 +478,20 @@ export function RecurringProgramSheet({
       showCancel={false}
       footerPrimary={null}
       headerAside={
-        <StatusChip tone={SERIES_TONE[program.status]} variant="soft">
-          {program.status}
-        </StatusChip>
+        <span className="flex items-center gap-2">
+          <StatusChip tone={SERIES_TONE[program.status]} variant="soft">
+            {program.status}
+          </StatusChip>
+          {/* EDITABLE UNTIL IT HAS MADE AN ORDER (Pavan, 2026-10-01). No live
+              lane means nothing has been generated, so nothing downstream can
+              be rewritten by changing the rule. */}
+          {onEdit && live.length === 0 && (
+            <Button variant="outline" size="sm" onClick={() => onEdit(program)}>
+              <Pencil />
+              Edit rule
+            </Button>
+          )}
+        </span>
       }
       headerSubtitle={
         <span className="text-sm text-muted-foreground">

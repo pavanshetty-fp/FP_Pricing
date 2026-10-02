@@ -1407,7 +1407,9 @@ is the thing V1.1 shows that neither of the others can.
 1. **New sites are added by hand.** No automatic membership; a rule only ever
    covers what somebody picked.
 2. **Frequency is constitutive.** A site that wants a different day is not on
-   this programme — it belongs to another. No per-site override, ever. Two
+   this programme — it belongs to another. No per-site override — **except a
+   skip that resolves a clash** (Pavan, 2026-10-01): a ship-to can sit out
+   the days another rule already covers there; see *Conflicts* below. Two
    things follow: a programme **describes itself** (partner · product ·
    frequency, readable from the title), and one ship-to on two programmes for
    the same product becomes a **collision worth catching at the moment
@@ -1499,12 +1501,54 @@ one partner's area may be outside the next one's, and the tanks that matter
 change with the product. Keeping them silently would build a rule the partner
 cannot run.
 
-**Every matching tank is ticked by default, topped off** — what somebody adding
-a site almost always means. The collision check runs here too.
+*Step 2 as rebuilt on 2026-10-01 — see "Changes, 2026-10-01" below.*
 
 **On create every lane is a draft.** Creating the rule does not start a truck;
 the sheet says so above the button, and the new programme opens with all its
 lanes under Waiting.
+
+### Changes, 2026-10-01 (Pavan)
+
+**The list.** Flat columns, no groups; every column sorts, reorders and
+resizes. Money reads **Estimated Partner Price · Estimated Customer Price ·
+Estimated Margin** — a rule only ever makes orders, and each order still goes
+through every lane. Several products show as the first plus **+N**. The
+Frequency column is wider, its badges larger and rows 64px. Search by column
+is the filter row (DS §10g); no Table icon (DS §10h).
+
+**Edit a rule** while it has made no order (no live lane): **Edit rule** in
+the sheet reopens the create form filled in; Save replaces it in place.
+
+**Frequency has two tabs.** **Days** — the badges, Daily, Repeat
+weekly/monthly/yearly; Monthly asks **which weeks** as checkboxes in a
+dropdown (Every week · First–Fourth week, several allowed; Every week stands
+alone and covers the partial fifth) with "of the month" said once. **Date** —
+the month's dates as a full-width wrapping strip (weekday letter over each
+number, past dates off, ‹ › for months), several picked; Repeat under it
+(every 1/2/3/6 months, or does not repeat). "Same date every month" is gone.
+
+**Products.** Turning on *Mark as winter blend* blinks the chips' outline once
+in blue and shows "Click on all products that you want to be considered as
+winter blends." **Loading account is optional.**
+
+**Step 2 — one tab per customer and ship-to.** A tab starts blank: Customer →
+Ship-to (that customer's reachable sites; one tab per ship-to) → **Delivery
+Window** (the order sheet's slider) → the Delivery Order table (Top off ·
+Asset · Product [the rule's products] · Qty) with **Add asset** hanging off it.
+"+" adds the next tab; the bin removes one.
+
+**Conflicts.** Another rule at the same ship-to clashes, on a day both run,
+only when it fills the **same asset** or its **window overlaps** — the same
+product into a different tank is not a clash. 16 weeks are checked. An
+overlap is said under the window as it is set, and every clash is listed in a
+quiet **Conflicts** table: two rows per clash (the other rule, then *This
+rule*) — Rule [hover = its frequency] · Frequency (S M T W T F S as letters,
+clashing days yellow and underlined) · Assets · Products · Window — with an
+**eye** on each clashing cell naming the kind (frequency / asset / scheduling
+window). **Resolve** offers *Don't run this rule on those days* (this ship-to
+only) or *Stop the other rule on those days* (that customer and ship-to only,
+the rule keeps running elsewhere; written when this rule is created). Skips
+are honoured by the order generator (`targetSkips`).
 
 ### Not built here
 

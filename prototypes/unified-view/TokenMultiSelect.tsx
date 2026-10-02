@@ -56,6 +56,11 @@ export interface TokenMultiSelectProps {
   highlightLabel?: string;
   /** When set, clicking a chip calls this instead of opening the list. */
   onChipClick?: (opt: string) => void;
+  /**
+   * Bump it and every chip blinks a blue outline ONCE — "these are clickable
+   * now". 0 never blinks.
+   */
+  flashKey?: number;
 }
 
 export function TokenMultiSelect({
@@ -68,8 +73,16 @@ export function TokenMultiSelect({
   highlighted,
   highlightLabel,
   onChipClick,
+  flashKey = 0,
 }: TokenMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [flashing, setFlashing] = React.useState(false);
+  React.useEffect(() => {
+    if (!flashKey) return;
+    setFlashing(true);
+    const t = window.setTimeout(() => setFlashing(false), 650);
+    return () => window.clearTimeout(t);
+  }, [flashKey]);
 
   const toggle = (opt: string) =>
     onChange(
@@ -112,7 +125,8 @@ export function TokenMultiSelect({
                 "inline-flex items-center gap-1.5 rounded-md border border-border bg-fp-surface-1b py-1 pr-1 pl-1.5 text-sm",
                 onChipClick && "cursor-pointer hover:border-fp-outline-2",
                 highlighted?.includes(opt) &&
-                  "border-fp-banner-accent-info hover:border-fp-banner-accent-info"
+                  "border-fp-banner-accent-info hover:border-fp-banner-accent-info",
+                flashing && "fp-attention-info"
               )}
             >
               <InitialBadge label={opt} />

@@ -12,6 +12,7 @@ import {
   type ServiceLine,
 } from "./orders";
 import { parseSchedule, type Schedule, type SeriesStatus } from "./recurring";
+import type { RuleFrequency } from "./RuleFrequency";
 import { VENDORS, type Vendor } from "./vendors";
 
 /*
@@ -169,7 +170,28 @@ export interface ProgramTarget {
    * stored rather than recomputed only at the picker.
    */
   serviceable: boolean;
+  /**
+   * DAYS THIS SHIP-TO SITS OUT (Pavan, 2026-10-01) — the resolution to a clash
+   * with another rule at the same ship-to. Weekdays (0 = Sunday) for a Days
+   * rule; dates of the month for a Date rule. The rule still runs everywhere
+   * else on those days.
+   */
+  skip?: { weekdays: number[]; monthDays: number[] };
+  /**
+   * DRAFT ONLY — "stop the other rule here on these days" (Pavan,
+   * 2026-10-01). Held on the draft and written onto that rule's ship-to when
+   * this rule is created, so cancelling the form changes nothing.
+   */
+  othersSkip?: { programId: string; weekdays: number[]; monthDays: number[] }[];
 }
+
+/** Does this ship-to sit this day out? */
+export const targetSkips = (t: ProgramTarget, day: Date) =>
+  Boolean(
+    t.skip &&
+      (t.skip.weekdays.includes(day.getDay()) ||
+        t.skip.monthDays.includes(day.getDate()))
+  );
 
 /* ---------------------------------------------------------------------------
  * The programme
@@ -223,6 +245,8 @@ export interface RecurringProgram {
 
   /* ── when. CONSTITUTIVE — no target may override it. ── */
   schedule: Schedule;
+  /** The form's own answer, kept so the rule can be reopened in the form. */
+  frequency?: RuleFrequency;
   startKey: string;
   endKey: string | null;
 
@@ -284,6 +308,89 @@ export function programGallons(p: RecurringProgram): number {
  * programmes covering one site with one product will send two trucks, and the
  * only moment anybody can be told cheaply is while they are adding the site.
  */
+/**
+ * A REAL CLASH (Pavan, 2026-10-01). Another rule at the same ship-to clashes
+ * on a day both run when it fills ONE OF THE SAME ASSETS, or when its
+ * delivery window OVERLAPS this one. The same product into a different tank
+ * is not a clash — picking the asset already settles that. Looks 16 weeks
+ * ahead from whichever starts later. One entry per clashing rule: the dates,
+ * the assets both fill (with their product), whether the windows overlap, and
+ * every date this rule runs in that window (so "every Tuesday" can be told
+ * from "some Tuesdays").
+ */
+export interface Clash {
+  program: RecurringProgram;
+  dates: Date[];
+  assets: { asset: string; product: string }[];
+  window: { start: string; end: string } | null;
+  mineDates: Date[];
+}
+
+const toMin = (label: string) => {
+  const m = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (m[3].toUpperCase() === "PM") h += 12;
+  return h * 60 + Number(m[2]);
+};
+const windowsOverlap = (
+  a: { start: string; end: string },
+  b: { start: string; end: string }
+) => {
+  const [a0, a1, b0, b1] = [a.start, a.end, b.start, b.end].map(toMin);
+  if (a0 === null || a1 === null || b0 === null || b1 === null) return false;
+  return a0 < b1 && b0 < a1;
+};
+
+export function clashesFor(
+  shipTo: string,
+  mine: {
+    assets: string[];
+    window: { start: string; end: string };
+    schedule: Schedule;
+    startKey: string;
+    endKey: string | null;
+    skip?: ProgramTarget["skip"];
+  },
+  exceptProgramId: string,
+  all: RecurringProgram[]
+): Clash[] {
+  const out: Clash[] = [];
+  for (const p of all) {
+    if (p.id === exceptProgramId || p.status === "Cancelled") continue;
+    const theirs = p.targets.find((t) => t.shipTo === shipTo);
+    if (!theirs) continue;
+    const assets = theirs.lines
+      .filter((l) => l.asset && mine.assets.includes(l.asset))
+      .map((l) => ({ asset: l.asset, product: l.product }));
+    const overlap = windowsOverlap(mine.window, theirs.window);
+    if (assets.length === 0 && !overlap) continue;
+    const from = [mine.startKey, p.startKey, dateKeyOf(startOfDay(new Date()))].sort()[2];
+    const [y, m, d] = from.split("-").map(Number);
+    const dates: Date[] = [];
+    const mineDates: Date[] = [];
+    for (let i = 0; i < 112; i++) {
+      const day = new Date(y, m - 1, d + i);
+      const key = dateKeyOf(day);
+      if (mine.endKey && key > mine.endKey) break;
+      if (!mine.schedule.hits(day)) continue;
+      if (mine.skip && targetSkips({ skip: mine.skip } as ProgramTarget, day)) continue;
+      mineDates.push(day);
+      if (!programRunsOn(p, day) || targetSkips(theirs, day)) continue;
+      dates.push(day);
+    }
+    if (dates.length)
+      out.push({
+        program: p,
+        dates,
+        assets,
+        window: overlap ? theirs.window : null,
+        mineDates,
+      });
+  }
+  return out;
+}
+
 export function clashFor(
   shipTo: string,
   products: string[],
@@ -373,6 +480,14 @@ export const RECURRING_PROGRAMS: RecurringProgram[] = (() => {
       LOADING_ACCOUNTS.find((a) => a.products.includes(product)) ??
       LOADING_ACCOUNTS[0];
     const raw = PROGRAM_FREQUENCIES[i % PROGRAM_FREQUENCIES.length];
+    /* TWO OF THE BOOK CARRY A SECOND PRODUCT off the same account — a rule
+       can, and the list has to show it (Pavan, 2026-10-01). */
+    const products = [
+      product,
+      ...(i === 1 || i === 2
+        ? account.products.filter((x) => x !== product).slice(0, 1)
+        : []),
+    ];
 
     /* THE START IS IN THE PAST FOR MOST — a programme nobody has run yet
        teaches nothing about a screen whose whole job is showing a book of
@@ -468,14 +583,14 @@ export const RECURRING_PROGRAMS: RecurringProgram[] = (() => {
         i % 3 !== 2
           ? [
               {
-                products: [product],
+                products,
                 terminal: account.terminal,
                 supplier: account.supplier,
                 loadingAccount: account.name,
               },
             ]
           : [],
-      products: [product],
+      products,
       winterProducts: product.includes("Diesel") && i % 4 === 0 ? [product] : [],
       serviceLine:
         product === "Engine Oil 15W-40" ? "Lubricants" : "Fuel",

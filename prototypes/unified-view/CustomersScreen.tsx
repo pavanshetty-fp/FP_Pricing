@@ -59,10 +59,41 @@ interface ViewState {
   pageSize: number;
   colScope: string;
   colQuery: string;
+  /** The filter row's boxes, by column key. Optional so a view saved before
+   *  the row still applies. */
+  colFilters?: Record<string, string>;
 }
 
 const keyOf = (s: ViewState) =>
-  JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
+  JSON.stringify({
+    ...s,
+    hidden: [...s.hidden].sort(),
+    /* Empty boxes are no filter — typing then clearing one is not a change. */
+    colFilters: Object.fromEntries(
+      Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
+    ),
+  });
+
+/**
+ * WHAT EACH COLUMN PRINTS, as text a header box can match — the same rule as
+ * `brokerColumnText` in 3PL: a box under a header matches what is written
+ * above the rows beneath it. Ship-tos match every one, not only the first the
+ * cell shows — the rest are one hover away behind its `+N`.
+ */
+function customerColumnText(c: Customer, key: CustomerColumnKey): string {
+  switch (key) {
+    case "name":
+      return `${c.name} ${c.erpId}`;
+    case "shipTos":
+      return c.shipTos.join(" ");
+    case "los":
+      return c.los.join(" ");
+    case "status":
+      return c.status;
+    default:
+      return "";
+  }
+}
 
 export function CustomersScreen({ focus }: { focus?: { id: string; n: number } | null } = {}) {
   const [rows, setRows] = React.useState<Customer[]>(CUSTOMERS);
@@ -76,6 +107,13 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
   const [colScope, setColScope] = React.useState("name");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<ListView>("table");
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
 
   const current: ViewState = {
     search,
@@ -85,6 +123,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     pageSize,
     colScope,
     colQuery,
+    colFilters,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -95,6 +134,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       pageSize: 25,
       colScope: "name",
       colQuery: "",
+      colFilters: {},
     }),
     []
   );
@@ -110,6 +150,10 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     setPageSize(s.pageSize);
     setColScope(s.colScope);
     setColQuery(s.colQuery);
+    const filters = s.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
     setPage(1);
   };
 
@@ -129,9 +173,16 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       rows.filter(
         (c) =>
           (!q || matchesCustomer(c, q)) &&
-          (!cq || matchesCustomerIn(c, cq, colScope))
+          (!cq || matchesCustomerIn(c, cq, colScope)) &&
+          /* AND-ed, and each box matches the text its own column PRINTS —
+             see `customerColumnText`. */
+          activeColFilters.every(([key, value]) =>
+            customerColumnText(c, key as CustomerColumnKey)
+              .toLowerCase()
+              .includes(value.trim().toLowerCase())
+          )
       ),
-    [rows, q, cq, colScope]
+    [rows, q, cq, colScope, activeColFilters]
   );
   const sorted = React.useMemo(() => sortCustomers(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
@@ -255,6 +306,23 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
             setColQuery(v);
             setPage(1);
           }}
+          /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only. */
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view !== "table"
+              ? undefined
+              : () =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row clears it: a narrowing with no boxes on
+                       screen would be one nobody could see. */
+                    if (open) {
+                      setColFilters({});
+                      setPage(1);
+                    }
+                    return !open;
+                  })
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
         />
@@ -267,11 +335,32 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
             setPage(1);
           }}
         />
+        {/* One chip per header box that has something typed in it. */}
+        {activeColFilters.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {activeColFilters.map(([key, value]) => (
+              <ColumnSearchChip
+                key={key}
+                className=""
+                searchFields={TOGGLE_COLUMNS}
+                colScope={key}
+                colQuery={value.trim()}
+                onClear={() => {
+                  setColFilters((prev) => ({ ...prev, [key]: "" }));
+                  setPage(1);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {/* THE ROW STAYS WHILE IT IS OPEN. An empty result swaps the table
+              for the empty state, which would take the boxes with it — the
+              reader would lose the thing they were typing in. */}
+          {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">{q ? <SearchX /> : <Users />}</EmptyMedia>
@@ -315,6 +404,12 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
               actionsKey="actions"
               openLabel={(c) => `Open customer ${c.name}`}
               onOpenRow={(c) => setOpenId(c.id)}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

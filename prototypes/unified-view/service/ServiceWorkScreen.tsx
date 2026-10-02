@@ -13,7 +13,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout";
-import { ListToolbar, FilterChips, type ListView } from "../ListToolbar";
+import { ListToolbar, FilterChips, ColumnSearchChip, type ListView } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
@@ -396,6 +396,54 @@ function completedLabel(iso: string): string {
   return `${DATE_FMT.format(at)} · ${TIME_FMT.format(at)}`;
 }
 
+/**
+ * WHAT A COLUMN PRINTS, as text — what its filter box under the header
+ * matches, because the reader types what they read (`brokerColumnText` is the
+ * 3PL board's). Kept beside `renderCell` in meaning: change what a cell shows
+ * and this follows.
+ */
+function serviceColumnText(r: ServiceOrder, key: Col): string {
+  switch (key) {
+    case "order":
+      return r.orderNo;
+    /* THE DISC AND ITS NAME — "R" is what shows, "Repair" is what it means. */
+    case "type":
+      return WORK_TYPE_CODE[r.workType]
+        ? `${WORK_TYPE_CODE[r.workType].text} ${r.workType}`
+        : "—";
+    case "customer":
+      return r.customer;
+    case "shipTo":
+      return r.shipTo;
+    case "asset":
+      return `${r.assetName} ${r.assetType}`;
+    case "fault":
+      return r.fault;
+    case "scheduled":
+      return r.scheduledAt
+        ? `${dayLabel(r.dateKey)} · ${timeLabel(r.scheduledAt)}`
+        : "Not scheduled";
+    case "technician":
+      return technicianById(r.technicianId)?.name ?? "Nobody assigned";
+    case "priority":
+      return r.priority;
+    case "status":
+      return r.status;
+    case "total":
+      return isRecorded(r.status) ? money(orderTotal(r)) : "—";
+    case "source":
+      return r.source;
+    case "raisedBy":
+      return r.raisedBy;
+    case "labor":
+      return r.labor > 0 ? formatHours(r.labor) : "—";
+    case "invoice":
+      return r.synced ? "Synced" : r.invoiceCreated ? "Raised" : "—";
+    default:
+      return "";
+  }
+}
+
 /* ------------------------------------------------------------- the screen */
 
 /**
@@ -438,6 +486,13 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [cardOff, setCardOff] = React.useState<Record<string, Set<string>>>(initialCardOff);
@@ -499,24 +554,33 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
 
   const searched = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return onDate;
-    return onDate.filter((r) =>
-      [
-        r.orderNo,
-        r.customer,
-        r.shipTo,
-        r.assetName,
-        r.assetType,
-        r.fault,
-        r.workType,
-        technicianById(r.technicianId)?.name ?? "",
-        r.status,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
+    if (!q && activeColFilters.length === 0) return onDate;
+    return onDate.filter(
+      (r) =>
+        (!q ||
+          [
+            r.orderNo,
+            r.customer,
+            r.shipTo,
+            r.assetName,
+            r.assetType,
+            r.fault,
+            r.workType,
+            technicianById(r.technicianId)?.name ?? "",
+            r.status,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)) &&
+        /* AND, as on the 3PL board — each box matches what its own column
+           PRINTS (`serviceColumnText`). */
+        activeColFilters.every(([key, value]) =>
+          serviceColumnText(r, key as Col)
+            .toLowerCase()
+            .includes(value.trim().toLowerCase())
+        )
     );
-  }, [onDate, search]);
+  }, [onDate, search, activeColFilters]);
 
   const filtered = React.useMemo(() => {
     if (facetSel.size === 0) return searched;
@@ -1005,7 +1069,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     }
   };
 
-  const narrowed = search.trim().length > 0 || facetSel.size > 0;
+  const narrowed =
+    search.trim().length > 0 || facetSel.size > 0 || activeColFilters.length > 0;
 
   const emptyBody =
     onDate.length === 0 ? (
@@ -1054,6 +1119,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          boardView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -1117,6 +1183,25 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
             setColQuery(v);
             setPage(1);
           }}
+          /* THE ROW, NOT THE POPOVER. It only makes sense over a table, so the
+             board keeps the button pointed at nothing rather than opening a
+             row of boxes above cards that have no columns. */
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view !== "table"
+              ? undefined
+              : () =>
+                  setColFiltersOpen((open) => {
+                    /* CLOSING THE ROW PUTS THE TABLE BACK — a narrowing with
+                       no box on screen saying so is one nobody can find. */
+                    if (open) {
+                      setColFilters({});
+                      setPage(1);
+                    }
+                    return !open;
+                  })
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
           dateControl={
@@ -1136,12 +1221,34 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
             setFacetSel(next);
             setPage(1);
           }}
-        />
+        >
+          {/* One chip per header box that has something typed in it, on the
+              same shelf as the facets — they narrow the same list. With no
+              facet on, `FilterChips` renders these bare, so they bring their
+              own row; with one, they join its scroller as they are. */}
+          <div className={facetSel.size ? "contents" : "mt-3 flex items-center gap-2"}>
+            {activeColFilters.map(([key, value]) => (
+              <ColumnSearchChip
+                key={key}
+                className=""
+                searchFields={COLUMNS}
+                colScope={key}
+                colQuery={value.trim()}
+                onClear={() => {
+                  setColFilters((prev) => ({ ...prev, [key]: "" }));
+                  setPage(1);
+                }}
+              />
+            ))}
+          </div>
+        </FilterChips>
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {/* THE ROW STAYS WHILE IT IS OPEN — an empty result is what the boxes
+             did, and the boxes are how you undo it. */}
+          {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
             <BrokerBoard
@@ -1179,6 +1286,12 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
               onResizeColumns={setColumnWidths}
               openLabel={(r) => `Open service order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

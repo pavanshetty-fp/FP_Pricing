@@ -220,6 +220,11 @@ Added 2026-09-22, from Unified View's pending strip.
 - **Cell vocabulary**: value-only · **value+meta** ("$1.05 / 2 margins";
   "Volume Based / N intervals") · link (breakdown or navigate) · **count→popover**
   · status (Active/Inactive) · scope badge · trailing settings gear.
+- **Search by column = a filter row under the header** (one box per column,
+  AND-ed, cleared on close, stays visible when nothing matches, table view
+  only, kept by saved views). Every table, every module — see
+  `ds/ui/2-rules.md` §10g.
+- **Every column sorts** (asc → desc → unsorted).
 - **Row expansion / inline edit** via chevron.
 - **Grouping**: a single-select Group By (e.g. Customer / Product / Index) turns
   the table into collapsible **group-header rows** with adaptive member-count

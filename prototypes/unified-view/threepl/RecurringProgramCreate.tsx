@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, Check, Plus, Search, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Eye, Plus, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,26 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { RecordSheet } from "../RecordSheet";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TokenMultiSelect } from "../TokenMultiSelect";
 import { HangingAdd } from "../HangingAdd";
-import { TableCellSelect, TableRequiredLabel } from "@/components/form-layout";
+import {
+  TimeWindowSlider,
+  formatMinutes,
+  parseWindow,
+  TableCellCombobox,
+  TableCellInput,
+  TableCellSelect,
+  TableRequiredLabel,
+} from "@/components/form-layout";
 import { TableRowRemove } from "@/components/form-layout/table-cells";
 import { PendingStrip } from "../PendingStrip";
 import { dateKeyOf, startOfDay } from "../data";
@@ -33,7 +50,7 @@ import {
 } from "./RuleFrequency";
 import {
   canServe,
-  clashFor,
+  clashesFor,
   reachableTargets,
   siteByName,
   type ProgramTarget,
@@ -184,167 +201,170 @@ function Card({
  * Step 2 — the sites, and what each one takes
  * ------------------------------------------------------------------------ */
 
+const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** A blank line — the product filled in when the rule has only one. */
+const blankLine = (products: string[]): OrderLine => ({
+  asset: "",
+  product: products.length === 1 ? products[0] : "",
+  gal: null,
+  topOff: true,
+  charges: defaultLineCharges(),
+});
+
+/**
+ * ONE SHIP-TO, AND WHAT IT TAKES (Pavan, 2026-10-01) — the Delivery Order's
+ * own table: Top off · Asset · Product · Qty, with Add asset hanging off it.
+ * The product list is the rule's products only; picking a known asset fills
+ * its product, the same as on an order.
+ */
 function TargetEditor({
   target,
   products,
   onChange,
-  onRemove,
 }: {
   target: ProgramTarget;
   products: string[];
   onChange: (next: ProgramTarget) => void;
-  onRemove: () => void;
 }) {
   const site = siteByName(target.shipTo);
-  /* ONLY THE TANKS THAT TAKE ONE OF THIS RULE'S PRODUCTS. A site's other tanks
-     are real but have nothing to do with this rule, and offering them invites
-     one that puts diesel in a lube skid. */
-  const tanks = (site?.assets ?? []).filter((a) =>
-    products.includes(a.product)
-  );
-  const chosen = new Map(target.lines.map((l) => [l.asset, l]));
+  const siteAssets = site?.assets ?? [];
+  /* The site's tanks that take one of the rule's products come first. */
+  const assetOptions = [
+    ...new Set(
+      [
+        ...siteAssets.filter((a) => products.includes(a.product)),
+        ...siteAssets.filter((a) => !products.includes(a.product)),
+      ].map((a) => a.name)
+    ),
+  ];
+  const [focusLine, setFocusLine] = React.useState<number | null>(null);
 
-  const toggle = (asset: string, product: string, on: boolean) => {
-    const next = on
-      ? [
-          ...target.lines,
-          {
-            asset,
-            product,
-            gal: null,
-            topOff: true,
-            charges: defaultLineCharges(),
-          } as OrderLine,
-        ]
-      : target.lines.filter((l) => l.asset !== asset);
-    onChange({ ...target, lines: next });
-  };
-
-  const setLine = (asset: string, patch: Partial<OrderLine>) =>
+  const setLine = (i: number, patch: Partial<OrderLine>) =>
     onChange({
       ...target,
-      lines: target.lines.map((l) =>
-        l.asset === asset ? { ...l, ...patch } : l
-      ),
+      lines: target.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)),
     });
+  const addLine = () => {
+    setFocusLine(target.lines.length);
+    onChange({ ...target, lines: [...target.lines, blankLine(products)] });
+  };
+  const removeLine = (i: number) =>
+    onChange({ ...target, lines: target.lines.filter((_, j) => j !== i) });
 
   return (
-    <div className="border-b border-fp-outline-1 p-4 last:border-b-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm font-medium text-foreground">
-            {target.shipTo}
-          </span>
-          <span className="truncate text-xs text-muted-foreground">
-            {target.customer.title} · {target.city}, {target.state}
-          </span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Remove ${target.shipTo}`}
-          onClick={onRemove}
-        >
-          <Trash2 />
-        </Button>
-      </div>
+    <div className="flex flex-col gap-2">
 
-      {tanks.length === 0 ? (
-        /* A SITE WITH NO MATCHING TANK IS STILL A LEGITIMATE TARGET — product
-           can go into a bulk tank the asset register has never named. It says
-           so rather than looking broken. */
-        <p className="mt-3 rounded-md bg-fp-card-1 px-3 py-2 text-xs text-muted-foreground">
-          No matching tank recorded at this site. It will be delivered as one
-          bulk line, topped off.
-        </p>
-      ) : (
-        <div className="mt-3 overflow-hidden rounded-md border border-fp-outline-1">
-          <table className="w-full text-sm">
+      <div className="flex flex-col">
+        <div
+          data-table-variant="T2"
+          className="overflow-hidden rounded-md rounded-bl-none border border-fp-outline-1"
+        >
+          <table className="w-full table-fixed border-collapse">
+            <colgroup>
+              <col className="w-[92px]" />
+              <col className="w-[34%]" />
+              <col className="w-[30%]" />
+              <col />
+              <col className="w-[52px]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-fp-outline-1 bg-fp-table-header">
-                <th className="w-9 px-3 py-2" />
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Asset
+              <tr className="border-b border-border bg-fp-table-header">
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Top off</TableRequiredLabel>
                 </th>
-                <th className="w-[130px] px-3 py-2 text-right text-xs font-medium text-muted-foreground">
-                  Quantity (gal)
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Asset</TableRequiredLabel>
                 </th>
-                <th className="w-[100px] px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Top off
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel required>Product</TableRequiredLabel>
                 </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+                </th>
+                <th aria-hidden />
               </tr>
             </thead>
             <tbody>
-              {tanks.map((a) => {
-                const line = chosen.get(a.name);
-                const on = Boolean(line);
+              {target.lines.map((line, i) => {
+                const asset = siteAssets.find((a) => a.name === line.asset);
                 return (
                   <tr
-                    key={a.name}
-                    className="border-b border-fp-outline-1 last:border-0"
+                    key={i}
+                    className="group/row h-11 border-b border-border last:border-b-0"
                   >
-                    <td className="px-3 py-2">
+                    <td className="px-3">
                       <Checkbox
-                        checked={on}
-                        aria-label={`Include ${a.name}`}
-                        onCheckedChange={(v) =>
-                          toggle(a.name, a.product, v === true)
+                        checked={Boolean(line.topOff)}
+                        onCheckedChange={(c) =>
+                          setLine(i, {
+                            topOff: c === true,
+                            gal: c === true ? null : line.gal,
+                          })
                         }
+                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
                       />
                     </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={cn(
-                          "text-sm",
-                          on ? "text-foreground" : "text-muted-foreground"
-                        )}
-                      >
-                        {a.name}
-                      </span>
-                      {/* WITH SEVERAL PRODUCTS ON THE RULE the tank's own
-                          product has to be on the row — "Main Bulk" alone no
-                          longer says which of them it takes. */}
-                      {products.length > 1 && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {a.product}
+                    <td className="relative p-0">
+                      {asset?.rental && (
+                        <span className="pointer-events-none absolute top-1/2 right-8 z-10 -translate-y-1/2">
+                          <Badge variant="secondary">Rental</Badge>
                         </span>
                       )}
-                      {a.rental && (
-                        <Badge variant="secondary" className="ml-2">
-                          Rental
-                        </Badge>
-                      )}
+                      <TableCellCombobox
+                        value={line.asset}
+                        options={assetOptions}
+                        taken={target.lines.map((l) => l.asset)}
+                        placeholder={target.shipTo ? "Select asset" : "Select a ship-to first"}
+                        disabled={!target.shipTo}
+                        creatable
+                        autoFocus={i === focusLine}
+                        aria-label={`Asset for line ${i + 1}`}
+                        onChange={(name) => {
+                          const known = siteAssets.find((a) => a.name === name);
+                          setLine(i, {
+                            asset: name,
+                            /* A known tank's product, if the rule carries it. */
+                            product:
+                              known && products.includes(known.product)
+                                ? known.product
+                                : line.product,
+                            rental: known?.rental ?? false,
+                          });
+                        }}
+                      />
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      <Input
-                        className="h-8 text-right tabular-nums"
-                        type="number"
-                        inputMode="numeric"
-                        placeholder="—"
-                        aria-label={`Quantity for ${a.name}`}
-                        disabled={!on || line?.topOff}
-                        value={line?.gal ?? ""}
-                        onChange={(e) =>
-                          setLine(a.name, {
-                            gal:
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value),
+                    <td className="relative p-0">
+                      <TableCellSelect
+                        value={line.product}
+                        options={products}
+                        placeholder="Select product"
+                        aria-label={`Product for line ${i + 1}`}
+                        onChange={(v) => setLine(i, { product: v })}
+                      />
+                    </td>
+                    <td className="relative p-0">
+                      <TableCellInput
+                        value={
+                          line.topOff ? "" : line.gal != null ? String(line.gal) : ""
+                        }
+                        placeholder={line.topOff ? "Top-off" : "0"}
+                        disabled={line.topOff}
+                        numeric
+                        suffix="gal"
+                        aria-label={`Gallons for line ${i + 1}`}
+                        onChange={(v) =>
+                          setLine(i, {
+                            gal: Number(v.replace(/[^0-9]/g, "")) || null,
                           })
                         }
                       />
                     </td>
-                    <td className="px-3 py-2.5">
-                      <Checkbox
-                        checked={line?.topOff ?? false}
-                        disabled={!on}
-                        aria-label={`Top off ${a.name}`}
-                        onCheckedChange={(v) =>
-                          setLine(a.name, {
-                            topOff: v === true,
-                            gal: v === true ? null : (line?.gal ?? null),
-                          })
-                        }
+                    <td className="relative p-0 text-center">
+                      <TableRowRemove
+                        aria-label={`Remove ${line.asset || `line ${i + 1}`}`}
+                        disabled={target.lines.length === 1}
+                        onRemove={() => removeLine(i)}
                       />
                     </td>
                   </tr>
@@ -353,7 +373,10 @@ function TargetEditor({
             </tbody>
           </table>
         </div>
-      )}
+        <div className="flex w-full items-center">
+          <HangingAdd label="Add asset" onClick={addLine} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -367,31 +390,54 @@ export function RecurringProgramCreate({
   onOpenChange,
   all,
   onCreate,
+  initial = null,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   all: RecurringProgram[];
   onCreate: (draft: ProgramDraft) => void;
+  /**
+   * EDIT A RULE THAT HAS NOT MADE AN ORDER YET (Pavan, 2026-10-01). The same
+   * form, filled in from the rule; saving replaces it. The half-built create
+   * draft is put aside while editing and comes back afterwards.
+   */
+  initial?: ProgramDraft | null;
 }) {
+  const editing = initial !== null;
   const [step, setStep] = React.useState<1 | 2>(1);
   const [draft, setDraft] = React.useState<ProgramDraft>(blankProgramDraft);
-  const [picking, setPicking] = React.useState(false);
   /* MARK AS WINTER BLEND (Pavan, 2026-09-25). On, the product chips above
      become pickable and the picked ones get a blue outline. Starts on when
      the draft already carries winter products. */
   const [winterOn, setWinterOn] = React.useState(
     () => draft.winterProducts.length > 0
   );
-  const [q, setQ] = React.useState("");
+  /* Bumped when winter blend turns on — the chips blink once (Pavan,
+     2026-10-01) to say they are now the thing to click. */
+  const [winterFlash, setWinterFlash] = React.useState(0);
 
   /* THE DRAFT SURVIVES A CLOSE, but a fresh Create starts clean — reopening
      onto somebody else's half-built programme is worse than losing it. */
+  const parked = React.useRef<ProgramDraft | null>(null);
   React.useEffect(() => {
-    if (open) return;
+    if (open) {
+      if (initial) {
+        setDraft((d) => {
+          parked.current = d;
+          return initial;
+        });
+        setWinterOn(initial.winterProducts.length > 0);
+      }
+      return;
+    }
     setStep(1);
-    setQ("");
-    setPicking(false);
-  }, [open]);
+    if (parked.current) {
+      const back = parked.current;
+      parked.current = null;
+      setDraft(back);
+      setWinterOn(back.winterProducts.length > 0);
+    }
+  }, [open, initial]);
 
   const set = <K extends keyof ProgramDraft>(k: K, v: ProgramDraft[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -451,11 +497,14 @@ export function RecurringProgramCreate({
     []
   );
 
-  /* "Same date every month" is answered by its dates, not the day badges. */
+  /* The Date tab is answered by its dates, not the day badges. */
   const daysPicked =
-    draft.frequency.repeat === "monthly" && draft.frequency.monthlyMode === "everyMonth"
-      ? (draft.frequency.monthDates ?? []).length > 0
-      : draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0;
+    draft.frequency.basis === "date"
+      ? (draft.frequency.dates ?? []).length > 0
+      : (draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0) &&
+        /* Monthly by week needs at least one week ticked. */
+        (draft.frequency.repeat !== "monthly" ||
+          (draft.frequency.monthWeeks ?? [1]).length > 0);
 
   /* A ROW PER ACCOUNT. There is always at least one row to pick into. */
   const loadRows =
@@ -469,22 +518,13 @@ export function RecurringProgramCreate({
     );
   /* [the new row's index] — its account cell takes the cursor (§10f Rows). */
   const [newLoadRow, setNewLoadRow] = React.useState<number | null>(null);
-  const loadCovered = new Set(
-    loadRows.flatMap((r) => accountOf(r.loadingAccount)?.products ?? [])
-  );
-  /* EVERY ROW NAMES AN ACCOUNT, and every product on the rule loads from one
-     of them. */
-  const loadDone =
-    !draft.loadOrder ||
-    (draft.products.length > 0 &&
-      loadRows.every((r) => Boolean(r.loadingAccount)) &&
-      draft.products.every((p) => loadCovered.has(p)));
+  /* THE LOADING ACCOUNT IS OPTIONAL (Pavan, 2026-10-01). A rule can be
+     created without one; a blank row is simply not saved. */
 
   const stepOneDone =
     (firstParty || draft.vendorIds.length > 0) &&
     draft.products.length > 0 &&
-    daysPicked &&
-    loadDone;
+    daysPicked;
 
   const pending = [
     {
@@ -497,88 +537,92 @@ export function RecurringProgramCreate({
       label: "Choose at least one product",
       done: draft.products.length > 0,
     },
-    { key: "days", label: "Pick the days it runs", done: daysPicked },
     {
-      key: "account",
-      label: "Choose a loading account",
-      done: loadDone,
+      key: "days",
+      label:
+        draft.frequency.basis === "date"
+          ? "Pick the dates it runs"
+          : "Pick the days it runs",
+      done: daysPicked,
     },
     {
       key: "sites",
-      label: "Add at least one ship-to",
-      done: draft.targets.length > 0,
+      label:
+        draft.targets.length > 1
+          ? "Pick a customer and ship-to on every tab"
+          : "Add at least one ship-to",
+      done:
+        draft.targets.length > 0 && draft.targets.every((t) => Boolean(t.shipTo)),
     },
     {
       key: "lines",
       label: "Say what each site takes",
       done:
         draft.targets.length > 0 &&
-        draft.targets.every((t) => t.lines.length > 0),
+        draft.targets.every(
+          (t) => t.lines.length > 0 && t.lines.every((l) => Boolean(l.product))
+        ),
     },
   ].filter((p) => !p.done);
 
   const canCreate = pending.length === 0;
 
-  const addSite = (shipTo: string) => {
-    const r = reachable.find((x) => x.shipTo === shipTo);
-    if (!r) return;
-    /* TANKS FOR ANY OF THE RULE'S PRODUCTS. With two products on a rule, a
-       site's diesel tank and its unleaded tank are both in scope. */
-    const tanks = r.site.assets.filter((a) =>
-      draft.products.includes(a.product)
-    );
-    set("targets", [
-      ...draft.targets,
-      {
-        id: `draft-${shipTo}`,
-        customer: r.customer,
-        shipTo,
-        city: r.site.city,
-        state: r.site.state,
-        /* EVERY MATCHING TANK IS TICKED BY DEFAULT, topped off. It is what
-           somebody adding a site almost always means, and unticking one is
-           cheaper than finding and ticking three. */
-        lines:
-          tanks.length > 0
-            ? tanks.map((a) => ({
-                asset: a.name,
-                product: a.product,
-                gal: null,
-                topOff: true,
-                rental: a.rental,
-                charges: defaultLineCharges(),
-              }))
-            : [
-                {
-                  asset: "Bulk tank",
-                  product: draft.products[0] ?? "",
-                  gal: null,
-                  topOff: true,
-                  charges: defaultLineCharges(),
-                },
-              ],
-        window: { start: "8:00 AM", end: "12:00 PM" },
-        poc: "",
-        instructions: "",
-        poNumber: "",
-        vendorPrice: null,
-        customerPrice: null,
-        state_: "Draft",
-        serviceable: true,
-      },
-    ]);
-  };
+  /* WHAT CLASHES AT A SHIP-TO, IN WORDS — "Tuesdays", "the 5th and 20th".
+     A Date rule is answered in dates of the month, a Days rule in weekdays. */
+  const byDate = draft.frequency.basis === "date";
+  const plural = (n: number) =>
+    ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][n];
+  const nth = (n: number) =>
+    `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
+  const skipKeys = (dates: Date[]) =>
+    byDate
+      ? [...new Set(dates.map((d) => d.getDate()))].sort((a, b) => a - b)
+      : [...new Set(dates.map((d) => d.getDay()))].sort((a, b) => a - b);
 
-  const alreadyOn = new Set(draft.targets.map((t) => t.shipTo));
-  const options = reachable
-    .filter((r) => !alreadyOn.has(r.shipTo))
-    .filter(
-      (r) =>
-        !q.trim() ||
-        `${r.customer.title} ${r.shipTo} ${r.site.city}`
-          .toLowerCase()
-          .includes(q.trim().toLowerCase())
-    );
+  /* ONE TAB PER CUSTOMER AND SHIP-TO (Pavan, 2026-10-01). A tab starts
+     blank — customer, then ship-to, then what it takes — and "+" adds the
+     next one on the same rule. */
+  const [tabId, setTabId] = React.useState<string | null>(null);
+  const blankTarget = (): ProgramTarget => ({
+    id: `draft-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    customer: { title: "", description: "" },
+    shipTo: "",
+    city: "",
+    state: "",
+    lines: [blankLine(draft.products)],
+    window: { start: "8:00 AM", end: "12:00 PM" },
+    poc: "",
+    instructions: "",
+    poNumber: "",
+    vendorPrice: null,
+    customerPrice: null,
+    state_: "Draft",
+    serviceable: true,
+  });
+  const addTab = () => {
+    const t = blankTarget();
+    setDraft((d) => ({ ...d, targets: [...d.targets, t] }));
+    setTabId(t.id);
+  };
+  /* Step 2 never opens on nothing: the first tab is there, blank. */
+  React.useEffect(() => {
+    if (step === 2 && draft.targets.length === 0) addTab();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, draft.targets.length]);
+  const activeTarget =
+    draft.targets.find((t) => t.id === tabId) ?? draft.targets[0] ?? null;
+  const setTarget = (id: string, patch: Partial<ProgramTarget>) =>
+    setDraft((d) => ({
+      ...d,
+      targets: d.targets.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    }));
+  const removeTab = (id: string) => {
+    const at = draft.targets.findIndex((t) => t.id === id);
+    const rest = draft.targets.filter((t) => t.id !== id);
+    setDraft((d) => ({ ...d, targets: d.targets.filter((t) => t.id !== id) }));
+    setTabId(rest[Math.max(0, at - 1)]?.id ?? null);
+  };
+  const customerOptions = [...new Set(reachable.map((r) => r.customer.title))];
 
   return (
     <RecordSheet
@@ -587,8 +631,8 @@ export function RecurringProgramCreate({
       onOpenChange={onOpenChange}
       mode="create"
       editTitle="Programme"
-      createTitle="Create recurring rule"
-      createAction="Create rule"
+      createTitle={editing ? `Edit ${initial?.name ?? "rule"}` : "Create recurring rule"}
+      createAction={editing ? "Save rule" : "Create rule"}
       showCancel={false}
       canSubmit={canCreate}
       onSubmit={() => onCreate(draft)}
@@ -602,7 +646,7 @@ export function RecurringProgramCreate({
           </Button>
         ) : (
           <Button disabled={!canCreate} onClick={() => { onCreate(draft); onOpenChange(false); }}>
-            Create rule
+            {editing ? "Save rule" : "Create rule"}
           </Button>
         )
       }
@@ -622,7 +666,7 @@ export function RecurringProgramCreate({
          footer and outside the scroll, so the reason the act is dead is
          visible whenever the act is. */
       footerBanner={
-        <PendingStrip pending={pending} clearLabel="Ready to create" />
+        <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
       }
       steps={
         <div className="flex items-center gap-1 py-2">
@@ -852,6 +896,7 @@ export function RecurringProgramCreate({
               flush
               highlighted={winterOn ? draft.winterProducts : []}
               highlightLabel="Winter blend"
+              flashKey={winterFlash}
               onChipClick={
                 winterOn
                   ? (prod) =>
@@ -879,6 +924,16 @@ export function RecurringProgramCreate({
               }
             />
 
+            {/* THE INSTRUCTION, ONLY WHILE THE CHIPS ARE A PICKER (Pavan,
+                2026-10-01) — with the toggle on, a chip click means something
+                new, and nothing else on screen says so. */}
+            {winterOn && draft.products.length > 0 && (
+              <p className="px-4 pb-4 text-xs text-muted-foreground">
+                Click on all products that you want to be considered as winter
+                blends.
+              </p>
+            )}
+
             {/* WINTER BLEND IS MAPPED PER PRODUCT, not per rule — one rule
                 can carry diesel and unleaded and only one takes an additive.
                 The toggle turns the chips above into the picker. */}
@@ -889,6 +944,7 @@ export function RecurringProgramCreate({
                     checked={winterOn}
                     onCheckedChange={(on) => {
                       setWinterOn(on);
+                      if (on) setWinterFlash((n) => n + 1);
                       if (!on) set("winterProducts", []);
                     }}
                   />
@@ -941,7 +997,7 @@ export function RecurringProgramCreate({
                     <thead>
                       <tr className="border-b border-border bg-fp-table-header">
                         <th className="px-3 py-2.5 text-left">
-                          <TableRequiredLabel required>Loading Account</TableRequiredLabel>
+                          <TableRequiredLabel>Loading Account</TableRequiredLabel>
                         </th>
                         <th className="px-3 py-2.5 text-left">
                           <TableRequiredLabel>Terminals</TableRequiredLabel>
@@ -1073,105 +1129,513 @@ export function RecurringProgramCreate({
             </Button>
           </div>
 
-          <Card
-            title={`Ship-tos — ${draft.targets.length}`}
-            aside={
+          <Card title={`Ship-tos — ${draft.targets.filter((t) => t.shipTo).length}`} flush>
+            <div className="flex items-center gap-1 border-b border-fp-outline-1 px-2 pt-2">
+              <Tabs
+                value={activeTarget?.id ?? ""}
+                onValueChange={setTabId}
+                className="min-w-0"
+              >
+                <TabsList variant="line" className="h-9 max-w-full justify-start overflow-x-auto">
+                  {draft.targets.map((t) => (
+                    <TabsTrigger key={t.id} value={t.id} className="flex-none px-3">
+                      {t.shipTo || "New ship-to"}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPicking((p) => !p)}
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Add another customer and ship-to"
+                className="mb-1 shrink-0"
+                onClick={addTab}
               >
                 <Plus />
-                Add ship-to
               </Button>
-            }
-          >
-            {picking && (
-              <div className="mb-4 overflow-hidden rounded-md border border-fp-outline-1">
-                <div className="relative border-b border-fp-outline-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search sites…"
-                    className="border-0 pl-8 focus-visible:ring-0"
-                  />
+            </div>
+
+            {activeTarget && (
+              <div className="flex flex-col gap-4 p-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-4">
+                  <Field label="Customer">
+                    <Combobox
+                      value={activeTarget.customer.title}
+                      options={customerOptions}
+                      placeholder="Select customer"
+                      className="w-full"
+                      searchPlaceholder="Search customers…"
+                      onValueChange={(title) => {
+                        const r = reachable.find((x) => x.customer.title === title);
+                        /* A NEW CUSTOMER CLEARS THE SHIP-TO — it was theirs. */
+                        setTarget(activeTarget.id, {
+                          customer: r?.customer ?? { title, description: "" },
+                          shipTo: "",
+                          city: "",
+                          state: "",
+                          lines: [blankLine(draft.products)],
+                          skip: undefined,
+                        });
+                      }}
+                    />
+                  </Field>
+                  <Field label="Ship-to">
+                    <Combobox
+                      value={activeTarget.shipTo}
+                      disabled={!activeTarget.customer.title}
+                      options={reachable
+                        .filter(
+                          (r) =>
+                            r.customer.title === activeTarget.customer.title &&
+                            /* One tab per ship-to. */
+                            (r.shipTo === activeTarget.shipTo ||
+                              !draft.targets.some((t) => t.shipTo === r.shipTo))
+                        )
+                        .map((r) => ({
+                          value: r.shipTo,
+                          description: `${r.site.city}, ${r.site.state}`,
+                        }))}
+                      placeholder={
+                        activeTarget.customer.title
+                          ? "Select ship-to"
+                          : "Select a customer first"
+                      }
+                      searchPlaceholder="Search ship-tos…"
+                      className="w-full"
+                      onValueChange={(shipTo) => {
+                        const r = reachable.find((x) => x.shipTo === shipTo);
+                        if (!r) return;
+                        setTarget(activeTarget.id, {
+                          shipTo,
+                          city: r.site.city,
+                          state: r.site.state,
+                          lines: [blankLine(draft.products)],
+                          skip: undefined,
+                        });
+                      }}
+                    />
+                  </Field>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="mb-1.5 shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove this ship-to"
+                    onClick={() => removeTab(activeTarget.id)}
+                  >
+                    <Trash2 />
+                  </Button>
                 </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {options.length === 0 ? (
-                    <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      {q
-                        ? "Nothing matches inside this partner's area."
-                        : "Every site this partner can reach is already added."}
-                    </p>
-                  ) : (
-                    options.map((o) => {
-                      const clash = clashFor(
-                        o.shipTo,
-                        draft.products,
+                {/* THE DELIVERY WINDOW, PER SHIP-TO (Pavan, 2026-10-01) — the
+                    same slider the Delivery Order uses. An overlap with
+                    another rule at this ship-to is said here, as it is
+                    picked, and again in Conflicts below. */}
+                {(() => {
+                  const w =
+                    parseWindow(`${activeTarget.window.start} – ${activeTarget.window.end}`) ??
+                    [8 * 60, 12 * 60];
+                  const overlaps = activeTarget.shipTo
+                    ? clashesFor(
+                        activeTarget.shipTo,
+                        {
+                          assets: [],
+                          window: activeTarget.window,
+                          schedule,
+                          startKey: draft.startKey,
+                          endKey: draft.frequency.endKey,
+                          skip: activeTarget.skip,
+                        },
                         "new",
                         all
-                      );
-                      return (
-                        <div
-                          key={o.shipTo}
-                          className="flex items-center justify-between gap-3 border-b border-fp-outline-1 px-3 py-2.5 last:border-0"
+                      ).filter((c) => c.window)
+                    : [];
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      <TimeWindowSlider
+                        label="Delivery Window"
+                        required
+                        disabled={!activeTarget.shipTo}
+                        start={w[0]}
+                        end={w[1]}
+                        onChange={(a, b) =>
+                          setTarget(activeTarget.id, {
+                            window: { start: formatMinutes(a), end: formatMinutes(b) },
+                          })
+                        }
+                        aria-label="Delivery window"
+                      />
+                      {overlaps.length > 0 && (
+                        <span className="text-xs text-fp-banner-accent-caution">
+                          Overlaps{" "}
+                          {overlaps
+                            .map(
+                              (c) =>
+                                `${c.program.programNo} (${c.window!.start} – ${c.window!.end})`
+                            )
+                            .join(", ")}{" "}
+                          at this ship-to.
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+                <TargetEditor
+                  target={activeTarget}
+                  products={draft.products}
+                  onChange={(next) => setTarget(activeTarget.id, next)}
+                />
+                {(() => {
+                  if (!activeTarget.shipTo) return null;
+                  /* EVERY CLASH, SKIPPED OR NOT — a skipped day stays so it
+                     can be undone where it was made. Compared on what THIS
+                     ship-to takes, else on the rule's products. */
+                  const clashes = clashesFor(
+                    activeTarget.shipTo,
+                    {
+                      assets: activeTarget.lines.map((l) => l.asset).filter(Boolean),
+                      window: activeTarget.window,
+                      schedule,
+                      startKey: draft.startKey,
+                      endKey: draft.frequency.endKey,
+                    },
+                    "new",
+                    all
+                  );
+                  if (clashes.length === 0) return null;
+                  const skipped = new Set(
+                    byDate
+                      ? activeTarget.skip?.monthDays ?? []
+                      : activeTarget.skip?.weekdays ?? []
+                  );
+                  const keyOf = (d: Date) => (byDate ? d.getDate() : d.getDay());
+                  const short = (d: Date) =>
+                    d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  /* ONE ROW PER CONFLICTING RULE (Pavan, 2026-10-01). Its
+                     days say "every Tuesday" when it clashes on every Tuesday
+                     this rule runs, or the dates when only some of them. */
+                  const rows = clashes.map((c) => {
+                    const keys = skipKeys(c.dates);
+                    const days = keys.map((k) => {
+                      const mine = c.mineDates.filter((d) => keyOf(d) === k);
+                      const hit = c.dates.filter((d) => keyOf(d) === k);
+                      const every = hit.length === mine.length;
+                      const name = byDate ? `the ${nth(k)}` : plural(k);
+                      return {
+                        key: k,
+                        every,
+                        label: every
+                          ? byDate
+                            ? `Every month on ${name}`
+                            : `Every ${name.slice(0, -1)}`
+                          : `${hit.slice(0, 3).map(short).join(", ")}${hit.length > 3 ? ` +${hit.length - 3}` : ""}`,
+                      };
+                    });
+                    return { program: c.program, assets: c.assets, window: c.window, days, keys };
+                  });
+                  const setSkipMany = (keys: number[], on = true) => {
+                    const cur = byDate
+                      ? activeTarget.skip?.monthDays ?? []
+                      : activeTarget.skip?.weekdays ?? [];
+                    const next = on
+                      ? [...new Set([...cur, ...keys])].sort((x, y) => x - y)
+                      : cur.filter((x) => !keys.includes(x));
+                    setTarget(activeTarget.id, {
+                      skip: {
+                        weekdays: byDate ? activeTarget.skip?.weekdays ?? [] : next,
+                        monthDays: byDate ? next : activeTarget.skip?.monthDays ?? [],
+                      },
+                    });
+                  };
+                  /* THE CLASH, MARKED QUIETLY (Pavan, 2026-10-01) — coloured
+                     text, no fills: the unit should not shout. */
+                  const hl = "text-fp-banner-accent-caution";
+                  const Days = ({ runs, clash, label }: { runs: number[]; clash: number[]; label: string }) =>
+                    byDate || runs.length === 0 ? (
+                      <span className="text-foreground">{label}</span>
+                    ) : (
+                      <span className="flex flex-col gap-0.5">
+                        {/* THE WEEK AS LETTERS: faint = not run, plain = run,
+                            yellow and underlined = the clash. */}
+                        <span className="flex gap-1.5 text-xs font-medium tracking-wide">
+                          {WEEKDAY_LETTERS.map((l, i) => (
+                            <span
+                              key={i}
+                              className={cn(
+                                "w-2.5 text-center",
+                                clash.includes(i)
+                                  ? "text-fp-banner-accent-caution underline decoration-2 underline-offset-4"
+                                  : runs.includes(i)
+                                    ? "text-foreground"
+                                    : "text-muted-foreground/35"
+                              )}
+                            >
+                              {l}
+                            </span>
+                          ))}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{label}</span>
+                      </span>
+                    );
+                  const Lines = ({
+                    lines,
+                    clash,
+                  }: {
+                    lines: { asset: string; product: string }[];
+                    clash: string[];
+                  }) => (
+                    <span className="flex flex-col gap-1">
+                      {lines.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        lines.map((l, i) => (
+                          <span key={i} className="text-foreground">
+                            <span className={cn(clash.includes(l.asset) && hl)}>
+                              {l.asset || "No asset"}
+                            </span>
+                            <span className="text-muted-foreground"> · {l.product || "—"}</span>
+                          </span>
+                        ))
+                      )}
+                    </span>
+                  );
+                  /* THE EYE — what exactly collides, on hover. */
+                  const Why = ({ text }: { text: string }) => (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={text}
+                          className="ml-1.5 inline-flex shrink-0 align-middle text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                         >
-                          <div className="flex min-w-0 flex-col leading-tight">
-                            <span className="truncate text-sm text-foreground">
-                              {o.shipTo}
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {o.customer.title} · {o.site.city}, {o.site.state}
-                            </span>
-                            {clash && (
-                              <span className="mt-1 flex items-center gap-1.5 text-xs text-status-failed">
-                                <AlertTriangle className="size-3" />
-                                Already on {clash.programNo} for{" "}
-                                {draft.products.join(" + ")}
-                              </span>
-                            )}
-                          </div>
-                          <Button
-                            variant={clash ? "outline" : "default"}
-                            size="sm"
-                            onClick={() => addSite(o.shipTo)}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-
-            {draft.targets.length === 0 ? (
-              <p className="rounded-md border border-dashed border-fp-outline-1 px-4 py-8 text-center text-sm text-muted-foreground">
-                No ship-tos yet. {reachable.length} sites are on offer.
-              </p>
-            ) : (
-              <div className="-m-4 mt-0 overflow-hidden">
-                {draft.targets.map((t, i) => (
-                  <TargetEditor
-                    key={t.id}
-                    target={t}
-                    products={draft.products}
-                    onChange={(next) =>
-                      set(
-                        "targets",
-                        draft.targets.map((x, j) => (j === i ? next : x))
-                      )
-                    }
-                    onRemove={() =>
-                      set(
-                        "targets",
-                        draft.targets.filter((_, j) => j !== i)
-                      )
-                    }
-                  />
-                ))}
+                          <Eye className="size-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-64">{text}</TooltipContent>
+                    </Tooltip>
+                  );
+                  const dayNames = (keys: number[]) => {
+                    const xs = keys.map((k) => (byDate ? `the ${nth(k)}` : plural(k)));
+                    return xs.length <= 1
+                      ? (xs[0] ?? "")
+                      : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+                  };
+                  /* PENDING ON THE OTHER RULE — "stop it here on these days". */
+                  const othersOff = (programId: string, keys: number[]) => {
+                    const o = activeTarget.othersSkip?.find((x) => x.programId === programId);
+                    const have = byDate ? o?.monthDays ?? [] : o?.weekdays ?? [];
+                    return keys.every((k) => have.includes(k));
+                  };
+                  const setOthersSkip = (programId: string, keys: number[], on: boolean) => {
+                    const rest = (activeTarget.othersSkip ?? []).filter((x) => x.programId !== programId);
+                    setTarget(activeTarget.id, {
+                      othersSkip: on
+                        ? [
+                            ...rest,
+                            {
+                              programId,
+                              weekdays: byDate ? [] : keys,
+                              monthDays: byDate ? keys : [],
+                            },
+                          ]
+                        : rest,
+                    });
+                  };
+                  return (
+                    /* CONFLICTS, AS A TABLE (Pavan, 2026-10-01). Each clash is
+                       two rows — the other rule, then this one — so the two
+                       can be read against each other, with exactly what
+                       collides marked. One Resolve for the pair. */
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Conflicts
+                      </span>
+                      <div
+                        data-table-variant="T2"
+                        className="overflow-hidden rounded-md border border-fp-banner-accent-caution/20"
+                      >
+                        <table className="w-full table-fixed border-collapse text-sm">
+                          <colgroup>
+                            <col className="w-[13%]" />
+                            <col className="w-[25%]" />
+                            <col />
+                            <col className="w-[19%]" />
+                            <col className="w-[112px]" />
+                          </colgroup>
+                          <thead>
+                            <tr className="border-b border-fp-banner-accent-caution/20 bg-fp-banner-accent-caution/5">
+                              <th className="px-3 py-2.5 text-left">
+                                <TableRequiredLabel>Rule</TableRequiredLabel>
+                              </th>
+                              <th className="px-3 py-2.5 text-left">
+                                <TableRequiredLabel>Frequency</TableRequiredLabel>
+                              </th>
+                              <th className="px-3 py-2.5 text-left">
+                                <TableRequiredLabel>Assets · Products</TableRequiredLabel>
+                              </th>
+                              <th className="px-3 py-2.5 text-left">
+                                <TableRequiredLabel>Window</TableRequiredLabel>
+                              </th>
+                              <th className="px-3 py-2.5 text-left">
+                                <TableRequiredLabel>Action</TableRequiredLabel>
+                              </th>
+                            </tr>
+                          </thead>
+                          {rows.map((r) => {
+                            const p = r.program;
+                            const theirs = p.targets.find((t) => t.shipTo === activeTarget.shipTo);
+                            const clashAssets = r.assets.map((a) => a.asset);
+                            const offHere = r.keys.every((k) => skipped.has(k));
+                            const offThere = othersOff(p.id, r.keys);
+                            const off = offHere || offThere;
+                            const dayLabel = r.days.map((d) => d.label).join(" · ");
+                            return (
+                              <tbody
+                                key={p.id}
+                                className="border-b border-fp-banner-accent-caution/15 last:border-b-0"
+                              >
+                                <tr className="align-top">
+                                  <td className="px-3 pt-3 pb-1.5">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-default whitespace-nowrap text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-4">
+                                          {p.programNo}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-64">
+                                        <span className="flex flex-col gap-0.5">
+                                          <span className="font-medium">
+                                            {p.programNo} · {p.schedule.label}
+                                          </span>
+                                          <span className="opacity-80">{p.schedule.cadence}</span>
+                                          <span className="opacity-80">{p.products.join(" + ")}</span>
+                                        </span>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </td>
+                                  <td className="px-3 pt-3 pb-1.5">
+                                    <Days
+                                      runs={p.schedule.days}
+                                      clash={byDate ? [] : r.keys}
+                                      label={byDate ? dayLabel : p.schedule.label}
+                                    />
+                                  </td>
+                                  <td className="px-3 pt-3 pb-1.5">
+                                    <Lines
+                                      lines={(theirs?.lines ?? []).map((l) => ({ asset: l.asset, product: l.product }))}
+                                      clash={clashAssets}
+                                    />
+                                  </td>
+                                  <td className="px-3 pt-3 pb-1.5">
+                                    <span className={cn("text-foreground", r.window && hl)}>
+                                      {theirs?.window.start} – {theirs?.window.end}
+                                    </span>
+                                  </td>
+                                  <td rowSpan={2} className="px-3 py-3 align-middle">
+                                    {off ? (
+                                      <span className="flex flex-col items-start gap-1">
+                                        <span className="text-xs text-muted-foreground">
+                                          {offHere ? "This rule skips" : `${p.programNo} skips`}
+                                        </span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="-ml-1.5 h-7 px-1.5"
+                                          onClick={() =>
+                                            offHere
+                                              ? setSkipMany(r.keys, false)
+                                              : setOthersSkip(p.id, r.keys, false)
+                                          }
+                                        >
+                                          <Undo2 />
+                                          Undo
+                                        </Button>
+                                      </span>
+                                    ) : (
+                                      /* RESOLVE (Pavan, 2026-10-01) — the ways
+                                         out live behind it; one for now. */
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            Resolve
+                                            <ChevronDown />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-72">
+                                          <DropdownMenuItem
+                                            className="flex-col items-start gap-0.5"
+                                            onSelect={() => setSkipMany(r.keys)}
+                                          >
+                                            <span>Don&apos;t run this rule on {dayNames(r.keys)}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                              At this ship-to only.
+                                            </span>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="flex-col items-start gap-0.5"
+                                            onSelect={() => setOthersSkip(p.id, r.keys, true)}
+                                          >
+                                            <span>Stop {p.programNo} on {dayNames(r.keys)}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                              At this customer and ship-to only — {p.programNo} keeps
+                                              running everywhere else. Applied when this rule is created.
+                                            </span>
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+                                  </td>
+                                </tr>
+                                <tr className="align-top">
+                                  <td className="px-3 pt-1.5 pb-3 text-muted-foreground">
+                                    This rule
+                                  </td>
+                                  <td className="px-3 pt-1.5 pb-3">
+                                    <span className="flex items-start">
+                                      <Days
+                                        runs={schedule.days}
+                                        clash={byDate ? [] : r.keys}
+                                        label={byDate ? dayLabel : schedule.label}
+                                      />
+                                      <Why
+                                        text={`Frequency conflict — both rules deliver to this ship-to on ${dayNames(r.keys)}.`}
+                                      />
+                                    </span>
+                                  </td>
+                                  <td className="px-3 pt-1.5 pb-3">
+                                    <span className="flex items-start">
+                                      <Lines
+                                        lines={activeTarget.lines.map((l) => ({ asset: l.asset, product: l.product }))}
+                                        clash={clashAssets}
+                                      />
+                                      {r.assets.length > 0 && (
+                                        <Why
+                                          text={`Asset conflict — both rules fill ${r.assets
+                                            .map((a) => `${a.asset} (${a.product})`)
+                                            .join(", ")} on ${dayNames(r.keys)}.`}
+                                        />
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 pt-1.5 pb-3">
+                                    <span className="flex items-start">
+                                      <span className={cn("text-foreground", r.window && hl)}>
+                                        {activeTarget.window.start} – {activeTarget.window.end}
+                                      </span>
+                                      {r.window && (
+                                        <Why
+                                          text={`Scheduling window conflict — ${activeTarget.window.start} – ${activeTarget.window.end} overlaps ${p.programNo}'s ${r.window.start} – ${r.window.end} on ${dayNames(r.keys)}.`}
+                                        />
+                                      )}
+                                    </span>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            );
+                          })}
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </Card>

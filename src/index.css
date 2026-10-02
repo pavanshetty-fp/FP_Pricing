@@ -69,6 +69,32 @@
   animation: fp-attention 600ms ease-in-out 1;
 }
 
+/* THE SAME BLINK IN THE INFO BLUE, for chips that just became clickable —
+   the winter-blend toggle turns the product chips into a picker (Pavan,
+   2026-10-01). Once, like the ring; blue because the picked state is blue. */
+@keyframes fp-attention-info {
+  0%,
+  100% {
+    outline-color: transparent;
+  }
+  25%,
+  75% {
+    outline-color: var(--color-fp-banner-accent-info);
+  }
+}
+.fp-attention-info {
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  animation: fp-attention-info 600ms ease-in-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-attention-info {
+    animation: none;
+    outline-color: var(--color-fp-banner-accent-info);
+    transition: outline-color 1200ms step-end;
+  }
+}
+
 /* THE SAME ATTENTION, FOR SOMETHING THAT IS NOT ONE BOX.
    A column of a grid is a stack of separate cells, and an outline round each
    of them is a ladder rather than a column. A fill flashed across all of them

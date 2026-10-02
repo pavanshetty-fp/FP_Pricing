@@ -34,6 +34,10 @@ export interface FuelOrdersToolbarProps {
   onDateChange: (d: Date) => void;
   /** Groupable dimensions for this list, plus the active ordered stack. */
   groupBy: ListToolbarProps<FuelOrderColumnKey>["groupBy"];
+  /** The filter row under the headers — see `ListToolbarProps`. */
+  columnFiltersOpen?: boolean;
+  onToggleColumnFilters?: () => void;
+  columnFilterCount?: number;
 }
 
 export function FuelOrdersToolbar({
@@ -43,6 +47,7 @@ export function FuelOrdersToolbar({
 }: FuelOrdersToolbarProps) {
   return (
     <ListToolbar
+      boardView
       {...rest}
       searchPlaceholder="Search fuel orders, sites, drivers…"
       filters={<FuelOrdersFilters />}
@@ -68,5 +73,32 @@ export function ColumnSearchChip({
       colQuery={colQuery}
       onClear={onClear}
     />
+  );
+}
+
+/** One chip per header box that has something typed in it. */
+export function ColumnFilterChips({
+  columns,
+  filters,
+  onClear,
+}: {
+  columns: { key: FuelOrderColumnKey; label: string }[];
+  filters: [string, string][];
+  onClear: (key: string) => void;
+}) {
+  if (filters.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {filters.map(([key, value]) => (
+        <GenericChip
+          key={key}
+          className=""
+          searchFields={columns}
+          colScope={key}
+          colQuery={value.trim()}
+          onClear={() => onClear(key)}
+        />
+      ))}
+    </div>
   );
 }

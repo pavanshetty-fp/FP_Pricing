@@ -189,10 +189,15 @@ service area and offers nothing outside it; the empty state says *"Nothing
 matches inside this partner's area"*, which is a different sentence from
 *"nothing matches"*.
 
-**A collision is flagged, not blocked.** A site already on another rule for the
-same product shows the clash inline, on its own row, and its Add button drops
-from `default` to `outline` — still pressable. The system knows the fact; only
-the broker knows whether it is a mistake.
+**A collision is flagged, not blocked.** The system knows the fact; only the
+broker knows whether it is a mistake. *(Recurring rule, 2026-10-01:)* a
+collision is only a real one — same ship-to, a day both run, and the **same
+asset** or an **overlapping window**. It is listed in a quiet Conflicts table
+inside the ship-to's tab, two rows per clash with the colliding parts marked,
+and resolved per row (skip those days on this rule, or stop the other rule on
+those days at this ship-to only). See `threepl/README.md` → V1.1 → Changes.
+The recurring rule's ship-tos are now **tabs** (customer → ship-to → window →
+assets), not a picked list.
 
 ---
 

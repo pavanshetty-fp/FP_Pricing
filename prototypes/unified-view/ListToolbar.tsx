@@ -149,8 +149,8 @@ export interface ListToolbarProps<K extends string> {
   /** Offer the map view. Off unless the records are geographic. */
   mapView?: boolean;
   /**
-   * WHETHER THIS LIST HAS A BOARD AT ALL. Default true, because every list
-   * that has used this toolbar so far does.
+   * WHETHER THIS LIST HAS A BOARD AT ALL. Default FALSE (2026-10-01) — most
+   * lists here have no board, and the ones that do say so.
    *
    * The same call `mapView` makes, and for the same reason: a view switch that
    * offers a board to a list with no board is a dead control, and the rule
@@ -281,13 +281,14 @@ export function ListToolbar<K extends string>({
   view,
   onViewChange,
   mapView = false,
-  boardView = true,
+  boardView = false,
   dateScope,
   dateControl,
   groupBy,
   showGroupBy = true,
   cardFields,
 }: ListToolbarProps<K>) {
+  const multiView = boardView || mapView;
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
   const shown = columns.filter((c) => !hiddenColumns.has(c.key)).length;
@@ -394,13 +395,18 @@ export function ListToolbar<K extends string>({
           </>
         )}
 
-        <IconTool
-          label="Table view"
-          active={view === "table"}
-          onClick={() => onViewChange("table")}
-        >
-          <Table2 />
-        </IconTool>
+        {/* ONE VIEW, NO SWITCH (Pavan, 2026-10-01). A table-only list gets no
+            Table-view icon — a switch with one position switches nothing.
+            The column tools after it stay: they belong to the table. */}
+        {multiView && (
+          <IconTool
+            label="Table view"
+            active={view === "table"}
+            onClick={() => onViewChange("table")}
+          >
+            <Table2 />
+          </IconTool>
+        )}
         {boardView && (
           <IconTool
             label="Board view"
@@ -436,7 +442,7 @@ export function ListToolbar<K extends string>({
             using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */}
         {view === "table" && (
           <>
-        <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+        {multiView && <div className="mx-1 h-5 w-px bg-border" aria-hidden />}
 
         {/* Search by column — the row, where the table has one. */}
         {onToggleColumnFilters ? (

@@ -68,10 +68,51 @@ interface ViewState {
   pageSize: number;
   colScope: string;
   colQuery: string;
+  /** The filter row's boxes, by column key. Optional so a view saved before
+   *  the row still applies. */
+  colFilters?: Record<string, string>;
 }
 
 const keyOf = (s: ViewState) =>
-  JSON.stringify({ ...s, hidden: [...s.hidden].sort() });
+  JSON.stringify({
+    ...s,
+    hidden: [...s.hidden].sort(),
+    /* Empty boxes are no filter — typing then clearing one is not a change. */
+    colFilters: Object.fromEntries(
+      Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
+    ),
+  });
+
+/**
+ * WHAT EACH COLUMN PRINTS, as text a header box can match — the same rule as
+ * `brokerColumnText` in 3PL: a box under a header matches what is written
+ * above the rows beneath it. Products match every one, not only the first the
+ * cell shows — the rest are one hover away behind its `+N`.
+ */
+function assetColumnText(a: Asset, key: AssetColumnKey): string {
+  switch (key) {
+    case "asset":
+      return `${a.displayName} ${a.uniqueId}`;
+    case "erpId":
+      return a.erpId;
+    case "hub":
+      return a.hub;
+    case "los":
+      return a.los;
+    case "products":
+      return a.products.join(" ");
+    case "capacity":
+      return `${a.capacityGal.toLocaleString()} gal`;
+    case "monitor":
+      return a.tankMonitor ? `Yes ${a.tankMonitorId}` : "No";
+    case "createdOn":
+      return a.createdOn;
+    case "status":
+      return a.status;
+    default:
+      return "";
+  }
+}
 
 export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | null } = {}) {
   const [rows, setRows] = React.useState<Asset[]>(ASSETS);
@@ -85,6 +126,13 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
   const [colScope, setColScope] = React.useState("asset");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<ListView>("table");
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
 
   const current: ViewState = {
     search,
@@ -94,6 +142,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     pageSize,
     colScope,
     colQuery,
+    colFilters,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -104,6 +153,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       pageSize: 25,
       colScope: "asset",
       colQuery: "",
+      colFilters: {},
     }),
     []
   );
@@ -119,6 +169,10 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     setPageSize(s.pageSize);
     setColScope(s.colScope);
     setColQuery(s.colQuery);
+    const filters = s.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
     setPage(1);
   };
 
@@ -137,9 +191,16 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     () =>
       rows.filter(
         (a) =>
-          (!q || matchesAsset(a, q)) && (!cq || matchesAssetIn(a, cq, colScope))
+          (!q || matchesAsset(a, q)) && (!cq || matchesAssetIn(a, cq, colScope)) &&
+          /* AND-ed, and each box matches the text its own column PRINTS —
+             see `assetColumnText`. */
+          activeColFilters.every(([key, value]) =>
+            assetColumnText(a, key as AssetColumnKey)
+              .toLowerCase()
+              .includes(value.trim().toLowerCase())
+          )
       ),
-    [rows, q, cq, colScope]
+    [rows, q, cq, colScope, activeColFilters]
   );
   const sorted = React.useMemo(() => sortAssets(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
@@ -299,6 +360,23 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
             setColQuery(v);
             setPage(1);
           }}
+          /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only. */
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view !== "table"
+              ? undefined
+              : () =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row clears it: a narrowing with no boxes on
+                       screen would be one nobody could see. */
+                    if (open) {
+                      setColFilters({});
+                      setPage(1);
+                    }
+                    return !open;
+                  })
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
         />
@@ -311,11 +389,32 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
             setPage(1);
           }}
         />
+        {/* One chip per header box that has something typed in it. */}
+        {activeColFilters.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {activeColFilters.map(([key, value]) => (
+              <ColumnSearchChip
+                key={key}
+                className=""
+                searchFields={TOGGLE_COLUMNS}
+                colScope={key}
+                colQuery={value.trim()}
+                onClear={() => {
+                  setColFilters((prev) => ({ ...prev, [key]: "" }));
+                  setPage(1);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
-          {sorted.length === 0 ? (
+          {/* THE ROW STAYS WHILE IT IS OPEN. An empty result swaps the table
+              for the empty state, which would take the boxes with it — the
+              reader would lose the thing they were typing in. */}
+          {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -361,6 +460,12 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
               actionsKey="actions"
               openLabel={(a) => `Open asset ${a.displayName}`}
               onOpenRow={(a) => setOpenId(a.id)}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
             />
           )}
         </div>

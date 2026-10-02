@@ -1,9 +1,17 @@
 import * as React from "react";
-import { Network, SearchX, Archive } from "lucide-react";
+import {
+  Network,
+  SearchX,
+  Archive,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   Empty,
@@ -15,8 +23,8 @@ import {
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
+  TableCell,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -25,7 +33,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { TablePagination } from "@/components/tables-layout";
+import {
+  TableColumnHeader,
+  TablePagination,
+  useTableColumns,
+} from "@/components/tables-layout";
 import {
   ColumnSearchChip,
   FilterChips,
@@ -65,7 +77,8 @@ import {
   RecurringProgramCreate,
   type ProgramDraft,
 } from "./RecurringProgramCreate";
-import { toSchedule } from "./RuleFrequency";
+import { blankFrequency, toSchedule } from "./RuleFrequency";
+import { OverflowList } from "../ListTable";
 import { dateKeyOf, startOfDay } from "../data";
 import { statusTones } from "../statusKind";
 
@@ -85,7 +98,12 @@ import { statusTones } from "../statusKind";
   Everything else — which sites, what each one pays — is the sheet's grid,
   because a list cannot hold a table inside a cell without becoming one.
 
-  THE COLUMN GROUPS ARE V1'S, minus the ones that stopped being single values.
+  FLAT, AND EVERY COLUMN SORTS (Pavan, 2026-10-01). The Programme / Partner /
+  Coverage / Per run groups are gone — the reader orders the columns, not the
+  author. The headings handed their meaning back to the labels: the per-run
+  money reads "Estimated …" (Pavan, 2026-10-01): a rule only ever makes
+  orders, and each order still goes through every lane, so the rule's money
+  is an estimate, never a price.
   Customer and ship-to are not on the row at all: a programme has five of each
   and a cell that says "Cardinal Logistics +4" is a worse answer than a count.
 */
@@ -109,46 +127,129 @@ interface Col {
   label: string;
   width: number;
   align?: "right";
+  /** What it sorts BY. */
+  sort: (p: RecurringProgram) => string | number;
 }
 
-const GROUPS: { label: string; cols: Col[] }[] = [
+const uniq = (xs: string[]) => [...new Set(xs)].join(" / ");
+
+const COLUMNS: Col[] = [
   {
-    label: "Programme",
-    cols: [
-      { key: "programNo", label: "Programme # / Created", width: 170 },
-      { key: "schedule", label: "Frequency", width: 190 },
-      { key: "product", label: "Product", width: 170 },
-      { key: "status", label: "Status", width: 170 },
-    ],
+    key: "programNo",
+    label: "Programme # / Created",
+    width: 190,
+    sort: (p) => p.programNo,
+  },
+  { key: "schedule", label: "Frequency", width: 240, sort: (p) => p.schedule.label },
+  { key: "product", label: "Product", width: 170, sort: (p) => p.products.join(" + ") },
+  { key: "status", label: "Status", width: 150, sort: (p) => p.status },
+  { key: "vendor", label: "Partner", width: 190, sort: (p) => programPartnerLabel(p) },
+  {
+    key: "loadOrder",
+    label: "Load Order",
+    width: 130,
+    sort: (p) => (p.loadOrder ? "Yes" : "No"),
   },
   {
-    label: "Partner",
-    cols: [
-      { key: "vendor", label: "Partner", width: 190 },
-      { key: "loadOrder", label: "Load Order", width: 110 },
-      { key: "terminal", label: "Terminal", width: 160 },
-      { key: "account", label: "Loading Account", width: 170 },
-    ],
+    key: "terminal",
+    label: "Terminal",
+    width: 170,
+    sort: (p) => (p.loadOrder ? uniq(p.loadRows.map((l) => l.terminal)) : ""),
   },
   {
-    label: "Coverage",
-    cols: [
-      { key: "sites", label: "Sites", width: 110, align: "right" },
-      { key: "customers", label: "Customers", width: 110, align: "right" },
-      { key: "liveness", label: "Lanes Live", width: 150 },
-    ],
+    key: "account",
+    label: "Loading Account",
+    width: 180,
+    sort: (p) => (p.loadOrder ? uniq(p.loadRows.map((l) => l.loadingAccount)) : ""),
   },
   {
-    label: "Per run",
-    cols: [
-      { key: "cost", label: "Partner", width: 120, align: "right" },
-      { key: "revenue", label: "Customer", width: 120, align: "right" },
-      { key: "margin", label: "Margin", width: 120, align: "right" },
-    ],
+    key: "sites",
+    label: "Sites",
+    width: 110,
+    align: "right",
+    sort: (p) => p.targets.length,
+  },
+  {
+    key: "customers",
+    label: "Customers",
+    width: 130,
+    align: "right",
+    sort: (p) => new Set(p.targets.map((t) => t.customer.title)).size,
+  },
+  {
+    key: "liveness",
+    label: "Lanes Live",
+    width: 160,
+    sort: (p) => liveTargets(p).length,
+  },
+  /* NOT PRICED SORTS LAST going up — an unpriced programme is not the
+     cheapest one. */
+  {
+    key: "cost",
+    label: "Estimated Partner Price",
+    width: 200,
+    align: "right",
+    sort: (p) => programMoney(p).cost || Number.MAX_SAFE_INTEGER,
+  },
+  {
+    key: "revenue",
+    label: "Estimated Customer Price",
+    width: 210,
+    align: "right",
+    sort: (p) => programMoney(p).revenue || Number.MAX_SAFE_INTEGER,
+  },
+  {
+    key: "margin",
+    label: "Estimated Margin",
+    width: 170,
+    align: "right",
+    sort: (p) =>
+      programMoney(p).revenue > 0 ? programMoney(p).margin : Number.MAX_SAFE_INTEGER,
   },
 ];
 
-const ALL_COLS = GROUPS.flatMap((g) => g.cols);
+/**
+ * WHAT EACH COLUMN PRINTS, as text — what its box in the filter row matches.
+ * A box finds what the reader can SEE in that column, nothing else.
+ */
+function columnText(p: RecurringProgram, key: string): string {
+  const money = programMoney(p);
+  switch (key) {
+    case "programNo":
+      return `${p.programNo} ${DATE_FMT.format(new Date(p.createdAt))}`;
+    case "schedule":
+      return p.schedule.label;
+    case "product":
+      return p.products.join(" + ");
+    case "status":
+      return p.status;
+    case "vendor":
+      return programPartnerLabel(p);
+    case "loadOrder":
+      return p.loadOrder ? "Yes" : "No";
+    case "terminal":
+      return p.loadOrder ? uniq(p.loadRows.map((l) => l.terminal)) : "Partner supplies";
+    case "account":
+      return p.loadOrder ? uniq(p.loadRows.map((l) => l.loadingAccount)) : "";
+    case "sites":
+      return String(p.targets.length);
+    case "customers":
+      return String(new Set(p.targets.map((t) => t.customer.title)).size);
+    case "liveness":
+      return `${liveTargets(p).length} of ${p.targets.length}`;
+    case "cost":
+      return money.cost > 0 ? MONEY(money.cost) : "Not priced";
+    case "revenue":
+      return money.revenue > 0 ? MONEY(money.revenue) : "Not priced";
+    case "margin":
+      return money.revenue > 0 ? MONEY(money.margin) : "";
+    default:
+      return "";
+  }
+}
+
+const ALL_COLS: Col[] = COLUMNS;
+const COL_KEYS: string[] = COLUMNS.map((c) => c.key);
 
 const PROGRAM_FACETS: {
   key: string;
@@ -214,6 +315,33 @@ const PROGRAM_SEARCH_FIELDS: {
   },
 ];
 
+/**
+ * A RULE, BACK INTO THE FORM'S SHAPE. Rules made in the form keep the form's
+ * own frequency; the seeded ones are rebuilt from their schedule.
+ */
+function draftOf(p: RecurringProgram): ProgramDraft {
+  const days = p.schedule.days;
+  return {
+    name: p.programNo,
+    jobType: p.jobType,
+    vendorIds: p.vendorIds,
+    products: p.products,
+    winterProducts: p.winterProducts,
+    frequency: p.frequency ?? {
+      ...blankFrequency(),
+      dayMode: days.length === 7 ? "daily" : "specific",
+      days,
+      repeat: /month/i.test(p.schedule.cadence) ? "monthly" : "weekly",
+      endKey: p.endKey,
+    },
+    loadOrder: p.loadOrder,
+    loadRows: p.loadRows.map((l) => ({ loadingAccount: l.loadingAccount })),
+    startKey: p.startKey,
+    signatureOnDelivery: p.signatureOnDelivery,
+    targets: p.targets,
+  };
+}
+
 export function RecurringProgramsScreen({
   onOpenArchive,
 }: {
@@ -224,6 +352,9 @@ export function RecurringProgramsScreen({
   const [programs, setPrograms] = usePrograms();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+  /* THE RULE BEING EDITED in the create form — only one that has made no
+     order yet (see the sheet's Edit rule). */
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [applied, setApplied] = React.useState<ReadonlySet<string>>(new Set());
   const [hidden, setHidden] = React.useState<ReadonlySet<string>>(new Set());
@@ -235,12 +366,49 @@ export function RecurringProgramsScreen({
   const [line, setLine] = React.useState<ServiceLine>("Fuel");
   const [business, setBusiness] = React.useState<string | null>(null);
 
+  /* THE COLUMNS ARE THE READER'S — order, widths and the sort, the same
+     `useTableColumns` call every flat table here makes. */
+  /* SEARCH BY COLUMN IS A ROW OF BOXES UNDER THE HEADER — the Delivery
+     Orders behaviour, and the rule for every table (`2-rules.md` §10g). */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
+  const [colOrder, setColOrder] = React.useState<string[]>(COL_KEYS);
+  const [widths, setWidths] = React.useState<Record<string, number>>({});
+  const [sort, setSort] = React.useState<{
+    key: string;
+    dir: "asc" | "desc";
+  } | null>(null);
+  const cols = useTableColumns({
+    keys: COL_KEYS,
+    order: colOrder,
+    onOrderChange: setColOrder,
+    widths,
+    onWidthsChange: setWidths,
+  });
+  /* ASC → DESC → UNSORTED, the three-press cycle every table uses. */
+  const onSort = (key: string) =>
+    setSort((prev) =>
+      !prev || prev.key !== key
+        ? { key, dir: "asc" }
+        : prev.dir === "asc"
+          ? { key, dir: "desc" }
+          : null
+    );
+
   const savedViews = useSavedViews<{
     search: string;
     applied: string[];
     hidden: string[];
     colScope: string;
     colQuery: string;
+    colFilters: Record<string, string>;
+    colOrder: string[];
+    widths: Record<string, number>;
+    sort: { key: string; dir: "asc" | "desc" } | null;
   }>({
     current: {
       search,
@@ -248,6 +416,10 @@ export function RecurringProgramsScreen({
       hidden: [...hidden],
       colScope,
       colQuery,
+      colFilters: Object.fromEntries(activeColFilters),
+      colOrder,
+      widths,
+      sort,
     },
     defaultState: {
       search: "",
@@ -255,19 +427,35 @@ export function RecurringProgramsScreen({
       hidden: [],
       colScope: PROGRAM_SEARCH_FIELDS[0].key,
       colQuery: "",
+      colFilters: {},
+      colOrder: COL_KEYS,
+      widths: {},
+      sort: null,
     },
     keyOf: (v) =>
       JSON.stringify({
         ...v,
         applied: [...v.applied].sort(),
         hidden: [...v.hidden].sort(),
+        colFilters: Object.fromEntries(
+          Object.entries(v.colFilters ?? {})
+            .filter(([, x]) => x.trim() !== "")
+            .sort(([a], [b]) => a.localeCompare(b))
+        ),
       }),
     apply: (v) => {
       setSearch(v.search);
+      setColFilters(v.colFilters ?? {});
+      /* A view that narrows by column opens on its boxes — a narrowing with
+         nothing on screen saying so is the one thing the row exists to avoid. */
+      setColFiltersOpen(Object.values(v.colFilters ?? {}).some((x) => x.trim()));
       setApplied(new Set(v.applied));
       setHidden(new Set(v.hidden));
       setColScope(v.colScope);
       setColQuery(v.colQuery);
+      setColOrder(v.colOrder ?? COL_KEYS);
+      setWidths(v.widths ?? {});
+      setSort(v.sort ?? null);
       setPage(1);
     },
   });
@@ -280,11 +468,18 @@ export function RecurringProgramsScreen({
       (acc[id.slice(0, at)] ??= []).push(id.slice(at + 1));
       return acc;
     }, {});
-    return programs.filter((p) => {
+    const kept = programs.filter((p) => {
       if (p.serviceLine !== line) return false;
       if (business !== null && p.business !== business) return false;
       if (!matchesProgram(p, search)) return false;
       if (cq && field && !field.text(p).toLowerCase().includes(cq)) return false;
+      /* AND, because that is what typing in two boxes looks like it does. */
+      if (
+        !activeColFilters.every(([k, v]) =>
+          columnText(p, k).toLowerCase().includes(v.trim().toLowerCase())
+        )
+      )
+        return false;
       return Object.entries(byFacet).every(([k, wanted]) => {
         const facet = PROGRAM_FACETS.find((f) => f.key === k);
         if (!facet) return true;
@@ -292,7 +487,18 @@ export function RecurringProgramsScreen({
         return mine.some((x) => wanted.includes(x));
       });
     });
-  }, [programs, search, applied, colScope, colQuery, line, business]);
+    /* SORTING IS THE LAST STEP. Unsorted returns the list's own order. */
+    const col = sort && COLUMNS.find((c) => c.key === sort.key);
+    if (!sort || !col) return kept;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...kept].sort((a, b) => {
+      const av = col.sort(a);
+      const bv = col.sort(b);
+      if (typeof av === "number" && typeof bv === "number")
+        return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [programs, search, applied, colScope, colQuery, line, business, sort, activeColFilters]);
 
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -300,22 +506,31 @@ export function RecurringProgramsScreen({
   const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business]);
+  }, [search, applied, colQuery, colScope, line, business, activeColFilters]);
 
   const openProgram = programs.find((p) => p.id === openId) ?? null;
+  const editing = programs.find((p) => p.id === editingId) ?? null;
+  const editingDraft = React.useMemo<ProgramDraft | null>(
+    () => (editing ? draftOf(editing) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editingId]
+  );
   const filtered =
-    search.trim().length > 0 || applied.size > 0 || colQuery.trim().length > 0;
+    search.trim().length > 0 ||
+    applied.size > 0 ||
+    colQuery.trim().length > 0 ||
+    activeColFilters.length > 0;
   const clearAll = () => {
     setSearch("");
     setApplied(new Set());
     setColQuery("");
+    setColFilters({});
   };
 
-  const visibleGroups = GROUPS.map((g) => ({
-    label: g.label,
-    cols: g.cols.filter((c) => !hidden.has(c.key)),
-  })).filter((g) => g.cols.length > 0);
-  const flatCols = visibleGroups.flatMap((g) => g.cols);
+  const visibleCols = React.useMemo(
+    () => cols.arrange(COLUMNS.filter((c) => !hidden.has(c.key))),
+    [cols, hidden]
+  );
 
   const cell = (p: RecurringProgram, key: string): React.ReactNode => {
     const live = liveTargets(p);
@@ -338,13 +553,11 @@ export function RecurringProgramsScreen({
           </div>
         );
       case "schedule":
-        return <ScheduleCell schedule={p.schedule} />;
+        return <ScheduleCell schedule={p.schedule} roomy />;
       case "product":
-        return (
-          <span className="truncate text-sm text-foreground">
-            {p.products.join(" + ")}
-          </span>
-        );
+        /* SEVERAL PRODUCTS: the first, and +N for the rest on hover — the
+           idiom every list here uses. */
+        return <OverflowList values={p.products} label="products" />;
       case "status":
         return (
           <StatusChip tone={SERIES_TONE[p.status]} variant="soft">
@@ -554,6 +767,19 @@ export function RecurringProgramsScreen({
           onColScopeChange={setColScope}
           colQuery={colQuery}
           onColQueryChange={setColQuery}
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view === "table"
+              ? () =>
+                  setColFiltersOpen((open) => {
+                    /* CLOSING THE ROW PUTS THE TABLE BACK — boxes that are
+                       gone must not go on narrowing. */
+                    if (open) setColFilters({});
+                    return !open;
+                  })
+              : undefined
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
         />
@@ -576,7 +802,10 @@ export function RecurringProgramsScreen({
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
-        {rows.length === 0 ? (
+        {/* THE ROW STAYS WHEN NOTHING MATCHES. Swapping the table for an
+            empty state would take away the very boxes the reader has to
+            change to get the rows back. */}
+        {rows.length === 0 && !colFiltersOpen ? (
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -605,47 +834,87 @@ export function RecurringProgramsScreen({
               className="border-separate border-spacing-0"
             >
               <colgroup>
-                {flatCols.map((c) => (
-                  <col key={c.key} style={{ width: `${c.width}px` }} />
+                {visibleCols.map((c) => (
+                  <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
                 ))}
               </colgroup>
               <TableHeader className="bg-fp-table-header">
                 <TableRow className="h-10 bg-fp-table-header hover:bg-transparent">
-                  {visibleGroups.map((g, gi) => (
-                    <TableHead
-                      key={g.label}
-                      colSpan={g.cols.length}
-                      className={cn(
-                        "sticky top-0 z-20 whitespace-nowrap border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-semibold text-foreground",
-                        gi > 0 && "border-l border-fp-outline-1"
-                      )}
-                    >
-                      {g.label}
-                    </TableHead>
-                  ))}
-                </TableRow>
-                <TableRow className="h-10 bg-fp-table-header hover:bg-transparent">
-                  {visibleGroups.map((g, gi) =>
-                    g.cols.map((c, ci) => (
-                      <TableHead
+                  {visibleCols.map((c) => {
+                    const active = sort?.key === c.key;
+                    const SortIcon = !active
+                      ? ChevronsUpDown
+                      : sort?.dir === "asc"
+                        ? ChevronUp
+                        : ChevronDown;
+                    return (
+                      <TableColumnHeader
                         key={c.key}
+                        cols={cols}
+                        col={c}
+                        aria-sort={
+                          active
+                            ? sort?.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
                         className={cn(
-                          "sticky top-10 z-20 whitespace-nowrap border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
-                          c.align === "right" && "text-right",
-                          gi > 0 && ci === 0 && "border-l border-fp-outline-1"
+                          "sticky top-0 z-20 whitespace-nowrap border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
+                          c.align === "right" && "text-right"
                         )}
                       >
-                        {c.label}
-                      </TableHead>
-                    ))
-                  )}
+                        <button
+                          type="button"
+                          onClick={() => onSort(c.key)}
+                          aria-label={`Sort by ${c.label}`}
+                          className={cn(
+                            "inline-flex items-center gap-1 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+                            active && "text-foreground"
+                          )}
+                        >
+                          {c.label}
+                          <SortIcon
+                            className={cn(
+                              "size-3.5",
+                              active ? "opacity-100" : "opacity-70"
+                            )}
+                          />
+                        </button>
+                      </TableColumnHeader>
+                    );
+                  })}
                 </TableRow>
+                {colFiltersOpen && (
+                  /* THE SECOND HEADER ROW — the same band ListTable draws. */
+                  <TableRow className="h-11 hover:bg-transparent">
+                    {visibleCols.map((c) => (
+                      <TableHead
+                        key={c.key}
+                        className="sticky top-10 z-20 border-b border-fp-outline-1 bg-fp-surface-1b px-2"
+                      >
+                        <Input
+                          value={colFilters[c.key] ?? ""}
+                          onChange={(e) =>
+                            setColFilters((prev) => ({
+                              ...prev,
+                              [c.key]: e.target.value,
+                            }))
+                          }
+                          placeholder={cols.widthOf(c) >= 96 ? "Filter…" : ""}
+                          aria-label={`Filter by ${c.label}`}
+                          className="h-7 rounded-md px-2.5 text-xs shadow-none"
+                        />
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                )}
               </TableHeader>
               <TableBody>
                 {pageRows.map((p) => (
                   <TableRow
                     key={p.id}
-                    className="group/row h-14 cursor-pointer [&>td]:border-b [&>td]:border-fp-outline-1"
+                    className="group/row h-16 cursor-pointer [&>td]:border-b [&>td]:border-fp-outline-1"
                     onClick={(e) => {
                       const t = e.target as HTMLElement | null;
                       if (t?.closest("button,a,input,label")) return;
@@ -653,20 +922,14 @@ export function RecurringProgramsScreen({
                       setOpenId(p.id);
                     }}
                   >
-                    {visibleGroups.map((g, gi) =>
-                      g.cols.map((c, ci) => (
-                        <TableCell
-                          key={c.key}
-                          className={cn(
-                            "px-3",
-                            c.align === "right" && "text-right",
-                            gi > 0 && ci === 0 && "border-l border-fp-outline-1"
-                          )}
-                        >
-                          {cell(p, c.key)}
-                        </TableCell>
-                      ))
-                    )}
+                    {visibleCols.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className={cn("px-3", c.align === "right" && "text-right")}
+                      >
+                        {cell(p, c.key)}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
@@ -709,9 +972,15 @@ export function RecurringProgramsScreen({
       </div>
 
       <RecurringProgramCreate
-        open={creating}
-        onOpenChange={setCreating}
-        all={programs}
+        open={creating || editing !== null}
+        onOpenChange={(v) => {
+          if (v) return;
+          setCreating(false);
+          setEditingId(null);
+        }}
+        /* A rule never clashes with itself. */
+        all={editing ? programs.filter((p) => p.id !== editing.id) : programs}
+        initial={editingDraft}
         onCreate={(d: ProgramDraft) => {
           const schedule = toSchedule(d.frequency);
           const partners = d.vendorIds
@@ -749,6 +1018,7 @@ export function RecurringProgramsScreen({
             orderType: "Core",
             signatureOnDelivery: d.signatureOnDelivery,
             schedule,
+            frequency: d.frequency,
             startKey: d.startKey,
             endKey: d.frequency.endKey,
             tags: [],
@@ -762,6 +1032,51 @@ export function RecurringProgramsScreen({
                 ? "Upcoming"
                 : "Active",
           };
+          /* "STOP THE OTHER RULE HERE" — written onto those rules' ship-tos
+             now that this rule exists. They keep running everywhere else. */
+          const asks = d.targets.flatMap((t) =>
+            (t.othersSkip ?? []).map((o) => ({ ...o, shipTo: t.shipTo }))
+          );
+          next.targets = next.targets.map((t) => ({ ...t, othersSkip: undefined }));
+          if (asks.length)
+            setPrograms((prev) =>
+              prev.map((p) => {
+                const mine = asks.filter((a) => a.programId === p.id);
+                if (!mine.length) return p;
+                return {
+                  ...p,
+                  targets: p.targets.map((t) => {
+                    const a = mine.find((x) => x.shipTo === t.shipTo);
+                    if (!a) return t;
+                    return {
+                      ...t,
+                      skip: {
+                        weekdays: [...new Set([...(t.skip?.weekdays ?? []), ...a.weekdays])],
+                        monthDays: [...new Set([...(t.skip?.monthDays ?? []), ...a.monthDays])],
+                      },
+                    };
+                  }),
+                };
+              })
+            );
+          if (editing) {
+            /* SAVING REPLACES THE RULE IN PLACE — same record, same row. */
+            const saved: RecurringProgram = {
+              ...next,
+              id: editing.id,
+              createdAt: editing.createdAt,
+              serviceLine: editing.serviceLine,
+              business: editing.business,
+              orderType: editing.orderType,
+              tags: editing.tags,
+              internalNote: editing.internalNote,
+            };
+            setPrograms((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+            setEditingId(null);
+            setOpenId(saved.id);
+            toast.success(`${saved.programNo} saved`);
+            return;
+          }
           setPrograms((prev) => [next, ...prev]);
           setOpenId(next.id);
           toast.success(`${next.programNo} created`, {
@@ -778,6 +1093,10 @@ export function RecurringProgramsScreen({
         onChange={(next) =>
           setPrograms((prev) => prev.map((p) => (p.id === next.id ? next : p)))
         }
+        onEdit={(p) => {
+          setOpenId(null);
+          setEditingId(p.id);
+        }}
       />
     </div>
   );

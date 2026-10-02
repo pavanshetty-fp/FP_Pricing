@@ -1,6 +1,11 @@
 import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "../data";
 import { HUBS, SHIP_TO_SITES, type BrokerOrder } from "./orders";
-import { liveTargets, programRunsOn, type RecurringProgram } from "./recurringPrograms";
+import {
+  liveTargets,
+  programRunsOn,
+  targetSkips,
+  type RecurringProgram,
+} from "./recurringPrograms";
 
 /*
   A RULE CUTS REAL ORDERS (Pavan, 2026-09-24).
@@ -56,6 +61,8 @@ export function ordersFromPrograms(
     for (const p of programs) {
       if (!programRunsOn(p, day)) continue;
       for (const t of liveTargets(p)) {
+        /* A ship-to that sits this day out — a resolved clash. */
+        if (targetSkips(t, day)) continue;
         const id = recurringOrderId(p.id, t.id, dateKey);
         if (existing.has(id)) continue;
         const site = SHIP_TO_SITES.find((s) => s.name === t.shipTo);

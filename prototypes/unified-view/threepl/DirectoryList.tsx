@@ -1,4 +1,5 @@
 import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { Download, Plus, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   BulkActionBar,
   GroupedListFooter,
@@ -57,6 +59,67 @@ import { downloadCsv } from "../csv";
 
 /** Mirrors `TablePagination`'s own default set — used only to validate a URL. */
 const DS_PAGE_SIZES = [10, 25, 50, 100];
+
+/*
+  WHAT A CELL PRINTS, as text — what the header row's "Filter…" boxes match.
+
+  The boxes promise to search the column you are looking at, so they have to
+  match the words in it: "$12,400" not 12400, "Expiring" not a date, the
+  status chip's label not its enum. The four screens only describe their cells
+  as React, so the cell is rendered here, off screen, and its text read back —
+  one definition of the column, not a second text-only copy of it to drift.
+  Tooltip bodies are closed in a static render, so hover text does not match;
+  that is the same line the eye draws.
+
+  A cell that will not render outside the page falls back to the strings in
+  its tree, which is most of them.
+*/
+function textOfNode(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOfNode).join(" ");
+  if (React.isValidElement(node)) {
+    const props = node.props as Record<string, unknown>;
+    return ["title", "description", "label", "value", "children"]
+      .map((k) => textOfNode(props[k] as React.ReactNode))
+      .join(" ");
+  }
+  return "";
+}
+
+function cellText(node: React.ReactNode): string {
+  let text: string;
+  try {
+    /* Spaces between tags, so a two-line cell reads "Acme Fuels 1042", not
+       "Acme Fuels1042". */
+    const html = renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>).replace(/></g, "> <");
+    text = new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
+  } catch {
+    text = textOfNode(node);
+  }
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Empty boxes are no filter — typing then clearing one is not a change. */
+const liveColFilters = (f: Record<string, string> | undefined) =>
+  Object.entries(f ?? {})
+    .filter(([, v]) => v.trim() !== "")
+    .sort(([a], [b]) => a.localeCompare(b));
+
+function readColFilters(raw: string | undefined): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (e): e is [string, string] => typeof e[1] === "string"
+      )
+    );
+  } catch {
+    return {};
+  }
+}
 
 export interface DirectoryFacet<Row> {
   key: string;
@@ -140,10 +203,18 @@ interface ViewState {
   colScope: string;
   colQuery: string;
   filters: string[];
+  /** The header row's boxes, by column key. Optional so a view saved before
+   *  them still applies. */
+  colFilters?: Record<string, string>;
 }
 
 const keyOf = (s: ViewState) =>
-  JSON.stringify({ ...s, hidden: [...s.hidden].sort(), filters: [...s.filters].sort() });
+  JSON.stringify({
+    ...s,
+    hidden: [...s.hidden].sort(),
+    filters: [...s.filters].sort(),
+    colFilters: Object.fromEntries(liveColFilters(s.colFilters)),
+  });
 
 export function DirectoryList<Row, K extends string>({
   rows,
@@ -206,6 +277,15 @@ export function DirectoryList<Row, K extends string>({
   /** Applied facet ids, `facetKey:option`. Empty = everything. */
   const [applied, setApplied] = React.useState<string[]>(unpackList(boot.filters));
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>(() =>
+    readColFilters(boot.colFilters)
+  );
+  /* The row opens when the address arrives with something typed in it. */
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(
+    () => liveColFilters(readColFilters(boot.colFilters)).length > 0
+  );
+  const activeColFilters = React.useMemo(() => liveColFilters(colFilters), [colFilters]);
 
   /*
     THE LOADING STATE IS REAL, not a toggle in a demo.
@@ -234,6 +314,7 @@ export function DirectoryList<Row, K extends string>({
     colScope,
     colQuery,
     filters: applied,
+    colFilters,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -245,6 +326,7 @@ export function DirectoryList<Row, K extends string>({
       colScope: firstScope,
       colQuery: "",
       filters: [],
+      colFilters: {},
     }),
     [firstScope]
   );
@@ -256,6 +338,10 @@ export function DirectoryList<Row, K extends string>({
     setColScope(s.colScope);
     setColQuery(s.colQuery);
     setApplied(s.filters);
+    const filters = s.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(liveColFilters(filters).length > 0);
     setPage(1);
     reload();
   };
@@ -263,6 +349,24 @@ export function DirectoryList<Row, K extends string>({
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
+
+  /* Rendered once per row and column, then kept until the row itself changes
+     — an edit replaces the row object, so the cache cannot go stale. */
+  const textCache = React.useMemo(
+    () => new WeakMap<object, Map<string, string>>(),
+    [renderCell]
+  );
+  const textOf = React.useCallback(
+    (row: Row, key: K) => {
+      const obj = row as unknown as object;
+      let byKey = textCache.get(obj);
+      if (!byKey) textCache.set(obj, (byKey = new Map()));
+      let t = byKey.get(key);
+      if (t === undefined) byKey.set(key, (t = cellText(renderCell(row, key))));
+      return t;
+    },
+    [textCache, renderCell]
+  );
 
   const filtered = React.useMemo(() => {
     const scoped = searchFields.find((f) => f.key === colScope);
@@ -281,12 +385,20 @@ export function DirectoryList<Row, K extends string>({
     return rows.filter((r) => {
       if (q && !matches(r, q)) return false;
       if (cq && scoped && !scoped.text(r).toLowerCase().includes(cq)) return false;
+      /* AND, because that is what typing in two boxes looks like it should
+         do. Each box matches the text its own column PRINTS — see `cellText`. */
+      if (
+        !activeColFilters.every(([key, value]) =>
+          textOf(r, key as K).includes(value.trim().toLowerCase())
+        )
+      )
+        return false;
       return picks.every(({ f, chosen }) => {
         const v = f.valueOf(r);
         return Array.isArray(v) ? v.some((x) => chosen.includes(x)) : chosen.includes(v);
       });
     });
-  }, [rows, q, cq, colScope, applied, facets, searchFields, matches]);
+  }, [rows, q, cq, colScope, applied, facets, searchFields, matches, activeColFilters, textOf]);
 
   const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort, sortRows]);
 
@@ -313,9 +425,12 @@ export function DirectoryList<Row, K extends string>({
       colScope: colQuery ? colScope : null,
       colQuery: colQuery || null,
       filters: packList(applied) || null,
+      colFilters: activeColFilters.length
+        ? JSON.stringify(Object.fromEntries(activeColFilters))
+        : null,
       group: packList(g.groupBy) || null,
     });
-  }, [urlKey, search, page, pageSize, sort, hidden, colScope, colQuery, applied, g.groupBy]);
+  }, [urlKey, search, page, pageSize, sort, hidden, colScope, colQuery, applied, activeColFilters, g.groupBy]);
 
   /* The header's number follows the FILTERED list, so narrowing the list
      narrows the total with it — a total that ignored the filters would be a
@@ -360,6 +475,9 @@ export function DirectoryList<Row, K extends string>({
   const actions = bulkActions?.(selectedRows, clearSelection) ?? [];
 
   const appliedSet = React.useMemo(() => new Set(applied), [applied]);
+  /** Anything typed — the search, the column search, or a header box. */
+  const typed = Boolean(q || cq || activeColFilters.length > 0);
+  const typedText = (search || colQuery).trim() || activeColFilters[0]?.[1].trim() || "";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -422,6 +540,26 @@ export function DirectoryList<Row, K extends string>({
               setColQuery(v);
               setPage(1);
             }}
+            /* THE ROW, NOT THE POPOVER. It only makes sense over a table, so
+               the map keeps the button pointed at nothing rather than opening
+               a row of boxes above pins that have no columns. */
+            columnFiltersOpen={view === "table" && colFiltersOpen}
+            onToggleColumnFilters={
+              view === "table"
+                ? () =>
+                    setColFiltersOpen((open) => {
+                      /* CLOSING THE ROW PUTS THE LIST BACK. Leaving what was
+                         typed applying after the boxes have gone would be a
+                         narrowing with nothing on screen saying so. */
+                      if (open) {
+                        setColFilters({});
+                        setPage(1);
+                      }
+                      return !open;
+                    })
+                : undefined
+            }
+            columnFilterCount={activeColFilters.length}
             view={view}
             onViewChange={setView}
             mapView={Boolean(renderMap)}
@@ -489,6 +627,21 @@ export function DirectoryList<Row, K extends string>({
             setPage(1);
           }}
         />
+        {/* One chip per header box that has something typed in it — the same
+            chip as the column search, because it is the same question. */}
+        {activeColFilters.map(([key, value]) => (
+          <ColumnSearchChip
+            key={key}
+            className=""
+            searchFields={columns.map((c) => ({ key: c.key, label: c.label }))}
+            colScope={key}
+            colQuery={value.trim()}
+            onClear={() => {
+              setColFilters((prev) => ({ ...prev, [key]: "" }));
+              setPage(1);
+            }}
+          />
+        ))}
       </FilterChips>
 
       <div className="relative mt-4 min-h-0 flex-1">
@@ -498,26 +651,29 @@ export function DirectoryList<Row, K extends string>({
                25 pins is a map of a page, which is not a thing anybody wants —
                and the footer switches to a plain count to match. */
             renderMap(sorted)
-          ) : count === 0 && !loading ? (
+          ) : count === 0 && !loading && !colFiltersOpen ? (
+            /* NOT WHILE THE ROW IS OPEN: the boxes live in the table's header,
+               so swapping the table for an empty state would take away the box
+               being typed in at the moment it matched nothing. */
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  {q || applied.length > 0 || cq ? <SearchX /> : emptyIcon}
+                  {typed || applied.length > 0 ? <SearchX /> : emptyIcon}
                 </EmptyMedia>
                 {/* THREE EMPTY STATES, NOT ONE. Nothing here yet, nothing
                     matches what you typed, and nothing matches the filters are
                     three different situations with three different next
                     actions, and one shared sentence would fit none of them. */}
                 <EmptyTitle>
-                  {q || cq
+                  {typed
                     ? `No ${plural} match your search`
                     : applied.length > 0
                       ? `No ${plural} match these filters`
                       : `No ${plural} yet`}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {q || cq
-                    ? `Nothing found for “${(search || colQuery).trim()}”. Check the spelling, or search a different column.`
+                  {typed
+                    ? `Nothing found for “${typedText}”. Check the spelling, or search a different column.`
                     : applied.length > 0
                       ? "Try removing a filter — the chips above show what is applied."
                       : `Add your first ${noun} to get started.`}
@@ -528,7 +684,7 @@ export function DirectoryList<Row, K extends string>({
                   Clear all filters
                 </Button>
               )}
-              {applied.length === 0 && !q && !cq && onCreate && canWrite && (
+              {applied.length === 0 && !typed && onCreate && canWrite && (
                 <Button size="sm" onClick={onCreate}>
                   <Plus />
                   {createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
@@ -552,6 +708,12 @@ export function DirectoryList<Row, K extends string>({
               actionsKey={"actions" as K}
               openLabel={openLabel}
               onOpenRow={onOpenRow}
+              showColumnFilters={colFiltersOpen}
+              columnFilters={colFilters}
+              onColumnFilterChange={(key, value) => {
+                setColFilters((prev) => ({ ...prev, [key]: value }));
+                setPage(1);
+              }}
               loading={loading}
               skeletonRows={Math.min(pageSize, 12)}
               selectedIds={bulkActions ? selected : undefined}

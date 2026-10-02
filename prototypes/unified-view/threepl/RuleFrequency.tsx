@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { selectTriggerClasses } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { dateKeyOf } from "../data";
 import type { Schedule } from "./recurring";
 
 /*
@@ -54,10 +63,38 @@ const MONTHS = [
 ];
 
 export type Repeat = "weekly" | "monthly" | "yearly";
-export type MonthlyMode = "firstWeek" | "specificDays" | "everyMonth";
+/**
+ * DAYS OR DATES (Pavan, 2026-10-01) — the two ways a rule says when. Days is
+ * weekdays and how they repeat; Date is dates picked on a calendar and how
+ * often that set comes round.
+ */
+export type FrequencyBasis = "days" | "date";
+
+/** How often the picked dates come round: every N months, 0 = only once. */
+export const DATE_REPEATS = [
+  { n: 1, label: "Every month" },
+  { n: 2, label: "Every 2 months" },
+  { n: 3, label: "Every 3 months" },
+  { n: 6, label: "Every 6 months" },
+  { n: 0, label: "Does not repeat" },
+];
+
+/** 0 = every week (the fifth, partial one included); 1–4 = that week. */
+export const MONTH_WEEKS = [
+  { n: 0, label: "Every week" },
+  { n: 1, label: "First week" },
+  { n: 2, label: "Second week" },
+  { n: 3, label: "Third week" },
+  { n: 4, label: "Fourth week" },
+];
 export type YearlyMode = "firstMonth" | "specificMonths";
 
 export interface RuleFrequency {
+  basis: FrequencyBasis;
+  /** DATE basis — the picked calendar dates, as `yyyy-mm-dd`. */
+  dates: string[];
+  /** DATE basis — every N months; 0 is just the picked dates. */
+  dateRepeat: number;
   /** `daily` lights all seven and cannot be unpicked one at a time. */
   dayMode: "daily" | "specific";
   /** 0 = Sunday … 6 = Saturday. */
@@ -71,15 +108,14 @@ export interface RuleFrequency {
    * cannot express it.
    */
   times: string[];
-  monthlyMode: MonthlyMode;
+  /**
+   * WHICH WEEKS OF THE MONTH (Pavan, 2026-10-01) — checkboxes, one or several.
+   * `[0]` is every week and stands alone; ticking a single week drops it.
+   */
+  monthWeeks: number[];
   yearlyMode: YearlyMode;
   /** 0-based, for `specificMonths`. */
   months: number[];
-  /**
-   * THE DATES, for "Same date every month" (Pavan, 2026-09-24) — one or
-   * several, 1–31, and the rule runs on those dates every month.
-   */
-  monthDates: number[];
   /** `null` is "no end date", and it is the default. */
   endKey: string | null;
 }
@@ -90,10 +126,12 @@ export function blankFrequency(): RuleFrequency {
     days: [2],
     repeat: "weekly",
     times: ["08:00"],
-    monthlyMode: "firstWeek",
+    basis: "days",
+    dates: [],
+    dateRepeat: 1,
+    monthWeeks: [1],
     yearlyMode: "firstMonth",
     months: [0],
-    monthDates: [1],
     endKey: null,
   };
 }
@@ -115,6 +153,46 @@ const listNames = (xs: string[]) =>
  * into one here and nothing else has to know it exists.
  */
 export function toSchedule(f: RuleFrequency): Schedule {
+  if (f.basis === "date") {
+    /* THE PICKED DATES, AND HOW OFTEN THEY COME ROUND. No weekday pattern,
+       so one badge instead of the row. Repeating keeps each date's day of
+       the month; one past a month's end (the 31st in April) falls on its
+       last day, so no month is skipped. */
+    const keys = [...(f.dates ?? [])].sort();
+    const every = f.dateRepeat ?? 1;
+    const dom = [...new Set(keys.map((k) => Number(k.slice(8, 10))))].sort(
+      (a, b) => a - b
+    );
+    const first = keys[0];
+    const monthIndex = (d: Date) => d.getFullYear() * 12 + d.getMonth();
+    const firstMonth = first
+      ? Number(first.slice(0, 4)) * 12 + Number(first.slice(5, 7)) - 1
+      : 0;
+    return {
+      raw: `date:${every}:${keys.join(",")}`,
+      label:
+        keys.length === 0
+          ? "No dates picked"
+          : every === 0
+            ? `On ${keys.length} ${keys.length === 1 ? "date" : "dates"}`
+            : `${every === 1 ? "Every month" : `Every ${every} months`} on the ${listNames(dom.map(ordinal))}`,
+      days: [],
+      badge: every === 0 ? "Dates" : "Monthly",
+      cadence:
+        every === 0
+          ? `${keys.length} ${keys.length === 1 ? "date" : "dates"}, no repeat`
+          : `${dom.length} ${dom.length === 1 ? "date" : "dates"} ${every === 1 ? "every month" : `every ${every} months`}`,
+      hits: (d) => {
+        if (keys.length === 0) return false;
+        const key = dateKeyOf(d);
+        if (every === 0) return keys.includes(key);
+        if (key < first) return false;
+        if ((monthIndex(d) - firstMonth) % every !== 0) return false;
+        const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        return dom.some((x) => Math.min(x, last) === d.getDate());
+      },
+    };
+  }
   const days = f.dayMode === "daily" ? [0, 1, 2, 3, 4, 5, 6] : [...f.days];
   const onDay = (d: Date) => days.includes(d.getDay());
   const dayNames = days.map((d) => WEEKDAYS[d].name);
@@ -134,40 +212,21 @@ export function toSchedule(f: RuleFrequency): Schedule {
   }
 
   if (f.repeat === "monthly") {
-    if (f.monthlyMode === "everyMonth") {
-      /* THE SAME DATE EACH MONTH — no weekday pattern at all, so the badge row
-         would light nothing and say nothing. One word instead. */
-      /* THE PICKED DATES, EVERY MONTH (Pavan, 2026-09-24) — it said `true`
-         for every day, which cut an order daily. A date past the month's end
-         (the 31st in April) falls on the month's last day, so no month is
-         skipped. */
-      const dates = [...(f.monthDates ?? [])].sort((a, b) => a - b);
-      return {
-        raw: `monthly:date:${dates.join(",")}`,
-        label: dates.length
-          ? `Every month on the ${listNames(dates.map(ordinal))}`
-          : "Same date every month",
-        days: [],
-        badge: "Monthly",
-        cadence: `${dates.length} ${dates.length === 1 ? "date" : "dates"} a month`,
-        hits: (d) => {
-          const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-          return dates.some((x) => Math.min(x, last) === d.getDate());
-        },
-      };
-    }
-    const firstOnly = f.monthlyMode === "firstWeek";
+    const weeks = [...(f.monthWeeks ?? [1])].sort((a, b) => a - b);
+    const every = weeks.length === 0 || weeks.includes(0);
+    const weekWords = weeks.map((n) => ["", "first", "second", "third", "fourth"][n]);
+    const capital = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
     return {
-      raw: `monthly:${f.monthlyMode}:${days.join(",")}`,
-      label: firstOnly
-        ? `First ${listNames(dayNames)} of the month`
-        : `Every ${listNames(dayNames)}`,
+      raw: `monthly:weeks:${weeks.join(",")}:${days.join(",")}`,
+      label: every
+        ? `Every ${listNames(dayNames)}`
+        : `${capital(listNames(weekWords))} ${listNames(dayNames)} of the month`,
       days,
       badge: null,
-      cadence: firstOnly
-        ? "First week of every month"
-        : "Those days, every month",
-      hits: (d) => onDay(d) && (!firstOnly || nthWeekdayOfMonth(d) === 1),
+      cadence: every
+        ? "Every week of the month"
+        : `${capital(weekWords.join(", "))} ${weeks.length === 1 ? "week" : "weeks"} of every month`,
+      hits: (d) => onDay(d) && (every || weeks.includes(nthWeekdayOfMonth(d))),
     };
   }
 
@@ -248,6 +307,221 @@ function Row({
   );
 }
 
+/**
+ * WHICH WEEKS, AS CHECKBOXES IN A DROPDOWN (Pavan, 2026-10-01). One or several
+ * weeks; "of the month" is said once, beside the field, not in every option.
+ * Every week stands alone — it is all of them, the partial fifth included —
+ * so ticking it clears the single weeks and ticking a single week clears it.
+ * Picking dates instead is the Date tab, not an option here.
+ */
+function MonthPartPicker({
+  value,
+  onChange,
+}: {
+  value: RuleFrequency;
+  onChange: (next: RuleFrequency) => void;
+}) {
+  const weeks = value.monthWeeks ?? [1];
+  const toggleWeek = (n: number) => {
+    let next: number[];
+    if (n === 0) next = weeks.includes(0) ? [] : [0];
+    else {
+      const singles = weeks.filter((x) => x !== 0);
+      next = singles.includes(n)
+        ? singles.filter((x) => x !== n)
+        : [...singles, n].sort((a, b) => a - b);
+    }
+    onChange({ ...value, monthWeeks: next });
+  };
+  const summary = weeks.includes(0)
+      ? "Every week"
+      : weeks.length === 0
+        ? "Pick weeks"
+        : weeks.length === 1
+          ? `${["", "First", "Second", "Third", "Fourth"][weeks[0]]} week`
+          : /* SHORT WHEN SEVERAL, so the field never cuts the answer off. */
+            `${weeks.map((n) => ["", "1st", "2nd", "3rd", "4th"][n]).join(", ")} weeks`;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Which weeks of the month"
+              className={cn(selectTriggerClasses, "w-full min-w-0")}
+            >
+              <span
+                className={cn(
+                  "truncate",
+                  weeks.length === 0 && "text-muted-foreground"
+                )}
+              >
+                {summary}
+              </span>
+              <ChevronDown className="size-4 shrink-0 opacity-50" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+          >
+            {MONTH_WEEKS.map((w) => (
+              <DropdownMenuCheckboxItem
+                key={w.n}
+                checked={weeks.includes(w.n)}
+                /* Stays open — several weeks are picked in one visit. */
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => toggleWeek(w.n)}
+              >
+                {w.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <span className="shrink-0 text-sm text-muted-foreground">
+          of the month
+        </span>
+      </div>
+      {weeks.length === 0 && (
+        <p className="text-xs text-status-failed">Pick at least one week.</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * THE DATE TAB — dates picked from a strip, and how often that set comes
+ * round. Picking the 5th and the 20th with Every month is twice a month.
+ *
+ * A STRIP, NOT A CALENDAR GRID (Pavan, 2026-10-01). The month runs left to
+ * right across the whole width of the unit, as many dates to a line as fit,
+ * and wraps; Repeat sits under it, because it is asked after the dates.
+ * Each date carries its weekday letter so the strip still reads as a week.
+ */
+function DatePart({
+  value,
+  onChange,
+}: {
+  value: RuleFrequency;
+  onChange: (next: RuleFrequency) => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = dateKeyOf(today);
+  const picked = new Set(value.dates ?? []);
+  /* Opens on the month of the first picked date, else this month. */
+  const [month, setMonth] = React.useState(() => {
+    const first = [...picked].sort()[0];
+    return first
+      ? new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1)
+      : new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const daysIn = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const atThisMonth =
+    month.getFullYear() === today.getFullYear() &&
+    month.getMonth() === today.getMonth();
+  const shift = (n: number) =>
+    setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
+  const toggle = (key: string) => {
+    const next = new Set(picked);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange({ ...value, dates: [...next].sort() });
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-foreground">
+            Select date/s
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Previous month"
+              disabled={atThisMonth}
+              onClick={() => shift(-1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <span className="w-32 text-center text-sm font-medium tabular-nums text-foreground">
+              {MONTHS[month.getMonth()]} {month.getFullYear()}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Next month"
+              onClick={() => shift(1)}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {Array.from({ length: daysIn }, (_, i) => {
+            const d = new Date(month.getFullYear(), month.getMonth(), i + 1);
+            const key = dateKeyOf(d);
+            const on = picked.has(key);
+            const past = key < todayKey;
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={past}
+                aria-pressed={on}
+                aria-label={d.toDateString()}
+                onClick={() => toggle(key)}
+                className={cn(
+                  "flex h-12 w-10 flex-col items-center justify-center gap-0.5 rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                  on
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-fp-card-1 text-foreground hover:bg-accent",
+                  past && "cursor-not-allowed opacity-40 hover:bg-fp-card-1"
+                )}
+              >
+                <span
+                  className={cn(
+                    "text-[10px] font-normal",
+                    on ? "text-primary-foreground/80" : "text-muted-foreground"
+                  )}
+                >
+                  {WEEKDAYS[d.getDay()].letter}
+                </span>
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
+        {picked.size === 0 && (
+          <p className="text-xs text-status-failed">Pick at least one date.</p>
+        )}
+      </div>
+
+      <Row label="Repeat">
+        <Select
+          value={String(value.dateRepeat ?? 1)}
+          onValueChange={(v) => onChange({ ...value, dateRepeat: Number(v) })}
+        >
+          <SelectTrigger className="w-62">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_REPEATS.map((r) => (
+              <SelectItem key={r.n} value={String(r.n)}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Row>
+    </div>
+  );
+}
+
 export function RuleFrequencyPicker({
   value,
   onChange,
@@ -265,21 +539,33 @@ export function RuleFrequencyPicker({
   const beforeDaily = React.useRef<number[]>(value.days);
 
   const days = value.dayMode === "daily" ? [0, 1, 2, 3, 4, 5, 6] : value.days;
-  /* A DAY PATTERN MEANS NOTHING to a rule that runs on a date each month, so
-     the badges step aside rather than sitting there inert. */
-  const daysApply = !(
-    value.repeat === "monthly" && value.monthlyMode === "everyMonth"
-  );
 
   return (
     <div className="flex flex-col gap-5">
+      {/* DAYS OR DATE (Pavan, 2026-10-01). Two different ways of saying when,
+          so two tabs rather than a "same date" option among the weeks — a
+          date answer made the day badges above it meaningless. */}
+      <Tabs
+        value={value.basis ?? "days"}
+        onValueChange={(v) => set("basis", v as FrequencyBasis)}
+      >
+        <TabsList>
+          <TabsTrigger value="days">Days</TabsTrigger>
+          <TabsTrigger value="date">Date</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {(value.basis ?? "days") === "date" ? (
+        <DatePart value={value} onChange={onChange} />
+      ) : (
+      <>
       {/* ONE LINE: the days on the left, a divider, then Repeat and its
           continuation (Pavan, 2026-09-25). There was room on the right, and
           two rows made one question read as two. The end date stays below. */}
       {/* 60px between the days and Repeat, no divider (Pavan, 2026-09-25).
           Repeat and its continuation sit 16px apart, each filling its half. */}
       <div className="flex items-stretch gap-15">
-      {daysApply && (
+      {(
         <div className="flex shrink-0 flex-col gap-3">
           {/* THE BADGES ARE THE ANSWER, and Daily is a shortcut over them
               rather than a second way of answering. Touching a day while all
@@ -378,25 +664,7 @@ export function RuleFrequencyPicker({
 
         {value.repeat === "monthly" && (
           <Row label="Which part of the month">
-            <Select
-              value={value.monthlyMode}
-              onValueChange={(v) => set("monthlyMode", v as MonthlyMode)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="firstWeek">
-                  First week of every month
-                </SelectItem>
-                <SelectItem value="specificDays">
-                  Those days, every week of the month
-                </SelectItem>
-                <SelectItem value="everyMonth">
-                  Same date every month
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <MonthPartPicker value={value} onChange={onChange} />
           </Row>
         )}
 
@@ -450,43 +718,6 @@ export function RuleFrequencyPicker({
       </div>
       </div>
 
-      {value.repeat === "monthly" && value.monthlyMode === "everyMonth" && (
-        <div className="flex flex-col gap-1.5">
-          <div className="grid w-fit grid-cols-7 gap-1">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => {
-              const on = (value.monthDates ?? []).includes(n);
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={`The ${ordinal(n)}`}
-                  onClick={() =>
-                    set(
-                      "monthDates",
-                      on
-                        ? value.monthDates.filter((x) => x !== n)
-                        : [...(value.monthDates ?? []), n].sort((a, b) => a - b)
-                    )
-                  }
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-md text-sm font-medium tabular-nums transition-colors",
-                    on
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-fp-card-1 text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
-          {(value.monthDates ?? []).length === 0 && (
-            <p className="text-xs text-status-failed">Pick at least one date.</p>
-          )}
-        </div>
-      )}
-
       {value.repeat === "yearly" && value.yearlyMode === "specificMonths" && (
         <div className="flex flex-wrap gap-1.5">
           {MONTHS.map((m, i) => {
@@ -516,6 +747,9 @@ export function RuleFrequencyPicker({
             );
           })}
         </div>
+      )}
+
+      </>
       )}
 
       {/* NO END DATE IS THE DEFAULT, so there is nothing to say until

@@ -326,14 +326,43 @@ A two-tier header reads beautifully and takes three things away:
 the sort glyph, all of it — are unusable grouped, because the hook knows
 nothing about groups. Everything has to be rebuilt by hand and constrained.
 
-**So group only where the groups are the point** (V1.1's programme list is
-one partner's terms, coverage and economics — three genuinely separate
-questions about one row). Everywhere else, flat and equal.
+**So default to flat and equal, every column sorting.** V1.1's programme
+list was the one exception (terms, coverage, economics) until Pavan flattened
+it too on 2026-10-01 — no table in the prototype is grouped now. Group only
+if he asks.
 
 **And when a group goes, its heading hands meaning back to the labels.**
 *Vendor* and *Customer* under a "Pricing" heading became *Vendor Price* and
 *Customer Price* the moment the heading went, because *Customer* already
 named a different column.
+
+## 10h. One view, no view switch
+
+Added 2026-10-01 (Pavan). A list that only has a table (Recurring Orders, the
+Service setup lists) shows **no Table-view icon** — a switch with one position
+switches nothing. Search by column and Show/Hide columns stay, because they
+belong to the table, not to the switch. The icons appear only when there is a
+second view (board or map) to switch to.
+
+## 10g. Search by column is a row of boxes under the header — every table
+
+Added 2026-10-01 (Pavan). The default in every module; 3PL Delivery Orders is
+the reference.
+
+- **The toolbar's Search-by-column button toggles a filter row** directly under
+  the column headers — one "Filter…" box per column. Never the old popover
+  that searched one named column at a time.
+- **Each box matches what its column prints**, ignoring case. Boxes are
+  combined with AND.
+- **The row only exists while it is open.** Closing it clears every box —
+  a narrowing with nothing on screen is not allowed.
+- **The row stays when nothing matches.** The table shows no rows rather than
+  being swapped for an empty state, because the boxes are what the reader has
+  to change to get the rows back.
+- **Table view only.** A board or a map has no columns to type under.
+- **Saved views remember the boxes**, and a view that has them opens with the
+  row showing.
+- The button shows how many boxes are filled.
 
 ## 10f. THE BOXED TABLE UNIT
 

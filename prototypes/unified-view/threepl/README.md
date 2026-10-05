@@ -1004,6 +1004,40 @@ Awaiting quote, Quotation shared, Accepted — are **grey everywhere** (summary
 and vendor table); only "Products updated" (a warning) and "Holds order"
 (green) keep colour. Save as Draft sits left of the commit act while creating.
 
+### Detail page, after the quote and after the job (2026-10-06)
+
+- **Best is a green "Best" chip** (the diamond is gone): beside "Vendor quote"
+  in the summary, beside the partner's name in Compare's column heads and in
+  the Vendor table, where the best quote's row also comes FIRST. In the Vendor
+  table the partner column takes the slack and the address keeps its own width
+  on one line (the post-quote table: vendor 32%, address 14%).
+- **Compare's chosen column** is one 2px green frame laid over the whole
+  column (`data-sel-rim`, placed from the chosen head) — drawn per cell it was
+  crossed by the row rules; the pinned totals bar sits above it. **Finalize
+  vendor** is a green-outlined button in the chosen column's Total cell, only
+  there, opening the existing confirmation.
+- **The Pricing header rides along**: scrolled into the table, its column heads
+  follow the reader and stop at its foot (a transform, `--head-shift`, because
+  the clipped card and Compare's sideways scroller would capture a sticky head).
+- **Once a vendor is finalized, choosing is over** (`choosing`): no summary tabs,
+  no "Awaiting quotation" list, no Compare, no partner picker, no Best — the
+  sheet shows only the chosen vendor until it is changed.
+- **Summary rows**: Products ("2 products") · Total gallons · Vendor quote ·
+  Customer pricing, then Margin.
+- **Assigned onwards**, Order · Contacts · Schedule facts sit in outlined boxes
+  like the Delivery and Load order tables.
+- **Completed onwards** (`pastCompletion`): the Vendor unit goes (Pricing holds
+  the vendor); the footer swaps Urgent / Signature for **Attach supporting
+  images** and **Attach documents**, each opening `AttachSheet` (level 2;
+  documents take a type — BOL · Ticket · Invoice · Other); and **Additional
+  Details** appears — closed by default, no box — listing the images as tiles
+  and the documents table. `FileUpload` gained `onFilesChange` and `accept`.
+- **Notes is a rail card below Activity** from Draft on (Delivery Instructions +
+  Internal Note), the one card in the rail that is typed into; while creating
+  there is no rail, so Notes is the form's last step. The pinned rail is capped
+  at the form's height and scrolls itself, with 40px at its foot.
+- **Header**: Order # · Urgent · save state, the save state always last.
+
 ### Quotes, compared (2026-10-05)
 
 - **Quotation summary takes a TAB per quote received** (DS `Tabs`, line

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
   the frame; the dropzone accepts new files and removal is live.
 */
 
-interface UploadedFile {
+export interface UploadedFile {
   id: string;
   name: string;
   size: string;
@@ -82,18 +82,32 @@ export interface FileUploadProps {
   label?: string;
   /** The format/size note under the dropzone. */
   note?: string;
+  /** The files picked so far, whenever the list changes — for a caller that
+   *  has to act on them (attach, send). Optional; the control works alone. */
+  onFilesChange?: (files: UploadedFile[]) => void;
+  /** Passed to the file input — e.g. `"image/*"`. */
+  accept?: string;
 }
 
 export function FileUpload({
   variant = "showcase",
   label = "Upload Documents",
   note = NOTE,
+  onFilesChange,
+  accept,
 }: FileUploadProps = {}) {
   const showcase = variant === "showcase";
   const [files, setFiles] = React.useState<UploadedFile[]>(
     showcase ? INITIAL_FILES : [],
   );
   const idRef = React.useRef(INITIAL_FILES.length);
+  const reported = React.useRef(onFilesChange);
+  React.useEffect(() => {
+    reported.current = onFilesChange;
+  });
+  React.useEffect(() => {
+    if (!showcase) reported.current?.(files);
+  }, [files, showcase]);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = React.useState(false);
 
@@ -159,6 +173,7 @@ export function FileUpload({
             ref={inputRef}
             type="file"
             multiple
+            accept={accept}
             className="hidden"
             onChange={(e) => addFiles(e.target.files)}
           />

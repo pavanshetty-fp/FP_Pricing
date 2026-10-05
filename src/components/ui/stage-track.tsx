@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Stage } from "@/components/ui/stage-bar";
 
@@ -62,12 +63,14 @@ export function StageTrack({
                   {s.label}
                 </span>
               ) : (
-                <span
-                  className={cn(
-                    "block size-3 rounded-full",
-                    done ? "bg-foreground" : "border-2 border-fp-outline-2 bg-fp-surface-1b"
-                  )}
-                />
+                done ? (
+                  /* A STAGE PASSED CARRIES A TICK (Pavan, 2026-10-05). */
+                  <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-background">
+                    <Check className="size-2.5" strokeWidth={3} aria-hidden />
+                  </span>
+                ) : (
+                  <span className="block size-3 rounded-full border-2 border-fp-outline-2 bg-fp-surface-1b" />
+                )
               )}
             </li>
           );
@@ -75,7 +78,10 @@ export function StageTrack({
       </ol>
       {/* NAMES ON ONE BASELINE, under their marks — the current one is in
           its pill, so it has none here. */}
-      <div aria-hidden className="relative mt-2 h-4">
+      {/* 8px UNDER THE MARKS (Pavan, 2026-10-05): the line sits at 18px in the
+          36px track and a passed stage's mark is 16px, so its foot is at 26 —
+          the names start at 34, two above the track's own foot. */}
+      <div aria-hidden className="relative -mt-0.5 h-4">
         {stages.map((s, i) =>
           i === at ? null : (
             <span

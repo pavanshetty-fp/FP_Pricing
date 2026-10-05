@@ -165,14 +165,17 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
     2026-09-22.)
 - **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
-  `StageTrack`: evenly spaced dots end to end on one line — filled behind,
-  hollow ahead — and the current stage an outlined pill carrying its NAME
+  `StageTrack`: evenly spaced dots end to end on one line — a passed stage a
+  16px filled disc with a tick, a stage ahead a hollow 12px dot, names 8px
+  under the marks (2026-10-06) — and the current stage an outlined pill carrying its NAME
   (content-layer fill, foreground rim: white/black in light, reversed in dark;
   no colour, no count). Every other name sits under its dot on one baseline.
   In a stepped sheet it lives IN THE FORM COLUMN, pinned at its top
   (`data-form-sticky`, which the step list allows for), so it spans the form
   only and stops before the cards. The status chip beside the order number
   goes (`DraftStatusChip showStatus={false}`) — the track already says it.
+  In the header that remains, anything about the order (Urgent) sits next to
+  the number and the save state ("Draft saved") is always last.
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a

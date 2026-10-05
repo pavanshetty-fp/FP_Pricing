@@ -65,12 +65,27 @@ content layer takes the full width.
 invisible 24px channel as the drawer's handle; giving the drawer a 52px
 collapsed resting state.
 
+- **The selected rail item keeps a tile** (Pavan, 2026-10-05) — the same
+  `bg-sidebar-accent` fill drawer 2 gives its selected item, behind the icon,
+  so with the rail collapsed the reader can see where they went.
+
+### Module dashboards (Pavan, 2026-10-05)
+
+**Dashboard is the first rail item and where the module opens** — 3PL and
+Sales (Service Work later; Lease and Pricing skipped; no cross-module page).
+Four stat tiles · bar charts · ranked lists · two tables. **Every tile, bar
+and row opens its list narrowed to exactly what it counts** — 3PL hands
+Delivery Orders the line, date range and facet ticks; Sales (one day, like
+Fuel Orders) hands Fuel Orders the day and column boxes. Charts are a single
+hue (`fp-lane-blue`, validated in both themes); identity is the label beside
+each bar, never colour. Parts: `DashboardParts.tsx`.
+
 ### Current map
 
 | Module | Tier 1 | Tier 2 |
 |---|---|---|
-| Sales | Fuel Orders · Asset Orders · Customers · Assets | none |
-| 3PL | Orders · Directory | Orders → Delivery Orders, Recurring Orders · Directory → Customers, Vendors, Products, Rental Assets |
+| Sales | **Dashboard** · Fuel Orders · Asset Orders · Customers · Assets | none |
+| 3PL | **Dashboard** · Orders · Directory | Orders → Delivery Orders, Recurring Orders · Directory → Customers, Vendors, Products, Rental Assets |
 | Service Work | Service Orders · Technicians · Service Settings | none |
 | Lease, Pricing | none — an unbuilt module shows the module-level empty state rather than invented destinations |
 
@@ -252,8 +267,9 @@ has while looking at any part of the form.
 
 **Widths:** `narrow` 560 (stacked fields) · `wide` 864 (tables) · `xwide` 1120
 (tables past six columns) · `xxwide` fills to `100vw − 56px` (two columns). **Per step, not per
-sheet.** **A creation sheet fills to `100vw − 56px` whatever its size** (Pavan,
-2026-09-25) — the caps are for opening an existing record.
+sheet.** **A creation sheet is at least 756px, never filling** (Pavan, 2026-10-05;
+replaces the 2026-09-25 fill rule), and has **no rail** until the record
+exists — the order sheets take the 756 floor while creating.
 
 **A SHEET OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so `100vw − 112px`
 (Pavan, 2026-09-22). The 56px is what tells a reader a sheet is over

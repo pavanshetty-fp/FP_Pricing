@@ -582,22 +582,29 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     );
   }, [onDate, search, activeColFilters]);
 
-  const filtered = React.useMemo(() => {
-    if (facetSel.size === 0) return searched;
-    /* WITHIN A FACET, OR; ACROSS FACETS, AND — the rule every list here
-       follows, because two statuses means "either" and a status plus a
-       technician means "both". */
-    const byFacet = new Map<string, Set<string>>();
-    for (const id of facetSel) {
-      const [key, ...rest] = id.split(":");
-      const set = byFacet.get(key) ?? new Set<string>();
-      set.add(rest.join(":"));
-      byFacet.set(key, set);
-    }
-    return searched.filter((r) =>
-      [...byFacet].every(([key, opts]) => opts.has(facetValue(r, key)))
-    );
-  }, [searched, facetSel]);
+  /* The facet step, for ANY facet set — the applied one feeds the list, and
+     the panel's draft feeds its live "N results" before Apply. */
+  const narrow = React.useCallback(
+    (sel: ReadonlySet<string>): ServiceOrder[] => {
+      if (sel.size === 0) return searched;
+      /* WITHIN A FACET, OR; ACROSS FACETS, AND — the rule every list here
+         follows, because two statuses means "either" and a status plus a
+         technician means "both". */
+      const byFacet = new Map<string, Set<string>>();
+      for (const id of sel) {
+        const [key, ...rest] = id.split(":");
+        const set = byFacet.get(key) ?? new Set<string>();
+        set.add(rest.join(":"));
+        byFacet.set(key, set);
+      }
+      return searched.filter((r) =>
+        [...byFacet].every(([key, opts]) => opts.has(facetValue(r, key)))
+      );
+    },
+    [searched]
+  );
+
+  const filtered = React.useMemo(() => narrow(facetSel), [narrow, facetSel]);
 
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
@@ -1135,6 +1142,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
                 setPage(1);
               }}
               facets={facets}
+              countFor={(sel) => narrow(sel).length}
             />
           }
           columns={COLUMNS.filter((c) => c.label).map((c) => ({

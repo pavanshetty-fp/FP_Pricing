@@ -460,15 +460,17 @@ export function RecurringProgramsScreen({
     },
   });
 
-  const rows = React.useMemo(() => {
+  /* THE NARROWING, FOR ANY SET OF FACET TICKS — the list uses the applied
+     set; the filter panel asks it of the ticks it holds, to count them. */
+  const narrow = React.useCallback((facetSel: ReadonlySet<string>) => {
     const cq = colQuery.trim().toLowerCase();
     const field = PROGRAM_SEARCH_FIELDS.find((f) => f.key === colScope);
-    const byFacet = [...applied].reduce<Record<string, string[]>>((acc, id) => {
+    const byFacet = [...facetSel].reduce<Record<string, string[]>>((acc, id) => {
       const at = id.indexOf(":");
       (acc[id.slice(0, at)] ??= []).push(id.slice(at + 1));
       return acc;
     }, {});
-    const kept = programs.filter((p) => {
+    return programs.filter((p) => {
       if (p.serviceLine !== line) return false;
       if (business !== null && p.business !== business) return false;
       if (!matchesProgram(p, search)) return false;
@@ -487,6 +489,10 @@ export function RecurringProgramsScreen({
         return mine.some((x) => wanted.includes(x));
       });
     });
+  }, [programs, search, colScope, colQuery, line, business, activeColFilters]);
+
+  const rows = React.useMemo(() => {
+    const kept = narrow(applied);
     /* SORTING IS THE LAST STEP. Unsorted returns the list's own order. */
     const col = sort && COLUMNS.find((c) => c.key === sort.key);
     if (!sort || !col) return kept;
@@ -498,7 +504,7 @@ export function RecurringProgramsScreen({
         return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
-  }, [programs, search, applied, colScope, colQuery, line, business, sort, activeColFilters]);
+  }, [narrow, applied, sort]);
 
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -744,6 +750,7 @@ export function RecurringProgramsScreen({
               }))}
               value={applied}
               onApply={setApplied}
+              countFor={(sel) => narrow(sel).length}
             />
           }
           showGroupBy={false}

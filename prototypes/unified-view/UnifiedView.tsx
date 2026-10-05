@@ -8,6 +8,8 @@ import {
   PriceBookScreen,
 } from "./service/PlatformScreens";
 import { useSavedViews } from "./useSavedViews";
+import { ThreePLDashboard, type ThreePLDrill } from "./threepl/ThreePLDashboard";
+import { SalesDashboard, type SalesDrill } from "./SalesDashboard";
 import {
   Fuel,
   ClipboardList,
@@ -38,6 +40,7 @@ import {
   ShieldCheck,
   Gauge,
   SlidersHorizontal,
+  LayoutDashboard,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -172,6 +175,8 @@ const TAG_OPTIONS = [
   Sales. Unique keys make that state unrepresentable rather than merely unlikely.
 */
 const SALES_NAV: NavItem[] = [
+  /* First, so it is where Sales opens (Pavan, 2026-10-05). */
+  { key: "sales-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
   { key: "fuel-orders", label: "Fuel Orders", icon: <Fuel /> },
   { key: "asset-orders", label: "Asset Orders", icon: <ClipboardList /> },
   { key: "customers", label: "Customers", icon: <Users /> },
@@ -184,6 +189,10 @@ const SALES_NAV: NavItem[] = [
  * sections in the rail — they belong to the Tier-2 drawer below.
  */
 const THREE_PL_NAV: NavItem[] = [
+  /* THE MODULE'S OVERVIEW, FIRST AND WHERE THE MODULE OPENS (Pavan,
+     2026-10-05). Switching module lands on the first item, so first is the
+     landing page. */
+  { key: "3pl-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
   { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
   { key: "3pl-directory", label: "Directory", icon: <BookUser /> },
 ];
@@ -393,7 +402,15 @@ const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
 ];
 
 /** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
-function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null }) {
+function FuelOrdersScreen({
+  focus,
+  drill = null,
+}: {
+  focus?: { id: string; n: number } | null;
+  /** Arrived from the Sales dashboard — open on that day, narrowed by these
+   *  column boxes. A nonce so the same press twice still lands. */
+  drill?: (SalesDrill & { n: number }) | null;
+}) {
   /* THE SETTER WRITES THE CHANGE LOG (sales, 2026-09-23) — see activity.tsx. */
   const [rows, setRows] = useLoggedRows(FUEL_ORDERS, diffFuelOrder);
   // Picker options come from the data, so the sheet can't offer a value the
@@ -439,6 +456,16 @@ function FuelOrdersScreen({ focus }: { focus?: { id: string; n: number } | null 
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
   );
+  React.useEffect(() => {
+    if (!drill) return;
+    setDate(startOfDay(drill.date));
+    setSearch("");
+    setColQuery("");
+    setView("table");
+    setColFilters(drill.colFilters);
+    setColFiltersOpen(Object.keys(drill.colFilters).length > 0);
+    setPage(1);
+  }, [drill]);
 
   const defaultState: FuelViewState = React.useMemo(
     () => ({
@@ -1277,6 +1304,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
      a second way to make one record, and the two would drift. A nonce rather
      than a flag — see `startCreate`. */
   const [startCreate, setStartCreate] = React.useState<number | null>(null);
+  /* A DASHBOARD PRESS — which list, narrowed how. A nonce so the same press
+     twice still lands. */
+  const [drill3pl, setDrill3pl] = React.useState<(ThreePLDrill & { n: number }) | null>(null);
+  const [drillSales, setDrillSales] = React.useState<(SalesDrill & { n: number }) | null>(null);
   /** Where the Create CTA was pressed, so closing the form can go back. */
   const [returnTo, setReturnTo] = React.useState<string | null>(null);
 
@@ -1438,18 +1469,48 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       return <ModuleNotBuilt label={`${MODULE_LABEL[moduleKey] ?? moduleKey} module`} />;
     }
     switch (screenKey) {
+      case "sales-dashboard":
+        return (
+          <SalesDashboard
+            onDrill={(d) => {
+              goToArea("fuel-orders");
+              setDrillSales({ ...d, n: Date.now() });
+            }}
+            onOpenOrder={(id, date) => {
+              goToArea("fuel-orders");
+              setDrillSales({ date, colFilters: {}, n: Date.now() });
+              setFocus({ id, n: Date.now() });
+            }}
+          />
+        );
       case "fuel-orders":
-        return <FuelOrdersScreen focus={focus} />;
+        return <FuelOrdersScreen focus={focus} drill={drillSales} />;
       case "asset-orders":
         return <AssetOrdersScreen focus={focus} />;
       case "customers":
         return <CustomersScreen focus={focus} />;
       case "assets":
         return <AssetsScreen focus={focus} />;
+      case "3pl-dashboard":
+        return (
+          <ThreePLDashboard
+            onDrill={(d) => {
+              setNavKey("3pl-orders");
+              setSubKey("3pl-delivery-orders");
+              setDrill3pl({ ...d, n: Date.now() });
+            }}
+            onOpenOrder={(id) => {
+              setNavKey("3pl-orders");
+              setSubKey("3pl-delivery-orders");
+              setFocus({ id, n: Date.now() });
+            }}
+          />
+        );
       case "3pl-delivery-orders":
         return (
           <BrokerOrdersScreen
             focus={focus}
+            drill={drill3pl}
             startCreate={startCreate}
             onCreateClose={() => {
               if (!returnTo) return;

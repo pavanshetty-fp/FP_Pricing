@@ -234,6 +234,10 @@ Added 2026-09-22, from Unified View's pending strip.
   not separate components.
 - **Bulk + context bar** (sticky bottom): select-all, count of filtered subset,
   clear-filters, bulk actions.
+- **The filter panel's footer** (Pavan, 2026-10-05): a live **"N results"**
+  on the left — what Apply would show, counted as you tick — and **Clear All
+  beside Apply Filters** on the right. A screen passes `countFor` to
+  `ListFilters`; a panel that narrows nothing shows no count.
 - **Faceted filtering**: a two-pane panel (facet list with per-facet counts +
   options) with Clear all / Apply. On apply → toast, a count badge on the Filters
   button, and an **applied-filter chip bar** (removable chips + "N More" overflow)

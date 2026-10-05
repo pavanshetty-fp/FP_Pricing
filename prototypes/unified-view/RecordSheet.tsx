@@ -65,11 +65,12 @@ export interface RecordSheetProps {
    */
   size?: "compact" | "narrow" | "wide" | "xwide" | "xxwide";
   /**
-   * A CREATION SHEET FILLS (Pavan, 2026-09-25). Creating a rule, an order, a
-   * customer — anything — takes the full width less the 56px gap, whatever
-   * `size` says; `size` then only governs the same sheet when it is edited.
-   * Defaults to `mode === "create"`. Pass `false` for a sheet that borrows
-   * create mode without making anything (an export, a partner's quote).
+   * A CREATION SHEET IS AT LEAST 756px (Pavan, 2026-10-05 — replaces the
+   * 2026-09-25 rule that it filled the screen). Creating a rule, an order, a
+   * customer — anything — keeps its own `size`, but never narrower than 756;
+   * still clamped to `100vw − 56px`. Defaults to `mode === "create"`. Pass
+   * `false` for a sheet that borrows create mode without making anything (an
+   * export, a partner's quote).
    */
   fill?: boolean;
   /**
@@ -330,7 +331,9 @@ export function RecordSheet({
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
-  const fills = size === "xxwide" || (fill ?? creating);
+  const fills = size === "xxwide";
+  /* THE CREATION FLOOR — 756px, whatever `size` asks for below it. */
+  const floor = fill ?? creating;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -345,7 +348,7 @@ export function RecordSheet({
         className={cn(
           "gap-0 p-0",
           fills
-            ? /* THE TWO-COLUMN STEP FILLS, and so does every CREATION sheet. It is the one shape whose width is
+            ? /* THE TWO-COLUMN STEP FILLS. It is the one shape whose width is
                  not a number somebody chose — tables on the left and a fixed
                  rail on the right, and every pixel the viewport has goes to
                  the tables. Capped at 1440 it left a strip of list showing on
@@ -356,6 +359,9 @@ export function RecordSheet({
             ? "w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))]"
             : size === "wide"
               ? "w-[min(864px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(864px,calc(100vw-var(--fp-sheet-gap)))]"
+              : floor
+                ? /* A CREATION SHEET NEVER DROPS BELOW 756 (Pavan, 2026-10-05). */
+                  "w-[min(756px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(756px,calc(100vw-var(--fp-sheet-gap)))]"
               : size === "compact"
                 ? /* 510 — between the DS narrow and nothing. For a sheet that
                      is CONTROLS rather than a form: a facet list has a natural

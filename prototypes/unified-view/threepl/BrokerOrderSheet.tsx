@@ -1488,6 +1488,9 @@ export function BrokerOrderSheet({
   } | null>(null);
   const creating = mode === "create";
 
+  /* Still being created: new, or a Draft nobody has sent out yet. */
+  const inCreation = creating || draft?.status === "Draft";
+
   /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. A card's
      "review pricing" names the vendor table; landing at the top of a sheet
      four screens long and leaving them to find it answers a different
@@ -3926,7 +3929,9 @@ export function BrokerOrderSheet({
          plus a gap, and the pricing tables at the foot of it run to eight
          columns — at anything narrower their headers wrap onto two lines and
          stop lining up with the figures under them. */
-      size="xxwide"
+      /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
+         no rail, so it takes the creation floor (756) instead of filling. */
+      size={inCreation ? "narrow" : "xxwide"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -4182,7 +4187,7 @@ export function BrokerOrderSheet({
             not anyone is looking. Once an editable number and a computed one
             share a column they look identical, and the reader stops knowing
             which is which. */}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className={cn("grid items-start gap-6", !inCreation && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="flex min-w-0 flex-col gap-10">
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
@@ -6055,6 +6060,10 @@ export function BrokerOrderSheet({
           looking at. */}
         </div>
 
+        {/* NO RAIL WHILE IT IS BEING CREATED (Pavan, 2026-10-05) —
+            Summary, Associated records and Activity describe an order that
+            exists; on a new one they are empty boxes beside the form. */}
+        {!inCreation && (
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
             {/* ── SUMMARY ──
                 IT SHOWS ITS FIGURES WHETHER OR NOT ANYBODY HAS QUOTED. Three
@@ -6299,7 +6308,8 @@ export function BrokerOrderSheet({
               )}
             </RailCard>
           </aside>
-        </div>
+
+        )}        </div>
 
       {/* ── PRICING, FULL WIDTH, UNDER BOTH COLUMNS ──────────────────────
           It is four columns of its own and the rail was taking 340 of them.

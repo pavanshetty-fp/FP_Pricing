@@ -1504,7 +1504,9 @@ export function ServiceOrderSheet({
          and at `wide` that came straight out of columns already at their
          minimum — a parts table whose Amount column wraps is a table nobody
          can add up by eye. */
-      size="xxwide"
+      /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
+         no rail, so it takes the creation floor (756) instead of filling. */
+      size={isDraft ? "narrow" : "xxwide"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -1698,7 +1700,7 @@ export function ServiceOrderSheet({
       }}
     >
       {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={cn("grid items-start gap-6", !isDraft && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="flex min-w-0 flex-col gap-10">
       {/* NO-APP FLOW: THE ASSESSMENT IS THE FIRST THING RECORDED (Pavan,
           2026-09-25), so it leads the form once "Job completed" is confirmed. */}
@@ -2501,6 +2503,10 @@ export function ServiceOrderSheet({
             was only visible next to the tables that produce it, which is the
             one place it is least needed. `sticky top-0`, the same as the 3PL
             sheet's rail. */}
+        {/* NO RAIL WHILE IT IS BEING CREATED (Pavan, 2026-10-05) —
+            Summary, Associated records and Activity describe an order that
+            exists; on a new one they are empty boxes beside the form. */}
+        {!isDraft && (
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
           {/* THE ACCOUNT OF HOW IT ADDS UP, beside the tables it adds up. */}
           <RailCard title="Summary" icon={<Receipt />}>
@@ -2652,7 +2658,8 @@ export function ServiceOrderSheet({
             </RailCard>
           )}
         </aside>
-      </div>
+
+        )}      </div>
 
       {/* THE FIELD APP, OVER THE SHEET. It opens from the handover act and the
           sheet stays behind it, because the dispatcher watching a job go out is

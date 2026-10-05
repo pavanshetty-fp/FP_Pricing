@@ -40,13 +40,15 @@ belongs to the tables.
 
 **All five clamp to `100vw − 56px`.** One number, every sheet.
 
-**A CREATION SHEET FILLS — `100vw − 56px`, whatever its width would be
-(Pavan, 2026-09-25).** Creating a rule, an order, a customer, anything: the
-sheet takes the full width less the gap (less 112 at level 2). The caps above
-govern the same sheet when a record is opened to edit. In code this is
-`RecordSheet`'s `fill`, which defaults to `mode === "create"`; a sheet that
-borrows create mode without making anything — an export, a partner's quote —
-passes `fill={false}`.
+**A CREATION SHEET IS AT LEAST 756px (Pavan, 2026-10-05 — replaces the
+2026-09-25 rule that it filled the screen).** Creating a rule, an order, a
+customer, anything: the sheet keeps its own size but never drops below 756,
+still clamped to `100vw − 56px` (112 at level 2). A create sheet has **no
+right rail** (Summary · Associated records · Activity), so a two-column sheet
+takes the 756 floor while it is being created and becomes two columns once the
+record exists. In code: `RecordSheet`'s `fill` (defaults to `mode ===
+"create"`) now sets the floor; an export or a partner's quote passes
+`fill={false}`.
 
 ### Depth — two
 

@@ -1961,11 +1961,12 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   `100vw − 56px`, so no sheet reaches the edge and none overflows a small
   screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
   drawer.
-- **A creation sheet fills to `100vw − 56px`** (Pavan, 2026-09-25) — creating
-  a rule, an order, a customer, anything. The widths above are for opening an
-  existing record; a sheet that makes something new takes the full width less
-  the gap. An export or a partner's quote borrows create mode without making
-  anything and keeps its cap.
+- **A creation sheet is at least 756px** (Pavan, 2026-10-05 — replaces the
+  2026-09-25 "fills to `100vw − 56px`") — creating a rule, an order, a
+  customer, anything keeps its own size but never below 756, clamped to
+  `100vw − 56px`. It carries **no right rail** (Summary · Associated records ·
+  Activity) until the record exists. An export or a partner's quote borrows
+  create mode without making anything and keeps its cap.
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while
@@ -2630,7 +2631,7 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
 - [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)
 - [ ] Every sheet and nested drawer clamps to `100vw − 56px`. (S3)
-- [ ] Every CREATION sheet fills to `100vw − 56px` (112 at level 2), not a cap.
+- [ ] Every CREATION sheet is at least 756px (clamped to `100vw − 56px`) and has no right rail.
 - [ ] The strip above the footer shows one outstanding item at a time, under a fixed subject, and each item reaches its section. (S4)
 
 
@@ -2973,6 +2974,10 @@ Added 2026-09-22, from Unified View's pending strip.
   not separate components.
 - **Bulk + context bar** (sticky bottom): select-all, count of filtered subset,
   clear-filters, bulk actions.
+- **The filter panel's footer** (Pavan, 2026-10-05): a live **"N results"**
+  on the left — what Apply would show, counted as you tick — and **Clear All
+  beside Apply Filters** on the right. A screen passes `countFor` to
+  `ListFilters`; a panel that narrows nothing shows no count.
 - **Faceted filtering**: a two-pane panel (facet list with per-facet counts +
   options) with Clear all / Apply. On apply → toast, a count badge on the Filters
   button, and an **applied-filter chip bar** (removable chips + "N More" overflow)

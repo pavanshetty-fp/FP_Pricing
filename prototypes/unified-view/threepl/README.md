@@ -1550,6 +1550,10 @@ only) or *Stop the other rule on those days* (that customer and ship-to only,
 the rule keeps running elsewhere; written when this rule is created). Skips
 are honoured by the order generator (`targetSkips`).
 
+**Board cards (2026-10-05):** a recurring order's Schedule shows its
+**scheduled date**, not the cadence — the order is one dated delivery; the
+card field is "Scheduled date".
+
 ### Not built here
 
 No calendar (the next-run dates are a strip, not a grid) · no per-lane sheet ·

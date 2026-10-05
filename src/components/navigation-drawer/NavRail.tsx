@@ -107,13 +107,22 @@ export function NavRail({
                         setDismissed(true);
                       }}
                       className={cn(
-                        "relative flex h-9 w-full items-center gap-3 px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
+                        "relative flex h-9 w-full items-center gap-1 px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-5",
                         active
                           ? "text-sidebar-foreground before:absolute before:left-0 before:h-7 before:w-0.5 before:bg-brand"
                           : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
                       )}
                     >
-                      <span className="flex size-5 shrink-0 items-center justify-center">
+                      {/* THE SELECTED AREA KEEPS A TILE (Pavan, 2026-10-05) —
+                          the same fill drawer 2 gives its selected item, so
+                          with the rail collapsed the reader can still see
+                          where they went. 36px, centred in the 52px rail. */}
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-md transition-colors",
+                          active && "bg-sidebar-accent text-sidebar-accent-foreground"
+                        )}
+                      >
                         {item.icon}
                       </span>
                       <span

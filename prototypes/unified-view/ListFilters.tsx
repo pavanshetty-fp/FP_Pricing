@@ -68,6 +68,7 @@ export function ListFilters({
   value,
   onApply,
   fullWidth = false,
+  countFor,
 }: {
   facets: ListFacet[];
   /** Stretch the trigger to its container — for a row of its own, in a sheet. */
@@ -91,6 +92,13 @@ export function ListFilters({
    * wired, so the caller passes this and applies what it can.
    */
   onApply?: (selected: ReadonlySet<string>) => void;
+  /**
+   * HOW MANY ROWS THE TICKS WOULD LEAVE (Pavan, 2026-10-05) — shown on the
+   * footer's left as the reader ticks, before Apply. The screen answers it
+   * with the same narrowing it applies, everything else on screen included
+   * (search, column boxes, scope). Left out, the footer has no count.
+   */
+  countFor?: (selected: ReadonlySet<string>) => number;
 }) {
   const [open, setOpen] = React.useState(false);
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
@@ -154,27 +162,43 @@ export function ListFilters({
           height={264}
         />
 
-        <div className="flex h-16 items-center justify-between border-t border-border px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const empty = new Set<string>();
-              setChecked(empty);
-              onApply?.(empty);
-            }}
-          >
-            Clear All
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              onApply?.(checked);
-              setOpen(false);
-            }}
-          >
-            Apply Filters
-          </Button>
+        {/* THE COUNT ON THE LEFT, BOTH ACTS ON THE RIGHT (Pavan,
+            2026-10-05). The number is what Apply would show — read before
+            committing to it. Clear All sits beside Apply as its quieter
+            sibling, not across the bar from it. */}
+        <div className="flex h-16 items-center justify-between gap-3 border-t border-border px-4">
+          <span className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
+            {countFor && (
+              <>
+                <span className="font-medium text-foreground">
+                  {countFor(checked).toLocaleString()}
+                </span>{" "}
+                {countFor(checked) === 1 ? "result" : "results"}
+              </>
+            )}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const empty = new Set<string>();
+                setChecked(empty);
+                onApply?.(empty);
+              }}
+            >
+              Clear All
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                onApply?.(checked);
+                setOpen(false);
+              }}
+            >
+              Apply Filters
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

@@ -269,11 +269,10 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         ...(off.has("schedule.window")
           ? []
           : [`${r.window.start} – ${r.window.end}`]),
-        /* A recurring order's cadence beats its date: the board is already
-           scoped to one day, so the date says nothing the column has not. */
-        ...(off.has("schedule.when")
-          ? []
-          : [r.recurrence ? r.recurrence.frequency : r.date.title]),
+        /* THE SCHEDULED DATE, recurring or not (Pavan, 2026-10-05). A
+           recurring order is one dated delivery — its cadence belongs to the
+           rule, and "Every weekday" did not say which day this card is. */
+        ...(off.has("schedule.when") ? [] : [r.date.title]),
       ],
     },
     /* WHAT A FINISHED ORDER IS ASKED IS WHEN IT WAS DONE, not when it was
@@ -687,7 +686,7 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "customer.address", label: "Address", group: "customer" },
   { key: "schedule", label: "Schedule" },
   { key: "schedule.window", label: "Delivery window", group: "schedule" },
-  { key: "schedule.when", label: "Date or cadence", group: "schedule" },
+  { key: "schedule.when", label: "Scheduled date", group: "schedule" },
   /* WHEN IT ACTUALLY RAN, which only a delivered order has. A field of its own
      rather than a second face for Schedule, so the two can be read together on
      a card where the difference between planned and actual is the point. */
@@ -954,6 +953,7 @@ export function BrokerOrdersScreen({
   focus,
   startCreate,
   onCreateClose,
+  drill = null,
 }: {
   focus?: { id: string; n: number } | null;
   /**
@@ -969,6 +969,17 @@ export function BrokerOrdersScreen({
    * not strand them on a list they never asked for.
    */
   onCreateClose?: () => void;
+  /**
+   * ARRIVED FROM THE DASHBOARD (Pavan, 2026-10-05) — open on exactly the rows
+   * that were counted: the same line, date range and facet ticks, nothing
+   * else narrowing. A nonce, so pressing the same tile twice still lands.
+   */
+  drill?: {
+    n: number;
+    line: ServiceLine;
+    range: DateRange;
+    facets: string[];
+  } | null;
 } = {}) {
   const [rows, setRows] = React.useState<BrokerOrder[]>(BROKER_ORDERS);
   const [openId, setOpenId] = React.useState<string | null>(null);
@@ -1146,6 +1157,19 @@ export function BrokerOrdersScreen({
     });
   }, [programs, range]);
 
+  React.useEffect(() => {
+    if (!drill) return;
+    setLine(drill.line);
+    setBusiness(null);
+    setRange(drill.range);
+    setFacetSel(new Set(drill.facets));
+    setSearch("");
+    setColQuery("");
+    setColFilters({});
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drill?.n]);
+
   // A global-search hit lands here: open that order's sheet on arrival.
   React.useEffect(() => {
     if (!focus) return;
@@ -1207,11 +1231,13 @@ export function BrokerOrdersScreen({
   /** Which business inside the line, or none — see `LINE_BUSINESSES`. */
   const [business, setBusiness] = React.useState<string | null>(null);
 
-  const filtered = React.useMemo(() => {
-    if (facetSel.size === 0) return searched;
-    const on = (facet: string, value: string) => facetSel.has(`${facet}:${value}`);
+  /* THE FACET NARROWING, FOR ANY SET OF TICKS — the list uses the applied
+     set; the filter panel asks it of its own ticks, to count them. */
+  const narrowFacets = React.useCallback((sel: ReadonlySet<string>) => {
+    if (sel.size === 0) return searched;
+    const on = (facet: string, value: string) => sel.has(`${facet}:${value}`);
     const picked = (facet: string) =>
-      [...facetSel].some((id) => id.startsWith(`${facet}:`));
+      [...sel].some((id) => id.startsWith(`${facet}:`));
     const pass = (facet: string, values: string[]) =>
       !picked(facet) || values.some((v) => on(facet, v));
 
@@ -1242,7 +1268,8 @@ export function BrokerOrdersScreen({
         pass("tags", r.tags),
       ].every(Boolean)
     );
-  }, [searched, facetSel]);
+  }, [searched]);
+  const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
   /* THE PRESET NARROWS AFTER THE FACETS AND BEFORE THE SORT, because it is not
      one of them: the facets are questions asked of a list, and the business is
      which list you are looking at. */
@@ -2221,6 +2248,10 @@ export function BrokerOrdersScreen({
           showGroupBy={!board}
           filters={
             <ListFilters
+              countFor={(sel) =>
+                narrowFacets(sel).filter((r) => business === null || businessOf(r) === business)
+                  .length
+              }
               value={facetSel}
               onApply={(sel) => {
                 setFacetSel(sel);
@@ -2456,6 +2487,10 @@ export function BrokerOrdersScreen({
            behind it, which is one interaction to learn instead of three. */
         filtersControl={
           <ListFilters
+            countFor={(sel) =>
+              narrowFacets(sel).filter((r) => business === null || businessOf(r) === business)
+                .length
+            }
             value={facetSel}
             onApply={(sel) => {
               setFacetSel(sel);

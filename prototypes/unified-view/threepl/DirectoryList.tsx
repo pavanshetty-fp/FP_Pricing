@@ -368,7 +368,10 @@ export function DirectoryList<Row, K extends string>({
     [textCache, renderCell]
   );
 
-  const filtered = React.useMemo(() => {
+  /* The whole narrowing for any facet set, so the filter panel can count a
+     selection that is ticked but not yet applied with the very same rules. */
+  const narrow = React.useCallback((ids: Iterable<string>) => {
+    const picked = [...ids];
     const scoped = searchFields.find((f) => f.key === colScope);
     /* Options picked WITHIN one facet are OR; the facets are AND. That is the
        reading everyone already has of a filter panel, and a facet with nothing
@@ -376,7 +379,7 @@ export function DirectoryList<Row, K extends string>({
     const picks = facets
       .map((f) => ({
         f,
-        chosen: applied
+        chosen: picked
           .filter((id) => id.startsWith(`${f.key}:`))
           .map((id) => id.slice(f.key.length + 1)),
       }))
@@ -398,7 +401,9 @@ export function DirectoryList<Row, K extends string>({
         return Array.isArray(v) ? v.some((x) => chosen.includes(x)) : chosen.includes(v);
       });
     });
-  }, [rows, q, cq, colScope, applied, facets, searchFields, matches, activeColFilters, textOf]);
+  }, [rows, q, cq, colScope, facets, searchFields, matches, activeColFilters, textOf]);
+
+  const filtered = React.useMemo(() => narrow(applied), [narrow, applied]);
 
   const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort, sortRows]);
 
@@ -502,6 +507,7 @@ export function DirectoryList<Row, K extends string>({
                     searchable: f.searchable,
                   }))}
                   value={appliedSet}
+                  countFor={(sel) => narrow(sel).length}
                   onApply={(ids) => {
                     setApplied([...ids]);
                     setPage(1);

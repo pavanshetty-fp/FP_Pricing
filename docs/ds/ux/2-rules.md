@@ -76,11 +76,12 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   `100vw − 56px`, so no sheet reaches the edge and none overflows a small
   screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
   drawer.
-- **A creation sheet fills to `100vw − 56px`** (Pavan, 2026-09-25) — creating
-  a rule, an order, a customer, anything. The widths above are for opening an
-  existing record; a sheet that makes something new takes the full width less
-  the gap. An export or a partner's quote borrows create mode without making
-  anything and keeps its cap.
+- **A creation sheet is at least 756px** (Pavan, 2026-10-05 — replaces the
+  2026-09-25 "fills to `100vw − 56px`") — creating a rule, an order, a
+  customer, anything keeps its own size but never below 756, clamped to
+  `100vw − 56px`. It carries **no right rail** (Summary · Associated records ·
+  Activity) until the record exists. An export or a partner's quote borrows
+  create mode without making anything and keeps its cap.
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while

@@ -210,14 +210,18 @@ export function FuelOrdersFilters() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex h-16 items-center justify-between border-t border-border px-4">
-          <Button variant="ghost" size="sm" onClick={() => setChecked(new Set())}>
-            Clear All
-          </Button>
-          <Button size="sm" onClick={() => setOpen(false)}>
-            Apply Filters
-          </Button>
+        {/* Footer — ListFilters' layout: left slot empty (this demo narrows
+            nothing, so it has no count), both acts together on the right. */}
+        <div className="flex h-16 items-center justify-between gap-3 border-t border-border px-4">
+          <span />
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setChecked(new Set())}>
+              Clear All
+            </Button>
+            <Button size="sm" onClick={() => setOpen(false)}>
+              Apply Filters
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

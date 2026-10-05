@@ -45,7 +45,9 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
       data-slot="table-footer"
       className={cn(
         // `accent`, not `muted` — see the --muted constraint in index.css.
-        "border-t bg-fp-row-hover font-medium [&>tr]:last:border-b-0",
+        /* NO FILL ON A TOTAL (Pavan, 2026-10-05) — the rule above it and the
+           weight carry it; a tinted row read as a second header. */
+        "border-t font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}

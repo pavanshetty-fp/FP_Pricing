@@ -527,7 +527,7 @@ repo's `src/index.css`.
      distinct from the band above it, distinct from the rows below it, and
      still distinct from the row hover, which is what the faint value was
      originally protecting. */
-  --fp-table-header: var(--fp-card-1);
+  --fp-table-header: var(--fp-card-2); /* the subtle step, 2026-10-05 */
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content
@@ -738,7 +738,7 @@ repo's `src/index.css`.
   /* Dark tracks light onto --fp-card-1. It used to be --fp-surface-1a, which
      is the same value the section card's title band takes — two bands of one
      colour stacked, with the table's header invisible under the card's. */
-  --fp-table-header: var(--fp-card-1);
+  --fp-table-header: var(--fp-card-2); /* the subtle step, 2026-10-05 */
   /* Re-joined here. Light had to break these three out of the shared block —
      --background because base/background went white, --secondary because the
      emphasis family split, --destructive because it left --fp-danger — but dark

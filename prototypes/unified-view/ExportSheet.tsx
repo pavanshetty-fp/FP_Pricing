@@ -115,6 +115,8 @@ export function ExportSheet({
 
   return (
     <RecordSheet
+      /* Controls, not a form — no step column. */
+      stepNav={false}
       /* 510. Wider than the 392 the flattened calendar was squeezed into, and
          still short of the DS narrow's 560: this sheet holds controls, not a
          two-column form. */

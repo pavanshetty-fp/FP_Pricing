@@ -4,6 +4,8 @@ import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { SteppedFormBody } from "@/components/side-sheet/form-steps";
+import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 
 /**
  * Side-sheet shell for a single record — edit or create.
@@ -185,6 +187,15 @@ export interface RecordSheetProps {
    * place that does not scroll away from the button it is about.
    */
   footerBanner?: React.ReactNode;
+  /**
+   * THE FORM AS STEPS (Pavan, 2026-10-05) — a column on the left listing the
+   * form's steps, the form as one long scroll beside it, and the pending strip
+   * at the foot of that column instead of above the footer. On by default for
+   * every first-level sheet; the sheet takes the full width while the column
+   * shows. The column only shows when there are two or more steps — see
+   * `components/side-sheet/form-steps`.
+   */
+  stepNav?: boolean;
   children: React.ReactNode;
 }
 
@@ -247,10 +258,16 @@ export function DraftStatusChip({
   tone,
   label,
   saveState = "idle",
+  showStatus = true,
 }: {
   tone: StatusTone;
   label: string;
   saveState?: "idle" | "saving" | "saved";
+  /**
+   * False drops the status chip and keeps only the save note — for a sheet
+   * whose stage is already shown on its own track (Pavan, 2026-10-05).
+   */
+  showStatus?: boolean;
 }) {
   const note =
     saveState === "saving" ? (
@@ -264,6 +281,18 @@ export function DraftStatusChip({
         Draft saved
       </>
     );
+
+  if (!showStatus) {
+    if (saveState === "idle") return null;
+    return (
+      <span
+        className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+        aria-live="polite"
+      >
+        {note}
+      </span>
+    );
+  }
 
   if (saveState === "idle") {
     return (
@@ -328,10 +357,15 @@ export function RecordSheet({
   footerAside,
   onSubmit,
   footerBanner,
+  stepNav,
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
-  const fills = size === "xxwide";
+  const stepped = stepNav ?? level !== 2;
+  const [navOn, setNavOn] = React.useState(false);
+  const navShown = stepped && navOn;
+  /* FULL WIDTH WHILE THE STEP COLUMN SHOWS (Pavan, 2026-10-05). */
+  const fills = size === "xxwide" || navShown;
   /* THE CREATION FLOOR — 756px, whatever `size` asks for below it. */
   const floor = fill ?? creating;
   return (
@@ -391,15 +425,29 @@ export function RecordSheet({
           </div>
         </div>
 
-        {steps && (
+        {/* ACROSS THE SHEET only without a step column; with one, the band
+            starts where the form starts (Pavan, 2026-10-05). */}
+        {steps && !navShown && (
           <div className="shrink-0 border-b border-border px-4">{steps}</div>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
-          {children}
-        </div>
+        {stepped ? (
+          <SteppedFormBody
+            footer={footerBanner}
+            top={navShown ? steps : undefined}
+            onShownChange={setNavOn}
+          >
+            {children}
+          </SteppedFormBody>
+        ) : (
+          <FormStepsContext.Provider value={false}>
+            <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
+              {children}
+            </div>
+          </FormStepsContext.Provider>
+        )}
 
-        {footerBanner && (
+        {footerBanner && !navShown && (
           /* ABOVE THE FOOTER AND OUTSIDE THE SCROLL — the same reason the
              stage bar sits under the header: a strip that describes the
              footer's button has to be visible whenever the button is. */

@@ -80,6 +80,16 @@ Fuel Orders) hands Fuel Orders the day and column boxes. Charts are a single
 hue (`fp-lane-blue`, validated in both themes); identity is the label beside
 each bar, never colour. Parts: `DashboardParts.tsx`.
 
+**Restyled after a reference dashboard (Pavan, 2026-10-05).** White cards
+(`bg-fp-surface-1b`, rounded-xl, no rim, `shadow-xs`) on a grey ground
+(`DASHBOARD_GROUND`, `bg-fp-surface-1a`; the two swap in dark). Colour now
+comes from the `--fp-viz-*` palette, by the job it does: a count over stages
+or time is one series in slot-1 blue with **the peak lit** and the rest a soft
+tint; a **share of a whole** (`BarList share`) is a segmented bar in the
+palette's fixed order with a coloured dot beside each name; a ranking is
+slot-1 blue throughout. Delta chips and "vs last period" from the reference
+are NOT built — there is no prior-period data.
+
 ### Current map
 
 | Module | Tier 1 | Tier 2 |

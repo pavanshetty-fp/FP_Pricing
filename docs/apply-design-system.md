@@ -157,7 +157,8 @@ popover.
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
 | `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
-| `bg-fp-table-header` | `#e9ecf1` | `#2a2f37` | table header row — one clear step from the rows AND from a section card's title band, which a table can now sit flush under |
+| `bg-fp-table-header` | `#f4f5f8` | `#1b1f25` | table header row — `--fp-card-2`, the subtle step (Pavan, 2026-10-05: card-1 stood out too much). **A `tfoot` total takes no fill** — its top rule and weight carry it; a pinned totals band takes the sheet's own `bg-popover` |
+| `bg-fp-viz-1…8` | blue `#2a78d6` · orange `#eb6834` · aqua `#1baf7a` · yellow `#eda100` · magenta `#e87ba4` · green `#008300` · violet `#4a3aa7` · red `#e34948` | `#3987e5` · `#d95926` · `#199e70` · `#c98500` · `#d55181` · `#008300` · `#9085e9` · `#e66767` | **dashboard chart palette** (2026-10-05) — fixed order, never cycled; validated (six checks) on #ffffff / #161a20: adjacent CVD ΔE ≥ 8.4, normal ≥ 19.3. Light slots 3–5 are under 3:1, so charts using them always show names and values. The old `--chart-1…5` failed the validator and is no longer used by a chart |
 | `text-status-success` | `#15803d` | `#22c55e` | success |
 | `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
 | `text-status-processing` | `#b45309` | `#f59e0b` | processing / caution |
@@ -1529,7 +1530,7 @@ repo's `src/index.css`.
      distinct from the band above it, distinct from the rows below it, and
      still distinct from the row hover, which is what the faint value was
      originally protecting. */
-  --fp-table-header: var(--fp-card-1);
+  --fp-table-header: var(--fp-card-2); /* the subtle step, 2026-10-05 */
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content
@@ -1740,7 +1741,7 @@ repo's `src/index.css`.
   /* Dark tracks light onto --fp-card-1. It used to be --fp-surface-1a, which
      is the same value the section card's title band takes — two bands of one
      colour stacked, with the table's header invisible under the card's. */
-  --fp-table-header: var(--fp-card-1);
+  --fp-table-header: var(--fp-card-2); /* the subtle step, 2026-10-05 */
   /* Re-joined here. Light had to break these three out of the shared block —
      --background because base/background went white, --secondary because the
      emphasis family split, --destructive because it left --fp-danger — but dark
@@ -2049,6 +2050,15 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     ladder rather than a column. Every cell carries `data-blink="<name>"` and
     they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
     2026-09-22.)
+- **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
+  `StageTrack`: evenly spaced dots end to end on one line — filled behind,
+  hollow ahead — and the current stage an outlined pill carrying its NAME
+  (content-layer fill, foreground rim: white/black in light, reversed in dark;
+  no colour, no count). Every other name sits under its dot on one baseline.
+  In a stepped sheet it lives IN THE FORM COLUMN, pinned at its top
+  (`data-form-sticky`, which the step list allows for), so it spans the form
+  only and stops before the cards. The status chip beside the order number
+  goes (`DraftStatusChip showStatus={false}`) — the track already says it.
 - **The strip under the header is a STAGE BAR, not a stepper.** `StageBar` —
   one line of chevrons, three tones (behind / here / ahead) and a fourth only
   for a terminal exit. A stepper is a form split into parts you move between; a

@@ -17,6 +17,7 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { SteppedFormBody } from "@/components/side-sheet/form-steps";
 import { HangingAdd } from "./HangingAdd";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
@@ -155,6 +156,8 @@ export function OrderSheet({
   const [draft, setDraft] = React.useState<OrderDraft | null>(null);
   /* The product line just added — its first cell takes the cursor. */
   const [focusProduct, setFocusProduct] = React.useState<number | undefined>();
+  /* Whether the step column shows — the sheet goes full width while it does. */
+  const [stepsShown, setStepsShown] = React.useState(false);
   const creating = mode === "create";
 
   // Re-seed on every open, so edits never leak between rows — and so a
@@ -184,7 +187,8 @@ export function OrderSheet({
         /* A CREATION SHEET FILLS, less the 56px gap (Pavan, 2026-09-25). */
         className={cn(
           "gap-0 p-0",
-          creating
+          /* …and so does any order while its step column shows. */
+          creating || stepsShown
             ? "w-[calc(100vw-56px)] sm:max-w-[calc(100vw-56px)]"
             : "w-[560px] sm:max-w-[560px]"
         )}
@@ -210,8 +214,8 @@ export function OrderSheet({
           </SheetClose>
         </div>
 
-        {/* Body — gap-7 between groups, per the DS sheet. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
+        {/* Body — the DS stepped form (see `form-steps`). */}
+        <SteppedFormBody onShownChange={setStepsShown}>
           <SheetSection title="Order Details">
             {/* 12px from the label to the options (the DS field default is 6px),
                 and the two options sit 24px apart instead of being stretched to
@@ -413,7 +417,7 @@ export function OrderSheet({
           </SheetSection>
 
           {!creating && order && <ActivitySection entries={order.audit} />}
-        </div>
+        </SteppedFormBody>
 
         {/* Footer — DS sheet footer: border-t, p-4, right-aligned, gap-3. */}
         <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">

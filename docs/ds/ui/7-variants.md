@@ -50,6 +50,44 @@ record exists. In code: `RecordSheet`'s `fill` (defaults to `mode ===
 "create"`) now sets the floor; an export or a partner's quote passes
 `fill={false}`.
 
+### The stepped form — the default for every first-level form (Pavan, 2026-10-05)
+
+Tried on Create Delivery Order, then made the default in every module (Sales,
+3PL, Service). Lives in `RecordSheet` (`stepNav`, on unless `level={2}`) and
+`components/side-sheet/form-steps.tsx`; a sheet that builds its own `Sheet`
+uses `SteppedFormBody` directly (Sales `OrderSheet`).
+
+- **Three columns: steps · form · cards.** A 224px step column on the left,
+  the form as ONE long scroll in the middle, and the record's rail (Summary,
+  Associated records, Activity) on the right where it has one. **The sheet
+  fills (`100vw − 56px`) whenever the step column shows** — this supersedes the
+  756 creation floor for stepped forms.
+- **Steps come from the page, not a list.** Every top-level `SheetSection` is
+  a step named by its title; `FormStep label="…"` groups several sections under
+  one name (Create Delivery Order: Order details · Contacts · Schedule ·
+  Products · Vendor · Documents & notes). The column shows only with two or
+  more steps, so a one-section sheet keeps its old shape.
+- **The column follows the scroll** ("Step 3 of 6", a progress bar, the
+  current step selected with `--selected`). **Pressing a step scrolls to it**
+  and marks it once with `.fp-attention-fill-subtle` — a 5% foreground wash,
+  grey in both themes, never the ring tint.
+- **The look inside a stepped form:** group headings lose their band —
+  `text-base font-medium text-muted-foreground`; field sections become
+  `plain`; a section that is a table becomes `outline` (plain heading over the
+  table's own `--border` rim, hanging add intact). No step titles, no dividers:
+  groups are separated by the 40px section gap alone.
+- **The pending strip moves to the foot of the step column**: "Pending" on
+  the left, the ‹ 1 of n › stepper on the right, the item underneath and
+  wrapping. **Pending is grey** (`muted-foreground`), not caution — what is
+  left is information, not an alarm. Without a step column it stays the
+  full-width band above the footer.
+- **Not stepped:** level-2 sheets (a sheet over a sheet), Export
+  (`stepNav={false}`), pickers and read drawers (they reset
+  `FormStepsContext` to false).
+- **A create visit stays a create visit.** The first autosave turns a new
+  order into a row and re-opens the sheet in edit mode; the sheet remembers it
+  was opened from Create and keeps the create layout (no rail) until closed.
+
 ### Depth — two
 
 | | | For |
@@ -80,7 +118,7 @@ to B1 below `lg`, where a 340px rail beside a form is two columns of nothing.
 | | | For |
 |---|---|---|
 | **H1** | `SheetSteps` — numbered | a FORM split into parts you move between, in order |
-| **H2** | `StageBar` — chevrons, not numbered | a statement about the RECORD, which you are watching rather than authoring |
+| **H2** | `StageTrack` — dots on a line (replaced the chevron `StageBar` on order detail pages, 2026-10-05) | a statement about the RECORD, which you are watching rather than authoring |
 
 **The question: who is doing the moving?** Steps are numbered because you take
 them; stages are not, because the record takes them. A create sheet gets H1. A

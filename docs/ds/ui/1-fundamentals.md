@@ -72,7 +72,8 @@ popover.
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
 | `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
-| `bg-fp-table-header` | `#e9ecf1` | `#2a2f37` | table header row — one clear step from the rows AND from a section card's title band, which a table can now sit flush under |
+| `bg-fp-table-header` | `#f4f5f8` | `#1b1f25` | table header row — `--fp-card-2`, the subtle step (Pavan, 2026-10-05: card-1 stood out too much). **A `tfoot` total takes no fill** — its top rule and weight carry it; a pinned totals band takes the sheet's own `bg-popover` |
+| `bg-fp-viz-1…8` | blue `#2a78d6` · orange `#eb6834` · aqua `#1baf7a` · yellow `#eda100` · magenta `#e87ba4` · green `#008300` · violet `#4a3aa7` · red `#e34948` | `#3987e5` · `#d95926` · `#199e70` · `#c98500` · `#d55181` · `#008300` · `#9085e9` · `#e66767` | **dashboard chart palette** (2026-10-05) — fixed order, never cycled; validated (six checks) on #ffffff / #161a20: adjacent CVD ΔE ≥ 8.4, normal ≥ 19.3. Light slots 3–5 are under 3:1, so charts using them always show names and values. The old `--chart-1…5` failed the validator and is no longer used by a chart |
 | `text-status-success` | `#15803d` | `#22c55e` | success |
 | `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
 | `text-status-processing` | `#b45309` | `#f59e0b` | processing / caution |

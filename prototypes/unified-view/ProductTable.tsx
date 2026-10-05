@@ -135,7 +135,7 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
               stays aligned to the Quantity column. Derived from the rows above,
               so it can never disagree with them. */}
           <tfoot>
-            <tr className="h-11 border-t border-border bg-fp-table-header">
+            <tr className="h-11 border-t border-border">
               <td className="px-3 text-right text-sm text-muted-foreground">
                 Total
               </td>

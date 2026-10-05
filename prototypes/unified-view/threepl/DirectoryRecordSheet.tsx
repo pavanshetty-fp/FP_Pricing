@@ -1,4 +1,5 @@
 import * as React from "react";
+import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 import { Download, FileText, History, Image as ImageIcon, Sheet as SheetIcon, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -727,6 +728,8 @@ export function ReadDrawer({
   children: React.ReactNode;
 }) {
   return (
+    /* A picker over a stepped form is not part of it. */
+    <FormStepsContext.Provider value={false}>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -752,6 +755,7 @@ export function ReadDrawer({
         <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
       </SheetContent>
     </Sheet>
+    </FormStepsContext.Provider>
   );
 }
 
@@ -806,7 +810,10 @@ export function EditDrawer({
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          <div className="flex flex-col gap-4">{children}</div>
+          {/* A drawer over a stepped sheet is not part of its form. */}
+          <FormStepsContext.Provider value={false}>
+            <div className="flex flex-col gap-4">{children}</div>
+          </FormStepsContext.Provider>
         </div>
         <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

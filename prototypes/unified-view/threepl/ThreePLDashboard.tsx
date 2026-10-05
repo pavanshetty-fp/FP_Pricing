@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import * as React from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { StatusChip } from "@/components/ui/status-chip";
 import { dateKeyOf, startOfDay } from "../data";
-import { BarColumns, BarList, Panel, StatTile } from "../DashboardParts";
+import { BarColumns, BarList, Panel, StatTile, DASHBOARD_GROUND } from "../DashboardParts";
 import { DateRangeFilter, type DateRange } from "./DateRangeFilter";
 import {
   BROKER_ORDERS,
@@ -204,6 +205,8 @@ export function ThreePLDashboard({
         <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
+      {/* WHITE CARDS ON THEIR GROUND — see DashboardParts. */}
+      <div className={cn("flex shrink-0 flex-col gap-3", DASHBOARD_GROUND)}>
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label="Live orders"
@@ -243,7 +246,7 @@ export function ThreePLDashboard({
 
       <div className="grid shrink-0 gap-3 lg:grid-cols-2">
         <Panel title="Order types" aside="share of orders">
-          <BarList data={byType} />
+          <BarList data={byType} share />
         </Panel>
         <Panel title="Top customers" aside="estimated customer price">
           <BarList data={byCustomer} format={(n) => MONEY.format(n)} />
@@ -330,6 +333,7 @@ export function ThreePLDashboard({
             </Table>
           )}
         </Panel>
+      </div>
       </div>
     </div>
   );

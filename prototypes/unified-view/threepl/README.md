@@ -991,6 +991,19 @@ shared (`prototypes/unified-view/PendingStrip.tsx`) rather than living twice.
   question, so "add the asset" lands in the right place whichever kind of order
   it is.
 
+### The order sheet as a stepped form (2026-10-05)
+
+Create and detail both use the stepped form (DS ui §1). Create groups its
+sections under six `FormStep`s. Detail: the `StageTrack` is pinned at the top
+of the form column; no status chip beside the order number. The rail's first
+card is **Quotation summary** — a soft violet→rose wash on the shell (no
+outline; deep pastel shades in dark), an inner card that reads like a bill
+(Requested · Vendor quote · Customer pricing, a dashed rule, **Margin** as the
+total), and **the partners last, below the margin**. Partner chips —
+Awaiting quote, Quotation shared, Accepted — are **grey everywhere** (summary
+and vendor table); only "Products updated" (a warning) and "Holds order"
+(green) keep colour. Save as Draft sits left of the commit act while creating.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

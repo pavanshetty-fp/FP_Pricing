@@ -9,6 +9,12 @@ import {
 } from "@/components/ui/popover";
 import { Steps, type StepItem } from "@/components/ui/steps";
 import {
+  FORM_STEP_CLASS,
+  FormStepsContext,
+  InsideFormStepContext,
+  formStepAttrs,
+} from "./form-steps-context";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,10 +33,11 @@ export function SheetSection({
   title,
   action,
   note,
-  variant = "card",
+  variant: variantProp = "card",
   flush = false,
   hanging,
   bodyClassName,
+  headingClassName,
   children,
   className,
   id,
@@ -46,7 +53,12 @@ export function SheetSection({
    * `plain` is the old heading-over-fields form, for the handful of places
    * that are a single continuous list rather than a set of groups.
    */
-  variant?: "plain" | "card";
+  variant?: "plain" | "card" | "outline";
+  /**
+   * Classes for the heading text — for a form that sets its group headings at
+   * a different step of the type scale.
+   */
+  headingClassName?: string;
   /**
    * Card variant only: drop the body's padding so a single child can run edge
    * to edge under the header band.
@@ -112,10 +124,38 @@ export function SheetSection({
      a taller child, which overflows the box without growing it. That holds for
      any control put there — a 32px button, a switch, a picker — so the 16
      cannot drift again the next time a section gains an action. */
+  /* IN A STEPPED FORM (see `form-steps`) the card's band goes: a section
+     that is fields becomes `plain`, a section that is a table keeps its rim as
+     `outline`. A top-level section is also a step, named by its title. */
+  const stepped = React.useContext(FormStepsContext);
+  const insideStep = React.useContext(InsideFormStepContext);
+  const isStep = stepped && !insideStep;
+  const variant =
+    stepped && variantProp === "card"
+      ? flush || hanging
+        ? "outline"
+        : "plain"
+      : variantProp;
+  const stepAttrs = isStep ? formStepAttrs(title) : {};
+  if (isStep) {
+    children = (
+      <InsideFormStepContext.Provider value>{children}</InsideFormStepContext.Provider>
+    );
+  }
+
   const heading = (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-1.5">
-        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        <h3
+          className={cn(
+            "text-sm font-semibold text-muted-foreground",
+            /* Sub-heading size, dimmed so the fields lead. */
+            stepped && "text-base font-medium",
+            headingClassName
+          )}
+        >
+          {title}
+        </h3>
         {/* Sits WITH the heading, not after the content: an explanation of
             how a section works belongs where the section is named, and on
             demand rather than as a paragraph everyone reads once. */}
@@ -126,6 +166,44 @@ export function SheetSection({
       )}
     </div>
   );
+
+  if (variant === "outline") {
+    /* `outline` — the plain heading OVER an outlined box, no band. For a form
+       whose group headings carry no fill but whose tables keep their rim.
+       The box takes `flush` and `hanging` exactly as the card does. The rim
+       is the data table's `--border`, per the DS table stroke. */
+    const box = (
+      <div
+        className={cn(
+          "flex shrink-0 flex-col overflow-hidden rounded-lg border border-border",
+          !flush && "gap-4 p-4",
+          hanging && "rounded-bl-none",
+          bodyClassName
+        )}
+      >
+        {children}
+      </div>
+    );
+    return (
+      <section
+        id={id}
+        {...stepAttrs}
+        className={cn("flex shrink-0 flex-col gap-4", isStep && FORM_STEP_CLASS, className)}
+      >
+        {heading}
+        {hanging ? (
+          <div className="flex flex-col">
+            {box}
+            <div className="flex w-full items-center justify-between gap-4">
+              {hanging}
+            </div>
+          </div>
+        ) : (
+          box
+        )}
+      </section>
+    );
+  }
 
   if (variant === "card") {
     /* THE HEADING MOVES INTO A BAND, because a title inside a bordered block
@@ -199,7 +277,11 @@ export function SheetSection({
   }
 
   return (
-    <section id={id} className={cn("flex flex-col gap-4", className)}>
+    <section
+      id={id}
+      {...stepAttrs}
+      className={cn("flex flex-col gap-4", isStep && FORM_STEP_CLASS, className)}
+    >
       {heading}
       {children}
     </section>

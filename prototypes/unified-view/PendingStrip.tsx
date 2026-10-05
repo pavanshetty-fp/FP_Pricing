@@ -178,23 +178,30 @@ export function PendingStrip({
     "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
 
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex min-w-0 items-center gap-2 text-sm text-fp-banner-accent-caution">
-        <Info className="size-4 shrink-0" />
-        <span className="shrink-0 font-medium">Pending</span>
+    /* IN THE STEP COLUMN (a narrow `@container`) the strip is two rows
+       (Pavan, 2026-10-05): "Pending" on the left with the stepper on the
+       right, and the item itself underneath, wrapping rather than truncating.
+       No icon there. The first span dissolves (`contents`) so its pieces can
+       be laid out against the counter. In the full-width footer band nothing
+       changes. GREY, not caution orange (Pavan, 2026-10-05): what is left to
+       do is information, not an alarm. */
+    <div className="flex items-center justify-between gap-3 @max-[20rem]:flex-wrap @max-[20rem]:gap-y-1">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground @max-[20rem]:contents">
+        <Info className="size-4 shrink-0 @max-[20rem]:hidden" />
+        <span className="shrink-0 font-medium @max-[20rem]:order-1">Pending</span>
         {step.target ? (
           <button
             type="button"
             onClick={() => attend(step.target!)}
-            className="min-w-0 truncate rounded-sm underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="min-w-0 truncate rounded-sm text-left @max-[20rem]:order-3 @max-[20rem]:basis-full @max-[20rem]:whitespace-normal underline decoration-current/40 underline-offset-4 outline-none transition-[text-decoration-color] hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             {step.label}
           </button>
         ) : (
-          <span className="truncate">{step.label}</span>
+          <span className="truncate @max-[20rem]:order-3 @max-[20rem]:basis-full @max-[20rem]:whitespace-normal">{step.label}</span>
         )}
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+      <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground @max-[20rem]:order-2">
         <button
           type="button"
           aria-label="Previous pending item"

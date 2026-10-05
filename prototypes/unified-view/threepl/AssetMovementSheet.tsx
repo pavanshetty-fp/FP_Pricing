@@ -1,4 +1,5 @@
 import * as React from "react";
+import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 import {
   Calendar as CalendarIcon,
   Check,
@@ -345,6 +346,8 @@ function AssetPickerSheet({
   const narrowed = rows.length !== assets.length;
 
   return (
+    /* A picker over a stepped form is not part of it. */
+    <FormStepsContext.Provider value={false}>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -495,6 +498,7 @@ function AssetPickerSheet({
         </div>
       </SheetContent>
     </Sheet>
+    </FormStepsContext.Provider>
   );
 }
 

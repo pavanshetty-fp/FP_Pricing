@@ -78,7 +78,9 @@ import {
   SheetSectionNote,
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
-import { StageBar, type Stage } from "@/components/ui/stage-bar";
+import { FormStep } from "@/components/side-sheet/form-steps";
+import { type Stage } from "@/components/ui/stage-bar";
+import { StageTrack } from "@/components/ui/stage-track";
 import { FileUpload } from "@/components/form-layout/FileUpload";
 import {
   TimeWindowSlider,
@@ -797,6 +799,18 @@ const PRICING_SECTION_ID = "broker-order-pricing-section";
 /** The vendor's own column inside Pricing — the second, narrower "this one". */
 const VENDOR_COST_COLUMN_ID = "broker-order-vendor-cost-column";
 
+/* THE STEPS THIS FORM GROUPS ITS SECTIONS UNDER — `FormStep`, see
+   `components/side-sheet/form-steps`. Sections outside these are steps of
+   their own, named by their titles. */
+const CREATE_STEPS = {
+  order: "Order details",
+  contacts: "Contacts",
+  schedule: "Schedule",
+  products: "Products",
+  vendor: "Vendor",
+  files: "Documents & notes",
+} as const;
+
 /**
  * WHERE EACH STAGE'S WORK LIVES.
  *
@@ -1304,23 +1318,39 @@ function RailRow({
   label,
   value,
   breakdown,
+  variant = "rail",
 }: {
   label: string;
   value: React.ReactNode;
   /** One line per contribution. Rendered only when there is something to show. */
   breakdown?: { label: string; value: string }[];
+  /** `line` / `total` — the Summary card's statement rows (2026-10-05). */
+  variant?: "rail" | "line" | "total";
 }) {
   const row = (
     <div
       className={cn(
-        "flex items-baseline justify-between gap-3 px-4 py-2.5",
+        "flex items-baseline justify-between gap-3",
+        variant === "rail" ? "px-4 py-2.5" : "py-1",
         breakdown?.length && "cursor-help"
       )}
     >
-      <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
+      <dt
+        className={cn(
+          "min-w-0 truncate",
+          variant === "rail" && "shrink-0 text-xs text-muted-foreground",
+          variant === "line" && "text-sm text-foreground",
+          variant === "total" && "text-base font-medium text-foreground"
+        )}
+      >
+        {label}
+      </dt>
       <dd
         className={cn(
-          "min-w-0 truncate text-sm tabular-nums text-foreground",
+          "min-w-0 shrink-0 truncate tabular-nums",
+          variant === "rail" && "text-sm text-foreground",
+          variant === "line" && "text-sm text-muted-foreground",
+          variant === "total" && "text-base font-semibold text-foreground",
           /* THE DOTTED RULE IS THE WHOLE AFFORDANCE. A figure that explains
              itself has to say so without a second control beside it. */
           breakdown?.length &&
@@ -1488,8 +1518,17 @@ export function BrokerOrderSheet({
   } | null>(null);
   const creating = mode === "create";
 
-  /* Still being created: new, or a Draft nobody has sent out yet. */
-  const inCreation = creating || draft?.status === "Draft";
+  /* BEING CREATED = opened from Create, not yet saved as a record (Pavan,
+     2026-10-05). A Draft opened from the board is an order that exists and
+     gets the full sheet with its rail. */
+  /* FOR THE WHOLE VISIT. The first autosave turns a new order into a saved
+     row and the screen re-opens the sheet on it in edit mode; it is still the
+     visit that began at Create, so it keeps the create layout until closed. */
+  const [openedFromCreate, setOpenedFromCreate] = React.useState(false);
+  if (open && creating && !openedFromCreate) setOpenedFromCreate(true);
+  if (!open && openedFromCreate) setOpenedFromCreate(false);
+  const inCreation = creating || (open && openedFromCreate);
+
 
   /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. A card's
      "review pricing" names the vendor table; landing at the top of a sheet
@@ -2261,6 +2300,19 @@ export function BrokerOrderSheet({
    * an act — the invitations are already sent by the time it is pressed, and
    * a created order is the thing the rest of the flow hangs off.
    */
+  /* SAVE AS DRAFT — closes the sheet with the order parked as a draft. The
+     sheet has been autosaving all along; this hands over the last keystrokes
+     and leaves. */
+  const saveAsDraft = () => {
+    const touched = JSON.stringify(draft) !== JSON.stringify(emptyDraft());
+    /* ONCE THE FIRST AUTOSAVE HAS MADE THE ROW, saving goes to that row —
+       creating again would leave a duplicate. */
+    if (order) onSave(order, draft);
+    else if (touched) onCreate?.(draft);
+    if (order || touched) toast.success(`${order?.orderNo ?? "Order"} saved as a draft`);
+    onOpenChange(false);
+  };
+
   const createOrder = () =>
     setDraft((d) => {
       if (!d || d.status !== "Draft") return d;
@@ -2305,7 +2357,9 @@ export function BrokerOrderSheet({
   const invitedWord = draft.status === "Draft" ? "Invited" : "Awaiting quote";
   /* Invited = waiting on the partner. On a draft nothing has been sent, so
      it is not yet a state. */
-  const invitedTone = kindTone(draft.status === "Draft" ? "neutral" : "caution");
+  /* GREY IN EVERY STAGE (Pavan, 2026-10-05) — waiting on a partner is the
+     ordinary state of a quoting round, not something to flag in orange. */
+  const invitedTone = kindTone("neutral");
 
   /* WHAT A SEND WOULD ACTUALLY DO. Ticked rows that have not been asked, or —
      with nothing ticked — every row that has not. A partner already invited is
@@ -3833,7 +3887,7 @@ export function BrokerOrderSheet({
               it sums — and only once there is something to add. */}
           {draft.orderFees.length > 0 && (
             <tfoot>
-              <tr className="h-11 border-t border-border bg-fp-table-header">
+              <tr className="h-11 border-t border-border">
                 <td
                   colSpan={2}
                   className="px-3 text-right text-sm text-muted-foreground"
@@ -3887,7 +3941,7 @@ export function BrokerOrderSheet({
         thirds, with the profit's figure flush to the right edge so the row
         spans the bar instead of trailing off before it does. */}
     {shownQuote && (
-      <div className="sticky -bottom-4 z-10 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-fp-card-1 px-4 py-3 lg:grid-cols-3">
+      <div className="sticky -bottom-4 z-10 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-popover px-4 py-3 lg:grid-cols-3">
         {[
           { label: "Vendor pricing", value: carrierTotal },
           { label: "Customer pricing", value: billed },
@@ -3931,10 +3985,10 @@ export function BrokerOrderSheet({
          stop lining up with the figures under them. */
       /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
          no rail, so it takes the creation floor (756) instead of filling. */
-      size={inCreation ? "narrow" : "xxwide"}
+      size={inCreation ? "xwide" : "xxwide"}
       open={open}
       onOpenChange={onOpenChange}
-      mode={mode}
+      mode={inCreation ? "create" : mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Delivery Order"
       createAction="Create Order"
@@ -3996,6 +4050,9 @@ export function BrokerOrderSheet({
             tone={BROKER_STATUS_TONE[draft.status]}
             label={draft.status}
             saveState={saveState}
+            /* THE STAGE TRACK SAYS WHERE IT IS — no chip beside the number
+               (Pavan, 2026-10-05). */
+            showStatus={false}
           />
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
         </div>
@@ -4004,7 +4061,7 @@ export function BrokerOrderSheet({
          of those, and it is destructive, so it is behind a menu AND a confirm
          rather than sitting one mis-click from Close. */
       headerMenu={
-        !creating && order ? (
+        !inCreation && order ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="More order actions">
@@ -4118,7 +4175,17 @@ export function BrokerOrderSheet({
         ) : undefined
       }
       footerPrimary={
-        awaitingQuotation ? (
+        inCreation ? (
+          /* CREATING: park it, or commit it. One page, so no Next step. */
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={saveAsDraft}>
+              Save as Draft
+            </Button>
+            <Button disabled={nextActOff} onClick={nextAct.onSelect}>
+              {nextAct.label}
+            </Button>
+          </div>
+        ) : awaitingQuotation ? (
           <span className="text-sm text-muted-foreground">
             Awaiting quotation
           </span>
@@ -4170,15 +4237,7 @@ export function BrokerOrderSheet({
         to open, and a bar that looked pressable and moved nothing would be
         worse than one that plainly does not.
       */
-      steps={
-        !creating ? (
-          <StageBar
-            className="-mx-4 px-4 py-2.5"
-            stages={ORDER_STAGES}
-            current={stageOf(draft.status)}
-          />
-        ) : undefined
-      }
+
     >
         {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────
             One rule decides which side a card is on: can you type into it?
@@ -4189,6 +4248,18 @@ export function BrokerOrderSheet({
             which is which. */}
         <div className={cn("grid items-start gap-6", !inCreation && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="flex min-w-0 flex-col gap-10">
+      {/* THE STAGE TRACK, IN THE FORM'S OWN COLUMN (Pavan, 2026-10-05): the
+          sheet reads as three columns — steps, form, cards — and the track
+          belongs to the middle one, end to end. Pinned while the form
+          scrolls under it. */}
+      {!inCreation && (
+        <div
+          data-form-sticky
+          className="sticky -top-4 z-10 -mt-4 -mb-4 border-b border-border bg-popover pt-4 pb-3"
+        >
+          <StageTrack stages={ORDER_STAGES} current={stageOf(draft.status)} />
+        </div>
+      )}
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
@@ -4245,6 +4316,7 @@ export function BrokerOrderSheet({
       */}
       {!locked && (
         <>
+      <FormStep label={CREATE_STEPS.order}>
       <SheetSection title="Job Type">
         <RadioGroup
           className="flex gap-6"
@@ -4264,7 +4336,10 @@ export function BrokerOrderSheet({
         </RadioGroup>
       </SheetSection>
 
-      <SheetSection id={SECTION_BASICS} title="Basic Details">
+      <SheetSection
+        id={SECTION_BASICS}
+        title="Basic Details"
+      >
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
             gap between them would read as the next question rather than the
@@ -4390,9 +4465,11 @@ export function BrokerOrderSheet({
           />
         </SheetField>
       </SheetSection>
+      </FormStep>
 
       {/* The people on the order, together. POC and salesperson were split
           across two places; they answer the same question — who to call. */}
+      <FormStep label={CREATE_STEPS.contacts}>
       <SheetSection title="POC Details">
         {/* One person per row: name and the two ways to reach them read as a
             single fact, so they sit side by side rather than wrapping over two
@@ -4598,7 +4675,9 @@ export function BrokerOrderSheet({
           </div>
         </div>
       </SheetSection>
+      </FormStep>
 
+      <FormStep label={CREATE_STEPS.schedule}>
       <SheetSection title="Schedule Details">
         <div className="grid grid-cols-9 gap-4">
           <SheetField label="Planned Delivery Date" required className="col-span-4">
@@ -4724,6 +4803,7 @@ export function BrokerOrderSheet({
         </div>
 
       </SheetSection>
+      </FormStep>
         </>
       )}
 
@@ -4761,6 +4841,7 @@ export function BrokerOrderSheet({
           card's, two lines doing one job. See `flush` on `SheetSection`. */}
       {!locked && (
         <>
+      <FormStep label={CREATE_STEPS.products}>
       {!isMovement && (
         <SheetSection
           id={SECTION_LINES}
@@ -4940,7 +5021,7 @@ export function BrokerOrderSheet({
                     number to add up. */}
                 {hasAssets && (
                   <tfoot>
-                    <tr className="h-11 border-t border-border bg-fp-table-header">
+                    <tr className="h-11 border-t border-border">
                       <td
                         colSpan={3}
                         className="px-3 text-right text-sm text-muted-foreground"
@@ -5023,6 +5104,7 @@ export function BrokerOrderSheet({
           )}
         </SheetSection>
       )}
+      </FormStep>
         </>
       )}
 
@@ -5178,7 +5260,7 @@ export function BrokerOrderSheet({
                 )}
               </tbody>
               <tfoot>
-                <tr className="border-t border-border bg-fp-table-header">
+                <tr className="border-t border-border">
                   <td
                     colSpan={2}
                     className="px-3 py-2.5 text-sm font-medium text-foreground"
@@ -5248,6 +5330,7 @@ export function BrokerOrderSheet({
 
 
 
+      <FormStep label={CREATE_STEPS.vendor}>
       {/* ── The 3PL section. Everything above exists on a first-party order
              too; this is what makes the order brokered. ─────────────────── */}
       <SheetSection
@@ -5707,11 +5790,11 @@ export function BrokerOrderSheet({
                                   Products updated
                                 </StatusChip>
                               ) : quote ? (
-                                <StatusChip tone={kindTone("caution")} variant="text">
+                                <StatusChip tone={kindTone("neutral")} variant="text">
                                   Quotation shared
                                 </StatusChip>
                               ) : draft.acceptedVendorIds.includes(id) ? (
-                                <StatusChip tone={kindTone("caution")} variant="text">
+                                <StatusChip tone={kindTone("neutral")} variant="text">
                                   Accepted
                                 </StatusChip>
                               ) : sentIds.includes(id) ? (
@@ -6026,6 +6109,7 @@ export function BrokerOrderSheet({
           )}
         </div>
       )}
+      </FormStep>
 
       <CustomRecurrenceDialog
         open={customOpen}
@@ -6076,15 +6160,32 @@ export function BrokerOrderSheet({
                 THE STAGE LINE STAYS, at the foot, as a caption rather than as
                 the whole card: "yet to receive a quote" explains the em-dash
                 above it instead of standing in for the figures. */}
-            <RailCard title="Summary" icon={<Info />}>
-              {/* FOUR FIGURES IN THE ORDER THE MONEY MOVES: what was asked
-                  for, what the partner charges to move it, what the customer
-                  pays, and what is left between the two. Each of the three
-                  money rows carries its own working on hover — the tables are
-                  where the numbers are typed, this is the account of how they
-                  add up. */}
-              <dl className="flex flex-col divide-y divide-border">
+            {/* ── SUMMARY, AS A STATEMENT (Pavan, 2026-10-05) ──
+                A tinted shell with the title, and inside it a raised card that
+                reads like a bill: what is known, a dashed rule, then the line
+                everything adds up to. Each figure still opens its working on
+                hover. */}
+            {/* THE SHELL CARRIES A SOFT WASH, after the plan-card reference:
+                violet into rose at the top edge, fading to the inner-panel
+                surface. No outline. In dark the wash takes the pastels' deep
+                foreground shades, so it reads as a glow in the dark surface
+                rather than a pale film on it. */}
+            <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
+              <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
+                Quotation summary
+              </h3>
+              <div className="flex flex-col gap-3 rounded-lg border border-border bg-fp-surface-1b p-3">
+                {quotes.length === 0 && (
+                  <div className="flex items-start gap-2.5 rounded-md border border-border p-2.5">
+                    <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {summaryEmptyLine(draft.status, invitedIds.length)}
+                    </p>
+                  </div>
+                )}
+              <dl className="flex flex-col">
                 <RailRow
+                  variant="line"
                   label="Requested"
                   value={
                     isAllTopOff(draft.lines)
@@ -6103,6 +6204,7 @@ export function BrokerOrderSheet({
                     }))}
                 />
                 <RailRow
+                  variant="line"
                   label={
                     shownVendorId
                       ? `Vendor quote — ${vendorById(shownVendorId)?.name ?? "partner"}`
@@ -6118,11 +6220,16 @@ export function BrokerOrderSheet({
                   breakdown={vendorBreakdown}
                 />
                 <RailRow
+                  variant="line"
                   label="Customer pricing"
                   value={money(billed)}
                   breakdown={customerBreakdown}
                 />
+              </dl>
+              <div aria-hidden className="border-t border-dashed border-border" />
+              <dl className="flex flex-col">
                 <RailRow
+                  variant="total"
                   label="Margin"
                   value={
                     /* THE SAME FIGURE AS THE STRIP'S, so the same colour — one
@@ -6147,12 +6254,55 @@ export function BrokerOrderSheet({
                   breakdown={marginBreakdown}
                 />
               </dl>
-              {quotes.length === 0 && (
-                <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-                  {summaryEmptyLine(draft.status, invitedIds.length)}
+                <div aria-hidden className="border-t border-border" />
+                {/* WHO IS QUOTING, with the quotes they have produced
+                    (Pavan, 2026-10-05 — moved here from Associated records; last, below
+                    the margin). */}
+                <div>
+                <p className="text-xs text-muted-foreground">
+                  Partners{invitedIds.length > 0 && ` · ${invitedIds.length}`}
                 </p>
-              )}
-            </RailCard>
+                {invitedIds.length === 0 ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    None invited yet.
+                  </p>
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {invitedIds.map((id) => (
+                      <li
+                        key={id}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="truncate text-sm text-foreground">
+                          {vendorById(id)?.name ?? id}
+                        </span>
+                        <StatusChip
+                          tone={
+                            draft.vendorId === id
+                              ? kindTone("success")
+                              : invitedTone
+                          }
+                          variant="soft"
+                        >
+                          {/* THE SAME FOUR WORDS THE VENDOR TABLE USES. The
+                              rail said "Quoted" where the table says
+                              "Quotation shared"; one fact, two vocabularies,
+                              on one screen. */}
+                          {draft.vendorId === id
+                            ? "Holds order"
+                            : quotes.some((q) => q.vendorId === id)
+                              ? "Quotation shared"
+                              : draft.acceptedVendorIds.includes(id)
+                                ? "Accepted"
+                                : invitedWord}
+                        </StatusChip>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              </div>
+            </section>
 
             {/* ── ASSOCIATED RECORDS ──
                 NO RULE BETWEEN EVERY ROW. Five hairlines made five unrelated
@@ -6201,51 +6351,6 @@ export function BrokerOrderSheet({
                   )}
                 </div>
               </dl>
-              <div className="border-t border-border px-4 py-3">
-                <p className="text-xs text-muted-foreground">
-                  Partners{invitedIds.length > 0 && ` · ${invitedIds.length}`}
-                </p>
-                {invitedIds.length === 0 ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    None invited yet.
-                  </p>
-                ) : (
-                  <ul className="mt-2 flex flex-col gap-2">
-                    {invitedIds.map((id) => (
-                      <li
-                        key={id}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <span className="truncate text-sm text-foreground">
-                          {vendorById(id)?.name ?? id}
-                        </span>
-                        <StatusChip
-                          tone={
-                            draft.vendorId === id
-                              ? kindTone("success")
-                              : quotes.some((q) => q.vendorId === id)
-                                ? kindTone("caution")
-                                : invitedTone
-                          }
-                          variant="soft"
-                        >
-                          {/* THE SAME FOUR WORDS THE VENDOR TABLE USES. The
-                              rail said "Quoted" where the table says
-                              "Quotation shared"; one fact, two vocabularies,
-                              on one screen. */}
-                          {draft.vendorId === id
-                            ? "Holds order"
-                            : quotes.some((q) => q.vendorId === id)
-                              ? "Quotation shared"
-                              : draft.acceptedVendorIds.includes(id)
-                                ? "Accepted"
-                                : invitedWord}
-                        </StatusChip>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
             </RailCard>
 
             {/* ── ACTIVITY, LAST ──
@@ -6358,6 +6463,7 @@ export function BrokerOrderSheet({
           a table with four columns needs the width. Notes takes a full row of
           its own: it is the only thing here anyone writes more than a line
           into, and its two boxes want the room. */}
+      <FormStep label={CREATE_STEPS.files}>
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
       <SheetSection title="Upload Supporting Image" className="lg:col-span-1">
         {/* The DS control in its `field` variant — dropzone, note, and only the
@@ -6497,6 +6603,7 @@ export function BrokerOrderSheet({
         </div>
       </SheetSection>
       </div>
+      </FormStep>
 
       {/* ONE PARTNER'S QUOTE, OVER THE ORDER. A second sheet rather than a
           section in this one: it belongs to a partner, not to the order, and

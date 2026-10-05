@@ -319,7 +319,7 @@ export function VendorQuoteSheet({
                 )}
               </tr>
             ))}
-            <tr className="h-12 bg-fp-table-header">
+            <tr className="h-12">
               <td colSpan={5} className="px-3 text-sm font-medium text-foreground">
                 Total landing cost
               </td>

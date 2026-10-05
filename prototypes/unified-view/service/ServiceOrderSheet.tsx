@@ -581,7 +581,7 @@ function LineTable({
             it. Only once there is something to add up. */}
         {rows.length > 0 && !noTotal && (
           <tfoot>
-            <tr className="h-11 border-t border-border bg-fp-table-header">
+            <tr className="h-11 border-t border-border">
               <td
                 colSpan={(withQty ? 3 : 1) + (showFitted ? 1 : 0)}
                 className="px-3 text-right text-sm text-muted-foreground"
@@ -683,6 +683,10 @@ export function ServiceOrderSheet({
     if (!open) setOpenedNew(false);
     else if (creating) setOpenedNew(true);
   }, [open, creating]);
+  /* BEING CREATED FOR THE WHOLE VISIT — the 756 creation sheet with no rail
+     (Pavan, 2026-10-05), even after the first keystroke saves the draft. A
+     Drafted order opened from the list gets the full sheet. */
+  const newVisit = creating || openedNew;
   /* THE ROW JUST ADDED, so its first cell can take the cursor (DS ui §10f,
      "Rows"). Mount-only on the cell's side, so rows already there are never
      re-focused and this never needs clearing. */
@@ -1506,7 +1510,7 @@ export function ServiceOrderSheet({
          can add up by eye. */
       /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
          no rail, so it takes the creation floor (756) instead of filling. */
-      size={isDraft ? "narrow" : "xxwide"}
+      size={newVisit ? "narrow" : "xxwide"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -1700,7 +1704,7 @@ export function ServiceOrderSheet({
       }}
     >
       {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
-      <div className={cn("grid items-start gap-6", !isDraft && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+      <div className={cn("grid items-start gap-6", !newVisit && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="flex min-w-0 flex-col gap-10">
       {/* NO-APP FLOW: THE ASSESSMENT IS THE FIRST THING RECORDED (Pavan,
           2026-09-25), so it leads the form once "Job completed" is confirmed. */}
@@ -2506,7 +2510,7 @@ export function ServiceOrderSheet({
         {/* NO RAIL WHILE IT IS BEING CREATED (Pavan, 2026-10-05) —
             Summary, Associated records and Activity describe an order that
             exists; on a new one they are empty boxes beside the form. */}
-        {!isDraft && (
+        {!newVisit && (
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
           {/* THE ACCOUNT OF HOW IT ADDS UP, beside the tables it adds up. */}
           <RailCard title="Summary" icon={<Receipt />}>

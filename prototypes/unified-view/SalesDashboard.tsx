@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import * as React from "react";
 import {
   Table,
@@ -10,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DateFilter } from "./DateFilter";
 import { FUEL_ORDERS, dateKeyOf, startOfDay } from "./data";
-import { BarColumns, BarList, Panel, StatTile } from "./DashboardParts";
+import { BarColumns, BarList, Panel, StatTile, DASHBOARD_GROUND } from "./DashboardParts";
 import type { FuelOrder } from "./types";
 
 /*
@@ -137,6 +138,8 @@ export function SalesDashboard({
         <DateFilter value={date} onChange={setDate} />
       </div>
 
+      {/* WHITE CARDS ON THEIR GROUND — see DashboardParts. */}
+      <div className={cn("flex shrink-0 flex-col gap-3", DASHBOARD_GROUND)}>
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label="Fuel orders"
@@ -175,7 +178,7 @@ export function SalesDashboard({
 
       <div className="grid shrink-0 gap-3 lg:grid-cols-3">
         <Panel title="Delivery vs extraction" aside="share of orders">
-          <BarList data={byType} />
+          <BarList data={byType} share />
         </Panel>
         <Panel title="Product demand" aside="orders carrying each">
           <BarList data={byProduct} />
@@ -234,6 +237,7 @@ export function SalesDashboard({
           </Table>
         )}
       </Panel>
+      </div>
     </div>
   );
 }

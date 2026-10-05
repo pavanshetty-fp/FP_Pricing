@@ -112,6 +112,26 @@
 .fp-attention-fill {
   animation: fp-attention-fill 600ms ease-in-out 1;
 }
+/* A QUIETER FILL, IN GREY — for landing on a whole section of a form
+   (Pavan, 2026-10-05: the ring-tinted fill stood out too much there). */
+@keyframes fp-attention-fill-subtle {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30%,
+  70% {
+    background-color: color-mix(in oklab, var(--foreground) 5%, transparent);
+  }
+}
+.fp-attention-fill-subtle {
+  animation: fp-attention-fill-subtle 800ms ease-in-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-attention-fill-subtle {
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   /* THE POINT SURVIVES WITHOUT THE BLINK. Somebody who has asked for less
      motion still has to be told which section they were sent to, so the ring
@@ -252,6 +272,14 @@
   --color-fp-lane: var(--fp-lane);
   --color-fp-board-lane: var(--fp-board-lane);
   --color-fp-table-header: var(--fp-table-header);
+  --color-fp-viz-1: var(--fp-viz-1);
+  --color-fp-viz-2: var(--fp-viz-2);
+  --color-fp-viz-3: var(--fp-viz-3);
+  --color-fp-viz-4: var(--fp-viz-4);
+  --color-fp-viz-5: var(--fp-viz-5);
+  --color-fp-viz-6: var(--fp-viz-6);
+  --color-fp-viz-7: var(--fp-viz-7);
+  --color-fp-viz-8: var(--fp-viz-8);
   --color-fp-row-hover: var(--fp-row-hover);
   --color-fp-row-selected: var(--fp-row-selected);
   --color-selected: var(--selected);
@@ -557,8 +585,12 @@
      and neither of them read. --fp-card-1 is one clear step in both themes:
      distinct from the band above it, distinct from the rows below it, and
      still distinct from the row hover, which is what the faint value was
-     originally protecting. */
-  --fp-table-header: var(--fp-card-1);
+     originally protecting.
+
+     ONE STEP QUIETER (Pavan, 2026-10-05): card-1 stood out too much once
+     tables lost their card band in stepped forms. card-2 is the subtle step;
+     it shares its value with row hover, which only ever lands on body rows. */
+  --fp-table-header: var(--fp-card-2);
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content
@@ -604,6 +636,21 @@
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #8b5cf6;
+  /* DASHBOARD CHART PALETTE (Pavan, 2026-10-05). Eight hues in a FIXED
+     order — slot 1 first, never cycled, a ninth series folds into "Other".
+     Validated with the data-viz six checks against the dashboard card
+     surfaces (light #ffffff, dark #161a20): adjacent CVD ΔE ≥ 8.4, normal-
+     vision ≥ 19.3, both themes. Light slots 3–5 sit under 3:1 on white, so
+     every chart that uses them carries visible names and values. Dark is the
+     same hues stepped for the dark surface, not a flip. */
+  --fp-viz-1: #2a78d6; /* blue */
+  --fp-viz-2: #eb6834; /* orange */
+  --fp-viz-3: #1baf7a; /* aqua */
+  --fp-viz-4: #eda100; /* yellow */
+  --fp-viz-5: #e87ba4; /* magenta */
+  --fp-viz-6: #008300; /* green */
+  --fp-viz-7: #4a3aa7; /* violet */
+  --fp-viz-8: #e34948; /* red */
   /* THE TIER-2 DRAWER SITS ABOVE THE GROUND, WITH THE WORK — a shade off the
      #ffffff content layer beside it and up from the #efefeb ground both panels
      sit on, so the drawer and the work read as one raised pair with a gap
@@ -721,13 +768,28 @@
   collection). Applied when `<html>` carries `.dark`. Source variable per token.
 */
 .dark {
+  /* The dashboard chart palette's dark steps — same hues, see :root. */
+  --fp-viz-1: #3987e5;
+  --fp-viz-2: #d95926;
+  --fp-viz-3: #199e70;
+  --fp-viz-4: #c98500;
+  --fp-viz-5: #d55181;
+  --fp-viz-6: #008300;
+  --fp-viz-7: #9085e9;
+  --fp-viz-8: #e66767;
+  /* DARK, RE-TONED (Pavan, 2026-10-05) — from two references he chose: a
+     blue-charcoal ground instead of near-black, layers told apart by FILL
+     not stroke (rims sit almost at the card's own fill), one clearer step
+     between the content layer and its cards, softer off-white ink. Still
+     monochrome; orange stays on the selected-rail marker and focus rings.
+     Steps: ground #0f1216 · content #161a20 · card #20252c · inset #282d35. */
   /* LAYER 1 — the same primitives, dark values. */
-  --fp-ink-1: #f0f2f5; /* body text */
-  --fp-ink-2: #f0f2f5; /* text on an emphasis fill */
-  --fp-ink-3: #9ca3af; /* secondary text */
-  --fp-ink-inverse: #090c0f; /* text on the primary fill */
-  --fp-surface-base: #080808; /* the app ground */
-  --fp-surface-1a: #11161d; /* inner panel */
+  --fp-ink-1: #e8eaed; /* body text */
+  --fp-ink-2: #e8eaed; /* text on an emphasis fill */
+  --fp-ink-3: #8f96a0; /* secondary text */
+  --fp-ink-inverse: #0f1216; /* text on the primary fill */
+  --fp-surface-base: #0f1216; /* the app ground */
+  --fp-surface-1a: #20252c; /* inner panel */
   /* DARK SELECTS IN GREY. Light gets the brand, dark does not: any orange dark
      enough to sit quietly on a near-black ground has gone brown by the time it
      gets there, and brown is not a colour this product owns. On a dark theme a
@@ -742,15 +804,16 @@
   --fp-selected: var(--fp-card-1);
   --fp-selected-strong: var(--fp-ink-1);
   --fp-selected-border: var(--fp-outline-2);
-  --fp-surface-1b: #1b2028; /* content layer */
-  --fp-card-1: #2a2f37; /* raised card / inset block */
-  --fp-card-2: #1b2028; /* the quieter card step (Figma FP/Card 2) */
-  --fp-emphasis: #2a2f37; /* SELECTION / control emphasis */
-  --fp-emphasis-hover: #363c45; /* hover, one step under selection */
-  --fp-outline-1: #363c45; /* quiet rim */
-  --fp-outline-2: #575757; /* stronger rim */
-  --fp-stroke-hairline: #363c45; /* global hairline */
-  --fp-stroke-field: #363c45; /* field border */
+  --fp-surface-1b: #161a20; /* content layer */
+  --fp-card-1: #282d35; /* raised card / inset block */
+  --fp-card-2: #1b1f25;
+  --fp-card-3: #191d23; /* the faintest step — had no dark value */ /* the quieter card step (Figma FP/Card 2) */
+  --fp-emphasis: #282d35; /* SELECTION / control emphasis */
+  --fp-emphasis-hover: #2f353e; /* hover, one step under selection */
+  --fp-outline-1: transparent; /* quiet rim — NONE in dark (Pavan, 2026-10-05): cards separate by fill; dividers use --fp-stroke-hairline */
+  --fp-outline-2: #3a414b; /* stronger rim */
+  --fp-stroke-hairline: #242930; /* global hairline */
+  --fp-stroke-field: #30363f; /* field border */
   /* Nothing consumes the quiet half in dark — --secondary re-aliases
      --fp-emphasis and --muted --fp-card-2 — but LAYER 1 requires every
      primitive to carry a dark value, so it tracks the family it split from
@@ -763,13 +826,15 @@
   --muted: var(--fp-card-2);
   --sidebar-accent: var(--fp-selected);
   --fp-lane: var(--fp-card-1);
-  /* Dark keeps the lane exactly where `--accent` had it — only LIGHT was too
-     heavy, so only light moves. */
-  --fp-board-lane: var(--fp-card-1);
+  /* THE LANE IS A WELL IN DARK (Pavan, 2026-10-05) — the ground, one step
+     under the content layer, so the cards (content-layer fill) sit LIGHTER
+     on it, the way they do in light. On card-1 they read as sunk into it. */
+  --fp-board-lane: var(--fp-surface-base);
   /* Dark tracks light onto --fp-card-1. It used to be --fp-surface-1a, which
      is the same value the section card's title band takes — two bands of one
-     colour stacked, with the table's header invisible under the card's. */
-  --fp-table-header: var(--fp-card-1);
+     colour stacked, with the table's header invisible under the card's.
+     Now card-2, the subtle step, as in light (Pavan, 2026-10-05). */
+  --fp-table-header: var(--fp-card-2);
   /* Re-joined here. Light had to break these three out of the shared block —
      --background because base/background went white, --secondary because the
      emphasis family split, --destructive because it left --fp-danger — but dark
@@ -780,18 +845,18 @@
   --destructive: var(--fp-danger);
 
   /* No family. */
-  --primary: #f8fafc;
+  --primary: #f1f3f5;
   --destructive-foreground: #ffffff;
   --ring: var(--brand);
-  --sidebar: #11161d;
+  --sidebar: #13171c;
   /* The rung differs again now that light's drawer is a grey: light's mark is
      the content layer, dark's is the raised card above its near-black drawer. */
   --sidebar-primary: var(--fp-card-1);
-  --sidebar-border: #ffffff1a;
-  --sidebar-ring: #575757;
-  --drawer: #292929;
-  --chip: #2a2f37;
-  --fp-row-hover: #22272f;
+  --sidebar-border: #ffffff12;
+  --sidebar-ring: #3a414b;
+  --drawer: #20252c;
+  --chip: #282d35;
+  --fp-row-hover: #1d2228;
   --status-success: #22c55e;
   --status-success-foreground: #052e16;
   --status-processing: #f59e0b;
@@ -812,7 +877,7 @@
   --fp-banner-border-success: #22c55e;
   /* The panel's own text, which on a near-black fill is the body colour rather
      than pure white. */
-  --fp-banner-foreground: #f0f2f5;
+  --fp-banner-foreground: #e8eaed;
   --fp-banner-accent-info: #a5b4fc;
   --fp-banner-accent-caution: #fcd34d;
   --fp-banner-accent-warning: #fca5a5;

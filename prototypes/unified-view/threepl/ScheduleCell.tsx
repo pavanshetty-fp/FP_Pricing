@@ -65,7 +65,7 @@ export function ScheduleCell({
            column keeps one rhythm whichever shape a row takes. */
         <span
           className={cn(
-            "inline-flex w-fit items-center rounded-sm bg-primary px-1.5 font-medium text-primary-foreground",
+            "inline-flex w-fit items-center rounded-sm bg-foreground/10 px-1.5 font-medium text-foreground",
             roomy ? "h-6 text-xs" : "h-5 text-[11px]"
           )}
         >
@@ -91,12 +91,15 @@ export function ScheduleCell({
                     "flex items-center justify-center rounded-sm font-medium tabular-nums",
                     roomy ? "size-6 text-xs" : "size-5 text-[11px]",
                     on.has(i)
-                      ? "bg-primary text-primary-foreground"
+                      ? /* QUIETER (Pavan, 2026-10-05): a soft grey square and
+                           dark ink, not a solid black one — the column was
+                           taking the whole row's attention. */
+                        "bg-foreground/10 text-foreground"
                       : /* AN UNLIT DAY IS STILL A DAY. Dropping it would make
                            the row a different width per rule and destroy the
-                           comparison the row exists for; so it stays, faint,
-                           on the surface below. */
-                        "bg-fp-card-1 text-muted-foreground/60"
+                           comparison the row exists for; so it stays, as a faint
+                           letter with no square. */
+                        "text-muted-foreground/50"
                   )}
                 >
                   {d.letter}

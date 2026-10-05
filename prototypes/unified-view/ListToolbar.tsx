@@ -381,7 +381,7 @@ export function ListToolbar<K extends string>({
           ))}
       </div>
 
-      {/* RIGHT — [date] │ view switch │ column tools */}
+      {/* RIGHT — [date]   view switch │ column tools */}
       <div className="flex items-center gap-1">
         {(dateControl ?? dateScope) && (
           <>
@@ -391,7 +391,9 @@ export function ListToolbar<K extends string>({
                 onChange={dateScope!.onDateChange}
               />
             )}
-            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+            {/* SPACE, NOT A RULE (Pavan, 2026-10-05): 12px plus the row's 4px
+                gap each side — 20px between the date and the view switch. */}
+            <div className="w-3 shrink-0" aria-hidden />
           </>
         )}
 

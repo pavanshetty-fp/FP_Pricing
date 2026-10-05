@@ -54,11 +54,12 @@ import {
 import { DATE_FMT, dateKeyOf, startOfDay } from "../data";
 import {
   BROKER_STATUS_TONE,
-  LINE_BUSINESSES,
-  SERVICE_LINES,
   totalGal,
   type BrokerStatus,
-  type ServiceLine,
+  LINE_SCOPES,
+  inLineScope,
+  businessesOf,
+  type LineScope,
 } from "./orders";
 import { VENDORS } from "./vendors";
 import {
@@ -370,7 +371,7 @@ export function RecurringOrdersScreen({
   const [ops, setOps] = React.useState<Operations>("all");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [line, setLine] = React.useState<ServiceLine>("Fuel");
+  const [line, setLine] = React.useState<LineScope>("All");
   const [business, setBusiness] = React.useState<string | null>(null);
 
   /* The visible width the nested table pins itself to. */
@@ -403,7 +404,7 @@ export function RecurringOrdersScreen({
       return acc;
     }, {});
     return all.filter((s) => {
-      if (s.parent.serviceLine !== line) return false;
+      if (!inLineScope(line, s.parent.serviceLine)) return false;
       if (business !== null && s.parent.business !== business) return false;
       if (ops === "first" && s.parent.jobType !== "Transportation") return false;
       if (ops === "third" && s.parent.jobType !== "Brokerage") return false;
@@ -555,14 +556,14 @@ export function RecurringOrdersScreen({
           setBusiness(null);
           savedViews.onResetToDefault();
         }}
-        segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
+        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
         onSegmentChange={(l) => {
-          setLine(l as ServiceLine);
+          setLine(l as LineScope);
           setBusiness(null);
           setPage(1);
         }}
-        presets={LINE_BUSINESSES[line].map((b) => ({ key: b, label: b }))}
+        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
         presetKey={business}
         onPresetChange={(b) => {
           setBusiness((prev) => (prev === b ? null : b));

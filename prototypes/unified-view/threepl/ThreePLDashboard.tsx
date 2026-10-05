@@ -18,12 +18,13 @@ import {
   BROKER_STATUSES,
   BROKER_STATUS_TONE,
   ORDER_TYPE_FILTERS,
-  SERVICE_LINES,
   customerTotal,
   quoteTotal,
   type BrokerOrder,
   type BrokerStatus,
-  type ServiceLine,
+  LINE_SCOPES,
+  inLineScope,
+  type LineScope,
 } from "./orders";
 import { vendorName } from "./vendors";
 import { cuttableDays, ordersFromPrograms } from "./recurringOrders";
@@ -41,7 +42,7 @@ import { usePrograms } from "./recurringPrograms";
 */
 
 export interface ThreePLDrill {
-  line: ServiceLine;
+  line: LineScope;
   range: DateRange;
   facets: string[];
 }
@@ -80,7 +81,7 @@ export function ThreePLDashboard({
   /** Open one order's sheet. */
   onOpenOrder: (id: string) => void;
 }) {
-  const [line, setLine] = React.useState<ServiceLine>("Fuel");
+  const [line, setLine] = React.useState<LineScope>("All");
   const [range, setRange] = React.useState<DateRange>(() => {
     const today = startOfDay(new Date());
     const to = new Date(today);
@@ -99,7 +100,7 @@ export function ThreePLDashboard({
     const from = dateKeyOf(range.from);
     const to = dateKeyOf(range.to);
     return [...cut, ...BROKER_ORDERS].filter(
-      (r) => r.serviceLine === line && r.dateKey >= from && r.dateKey <= to
+      (r) => inLineScope(line, r.serviceLine) && r.dateKey >= from && r.dateKey <= to
     );
   }, [programs, range, line]);
 
@@ -194,9 +195,9 @@ export function ThreePLDashboard({
           size="sm"
           variant="outline"
           value={line}
-          onValueChange={(v) => v && setLine(v as ServiceLine)}
+          onValueChange={(v) => v && setLine(v as LineScope)}
         >
-          {SERVICE_LINES.map((l) => (
+          {LINE_SCOPES.map((l) => (
             <ToggleGroupItem key={l} value={l} className="px-3">
               {l}
             </ToggleGroupItem>

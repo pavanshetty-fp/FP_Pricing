@@ -187,6 +187,8 @@ export interface RecordSheetProps {
    * place that does not scroll away from the button it is about.
    */
   footerBanner?: React.ReactNode;
+  /** Classes for the banner while it sits under a stepped form's column. */
+  footerBannerClassName?: string;
   /**
    * THE FORM AS STEPS (Pavan, 2026-10-05) — a column on the left listing the
    * form's steps, the form as one long scroll beside it, and the pending strip
@@ -357,6 +359,7 @@ export function RecordSheet({
   footerAside,
   onSubmit,
   footerBanner,
+  footerBannerClassName,
   stepNav,
   children,
 }: RecordSheetProps) {
@@ -433,7 +436,8 @@ export function RecordSheet({
 
         {stepped ? (
           <SteppedFormBody
-            footer={footerBanner}
+            footer={navShown ? footerBanner : undefined}
+            footerClassName={footerBannerClassName}
             top={navShown ? steps : undefined}
             onShownChange={setNavOn}
           >

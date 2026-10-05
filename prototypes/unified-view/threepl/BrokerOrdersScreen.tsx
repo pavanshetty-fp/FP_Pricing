@@ -53,7 +53,6 @@ import {
   businessOf,
   LINE_BUSINESSES,
   type BrokerStatus,
-  SERVICE_LINES,
   lineOfProduct,
   type ServiceLine,
   BROKER_ORDERS,
@@ -89,6 +88,10 @@ import {
   MOVEMENT_LABEL,
   MOVEMENT_ROUTE,
   type MovementDirection,
+  LINE_SCOPES,
+  inLineScope,
+  businessesOf,
+  type LineScope,
 } from "./orders";
 import { cuttableDays, ordersFromPrograms } from "./recurringOrders";
 import { usePrograms } from "./recurringPrograms";
@@ -976,7 +979,7 @@ export function BrokerOrdersScreen({
    */
   drill?: {
     n: number;
-    line: ServiceLine;
+    line: LineScope;
     range: DateRange;
     facets: string[];
   } | null;
@@ -1187,14 +1190,14 @@ export function BrokerOrdersScreen({
     sits ABOVE every other control on the page: the search, the facets, the
     lanes and the counts all apply within the line you have chosen.
   */
-  const [line, setLine] = React.useState<ServiceLine>("Fuel");
+  const [line, setLine] = React.useState<LineScope>("All");
 
   const onDate = React.useMemo(
     () => {
       const from = dateKeyOf(range.from);
       const to = dateKeyOf(range.to);
       return rows.filter(
-        (r) => r.dateKey >= from && r.dateKey <= to && r.serviceLine === line
+        (r) => r.dateKey >= from && r.dateKey <= to && inLineScope(line, r.serviceLine)
       );
     },
     [rows, range, line]
@@ -2178,10 +2181,10 @@ export function BrokerOrdersScreen({
           savedViews.onResetToDefault();
         }}
         ctaLabel="Create Order"
-        segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
+        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
         onSegmentChange={(l) => {
-          setLine(l as ServiceLine);
+          setLine(l as LineScope);
           /* THE BUSINESS BELONGS TO THE LINE. Tank Wagon is a fuel word;
              carrying it across to Propane would leave a tab underlined that
              narrows by something the new line has never heard of. */
@@ -2191,7 +2194,7 @@ export function BrokerOrdersScreen({
         /* THE BUSINESSES INSIDE THE LINE, as tabs beside Default. Fuel has two
            and the other lines have none yet, so the row shows what is true
            rather than placeholders. */
-        presets={LINE_BUSINESSES[line].map((b) => ({ key: b, label: b }))}
+        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
         presetKey={business}
         onPresetChange={(b) => {
           setBusiness((prev) => (prev === b ? null : b));
@@ -2219,7 +2222,6 @@ export function BrokerOrdersScreen({
             key: "movement-order",
             label: "Asset Orders",
             detail: "Move a tank or asset between yards and customer sites",
-            defaultChoice: MOVEMENT_DIRECTIONS[0],
             choices: MOVEMENT_DIRECTIONS.map((d) => ({
               key: d,
               label: MOVEMENT_LABEL[d],

@@ -41,11 +41,6 @@ import {
 } from "@/components/ui/popover";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   TableCellCombobox,
   TableCellInput,
   TableCellMultiSelect,
@@ -787,6 +782,15 @@ export function ServiceOrderSheet({
     }, 600);
     return () => window.clearTimeout(t);
   }, [draft, order, creating, onSave]);
+
+  /* PENDING SHOWS ON PRESS (Pavan, 2026-10-05). The primary is always
+     pressable; pressed with something still missing, it raises the pending
+     bar at the foot of the form instead of acting. Reset each time the sheet
+     opens on a record. */
+  const [pendingShown, setPendingShown] = React.useState(false);
+  React.useEffect(() => {
+    setPendingShown(false);
+  }, [open, order?.id]);
 
   if (!draft) return null;
 
@@ -1553,7 +1557,9 @@ export function ServiceOrderSheet({
          (Pavan, 2026-09-23): the status says it, and the Parts table's Fitted
          column says which. */
       footerBanner={
+        pendingShown && (
         <PendingStrip
+            tone="caution"
           pending={pendingSteps}
           clearLabel={
             draft.status === "Drafted"
@@ -1561,6 +1567,7 @@ export function ServiceOrderSheet({
               : "Everything this order needs is filled in"
           }
         />
+        )
       }
       /* THE SECOND OUTCOME OF A VISIT, in the slot for decisions taken at the
          moment of committing. A technician does not know which of the two it
@@ -1644,16 +1651,9 @@ export function ServiceOrderSheet({
                 Save as Draft
               </Button>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex" tabIndex={0} aria-describedby={undefined}>
-                  <Button disabled onClick={nextAct.onSelect} className="pointer-events-none">
-                    {nextAct.label}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{blockedWhy}</TooltipContent>
-            </Tooltip>
+            {/* PRESSABLE, AND PRESSING SAYS WHAT IS MISSING — it raises the
+                pending bar rather than acting (2026-10-05). */}
+            <Button onClick={() => setPendingShown(true)}>{nextAct.label}</Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">

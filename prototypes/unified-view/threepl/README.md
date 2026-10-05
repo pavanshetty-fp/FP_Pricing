@@ -1004,6 +1004,25 @@ Awaiting quote, Quotation shared, Accepted — are **grey everywhere** (summary
 and vendor table); only "Products updated" (a warning) and "Holds order"
 (green) keep colour. Save as Draft sits left of the commit act while creating.
 
+### Quotes, compared (2026-10-05)
+
+- **Quotation summary takes a TAB per quote received** (DS `Tabs`, line
+  variant, the active name and underline black). The figures are the chosen
+  tab's. **Best price is a solid green diamond** beside the partner's name
+  (no facet lines, `text-status-success`), here and on Compare's headers — the
+  lowest amount the partner is owed (`carrierTotalOf`), only with two or more.
+- **Partners · n lists only who has NOT quoted**, each "Awaiting quotation"
+  (grey); the group goes when everyone has.
+- **Pricing → Compare** (switch on the section's header line, two or more
+  quotes): the SAME table grows one Vendor pricing column per quote, each money
+  column at least 320px, scrolling sideways when they no longer fit. The chosen
+  partner's column is editable and outlined — a 2px success rim down the whole
+  column (inset shadows per cell) and a green tick on its head; the others are
+  read-only and show "+ $x vs best" under their totals. Clicking a head chooses
+  that partner, and the summary tab follows. The Pricing total row has no fill.
+- **Recurring Frequency is quieter**: running days a soft grey square
+  (`bg-foreground/10`), the rest a faint letter with no square.
+
 ## Open questions — do not silently decide these
 
 **Two order lines can share an asset name, and a quote cannot tell them apart.**

@@ -67,8 +67,11 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   one name (Create Delivery Order: Order details · Contacts · Schedule ·
   Products · Vendor · Documents & notes). The column shows only with two or
   more steps, so a one-section sheet keeps its old shape.
-- **The column follows the scroll** ("Step 3 of 6", a progress bar, the
-  current step selected with `--selected`). **Pressing a step scrolls to it**
+- **The column follows the scroll** ("Step 3 of 6", a progress bar). The step
+  list is quiet (2026-10-05): **13px**, a bare number **8px** from its name, no
+  disc and no fill, flush with the column's left edge; the current step's number
+  and name take the selection ink (`text-selected-foreground`, the brand in
+  dark), the rest grey with lighter numbers. **Pressing a step scrolls to it**
   and marks it once with `.fp-attention-fill-subtle` — a 5% foreground wash,
   grey in both themes, never the ring tint.
 - **The look inside a stepped form:** group headings lose their band —
@@ -76,11 +79,16 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   `plain`; a section that is a table becomes `outline` (plain heading over the
   table's own `--border` rim, hanging add intact). No step titles, no dividers:
   groups are separated by the 40px section gap alone.
-- **The pending strip moves to the foot of the step column**: "Pending" on
-  the left, the ‹ 1 of n › stepper on the right, the item underneath and
-  wrapping. **Pending is grey** (`muted-foreground`), not caution — what is
-  left is information, not an alarm. Without a step column it stays the
-  full-width band above the footer.
+- **Pending appears on press, not before (Pavan, 2026-10-05 — replaces the
+  strip at the foot of the step column).** The primary is ALWAYS pressable;
+  pressed with something mandatory missing, it does not act — it raises the
+  pending bar, pinned under the FORM column (above the footer; on a sheet with
+  a right rail it stops short of the rail, `footerBannerClassName`). Raised
+  this way it wears the **DS soft caution banner** (`PendingStrip
+  tone="caution"`, an opaque 10% `--fp-banner-accent-caution` wash and rim)
+  because it is the answer to a refused press. It resets each time a record
+  opens. Where a strip simply stands on a sheet (no step column), it stays
+  grey.
 - **Not stepped:** level-2 sheets (a sheet over a sheet), Export
   (`stepNav={false}`), pickers and read drawers (they reset
   `FormStepsContext` to false).

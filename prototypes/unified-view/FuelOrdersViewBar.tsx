@@ -16,8 +16,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -170,13 +168,10 @@ export interface FuelOrdersViewBarProps {
      * a third kind, and a flat menu of near-identical names is where a one-word
      * difference gets misread.
      *
-     * Choosing a radio SELECTS AND ACTS in one click: `onCreateSelect` gets the
-     * chosen key. The selection is remembered, so the menu reopens showing what
-     * was picked last.
+     * Choosing an entry ACTS in one click: `onCreateSelect` gets the
+     * chosen key. Each entry starts its order; nothing is held selected.
      */
     choices?: { key: string; label: string; detail?: string }[];
-    /** Which choice is selected the first time the menu opens. */
-    defaultChoice?: string;
   }[];
   onCreateSelect?: (key: string) => void;
   /** CTA label. Defaults to Fuel Orders' own verb. */
@@ -236,15 +231,6 @@ export function FuelOrdersViewBar({
     name: string;
   } | null>(null);
 
-  /* The chosen variant per grouped entry, so reopening the menu shows what was
-     picked last rather than resetting to the default every time. */
-  const [choice, setChoice] = React.useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      (createMenu ?? [])
-        .filter((o) => o.choices?.length)
-        .map((o) => [o.key, o.defaultChoice ?? o.choices![0].key])
-    )
-  );
 
   const submit = () => {
     if (!dialog) return;
@@ -424,10 +410,9 @@ export function FuelOrdersViewBar({
           padding, until the tabs took that padding away so their rule could land
           on the hairline.)
         */}
-        {/* THE SCOPE, THEN A RULE, THEN THE ACTIONS. The segments choose WHICH
-            list this is; the buttons act on it. A divider between them says
-            they are not the same kind of control, which a shared row otherwise
-            implies. It takes the `ml-auto` so the whole right cluster sits
+        {/* THE SCOPE, THEN SPACE, THEN THE ACTIONS. The segments choose WHICH
+            list this is; the buttons act on it. A 20px gap says they are not
+            the same kind of control (a rule did, until 2026-10-05). It takes the `ml-auto` so the whole right cluster sits
             right; the CTA below no longer needs it. */}
         {segments && segments.length > 0 && (
           <>
@@ -452,10 +437,9 @@ export function FuelOrdersViewBar({
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
-            <span
-              aria-hidden
-              className="mx-2 mb-3 h-5 w-px shrink-0 self-end bg-border"
-            />
+            {/* SPACE, NOT A RULE (Pavan, 2026-10-05): 12px here plus the
+                row's 4px gap each side — 20px between the scope and the CTA. */}
+            <span aria-hidden className="w-3 shrink-0" />
           </>
         )}
 
@@ -485,37 +469,29 @@ export function FuelOrdersViewBar({
                   <React.Fragment key={o.key}>
                     {i > 0 && <DropdownMenuSeparator />}
                     {/* The group's own name is a HEADING, not a button — the
-                        radios below it are the choice, and an entry that both
-                        names a group and acts on its own would leave two ways
-                        to start the same thing. */}
+                        entries below it are the choice. Plain entries, no
+                        radios (Pavan, 2026-10-05): each one STARTS an order,
+                        so there is no selection for a dot to hold. */}
                     <DropdownMenuLabel className="flex flex-col items-start gap-0.5 py-2 font-normal">
                       <span className="text-sm font-medium text-foreground">
                         {o.label}
                       </span>
                       <span className="text-xs text-muted-foreground">{o.detail}</span>
                     </DropdownMenuLabel>
-                    <DropdownMenuRadioGroup
-                      value={choice[o.key]}
-                      onValueChange={(v) => {
-                        setChoice((c) => ({ ...c, [o.key]: v }));
-                        onCreateSelect?.(v);
-                      }}
-                    >
-                      {o.choices.map((c) => (
-                        <DropdownMenuRadioItem
-                          key={c.key}
-                          value={c.key}
-                          className="flex-col items-start gap-0.5 py-2"
-                        >
-                          <span className="text-sm text-foreground">{c.label}</span>
-                          {c.detail && (
-                            <span className="text-xs text-muted-foreground">
-                              {c.detail}
-                            </span>
-                          )}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
+                    {o.choices.map((c) => (
+                      <DropdownMenuItem
+                        key={c.key}
+                        className="flex-col items-start gap-0.5 py-2"
+                        onSelect={() => onCreateSelect?.(c.key)}
+                      >
+                        <span className="text-sm text-foreground">{c.label}</span>
+                        {c.detail && (
+                          <span className="text-xs text-muted-foreground">
+                            {c.detail}
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
                   </React.Fragment>
                 ) : (
                   <DropdownMenuItem

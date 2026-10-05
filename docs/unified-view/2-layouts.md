@@ -114,10 +114,17 @@ Presets · saved views · scope segments · export · the create CTA.
 - A brand dot on the active tab marks unsaved drift.
 - **The create CTA becomes a MENU when Create means several different records.**
   Each option carries a detail line, because names alone do not separate them.
-  A kind that comes in named variants becomes a **radio group under one entry**,
-  not more sibling items — the variant is a property of the thing, not another
-  kind of thing. Choosing a radio selects and acts in one click, and the
-  selection is remembered.
+  A kind that comes in named variants is listed **under one heading entry**,
+  not as more sibling kinds — the variant is a property of the thing. **Plain
+  entries, no radios (2026-10-05)**: each one starts its order, so there is no
+  selection for a dot to hold.
+- **No rules between the scope and the CTA, or the date and the view switch
+  (2026-10-05)** — 20px of space instead (a 12px spacer plus the row's 4px
+  gaps). The rule between the presets and Default stays.
+- **The line switch opens on "All" (2026-10-05).** `LINE_SCOPES` = All · Fuel ·
+  Lubricants · Propane on every 3PL screen with the switch; under All the
+  business presets are every line's, and a record created from All takes its
+  line from its first product.
 
 ---
 

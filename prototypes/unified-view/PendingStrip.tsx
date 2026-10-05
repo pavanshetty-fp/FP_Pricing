@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, CircleCheck, Info } from "lucide-react";
 
 /**
@@ -152,9 +153,16 @@ export function PendingStrip({
   pending,
   /** What the strip says when the list is empty. */
   clearLabel = "Everything this record needs is filled in",
+  tone = "neutral",
 }: {
   pending: PendingItem[];
   clearLabel?: string;
+  /**
+   * `caution` once the strip is raised by pressing the primary with
+   * something missing (2026-10-05) — it is the answer to a press and has to
+   * be noticed. `neutral` (grey) where it simply stands on the sheet.
+   */
+  tone?: "neutral" | "caution";
 }) {
   const [at, setAt] = React.useState(0);
   /* The list shortens as items are cleared, so the cursor has to be pulled
@@ -186,7 +194,12 @@ export function PendingStrip({
        changes. GREY, not caution orange (Pavan, 2026-10-05): what is left to
        do is information, not an alarm. */
     <div className="flex items-center justify-between gap-3 @max-[20rem]:flex-wrap @max-[20rem]:gap-y-1">
-      <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground @max-[20rem]:contents">
+      <span
+        className={cn(
+          "flex min-w-0 items-center gap-2 text-sm @max-[20rem]:contents",
+          tone === "caution" ? "text-fp-banner-accent-caution" : "text-muted-foreground"
+        )}
+      >
         <Info className="size-4 shrink-0 @max-[20rem]:hidden" />
         <span className="shrink-0 font-medium @max-[20rem]:order-1">Pending</span>
         {step.target ? (

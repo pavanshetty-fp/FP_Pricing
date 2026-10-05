@@ -1437,6 +1437,22 @@ export const LINE_BUSINESSES: Record<ServiceLine, string[]> = {
 };
 
 /**
+ * THE LINE SWITCH'S CHOICES — "All" first, and the default (Pavan,
+ * 2026-10-05). A scope, not a line: an order always has one line, a screen
+ * can look at every line at once.
+ */
+export const LINE_SCOPES = ["All", ...SERVICE_LINES] as const;
+export type LineScope = (typeof LINE_SCOPES)[number];
+/** Does an order on `line` fall inside `scope`? */
+export function inLineScope(scope: LineScope, line: ServiceLine): boolean {
+  return scope === "All" || scope === line;
+}
+/** The business tabs a scope offers — under "All", every line's, in order. */
+export function businessesOf(scope: LineScope): string[] {
+  return scope === "All" ? SERVICE_LINES.flatMap((l) => LINE_BUSINESSES[l]) : LINE_BUSINESSES[scope];
+}
+
+/**
  * WHICH OF THEM AN ORDER IS — a stored field, like `serviceLine` and for the
  * same reason.
  *

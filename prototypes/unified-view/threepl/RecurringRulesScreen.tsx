@@ -48,7 +48,12 @@ import {
 import { DATE_FMT, MONEY, dateKeyOf, startOfDay } from "../data";
 import { VENDORS } from "./vendors";
 import { SERIES_STATUSES, type SeriesStatus } from "./recurring";
-import { LINE_BUSINESSES, SERVICE_LINES, type ServiceLine } from "./orders";
+import {
+  LINE_SCOPES,
+  inLineScope,
+  businessesOf,
+  type LineScope,
+} from "./orders";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   RECURRING_RULES,
@@ -361,7 +366,7 @@ export function RecurringRulesScreen({
   /* THE SCOPE SHELF — the line, and the business inside it. Not a filter: a
      filter narrows the list you are looking at, and this says WHICH LIST. It
      is the same pair the orders board carries, in the same place. */
-  const [line, setLine] = React.useState<ServiceLine>("Fuel");
+  const [line, setLine] = React.useState<LineScope>("All");
   const [business, setBusiness] = React.useState<string | null>(null);
   /* THE RULES LIVE IN STATE, not straight off the fixture, because a delivery
      edited in the sheet has to survive closing it. The seed is the starting
@@ -477,7 +482,7 @@ export function RecurringRulesScreen({
       /* THE SCOPE COMES FIRST, because it is not a narrowing of the list — it
          IS the list. A rule on another line is not a hidden row, it is a row
          that belongs to a different screenful. */
-      if (r.serviceLine !== line) return false;
+      if (!inLineScope(line, r.serviceLine)) return false;
       if (business !== null && r.business !== business) return false;
       if (ops === "first" && r.jobType !== "Transportation") return false;
       if (ops === "third" && r.jobType !== "Brokerage") return false;
@@ -719,17 +724,17 @@ export function RecurringRulesScreen({
           setBusiness(null);
           savedViews.onResetToDefault();
         }}
-        segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
+        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
         onSegmentChange={(l) => {
-          setLine(l as ServiceLine);
+          setLine(l as LineScope);
           /* THE BUSINESS BELONGS TO THE LINE. Tank Wagon is a fuel word, and
              carrying it to Propane would underline a tab that narrows by
              something that line has never heard of. */
           setBusiness(null);
           setPage(1);
         }}
-        presets={LINE_BUSINESSES[line].map((b) => ({ key: b, label: b }))}
+        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
         presetKey={business}
         onPresetChange={(b) => {
           setBusiness((prev) => (prev === b ? null : b));

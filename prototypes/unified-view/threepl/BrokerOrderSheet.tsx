@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  CircleCheck,
   Layers,
   Copy,
   Download,
@@ -56,6 +57,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { InvitePartnerSheet } from "./InvitePartnerSheet";
 import { VendorQuoteSheet } from "./VendorQuoteSheet";
@@ -1441,6 +1443,40 @@ function summaryEmptyLine(status: BrokerStatus, invited: number): string {
  * on that says the column has been dealt with when half of it has not been
  * touched.
  */
+/* COMPARE'S CHOSEN COLUMN — a 2px success rim drawn as inset shadows on each
+   of its cells (sides on every cell, the top on the head, the bottom on the
+   total), so it outlines the whole column without moving a single border. */
+/* Written out whole so Tailwind sees each class. */
+const SEL_COL =
+  "shadow-[inset_2px_0_0_var(--color-status-success),inset_-2px_0_0_var(--color-status-success)]";
+const SEL_COL_TOP =
+  "shadow-[inset_2px_0_0_var(--color-status-success),inset_-2px_0_0_var(--color-status-success),inset_0_2px_0_var(--color-status-success)]";
+const SEL_COL_BOTTOM =
+  "shadow-[inset_2px_0_0_var(--color-status-success),inset_-2px_0_0_var(--color-status-success),inset_0_-2px_0_var(--color-status-success)]";
+
+/** The best price — a diamond, coloured, with its meaning in the tooltip. */
+function BestPriceMark() {
+  /* A SOLID GREEN DIAMOND (Pavan, 2026-10-05) — the gem's outline only, no
+     facet lines inside, filled with the success colour. */
+  return (
+    <span title="Best price" className="inline-flex shrink-0">
+      <svg viewBox="0 0 24 24" className="size-3.5 text-status-success" aria-hidden>
+        <path d="M6.5 3h11l4.5 6.2L12 21.5 2 9.2Z" fill="currentColor" />
+      </svg>
+      <span className="sr-only">Best price</span>
+    </span>
+  );
+}
+
+/** A partner rate shown, not typed — Compare's read-only columns. */
+function ReadRate({ value, padClass }: { value?: number; padClass: string }) {
+  return (
+    <span className={cn("flex items-center py-2.5 text-sm tabular-nums text-muted-foreground", padClass)}>
+      {value === undefined ? "—" : `$ ${value.toFixed(3)}`}
+    </span>
+  );
+}
+
 function PricingColumnHead({
   label,
   done,
@@ -1482,6 +1518,16 @@ export function BrokerOrderSheet({
 
   /** Declared above the early return, because a hook cannot be conditional. */
   const [shownQuoteId, setShownQuote] = React.useState<string | null>(null);
+  /* PENDING SHOWS ON PRESS (Pavan, 2026-10-05). The primary is always
+     pressable; pressed with something still missing, it raises the pending
+     bar at the foot of the form instead of acting. Reset each time the sheet
+     opens on a record. */
+  const [pendingShown, setPendingShown] = React.useState(false);
+  React.useEffect(() => {
+    setPendingShown(false);
+  }, [open, order?.id]);
+  /* PRICING'S COMPARE SWITCH — every quote side by side (Pavan, 2026-10-05). */
+  const [comparing, setComparing] = React.useState(false);
   /* THE QUOTE SHEET'S SUBJECT, and whether the reader is reading one or
      writing one. `review` is the partner's own quote; `draft` is the broker
      writing it down after a call, which is the only way a price gets in here
@@ -2836,6 +2882,37 @@ export function BrokerOrderSheet({
     return q ? quoteTotal(q, draft.lines, chargesBase) : 0;
   };
   const revenue = customerTotal(draft.lines);
+  /* THE PARTNERS WHO HAVE SENT A PRICE, in the table's order, and the lowest
+     of them (Pavan, 2026-10-05). "Best" only means something with two or more
+     to choose between; a tie goes to the first. */
+  const quotedIds = quotingPartners.filter((id) => quoteOf(id));
+  /* WHAT A PARTNER IS OWED — its quote less anything billed through to the
+     customer (with a load order, the load's fees and taxes). The same figure
+     the Pricing total and the summary show for the chosen partner. */
+  const carrierTotalOf = (id: string) => {
+    const q = quoteOf(id);
+    if (!q) return 0;
+    const through = hasLoadOrder
+      ? quoteChargeTotal(q, draft.lines, "Fee") + quoteChargeTotal(q, draft.lines, "Tax")
+      : 0;
+    return costOf(id) - through;
+  };
+  const bestQuoteId =
+    quotedIds.length >= 2
+      ? quotedIds.reduce((best, id) =>
+          carrierTotalOf(id) < carrierTotalOf(best) ? id : best
+        )
+      : null;
+  const shownQuotedAt = shownVendorId ? quotedIds.indexOf(shownVendorId) : -1;
+  /* THE PARTNER COLUMNS OF THE PRICING TABLE: the chosen partner alone, or
+     with Compare on, every partner that has quoted. Only the chosen one is
+     editable — the setters write to it. */
+  const vendorCols: { id: string; editable: boolean; quote?: VendorQuote }[] =
+    comparing && quotedIds.length >= 2
+      ? quotedIds.map((id) => ({ id, editable: id === shownVendorId, quote: quoteOf(id) }))
+      : [{ id: shownVendorId ?? "none", editable: true, quote: shownQuote }];
+  /** Invited, and no price yet — the summary's "still to quote" list. */
+  const awaitingIds = invitedIds.filter((id) => !quoteOf(id));
 
   /* ── WHAT THE ORDER HAS BECOME, derived once for the rail and the FAB ──
      Both read the same numbers on purpose: a completion meter that disagreed
@@ -3303,6 +3380,16 @@ export function BrokerOrderSheet({
     <SheetSection
       id={PRICING_SECTION_ID}
       title="Pricing"
+      /* COMPARE — every quote side by side, on the header line. Only once
+         there are two to compare. */
+      action={
+        quotedIds.length >= 2 ? (
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            Compare
+            <Switch checked={comparing} onCheckedChange={setComparing} />
+          </label>
+        ) : undefined
+      }
       /* FLUSH, SO THE PRODUCT BANDS CAN RUN EDGE TO EDGE (Pavan, 2026-09-22).
          Each band is a card-like group — a tinted strip naming the product,
          the three levels under it — and a group that stops 16px short of the
@@ -3345,7 +3432,27 @@ export function BrokerOrderSheet({
           A RULE BETWEEN THE COLUMNS, not a gap alone: four columns of figures
           need saying apart. Only where there ARE columns — below `lg` the
           whole thing stacks. */}
-      <div className="grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-[minmax(0,0.75fr)_184px_minmax(0,1fr)_minmax(0,1fr)] lg:gap-y-0">
+      {/* COMPARE ADDS COLUMNS, IT DOES NOT CHANGE THE TABLE (Pavan,
+          2026-10-05): one partner column per quote, in the same format, the
+          chosen one editable and the rest read-only. Wider than the form, the
+          table scrolls sideways. */}
+      <div className={cn(vendorCols.length > 1 && "overflow-x-auto")}>
+      <div
+        className="grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-[var(--pricing-cols)] lg:gap-y-0"
+        style={
+          {
+            /* COMPARE GIVES EVERY MONEY COLUMN A FLOOR (320) wide enough for
+               its rate, its "× gal" working and its amount on one line; the
+               table scrolls sideways once they no longer fit. */
+            "--pricing-cols":
+              vendorCols.length > 1
+                ? `minmax(200px,0.75fr) 184px repeat(${vendorCols.length}, minmax(320px,1fr)) minmax(320px,1fr)`
+                : `minmax(0,0.75fr) 184px repeat(1, minmax(0,1fr)) minmax(0,1fr)`,
+            minWidth:
+              vendorCols.length > 1 ? 200 + 184 + (vendorCols.length + 1) * 320 : undefined,
+          } as React.CSSProperties
+        }
+      >
         {/* ── THE COLUMN NAMES ───────────────────────────────────────── */}
         <div className="flex min-w-0 flex-col px-4 pt-4 pb-3 lg:pr-6">
           <PricingColumnHead label="Product" done={productColumnDone} />
@@ -3363,6 +3470,38 @@ export function BrokerOrderSheet({
             not awarded — is said on the partner table above and in the rail's
             Partners list; a third copy on a picker makes the picker look like
             a status field. */}
+        {vendorCols.length > 1 ? (
+          vendorCols.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              id={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+              data-blink={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+              onClick={() => setShownQuote(c.id)}
+              aria-pressed={c.editable}
+              className={cn(
+                "flex min-w-0 flex-col items-start gap-1 px-4 pt-4 pb-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:border-l lg:border-border lg:px-6",
+                "relative",
+                c.editable && SEL_COL_TOP
+              )}
+            >
+              {/* THE CHOSEN COLUMN: a green rim round the whole column and a
+                  tick on its head (Pavan, 2026-10-05). */}
+              {c.editable && (
+                <CircleCheck
+                  className="absolute top-3 right-3 size-4 text-status-success"
+                  aria-label="Selected"
+                />
+              )}
+              <PricingColumnHead label="Vendor pricing" />
+              <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
+                <span className="truncate">{vendorById(c.id)?.name ?? c.id}</span>
+                {c.id === bestQuoteId && <BestPriceMark />}
+              </span>
+            </button>
+          ))
+        ) : (
+          <>
         <div
           id={VENDOR_COST_COLUMN_ID}
           data-blink={VENDOR_COST_COLUMN_ID}
@@ -3409,6 +3548,8 @@ export function BrokerOrderSheet({
             </p>
           )}
         </div>
+          </>
+        )}
         <div className="flex min-w-0 flex-col px-4 pt-4 pb-3 lg:border-l lg:border-border lg:pr-4 lg:pl-6">
           <PricingColumnHead
             label="Customer pricing"
@@ -3418,7 +3559,7 @@ export function BrokerOrderSheet({
 
         {/* ── ONE BAND PER PRODUCT ───────────────────────────────────── */}
         {pricedLines.length === 0 && (
-          <p className="border-t border-border px-4 py-4 text-sm text-muted-foreground lg:col-span-4">
+          <p className="border-t border-border px-4 py-4 text-sm text-muted-foreground lg:col-span-full">
             No lines on this order yet.
           </p>
         )}
@@ -3442,6 +3583,8 @@ export function BrokerOrderSheet({
             /** Null on Price — a product has one rate and it cannot be removed. */
             onRemove?: () => void;
             vendorValue: number | undefined;
+            /** The same rate on another partner's quote line — for Compare. */
+            vendorOf: (x?: QuoteLine) => number | undefined;
             vendorNote?: string;
             onVendor: (v: number) => void;
             customerValue: number | undefined;
@@ -3451,6 +3594,7 @@ export function BrokerOrderSheet({
               key: "price",
               label: "Price",
               vendorValue: ql?.ratePerGal,
+              vendorOf: (x?: QuoteLine) => x?.ratePerGal,
               vendorNote: hasLoadOrder ? "On the load order" : undefined,
               onVendor: (v) => setQuoteLine(l.asset, { ratePerGal: v }),
               customerValue: l.pricePerGal,
@@ -3462,6 +3606,7 @@ export function BrokerOrderSheet({
               label: chargeLabel(c, charges),
               onRemove: () => removeCharge(i, c.id),
               vendorValue: ql?.rates?.[c.id],
+              vendorOf: (x?: QuoteLine) => x?.rates?.[c.id],
               /* A LOAD ORDER STRIKES THE TAX AND THE FEE, not the margin: the
                  broker owning the fuel does not stop the partner charging to
                  haul it. */
@@ -3563,27 +3708,38 @@ export function BrokerOrderSheet({
                 rows.map((r) => (
                   <React.Fragment key={r.label}>
                     <PricingTypeCell label={r.label} onRemove={r.onRemove} />
-                    <PricingCell
-                      blinkGroupName={VENDOR_COST_COLUMN_ID}
-                      padL={PRICE_PAD_L}
-                      padR={PRICE_PAD_R}
-                      per={r.vendorNote ? undefined : perGal}
-                      note={r.vendorNote}
-                      total={money(
-                        r.vendorNote ? 0 : g * (r.vendorValue ?? 0)
-                      )}
-                      input={
-                        shownQuote && !r.vendorNote ? (
-                          <PricingRateInput
-                            value={r.vendorValue}
-                            padClass={PRICE_PAD_L}
-                            autoFocus={r.focus}
-                            aria-label={`Partner ${r.label.toLowerCase()} per gallon for ${l.product}`}
-                            onChange={r.onVendor}
-                          />
-                        ) : undefined
-                      }
-                    />
+                    {vendorCols.map((c) => {
+                      const v = c.editable
+                        ? r.vendorValue
+                        : r.vendorOf(c.quote?.lines.find((x) => x.asset === l.asset));
+                      return (
+                        <PricingCell
+                          key={c.id}
+                          blinkGroupName={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+                          className={cn(vendorCols.length > 1 && c.editable && SEL_COL)}
+                          padL={PRICE_PAD_L}
+                          padR={PRICE_PAD_R}
+                          per={r.vendorNote ? undefined : perGal}
+                          note={r.vendorNote}
+                          total={money(r.vendorNote ? 0 : g * (v ?? 0))}
+                          input={
+                            c.quote && !r.vendorNote ? (
+                              c.editable ? (
+                                <PricingRateInput
+                                  value={r.vendorValue}
+                                  padClass={PRICE_PAD_L}
+                                  autoFocus={r.focus}
+                                  aria-label={`Partner ${r.label.toLowerCase()} per gallon for ${l.product}`}
+                                  onChange={r.onVendor}
+                                />
+                              ) : (
+                                <ReadRate value={v} padClass={PRICE_PAD_L} />
+                              )
+                            ) : undefined
+                          }
+                        />
+                      );
+                    })}
                     <PricingCell
                       padL={PRICE_PAD_L}
                       padR="pr-4"
@@ -3651,7 +3807,15 @@ export function BrokerOrderSheet({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="border-t border-border lg:border-l" />
+                  {vendorCols.map((c) => (
+                    <div
+                      key={c.id}
+                      className={cn(
+                        "border-t border-border lg:border-l",
+                        vendorCols.length > 1 && c.editable && SEL_COL
+                      )}
+                    />
+                  ))}
                   <div className="border-t border-border lg:border-l" />
                 </>
               )}
@@ -3676,23 +3840,27 @@ export function BrokerOrderSheet({
             </div>
 
             <PricingTypeCell label="Freight" />
-            <PricingCell
-              blinkGroupName={VENDOR_COST_COLUMN_ID}
-              padL={PRICE_PAD_L}
-              padR={PRICE_PAD_R}
-              total={money(shownQuote?.freight ?? 0)}
-              input={
-                shownQuote ? (
-                  <PricingRateInput
-                    value={shownQuote.freight}
-                    dp={2}
-                    padClass={PRICE_PAD_L}
-                    aria-label="Partner freight for this order"
-                    onChange={(v) => setQuoteCharge({ freight: v })}
-                  />
-                ) : undefined
-              }
-            />
+            {vendorCols.map((c) => (
+              <PricingCell
+                key={c.id}
+                blinkGroupName={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+                className={cn(vendorCols.length > 1 && c.editable && SEL_COL)}
+                padL={PRICE_PAD_L}
+                padR={PRICE_PAD_R}
+                total={money(c.quote?.freight ?? 0)}
+                input={
+                  c.quote && c.editable ? (
+                    <PricingRateInput
+                      value={c.quote.freight}
+                      dp={2}
+                      padClass={PRICE_PAD_L}
+                      aria-label="Partner freight for this order"
+                      onChange={(v) => setQuoteCharge({ freight: v })}
+                    />
+                  ) : undefined
+                }
+              />
+            ))}
             {/* FREIGHT IS THE PARTNER'S ALONE, so the customer's cell says NA
                 rather than standing empty — an empty cell reads as a figure
                 nobody has filled in yet. */}
@@ -3706,13 +3874,17 @@ export function BrokerOrderSheet({
             {draft.orderFees.map((f, k) => (
               <React.Fragment key={k}>
                 <PricingTypeCell label={f.label || f.type} />
-                <PricingCell
-                  blinkGroupName={VENDOR_COST_COLUMN_ID}
-                  padL={PRICE_PAD_L}
-                  padR={PRICE_PAD_R}
-                  note="NA"
-                  total=""
-                />
+                {vendorCols.map((c) => (
+                  <PricingCell
+                    key={c.id}
+                    blinkGroupName={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+                    className={cn(vendorCols.length > 1 && c.editable && SEL_COL)}
+                    padL={PRICE_PAD_L}
+                    padR={PRICE_PAD_R}
+                    note="NA"
+                    total=""
+                  />
+                ))}
                 <PricingCell
                   padL={PRICE_PAD_L}
                   padR="pr-4"
@@ -3730,27 +3902,41 @@ export function BrokerOrderSheet({
         {/* In the table rather than in the bar at the foot of the sheet: a
             column's total belongs at the bottom of that column, on the same
             grid as the figures above it. The bar keeps the comparison. */}
-        <div className="flex min-w-0 items-center border-y border-border bg-fp-surface-1a px-4 py-3 lg:pr-6">
+        {/* NO FILL ON A TOTAL (2026-10-05). */}
+        <div className="flex min-w-0 items-center border-y border-border px-4 py-3 lg:pr-6">
           <span className="text-sm font-medium text-foreground">Total</span>
         </div>
-        <div className="flex min-w-0 items-center border-y border-border bg-fp-surface-1a px-4 py-3 lg:border-l lg:border-border lg:px-4">
+        <div className="flex min-w-0 items-center border-y border-border px-4 py-3 lg:border-l lg:border-border lg:px-4">
           <span className="text-sm text-muted-foreground">
             {shownQuote && draft.vendorId !== shownVendorId ? "Estimated" : ""}
           </span>
         </div>
-        <div
-          data-blink={VENDOR_COST_COLUMN_ID}
-          className="flex items-baseline justify-end border-y border-border bg-fp-surface-1a px-4 py-3 lg:border-l lg:border-border lg:px-6"
-        >
-          <span className="text-base font-semibold tabular-nums text-foreground">
-            {money(carrierTotal)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-end border-y border-border bg-fp-surface-1a px-4 py-3 lg:border-l lg:border-border lg:pr-4 lg:pl-6">
+        {vendorCols.map((c) => (
+          <div
+            key={c.id}
+            data-blink={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
+            className={cn(
+              "flex flex-col items-end justify-center border-y border-border px-4 py-3 lg:border-l lg:border-border lg:px-6",
+              vendorCols.length > 1 && c.editable && SEL_COL_BOTTOM
+            )}
+          >
+            <span className="text-base font-semibold tabular-nums text-foreground">
+              {money(c.editable ? carrierTotal : carrierTotalOf(c.id))}
+            </span>
+            {/* HOW FAR FROM THE BEST, under each other partner's total. */}
+            {vendorCols.length > 1 && bestQuoteId && c.id !== bestQuoteId && (
+              <span className="text-xs tabular-nums text-muted-foreground">
+                + {money(carrierTotalOf(c.id) - carrierTotalOf(bestQuoteId))} vs best
+              </span>
+            )}
+          </div>
+        ))}
+        <div className="flex items-center justify-end border-y border-border px-4 py-3 lg:border-l lg:border-border lg:pr-4 lg:pl-6">
           <span className="text-base font-semibold tabular-nums text-foreground">
             {money(billed)}
           </span>
         </div>
+      </div>
       </div>
 
     </SheetSection>
@@ -4156,14 +4342,19 @@ export function BrokerOrderSheet({
          THE STRIP TAKES YOU THERE. Every reason past Draft is about the
          partner table — awarding one, or waiting on their price — so that is
          where its press goes. */
+      /* UNDER THE FORM ONLY — it stops before the cards' column (340 + the
+         24 gap), which keeps scrolling beside it. */
+      footerBannerClassName={!inCreation ? "lg:mr-91" : undefined}
       footerBanner={
-        draft.status === "Draft" ? (
+        !pendingShown ? undefined : draft.status === "Draft" ? (
           <PendingStrip
+            tone="caution"
             pending={pendingSteps}
             clearLabel="All mandatory steps completed"
           />
         ) : nextActBlocked ? (
           <PendingStrip
+            tone="caution"
             pending={[
               {
                 key: "next",
@@ -4181,7 +4372,7 @@ export function BrokerOrderSheet({
             <Button variant="outline" onClick={saveAsDraft}>
               Save as Draft
             </Button>
-            <Button disabled={nextActOff} onClick={nextAct.onSelect}>
+            <Button onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}>
               {nextAct.label}
             </Button>
           </div>
@@ -4220,7 +4411,8 @@ export function BrokerOrderSheet({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button disabled={nextActOff} onClick={nextAct.onSelect}>
+          {/* PRESSABLE, AND PRESSING SAYS WHAT IS MISSING (2026-10-05). */}
+          <Button onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}>
             {nextAct.label}
           </Button>
         </div>
@@ -6183,6 +6375,35 @@ export function BrokerOrderSheet({
                     </p>
                   </div>
                 )}
+              {/* A TAB PER QUOTE, added as each one arrives (Pavan, 2026-10-05
+                  — replaced the chevrons). The figures below are the chosen
+                  tab's; the Pricing table follows, as the two share one
+                  choice. With two or more, the lowest carries the diamond. */}
+              {quotedIds.length >= 1 && shownVendorId && (
+                <Tabs
+                  value={shownQuotedAt >= 0 ? shownVendorId : quotedIds[0]}
+                  onValueChange={(v) => setShownQuote(v)}
+                >
+                  <div className="-mx-3 -mt-1 overflow-x-auto border-b border-border px-1">
+                    <TabsList variant="line" className="h-9 w-max justify-start">
+                      {quotedIds.map((id) => (
+                        <TabsTrigger
+                          key={id}
+                          value={id}
+                          /* BLACK, NOT THE SELECTION ORANGE (Pavan, 2026-10-05) — the
+                             active name and its underline take the foreground. */
+                          className="flex-none px-2 text-xs data-[state=active]:text-foreground after:bg-foreground dark:data-[state=active]:text-foreground"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {vendorById(id)?.name ?? id}
+                            {id === bestQuoteId && <BestPriceMark />}
+                          </span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </div>
+                </Tabs>
+              )}
               <dl className="flex flex-col">
                 <RailRow
                   variant="line"
@@ -6206,9 +6427,8 @@ export function BrokerOrderSheet({
                 <RailRow
                   variant="line"
                   label={
-                    shownVendorId
-                      ? `Vendor quote — ${vendorById(shownVendorId)?.name ?? "partner"}`
-                      : "Vendor quote"
+                    /* The tab names the partner. */
+                    "Vendor quote"
                   }
                   /* THE SAME FIGURE THE PRICING UNIT SHOWS — what this
                      partner is actually owed, with anything billed through to
@@ -6254,53 +6474,31 @@ export function BrokerOrderSheet({
                   breakdown={marginBreakdown}
                 />
               </dl>
+                {/* STILL TO QUOTE (Pavan, 2026-10-05): the partners who have
+                    sent a price are the tabs above; this group is only who has
+                    not, and goes when everyone has. Last, below the margin. */}
+                {awaitingIds.length > 0 && (
+                <>
                 <div aria-hidden className="border-t border-border" />
-                {/* WHO IS QUOTING, with the quotes they have produced
-                    (Pavan, 2026-10-05 — moved here from Associated records; last, below
-                    the margin). */}
                 <div>
-                <p className="text-xs text-muted-foreground">
-                  Partners{invitedIds.length > 0 && ` · ${invitedIds.length}`}
-                </p>
-                {invitedIds.length === 0 ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    None invited yet.
+                  <p className="text-xs text-muted-foreground">
+                    Partners · {awaitingIds.length}
                   </p>
-                ) : (
                   <ul className="mt-2 flex flex-col gap-2">
-                    {invitedIds.map((id) => (
-                      <li
-                        key={id}
-                        className="flex items-center justify-between gap-3"
-                      >
+                    {awaitingIds.map((id) => (
+                      <li key={id} className="flex items-center justify-between gap-3">
                         <span className="truncate text-sm text-foreground">
                           {vendorById(id)?.name ?? id}
                         </span>
-                        <StatusChip
-                          tone={
-                            draft.vendorId === id
-                              ? kindTone("success")
-                              : invitedTone
-                          }
-                          variant="soft"
-                        >
-                          {/* THE SAME FOUR WORDS THE VENDOR TABLE USES. The
-                              rail said "Quoted" where the table says
-                              "Quotation shared"; one fact, two vocabularies,
-                              on one screen. */}
-                          {draft.vendorId === id
-                            ? "Holds order"
-                            : quotes.some((q) => q.vendorId === id)
-                              ? "Quotation shared"
-                              : draft.acceptedVendorIds.includes(id)
-                                ? "Accepted"
-                                : invitedWord}
+                        <StatusChip tone={kindTone("neutral")} variant="soft">
+                          Awaiting quotation
                         </StatusChip>
                       </li>
                     ))}
                   </ul>
+                </div>
+                </>
                 )}
-              </div>
               </div>
             </section>
 

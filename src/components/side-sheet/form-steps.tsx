@@ -193,29 +193,31 @@ export function FormStepsNav({
           />
         </div>
       </div>
-      <ol className="flex flex-col gap-1">
+      <ol className="flex flex-col gap-0.5">
         {labels.map((label, i) => {
           const on = i === current;
           return (
             <li key={`${label}-${i}`}>
+              {/* QUIETER (Pavan, 2026-10-05): 13px type, a bare number 8px from its name,
+                  flush with the column's left edge (no inset of its own), no
+                  disc and no fill. The step you are on is told by colour alone
+                  — selection ink (orange) on its number and name; the rest are
+                  grey, the numbers lighter than the names. */}
               <button
                 type="button"
                 aria-current={on ? "step" : undefined}
                 onClick={() => go(i)}
                 className={cn(
-                  "group/step flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                  "group/step flex w-full items-baseline gap-2 rounded-sm py-1.5 text-left text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                   on
-                    ? "bg-selected font-medium text-selected-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "font-medium text-selected-foreground dark:text-brand"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {/* THE DS STEPS DISC — filled where you are, hollow ahead. */}
                 <span
                   className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors",
-                    on
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-fp-outline-2 text-muted-foreground group-hover/step:border-foreground/50 group-hover/step:text-foreground"
+                    "shrink-0 tabular-nums",
+                    !on && "text-muted-foreground/60 group-hover/step:text-foreground"
                   )}
                 >
                   {i + 1}
@@ -244,11 +246,19 @@ export function FormStepsNav({
 export function SteppedFormBody({
   children,
   footer,
+  footerClassName,
   top,
   onShownChange,
 }: {
   children: React.ReactNode;
+  /**
+   * THE PENDING BAR (Pavan, 2026-10-05): pinned under the form column, above
+   * the sheet footer — not in the step column. Sheets pass it only once the
+   * primary has been pressed with something still missing.
+   */
   footer?: React.ReactNode;
+  /** Insets the bar — e.g. to stop short of a right-hand rail. */
+  footerClassName?: string;
   /**
    * A band over the FORM column only — the stage track. It starts where the
    * form starts, not over the step column, and stays put while the form
@@ -269,11 +279,7 @@ export function SteppedFormBody({
         {/* MOUNTED WHILE HIDDEN so it can count the steps; the form column
             keeps its place in the tree either way. */}
         <div className={cn("flex min-h-0", !shown && "hidden")}>
-          <FormStepsNav
-            formRef={formRef}
-            onCount={setCount}
-            footer={shown ? footer : undefined}
-          />
+          <FormStepsNav formRef={formRef} onCount={setCount} />
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {top && (
@@ -285,6 +291,18 @@ export function SteppedFormBody({
           >
             {children}
           </div>
+          {footer && (
+            <div
+              className={cn(
+                /* THE DS SOFT CAUTION BANNER, made opaque over the sheet — it
+                   appears because a press was refused, so it has to be seen. */
+                "shrink-0 border-t border-fp-banner-accent-caution/30 bg-[color-mix(in_oklab,var(--fp-banner-accent-caution)_10%,var(--color-popover))] px-4 py-2.5",
+                footerClassName
+              )}
+            >
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </FormStepsContext.Provider>

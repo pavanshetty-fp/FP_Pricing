@@ -50,12 +50,14 @@ import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
 import { DATE_FMT } from "../data";
 import {
-  LINE_BUSINESSES,
   LOADING_ACCOUNTS,
-  SERVICE_LINES,
   suppliersOf,
   terminalsOf,
-  type ServiceLine,
+  LINE_SCOPES,
+  inLineScope,
+  businessesOf,
+  type LineScope,
+  lineOfProduct,
 } from "./orders";
 import { VENDORS } from "./vendors";
 import { SERIES_STATUSES, type SeriesStatus } from "./recurring";
@@ -363,7 +365,7 @@ export function RecurringProgramsScreen({
   const [colQuery, setColQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [line, setLine] = React.useState<ServiceLine>("Fuel");
+  const [line, setLine] = React.useState<LineScope>("All");
   const [business, setBusiness] = React.useState<string | null>(null);
 
   /* THE COLUMNS ARE THE READER'S — order, widths and the sort, the same
@@ -471,7 +473,7 @@ export function RecurringProgramsScreen({
       return acc;
     }, {});
     return programs.filter((p) => {
-      if (p.serviceLine !== line) return false;
+      if (!inLineScope(line, p.serviceLine)) return false;
       if (business !== null && p.business !== business) return false;
       if (!matchesProgram(p, search)) return false;
       if (cq && field && !field.text(p).toLowerCase().includes(cq)) return false;
@@ -684,14 +686,14 @@ export function RecurringProgramsScreen({
           setBusiness(null);
           savedViews.onResetToDefault();
         }}
-        segments={SERVICE_LINES.map((l) => ({ key: l, label: l }))}
+        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
         onSegmentChange={(l) => {
-          setLine(l as ServiceLine);
+          setLine(l as LineScope);
           setBusiness(null);
           setPage(1);
         }}
-        presets={LINE_BUSINESSES[line].map((b) => ({ key: b, label: b }))}
+        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
         presetKey={business}
         onPresetChange={(b) => {
           setBusiness((prev) => (prev === b ? null : b));
@@ -1020,7 +1022,8 @@ export function RecurringProgramsScreen({
               : [],
             products: d.products,
             winterProducts: d.winterProducts,
-            serviceLine: line,
+            /* Under "All" the program takes its first product's line. */
+            serviceLine: line === "All" ? lineOfProduct(d.products[0] ?? "") : line,
             business: business,
             orderType: "Core",
             signatureOnDelivery: d.signatureOnDelivery,

@@ -98,6 +98,10 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   Order*) is pressed, and the sheet then re-opens on it with its rail. Closing
   with anything typed asks **"Discard this order?"** — *Keep editing* /
   *Discard* — for every kind of order. Autosave is for records that exist.
+- **The stage track animates when the stage changes** (`StageTrack`,
+  2026-10-06): the travelled line runs on to the new stage, the stage left
+  takes its tick, and the new pill fades and zooms in as the line arrives —
+  under a second, never on first paint, off under `prefers-reduced-motion`.
 - **The step column's progress bar can end in one quiet control**
   (`stepsAction` on `RecordSheet` → `SteppedFormBody` → `FormStepsNav`
   `headerAction`): a grey 24px ghost icon (`text-muted-foreground`, white on

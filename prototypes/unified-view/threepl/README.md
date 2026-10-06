@@ -1100,6 +1100,25 @@ with what each is based on; **Apply** fills the picker. Its icon is the AI mark:
 sparkle with two small ones, in a violet gradient (`--color-fp-lane-violet` →
 `--fp-viz-7`), after Pavan's "AI Insights" reference.
 
+### Summary option 2, and moving to Assigned (2026-10-06, later)
+
+- **D-104634 carries an Option 1 / Option 2 switch** (header, black and white;
+  that order only, while it is being tried). Option 1 = the Quotation summary
+  card in the rail. **Option 2** = the summary as a banner pinned to the foot
+  of the form: edge to edge across the centre column, the rail's violet wash,
+  a white band above it holding the vendor tabs (switchable while choosing).
+  When Pricing + Additional fees scroll into view it **morphs into Pricing's
+  totals bar** (~300ms): the band folds, title and product facts close up, the
+  wash fades, and it widens to the full sheet showing Vendor pricing ·
+  Customer pricing · Expected profit. Pricing's own bar stands down in this
+  mode. Undecided which option stays.
+- **Move to Assigned is disabled until a vendor is finalized** (only that
+  label; Request a quote stays pressable). Pressing it scrolls the sheet to
+  the top (`STAGE_SECTION.Assigned = "top"`).
+- **The stage track animates a stage change** (`StageTrack`, DS): the line
+  runs on (500ms), the stage left takes its tick, the new pill fades/zooms in
+  after 300ms. Never on open; off under reduced motion.
+
 ### Quotes, compared (2026-10-05)
 
 - **Quotation summary takes a TAB per quote received** (DS `Tabs`, line

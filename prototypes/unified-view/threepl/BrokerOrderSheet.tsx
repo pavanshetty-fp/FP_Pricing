@@ -817,7 +817,9 @@ const CREATE_STEPS = {
  */
 const STAGE_SECTION: Partial<Record<BrokerStatus, string>> = {
   Quoting: VENDOR_SECTION_ID,
-  Assigned: PRICING_SECTION_ID,
+  /* BACK TO THE TOP (Pavan, 2026-10-06) — Move to Assigned lands the reader
+     on the order from its start, under the stage bar that now says Assigned. */
+  Assigned: "top",
 };
 
 /**
@@ -1632,6 +1634,31 @@ export function BrokerOrderSheet({
      Create has made it one. */
   const inCreation = creating;
   /* THE FORM'S OPTIONAL STEPS — see `useOrderFormFields`. */
+  /* QUOTATION SUMMARY, TWO WAYS (Pavan, 2026-10-06 — trying it out on
+     D-104634). Option 1: the card in the rail. Option 2: a banner pinned to
+     the foot of the form that hands over to Pricing's own totals bar once
+     Pricing scrolls into view. */
+  const [summaryMode, setSummaryMode] = React.useState<"card" | "banner">("card");
+  const [pricingInView, setPricingInView] = React.useState(false);
+  React.useEffect(() => {
+    if (!open || summaryMode !== "banner") return;
+    let io: IntersectionObserver | null = null;
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(PRICING_SECTION_ID);
+      const port = el?.closest<HTMLElement>(".overflow-auto");
+      if (!el || !port) return;
+      io = new IntersectionObserver(
+        ([e]) => setPricingInView(e.isIntersecting),
+        { root: port, threshold: 0 }
+      );
+      /* PRICING AND ADDITIONAL FEES — the span the totals bar covers. */
+      io.observe(el.parentElement ?? el);
+    }, 300);
+    return () => {
+      window.clearTimeout(t);
+      io?.disconnect();
+    };
+  }, [open, summaryMode, order?.id]);
   const { fields, gear: fieldsGear, drawer: fieldsDrawer } = useOrderFormFields(
     order?.id ?? "new-delivery",
     open,
@@ -1688,6 +1715,15 @@ export function BrokerOrderSheet({
     if (before === null || before === stage) return;
     const section = STAGE_SECTION[stage];
     if (!section) return;
+    if (section === "top") {
+      const t = window.setTimeout(() => {
+        const port = document
+          .getElementById(PRICING_SECTION_ID)
+          ?.closest<HTMLElement>(".overflow-auto");
+        port?.scrollTo({ top: 0, behavior: "smooth" });
+      }, 360);
+      return () => window.clearTimeout(t);
+    }
     /* Longer than the sheet's own opening: the stage bar redraws and the
        footer's act swaps under the reader's cursor, and moving the page out
        from under both reads as a glitch. */
@@ -4304,7 +4340,8 @@ export function BrokerOrderSheet({
         which is a paragraph where a reader wants a row of numbers. Equal
         thirds, with the profit's figure flush to the right edge so the row
         spans the bar instead of trailing off before it does. */}
-    {shownQuote && (
+    {/* Option 2's banner becomes this bar instead (see the banner). */}
+    {shownQuote && summaryMode !== "banner" && (
       <div className="sticky -bottom-4 z-30 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-popover px-4 py-3 lg:grid-cols-3">
         {[
           { label: "Vendor pricing", value: carrierTotal },
@@ -4431,6 +4468,22 @@ export function BrokerOrderSheet({
           {/* ONE CHIP. "Draft" and "Saved" were two elements saying one thing
               between them — what state this order is in. */}
           {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
+          {/* THE TRY-OUT SWITCH — D-104634 only, for now. */}
+          {order?.orderNo === "D-104634" && (
+            <Tabs value={summaryMode} onValueChange={(v) => setSummaryMode(v as "card" | "banner")}>
+              <TabsList className="h-7">
+                {(["card", "banner"] as const).map((k, i) => (
+                  <TabsTrigger
+                    key={k}
+                    value={k}
+                    className="px-2 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-border dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground"
+                  >
+                    Option {i + 1}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
           {/* SAVE STATE LAST in the group, after anything about the order
               itself (Pavan, 2026-10-05). */}
           <DraftStatusChip
@@ -4613,7 +4666,12 @@ export function BrokerOrderSheet({
               Not on a created order still in the Orders lane — it already
               exists, and its next steps are on the vendor table. */}
           {draft.status !== "Draft" && (
-          <Button onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}>
+          <Button
+            /* INACTIVE UNTIL A VENDOR IS FINALIZED (Pavan, 2026-10-06) — in
+               Quoting, Move to Assigned is not pressable before the choice. */
+            disabled={nextAct.label === "Move to Assigned" && !draft.vendorId}
+            onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}
+          >
             {nextAct.label}
           </Button>
           )}
@@ -6635,7 +6693,7 @@ export function BrokerOrderSheet({
                 )}
               </div>
             </section>
-            ) : (
+            ) : summaryMode === "banner" ? null : (
             <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
               <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
                 Quotation summary
@@ -7615,6 +7673,124 @@ export function BrokerOrderSheet({
           </>
         )}
       </EditDrawer>
+        {/* OPTION 2 — THE SUMMARY AS A PINNED BANNER (Pavan, 2026-10-06). The
+          rail card's wash, laid out as one row across the centre column.
+          ONE BAR, TWO SHAPES: once Pricing is on screen it MORPHS into
+          Pricing's totals bar — the vendor band folds away, the title and
+          the product facts close up, the wash fades to the bar's surface and
+          the three money figures spread across — rather than leaving and
+          letting a second bar arrive. Pricing's own bar stands down in this
+          mode; this is it. */}
+      {summaryMode === "banner" && shownQuote && !inCreation && (() => {
+        const m = pricingInView;
+        const ease = "duration-300 ease-out";
+        const fold = (open: boolean) =>
+          cn("grid transition-[grid-template-rows,opacity]", ease, open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0");
+        const squeeze = (open: boolean) =>
+          cn("overflow-hidden transition-[max-width,opacity,margin]", ease, open ? "max-w-60 opacity-100" : "max-w-0 opacity-0");
+        return (
+        /* THE LAST THING IN THE FORM, so it pins for the whole scroll. Beside
+           the rail it is the centre column's width; merged with Pricing —
+           which runs the full sheet — it widens to match (Pavan,
+           2026-10-06). */
+        <div
+          className={cn(
+            "sticky -bottom-4 z-30 -mx-4 -mb-4 transition-[margin]",
+            ease,
+            m ? "lg:-mr-4" : "lg:mr-87"
+          )}
+        >
+          {/* THE VENDORS ON A BAND OF THEIR OWN, above the coloured card. */}
+          {choosing && quotedIds.length > 1 && (
+            <div className={fold(!m)}>
+              <div className="overflow-hidden">
+                <div className="border-t border-border bg-fp-surface-1b px-4 pt-1.5">
+                  <Tabs
+                    value={shownQuotedAt >= 0 ? (shownVendorId ?? quotedIds[0]) : quotedIds[0]}
+                    onValueChange={(v) => setShownQuote(v)}
+                  >
+                    <TabsList variant="line" className="h-8 justify-start">
+                      {quotedIds.map((id) => (
+                        <TabsTrigger
+                          key={id}
+                          value={id}
+                          className="flex-none px-2 text-xs data-[state=active]:text-foreground after:bg-foreground dark:data-[state=active]:text-foreground"
+                        >
+                          {vendorById(id)?.name ?? id}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </div>
+            </div>
+          )}
+          <section className="relative overflow-hidden border-t border-border bg-popover">
+            {/* THE WASH, as its own layer so it can fade into the bar. */}
+            <div
+              aria-hidden
+              className={cn("absolute inset-0 transition-opacity", ease, m ? "opacity-0" : "opacity-100", "bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]")}
+            />
+            <div className="relative flex items-center px-4 py-3">
+              <div className={cn("flex shrink-0 flex-col", squeeze(!m), m ? "mr-0" : "mr-8")}>
+                <span className="whitespace-nowrap text-sm font-semibold text-foreground">Quotation summary</span>
+                {!(choosing && quotedIds.length > 1) && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {vendorById(shownVendorId ?? "")?.name ?? ""}
+                  </span>
+                )}
+              </div>
+              <dl className="flex min-w-0 flex-1 items-end justify-between gap-x-6">
+                {[
+                  {
+                    key: "products",
+                    label: "Products",
+                    value:
+                      productNames.length === 0
+                        ? "—"
+                        : `${productNames.length} ${productNames.length === 1 ? "product" : "products"}`,
+                    keep: false,
+                  },
+                  {
+                    key: "gallons",
+                    label: "Total gallons",
+                    value: isAllTopOff(draft.lines)
+                      ? "Top-off"
+                      : gal > 0
+                        ? `${gal.toLocaleString()} gal`
+                        : "—",
+                    keep: false,
+                  },
+                  /* THE BAR'S WORDS once merged — the same figures. */
+                  { key: "vendor", label: m ? "Vendor pricing" : "Vendor quote", value: money(carrierTotal), keep: true },
+                  { key: "customer", label: "Customer pricing", value: money(billed), keep: true },
+                ].map((f) => (
+                  <div key={f.key} className={cn("flex flex-col", !f.keep && squeeze(!m))}>
+                    <dt className="whitespace-nowrap text-xs text-muted-foreground">{f.label}</dt>
+                    <dd className="whitespace-nowrap text-sm tabular-nums text-foreground">{f.value}</dd>
+                  </div>
+                ))}
+                <div className="flex flex-col items-end">
+                  <dt className="whitespace-nowrap text-xs text-muted-foreground">
+                    {m ? "Expected profit" : "Margin"}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "font-semibold tabular-nums transition-[font-size]",
+                      ease,
+                      m ? "text-sm" : "text-base",
+                      margin < 0 ? "text-destructive" : margin > 0 ? "text-status-success" : "text-foreground"
+                    )}
+                  >
+                    {money(margin)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        </div>
+        );
+      })()}
     </RecordSheet>
   );
 }

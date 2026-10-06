@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -62,6 +62,37 @@ const RECOMMENDATIONS: Recommendation[] = [
   },
 ];
 
+/** A four-point sparkle centred on (cx, cy), `r` from centre to tip. */
+const spark = (cx: number, cy: number, r: number) => {
+  const k = r * 0.32;
+  return `M${cx} ${cy - r}C${cx + k} ${cy - k} ${cx + k} ${cy - k} ${cx + r} ${cy}C${cx + k} ${cy + k} ${cx + k} ${cy + k} ${cx} ${cy + r}C${cx - k} ${cy + k} ${cx - k} ${cy + k} ${cx - r} ${cy}C${cx - k} ${cy - k} ${cx - k} ${cy - k} ${cx} ${cy - r}Z`;
+};
+
+/**
+ * THE AI MARK (Pavan, 2026-10-06, after an "AI Insights" reference): a filled
+ * sparkle with two small ones off its shoulder, in a violet gradient — light
+ * at the top left, deep at the bottom right. Colours are the board's violet
+ * lane and the violet data-viz step.
+ */
+function AiSparkle({ className }: { className?: string }) {
+  /* Colons from useId would need escaping inside url(). */
+  const id = `ai-${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className}>
+      <defs>
+        <linearGradient id={id} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="color-mix(in oklab, var(--color-fp-lane-violet) 55%, white)" />
+          <stop offset="0.5" stopColor="var(--color-fp-lane-violet)" />
+          <stop offset="1" stopColor="var(--fp-viz-7)" />
+        </linearGradient>
+      </defs>
+      <path d={spark(10, 13.5, 8.5)} fill={`url(#${id})`} />
+      <path d={spark(18.5, 4.5, 3)} fill={`url(#${id})`} />
+      <path d={spark(21.5, 10, 1.8)} fill={`url(#${id})`} />
+    </svg>
+  );
+}
+
 export function RuleRecommendations({
   onApply,
 }: {
@@ -71,7 +102,7 @@ export function RuleRecommendations({
   return (
     <>
       <Button variant="ghost" size="sm" className="-my-1 text-muted-foreground" onClick={() => setOpen(true)}>
-        <Sparkles />
+        <AiSparkle className="size-[18px]" />
         Recommendations
         <span className="rounded-sm bg-foreground/10 px-1.5 text-xs tabular-nums text-foreground">
           {RECOMMENDATIONS.length}

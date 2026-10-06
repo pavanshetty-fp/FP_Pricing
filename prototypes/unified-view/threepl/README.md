@@ -1096,7 +1096,9 @@ Orders/Quoting), Delivery Product Details shown (no folding behind the price).
 (Repeat → Custom cycle): 2–4 weeks, Week 1 starts, a day row per week (empty =
 no delivery), next-4-weeks preview; lists draw W1/W2 rows. **Recommendations**
 in the Frequency unit's heading opens a sheet of suggestions (sample data)
-with what each is based on; **Apply** fills the picker.
+with what each is based on; **Apply** fills the picker. Its icon is the AI mark: a filled
+sparkle with two small ones, in a violet gradient (`--color-fp-lane-violet` →
+`--fp-viz-7`), after Pavan's "AI Insights" reference.
 
 ### Quotes, compared (2026-10-05)
 

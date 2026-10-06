@@ -201,8 +201,8 @@ export interface BoardCardQuote {
   vendor: string;
   /** The total landed cost, already formatted. */
   total: string;
-  /** 1 is the cheapest. */
-  rank: number;
+  /** 1 is the cheapest. Left out where nothing is being compared — no chip. */
+  rank?: number;
 }
 
 export interface BoardCardBadge {
@@ -579,12 +579,14 @@ function CardQuotes({
               the cheapest, because that is the only placing anyone acts on;
               the rest are neutral, so a board of chips does not turn into a
               ranking nobody asked to see. */}
+          {q.rank !== undefined && (
           <Badge
             variant={q.rank === 1 ? "pastel-green" : "secondary"}
             className="max-w-full truncate text-[11px]"
           >
             {rankLabel(q.rank)}
           </Badge>
+          )}
         </span>
         {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
             these cards get opened, and at 13px it was the same size as an

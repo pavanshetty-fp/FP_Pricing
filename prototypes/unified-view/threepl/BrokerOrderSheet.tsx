@@ -27,6 +27,8 @@ import {
   Trash2,
   Shield,
   ThumbsDown,
+  MailX,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { BannerCallout } from "@/components/ui/banner";
@@ -107,6 +109,7 @@ import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet"
 import { BLINK_MS, PendingStrip, attend, blinkGroup } from "../PendingStrip";
 import { HangingAdd } from "../HangingAdd";
 import { EditDrawer } from "./DirectoryRecordSheet";
+import { useOrderFormFields } from "./orderFormFields";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT, MONEY, RATE, dateKeyOf } from "../data";
 import {
@@ -158,7 +161,6 @@ import {
   type BrokerOrderType,
   type BrokerStatus,
   type OrderLine,
-  isDelivered,
 } from "./orders";
 import { kindTone } from "../statusKind";
 import { TableRowRemove } from "@/components/form-layout/table-cells";
@@ -389,6 +391,7 @@ function FlagRow({
     label: string;
     checked: boolean;
     onChange: (v: boolean) => void;
+    disabled?: boolean;
   }[];
 }) {
   return (
@@ -397,11 +400,15 @@ function FlagRow({
         <label
           key={f.id}
           htmlFor={f.id}
-          className="flex cursor-pointer items-center gap-2.5"
+          className={cn(
+            "flex items-center gap-2.5",
+            f.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+          )}
         >
           <Checkbox
             id={f.id}
             checked={f.checked}
+            disabled={f.disabled}
             onCheckedChange={(v) => f.onChange(v === true)}
           />
           <span className="text-sm text-foreground">{f.label}</span>
@@ -570,50 +577,6 @@ export interface BrokerOrderDraft {
     | null;
 }
 
-/**
- * THE PAPERWORK AN ORDER HAS BY THE TIME IT GETS HERE.
- *
- * SEEDED, NOT STORED. The prototype has no file store, so the documents are
- * derived from the order's own number — the same order shows the same papers
- * on every reload, which is what makes the unit readable rather than random.
- * What a real one needs is a `documents` array on the record.
- *
- * NOTHING BEFORE ASSIGNED. A ticket is written when a truck runs and an
- * invoice after it; an order still out for quotes has no paperwork, and an
- * empty unit that says so is more honest than three fabricated rows.
- */
-function seedDocuments(o: BrokerOrder): OrderDocument[] {
-  const n = Number(o.orderNo.replace(/\D/g, "")) || 0;
-  const stage = isDelivered(o.status);
-  if (o.status !== "Assigned" && !stage) return [];
-  const docs: OrderDocument[] = [
-    {
-      id: `${o.id}-bol`,
-      kind: "BOL",
-      name: `BOL-${n}.pdf`,
-      addedOn: o.date.title,
-      addedBy: "Dana Whitfield",
-    },
-  ];
-  if (stage) {
-    docs.push({
-      id: `${o.id}-ticket`,
-      kind: "Ticket",
-      name: `ticket-${n}.pdf`,
-      addedOn: o.date.title,
-      addedBy: "Driver app",
-    });
-    if (n % 2 === 0)
-      docs.push({
-        id: `${o.id}-inv`,
-        kind: "Invoice",
-        name: `invoice-${n}.pdf`,
-        addedOn: o.date.title,
-        addedBy: "Accounting",
-      });
-  }
-  return docs;
-}
 
 function draftFrom(o: BrokerOrder): BrokerOrderDraft {
   const [y, m, d] = o.dateKey.split("-").map(Number);
@@ -624,7 +587,8 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     plannedDate: new Date(y, m - 1, d),
     windowStart: o.window.start,
     windowEnd: o.window.end,
-    documents: seedDocuments(o),
+    /* NONE UNTIL ATTACHED (Pavan, 2026-10-06). */
+    documents: [],
     images: [],
     poNumber: o.poNumber,
     orderType: o.orderType,
@@ -635,7 +599,15 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     lines: o.lines.map((l) => ({ ...l })),
     status: o.status,
     vendorId: o.vendorId,
-    invitedVendorIds: [...o.invitedVendorIds],
+    /* A SHORTLIST IS NOT KEPT (Pavan, 2026-10-06). Vendors picked but never
+       sent an invite come back unselected; only who was asked stays. */
+    invitedVendorIds: o.invitedVendorIds.filter(
+      (id) =>
+        !id ||
+        o.sentVendorIds.includes(id) ||
+        o.acceptedVendorIds.includes(id) ||
+        o.quotes.some((q) => q.vendorId === id)
+    ),
     /* A STORED FIELD NOW, not derived from the status. A draft can have three
        of its five partners asked, and deriving it from "past Draft" forgot
        exactly that on close. */
@@ -821,9 +793,10 @@ const VENDOR_COST_COLUMN_ID = "broker-order-vendor-cost-column";
 /* THE STEPS THIS FORM GROUPS ITS SECTIONS UNDER — `FormStep`, see
    `components/side-sheet/form-steps`. Sections outside these are steps of
    their own, named by their titles. */
+
 const CREATE_STEPS = {
   order: "Order details",
-  contacts: "Contacts",
+  contacts: "POC details",
   schedule: "Schedule",
   products: "Products",
   vendor: "Vendor",
@@ -1257,7 +1230,8 @@ function PricingCell({
  * belong; the chip beside the title says which, and the banner says why.
  */
 const ORDER_STAGES: Stage[] = [
-  { key: "Draft", label: "Draft" },
+  /* THE LANE'S NAME, NOT THE STATUS (Pavan, 2026-10-06) — the board calls it Orders. */
+  { key: "Draft", label: "Orders" },
   { key: "Quoting", label: "Quoting" },
   { key: "Assigned", label: "Assigned" },
   { key: "Completed", label: "Completed" },
@@ -1548,18 +1522,37 @@ export function BrokerOrderSheet({
      the table sits in a clipped card (and, comparing, a sideways scroller),
      either of which would capture a sticky head. */
   const pricingGridRef = React.useRef<HTMLDivElement>(null);
-  /* THE RAIL'S CAP — the height of the form's scroller, kept current. */
-  const railRef = React.useRef<HTMLElement>(null);
-  React.useEffect(() => {
-    const rail = railRef.current;
+  /* THE RAIL'S CAP — the height of the form's scroller, kept current.
+     A CALLBACK REF, because the sheet's body mounts a commit after the open
+     render: an effect reading a plain ref found nothing, the cap was never
+     set, and the rail scrolled along with the form (Pavan, 2026-10-06). */
+  const railCleanup = React.useRef<(() => void) | null>(null);
+  const railRef = React.useCallback((rail: HTMLElement | null) => {
+    railCleanup.current?.();
+    railCleanup.current = null;
     const port = rail?.closest<HTMLElement>(".overflow-auto");
     if (!rail || !port) return;
     const fit = () => rail.style.setProperty("--rail-max", `${port.clientHeight}px`);
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(port);
-    return () => ro.disconnect();
-  });
+    /* ITS OWN SCROLL, NEVER THE FORM'S. A wheel over the rail moves the rail
+       or nothing — even when the rail is short enough not to scroll, or has
+       hit its end, the form beside it stays where it is. */
+    const onWheel = (e: WheelEvent) => {
+      if (getComputedStyle(rail).position !== "sticky") return;
+      const up = e.deltaY < 0;
+      const atEnd = up
+        ? rail.scrollTop <= 0
+        : rail.scrollTop + rail.clientHeight >= rail.scrollHeight - 1;
+      if (atEnd) e.preventDefault();
+    };
+    rail.addEventListener("wheel", onWheel, { passive: false });
+    railCleanup.current = () => {
+      ro.disconnect();
+      rail.removeEventListener("wheel", onWheel);
+    };
+  }, []);
   React.useEffect(() => {
     const grid = pricingGridRef.current;
     const port = grid?.closest<HTMLElement>(".overflow-auto");
@@ -1634,13 +1627,30 @@ export function BrokerOrderSheet({
   /* BEING CREATED = opened from Create, not yet saved as a record (Pavan,
      2026-10-05). A Draft opened from the board is an order that exists and
      gets the full sheet with its rail. */
-  /* FOR THE WHOLE VISIT. The first autosave turns a new order into a saved
-     row and the screen re-opens the sheet on it in edit mode; it is still the
-     visit that began at Create, so it keeps the create layout until closed. */
-  const [openedFromCreate, setOpenedFromCreate] = React.useState(false);
-  if (open && creating && !openedFromCreate) setOpenedFromCreate(true);
-  if (!open && openedFromCreate) setOpenedFromCreate(false);
-  const inCreation = creating || (open && openedFromCreate);
+  /* UNTIL CREATE ORDER IS PRESSED (Pavan, 2026-10-06). Nothing saves before
+     then, so the sheet only turns into the order — rail, stage bar — once
+     Create has made it one. */
+  const inCreation = creating;
+  /* THE FORM'S OPTIONAL STEPS — see `useOrderFormFields`. */
+  const { fields, gear: fieldsGear, drawer: fieldsDrawer } = useOrderFormFields(
+    order?.id ?? "new-delivery",
+    open,
+    order?.orderNo ?? "New order"
+  );
+  /* CLOSING AN UNCREATED ORDER ASKS FIRST — it is about to be thrown away. */
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false);
+  const requestClose = (o: boolean) => {
+    if (
+      !o &&
+      creating &&
+      draft &&
+      JSON.stringify(draft) !== JSON.stringify(emptyDraft())
+    ) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onOpenChange(o);
+  };
 
 
   /* OPEN AT THE VENDOR TABLE when that is what the reader pressed. A card's
@@ -1744,13 +1754,11 @@ export function BrokerOrderSheet({
     if (lastSaved.current === shape) return;
     const t = window.setTimeout(() => {
       lastSaved.current = shape;
-      if (creating) {
-        /* A SHEET OPENED AND CLOSED AGAIN IS NOT AN ORDER. The blank draft is
-           deterministic, so anything that differs from it is something a
-           person did. */
-        if (JSON.stringify(draft) === JSON.stringify(emptyDraft())) return;
-        onCreate?.(draft);
-      } else if (order) {
+      /* NOTHING IS KEPT UNTIL CREATE ORDER (Pavan, 2026-10-06). A new order
+         reaches the Orders lane only when it is created; closing before that
+         discards it, after a confirmation. Autosave is for orders that exist. */
+      if (creating) return;
+      if (order) {
         onSave(order, draft);
       }
     }, 600);
@@ -1992,7 +2000,6 @@ export function BrokerOrderSheet({
   const blockedReasonFor = (v: (typeof VENDORS)[number]) =>
     vendorBlockedReason(v, orderContext);
   const eligible = VENDORS.filter((v) => blockedReasonFor(v) === null);
-  const ineligible = VENDORS.filter((v) => blockedReasonFor(v) !== null);
   /* THE PARTNER TABLE'S ROWS. `invitedVendorIds` doubles as the row list, with
      `""` standing for a row that exists but has not been filled in yet — the
      same shape the Delivery Order uses for a blank asset line. It keeps "what
@@ -2010,18 +2017,6 @@ export function BrokerOrderSheet({
   const sentIds = draft.sentVendorIds;
   /** Only what can still be added — an invited vendor is not an option. */
   const uninvited = eligible.filter((v) => !invitedIds.includes(v.id));
-  /* WHY THE LIST IS SHORT. A picker that quietly omits half the vendors is one
-     people work around by ringing somebody; listed with their reason, the
-     omission is an answer. */
-  const ineligibleNote =
-    ineligible.length > 0
-      ? `${ineligible.length} vendor${ineligible.length === 1 ? "" : "s"} not offered: ` +
-        ineligible
-          .slice(0, 4)
-          .map((v) => `${v.name} (${blockedReasonFor(v)})`)
-          .join("; ") +
-        (ineligible.length > 4 ? "…" : "")
-      : null;
 
   /* ── Workflow transitions. Each one moves the status AND the vendor fields
         together, so the pair cannot end up contradicting itself. ─────────── */
@@ -2125,10 +2120,11 @@ export function BrokerOrderSheet({
       toast.success(
         real.length === 1
           ? `${vendorById(real[0])?.name ?? "Vendor"} acknowledged`
-          : `${real.length} vendors acknowledged`,
-        { description: "Moved to Assigned." }
+          : `${real.length} vendors acknowledged`
       );
-      return { ...d, acceptedVendorIds: next, status: "Assigned" };
+      /* ACCEPTANCE ONLY. Assigned needs a finalized vendor (Pavan,
+         2026-10-06); acknowledging several cannot pick one. */
+      return { ...d, acceptedVendorIds: next };
     });
 
   /* COMPLETED IS THE COMMERCIAL END, NOT THE PHYSICAL ONE. Taking a price
@@ -2186,6 +2182,19 @@ export function BrokerOrderSheet({
           ? d.acceptedVendorIds
           : [...d.acceptedVendorIds, vendorId],
       };
+    });
+
+  /* ONE FINALIZED VENDOR AT A TIME (Pavan, 2026-10-06). To pick another,
+     the finalization is cancelled first; then every quote can be finalized
+     again. The quotes themselves are untouched. */
+  const cancelFinalization = () =>
+    setDraft((d) => {
+      if (!d || !d.vendorId) return d;
+      toast.success(`${vendorById(d.vendorId)?.name ?? "Vendor"} no longer finalized`, {
+        id: `unfinalize-${d.vendorId}`,
+        description: "You can finalize any vendor that has quoted.",
+      });
+      return { ...d, vendorId: null };
     });
 
   /* A QUOTE PRICES THE ORDER IT WAS SENT. Add an asset after the partners have
@@ -2275,6 +2284,9 @@ export function BrokerOrderSheet({
       if (!d || d.quotes.some((q) => q.vendorId === vendorId)) return d;
       return {
         ...d,
+        /* A QUOTE IS WHAT QUOTING MEANS (Pavan, 2026-10-06) — one taken on the
+           vendor's behalf moves the order as much as one they sent. */
+        status: d.status === "Draft" ? movedToQuoting(vendorId) : d.status,
         /* A PARTNER HAS TO HAVE TAKEN THE ORDER TO PRICE IT, and writing the
            price down on its behalf is the broker saying it did. */
         acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
@@ -2306,12 +2318,22 @@ export function BrokerOrderSheet({
    * the card on its own; nobody presses anything, because nobody did
    * anything. A later price into an already-quoting order changes nothing.
    */
+  /* SAID OUT LOUD WHEN IT HAPPENS (Pavan, 2026-10-06) — the order leaves the
+     lane the reader opened it from. */
+  const movedToQuoting = (vendorId: string): BrokerStatus => {
+    toast.success("Moved to Quoting", {
+      /* One toast, even when React runs the state update twice. */
+      id: `quoting-${vendorId}`,
+      description: `${vendorById(vendorId)?.name ?? "A vendor"}'s quote is in.`,
+    });
+    return "Quoting";
+  };
   const putQuote = (next: VendorQuote) =>
     setDraft((d) =>
       d
         ? {
             ...d,
-            status: d.status === "Draft" ? "Quoting" : d.status,
+            status: d.status === "Draft" ? movedToQuoting(next.vendorId) : d.status,
             quotes: d.quotes.map((q) =>
               q.vendorId === next.vendorId ? next : q
             ),
@@ -2396,6 +2418,9 @@ export function BrokerOrderSheet({
     },
   ];
   const pendingSteps = mandatorySteps.filter((x) => !x.done);
+  /* WHAT CREATE ORDER NEEDS (Pavan, 2026-10-06): who, where and what. Asking
+     partners is the next set of flows, done on the created order. */
+  const createSteps = pendingSteps.filter((x) => x.key !== "partners");
 
   /**
    * DRAFT → QUOTING, AND IT IS A DECISION.
@@ -2417,27 +2442,13 @@ export function BrokerOrderSheet({
    * an act — the invitations are already sent by the time it is pressed, and
    * a created order is the thing the rest of the flow hangs off.
    */
-  /* SAVE AS DRAFT — closes the sheet with the order parked as a draft. The
-     sheet has been autosaving all along; this hands over the last keystrokes
-     and leaves. */
-  const saveAsDraft = () => {
-    const touched = JSON.stringify(draft) !== JSON.stringify(emptyDraft());
-    /* ONCE THE FIRST AUTOSAVE HAS MADE THE ROW, saving goes to that row —
-       creating again would leave a duplicate. */
-    if (order) onSave(order, draft);
-    else if (touched) onCreate?.(draft);
-    if (order || touched) toast.success(`${order?.orderNo ?? "Order"} saved as a draft`);
-    onOpenChange(false);
+  /* CREATE ORDER IS THE SAVE (Pavan, 2026-10-06). It puts the order in the
+     Orders lane and the sheet re-opens on it, where invitations are sent. */
+  const createOrder = () => {
+    if (!draft || !creating) return;
+    onCreate?.(draft);
+    toast.success("Order created", { description: "Added to the Orders lane." });
   };
-
-  const createOrder = () =>
-    setDraft((d) => {
-      if (!d || d.status !== "Draft") return d;
-      toast.success(`${order?.orderNo ?? "Order"} created`, {
-        description: "Awaiting quotation.",
-      });
-      return d;
-    });
 
   const advance = (status: BrokerStatus) =>
     setDraft((d) => {
@@ -2565,6 +2576,40 @@ export function BrokerOrderSheet({
    * and priced — putting them on the order is part of the same act, because a
    * price with nobody attached to it is not a quote.
    */
+  /* ACKNOWLEDGING FOR THEM IS AGREEING THE QUOTE (Pavan, 2026-10-06): the
+     vendor is finalized and the order moves to Assigned. The quote is marked
+     as the dispatcher's, and says so on the card and in the order. */
+  const acknowledgeOnBehalf = (vendorId: string) => {
+    toast.success("Moved to Assigned", {
+      id: `assigned-${vendorId}`,
+      description: `${vendorById(vendorId)?.name ?? "Vendor"} acknowledged by dispatcher.`,
+    });
+    setDraft((d) => {
+      if (!d) return d;
+      const has = d.quotes.find((q) => q.vendorId === vendorId);
+      return {
+        ...d,
+        status: "Assigned",
+        vendorId,
+        acceptedVendorIds: d.acceptedVendorIds.includes(vendorId)
+          ? d.acceptedVendorIds
+          : [...d.acceptedVendorIds, vendorId],
+        quotes: has
+          ? d.quotes.map((q) => (q.vendorId === vendorId ? { ...q, byDispatcher: true } : q))
+          : [
+              ...d.quotes,
+              {
+                vendorId,
+                lines: d.lines
+                  .filter((l) => l.asset)
+                  .map((l) => ({ asset: l.asset, ratePerGal: 0, rates: {} })),
+                freight: 0,
+                byDispatcher: true,
+              },
+            ],
+      };
+    });
+  };
   const takeOnBehalf = (vendorId: string, thenQuote: boolean) => {
     setDraft((d) =>
       d && !d.invitedVendorIds.includes(vendorId)
@@ -2575,7 +2620,7 @@ export function BrokerOrderSheet({
         : d
     );
     if (thenQuote) openQuoteDraft(vendorId);
-    else acknowledgeFor([vendorId]);
+    else acknowledgeOnBehalf(vendorId);
   };
 
   /**
@@ -2685,6 +2730,7 @@ export function BrokerOrderSheet({
                 >
                   Review
                 </Button>
+                {(!draft.vendorId || draft.vendorId === v.id) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -2716,6 +2762,7 @@ export function BrokerOrderSheet({
                 >
                   {draft.vendorId === v.id ? "Finalized" : "Finalize vendor"}
                 </Button>
+                )}
                 </>
               ) : asked ? (
                 /* ASKED AND NOT ANSWERED. The state replaces the
@@ -2760,6 +2807,12 @@ export function BrokerOrderSheet({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
+                  {draft.vendorId === v.id && draft.status === "Quoting" && (
+                    <DropdownMenuItem onSelect={cancelFinalization}>
+                      <X />
+                      Cancel finalization
+                    </DropdownMenuItem>
+                  )}
                   {asked ? (
                     <DropdownMenuItem
                       onSelect={() => openInvite([v.id], true)}
@@ -2984,7 +3037,7 @@ export function BrokerOrderSheet({
   /** Choosing between quotes is over once a vendor holds the order. */
   const choosing = !draft.vendorId;
   const bestQuoteId =
-    choosing && quotedIds.length >= 2
+    quotedIds.length >= 2
       ? quotedIds.reduce((best, id) =>
           carrierTotalOf(id) < carrierTotalOf(best) ? id : best
         )
@@ -2998,7 +3051,9 @@ export function BrokerOrderSheet({
      with Compare on, every partner that has quoted. Only the chosen one is
      editable — the setters write to it. */
   const vendorCols: { id: string; editable: boolean; quote?: VendorQuote }[] =
-    choosing && comparing && quotedIds.length >= 2
+    /* COMPARE OUTLIVES THE CHOICE (Pavan, 2026-10-06) — a finalized vendor
+       can still be read against the other quotes. */
+    comparing && quotedIds.length >= 2 && !pastCompletion
       ? quotedIds.map((id) => ({ id, editable: id === shownVendorId, quote: quoteOf(id) }))
       : [{ id: shownVendorId ?? "none", editable: true, quote: shownQuote }];
   /** Invited, and no price yet — the summary's "still to quote" list. */
@@ -3082,8 +3137,8 @@ export function BrokerOrderSheet({
              and a way to step through it; the clause beside the button had
              room for one of the three and no way to say there were others. */
           label: "Create Order",
-          onSelect: pendingSteps.length === 0 ? createOrder : () => {},
-          blocked: pendingSteps.length > 0,
+          onSelect: createSteps.length === 0 ? createOrder : () => {},
+          blocked: createSteps.length > 0,
         }
         : /* ONCE A PARTNER HOLDS THE ORDER THE QUOTE RUNGS ARE SPENT. An
              accepted order was being offered "Request a quote" because the
@@ -3473,7 +3528,7 @@ export function BrokerOrderSheet({
       /* COMPARE — every quote side by side, on the header line. Only once
          there are two to compare. */
       action={
-        choosing && quotedIds.length >= 2 ? (
+        quotedIds.length >= 2 && !pastCompletion ? (
           <div className="flex items-center gap-4">
             {quotedIds.length >= 2 && (
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
@@ -3491,21 +3546,6 @@ export function BrokerOrderSheet({
          insets instead. The card keeps its own `overflow-hidden`: nothing
          inside it sticks any more, so there is nothing for the clip to break. */
       flush
-      note={
-        <SheetSectionNote label="About pricing">
-          Every product on the order gets a band, and the three columns under it
-          are the three levels the same gallons are priced at — what the partner
-          wants for it, what the customer is billed for it, and the product
-          itself. Price, margin, tax and fee are all charged on what is in the
-          tank, so they all hang off the product they are charged on. Fees that
-          are about the run and not about a product are added underneath.
-          <span className="mt-1.5 block">
-            {hasLoadOrder
-              ? "This order has a load order, so the product is the broker's: the partner charges freight and its service charge only, and its fees and taxes are billed through to the customer."
-              : "With no load order the partner sources the product too, so its fees and taxes are its own."}
-          </span>
-        </SheetSectionNote>
-      }
     >
       {/* THE ROW IS A CHARGE; THE COLUMNS ARE WHO IS CHARGING IT (Pavan,
           2026-09-22).
@@ -4016,7 +4056,9 @@ export function BrokerOrderSheet({
         </div>
         <div className="flex min-w-0 items-center border-y border-border px-4 py-3 lg:border-l lg:border-border lg:px-4">
           <span className="text-sm text-muted-foreground">
-            {shownQuote && draft.vendorId !== shownVendorId ? "Estimated" : ""}
+            {/* ESTIMATED UNTIL THE JOB IS DONE (Pavan, 2026-10-06) — finalizing
+                picks the vendor; the figures can still move. */}
+            {shownQuote && !pastCompletion ? "Estimated" : ""}
           </span>
         </div>
         {vendorCols.map((c) => (
@@ -4041,6 +4083,16 @@ export function BrokerOrderSheet({
               >
                 Finalize vendor
               </Button>
+            ) : !choosing && c.id === draft.vendorId && draft.status === "Quoting" ? (
+              /* FINALIZED, AND THE WAY BACK (Pavan, 2026-10-06). */
+              <div className="flex items-center gap-2">
+                <StatusChip tone={kindTone("success")} variant="soft">
+                  Finalized
+                </StatusChip>
+                <Button size="sm" variant="ghost" onClick={cancelFinalization}>
+                  Cancel finalization
+                </Button>
+              </div>
             ) : (
               <span />
             )}
@@ -4299,7 +4351,8 @@ export function BrokerOrderSheet({
          no rail, so it takes the creation floor (756) instead of filling. */
       size={inCreation ? "xwide" : "xxwide"}
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestClose}
+      stepsAction={fieldsGear}
       mode={inCreation ? "create" : mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Delivery Order"
@@ -4334,12 +4387,15 @@ export function BrokerOrderSheet({
               label: "Mark as an Urgent Order",
               checked: draft.urgent,
               onChange: (v) => set("urgent", v),
+              /* LOCKED ONCE A VENDOR IS ASSIGNED (Pavan, 2026-10-06). */
+              disabled: draft.status === "Assigned",
             },
             {
               id: "signature",
               label: "Get signature on Delivery",
               checked: draft.signatureOnDelivery,
               onChange: (v) => set("signatureOnDelivery", v),
+              disabled: draft.status === "Assigned",
             },
           ]}
         />
@@ -4380,7 +4436,8 @@ export function BrokerOrderSheet({
           <DraftStatusChip
             tone={BROKER_STATUS_TONE[draft.status]}
             label={draft.status}
-            saveState={saveState}
+            /* Nothing is kept before Create Order, so nothing to report. */
+            saveState={creating ? "idle" : saveState}
             /* THE STAGE TRACK SAYS WHERE IT IS — no chip beside the number
                (Pavan, 2026-10-05). */
             showStatus={false}
@@ -4493,7 +4550,7 @@ export function BrokerOrderSheet({
         !pendingShown ? undefined : draft.status === "Draft" ? (
           <PendingStrip
             tone="caution"
-            pending={pendingSteps}
+            pending={creating ? createSteps : pendingSteps}
             clearLabel="All mandatory steps completed"
           />
         ) : nextActBlocked ? (
@@ -4513,9 +4570,6 @@ export function BrokerOrderSheet({
         inCreation ? (
           /* CREATING: park it, or commit it. One page, so no Next step. */
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={saveAsDraft}>
-              Save as Draft
-            </Button>
             <Button onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}>
               {nextAct.label}
             </Button>
@@ -4555,10 +4609,14 @@ export function BrokerOrderSheet({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {/* PRESSABLE, AND PRESSING SAYS WHAT IS MISSING (2026-10-05). */}
+          {/* PRESSABLE, AND PRESSING SAYS WHAT IS MISSING (2026-10-05).
+              Not on a created order still in the Orders lane — it already
+              exists, and its next steps are on the vendor table. */}
+          {draft.status !== "Draft" && (
           <Button onClick={nextActOff ? () => setPendingShown(true) : nextAct.onSelect}>
             {nextAct.label}
           </Button>
+          )}
         </div>
         )
       }
@@ -4599,6 +4657,16 @@ export function BrokerOrderSheet({
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
           the broker has to act on. It leads the sheet rather than hiding in a
           field. `soft`/destructive treatment per the DS's noticing rule. */}
+      {/* THE VENDOR SOURCES THE PRODUCT (Pavan, 2026-10-06) — said once, at
+          the top, in place of an empty Load order unit further down. */}
+      {locked && !loadRows && (
+        <div className="-mb-6 flex items-center gap-2 rounded-md border border-fp-banner-accent-info/30 bg-fp-banner-accent-info/10 p-3">
+          <Info className="size-4 shrink-0 text-fp-banner-accent-info" />
+          <span className="text-sm text-foreground">
+            Load order is being handled by the vendor.
+          </span>
+        </div>
+      )}
       {order?.blockedReason && (
         /* AN EVEN CHANNEL ROUND THE BANNER. The column's 40px rhythm below it
            and the body's own 16px above made it read as attached to the header
@@ -4805,6 +4873,7 @@ export function BrokerOrderSheet({
 
       {/* The people on the order, together. POC and salesperson were split
           across two places; they answer the same question — who to call. */}
+      {fields.poc && (
       <FormStep label={CREATE_STEPS.contacts}>
       <SheetSection title="POC Details">
         {/* One person per row: name and the two ways to reach them read as a
@@ -5012,6 +5081,7 @@ export function BrokerOrderSheet({
         </div>
       </SheetSection>
       </FormStep>
+      )}
 
       <FormStep label={CREATE_STEPS.schedule}>
       <SheetSection title="Schedule Details">
@@ -5497,7 +5567,9 @@ export function BrokerOrderSheet({
             </FactGrid>
           </SheetSection>
 
-          <SheetSection title="Contacts" variant="outline">
+          {/* OFF UNLESS TURNED ON (Pavan, 2026-10-06) — see `useOrderFormFields`. */}
+          {fields.poc && (
+          <SheetSection title="POC details" variant="outline">
             <FactGrid>
               <Fact label="Point of contact" wide>
                 {draft.primaryPoc || NOT_SET}
@@ -5527,6 +5599,7 @@ export function BrokerOrderSheet({
               </Fact>
             </FactGrid>
           </SheetSection>
+          )}
 
           <SheetSection title="Schedule" variant="outline">
             <FactGrid>
@@ -5616,12 +5689,11 @@ export function BrokerOrderSheet({
             </table>
           </SheetSection>
 
-          <SheetSection title="Load order" flush={Boolean(loadRows)}>
-            {!loadRows ? (
-              <p className="text-sm text-muted-foreground">
-                No load order — the partner sources the product.
-              </p>
-            ) : (
+          {/* NO LOAD ORDER → NO UNIT; the banner at the top says it (Pavan,
+              2026-10-06). */}
+          {loadRows && (
+          <SheetSection title="Load order" flush>
+            {(
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-fp-table-header">
@@ -5661,14 +5733,16 @@ export function BrokerOrderSheet({
               </table>
             )}
           </SheetSection>
+          )}
         </>
       )}
 
 
 
       {/* NO VENDOR UNIT ONCE THE JOB IS DONE (Pavan, 2026-10-05) — the chosen
-          vendor and everything it charged are in Pricing. */}
-      {!pastCompletion && (
+          vendor and everything it charged are in Pricing. NOR BEFORE CREATE
+          ORDER (2026-10-06) — inviting is done on the created order. */}
+      {!pastCompletion && !creating && (
       <>
       <FormStep label={CREATE_STEPS.vendor}>
       {/* ── The 3PL section. Everything above exists on a first-party order
@@ -5694,24 +5768,6 @@ export function BrokerOrderSheet({
               onClick={addPartnerRow}
             />
           ) : undefined
-        }
-        note={
-          <SheetSectionNote label="How inviting vendors works">
-            <p className="text-foreground">
-              Showing vendors that are active, compliant on the delivery date,
-              run {requiredLine}, and serve {site?.state ?? "the ship-to state"}.
-            </p>
-            <p className="mt-1.5 text-muted-foreground">
-              Everyone invited is notified at the same time.
-            </p>
-            {ineligibleNote && (
-              <p className="mt-1.5 text-muted-foreground">{ineligibleNote}</p>
-            )}
-            <p className="mt-1.5 text-muted-foreground">
-              Whoever accepts first takes the order; the rest are told it has
-              gone.
-            </p>
-          </SheetSectionNote>
         }
       >
         {!vendorSettled && (
@@ -6229,7 +6285,7 @@ export function BrokerOrderSheet({
                                   <StatusChip tone={kindTone("success")} variant="soft">
                                     Finalized
                                   </StatusChip>
-                                ) : (
+                                ) : draft.vendorId ? null : (
                                   <Button
                                     size="xs"
                                     variant="outline"
@@ -6376,13 +6432,25 @@ export function BrokerOrderSheet({
               <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
               <div className="min-w-0 flex-1">
                 <VendorRow id={holdingVendorId} />
+                {quoteOf(holdingVendorId)?.byDispatcher && (
+                  <StatusChip tone={kindTone("neutral")} variant="soft" className="mt-2">
+                    Added by dispatcher
+                  </StatusChip>
+                )}
               </div>
               {/* THE DEAL CAN FALL THROUGH (Pavan, 2026-09-24) — a finalized
                   vendor is changeable while the order is Assigned: back to
                   Quoting, where every quote is still on the table and more
                   partners can be invited. */}
               {draft.status === "Assigned" && (
-                <Button size="xs" variant="outline" onClick={() => setConfirmChangeVendor(true)}>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  /* RED OUTLINE, RED TEXT (Pavan, 2026-10-06) — it takes the job
+                     off the vendor who holds it. Fills on hover, like Finalize. */
+                  className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground dark:border-destructive dark:text-destructive dark:hover:bg-destructive dark:hover:text-destructive-foreground"
+                  onClick={() => setConfirmChangeVendor(true)}
+                >
                   Change vendor
                 </Button>
               )}
@@ -6525,6 +6593,49 @@ export function BrokerOrderSheet({
                 surface. No outline. In dark the wash takes the pastels' deep
                 foreground shades, so it reads as a glow in the dark surface
                 rather than a pale film on it. */}
+            {/* ── INVITATIONS, WHILE THE ORDER IS STILL ASKING (Pavan,
+                2026-10-06) ──
+                In the Orders lane with no price back there is nothing to sum:
+                every figure in the summary would be a dash. What the reader
+                wants is who has been asked. The summary takes over once the
+                first quote lands. */}
+            {draft.status === "Draft" && !draft.vendorId && quotes.length === 0 ? (
+            <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
+              <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
+                Invitations
+              </h3>
+              <div className="rounded-lg border border-border bg-fp-surface-1b p-3">
+                {sentIds.filter(Boolean).length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
+                    <MailX
+                      aria-hidden
+                      strokeWidth={1}
+                      className="size-[120px] text-muted-foreground"
+                    />
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium text-foreground">No invitations</p>
+                      <p className="text-sm text-muted-foreground">
+                        Invitations not sent to any vendors.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {sentIds.filter(Boolean).map((id) => (
+                      <li key={id} className="flex items-center justify-between gap-3">
+                        <span className="truncate text-sm text-foreground">
+                          {vendorById(id)?.name ?? id}
+                        </span>
+                        <StatusChip tone={kindTone("neutral")} variant="soft">
+                          Awaiting response
+                        </StatusChip>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+            ) : (
             <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
               <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
                 Quotation summary
@@ -6679,6 +6790,7 @@ export function BrokerOrderSheet({
                 )}
               </div>
             </section>
+            )}
 
             {/* ── ASSOCIATED RECORDS ──
                 NO RULE BETWEEN EVERY ROW. Five hairlines made five unrelated
@@ -6711,6 +6823,7 @@ export function BrokerOrderSheet({
                     )}
                   </dd>
                 </div>
+                {fields.poc && (
                 <div className="flex flex-col">
                   <dt className="text-xs text-muted-foreground">Primary POC</dt>
                   <dd className="truncate text-sm text-foreground">
@@ -6726,6 +6839,7 @@ export function BrokerOrderSheet({
                     </dd>
                   )}
                 </div>
+                )}
               </dl>
             </RailCard>
 
@@ -6868,7 +6982,9 @@ export function BrokerOrderSheet({
           into, and its two boxes want the room. */}
       {/* ONLY ONCE THE JOB IS DONE (Pavan, 2026-10-05): the paperwork is
           added after delivery, so from Completed onwards. */}
-      {pastCompletion && (
+      {/* AND ONLY ONCE SOMETHING IS ATTACHED (Pavan, 2026-10-06) — the footer's
+          Attach buttons bring it back. */}
+      {pastCompletion && (draft.images.length > 0 || draft.documents.length > 0) && (
       <FormStep label={CREATE_STEPS.files}>
       {/* ADDITIONAL DETAILS (Pavan, 2026-10-05): the upload and the documents,
           one under another, grouped under a heading of their
@@ -7291,6 +7407,26 @@ export function BrokerOrderSheet({
       {/* DELETING IS NOT CANCELLING, and the copy has to say which. Cancel
           leaves the order in the Cancelled lane with its history; delete takes
           it away, and there is nothing to look at afterwards. */}
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All the details you've added will be discarded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => onOpenChange(false)}
+            >
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -7315,6 +7451,8 @@ export function BrokerOrderSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {fieldsDrawer}
 
       {/* ── linked-record editing ─────────────────────────────────────────
           Both drawers stack a layer above the order sheet, so the draft behind

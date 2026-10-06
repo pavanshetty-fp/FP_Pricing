@@ -457,6 +457,8 @@ export interface VendorQuote {
    */
   note?: string;
   attachments?: string[];
+  /** Entered by the dispatcher on the vendor's behalf (Pavan, 2026-10-06). */
+  byDispatcher?: boolean;
 }
 
 /**
@@ -1640,8 +1642,12 @@ function vendorStateFor(
        which is the state step 2 of the sheet exists for. */
     const accepted =
       invited.length > 1 && pick() < 0.4 ? invited : [first];
+    /* ASSIGNED MEANS A VENDOR IS ASSIGNED (Pavan, 2026-10-06) — the order
+       only gets here once one is finalized. The draw is still taken so the
+       rest of the fixture is unchanged. */
+    pick();
     return {
-      vendorId: pick() < 0.45 ? first : null,
+      vendorId: first,
       invitedVendorIds: invited,
       acceptedVendorIds: accepted,
     };
@@ -1859,6 +1865,22 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
               };
             })
         : [];
+
+    /* AN ASSIGNED ORDER WAS FINALIZED ON A QUOTE (Pavan, 2026-10-06), so the
+       finalized vendor always has one. Derived, not drawn — see below. */
+    if (status === "Assigned" && vendorId && !quotes.some((q) => q.vendorId === vendorId)) {
+      quotes.unshift({
+        vendorId,
+        lines: lines.map((l, k) => ({
+          asset: l.asset,
+          ratePerGal: Number((2.95 + ((i + k) % 7) * 0.08).toFixed(3)),
+          rates: {
+            margin: Number((0.12 + ((i + k) % 5) * 0.02).toFixed(3)),
+          },
+        })),
+        freight: 210 + (i % 9) * 25,
+      });
+    }
 
     /* A DRAFT WITH A PRICE ALREADY WRITTEN DOWN (2026-09-22). In a draft the
        broker writes a partner's quote down themselves — "Add their quotation"
@@ -2251,7 +2273,7 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     if (!preVendor && r.status !== "Quoting" && r.acceptedVendorIds.length === 0) {
       problems.push(`${r.orderNo}: ${r.status} with nobody having accepted`);
     }
-    if (!preVendor && r.status !== "Quoting" && r.status !== "Assigned" && !r.vendorId) {
+    if (!preVendor && r.status !== "Quoting" && !r.vendorId) {
       problems.push(`${r.orderNo}: ${r.status} with no partner holding the order`);
     }
     for (const id of r.acceptedVendorIds) {

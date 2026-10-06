@@ -92,9 +92,16 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
 - **Not stepped:** level-2 sheets (a sheet over a sheet), Export
   (`stepNav={false}`), pickers and read drawers (they reset
   `FormStepsContext` to false).
-- **A create visit stays a create visit.** The first autosave turns a new
-  order into a row and re-opens the sheet in edit mode; the sheet remembers it
-  was opened from Create and keeps the create layout (no rail) until closed.
+- **Nothing is kept before the create act (Pavan, 2026-10-06 — replaces "a
+  create visit stays a create visit").** A new record is not autosaved and
+  shows no save state; it reaches its list only when the primary (*Create
+  Order*) is pressed, and the sheet then re-opens on it with its rail. Closing
+  with anything typed asks **"Discard this order?"** — *Keep editing* /
+  *Discard* — for every kind of order. Autosave is for records that exist.
+- **The step column's progress bar can end in one quiet control**
+  (`stepsAction` on `RecordSheet` → `SteppedFormBody` → `FormStepsNav`
+  `headerAction`): a grey 24px ghost icon (`text-muted-foreground`, white on
+  hover), centred on the bar. Used for the order form's settings gear.
 
 ### Depth — two
 

@@ -143,6 +143,8 @@ export interface Schedule {
    * to read; `Yearly` lights none, which is a row that says nothing.
    */
   badge: string | null;
+  /** CUSTOM CYCLE — one weekday list per week, drawn as a row each. */
+  cycle?: number[][];
   /**
    * THE LINE UNDER THE BADGES — how often the pattern repeats, which the
    * letters cannot carry. The same three lit letters mean every week, every

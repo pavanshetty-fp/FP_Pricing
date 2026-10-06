@@ -43,7 +43,18 @@ import {
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { HangingAdd } from "../HangingAdd";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { RecordSheet } from "../RecordSheet";
+import { useOrderFormFields } from "./orderFormFields";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, TANK_TYPES, type RentalAsset } from "./directory";
 import {
@@ -963,14 +974,25 @@ export function AssetMovementSheet({
   const blockFor = (step: "from" | "to") =>
     route[step] === "yard" ? yardBlock(step) : customerBlock(step);
 
-  /* Same autosave feedback as the delivery order sheet. */
-  const saveState = useDraftSaveState(draft, open);
+  /* NOTHING IS KEPT BEFORE CREATE ORDER (Pavan, 2026-10-06), so closing a
+     form with anything in it asks first — the same as a delivery order. */
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false);
+  /* THE FORM'S OPTIONAL STEPS — the same gear and setting as a delivery order. */
+  const { fields, gear, drawer } = useOrderFormFields("new-asset", open, "New asset order");
+  const requestClose = (o: boolean) => {
+    if (!o && JSON.stringify(draft) !== JSON.stringify(emptyDraft(direction))) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onOpenChange(o);
+  };
 
   return (
     <RecordSheet
       size="wide"
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestClose}
+      stepsAction={gear}
       mode="create"
       showCancel={false}
       editTitle="Asset Order"
@@ -985,9 +1007,6 @@ export function AssetMovementSheet({
       headerAside={
         <span className="flex items-center gap-2">
           <Badge variant="pastel-violet">{MOVEMENT_LABEL[direction]}</Badge>
-          {saveState !== "idle" && (
-            <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
-          )}
         </span>
       }
       canSubmit={canSubmit}
@@ -1022,8 +1041,10 @@ export function AssetMovementSheet({
         {blockFor("to")}
       </RouteStep>
 
+      {/* OFF EVERYWHERE UNLESS TURNED ON (Pavan, 2026-10-06). */}
+      {fields.poc && (
       <SheetSection
-        title="POC Details"
+        title="POC details"
         /* ADDING A PERSON ACTS ON THE SECTION, not on a field, so it sits on
            the heading row.
 
@@ -1168,6 +1189,7 @@ export function AssetMovementSheet({
           </div>
         </div>
       </SheetSection>
+      )}
 
       <SheetSection title="Order Details">
         {/* THREE REFERENCE NUMBERS AND A DATE, one row. With the type gone to
@@ -1736,6 +1758,23 @@ export function AssetMovementSheet({
           </SheetField>
         </div>
       </SheetSection>
+      {drawer}
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All the details you've added will be discarded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => onOpenChange(false)}>
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </RecordSheet>
   );
 }

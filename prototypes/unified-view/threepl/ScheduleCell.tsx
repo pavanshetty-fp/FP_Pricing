@@ -55,6 +55,42 @@ export function ScheduleCell({
       2026-10-01: "too tight"). */
   roomy?: boolean;
 }) {
+  /* A CUSTOM CYCLE IS ONE ROW PER WEEK (Pavan, 2026-10-06), each led by
+     its week — W1, W2 — so the shape still compares down the column. */
+  if (schedule.cycle) {
+    return (
+      <div className={cn("flex min-w-0 flex-col", roomy ? "gap-1.5" : "gap-1", className)}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex w-fit cursor-default flex-col gap-0.5" role="img" aria-label={schedule.label}>
+              {schedule.cycle.map((week, w) => (
+                <div key={w} className={cn("flex items-center", roomy ? "gap-1" : "gap-0.5")}>
+                  <span aria-hidden className={cn("w-6 text-muted-foreground", roomy ? "text-xs" : "text-[11px]")}>
+                    W{w + 1}
+                  </span>
+                  {DAYS.map((d, i) => (
+                    <span
+                      key={i}
+                      aria-hidden
+                      className={cn(
+                        "flex items-center justify-center rounded-sm font-medium tabular-nums",
+                        roomy ? "size-6 text-xs" : "size-5 text-[11px]",
+                        week.includes(i) ? "bg-foreground/10 text-foreground" : "text-muted-foreground/50"
+                      )}
+                    >
+                      {d.letter}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>{schedule.label}</TooltipContent>
+        </Tooltip>
+        <span className="truncate text-xs text-muted-foreground">{schedule.cadence}</span>
+      </div>
+    );
+  }
   const on = new Set(schedule.days);
   const live = DAYS.filter((_, i) => on.has(i)).map((d) => d.name);
 

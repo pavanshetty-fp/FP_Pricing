@@ -41,6 +41,7 @@ import {
   type OrderLine,
 } from "./orders";
 import { VENDORS } from "./vendors";
+import { RuleRecommendations } from "./RuleRecommendations";
 import { JOB_TYPES, type JobType } from "./orders";
 import {
   RuleFrequencyPicker,
@@ -501,7 +502,9 @@ export function RecurringProgramCreate({
   const daysPicked =
     draft.frequency.basis === "date"
       ? (draft.frequency.dates ?? []).length > 0
-      : (draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0) &&
+      : draft.frequency.repeat === "cycle"
+        ? (draft.frequency.cycleWeeks ?? []).some((w) => w.length > 0)
+        : (draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0) &&
         /* Monthly by week needs at least one week ticked. */
         (draft.frequency.repeat !== "monthly" ||
           (draft.frequency.monthWeeks ?? [1]).length > 0);
@@ -763,7 +766,15 @@ export function RecurringProgramCreate({
               letters beside the picker was the screen reading itself back, and
               the start date is not part of how often something happens — it
               is when the rule begins, which belongs with the rule. */}
-          <Card title="Frequency">
+          <Card
+            title="Frequency"
+            /* RECOMMENDATIONS, IN THE UNIT THEY FILL (Pavan, 2026-10-06). */
+            aside={
+              <RuleRecommendations
+                onApply={(f) => set("frequency", { ...f, endKey: draft.frequency.endKey })}
+              />
+            }
+          >
             <RuleFrequencyPicker
               value={draft.frequency}
               onChange={(f) => set("frequency", f)}

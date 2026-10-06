@@ -227,27 +227,9 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         }))
         .sort((a, b) => a.total - b.total);
 
-  /*
-    ONCE A PARTNER IS ON THE ORDER, THE PRODUCT LIST IS A RECEIPT.
-
-    While the order is out for pricing the tanks and the gallons are what the
-    quotes are being read against, so they stay on the face of the card. The
-    moment one partner holds it the comparison is over: the list has stopped
-    being a question and become the thing the figure is FOR. It goes behind the
-    figure — the price gains an underline and gives the rows back on a press —
-    and the card comes back to five units from six.
-
-    Honouring the reader's own switch: a product unit they have turned off is
-    not offered behind the price either.
-  */
-  const foldProduct =
-    r.status === "Assigned" &&
-    !off.has("product") &&
-    /* AND ONLY WHEN THERE IS A PRICE TO FOLD IT BEHIND. An Assigned order
-       whose partner has not priced shows the fallback partner line instead of
-       the quote stepper — folding there would take the tanks off the card and
-       leave nothing to press for them. */
-    ranked.length > 0;
+  /* RANKS ARE FOR COMPARING, which happens before a vendor is chosen. From
+     Assigned on, no "Best price". */
+  const comparing = r.status === "Draft" || r.status === "Quoting";
 
   const units: BoardCardUnit[] = [
     {
@@ -297,7 +279,10 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           ]
         : [],
     },
-    ...(foldProduct ? [] : [productUnit]),
+    /* THE PRODUCT LIST STAYS ON THE CARD (Pavan, 2026-10-06). It used to
+       fold behind the price on Assigned, which left the Delivery Product
+       Details switch on and nothing showing. The switch decides. */
+    productUnit,
     /* WHAT THE PARTNERS HAVE QUOTED beats what they have agreed to. Until one
        of them holds the order, the card's Vendor unit is about the PRICES that
        have come back: it said "2 accepted — no quote taken yet" while two
@@ -313,12 +298,8 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           quotes: ranked.map((q, i) => ({
             vendor: vendorName(q.vendorId),
             total: money(q.total),
-            rank: i + 1,
+            rank: comparing ? i + 1 : undefined,
           })),
-          breakdown:
-            foldProduct && productUnit.kind === "rows"
-              ? { rows: productUnit.rows, total: productUnit.total }
-              : undefined,
         }
       : {
       kind: "stack",
@@ -346,7 +327,12 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
                   },
                 ]),
           ]
-        : [
+        : draftStep(r)
+          ? /* THE FOOTER CARRIES IT, so no Vendor unit — select, send and
+               awaiting all sit where Quoting cards put theirs (Pavan,
+               2026-10-06). See `laneCardAlert`. */
+            []
+          : [
             {
               /* OUT MEANS SENT, NOT SELECTED (Pavan, 2026-09-22). This read
                  "Out for acknowledgement" off `invitedVendorIds`, which is the
@@ -415,6 +401,18 @@ function laneCardCode(r: BrokerOrder) {
  * went into the route, where it reads as a gloss on the route rather than as a
  * third chip competing with Urgent for the same row.
  */
+/**
+ * WHERE A DRAFT IS WITH ITS PARTNERS, for the card footer (Pavan, 2026-10-06):
+ * nobody sent an invite → select; invited, no price back → awaiting. Vendors
+ * picked but never sent are not kept, so there is no step between the two.
+ * `null` once a partner accepted or priced, or off Draft.
+ */
+function draftStep(r: BrokerOrder): "select" | "awaiting" | null {
+  if (r.status !== "Draft" || r.vendorId) return null;
+  if (r.acceptedVendorIds.length > 0 || r.quotes.length > 0) return null;
+  return r.sentVendorIds.filter(Boolean).length > 0 ? "awaiting" : "select";
+}
+
 function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
   const out: BoardCardBadge[] = [];
   /* URGENT IS ABOUT GETTING IT DONE, so it stops meaning anything once it is.
@@ -423,6 +421,9 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
      it says what KIND of order this is, and a finished one is still one. */
   if (r.urgent && !isDelivered(r.status)) out.push({ label: "Urgent", tone: "critical" });
   if (r.kind === "Recurring") out.push({ label: "Recurring" });
+  /* THE DISPATCHER AGREED IT FOR THE VENDOR (Pavan, 2026-10-06). */
+  if (r.vendorId && r.quotes.some((q) => q.vendorId === r.vendorId && q.byDispatcher))
+    out.push({ label: "Added by dispatcher" });
   /* THREE STATES IN THE ORDERS LANE, AND THEY ARE ABOUT THE PARTNER (Pavan,
      2026-09-22). The reader of this lane is not waiting on the form, they are
      waiting on a price:
@@ -441,7 +442,7 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
      and not as a set of traffic lights. */
   if (r.status === "Draft") {
     const quotes = r.quotes.length;
-    out.push(
+    const stage: BoardCardBadge | null =
       quotes > 0
         ? {
             label: `${quotes} Quotation${quotes === 1 ? "" : "s"} Received`,
@@ -450,9 +451,14 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
             tone: "caution",
           }
         : r.sentVendorIds.filter(Boolean).length > 0
-          ? { label: "Awaiting Quotation", tone: "caution" }
-          : { label: "Draft" }
-    );
+          ? /* NO CHIP (Pavan, 2026-10-06) — the footer says it's awaiting. */
+            null
+          : /* NO DRAFT CHIP WHEN THE FOOTER SAYS WHAT'S PENDING (Pavan,
+               2026-10-06) — the footer already marks it unfinished. */
+            draftStep(r)
+            ? null
+            : { label: "Draft" };
+    if (stage) out.push(stage);
   }
   /* WHERE IN SYNCED. The Synced lane is the one that still holds two statuses
      — fully and partly — so the card is what says which. Only the partial one
@@ -604,6 +610,28 @@ function laneCardAlert(
       actionLabel: "Review",
     };
   }
+  /* A MISSING VENDOR IS THE NEXT STEP, NOT A FACT (Pavan, 2026-10-06).
+     "Not assigned" under the Vendor heading read as a state; the footer says
+     what to do next, the same slot Quoting cards use for theirs. */
+  /* Each opens on the vendor table, as Review does on a Quoting card. */
+  const step = draftStep(r);
+  if (step === "select") {
+    return {
+      status: "caution",
+      text: "Pending: Vendor not selected",
+      actionLabel: "Select Vendor",
+      onAction: onOpen,
+    };
+  }
+  if (step === "awaiting") {
+    const n = r.sentVendorIds.filter(Boolean).length;
+    return {
+      status: "caution",
+      text: `Awaiting quotation — ${n} invited`,
+      actionLabel: "View sent invitations",
+      onAction: onOpen,
+    };
+  }
   if (r.status === "Quoting") {
     const n = r.invitedVendorIds.length;
     /* PRICES BEAT SILENCE. An order with two quotes in it was still being
@@ -625,30 +653,8 @@ function laneCardAlert(
       text: `Awaiting acknowledgement — ${n} invited`,
     };
   }
-  /* THE TWO NOTIFICATIONS, in the order they arrive. A partner accepting the
-     invitation is the first and moves the order into this lane; the quote is
-     the second, and it is the one that has something to be done about — so it
-     is the one that carries the action. */
-  if (r.status === "Assigned" && !r.vendorId) {
-    const priced = r.quotes.length;
-    if (priced > 0) {
-      return {
-        status: "caution",
-        text: `${priced} ${priced === 1 ? "quote" : "quotes"} in — review pricing`,
-        actionLabel: "Review",
-        /* THE BUTTON OPENS THE ORDER. It carried no handler at all, so the one
-           thing on the card asking to be pressed did nothing when it was. */
-        onAction: onOpen,
-      };
-    }
-    const n = r.acceptedVendorIds.length;
-    return {
-      status: "default",
-      text: r.quoteRequested
-        ? `${n === 1 ? "A partner" : `${n} partners`} accepted — awaiting pricing`
-        : `${n === 1 ? "A partner" : `${n} partners`} accepted`,
-    };
-  }
+  /* NOTHING TO REVIEW ON ASSIGNED (Pavan, 2026-10-06) — the vendor has the
+     job; the card waits for it to be done, so it carries no quote footer. */
   /* A QUEUE, NOT AN ACT. Nobody pushes it; the accounting system pulls it. */
   if (r.status === "Verified") {
     return { status: "default", text: "Awaiting accounting" };
@@ -1675,7 +1681,7 @@ export function BrokerOrdersScreen({
         sentVendorIds: draft.sentVendorIds,
         acceptedVendorIds: draft.acceptedVendorIds,
         quoteRequested: draft.quoteRequested,
-        quotes: [],
+        quotes: draft.quotes,
         orderFees: [],
         /* A new order has not been delivered, let alone billed. */
         invoiceState: "none",

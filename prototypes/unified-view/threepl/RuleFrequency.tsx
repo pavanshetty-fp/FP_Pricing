@@ -62,7 +62,24 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export type Repeat = "weekly" | "monthly" | "yearly";
+export type Repeat = "weekly" | "monthly" | "yearly" | "cycle";
+
+/** CUSTOM CYCLE (Pavan, 2026-10-06) — 2 to 4 weeks, each with its own days. */
+export const CYCLE_LENGTHS = [2, 3, 4];
+const DAY_MS = 86_400_000;
+/** The Sunday that starts `d`'s week, at midnight. */
+const weekStart = (d: Date) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - x.getDay());
+  return x;
+};
+const keyToDate = (k: string) =>
+  new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, Number(k.slice(8, 10)));
+/** Which week of the cycle `d` falls in, or -1 before the cycle starts. */
+export const cycleWeekOf = (d: Date, startKey: string, length: number) => {
+  const n = Math.round((weekStart(d).getTime() - weekStart(keyToDate(startKey)).getTime()) / (7 * DAY_MS));
+  return n < 0 ? -1 : n % length;
+};
 /**
  * DAYS OR DATES (Pavan, 2026-10-01) — the two ways a rule says when. Days is
  * weekdays and how they repeat; Date is dates picked on a calendar and how
@@ -118,6 +135,10 @@ export interface RuleFrequency {
   months: number[];
   /** `null` is "no end date", and it is the default. */
   endKey: string | null;
+  /** CYCLE ONLY — one list of weekdays per week of the cycle. */
+  cycleWeeks?: number[][];
+  /** CYCLE ONLY — a day in the week the cycle's Week 1 is, as `yyyy-mm-dd`. */
+  cycleStartKey?: string;
 }
 
 export function blankFrequency(): RuleFrequency {
@@ -190,6 +211,24 @@ export function toSchedule(f: RuleFrequency): Schedule {
         if ((monthIndex(d) - firstMonth) % every !== 0) return false;
         const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         return dom.some((x) => Math.min(x, last) === d.getDate());
+      },
+    };
+  }
+  if (f.repeat === "cycle") {
+    const weeks = f.cycleWeeks ?? [f.days, []];
+    const start = f.cycleStartKey ?? dateKeyOf(weekStart(new Date()));
+    const short = (ds: number[]) =>
+      ds.length === 0 ? "none" : ds.map((x) => WEEKDAYS[x].name.slice(0, 3)).join(", ");
+    return {
+      raw: `cycle:${start}:${weeks.map((w) => w.join(",")).join("|")}`,
+      label: weeks.map((w, i) => `Week ${i + 1}: ${short(w)}`).join(" · "),
+      days: [...new Set(weeks.flat())].sort((a, b) => a - b),
+      cycle: weeks,
+      badge: null,
+      cadence: `${weeks.length}-week cycle`,
+      hits: (d) => {
+        const i = cycleWeekOf(d, start, weeks.length);
+        return i >= 0 && weeks[i].includes(d.getDay());
       },
     };
   }
@@ -522,6 +561,130 @@ function DatePart({
   );
 }
 
+/** Switching Repeat; into a cycle, the days already picked become Week 1. */
+function withRepeat(value: RuleFrequency, repeat: Repeat): RuleFrequency {
+  if (repeat !== "cycle" || value.cycleWeeks) return { ...value, repeat };
+  const days = value.dayMode === "daily" ? [0, 1, 2, 3, 4, 5, 6] : value.days;
+  return {
+    ...value,
+    repeat,
+    cycleWeeks: [days, []],
+    cycleStartKey: value.cycleStartKey ?? dateKeyOf(weekStart(new Date())),
+  };
+}
+
+/**
+ * CUSTOM CYCLE (Pavan, 2026-10-06) — Repeat, how many weeks, when Week 1
+ * starts, then one row of day badges per week, and the next four weeks as
+ * they will run. A week with no days is a week with no delivery.
+ */
+function CyclePart({
+  value,
+  onChange,
+}: {
+  value: RuleFrequency;
+  onChange: (next: RuleFrequency) => void;
+}) {
+  const weeks = value.cycleWeeks ?? [value.days, []];
+  const startKey = value.cycleStartKey ?? dateKeyOf(weekStart(new Date()));
+  const setWeeks = (next: number[][]) => onChange({ ...value, cycleWeeks: next });
+  const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const first = weekStart(keyToDate(startKey));
+  const preview = Array.from({ length: 4 }, (_, k) => {
+    const from = new Date(first.getTime() + k * 7 * DAY_MS);
+    const ds = weeks[k % weeks.length];
+    return {
+      label: fmt.format(from),
+      days: ds.length === 0 ? "No delivery" : ds.map((x) => WEEKDAYS[x].name.slice(0, 3)).join(", "),
+    };
+  });
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <Row label="Repeat">
+          <Select
+            value="cycle"
+            onValueChange={(v) => onChange(withRepeat(value, v as Repeat))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+              <SelectItem value="cycle">Custom cycle</SelectItem>
+            </SelectContent>
+          </Select>
+        </Row>
+        <Row label="Cycle length">
+          <Select
+            value={String(weeks.length)}
+            onValueChange={(v) => {
+              const n = Number(v);
+              setWeeks(Array.from({ length: n }, (_, i) => weeks[i] ?? []));
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CYCLE_LENGTHS.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n} weeks
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Row>
+        <Row label="Week 1 starts">
+          <Input
+            type="date"
+            value={startKey}
+            aria-label="Week 1 starts"
+            onChange={(e) =>
+              e.target.value && onChange({ ...value, cycleStartKey: e.target.value })
+            }
+          />
+        </Row>
+      </div>
+      <div className="flex flex-col gap-2">
+        {weeks.map((w, i) => (
+          <div key={i} className="flex items-center gap-4">
+            <span className="w-14 shrink-0 text-sm font-medium text-foreground">
+              Week {i + 1}
+            </span>
+            <DayBadges
+              value={w}
+              onChange={(next) => setWeeks(weeks.map((x, j) => (j === i ? next : x)))}
+            />
+            {w.length === 0 && (
+              <span className="text-xs text-muted-foreground">No delivery</span>
+            )}
+          </div>
+        ))}
+        {weeks.every((w) => w.length === 0) && (
+          <p className="text-xs text-status-failed">Pick at least one day.</p>
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-foreground">Next 4 weeks</span>
+        <div className="grid grid-cols-4 gap-2">
+          {preview.map((p) => (
+            <div
+              key={p.label}
+              className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-2"
+            >
+              <span className="text-xs text-muted-foreground">Week of {p.label}</span>
+              <span className="truncate text-sm text-foreground">{p.days}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RuleFrequencyPicker({
   value,
   onChange,
@@ -550,13 +713,24 @@ export function RuleFrequencyPicker({
         onValueChange={(v) => set("basis", v as FrequencyBasis)}
       >
         <TabsList>
-          <TabsTrigger value="days">Days</TabsTrigger>
-          <TabsTrigger value="date">Date</TabsTrigger>
+          {/* BLACK AND WHITE, NOT THE SELECTION ORANGE (Pavan, 2026-10-06) —
+              the day chips beside it are monochrome too. */}
+          {(["days", "date"] as const).map((k) => (
+            <TabsTrigger
+              key={k}
+              value={k}
+              className="data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-border dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground"
+            >
+              {k === "days" ? "Days" : "Date"}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
 
       {(value.basis ?? "days") === "date" ? (
         <DatePart value={value} onChange={onChange} />
+      ) : value.repeat === "cycle" ? (
+        <CyclePart value={value} onChange={onChange} />
       ) : (
       <>
       {/* ONE LINE: the days on the left, a divider, then Repeat and its
@@ -622,7 +796,7 @@ export function RuleFrequencyPicker({
         <Row label="Repeat">
           <Select
             value={value.repeat}
-            onValueChange={(v) => set("repeat", v as Repeat)}
+            onValueChange={(v) => onChange(withRepeat(value, v as Repeat))}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -631,6 +805,7 @@ export function RuleFrequencyPicker({
               <SelectItem value="weekly">Weekly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
               <SelectItem value="yearly">Yearly</SelectItem>
+              <SelectItem value="cycle">Custom cycle</SelectItem>
             </SelectContent>
           </Select>
         </Row>

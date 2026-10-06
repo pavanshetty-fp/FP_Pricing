@@ -239,6 +239,10 @@ and the two icons look alike at 16px, which is why it needs writing down.
 
 ### L0 — the sheet
 
+- **Before Create, nothing is saved (2026-10-06).** Create Delivery Order and
+  Asset Order show no save state and keep nothing until *Create Order*;
+  closing with anything typed asks "Discard this order?". Once created, the
+  order autosaves as below.
 - **It autosaves, and it says so.** `useDraftSaveState` + `DraftStatusChip`
   beside the title: nothing before the first keystroke, *Draft saving…* while a
   change settles, *Draft saved* once it has. **A Draft says it once** — the

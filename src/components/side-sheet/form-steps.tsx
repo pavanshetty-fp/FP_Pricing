@@ -70,9 +70,12 @@ export function FormStepsNav({
   formRef,
   onCount,
   footer,
+  headerAction,
 }: {
   formRef: React.RefObject<HTMLDivElement | null>;
   onCount?: (n: number) => void;
+  /** A control at the end of the progress bar's row — e.g. form settings. */
+  headerAction?: React.ReactNode;
   /** Pinned to the foot of the column — the sheet's pending strip. */
   footer?: React.ReactNode;
 }) {
@@ -186,11 +189,17 @@ export function FormStepsNav({
         <span className="text-xs text-muted-foreground tabular-nums">
           Step {current + 1} of {labels.length}
         </span>
-        <div className="h-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-foreground transition-[width]"
-            style={{ width: `${((current + 1) / Math.max(labels.length, 1)) * 100}%` }}
-          />
+        {/* THE ACTION ENDS THE BAR'S ROW, centred on it. */}
+        <div className="flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground transition-[width]"
+              style={{ width: `${((current + 1) / Math.max(labels.length, 1)) * 100}%` }}
+            />
+          </div>
+          {headerAction && (
+            <div className="flex h-1 shrink-0 items-center">{headerAction}</div>
+          )}
         </div>
       </div>
       <ol className="flex flex-col gap-0.5">
@@ -249,8 +258,11 @@ export function SteppedFormBody({
   footerClassName,
   top,
   onShownChange,
+  stepsAction,
 }: {
   children: React.ReactNode;
+  /** Passed to the step column's header row — see `FormStepsNav`. */
+  stepsAction?: React.ReactNode;
   /**
    * THE PENDING BAR (Pavan, 2026-10-05): pinned under the form column, above
    * the sheet footer — not in the step column. Sheets pass it only once the
@@ -279,7 +291,7 @@ export function SteppedFormBody({
         {/* MOUNTED WHILE HIDDEN so it can count the steps; the form column
             keeps its place in the tree either way. */}
         <div className={cn("flex min-h-0", !shown && "hidden")}>
-          <FormStepsNav formRef={formRef} onCount={setCount} />
+          <FormStepsNav formRef={formRef} onCount={setCount} headerAction={stepsAction} />
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {top && (

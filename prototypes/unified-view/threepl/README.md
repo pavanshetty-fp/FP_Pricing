@@ -1038,6 +1038,66 @@ and vendor table); only "Products updated" (a warning) and "Holds order"
   at the form's height and scrolls itself, with 40px at its foot.
 - **Header**: Order # · Urgent · save state, the save state always last.
 
+### The lane walk (2026-10-06) — supersedes anything above that disagrees
+
+**Creating.** Nothing is saved until **Create Order** (no "Draft saved", no
+Save as Draft); closing with anything typed asks *Discard this order?* —
+delivery and asset orders alike. Create needs customer + ship-to and a
+product line only; the **Vendor** step is hidden until the order exists, and
+inviting happens on the created order. A created order has no Create button.
+
+**Lanes move on quotes.** Any quote — sent by the vendor or added on its
+behalf, even at $0 — moves Orders → **Quoting**, with a "Moved to Quoting"
+toast. **Acknowledge on their behalf** (one vendor) = finalize that vendor,
+add its quote (`VendorQuote.byDispatcher`), move to **Assigned**; the card and
+the Vendor unit say **"Added by dispatcher"**. Acknowledging several only
+records acceptance. **Assigned means a vendor is finalized** — the fixture
+gives every Assigned order a finalized vendor and its quote (derived, no
+draws), and `assertConsistent` now requires it.
+
+**Finalize.** One vendor at a time: once finalized, every other Finalize
+button goes. **Cancel finalization** (pricing Total cell, next to a green
+*Finalized* chip, and the vendor row's menu) is the way back — Quoting only;
+Assigned keeps **Change vendor**, now a red outline + red text. **Compare
+works after finalizing.** **"Estimated"** stays on the Total row until
+Completed.
+
+**Orders-lane cards.** The footer carries the pending step:
+*Pending: Vendor not selected* + **Select Vendor**, or *Awaiting quotation —
+N invited* + **View sent invitations** (both open the order at the vendor
+table). No Draft chip, no Awaiting Quotation chip, no Vendor line when the
+footer says it. A shortlist is not kept: vendors picked but never sent come
+back unselected.
+
+**Order detail.**
+- Stage track's first step reads **Orders** (the lane's name).
+- **Invitations** card replaces Quotation summary in the Orders lane until a
+  quote arrives: no invites → a 120px envelope, "No invitations",
+  "Invitations not sent to any vendors."; sent → each vendor "Awaiting
+  response".
+- The right rail scrolls on its own (callback-ref cap + wheel containment).
+- **POC details is off everywhere** unless turned on from the **gear** at the
+  end of the step column's progress bar → *Configure order form*: Additional
+  Steps (POC details) then Apply to (This order · All orders), shared by
+  delivery and asset orders (`orderFormFields.tsx`; session-only). Off hides
+  the step, the read-only section and the rail's Primary POC.
+- No info icons on **Pricing** or **Vendor**.
+- Assigned: Urgent / Signature locked; **Review & mark completed** once the
+  window has passed. No load order → a top banner **"Load order is being
+  handled by the vendor."** and no Load order unit.
+- Completed: **Additional Details** only once something is attached (no seeded
+  BOL/ticket).
+
+**Board.** Assigned cards: no quote footer, no "Best price" (ranks only in
+Orders/Quoting), Delivery Product Details shown (no folding behind the price).
+3PL opens on **Orders** (`MODULE_LANDING`), Dashboard stays first in the rail.
+
+**Recurring rule.** Days | Date switch is black and white. **Custom cycle**
+(Repeat → Custom cycle): 2–4 weeks, Week 1 starts, a day row per week (empty =
+no delivery), next-4-weeks preview; lists draw W1/W2 rows. **Recommendations**
+in the Frequency unit's heading opens a sheet of suggestions (sample data)
+with what each is based on; **Apply** fills the picker.
+
 ### Quotes, compared (2026-10-05)
 
 - **Quotation summary takes a TAB per quote received** (DS `Tabs`, line

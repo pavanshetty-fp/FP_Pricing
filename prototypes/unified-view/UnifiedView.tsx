@@ -189,9 +189,8 @@ const SALES_NAV: NavItem[] = [
  * sections in the rail — they belong to the Tier-2 drawer below.
  */
 const THREE_PL_NAV: NavItem[] = [
-  /* THE MODULE'S OVERVIEW, FIRST AND WHERE THE MODULE OPENS (Pavan,
-     2026-10-05). Switching module lands on the first item, so first is the
-     landing page. */
+  /* THE MODULE'S OVERVIEW, FIRST (Pavan, 2026-10-05). The module OPENS on
+     Orders for now (2026-10-06) — see `MODULE_LANDING`. */
   { key: "3pl-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
   { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
   { key: "3pl-directory", label: "Directory", icon: <BookUser /> },
@@ -314,6 +313,14 @@ const MODULE_NAV: Record<string, NavItem[]> = {
   lease: [],
   pricing: [],
 };
+
+/**
+ * WHERE A MODULE OPENS, when it is not its first rail item. 3PL opens on
+ * Orders for now (Pavan, 2026-10-06), with Dashboard still first in the rail.
+ */
+const MODULE_LANDING: Record<string, string> = { "3pl": "3pl-orders" };
+const landingKey = (moduleKey: string): string =>
+  MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
 
 /**
  * Where a fresh visit lands.
@@ -1312,10 +1319,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const [returnTo, setReturnTo] = React.useState<string | null>(null);
 
   const [navKey, setNavKey] = React.useState(
-    () => boot?.nav ?? MODULE_NAV[startModule]?.[0]?.key ?? ""
+    () => boot?.nav ?? landingKey(startModule)
   );
   const [subKey, setSubKey] = React.useState<string | null>(
-    () => boot?.sub ?? firstSubKey(MODULE_NAV[startModule]?.[0]?.key ?? "")
+    () => boot?.sub ?? firstSubKey(landingKey(startModule))
   );
 
   /** Selecting a rail item lands on the first destination inside its drawer. */
@@ -1365,7 +1372,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     /* A LOCKED BUILD STAYS IN ITS MODULE. */
     if (only && key !== only) return;
     setModuleKey(key);
-    goToArea(MODULE_NAV[key]?.[0]?.key ?? "");
+    goToArea(landingKey(key));
     try {
       localStorage.setItem(MODULE_STORAGE_KEY, key);
     } catch {

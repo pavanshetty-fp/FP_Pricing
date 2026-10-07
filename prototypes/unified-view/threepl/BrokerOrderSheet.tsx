@@ -1703,6 +1703,11 @@ export function BrokerOrderSheet({
    * stage and scrolls nowhere.
    */
   const lastStage = React.useRef<BrokerStatus | null>(null);
+  /* THE TRACK WAITS FOR THE SCROLL (Pavan, 2026-10-06). Moving to Assigned
+     scrolls the sheet back up; the stage bar keeps showing the stage left
+     until the page has arrived, then animates on — so the move is seen, not
+     missed while the page travels. */
+  const [heldStage, setHeldStage] = React.useState<BrokerStatus | null>(null);
   React.useEffect(() => {
     if (!open) {
       lastStage.current = null;
@@ -1716,13 +1721,33 @@ export function BrokerOrderSheet({
     const section = STAGE_SECTION[stage];
     if (!section) return;
     if (section === "top") {
+      setHeldStage(before);
+      /* RELEASED WHEN THE PAGE HAS STOPPED — at the top, or still for a few
+         frames — watched frame by frame, since \`scrollend\` is not fired
+         everywhere. */
+      let raf = 0;
       const t = window.setTimeout(() => {
         const port = document
           .getElementById(PRICING_SECTION_ID)
           ?.closest<HTMLElement>(".overflow-auto");
-        port?.scrollTo({ top: 0, behavior: "smooth" });
+        if (!port || port.scrollTop === 0) return setHeldStage(null);
+        port.scrollTo({ top: 0, behavior: "smooth" });
+        let last = -1;
+        let still = 0;
+        const watch = () => {
+          const y = port.scrollTop;
+          still = y === last ? still + 1 : 0;
+          last = y;
+          if (y <= 0 || still >= 6) return setHeldStage(null);
+          raf = requestAnimationFrame(watch);
+        };
+        raf = requestAnimationFrame(watch);
       }, 360);
-      return () => window.clearTimeout(t);
+      return () => {
+        window.clearTimeout(t);
+        cancelAnimationFrame(raf);
+        setHeldStage(null);
+      };
     }
     /* Longer than the sheet's own opening: the stage bar redraws and the
        footer's act swaps under the reader's cursor, and moving the page out
@@ -4389,7 +4414,11 @@ export function BrokerOrderSheet({
       size={inCreation ? "xwide" : "xxwide"}
       open={open}
       onOpenChange={requestClose}
-      stepsAction={fieldsGear}
+      /* NO STEP COLUMN (Pavan, 2026-10-06) — archived in
+         docs/ds/ui/archive/step-column.md. The form-settings gear it carried
+         moves to the header. */
+      stepColumn={false}
+      headerActions={fieldsGear}
       mode={inCreation ? "create" : mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Delivery Order"
@@ -4709,7 +4738,7 @@ export function BrokerOrderSheet({
           data-form-sticky
           className="sticky -top-4 z-10 -mt-4 -mb-4 border-b border-border bg-popover pt-4 pb-3"
         >
-          <StageTrack stages={ORDER_STAGES} current={stageOf(draft.status)} />
+          <StageTrack stages={ORDER_STAGES} current={stageOf(heldStage ?? draft.status)} />
         </div>
       )}
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what

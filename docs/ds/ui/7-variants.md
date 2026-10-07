@@ -50,6 +50,27 @@ record exists. In code: `RecordSheet`'s `fill` (defaults to `mode ===
 "create"`) now sets the floor; an export or a partner's quote passes
 `fill={false}`.
 
+### Navigation — one panel (Unified View, Pavan, 2026-10-06)
+
+The Unified View's navigation is ONE left panel (`ModuleSidebar`), after the
+Lovable "unified UI" reference's menu (structure only — colours and type are
+the DS's sidebar tokens). Every module is a row (icon · name · chevron); the
+module you are in is open, tinted `bg-sidebar-accent`, and under it are its
+pages: loose pages first, then each area that has pages of its own as a small
+uppercase heading (10px, tracked, muted) over those pages — no second
+drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
+AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
+of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
+edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
+line (#e6e4e2); the open module takes weight, not a fill. The panel
+is 240px; **Collapse navigation** (a quiet grey mark in its top-right corner) folds it to a 56px icon rail —
+the open module's pages as icons with hairlines between sections, then the
+other modules — and the choice is remembered per browser.
+
+**The two-layer rail + drawer is kept** (`NavRail` + `NavigationDrawer`,
+`NAV_STYLE = "two-layer"` in `UnifiedView.tsx`). "Bring in the two-layer
+navigation drawers" means switching that constant back.
+
 ### The stepped form — the default for every first-level form (Pavan, 2026-10-05)
 
 Tried on Create Delivery Order, then made the default in every module (Sales,
@@ -89,6 +110,10 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   because it is the answer to a refused press. It resets each time a record
   opens. Where a strip simply stands on a sheet (no step column), it stays
   grey.
+- **The step column is OFF on the 3PL order sheets (Pavan, 2026-10-06)** —
+  detail and create, delivery and asset. The stepped look stays; only the
+  column goes (`stepColumn={false}` on `RecordSheet`). Its design and
+  behaviour are archived in `archive/step-column.md`, with how to restore it.
 - **Not stepped:** level-2 sheets (a sheet over a sheet), Export
   (`stepNav={false}`), pickers and read drawers (they reset
   `FormStepsContext` to false).

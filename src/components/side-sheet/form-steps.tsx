@@ -259,8 +259,15 @@ export function SteppedFormBody({
   top,
   onShownChange,
   stepsAction,
+  hideColumn = false,
 }: {
   children: React.ReactNode;
+  /**
+   * Keep the stepped form's look (plain group headings, one long scroll) but
+   * do not show the step column. The column is archived, not removed — see
+   * docs/ds/ui/archive/step-column.md.
+   */
+  hideColumn?: boolean;
   /** Passed to the step column's header row — see `FormStepsNav`. */
   stepsAction?: React.ReactNode;
   /**
@@ -281,7 +288,7 @@ export function SteppedFormBody({
 }) {
   const formRef = React.useRef<HTMLDivElement>(null);
   const [count, setCount] = React.useState(0);
-  const shown = count >= 2;
+  const shown = count >= 2 && !hideColumn;
   React.useEffect(() => {
     onShownChange?.(shown);
   }, [shown, onShownChange]);

@@ -992,7 +992,9 @@ export function AssetMovementSheet({
       size="wide"
       open={open}
       onOpenChange={requestClose}
-      stepsAction={gear}
+      /* No step column — see the order sheet. The gear goes to the header. */
+      stepColumn={false}
+      headerActions={gear}
       mode="create"
       showCancel={false}
       editTitle="Asset Order"

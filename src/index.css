@@ -263,6 +263,12 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-drawer: var(--drawer);
   --color-rail: var(--rail);
+  --color-fp-shell-ground: var(--fp-shell-ground);
+  --color-fp-shell-panel: var(--fp-shell-panel);
+  --color-fp-shell-rim: var(--fp-shell-rim);
+  --color-fp-shell-selected: var(--fp-shell-selected);
+  --color-fp-shell-guide: var(--fp-shell-guide);
+  --color-fp-shell-marker: var(--fp-shell-marker);
   --color-fp-outline-1: var(--fp-outline-1);
   --color-fp-outline-2: var(--fp-outline-2);
   --color-fp-surface-1a: var(--fp-surface-1a);
@@ -429,6 +435,16 @@
      that is already tight at the top. */
   --fp-surface-1a: #f4f5f8; /* inner panel — one step under the content layer */
   --fp-surface-1b: #ffffff; /* content layer */
+  /* THE APP SHELL'S OWN SET (Pavan, 2026-10-06 — after the AirOps reference).
+     The ground the whole app sits on (top bar included), the box the
+     navigation sits in, its rim, a selected menu item, the guide line down a
+     module's pages and the marker on it beside the page you are on. */
+  --fp-shell-ground: #f2f2f2; /* a touch darker than Pavan's #f7f7f7 (2026-10-06) */
+  --fp-shell-panel: #fbfbfb; /* lighter than the ground */
+  --fp-shell-rim: #e5e3e1;
+  --fp-shell-selected: #f1f0ec;
+  --fp-shell-guide: #e6e4e2;
+  --fp-shell-marker: #3a7760;
   --fp-card-1: #e9ecf1; /* raised card / inset block */
   --fp-card-2: #f4f5f8; /* the quieter card step (Figma FP/Card 2) */
   --fp-card-3: #fafafa; /* the faintest step — a board lane's ground */
@@ -805,6 +821,13 @@
   --fp-selected-strong: var(--fp-ink-1);
   --fp-selected-border: var(--fp-outline-2);
   --fp-surface-1b: #161a20; /* content layer */
+  /* The shell set in dark — the theme's own steps, the marker lifted. */
+  --fp-shell-ground: var(--fp-surface-base);
+  --fp-shell-panel: var(--fp-card-2);
+  --fp-shell-rim: var(--fp-outline-2);
+  --fp-shell-selected: var(--fp-card-1);
+  --fp-shell-guide: var(--fp-outline-2);
+  --fp-shell-marker: #6fbf9f;
   --fp-card-1: #282d35; /* raised card / inset block */
   --fp-card-2: #1b1f25;
   --fp-card-3: #191d23; /* the faintest step — had no dark value */ /* the quieter card step (Figma FP/Card 2) */

@@ -1,0 +1,274 @@
+import * as React from "react";
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { NavGroup, NavItem } from "@/components/navigation-drawer";
+
+/*
+  THE ONE-PANEL NAVIGATION (Pavan, 2026-10-06, after the Lovable "unified UI"
+  reference — the navigation menu only).
+
+  Every module is a row; the module you are in is open, and under it are its
+  pages, grouped under small headings. A page that has pages of its own (3PL
+  Orders, Directory) becomes a heading with those pages under it, so there is
+  no second drawer. Collapsed, the panel is an icon rail: the open module's
+  pages as icons, then the other modules.
+
+  THE TWO-LAYER RAIL + DRAWER IS KEPT, not deleted — `NAV_STYLE` in
+  UnifiedView switches back ("Bring in the two-layer navigation drawers").
+
+  COLOURS (Pavan, 2026-10-06, after the AirOps reference) are the shell set,
+  `--fp-shell-*`: the panel and its rim, a selected item's fill, the guide line
+  down the open module's pages and the green marker on it beside the page you
+  are on. The open module itself takes weight, not a fill.
+*/
+
+export interface SidebarModule {
+  key: string;
+  name: string;
+  icon: React.ReactNode;
+}
+
+const COLLAPSED_KEY = "fp-unified-sidebar-collapsed";
+
+/* THE NAVIGATION SITS IN A BOX (Pavan, 2026-10-06, after the AirOps
+   reference) — its own panel on the shell ground, no rim (Pavan, 2026-10-06),
+   8px clear of the edges like the content layer beside it. */
+const BOX_WRAP = "flex h-full shrink-0 py-2 pl-2";
+const BOX = "flex h-full shrink-0 flex-col overflow-hidden rounded-lg bg-fp-shell-panel";
+
+/** A page in the open module, with where it sits: its area and, if any, its sub-page. */
+interface Page {
+  area: string;
+  sub: string | null;
+  label: string;
+  icon: React.ReactNode;
+}
+interface Section {
+  heading?: string;
+  pages: Page[];
+}
+
+/** The open module's pages, as headed sections. Direct pages share one. */
+function sectionsFor(items: NavItem[], subNav: Record<string, NavGroup[]>): Section[] {
+  const out: Section[] = [];
+  let loose: Page[] = [];
+  const flush = () => {
+    if (loose.length) out.push({ pages: loose });
+    loose = [];
+  };
+  for (const item of items) {
+    const groups = subNav[item.key];
+    if (!groups) {
+      loose.push({ area: item.key, sub: null, label: item.label, icon: item.icon });
+      continue;
+    }
+    flush();
+    out.push({
+      heading: item.label,
+      pages: groups.flatMap((g) =>
+        g.items.map((s) => ({ area: item.key, sub: s.key, label: s.label, icon: s.icon }))
+      ),
+    });
+  }
+  flush();
+  return out;
+}
+
+export function ModuleSidebar({
+  modules,
+  moduleNav,
+  subNav,
+  activeModule,
+  activeArea,
+  activeSub,
+  onModuleChange,
+  onNavigate,
+}: {
+  modules: SidebarModule[];
+  moduleNav: Record<string, NavItem[]>;
+  subNav: Record<string, NavGroup[]>;
+  activeModule: string;
+  /** The area on show (`navKey`), and the page inside it (`subKey`). */
+  activeArea: string;
+  activeSub: string | null;
+  onModuleChange: (key: string) => void;
+  onNavigate: (area: string, sub: string | null) => void;
+}) {
+  const [collapsed, setCollapsed] = React.useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, c ? "0" : "1");
+      } catch {
+        // Storage blocked — the toggle still works for this visit.
+      }
+      return !c;
+    });
+  };
+
+  const sections = sectionsFor(moduleNav[activeModule] ?? [], subNav);
+  const isActive = (p: Page) =>
+    p.area === activeArea && (p.sub === null ? activeSub === null : p.sub === activeSub);
+
+  /* ── COLLAPSED — an icon rail ── */
+  if (collapsed) {
+    const tip = (label: string, node: React.ReactElement) => (
+      <Tooltip key={label}>
+        <TooltipTrigger asChild>{node}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    );
+    const iconBtn = (on: boolean) =>
+      cn(
+        "flex size-9 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
+        on
+          ? "bg-fp-shell-selected text-sidebar-foreground"
+          : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground"
+      );
+    return (
+      <div className={BOX_WRAP}>
+      <nav aria-label="Primary" className={cn(BOX, "w-14 items-center gap-1 overflow-y-auto py-3")}>
+        {tip(
+          "Expand navigation",
+          <button
+            type="button"
+            aria-label="Expand navigation"
+            onClick={toggle}
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground/40 outline-none transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-4"
+          >
+            <PanelLeftOpen />
+          </button>
+        )}
+        <div aria-hidden className="my-2 h-px w-7 shrink-0 bg-fp-shell-guide" />
+        {sections.map((sec, i) => (
+          <React.Fragment key={sec.heading ?? `loose-${i}`}>
+            {i > 0 && <div aria-hidden className="my-1 h-px w-5 shrink-0 bg-fp-shell-guide" />}
+            {sec.pages.map((p) =>
+              tip(
+                p.label,
+                <button
+                  type="button"
+                  aria-label={p.label}
+                  aria-current={isActive(p) ? "page" : undefined}
+                  onClick={() => onNavigate(p.area, p.sub)}
+                  className={iconBtn(isActive(p))}
+                >
+                  {p.icon}
+                </button>
+              )
+            )}
+          </React.Fragment>
+        ))}
+        <div aria-hidden className="my-2 h-px w-7 shrink-0 bg-fp-shell-guide" />
+        {modules
+          .filter((m) => m.key !== activeModule)
+          .map((m) =>
+            tip(
+              m.name,
+              <button
+                type="button"
+                aria-label={m.name}
+                onClick={() => onModuleChange(m.key)}
+                className={iconBtn(false)}
+              >
+                {m.icon}
+              </button>
+            )
+          )}
+      </nav>
+      </div>
+    );
+  }
+
+  /* ── EXPANDED ── */
+  return (
+    <div className={BOX_WRAP}>
+    <nav aria-label="Primary" className={cn(BOX, "relative w-60")}>
+      {/* IN THE CORNER, AND QUIET (Pavan, 2026-10-06) — a light grey mark
+          that says the box folds, not a row of its own. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="Collapse navigation"
+            onClick={toggle}
+            className="absolute top-1.5 right-1.5 z-10 flex size-6 items-center justify-center rounded-md text-muted-foreground/40 outline-none transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-4"
+          >
+            <PanelLeftClose />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Collapse navigation</TooltipContent>
+      </Tooltip>
+      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pt-7 pb-3">
+        {modules.map((m) => {
+          const open = m.key === activeModule;
+          return (
+            <li key={m.key}>
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => !open && onModuleChange(m.key)}
+                className={cn(
+                  "flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
+                  open
+                    ? "font-medium text-sidebar-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-fp-shell-selected hover:text-sidebar-foreground"
+                )}
+              >
+                <span className="flex shrink-0">{m.icon}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{m.name}</span>
+                {open ? (
+                  <ChevronDown className="size-4 shrink-0 opacity-60" />
+                ) : (
+                  <ChevronRight className="size-4 shrink-0 opacity-60" />
+                )}
+              </button>
+              {open && sections.length > 0 && (
+                <div className="mt-1 mb-2 ml-5 flex flex-col gap-2 border-l border-fp-shell-guide pl-2.5">
+                  {sections.map((sec, i) => (
+                    <div key={sec.heading ?? `loose-${i}`} className="flex flex-col gap-0.5">
+                      {sec.heading && (
+                        <span className="px-2 pt-1 pb-0.5 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+                          {sec.heading}
+                        </span>
+                      )}
+                      {sec.pages.map((p) => {
+                        const on = isActive(p);
+                        return (
+                          <button
+                            key={`${p.area}:${p.sub ?? ""}`}
+                            type="button"
+                            aria-current={on ? "page" : undefined}
+                            onClick={() => onNavigate(p.area, p.sub)}
+                            className={cn(
+                              "relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-4",
+                              on
+                                ? /* THE MARKER sits ON the guide line, beside the page. */
+                                  "bg-fp-shell-selected font-medium text-sidebar-foreground before:absolute before:inset-y-1 before:-left-[11px] before:w-0.5 before:rounded-full before:bg-fp-shell-marker"
+                                : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span className="flex shrink-0">{p.icon}</span>
+                            <span className="truncate">{p.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+    </div>
+  );
+}

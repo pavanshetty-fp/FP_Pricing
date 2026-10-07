@@ -1100,6 +1100,27 @@ with what each is based on; **Apply** fills the picker. Its icon is the AI mark:
 sparkle with two small ones, in a violet gradient (`--color-fp-lane-violet` →
 `--fp-viz-7`), after Pavan's "AI Insights" reference.
 
+### Shell, navigation and create menu (2026-10-06, last)
+
+- **Navigation is one boxed panel** (`ModuleSidebar`, after the Lovable menu
+  + AirOps colours): modules as rows, the open module's pages under it with a
+  guide line, the current page a soft fill (`--fp-shell-selected`) with a
+  green marker on the line (`--fp-shell-marker`); the open module takes weight
+  only. The box is `--fp-shell-panel` (#fbfbfb), no rim, 8px clear of the
+  edges; the collapse mark is a quiet grey 16px icon in its top-right corner
+  (the expand mark in the rail matches). The app ground — top bar included —
+  is `--fp-shell-ground` (#f2f2f2). The top bar has no fill of its own; the
+  global search field has no rim. Two-layer rail + drawer kept behind
+  `NAV_STYLE`.
+- **Create Order = Delivery Order · Asset Order.** Asset Order opens a modal
+  of four compact boxes (no icons, no outer box): Delivery · Pickup ·
+  Transfer · Relocate, each with its from → to and one line; a box opens that
+  route's form.
+- **No step column on the 3PL order sheets** (detail and create, delivery and
+  asset) — archived in `docs/ds/ui/archive/step-column.md`. The order-form
+  gear moved to the sheet header.
+- **The stage track waits for the scroll** on Move to Assigned, then animates.
+
 ### Summary option 2, and moving to Assigned (2026-10-06, later)
 
 - **D-104634 carries an Option 1 / Option 2 switch** (header, black and white;
@@ -1118,6 +1139,9 @@ sparkle with two small ones, in a violet gradient (`--color-fp-lane-violet` →
 - **The stage track animates a stage change** (`StageTrack`, DS): the line
   runs on (500ms), the stage left takes its tick, the new pill fades/zooms in
   after 300ms. Never on open; off under reduced motion.
+- **On Move to Assigned the track waits for the scroll**: it keeps showing
+  Quoting while the sheet travels to the top, and animates once the page has
+  stopped (watched frame by frame).
 
 ### Quotes, compared (2026-10-05)
 

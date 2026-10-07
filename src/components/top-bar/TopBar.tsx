@@ -82,7 +82,9 @@ export function TopBar({
     return () => window.removeEventListener("keydown", onKey);
   }, [onSearchActivate]);
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3">
+    /* NO FILL OF ITS OWN — it sits on the shell's ground, so an app that tints
+       its ground (Unified View, 2026-10-06) tints the bar with it. */
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-transparent px-3">
       {/* Left — brand logo */}
       <div className="flex flex-1 items-center gap-2">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground [&_svg]:size-5">
@@ -107,7 +109,9 @@ export function TopBar({
               onClick={onSearchActivate}
               onFocus={onSearchActivate}
               className={cn(
-                "h-9 rounded-md pl-8",
+                /* NO RIM (Pavan, 2026-10-06) — the white field on the
+                   shell ground is edge enough; the focus ring still shows. */
+                "h-9 rounded-md border-transparent pl-8 shadow-none",
                 onSearchActivate && "cursor-pointer caret-transparent"
               )}
             />

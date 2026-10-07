@@ -1,5 +1,11 @@
 import * as React from "react";
 import { CalendarOff, SearchX } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -375,6 +381,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
  * letter the Sales table already spends on it — and a second E would make the
  * one thing the disc exists to do, telling two types apart, impossible.
  */
+
 const TYPE_CODE: Record<
   BrokerOrderType,
   { text: string; tone: CodeDiscTone }
@@ -1005,6 +1012,8 @@ export function BrokerOrdersScreen({
      a form opens rather than by a Type field inside one. `null` is "no movement
      sheet open"; the value is which direction it runs. */
   const [movement, setMovement] = React.useState<MovementDirection | null>(null);
+  /** The asset-order route picker — four squares, one per route. */
+  const [pickingRoute, setPickingRoute] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<BrokerSortState | null>(null);
   const [page, setPage] = React.useState(1);
@@ -2224,19 +2233,17 @@ export function BrokerOrdersScreen({
             label: "Delivery Order",
             detail: "Standard fuel delivery to a customer site",
           },
+          /* ONE ENTRY, THE ROUTE PICKED IN A MODAL (Pavan, 2026-10-06) —
+             the four routes were a submenu; now they are four squares. */
           {
             key: "movement-order",
-            label: "Asset Orders",
+            label: "Asset Order",
             detail: "Move a tank or asset between yards and customer sites",
-            choices: MOVEMENT_DIRECTIONS.map((d) => ({
-              key: d,
-              label: MOVEMENT_LABEL[d],
-              detail: MOVEMENT_DETAIL[d],
-            })),
           },
         ]}
         onCreateSelect={(key) => {
           if (key === "delivery-order") setCreating(true);
+          else if (key === "movement-order") setPickingRoute(true);
           else setMovement(key as MovementDirection);
         }}
         onExport={() => setExporting(true)}
@@ -2536,6 +2543,39 @@ export function BrokerOrdersScreen({
         shipTos={shipTos}
         focus={sheetFocus}
       />
+
+      <Dialog open={pickingRoute} onOpenChange={setPickingRoute}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Asset Order</DialogTitle>
+          </DialogHeader>
+          {/* FOUR SQUARES IN ONE BOX (Pavan, 2026-10-06) — pick the route and
+              the order's form opens for it. */}
+          {/* FOUR BOXES, NO BOX ROUND THEM, NO ICONS (Pavan, 2026-10-06). */}
+          <div className="grid grid-cols-2 gap-2">
+            {MOVEMENT_DIRECTIONS.map((d) => {
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    setPickingRoute(false);
+                    setMovement(d);
+                  }}
+                  /* COMPACT (Pavan, 2026-10-06) — content height, not square. */
+                  className="flex flex-col items-start rounded-md border border-border bg-fp-surface-1b p-3 text-left outline-none transition-colors hover:border-foreground/30 hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <span className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold text-foreground">{d}</span>
+                    <span className="text-xs text-foreground">{MOVEMENT_LABEL[d].replace(/\s*\(.*\)$/, "")}</span>
+                    <span className="text-xs text-muted-foreground">{MOVEMENT_DETAIL[d]}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ONE SHEET, TWO DIRECTIONS — see `AssetMovementSheet`. Mounted only
           while open so it starts from a clean draft each time. The direction is

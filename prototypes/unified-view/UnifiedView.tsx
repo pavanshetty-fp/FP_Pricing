@@ -46,6 +46,7 @@ import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
+import { ModuleSidebar } from "./ModuleSidebar";
 import { ThemeToggle } from "@/components/theme";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
@@ -272,6 +273,20 @@ const SUB_NAV: Record<string, NavGroup[]> = {
     },
   ],
 };
+
+/**
+ * WHICH NAVIGATION THE APP WEARS (Pavan, 2026-10-06).
+ *
+ *   "sidebar"    — one panel: every module a row, the open module's pages
+ *                  grouped under it, collapsible to an icon rail
+ *                  (`ModuleSidebar`, after the Lovable reference). CURRENT.
+ *   "two-layer"  — the Tier-1 rail with the module switcher, plus the Tier-2
+ *                  drawer for areas with sub-pages (`NavRail` +
+ *                  `NavigationDrawer`). KEPT, untouched.
+ *
+ * "Bring in the two-layer navigation drawers" = set this to "two-layer".
+ */
+const NAV_STYLE: "sidebar" | "two-layer" = "sidebar";
 
 /** First destination inside an area's drawer, for landing on arrival. */
 const firstSubKey = (areaKey: string): string | null =>
@@ -1622,6 +1637,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         }
         /* The preset-view row owns the only hairline under the header. */
         headerDivider={false}
+        /* THE SHELL GROUND (Pavan, 2026-10-06, after the AirOps reference) —
+           everything but the content layer, the top bar included. */
+        className="bg-fp-shell-ground"
         topBar={
           <TopBar
             user={user}
@@ -1633,6 +1651,21 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
           />
         }
         rail={
+          NAV_STYLE === "sidebar" ? (
+            <ModuleSidebar
+              modules={only ? APP_MODULES.filter((m) => m.key === only) : APP_MODULES}
+              moduleNav={MODULE_NAV}
+              subNav={SUB_NAV}
+              activeModule={moduleKey}
+              activeArea={accountTitle ? "" : navKey}
+              activeSub={subKey}
+              onModuleChange={switchModule}
+              onNavigate={(area, sub) => {
+                setNavKey(area);
+                setSubKey(sub ?? firstSubKey(area));
+              }}
+            />
+          ) : (
           <NavRail
             groups={[{ items: navItems }]}
             activeKey={active?.key}
@@ -1641,6 +1674,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
             onModuleChange={switchModule}
             modules={only ? APP_MODULES.filter((m) => m.key === only) : APP_MODULES}
           />
+          )
         }
         /* TIER 2 — rendered only where the active rail item declares a second
            nav level. Sales has none, so its content layer still takes the full
@@ -1650,9 +1684,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
            or a board, which is to say every screen wants the width — and the
            drawer's job is done the moment you have picked the list you are
            working in. See `sidebarPeek`. */
-        sidebarPeek
+        sidebarPeek={NAV_STYLE === "two-layer"}
         sidebar={
-          subGroups && active ? (
+          NAV_STYLE === "two-layer" && subGroups && active ? (
             <NavigationDrawer
               className="rounded-lg bg-sidebar"
               brand={{

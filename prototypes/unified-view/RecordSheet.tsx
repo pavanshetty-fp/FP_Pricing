@@ -200,6 +200,12 @@ export interface RecordSheetProps {
    * `components/side-sheet/form-steps`.
    */
   stepNav?: boolean;
+  /**
+   * The step column itself. Off = the stepped form without the column on the
+   * left (Pavan, 2026-10-06 — removed from the 3PL order sheets, archived in
+   * docs/ds/ui/archive/step-column.md). Defaults to on.
+   */
+  stepColumn?: boolean;
   children: React.ReactNode;
 }
 
@@ -364,6 +370,7 @@ export function RecordSheet({
   footerBannerClassName,
   stepsAction,
   stepNav,
+  stepColumn = true,
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
@@ -444,6 +451,7 @@ export function RecordSheet({
             top={navShown ? steps : undefined}
             onShownChange={setNavOn}
             stepsAction={stepsAction}
+            hideColumn={!stepColumn}
           >
             {children}
           </SteppedFormBody>

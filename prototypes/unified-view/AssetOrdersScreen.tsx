@@ -13,9 +13,17 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
-import { ListFilters } from "./ListFilters";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListFilters, type ListFacet } from "./ListFilters";
+import { DateRangeFilter, type DateRange } from "./threepl/DateRangeFilter";
 import { ListTable, TwoLineCell } from "./ListTable";
+import {
+  BrokerBoard,
+  type BoardCardUnit,
+  type BoardLane,
+  type LaneColor,
+} from "./threepl/BrokerBoard";
+import { OrderMapView } from "./OrderMapView";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { ASSET_ORDER_GROUP_DIMS } from "./groupDims";
 import { AssetOrderSheet, type AssetOrderDraft } from "./AssetOrderSheet";
@@ -33,6 +41,7 @@ import {
   sortAssetOrders,
   type AssetOrder,
   type AssetOrderColumnKey,
+  type AssetOrderStatus,
   type AssetSortState,
   ASSET_ORDER_STATUS_TONE,
 } from "./assetOrders";
@@ -44,7 +53,8 @@ import { diffAssetOrder } from "./salesActivity";
  * CTA and Export, the action bar, the table, pagination.
  *
  * DATE-SCOPED, like Fuel Orders: every row carries a delivery date, so the
- * toolbar keeps the date stepper and the list shows one day at a time.
+ * toolbar carries Fuel Orders' date RANGE (Pavan, 2026-10-07). It opens on
+ * tomorrow — a one-day range.
  *
  * NO BULK-ACTION BAR, and no row checkboxes with it. Fuel Orders' bar exists
  * because a dispatcher edits five specific fields across many orders; which
@@ -66,21 +76,46 @@ interface ViewState {
   sortDir: "asc" | "desc" | null;
   hidden: string[];
   pageSize: number;
+  /** The range's first day. A view saved before ranges has only this. */
   dateKey: string;
+  /** The range's last day (Pavan, 2026-10-07). Optional so a view saved with
+   *  one date opens as a one-day range. */
+  dateKeyTo?: string;
+  /** The filter panel's ticks, as `facetKey:option` ids (Pavan, 2026-10-07).
+   *  Optional so a view saved before the panel worked still applies. */
+  facets?: string[];
   colScope: string;
   colQuery: string;
   /** The filter row's boxes, by column key. Optional so a view saved before
    *  the row still applies. */
   colFilters?: Record<string, string>;
+  /* ORDER, WIDTHS AND THE BOARD (Pavan, 2026-10-07) — what 3PL's views keep.
+     Optional so a view saved before them still applies. */
+  /** Column order as keys. Empty means "as declared". */
+  columnOrder?: string[];
+  /** Reader-set column widths in px, by key. Empty means "as declared". */
+  columnWidths?: Record<string, number>;
+  /** Card fields switched off, per lane, as sorted keys. */
+  cardOff?: Record<string, string[]>;
+  /** Table, board or map. */
+  mode?: ListView;
+  /** Each lane's own sort. */
+  laneSort?: Record<string, string | undefined>;
 }
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
     hidden: [...s.hidden].sort(),
+    /* One date is a one-day range, and no ticks is no ticks. */
+    dateKeyTo: s.dateKeyTo ?? s.dateKey,
+    facets: [...(s.facets ?? [])].sort(),
     /* Empty boxes are no filter — typing then clearing one is not a change. */
     colFilters: Object.fromEntries(
       Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
+    ),
+    laneSort: Object.fromEntries(
+      Object.entries(s.laneSort ?? {}).filter(([, v]) => v).sort(([a], [b]) => a.localeCompare(b))
     ),
   });
 
@@ -106,6 +141,142 @@ function assetOrderColumnText(r: AssetOrder, key: AssetOrderColumnKey): string {
   }
 }
 
+/* ---- the board (Pavan, 2026-10-07) — the 3PL board, reused -------------- */
+
+/** One lane per stage, left to right as an order moves; Cancelled set apart. */
+const LANE_COLOR: Record<AssetOrderStatus, LaneColor> = {
+  Requested: "yellow",
+  Scheduled: "blue",
+  Dispatched: "cyan",
+  Delivered: "green",
+  Cancelled: "grey",
+};
+
+/** What a card can show — the board's own column menu. See 3PL `CARD_UNITS`. */
+const CARD_UNITS: { key: string; label: string; group?: string }[] = [
+  { key: "customer", label: "Customer Details" },
+  { key: "customer.account", label: "Account", group: "customer" },
+  { key: "customer.site", label: "Ship-to site", group: "customer" },
+  { key: "schedule", label: "Delivery Date" },
+  { key: "asset", label: "Asset Details" },
+  { key: "asset.qty", label: "Quantity", group: "asset" },
+  { key: "asset.serial", label: "Serial #", group: "asset" },
+  { key: "salesRep", label: "Sales Rep" },
+];
+
+/** One shared empty set, so a lane with nothing hidden does not allocate. */
+const EMPTY_SET: ReadonlySet<string> = new Set<string>();
+
+/** Which lanes one press in the menu writes to. */
+const lanesInScope = (scope: string | null): string[] =>
+  scope ? [scope] : [...ASSET_ORDER_STATUSES];
+
+/** One field on or off in one lane's set — 3PL's parent/child rule. */
+function toggleField(
+  current: ReadonlySet<string>,
+  key: string,
+  turningOff: boolean
+): Set<string> {
+  const next = new Set(current);
+  const kids = CARD_UNITS.filter((c) => c.group === key).map((c) => c.key);
+  const entry = CARD_UNITS.find((c) => c.key === key);
+  if (!turningOff) {
+    next.delete(key);
+    for (const c of kids) next.delete(c);
+    if (entry?.group) next.delete(entry.group);
+    return next;
+  }
+  next.add(key);
+  for (const c of kids) next.add(c);
+  if (entry?.group) {
+    const siblings = CARD_UNITS.filter((c) => c.group === entry.group).map((c) => c.key);
+    if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
+  }
+  return next;
+}
+
+function initialCardOff(): Record<string, Set<string>> {
+  return Object.fromEntries(ASSET_ORDER_STATUSES.map((s) => [s, new Set<string>()]));
+}
+
+/** Card fields as plain sorted arrays, so a view can hold and compare them. */
+const cardOffToArrays = (c: Record<string, Set<string>>) =>
+  Object.fromEntries(
+    Object.keys(c)
+      .sort()
+      .map((k) => [k, [...c[k]].sort()])
+  );
+
+function laneCardUnits(r: AssetOrder, off: ReadonlySet<string>): BoardCardUnit[] {
+  const units: BoardCardUnit[] = [
+    {
+      kind: "stack",
+      key: "customer",
+      heading: "Customer Details",
+      lines: [
+        ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 1 as const }]),
+        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
+      ],
+    },
+    { kind: "inline", key: "schedule", heading: "Delivery Date", parts: [r.date.title] },
+    {
+      kind: "rows",
+      key: "asset",
+      heading: "Asset Details",
+      /* THE ASSET TYPE IS THE ROW, so it is not a switch — as on 3PL. */
+      rows: [
+        {
+          asset: r.assetType,
+          qty: off.has("asset.qty") ? "" : `${r.quantity} ${r.quantity === 1 ? "unit" : "units"}`,
+          assetId: off.has("asset.serial") ? undefined : r.serialNo,
+        },
+      ],
+    },
+    {
+      kind: "stack",
+      key: "salesRep",
+      heading: "Sales Rep",
+      lines: [{ text: r.salesRep, level: 2 as const }],
+    },
+  ];
+  /* A HEADING WITH NOTHING UNDER IT IS NOT A UNIT. */
+  return units.filter((u) => {
+    if (off.has(u.key)) return false;
+    if (u.kind === "stack") return u.lines.length > 0;
+    return true;
+  });
+}
+
+/**
+ * THE WAYS A LANE CAN BE ORDERED — 3PL's, less the time sorts: the board is
+ * one day and an asset order carries no window, so every card would tie.
+ */
+const LANE_SORTS: Record<
+  string,
+  { label: string; compare: (a: AssetOrder, b: AssetOrder) => number }
+> = {
+  "qty-desc": { label: "Quantity — largest first", compare: (a, b) => b.quantity - a.quantity },
+  "qty-asc": { label: "Quantity — smallest first", compare: (a, b) => a.quantity - b.quantity },
+  "customer-asc": {
+    label: "Customer — A to Z",
+    compare: (a, b) => a.customer.title.localeCompare(b.customer.title),
+  },
+  "order-desc": {
+    label: "Order # — newest first",
+    compare: (a, b) => Number(b.orderNo) - Number(a.orderNo),
+  },
+};
+
+const laneSortOptions = () =>
+  Object.entries(LANE_SORTS).map(([key, o]) => ({ key, label: o.label }));
+
+/** Tomorrow, as a one-day range — the list's opening window (Pavan, 2026-10-07). */
+function tomorrowRange(): DateRange {
+  const day = startOfDay(new Date());
+  day.setDate(day.getDate() + 1);
+  return { from: day, to: day };
+}
+
 export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number } | null } = {}) {
   /* THE SETTER WRITES THE CHANGE LOG (sales, 2026-09-23) — see activity.tsx. */
   const [rows, setRows] = useLoggedRows<AssetOrder>(ASSET_ORDERS, diffAssetOrder);
@@ -116,10 +287,32 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [hidden, setHidden] = React.useState<Set<AssetOrderColumnKey>>(new Set());
-  const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  /* A RANGE, OPENING ON TOMORROW (Pavan, 2026-10-07) — Fuel Orders' control. */
+  const [range, setRange] = React.useState<DateRange>(tomorrowRange);
+  /* The filter panel's applied ticks, as `facetKey:option` ids — 3PL's. */
+  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<ListView>("table");
+  /* Empty = the table's declared order; the table fills in anything a saved
+     order does not mention, so a stale view never costs a column. */
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
+  /* A SET PER LANE, and a scope for the menu — 3PL's card fields. */
+  const [cardOff, setCardOff] = React.useState<Record<string, Set<string>>>(initialCardOff);
+  /** `null` = the menu is speaking for every lane at once. */
+  const [cardScope, setCardScope] = React.useState<string | null>(null);
+  const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>({});
+  /* On All lanes a field reads as hidden unless it is showing in every lane. */
+  const scopedHidden = React.useMemo<ReadonlySet<string>>(() => {
+    if (cardScope) return cardOff[cardScope] ?? EMPTY_SET;
+    const out = new Set<string>();
+    for (const u of CARD_UNITS) {
+      if (ASSET_ORDER_STATUSES.some((l) => (cardOff[l] ?? EMPTY_SET).has(u.key)))
+        out.add(u.key);
+    }
+    return out;
+  }, [cardOff, cardScope]);
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
@@ -134,10 +327,17 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
     sortDir: sort?.dir ?? null,
     hidden: [...hidden],
     pageSize,
-    dateKey: dateKeyOf(date),
+    dateKey: dateKeyOf(range.from),
+    dateKeyTo: dateKeyOf(range.to),
+    facets: [...facetSel].sort(),
     colScope,
     colQuery,
     colFilters,
+    columnOrder,
+    columnWidths,
+    cardOff: cardOffToArrays(cardOff),
+    mode: view,
+    laneSort,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -146,10 +346,17 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
       sortDir: null,
       hidden: [],
       pageSize: 25,
-      dateKey: dateKeyOf(startOfDay(new Date())),
+      dateKey: dateKeyOf(tomorrowRange().from),
+      dateKeyTo: dateKeyOf(tomorrowRange().to),
+      facets: [],
       colScope: "customer",
       colQuery: "",
       colFilters: {},
+      columnOrder: [],
+      columnWidths: {},
+      cardOff: cardOffToArrays(initialCardOff()),
+      mode: "table",
+      laneSort: {},
     }),
     []
   );
@@ -164,13 +371,25 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
     setHidden(new Set(s.hidden as AssetOrderColumnKey[]));
     setPageSize(s.pageSize);
     const [y, m, d] = s.dateKey.split("-").map(Number);
-    setDate(new Date(y, m - 1, d));
+    /* A view saved before ranges has one date; one date is a range. */
+    const [ty, tm, td] = (s.dateKeyTo ?? s.dateKey).split("-").map(Number);
+    setRange({ from: new Date(y, m - 1, d), to: new Date(ty, tm - 1, td) });
+    setFacetSel(new Set(s.facets ?? []));
     setColScope(s.colScope);
     setColQuery(s.colQuery);
     const filters = s.colFilters ?? {};
     setColFilters(filters);
     /* The row opens when the view has something typed in it. */
     setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
+    setColumnOrder(s.columnOrder ?? []);
+    setColumnWidths(s.columnWidths ?? {});
+    setCardOff(
+      s.cardOff
+        ? Object.fromEntries(Object.entries(s.cardOff).map(([k, v]) => [k, new Set(v)]))
+        : initialCardOff()
+    );
+    setView(s.mode ?? "table");
+    setLaneSort(s.laneSort ?? {});
     setPage(1);
   };
 
@@ -185,11 +404,18 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
+  const fromKey = dateKeyOf(range.from);
+  const toKey = dateKeyOf(range.to);
   const onDate = React.useMemo(
-    () => rows.filter((r) => r.dateKey === dateKeyOf(date)),
-    [rows, date]
+    () => rows.filter((r) => r.dateKey >= fromKey && r.dateKey <= toKey),
+    [rows, fromKey, toKey]
   );
-  const filtered = React.useMemo(
+  /* THE WINDOW, IN WORDS — one day reads as a date, a range as a range. */
+  const rangeLabel =
+    fromKey === toKey
+      ? formatFullDate(range.from)
+      : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`;
+  const searched = React.useMemo(
     () =>
       onDate.filter(
         (r) =>
@@ -205,6 +431,27 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
       ),
     [onDate, q, cq, colScope, activeColFilters]
   );
+  /* THE FACET NARROWING, FOR ANY SET OF TICKS — 3PL's. The list uses the
+     applied set; the panel asks it of its own ticks, to count them. AND across
+     facets, OR within one. */
+  const narrowFacets = React.useCallback(
+    (sel: ReadonlySet<string>) => {
+      if (sel.size === 0) return searched;
+      const pass = (facet: string, value: string) =>
+        ![...sel].some((id) => id.startsWith(`${facet}:`)) ||
+        sel.has(`${facet}:${value}`);
+      return searched.filter(
+        (r) =>
+          pass("status", r.status) &&
+          pass("customer", r.customer.title) &&
+          pass("shipTo", r.shipTo) &&
+          pass("assetType", r.assetType) &&
+          pass("salesRep", r.salesRep)
+      );
+    },
+    [searched]
+  );
+  const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
   const sorted = React.useMemo(() => sortAssetOrders(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
      suspends pagination while grouped — a group cannot straddle a page
@@ -218,6 +465,30 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
     page,
     pageSize,
   });
+
+  /* THE BOARD TAKES THE SORTED SET, NOT THE PAGE — a page boundary is a
+     property of a table. */
+  const lanes: BoardLane[] = React.useMemo(
+    () =>
+      ASSET_ORDER_STATUSES.map((stage) => {
+        let cards = sorted.filter((r) => r.status === stage);
+        const cmp = LANE_SORTS[laneSort[stage] ?? ""]?.compare;
+        if (cmp) cards = [...cards].sort(cmp);
+        return {
+          key: stage,
+          title: stage,
+          color: LANE_COLOR[stage],
+          apart: stage === "Cancelled",
+          emptyLabel: `No orders in ${stage.toLowerCase()}`,
+          cards: cards.map((r) => ({
+            id: r.id,
+            title: r.orderNo,
+            units: laneCardUnits(r, cardOff[stage] ?? EMPTY_SET),
+          })),
+        };
+      }),
+    [sorted, laneSort, cardOff]
+  );
 
   const onSort = (key: AssetOrderColumnKey) => {
     setSort((prev) => {
@@ -235,6 +506,17 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
   const shipTos = React.useMemo(
     () => Array.from(new Set(ASSET_ORDERS.map((r) => r.shipTo))),
     []
+  );
+  /* WHAT THE RECORD HAS, as facets (Pavan, 2026-10-07). */
+  const facets: ListFacet[] = React.useMemo(
+    () => [
+      { key: "status", label: "Status", options: [...ASSET_ORDER_STATUSES] },
+      { key: "customer", label: "Customer", options: customers, searchable: true },
+      { key: "shipTo", label: "Ship-To", options: shipTos, searchable: true },
+      { key: "assetType", label: "Asset Type", options: ASSET_TYPES, searchable: true },
+      { key: "salesRep", label: "Sales Rep", options: SALES_REPS },
+    ],
+    [customers, shipTos]
   );
 
   const saveOrder = (order: AssetOrder, draft: AssetOrderDraft) =>
@@ -275,7 +557,7 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
 
   /** Order numbers continue the 61xxxxx series in steps of 3, as the seeds do. */
   const createOrder = (draft: AssetOrderDraft) => {
-    const when = draft.deliveryDate ?? date;
+    const when = draft.deliveryDate ?? range.from;
     const nextNo = Math.max(...rows.map((r) => Number(r.orderNo))) + 3;
     const offset = Math.round(
       (when.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
@@ -342,14 +624,21 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
             setPage(1);
           }}
           searchPlaceholder="Search asset orders, customers, reps…"
+          boardView
+          mapView
+          /* Not on the board, which is already grouped — by lane. */
+          showGroupBy={view !== "board"}
           filters={
+            /* WIRED (Pavan, 2026-10-07) — it narrowed nothing. 3PL's
+               panel: staged ticks, a live count, Apply. */
             <ListFilters
-              facets={[
-                { key: "status", label: "Status", options: [...ASSET_ORDER_STATUSES] },
-                { key: "salesRep", label: "Sales Rep", options: SALES_REPS },
-                { key: "customer", label: "Customer", options: customers, searchable: true },
-                { key: "assetType", label: "Asset Type", options: ASSET_TYPES, searchable: true },
-              ]}
+              facets={facets}
+              value={facetSel}
+              countFor={(sel) => narrowFacets(sel).length}
+              onApply={(sel) => {
+                setFacetSel(sel);
+                setPage(1);
+              }}
             />
           }
           groupBy={{
@@ -362,6 +651,8 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
           }}
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hidden}
+          columnOrder={columnOrder}
+          onReorderColumns={setColumnOrder}
           onToggleColumn={(k) =>
             setHidden((prev) => {
               const next = new Set(prev);
@@ -371,6 +662,29 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
             })
           }
           onShowAllColumns={() => setHidden(new Set())}
+          /* WHAT IS ON THE CARD, PER LANE — 3PL's control. Board only. */
+          cardFields={{
+            units: CARD_UNITS,
+            hidden: scopedHidden,
+            scope: cardScope,
+            scopes: ASSET_ORDER_STATUSES.map((l) => ({ key: l, label: l })),
+            onScopeChange: setCardScope,
+            onShowAll: () =>
+              setCardOff((prev) => {
+                const next = { ...prev };
+                for (const lane of lanesInScope(cardScope)) next[lane] = new Set();
+                return next;
+              }),
+            onToggle: (k) =>
+              setCardOff((prev) => {
+                /* One press means the same thing in every lane in scope. */
+                const turningOff = !scopedHidden.has(k);
+                const next = { ...prev };
+                for (const lane of lanesInScope(cardScope))
+                  next[lane] = toggleField(prev[lane] ?? EMPTY_SET, k, turningOff);
+                return next;
+              }),
+          }}
           searchFields={ASSET_ORDER_SEARCH_FIELDS}
           colScope={colScope}
           onColScopeChange={(v) => {
@@ -401,23 +715,36 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
-          dateScope={{
-            date,
-            onDateChange: (d) => {
-              setDate(d);
-              setPage(1);
-            },
-          }}
+          dateControl={
+            <DateRangeFilter
+              value={range}
+              onChange={(next) => {
+                setRange(next);
+                setPage(1);
+              }}
+            />
+          }
         />
-        <ColumnSearchChip
-          searchFields={ASSET_ORDER_SEARCH_FIELDS}
-          colScope={colScope}
-          colQuery={colQuery}
-          onClear={() => {
-            setColQuery("");
+        {/* ONE SHELF for the facets and the column search — 3PL's. */}
+        <FilterChips
+          facets={facets}
+          selected={facetSel}
+          onChange={(next) => {
+            setFacetSel(next);
             setPage(1);
           }}
-        />
+        >
+          <ColumnSearchChip
+            className=""
+            searchFields={ASSET_ORDER_SEARCH_FIELDS}
+            colScope={colScope}
+            colQuery={colQuery}
+            onClear={() => {
+              setColQuery("");
+              setPage(1);
+            }}
+          />
+        </FilterChips>
         {/* One chip per header box that has something typed in it. */}
         {activeColFilters.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -454,8 +781,8 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
                 </EmptyTitle>
                 <EmptyDescription>
                   {q
-                    ? `No asset orders on ${formatFullDate(date)} match “${search.trim()}”.`
-                    : `No asset orders are scheduled for ${formatFullDate(date)}.`}
+                    ? `No asset orders in ${rangeLabel} match “${search.trim()}”.`
+                    : `No asset orders are scheduled for ${rangeLabel}.`}
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
@@ -464,7 +791,10 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
                   size="sm"
                   onClick={() => {
                     if (q) setSearch("");
-                    else setDate(startOfDay(new Date()));
+                    else {
+                      const today = startOfDay(new Date());
+                      setRange({ from: today, to: today });
+                    }
                     setPage(1);
                   }}
                 >
@@ -472,6 +802,30 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
                 </Button>
               </EmptyContent>
             </Empty>
+          ) : view === "board" ? (
+            <BrokerBoard
+              lanes={lanes}
+              onOpenCard={setOpenId}
+              laneSortOptions={laneSortOptions}
+              laneSort={laneSort}
+              onLaneSortChange={(lane, option) =>
+                setLaneSort((prev) => ({ ...prev, [lane]: option ?? undefined }))
+              }
+            />
+          ) : view === "map" ? (
+            /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. The ship-to is the
+               site; one with no `SHIP_TO_SITES` row is counted as unmapped. */
+            <OrderMapView
+              orders={sorted.map((r) => ({
+                id: r.id,
+                orderNo: r.orderNo,
+                site: r.shipTo,
+                subtitle: r.customer.title,
+                status: r.status,
+                tone: STATUS_TONE[r.status],
+              }))}
+              onOpenOrder={setOpenId}
+            />
           ) : (
             <ListTable
               rows={g.visibleRows}
@@ -487,6 +841,10 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
               rowId={(r) => r.id}
               renderCell={renderCell}
               actionsKey="actions"
+              columnOrder={columnOrder}
+              onReorderColumns={setColumnOrder}
+              columnWidths={columnWidths}
+              onResizeColumns={setColumnWidths}
               openLabel={(r) => `Open order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
               showColumnFilters={colFiltersOpen}
@@ -515,7 +873,7 @@ export function AssetOrdersScreen({ focus }: { focus?: { id: string; n: number }
         shipTos={shipTos}
       />
 
-      <div className={cn("mt-4 shrink-0", view === "board" && "hidden")}>
+      <div className={cn("mt-4 shrink-0", view !== "table" && "hidden")}>
         {g.grouped ? (
           <GroupedListFooter
             groupCount={g.groups.groupCount}

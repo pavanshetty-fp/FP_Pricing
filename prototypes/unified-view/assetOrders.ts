@@ -12,9 +12,10 @@ import type { ActivityEntry } from "./activity";
   today — so the two lists read as one family rather than two designs.
 
   INVENTED, and flagged because it is not transcribed from the source app:
-    • the status vocabulary below. The rulebook (§6) says records carry lifecycle
-      states shown as a status value, but not which ones an asset order has, so
-      this is a plausible four-state set, not a captured one.
+    • which stage each sample order sits at, and the Dispatched ones especially.
+      The five stages themselves are Lovable's, adopted for every Sales order
+      (Pavan, 2026-10-07) — see `AssetOrderStatus`.
+    • the ship-tos. Each is a `SHIP_TO_SITES` name so the map can place it.
     • the sales-rep names.
     • the order numbers, which continue a separate 61xxxxx series so they cannot
       be confused with fuel order numbers.
@@ -22,24 +23,34 @@ import type { ActivityEntry } from "./activity";
   appear across both lists.
 */
 
-/** ASSUMPTION — a plausible lifecycle, not one captured from the source app. */
-export type AssetOrderStatus = "Open" | "Scheduled" | "Delivered" | "Cancelled";
+/* THE SALES STAGES (Pavan, 2026-10-07) — Lovable's five, the same set Fuel
+   Orders uses. Open was invented; it is Requested now. */
+export type AssetOrderStatus =
+  | "Requested"
+  | "Scheduled"
+  | "Dispatched"
+  | "Delivered"
+  | "Cancelled";
 
 /** Status → badge colour, by kind (`statusKind.ts`). One map; the sheet and the
  *  table both read it. */
 export const ASSET_ORDER_STATUS_TONE = statusTones<AssetOrderStatus>({
-  /* A record that exists. Nothing is on it yet. */
-  Open: "neutral",
+  /* Waiting on somebody to schedule it. */
+  Requested: "caution",
   /* A date is set. True, and asks nothing. */
   Scheduled: "info",
+  /* On the road. Under way, asks nothing. */
+  Dispatched: "info",
   Delivered: "success",
   /* NOT RED — a terminal non-event, not a problem to solve. */
   Cancelled: "neutral",
 });
 
+/** In stage order — the filter, the group-by and the sort all read it. */
 export const ASSET_ORDER_STATUSES: AssetOrderStatus[] = [
-  "Open",
+  "Requested",
   "Scheduled",
+  "Dispatched",
   "Delivered",
   "Cancelled",
 ];
@@ -52,7 +63,7 @@ export interface AssetOrder {
   salesRep: string;
   /** Delivery date, formatted, over its relative label. */
   date: TwoLine;
-  /** `YYYY-MM-DD` — what the toolbar's date stepper matches. */
+  /** `YYYY-MM-DD` — what the toolbar's date range matches. */
   dateKey: string;
   status: AssetOrderStatus;
   /** Sheet-only fields. Not columns; they exist so the sheet has a body. */
@@ -84,8 +95,9 @@ export interface AssetOrderColumnDef {
 /** Widths follow the DS column-frame vocabulary; actions = 44 as elsewhere. */
 export const ASSET_ORDER_COLUMNS: AssetOrderColumnDef[] = [
   { key: "order", label: "Order #", width: 140, sortable: true },
-  { key: "customer", label: "Customer", width: 260 },
-  { key: "salesRep", label: "Sales Rep", width: 200 },
+  /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — DS rule. */
+  { key: "customer", label: "Customer", width: 260, sortable: true },
+  { key: "salesRep", label: "Sales Rep", width: 200, sortable: true },
   { key: "date", label: "Delivery Date", width: 180, sortable: true },
   { key: "status", label: "Status", width: 160, sortable: true },
   { key: "actions", label: "", width: 44 },
@@ -122,26 +134,29 @@ interface Seed {
 }
 
 const SEED: Seed[] = [
+  /* TOMORROW HAS WORK — invented (Pavan, 2026-10-07). The list opens on
+     tomorrow, so this one and the Morris Requested below moved from today to
+     tomorrow, next to the GPM one already there. */
   {
     customer: { title: "Bray, Raymond and Marks", description: "ERP 418223" },
     salesRep: "Dana Whitfield",
-    dayOffset: 0,
+    dayOffset: 1,
     status: "Scheduled",
     assetType: "Tank — 1000 gal",
     quantity: 2,
     serialNo: "TK-1000-4471",
-    shipTo: "Bray, Raymond and Marks",
+    shipTo: "Bray North Yard",
     poNumber: "PO-88213",
   },
   {
     customer: { title: "Morris Group", description: "ERP 505112" },
     salesRep: "Marcus Reed",
     dayOffset: 0,
-    status: "Open",
+    status: "Requested",
     assetType: "Pump assembly",
     quantity: 1,
     serialNo: "PA-2210",
-    shipTo: "Morris Group - 505112",
+    shipTo: "Morris Yard 4",
     poNumber: "PO-88240",
   },
   {
@@ -152,7 +167,7 @@ const SEED: Seed[] = [
     assetType: "Tank — 500 gal",
     quantity: 4,
     serialNo: "TK-500-9033",
-    shipTo: "Gonzalez, Palmer and Miller",
+    shipTo: "GPM Southside",
     poNumber: "PO-88255",
   },
   {
@@ -163,7 +178,7 @@ const SEED: Seed[] = [
     assetType: "Meter",
     quantity: 6,
     serialNo: "MT-7781",
-    shipTo: "Morris Group - 505112",
+    shipTo: "Morris Yard 4",
     poNumber: "PO-88190",
   },
   {
@@ -174,7 +189,7 @@ const SEED: Seed[] = [
     assetType: "Hose reel",
     quantity: 3,
     serialNo: "HR-1140",
-    shipTo: "Bray, Raymond and Marks",
+    shipTo: "Bray North Yard",
     poNumber: "PO-88201",
   },
   {
@@ -185,19 +200,43 @@ const SEED: Seed[] = [
     assetType: "Tank — 1000 gal",
     quantity: 1,
     serialNo: "TK-1000-4502",
-    shipTo: "Gonzalez, Palmer and Miller",
+    shipTo: "GPM Southside",
     poNumber: "PO-88262",
   },
   {
     customer: { title: "Morris Group", description: "ERP 505112" },
     salesRep: "Priya Raman",
-    dayOffset: 0,
-    status: "Open",
+    dayOffset: 1,
+    status: "Requested",
     assetType: "Tank — 500 gal",
     quantity: 2,
     serialNo: "TK-500-9077",
-    shipTo: "Morris Group - 505112",
+    shipTo: "Morris Yard 4",
     poNumber: "PO-88271",
+  },
+  /* ON THE ROAD — invented sample data (Pavan, 2026-10-07), so the
+     Dispatched stage has rows. */
+  {
+    customer: { title: "Bray, Raymond and Marks", description: "ERP 418223" },
+    salesRep: "Tom Alvarez",
+    dayOffset: 0,
+    status: "Dispatched",
+    assetType: "Tank — 500 gal",
+    quantity: 2,
+    serialNo: "TK-500-9102",
+    shipTo: "Bray Depot 2",
+    poNumber: "PO-88277",
+  },
+  {
+    customer: { title: "Gonzalez, Palmer and Miller", description: "ERP 331904" },
+    salesRep: "Priya Raman",
+    dayOffset: 0,
+    status: "Dispatched",
+    assetType: "Meter",
+    quantity: 3,
+    serialNo: "MT-7810",
+    shipTo: "GPM Southside",
+    poNumber: "PO-88280",
   },
 ];
 
@@ -239,8 +278,9 @@ function sortValue(r: AssetOrder, key: AssetOrderColumnKey): string | number {
       return r.salesRep.toLowerCase();
     case "date":
       return r.dateKey;
+    /* BY STAGE, not by the alphabet (Pavan, 2026-10-07). */
     case "status":
-      return r.status;
+      return ASSET_ORDER_STATUSES.indexOf(r.status);
     default:
       return "";
   }

@@ -176,6 +176,12 @@ export interface FuelOrdersViewBarProps {
   onCreateSelect?: (key: string) => void;
   /** CTA label. Defaults to Fuel Orders' own verb. */
   ctaLabel?: string;
+  /**
+   * A SECOND CREATE, beside the primary and quieter than it (Pavan,
+   * 2026-10-07) — Fuel Orders' Create Quote. Outline, left of the CTA: the
+   * list's own record stays the primary.
+   */
+  secondaryCta?: { label: string; onClick: () => void };
   /** Export — sits immediately left of the CTA. */
   onExport?: () => void;
 }
@@ -224,6 +230,7 @@ export function FuelOrdersViewBar({
   onCreateSelect,
   onExport,
   ctaLabel = "Create Order",
+  secondaryCta,
 }: FuelOrdersViewBarProps) {
   const [dialog, setDialog] = React.useState<{
     mode: "new" | "rename";
@@ -448,6 +455,20 @@ export function FuelOrdersViewBar({
             table — should not carry a CTA that does nothing when pressed. The
             `ml-auto` moves to the Export button below so the right cluster
             still sits right. */}
+        {secondaryCta && (
+          <Button
+            size="xs"
+            variant="outline"
+            className={cn(
+              "mr-2 mb-3 self-end rounded-[4px]",
+              !segments?.length && "ml-auto"
+            )}
+            onClick={secondaryCta.onClick}
+          >
+            <Plus />
+            {secondaryCta.label}
+          </Button>
+        )}
         {createMenu && createMenu.length > 0 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -512,7 +533,7 @@ export function FuelOrdersViewBar({
               size="xs"
               className={cn(
                 "mb-3 self-end rounded-[4px]",
-                !segments?.length && "ml-auto"
+                !segments?.length && !secondaryCta && "ml-auto"
               )}
               onClick={onCreateOrder}
             >

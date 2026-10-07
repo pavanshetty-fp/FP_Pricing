@@ -1,9 +1,26 @@
 import * as React from "react";
-import { CalendarDays } from "lucide-react";
+import { Ban, CalendarDays, MoreHorizontal } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverContent,
@@ -33,7 +50,8 @@ import { ActivitySection } from "./activity";
  * EDITABLE FIELD here, not derived. A fuel order's status is a function of its
  * driver, so offering a control would only let the two disagree. An asset order
  * has no such dependency — nothing else on the record implies whether it is
- * Open, Scheduled, Delivered or Cancelled — so it needs an explicit control.
+ * Requested, Scheduled, Dispatched, Delivered or Cancelled — so it needs an
+ * explicit control.
  */
 const STATUS_TONE = ASSET_ORDER_STATUS_TONE;
 
@@ -79,7 +97,7 @@ function emptyDraft(): AssetOrderDraft {
     quantity: 0,
     serialNo: "",
     deliveryDate: null,
-    status: "Open",
+    status: "Requested",
     poNumber: "",
     note: "",
   };
@@ -108,6 +126,7 @@ export function AssetOrderSheet({
 }: AssetOrderSheetProps) {
   const [draft, setDraft] = React.useState<AssetOrderDraft | null>(null);
   const creating = mode === "create";
+  const [confirmCancel, setConfirmCancel] = React.useState(false);
   const saveState = useDraftSaveState(draft, open);
   /* WHAT WENT OUT LAST. The row comes back changed by our own save, so
      without this the sheet would answer its own write with a rebuild. */
@@ -144,7 +163,18 @@ export function AssetOrderSheet({
     value: AssetOrderDraft[K]
   ) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
+  /* CANCEL ORDER — 3PL's: behind the ··· and a confirm (Pavan, 2026-10-07).
+     Not on an order already Delivered or Cancelled. It goes through the
+     sheet's autosave, so the change log records it. */
+  const cancellable =
+    !creating && draft.status !== "Delivered" && draft.status !== "Cancelled";
+  const cancelOrder = () => {
+    toast.success(`${order?.orderNo ?? "Order"} cancelled`);
+    set("status", "Cancelled");
+  };
+
   return (
+    <>
     <RecordSheet
       open={open}
       onOpenChange={onOpenChange}
@@ -165,6 +195,28 @@ export function AssetOrderSheet({
             <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
           )}
         </span>
+      }
+      headerMenu={
+        cancellable ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More order actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setConfirmCancel(true);
+                }}
+              >
+                <Ban />
+                Cancel order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined
       }
       onSubmit={() => {
         if (creating) onCreate?.(draft);
@@ -290,5 +342,23 @@ export function AssetOrderSheet({
 
       {order && <ActivitySection entries={order.audit} />}
     </RecordSheet>
+
+    <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel {order?.orderNo}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            It moves to Cancelled, keeping its history.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep it</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={cancelOrder}>
+            Cancel order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

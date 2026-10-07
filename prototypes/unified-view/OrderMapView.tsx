@@ -68,6 +68,9 @@ const PIN_FILL: Record<string, string> = {
   success: "bg-status-success",
   processing: "bg-fp-banner-accent-caution",
   failed: "bg-status-failed",
+  /* INFO IS BLUE, LIKE ITS CHIP (Pavan, 2026-10-07). It had no entry, so
+     Scheduled and Dispatched fell through to neutral grey. */
+  info: "bg-fp-banner-accent-info",
   neutral: "bg-muted-foreground",
 };
 

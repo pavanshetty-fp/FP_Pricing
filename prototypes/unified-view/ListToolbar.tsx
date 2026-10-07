@@ -93,6 +93,8 @@ export interface ListToolbarProps<K extends string> {
    * it several times a session. Everything else stays a facet.
    */
   quickFilters?: React.ReactNode;
+  /** Right after the Filters button — e.g. Recommendations. */
+  afterFilters?: React.ReactNode;
   /**
    * `group` makes an entry a CHILD of the entry with that key — one level, no
    * deeper. A board card is not a flat list of fields: "Customer Details" is a
@@ -264,6 +266,7 @@ export function ListToolbar<K extends string>({
   searchPlaceholder,
   filters,
   quickFilters,
+  afterFilters,
   columns,
   hiddenColumns,
   onToggleColumn,
@@ -369,6 +372,7 @@ export function ListToolbar<K extends string>({
           )}
         </div>
         {filters}
+        {afterFilters}
         {showGroupBy &&
           (groupBy ? (
             <GroupByMenu

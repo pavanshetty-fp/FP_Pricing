@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FP DS 2026 — Tables Layout</title>
-    <!-- Apply the saved theme before first paint (default dark) to avoid a flash. -->
+    <!-- LIGHT BY DEFAULT (Pavan, 2026-10-07): dark only when it was picked by
+         hand on the toggle, before first paint to avoid a flash. -->
     <script>
       try {
-        if (localStorage.getItem("fp-theme") === "light")
-          document.documentElement.classList.remove("dark");
+        if (localStorage.getItem("fp-theme-choice") === "dark")
+          document.documentElement.classList.add("dark");
       } catch (e) {}
     </script>
   </head>

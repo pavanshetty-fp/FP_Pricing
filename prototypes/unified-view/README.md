@@ -7,7 +7,7 @@ rail — which drives real routing, not just its own label:
 
 | Module | Destinations | State |
 |---|---|---|
-| **Sales** | Fuel Orders · Asset Orders · Customers · Assets | all four built |
+| **Sales** | Dashboard · Fuel Orders · Asset Orders · Quotes · Customers · Assets | all built; Quotes 2026-10-07 (`QuotesScreen`, `QuoteSheet`, `quotes.ts`, `quoteStore.ts`) |
 | **3PL** (brokerage) | Orders · Directory | built; see [`threepl/README.md`](threepl/README.md) |
 | **Service Work** | Service Orders · Technicians · Service Settings | built; see [`service/README.md`](service/README.md) |
 | Lease, Pricing | — | no destinations; their IA has not been specified, and guessing it would put fake navigation on screen |

@@ -1730,3 +1730,16 @@ card field is "Scheduled date".
 No calendar (the next-run dates are a strip, not a grid) · no per-lane sheet ·
 no editing the common terms in place · lane acceptance cannot be driven from
 the screen.
+
+### Recommendations, rule-level (Pavan, 2026-10-07)
+
+A recommendation is a **rule**, not a customer: frequency + every ship-to it
+fits, across customers or several of one. Card (sheet 560px): frequency with
+**Review and Create Rule** · a soft info banner ("94% on Tuesday and Friday",
+then deliveries and gal a drop — never "or": an or is a separate rule) ·
+Vendors · Suppliers · Load order · a table Customer · Ship-to · Products ·
+Total gal. Same split as the form: common details = step 1, per ship-to =
+step 2. Review and Create Rule fills step 1 (frequency, product, vendors —
+computed so every ship-to is reachable — load order and its loading account)
+and step 2 (one tab per ship-to). A form opened from a recommendation shows no
+Recommendations button. History is INVENTED.

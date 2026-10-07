@@ -75,8 +75,8 @@ collapsed resting state.
 Sales (Service Work later; Lease and Pricing skipped; no cross-module page).
 Four stat tiles · bar charts · ranked lists · two tables. **Every tile, bar
 and row opens its list narrowed to exactly what it counts** — 3PL hands
-Delivery Orders the line, date range and facet ticks; Sales (one day, like
-Fuel Orders) hands Fuel Orders the day and column boxes. Charts are a single
+Delivery Orders the line, date range and facet ticks; Sales hands Fuel Orders
+its day (as a one-day range) and column boxes. Charts are a single
 hue (`fp-lane-blue`, validated in both themes); identity is the label beside
 each bar, never colour. Parts: `DashboardParts.tsx`.
 
@@ -94,7 +94,7 @@ are NOT built — there is no prior-period data.
 
 | Module | Tier 1 | Tier 2 |
 |---|---|---|
-| Sales | **Dashboard** · Fuel Orders · Asset Orders · Customers · Assets | none |
+| Sales | **Dashboard** · Fuel Orders · Asset Orders · Quotes · Customers · Assets | none |
 | 3PL | **Dashboard** · Orders · Directory | Orders → Delivery Orders, Recurring Orders · Directory → Customers, Vendors, Products, Rental Assets |
 | Service Work | Service Orders · Technicians · Service Settings | none |
 | Lease, Pricing | none — an unbuilt module shows the module-level empty state rather than invented destinations |
@@ -347,3 +347,26 @@ Four, and they are not interchangeable:
 
 A single "No data" makes the reader work out which of the four they are in —
 which is the one thing the screen already knows.
+
+### Sales, after the Lovable comparison (Pavan, 2026-10-07)
+
+**Five stages** for fuel and asset orders, from the Lovable Sales app:
+Requested · Scheduled · Dispatched · Delivered · Cancelled (kinds caution ·
+info · info · success · neutral). A driver pick moves Requested ↔ Scheduled;
+the order sheet's footer moves it on ("Move to Dispatched / Delivered");
+**Cancel order** sits in the sheet's ⋯ menu. Sample stages are invented.
+
+**3PL parity on every Sales table:** columns reorder, resize and all sort;
+search, search by column, filter row, working Filters with chips, saved views.
+**Board + map** on Fuel Orders and Asset Orders (the 3PL board: one lane per
+stage, Cancelled apart, lane sort and card fields per lane or all). Customers
+and Assets have no board (no workflow). **Date range** replaces the single day;
+Asset Orders opens on **tomorrow**. Fuel Orders' banner: **"N urgent orders
+overdue for dispatch"** (warning). Order sheets **create, then autosave**.
+
+**Quotes** (`QuotesScreen`, `QuoteSheet`, `quotes.ts`, `quoteStore.ts`):
+Draft → Send quote (email step) → Sent → Mark as accepted → Accepted, which
+makes a Requested fuel order; Expired is derived from valid-through. Several
+product lines; margin, fees and tax once per quote ($/gal, $ total or %);
+base rates from an INVENTED price list. Accepted quotes are locked. "Create
+Quote" also sits beside Create Order on Fuel Orders.

@@ -6,7 +6,12 @@ import type { ActivityEntry } from "./activity";
  * Structure and field names come from the FleetPanda Sales Console (the app
  * being recreated); every *visual* treatment comes from the DS.
  */
-export type FuelOrderStatus = "Assigned" | "Unassigned";
+/**
+ * THE ORDER'S STAGE (Pavan, 2026-10-07, taken from the Lovable Sales app):
+ * Requested → Scheduled → Dispatched → Delivered, or Cancelled. Replaces the
+ * old Assigned / Unassigned, which only said whether a driver was picked.
+ */
+export type FuelOrderStatus = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
 
 /** Order type. The list column renders the code; the label is the tooltip. */
 export type OrderTypeCode = "D" | "E";
@@ -72,6 +77,8 @@ export interface FuelOrder {
   status: FuelOrderStatus;
   /** col "Driver" — `null` renders "— Unassigned" */
   driver: Person | null;
+  /** The sheet's "Mark as Urgent" — kept on the order since 2026-10-07. */
+  urgent: boolean;
   /** The change log — see `activity.tsx`. Written by the screen's setter. */
   audit?: ActivityEntry[];
 }

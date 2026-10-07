@@ -155,11 +155,11 @@ that. **A new module adds a row here before it ships a badge.**
 
 | Kind | Sales | 3PL | Service |
 |---|---|---|---|
-| `caution` · waiting on somebody | Unassigned | Quoting · Partially Synced · Paused (series) · Invited · Quoted · Quotation received · Products updated · Awaiting Quotation · Credit on hold · Service due · Compliance expiring · Rental ends soon · In maintenance · Limited availability | Parts pending · Linked order · Needs approval · Yet to be reviewed |
+| `caution` · waiting on somebody | Unassigned · Sent (quote) | Quoting · Partially Synced · Paused (series) · Invited · Quoted · Quotation received · Products updated · Awaiting Quotation · Credit on hold · Service due · Compliance expiring · Rental ends soon · In maintenance · Limited availability | Parts pending · Linked order · Needs approval · Yet to be reviewed |
 | `info` · simply true | Assigned · Scheduled (asset order) · Active / In Use (asset) · Active (customer) | Assigned · Upcoming / Active (series) · Order created · Active (any record) · Available / On rent · Top-off | Assigned · Yet to start · Ongoing · Invoice raised · Active (technician) |
-| `success` · done | Delivered | Completed · Verified · Synced · Delivered · Accepted (lane) · Finalized (vendor) · Credit approved · Compliance valid | Completed · Completed — linked · Reviewed · Invoice synced |
+| `success` · done | Delivered · Accepted (quote) | Completed · Verified · Synced · Delivered · Accepted (lane) · Finalized (vendor) · Credit approved · Compliance valid | Completed · Completed — linked · Reviewed · Invoice synced |
 | `critical` · a warning | — | Blocked · Declined · Out of area · Not approved · Compliance expired · Over limit · Credit rejected · No tax code · No vendor can fulfil · Out of service · Expired (document) | — *(none yet, deliberately)* |
-| `neutral` · neither | Open · Cancelled (asset order) · Inactive · Terminated | Draft · Cancelled · Ended · Expired (series) · Not created yet · Skipped · Inactive · Maintenance OK | Drafted · Cancelled · Inactive |
+| `neutral` · neither | Open · Cancelled (asset order) · Inactive · Terminated · Draft / Expired (quote) | Draft · Cancelled · Ended · Expired (series) · Not created yet · Skipped · Inactive · Maintenance OK | Drafted · Cancelled · Inactive |
 
 **Changed by this binding (2026-09-23)** — each was the old channel reading as a
 colour: sales *Assigned* green → blue; asset-order and 3PL *Cancelled* red →

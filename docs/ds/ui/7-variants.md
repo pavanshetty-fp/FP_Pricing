@@ -62,7 +62,9 @@ drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
 AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
 of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
 edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
-line (#e6e4e2); the open module takes weight, not a fill. The panel
+line (#e6e4e2); the open module takes weight, not a fill, and sits FIRST;
+a very faint rule (`--fp-shell-guide`) parts it from the other modules —
+no ring, dot or chevron marks it (Pavan, 2026-10-07). The panel
 is 240px; **Collapse navigation** (a quiet grey mark in its top-right corner) folds it to a 56px icon rail —
 the open module's pages as icons with hairlines between sections, then the
 other modules — and the choice is remembered per browser.

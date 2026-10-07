@@ -62,6 +62,12 @@ interface ViewState {
   /** The filter row's boxes, by column key. Optional so a view saved before
    *  the row still applies. */
   colFilters?: Record<string, string>;
+  /* ORDER AND WIDTHS (Pavan, 2026-10-07) — what 3PL's views keep. Optional so
+     a view saved before them still applies. */
+  /** Column order as keys. Empty means "as declared". */
+  columnOrder?: string[];
+  /** Reader-set column widths in px, by key. Empty means "as declared". */
+  columnWidths?: Record<string, number>;
 }
 
 const keyOf = (s: ViewState) =>
@@ -107,6 +113,10 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
   const [colScope, setColScope] = React.useState("name");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<ListView>("table");
+  /* Empty = the table's declared order; the table fills in anything a saved
+     order does not mention, so a stale view never costs a column. */
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
@@ -124,6 +134,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     colScope,
     colQuery,
     colFilters,
+    columnOrder,
+    columnWidths,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -135,6 +147,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       colScope: "name",
       colQuery: "",
       colFilters: {},
+      columnOrder: [],
+      columnWidths: {},
     }),
     []
   );
@@ -154,6 +168,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     setColFilters(filters);
     /* The row opens when the view has something typed in it. */
     setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
+    setColumnOrder(s.columnOrder ?? []);
+    setColumnWidths(s.columnWidths ?? {});
     setPage(1);
   };
 
@@ -286,6 +302,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
           }}
           columns={TOGGLE_COLUMNS}
           hiddenColumns={hidden}
+          columnOrder={columnOrder}
+          onReorderColumns={setColumnOrder}
           onToggleColumn={(k) =>
             setHidden((prev) => {
               const next = new Set(prev);
@@ -402,6 +420,10 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
               rowId={(c) => c.id}
               renderCell={renderCell}
               actionsKey="actions"
+              columnOrder={columnOrder}
+              onReorderColumns={setColumnOrder}
+              columnWidths={columnWidths}
+              onResizeColumns={setColumnWidths}
               openLabel={(c) => `Open customer ${c.name}`}
               onOpenRow={(c) => setOpenId(c.id)}
               showColumnFilters={colFiltersOpen}

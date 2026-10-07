@@ -15,14 +15,17 @@ const say = (out: string[], label: string, from: unknown, to: unknown) => {
 
 export function diffFuelOrder(a: FuelOrder, b: FuelOrder): string[] {
   const out: string[] = [];
-  /* THE DRIVER IS THE STATUS on a fuel order — Assigned exactly when there
-     is one — so one line carries both. */
+  /* A DRIVER PICK CAN MOVE THE STAGE (Requested ↔ Scheduled), so one line
+     carries both. */
   if ((a.driver?.name ?? "") !== (b.driver?.name ?? ""))
     out.push(
       `Driver: ${a.driver?.name || "—"} → ${b.driver?.name || "—"}${
         a.status !== b.status ? ` (${b.status})` : ""
       }`
     );
+  else
+    /* THE SHEET'S "MOVE TO …" (2026-10-07) changes the stage on its own. */
+    say(out, "Status", a.status, b.status);
   say(
     out,
     "Planned",
@@ -36,6 +39,7 @@ export function diffFuelOrder(a: FuelOrder, b: FuelOrder): string[] {
 
 export function diffAssetOrder(a: AssetOrder, b: AssetOrder): string[] {
   const out: string[] = [];
+  /* THE STAGE, set by hand — one of the five Sales stages (2026-10-07). */
   say(out, "Status", a.status, b.status);
   say(out, "Delivery date", a.date.title, b.date.title);
   return out;

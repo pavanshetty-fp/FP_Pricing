@@ -23,7 +23,7 @@ export interface ActivityEntry {
 type Logged = { id: string; audit?: ActivityEntry[] };
 
 /** Who is making the change. The prototype has one signed-in dispatcher. */
-const ACTOR = "Dana Whitfield";
+export const ACTOR = "Dana Whitfield";
 
 /**
  * A row list whose setter writes the log. ONE WRAPPER ROUND THE ONLY SETTER,

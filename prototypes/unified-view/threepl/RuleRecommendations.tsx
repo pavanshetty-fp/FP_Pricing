@@ -3,25 +3,55 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { TableRequiredLabel } from "@/components/form-layout";
+import { BannerCallout } from "@/components/ui/banner";
 import { blankFrequency, toSchedule, type RuleFrequency } from "./RuleFrequency";
 import { ScheduleCell } from "./ScheduleCell";
+import { canServe, siteByName } from "./recurringPrograms";
+import { VENDORS, type Vendor } from "./vendors";
+import { LOADING_ACCOUNTS, suppliersOf } from "./orders";
 
 /**
- * RECOMMENDATIONS (Pavan, 2026-10-06) — frequencies suggested from the last
- * six months of deliveries, offered as a label in the Frequency unit. Pressing
- * it opens the list with what each one is based on; Apply fills the picker.
- * Nothing is ever applied on its own.
+ * RECOMMENDATIONS (Pavan, 2026-10-06) — RULES suggested from the last six
+ * months of deliveries: a product and a frequency, and every ship-to the
+ * pattern turns up at. A recommendation is rule-level, not customer-level
+ * (Pavan, 2026-10-07): its ship-tos can belong to several customers, or be
+ * several ship-tos of one. Offered in two places: as a label in the Create
+ * rule form's Frequency unit (Apply fills the frequency), and on the
+ * Recurring Orders list (Create rule opens the form with the frequency AND
+ * one tab per ship-to filled in). Nothing is ever applied on its own.
  *
  * INVENTED, and flagged: the history behind these is a fixture until the
- * prototype has six months of real orders to read.
+ * prototype has six months of real orders to read. Only ship-tos with a site
+ * record are used, so every one can be reached in step 2.
  */
-interface Recommendation {
+export interface RecommendedTarget {
+  customer: { name: string; erpId: string };
+  shipTo: string;
+  /** Every product delivered here in the six months. */
+  products: string[];
+  /** Total gallons delivered here in the six months. */
+  gallons: number;
+}
+
+export interface Recommendation {
   id: string;
-  site: string;
   product: string;
-  basis: string;
+  /** Every ship-to the pattern fits — across customers, or several of one. */
+  targets: RecommendedTarget[];
+  /** How closely the deliveries kept to THIS frequency — every day of it,
+   *  never "one or the other" (an "or" is a separate rule; Pavan, 2026-10-07). */
+  match: string;
+  deliveries: string;
   quantity: string;
   frequency: RuleFrequency;
+  /** Whether the supplier needed a load order, and the loading accounts the
+   *  loads were drawn on — the suppliers shown are those accounts' (Pavan,
+   *  2026-10-07). With no load order, the suppliers are named directly. The
+   *  vendors are worked out below. */
+  loadOrder: boolean;
+  loadingAccounts: string[];
+  suppliers: string[];
 }
 
 const today = new Date();
@@ -30,20 +60,44 @@ const sundayKey = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const RECOMMENDATIONS: Recommendation[] = [
+const BRAY = { name: "Bray, Raymond and Marks", erpId: "ERP 418223" };
+const MORRIS = { name: "Morris Group", erpId: "ERP 505112" };
+const GPM = { name: "Gonzalez, Palmer and Miller", erpId: "ERP 331904" };
+const HALVORSEN = { name: "Halvorsen Fuel Co.", erpId: "ERP 227740" };
+const CARDINAL = { name: "Cardinal Logistics", erpId: "ERP 610882" };
+const WESTBROOK = { name: "Westbrook Agriculture", erpId: "ERP 884001" };
+const IRONLINE = { name: "Ironline Transit", erpId: "ERP 990233" };
+
+export const RECOMMENDATIONS: Recommendation[] = [
   {
-    id: "bray-tue-fri",
-    site: "Bray North Yard",
+    id: "clear-tue-fri",
+    loadOrder: true,
+    loadingAccounts: ["Liberty Standard"],
+    suppliers: [],
     product: "Clear Diesel #2",
-    basis: "48 deliveries since April · 94% on a Tuesday or Friday",
+    targets: [
+      { customer: BRAY, shipTo: "Bray North Yard", products: ["Clear Diesel #2", "Dyed Diesel"], gallons: 24_960 },
+      { customer: BRAY, shipTo: "Bray Depot 2", products: ["Clear Diesel #2"], gallons: 19_680 },
+      { customer: MORRIS, shipTo: "Morris Yard 4", products: ["Clear Diesel #2", "Hydraulic Oil AW-46"], gallons: 18_240 },
+    ],
+    match: "94% on Tuesday and Friday",
+    deliveries: "131 deliveries since April",
     quantity: "About 480 gal a drop",
     frequency: { ...blankFrequency(), days: [2, 5], repeat: "weekly" },
   },
   {
-    id: "morris-cycle",
-    site: "Morris Yard 4",
+    id: "hydraulic-cycle",
+    loadOrder: false,
+    loadingAccounts: [],
+    suppliers: ["Pioneer Distributing"],
     product: "Hydraulic Oil AW-46",
-    basis: "26 deliveries since April · alternates every other week",
+    targets: [
+      { customer: BRAY, shipTo: "Bray Depot 2", products: ["Hydraulic Oil AW-46"], gallons: 26_450 },
+      { customer: MORRIS, shipTo: "Morris Yard 4", products: ["Hydraulic Oil AW-46", "Clear Diesel #2"], gallons: 25_300 },
+      { customer: IRONLINE, shipTo: "Ironline Depot", products: ["Hydraulic Oil AW-46"], gallons: 21_850 },
+    ],
+    match: "91% on this 2-week cycle",
+    deliveries: "64 deliveries since April",
     quantity: "About 1,150 gal a drop",
     frequency: {
       ...blankFrequency(),
@@ -53,14 +107,90 @@ const RECOMMENDATIONS: Recommendation[] = [
     },
   },
   {
-    id: "gpm-first-week",
-    site: "GPM Southside",
+    id: "unleaded-first-week",
+    loadOrder: true,
+    loadingAccounts: ["Washington Contract"],
+    suppliers: [],
     product: "Unleaded 87",
-    basis: "6 deliveries since April · always in the first week of the month",
+    targets: [
+      { customer: GPM, shipTo: "GPM Southside", products: ["Unleaded 87", "Unleaded 91"], gallons: 7_500 },
+      { customer: CARDINAL, shipTo: "Cardinal Hub A", products: ["Unleaded 87"], gallons: 8_750 },
+      { customer: IRONLINE, shipTo: "Ironline Depot", products: ["Unleaded 87"], gallons: 7_500 },
+    ],
+    match: "100% on Monday of the first week",
+    deliveries: "19 deliveries since April",
     quantity: "About 1,250 gal a drop",
     frequency: { ...blankFrequency(), days: [1], repeat: "monthly", monthWeeks: [1] },
   },
+  {
+    id: "dyed-mwf",
+    loadOrder: true,
+    loadingAccounts: ["Greensbro Premium"],
+    suppliers: [],
+    product: "Dyed Diesel",
+    targets: [
+      { customer: BRAY, shipTo: "Bray North Yard", products: ["Dyed Diesel", "Clear Diesel #2"], gallons: 46_800 },
+      { customer: HALVORSEN, shipTo: "Halvorsen Main", products: ["Dyed Diesel"], gallons: 45_900 },
+      { customer: CARDINAL, shipTo: "Cardinal Hub A", products: ["Dyed Diesel", "Unleaded 87"], gallons: 49_500 },
+      { customer: WESTBROOK, shipTo: "Westbrook Farm 1", products: ["Dyed Diesel", "DEF Bulk"], gallons: 45_000 },
+    ],
+    match: "88% on Monday, Wednesday and Friday",
+    deliveries: "208 deliveries since April",
+    quantity: "About 900 gal a drop",
+    frequency: { ...blankFrequency(), days: [1, 3, 5], repeat: "weekly" },
+  },
 ];
+
+/**
+ * THE VENDORS WHO HAULED IT — INVENTED, but never impossible: the fewest
+ * partners who between them reach every ship-to on the recommendation, so a
+ * rule started from it opens on step 2 with every tab reachable. The real
+ * thing reads who actually delivered.
+ */
+function vendorsFor(targets: RecommendedTarget[]): Vendor[] {
+  const sites = targets.map((t) => siteByName(t.shipTo)).filter((x) => x !== undefined);
+  let left = sites;
+  const picked: Vendor[] = [];
+  while (left.length > 0) {
+    let best: Vendor | null = null;
+    let bestHits = 0;
+    for (const v of VENDORS) {
+      if (picked.includes(v)) continue;
+      const hits = left.filter((site) => canServe(v, site)).length;
+      if (hits > bestHits) {
+        best = v;
+        bestHits = hits;
+      }
+    }
+    if (!best) break;
+    const chosen = best;
+    picked.push(chosen);
+    left = left.filter((site) => !canServe(chosen, site));
+  }
+  return picked;
+}
+
+const VENDORS_BY_RECOMMENDATION = new Map(
+  RECOMMENDATIONS.map((r) => [r.id, vendorsFor(r.targets)])
+);
+export const recommendedVendors = (r: Recommendation) => VENDORS_BY_RECOMMENDATION.get(r.id) ?? [];
+
+/** The suppliers on the card: the loading accounts', or the named ones. */
+const recommendedSuppliers = (r: Recommendation) =>
+  r.loadOrder
+    ? [
+        ...new Set(
+          LOADING_ACCOUNTS.filter((a) => r.loadingAccounts.includes(a.name)).flatMap(suppliersOf)
+        ),
+      ]
+    : r.suppliers;
+
+/** The ship-tos grouped under their customer, in first-seen order. */
+const byCustomer = (targets: RecommendedTarget[]) => {
+  const groups = new Map<string, RecommendedTarget[]>();
+  for (const t of targets) groups.set(t.customer.name, [...(groups.get(t.customer.name) ?? []), t]);
+  return [...groups.entries()];
+};
 
 /** A four-point sparkle centred on (cx, cy), `r` from centre to tip. */
 const spark = (cx: number, cy: number, r: number) => {
@@ -95,16 +225,34 @@ function AiSparkle({ className }: { className?: string }) {
 
 export function RuleRecommendations({
   onApply,
+  applyLabel = "Apply",
+  buttonVariant = "ghost",
 }: {
-  onApply: (f: RuleFrequency) => void;
+  onApply: (r: Recommendation) => void;
+  /** "Apply" in the form; "Review and Create Rule" on the list. */
+  applyLabel?: string;
+  /** Ghost inside a unit's heading; outline on a toolbar beside other buttons. */
+  buttonVariant?: "ghost" | "outline";
 }) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <Button variant="ghost" size="sm" className="-my-1 text-muted-foreground" onClick={() => setOpen(true)}>
+      <Button
+        variant={buttonVariant}
+        size="sm"
+        className={
+          buttonVariant === "ghost"
+            ? "-my-1 text-muted-foreground"
+            : /* THE OUTLINE IN THE SPARKLE'S VIOLET (Pavan, 2026-10-06). */
+              "border-fp-lane-violet dark:border-fp-lane-violet"
+        }
+        onClick={() => setOpen(true)}
+      >
         <AiSparkle className="size-[18px]" />
         Recommendations
-        <span className="rounded-sm bg-foreground/10 px-1.5 text-xs tabular-nums text-foreground">
+        {/* A LIGHT WASH OF THE SPARKLE'S VIOLET; the count in the body ink
+            (Pavan, 2026-10-07). */}
+        <span className="rounded-sm bg-fp-lane-violet/15 px-1.5 text-xs font-medium tabular-nums text-foreground">
           {RECOMMENDATIONS.length}
         </span>
       </Button>
@@ -112,7 +260,7 @@ export function RuleRecommendations({
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="z-[60] w-[min(460px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(460px,calc(100vw-56px))]"
+          className="z-[60] w-[min(560px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(560px,calc(100vw-56px))]"
         >
           <div className="flex items-start justify-between gap-4 border-b border-border p-4">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -130,29 +278,94 @@ export function RuleRecommendations({
           </div>
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4">
             {RECOMMENDATIONS.map((r) => (
-              <li key={r.id} className="flex flex-col gap-3 rounded-md border border-fp-outline-1 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium text-foreground">{r.site}</span>
-                    <span className="truncate text-xs text-muted-foreground">{r.product}</span>
+              <li key={r.id} className="flex flex-col gap-5 rounded-md border border-fp-outline-1 p-3">
+                {/* THE FREQUENCY LEADS THE CARD, with why it is suggested as a
+                    banner right under it; the ship-tos behind it below, set
+                    apart (Pavan, 2026-10-07). No product title, no section
+                    titles. */}
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <ScheduleCell schedule={toSchedule(r.frequency)} />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        onApply(r);
+                        setOpen(false);
+                        if (applyLabel === "Apply") toast.success("Recommendation applied");
+                      }}
+                    >
+                      {applyLabel}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      onApply(r.frequency);
-                      setOpen(false);
-                      toast.success("Recommendation applied", { description: r.site });
-                    }}
+                  {/* Soft banners sit on one line; this one may need two, so the
+                      count line wraps whole instead of squeezing. */}
+                  <BannerCallout
+                    variant="soft"
+                    status="info"
+                    title={r.match}
+                    className="[&>p]:flex-wrap [&>p]:items-baseline [&>p]:gap-y-1 [&>p]:leading-snug"
                   >
-                    Apply
-                  </Button>
+                    {r.deliveries} · {r.quantity}
+                  </BannerCallout>
+                  {/* VENDORS, SUPPLIERS, LOAD ORDER (Pavan, 2026-10-07). */}
+                  <dl className="grid grid-cols-3 gap-3">
+                    {[
+                      ["Vendors", recommendedVendors(r).map((v) => v.name).join(", ") || "—"],
+                      ["Suppliers", recommendedSuppliers(r).join(", ")],
+                      ["Load order", r.loadOrder ? "Required" : "Not required"],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex min-w-0 flex-col gap-0.5">
+                        <dt className="text-xs text-muted-foreground">{label}</dt>
+                        <dd className="text-sm text-foreground">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
-                <ScheduleCell schedule={toSchedule(r.frequency)} />
-                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                  <span>{r.basis}</span>
-                  <span>{r.quantity}</span>
-                </div>
+                    <div data-table-variant="T2" className="overflow-hidden rounded-md border border-fp-outline-1">
+                      <table className="w-full table-fixed border-collapse text-xs">
+                        <colgroup>
+                          <col className="w-[26%]" />
+                          <col className="w-[24%]" />
+                          <col />
+                          <col className="w-[84px]" />
+                        </colgroup>
+                        <thead>
+                          <tr className="border-b border-fp-outline-1 bg-fp-card-2">
+                            <th className="px-2.5 py-2 text-left">
+                              <TableRequiredLabel>Customer</TableRequiredLabel>
+                            </th>
+                            <th className="px-2.5 py-2 text-left">
+                              <TableRequiredLabel>Ship-to</TableRequiredLabel>
+                            </th>
+                            <th className="px-2.5 py-2 text-left">
+                              <TableRequiredLabel>Products</TableRequiredLabel>
+                            </th>
+                            <th className="px-2.5 py-2 text-right">
+                              <TableRequiredLabel>Total (gal)</TableRequiredLabel>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {byCustomer(r.targets).flatMap(([customer, sites]) =>
+                            sites.map((t, i) => (
+                              <tr key={t.shipTo} className="border-b border-fp-outline-1 align-top last:border-b-0">
+                                {i === 0 && (
+                                  <td rowSpan={sites.length} className="px-2.5 py-2 text-foreground">
+                                    {customer}
+                                  </td>
+                                )}
+                                <td className="px-2.5 py-2 text-foreground">{t.shipTo}</td>
+                                <td className="px-2.5 py-2 text-foreground">{t.products.join(", ")}</td>
+                                <td className="px-2.5 py-2 text-right tabular-nums text-foreground">
+                                  {t.gallons.toLocaleString("en-US")}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
               </li>
             ))}
           </ul>

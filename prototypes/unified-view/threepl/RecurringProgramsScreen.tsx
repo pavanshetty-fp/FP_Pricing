@@ -79,7 +79,8 @@ import {
   RecurringProgramCreate,
   type ProgramDraft,
 } from "./RecurringProgramCreate";
-import { blankFrequency, toSchedule } from "./RuleFrequency";
+import { RuleRecommendations, recommendedVendors } from "./RuleRecommendations";
+import { blankFrequency, toSchedule, type RuleFrequency } from "./RuleFrequency";
 import { OverflowList } from "../ListTable";
 import { dateKeyOf, startOfDay } from "../data";
 import { statusTones } from "../statusKind";
@@ -354,6 +355,15 @@ export function RecurringProgramsScreen({
   const [programs, setPrograms] = usePrograms();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+  /** A rule started from a recommendation — see `RuleRecommendations`. */
+  const [seed, setSeed] = React.useState<{
+    frequency: RuleFrequency;
+    products: string[];
+    vendorIds: string[];
+    loadOrder: boolean;
+    loadingAccounts: string[];
+    targets: { customer: { title: string; description: string }; shipTo: string }[];
+  } | null>(null);
   /* THE RULE BEING EDITED in the create form — only one that has made no
      order yet (see the sheet's Edit rule). */
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -705,7 +715,10 @@ export function RecurringProgramsScreen({
            there; a programme is its own record with its own two-step form,
            so it has its own act. */
         ctaLabel="Create Rule"
-        onCreateOrder={() => setCreating(true)}
+        onCreateOrder={() => {
+          setSeed(null);
+          setCreating(true);
+        }}
         onExport={() => {
           downloadCsv(
             `recurring-programmes-${new Date().toISOString().slice(0, 10)}`,
@@ -739,6 +752,29 @@ export function RecurringProgramsScreen({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          /* RECOMMENDATIONS ON THE LIST TOO (Pavan, 2026-10-06) — a rule's
+             frequency and the ship-tos it fits, across customers; Review and
+             Create Rule opens the form with both filled in. Next to the Filters button. */
+          afterFilters={
+            <RuleRecommendations
+              buttonVariant="outline"
+              applyLabel="Review and Create Rule"
+              onApply={(r) => {
+                setSeed({
+                  frequency: r.frequency,
+                  products: [r.product],
+                  vendorIds: recommendedVendors(r).map((v) => v.id),
+                  loadOrder: r.loadOrder,
+                  loadingAccounts: r.loadingAccounts,
+                  targets: r.targets.map((t) => ({
+                    customer: { title: t.customer.name, description: t.customer.erpId },
+                    shipTo: t.shipTo,
+                  })),
+                });
+                setCreating(true);
+              }}
+            />
+          }
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search programmes, partners, products, sites…"
@@ -986,10 +1022,12 @@ export function RecurringProgramsScreen({
           if (v) return;
           setCreating(false);
           setEditingId(null);
+          setSeed(null);
         }}
         /* A rule never clashes with itself. */
         all={editing ? programs.filter((p) => p.id !== editing.id) : programs}
         initial={editingDraft}
+        seed={editing ? null : seed}
         onCreate={(d: ProgramDraft) => {
           const schedule = toSchedule(d.frequency);
           const partners = d.vendorIds

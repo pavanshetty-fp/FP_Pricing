@@ -392,6 +392,7 @@ export function RecurringProgramCreate({
   all,
   onCreate,
   initial = null,
+  seed = null,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -403,6 +404,21 @@ export function RecurringProgramCreate({
    * draft is put aside while editing and comes back afterwards.
    */
   initial?: ProgramDraft | null;
+  /**
+   * A NEW RULE STARTED FROM A RECOMMENDATION (Pavan, 2026-10-06): its
+   * frequency, and one ship-to tab per site it fits — each under its own
+   * customer, since a recommendation spans customers (2026-10-07). Its
+   * common details go into step 1 as they would by hand: products, vendors,
+   * load order on or off and its loading accounts (Pavan, 2026-10-07).
+   */
+  seed?: {
+    frequency: RuleFrequency;
+    products: string[];
+    vendorIds: string[];
+    loadOrder: boolean;
+    loadingAccounts: string[];
+    targets: { customer: { title: string; description: string }; shipTo: string }[];
+  } | null;
 }) {
   const editing = initial !== null;
   const [step, setStep] = React.useState<1 | 2>(1);
@@ -420,6 +436,10 @@ export function RecurringProgramCreate({
   /* THE DRAFT SURVIVES A CLOSE, but a fresh Create starts clean — reopening
      onto somebody else's half-built programme is worse than losing it. */
   const parked = React.useRef<ProgramDraft | null>(null);
+  /** A recommendation's ship-tos, waiting for step 2 — see `seed`. */
+  const seedSites = React.useRef<
+    { customer: { title: string; description: string }; shipTo: string }[] | null
+  >(null);
   React.useEffect(() => {
     if (open) {
       if (initial) {
@@ -428,17 +448,35 @@ export function RecurringProgramCreate({
           return initial;
         });
         setWinterOn(initial.winterProducts.length > 0);
+      } else if (seed) {
+        /* The half-built create draft is put aside, as for an edit. The
+           frequency goes in now; the SITES wait for step 2, because picking
+           a partner or a product in step 1 rightly empties the ship-tos. */
+        setDraft((d) => {
+          parked.current = d;
+          return {
+            ...blankProgramDraft(),
+            frequency: seed.frequency,
+            products: seed.products,
+            vendorIds: seed.vendorIds,
+            loadOrder: seed.loadOrder,
+            loadRows: seed.loadingAccounts.map((loadingAccount) => ({ loadingAccount })),
+          };
+        });
+        seedSites.current = seed.targets;
+        setWinterOn(false);
       }
       return;
     }
     setStep(1);
+    seedSites.current = null;
     if (parked.current) {
       const back = parked.current;
       parked.current = null;
       setDraft(back);
       setWinterOn(back.winterProducts.length > 0);
     }
-  }, [open, initial]);
+  }, [open, initial, seed]);
 
   const set = <K extends keyof ProgramDraft>(k: K, v: ProgramDraft[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -607,8 +645,27 @@ export function RecurringProgramCreate({
     setDraft((d) => ({ ...d, targets: [...d.targets, t] }));
     setTabId(t.id);
   };
-  /* Step 2 never opens on nothing: the first tab is there, blank. */
+  /* Step 2 never opens on nothing: the first tab is there, blank — or, for a
+     rule started from a recommendation, one tab per ship-to it fits. */
   React.useEffect(() => {
+    if (step === 2 && draft.targets.length === 0 && seedSites.current) {
+      const seeded = seedSites.current;
+      seedSites.current = null;
+      const tabs = seeded.map(({ customer, shipTo }, i) => {
+        const site = siteByName(shipTo);
+        return {
+          ...blankTarget(),
+          id: `draft-seed-${Date.now()}-${i}`,
+          customer,
+          shipTo,
+          city: site?.city ?? "",
+          state: site?.state ?? "",
+        };
+      });
+      setDraft((d) => ({ ...d, targets: tabs }));
+      setTabId(tabs[0]?.id ?? null);
+      return;
+    }
     if (step === 2 && draft.targets.length === 0) addTab();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, draft.targets.length]);
@@ -768,11 +825,15 @@ export function RecurringProgramCreate({
               is when the rule begins, which belongs with the rule. */}
           <Card
             title="Frequency"
-            /* RECOMMENDATIONS, IN THE UNIT THEY FILL (Pavan, 2026-10-06). */
+            /* RECOMMENDATIONS, IN THE UNIT THEY FILL (Pavan, 2026-10-06) —
+               but not on a rule already started from one: that rule is the
+               recommendation being reviewed (Pavan, 2026-10-07). */
             aside={
-              <RuleRecommendations
-                onApply={(f) => set("frequency", { ...f, endKey: draft.frequency.endKey })}
-              />
+              seed ? undefined : (
+                <RuleRecommendations
+                  onApply={(r) => set("frequency", { ...r.frequency, endKey: draft.frequency.endKey })}
+                />
+              )
             }
           >
             <RuleFrequencyPicker

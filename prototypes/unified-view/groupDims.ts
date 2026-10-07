@@ -59,7 +59,7 @@ export const FUEL_ORDER_GROUP_DIMS: GroupDim<FuelOrder>[] = [
     key: "status",
     label: "Status",
     hides: "status",
-    order: ["Unassigned", "Assigned"],
+    order: ["Requested", "Scheduled", "Dispatched", "Delivered", "Cancelled"],
     valuesOf: (r) => [r.status],
   },
   {

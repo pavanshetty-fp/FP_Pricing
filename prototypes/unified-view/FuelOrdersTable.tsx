@@ -62,7 +62,7 @@ const QTY_FMT = new Intl.NumberFormat("en-US");
 */
 
 /** Order type → pastel hue. */
-const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
+export const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
   D: "pastel-blue",
   E: "pastel-amber",
 };
@@ -70,10 +70,14 @@ const TYPE_TONE: Record<OrderTypeCode, CodeDiscTone> = {
 /** Order status → colour channel. Exported so the map view reads a status the
  *  same way the table does rather than keeping a second copy of the mapping. */
 export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = statusTones({
-  /* A driver is on it. True, and asks nothing — not a finished order. */
-  Assigned: "info",
-  /* Waiting on a dispatcher to give it a driver. */
-  Unassigned: "caution",
+  /* Waiting on a dispatcher to schedule it. */
+  Requested: "caution",
+  /* True, and asks nothing — not finished. */
+  Scheduled: "info",
+  Dispatched: "info",
+  Delivered: "success",
+  /* Not a warning — grey, never red. */
+  Cancelled: "neutral",
 });
 
 /**

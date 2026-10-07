@@ -2,6 +2,7 @@ import type {
   FuelOrder,
   FuelOrderColumnDef,
   FuelOrderColumnKey,
+  FuelOrderStatus,
   ProductQty,
   SortState,
 } from "./types";
@@ -17,15 +18,16 @@ import type {
 export const FUEL_ORDER_COLUMNS: FuelOrderColumnDef[] = [
   { key: "select", label: "", width: 40 },
   { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 70 },
-  { key: "customer", label: "Customer", width: 200 },
-  { key: "products", label: "Product", width: 190 },
+  /* EVERY DATA COLUMN SORTS — DS rule (Pavan, 2026-10-07). */
+  { key: "type", label: "Type", width: 70, sortable: true },
+  { key: "customer", label: "Customer", width: 200, sortable: true },
+  { key: "products", label: "Product", width: 190, sortable: true },
   { key: "qtyGal", label: "Qty (Gal)", width: 105, sortable: true },
   { key: "date", label: "Date of Delivery", width: 140, sortable: true },
   { key: "planned", label: "Planned Date & Time", width: 150, sortable: true },
   { key: "status", label: "Status", width: 135, sortable: true },
-  { key: "driver", label: "Driver", width: 140 },
-  { key: "tags", label: "Tags", width: 200 },
+  { key: "driver", label: "Driver", width: 140, sortable: true },
+  { key: "tags", label: "Tags", width: 200, sortable: true },
   // Sticky: the row-open chevron stays reachable while the grid scrolls.
   { key: "actions", label: "", width: 52 },
 ];
@@ -155,7 +157,7 @@ export function relativeLabel(offset: number, d: Date): string {
 interface Seed
   extends Omit<
     FuelOrder,
-    "id" | "orderNo" | "qtyGal" | "date" | "dateKey" | "planned" | "status"
+    "id" | "orderNo" | "qtyGal" | "date" | "dateKey" | "planned" | "status" | "urgent"
   > {
   /** Days from today. 0 = today, -1 = yesterday. */
   dayOffset: number;
@@ -278,6 +280,50 @@ const SEED: Seed[] = [
   },
 ];
 
+/** Every stage, in the order an order moves through them. */
+export const FUEL_ORDER_STAGES: FuelOrderStatus[] = [
+  "Requested",
+  "Scheduled",
+  "Dispatched",
+  "Delivered",
+  "Cancelled",
+];
+
+/**
+ * THE STAGE A DRIVER CHANGE LEAVES (2026-10-07). An order cannot be scheduled
+ * without a driver, so picking one on a Requested order schedules it and
+ * clearing it from a Scheduled one sends it back. Once it is on the road, done
+ * or cancelled, the driver no longer moves the stage.
+ */
+export function stageAfterDriver(
+  status: FuelOrderStatus,
+  hasDriver: boolean
+): FuelOrderStatus {
+  if (status === "Requested" && hasDriver) return "Scheduled";
+  if (status === "Scheduled" && !hasDriver) return "Requested";
+  return status;
+}
+
+/**
+ * SAMPLE STAGES — INVENTED. The source list only knew Assigned / Unassigned.
+ * No driver = Requested. With a driver: past days are Delivered (a few
+ * Cancelled), today spreads over Scheduled, Dispatched and Delivered, and
+ * later days are Scheduled.
+ */
+function seedStage(i: number, dayOffset: number, hasDriver: boolean): FuelOrderStatus {
+  if (!hasDriver) return i % 11 === 5 ? "Cancelled" : "Requested";
+  if (dayOffset < 0) return i % 7 === 3 ? "Cancelled" : "Delivered";
+  if (dayOffset > 0) return "Scheduled";
+  return (["Scheduled", "Dispatched", "Delivered"] as const)[i % 3];
+}
+
+/**
+ * SAMPLE URGENCY — INVENTED (2026-10-07). The source list never showed the
+ * flag, so every seventh order carries it: two of today's land early-morning
+ * and still undispatched, so the overdue banner has something to count.
+ */
+const seedUrgent = (i: number) => i % 7 === 0;
+
 /** The source list's total. Order numbers count down from the newest, as there. */
 const TOTAL = 115;
 const NEWEST_ORDER_NO = 4592866;
@@ -300,28 +346,51 @@ export const FUEL_ORDERS: FuelOrder[] = (() => {
       planned: plannedTime
         ? { date: DATE_FMT.format(when), time: plannedTime }
         : null,
-      // Derived, never seeded: an order is Assigned exactly when it has a
-      // driver. Keeping it derived here means the table and the order sheet
-      // cannot disagree about the same row.
-      status: seed.driver ? "Assigned" : "Unassigned",
+      status: seedStage(i, dayOffset, Boolean(seed.driver)),
+      urgent: seedUrgent(i),
     };
   });
 })();
 
-/** Value a column sorts on. Columns without per-row scalar data are a no-op. */
+/**
+ * WHEN THE ORDER IS PLANNED, AS A MOMENT (2026-10-07). The row keeps it as two
+ * printed strings; the overdue banner, the planned sort and the board's time
+ * sorts all need one instant to compare. `null` when there is no plan or the
+ * typed time does not read as one.
+ */
+export function plannedAt(row: FuelOrder): Date | null {
+  if (!row.planned) return null;
+  const day = new Date(row.planned.date);
+  const t = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(row.planned.time.trim());
+  if (Number.isNaN(day.getTime()) || !t) return null;
+  const hour = (Number(t[1]) % 12) + (t[3].toUpperCase() === "PM" ? 12 : 0);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, Number(t[2]));
+}
+
+/** Value a column sorts on. Empty values sort last in ascending order. */
 function sortValue(row: FuelOrder, key: FuelOrderColumnKey): string | number {
   switch (key) {
     case "order":
       return Number(row.orderNo);
+    case "type":
+      return row.type.label;
+    case "customer":
+      return `${row.customer.title} ${row.customer.description}`.toLowerCase();
+    case "products":
+      return row.products.map((p) => p.name).join(" ").toLowerCase() || "\uffff";
     case "qtyGal":
       return row.qtyGal;
     case "date":
       return row.dateKey;
     case "planned":
-      // Rows with no planned time sort last in ascending order.
-      return row.planned ? `${row.dateKey} ${row.planned.time}` : "\uffff";
+      // The moment, not the printed time — "1:35 AM" > "12:11 AM" as text.
+      return plannedAt(row)?.getTime() ?? Number.POSITIVE_INFINITY;
+    case "driver":
+      return row.driver?.name.toLowerCase() ?? "\uffff";
+    case "tags":
+      return row.tags.join(" ").toLowerCase() || "\uffff";
     case "status":
-      return row.status;
+      return FUEL_ORDER_STAGES.indexOf(row.status);
     default:
       return 0;
   }

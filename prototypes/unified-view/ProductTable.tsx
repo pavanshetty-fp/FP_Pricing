@@ -1,3 +1,4 @@
+import type * as React from "react";
 import {
   TableCellInput,
   TableCellSelect,
@@ -52,15 +53,39 @@ export interface ProductLine {
   boxed-table check could not see it, because it looked for the DS names.
 */
 
-export interface ProductTableProps {
-  lines: ProductLine[];
-  options: string[];
-  onChange: (next: ProductLine[]) => void;
-  /** The row just added — its first cell takes the cursor (DS ui §10f). */
-  focusRow?: number;
+/**
+ * A COLUMN AFTER THE GALLONS (Pavan, 2026-10-07) — for a quote, which prices
+ * each line. The cell is the caller's; the table keeps the shell, the add, the
+ * delete and the total row. An order passes none and is unchanged.
+ */
+export interface ProductTableColumn<L extends ProductLine> {
+  key: string;
+  label: string;
+  /** A colgroup width class, e.g. `w-[18%]`. */
+  width: string;
+  cell: (line: L, i: number) => React.ReactNode;
+  /** The column's figure in the Total row. */
+  total?: React.ReactNode;
+  required?: boolean;
 }
 
-export function ProductTable({ lines, options, onChange, focusRow }: ProductTableProps) {
+export interface ProductTableProps<L extends ProductLine = ProductLine> {
+  lines: L[];
+  options: string[];
+  onChange: (next: L[]) => void;
+  /** The row just added — its first cell takes the cursor (DS ui §10f). */
+  focusRow?: number;
+  /** Priced columns after the gallons — see `ProductTableColumn`. */
+  columns?: ProductTableColumn<L>[];
+}
+
+export function ProductTable<L extends ProductLine = ProductLine>({
+  lines,
+  options,
+  onChange,
+  focusRow,
+  columns = [],
+}: ProductTableProps<L>) {
   const update = (i: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
@@ -78,8 +103,20 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
         <table className="w-full table-fixed border-collapse">
           {/* Delete column pinned; the two data columns scale to the rest. */}
           <colgroup>
-            <col className="w-[58%]" />
-            <col className="w-[42%]" />
+            {columns.length === 0 ? (
+              <>
+                <col className="w-[58%]" />
+                <col className="w-[42%]" />
+              </>
+            ) : (
+              <>
+                <col className="w-[30%]" />
+                <col className="w-[16%]" />
+                {columns.map((c) => (
+                  <col key={c.key} className={c.width} />
+                ))}
+              </>
+            )}
             <col className="w-[52px]" />
           </colgroup>
           <thead>
@@ -90,6 +127,11 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
               <th className="px-3 py-2.5 text-right">
                 <TableRequiredLabel required>Quantity (Gal)</TableRequiredLabel>
               </th>
+              {columns.map((c) => (
+                <th key={c.key} className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel required={c.required}>{c.label}</TableRequiredLabel>
+                </th>
+              ))}
               <th aria-hidden />
             </tr>
           </thead>
@@ -118,6 +160,11 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
                     onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
                   />
                 </td>
+                {columns.map((c) => (
+                  <td key={c.key} className="relative p-0">
+                    {c.cell(line, i)}
+                  </td>
+                ))}
                 {/* THE CONFIRM IS THE DS's NOW — `TableRowRemove`, the same ✕ / ✓
                     every table asks with. An order needs a product line, so
                     the last row keeps no bin. */}
@@ -142,6 +189,14 @@ export function ProductTable({ lines, options, onChange, focusRow }: ProductTabl
               <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
                 {total.toLocaleString()}
               </td>
+              {columns.map((c) => (
+                <td
+                  key={c.key}
+                  className="px-3 text-right text-sm font-medium tabular-nums text-foreground"
+                >
+                  {c.total}
+                </td>
+              ))}
               <td aria-hidden />
             </tr>
           </tfoot>

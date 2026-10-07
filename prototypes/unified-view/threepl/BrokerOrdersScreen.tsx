@@ -18,6 +18,11 @@ import {
 } from "@/components/ui/empty";
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
+import {
+  GroupedListFooter,
+  useGrouping,
+  type GroupDim,
+} from "@/components/tables-layout";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import {
   ListToolbar,
@@ -56,6 +61,8 @@ import {
   BROKER_COLUMNS,
   BROKER_HIDDEN_BY_DEFAULT,
   BROKER_LANE_COLOR,
+  BROKER_STATUSES,
+  SERVICE_LINES,
   businessOf,
   LINE_BUSINESSES,
   type BrokerStatus,
@@ -908,6 +915,33 @@ function laneSortOptions(laneKey: string) {
   }));
 }
 
+/* GROUP BY GROUPS SOMETHING (Pavan, 2026-10-07). The menu used to fall back
+   to the DS demo names and group nothing. These are the order's own fields
+   with useful cardinality, like Sales Orders' dims. */
+const BROKER_GROUP_DIMS: GroupDim<BrokerOrder>[] = [
+  { key: "customer", label: "Customer", valuesOf: (r) => [r.customer.title] },
+  {
+    key: "vendor",
+    label: "Partner",
+    hides: "vendor",
+    valuesOf: (r) => (r.vendorId ? [vendorName(r.vendorId)] : []),
+  },
+  {
+    key: "status",
+    label: "Stage",
+    hides: "status",
+    order: BROKER_STATUSES,
+    valuesOf: (r) => [r.status],
+  },
+  {
+    key: "line",
+    label: "Line of Service",
+    order: [...SERVICE_LINES],
+    valuesOf: (r) => [r.serviceLine],
+  },
+  { key: "shipTo", label: "Ship To", hides: "shipTo", valuesOf: (r) => [r.shipTo] },
+];
+
 /** What a saved view captures. `kind` is here because the tab IS part of the
  *  view a broker builds — a view that forgot it was the Movement tab would
  *  restore the wrong list. */
@@ -942,12 +976,15 @@ interface ViewState {
   mode?: ListView;
   /** Each lane's own sort. */
   laneSort?: Record<string, string | undefined>;
+  /* The grouping is part of the view (Pavan, 2026-10-07). */
+  groupBy?: string[];
 }
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
     hidden: [...s.hidden].sort(),
+    groupBy: s.groupBy ?? [],
     /* Empty boxes are no filter — typing then clearing one is not a change. */
     colFilters: Object.fromEntries(
       Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
@@ -1079,83 +1116,6 @@ export function BrokerOrdersScreen({
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
   );
-
-  const current: ViewState = {
-    search,
-    sortKey: sort?.key ?? null,
-    sortDir: sort?.dir ?? null,
-    hidden: [...hidden],
-    columnOrder,
-    columnWidths,
-    pageSize,
-    dateKey: dateKeyOf(range.from),
-    dateKeyTo: dateKeyOf(range.to),
-    colScope,
-    colQuery,
-    facets: [...facetSel].sort(),
-    colFilters,
-    cardOff: cardOffToArrays(cardOff),
-    mode: view,
-    laneSort,
-  };
-  const defaultState: ViewState = React.useMemo(
-    () => ({
-      search: "",
-      sortKey: null,
-      sortDir: null,
-      /* THE SCREEN'S OWN DEFAULT HIDDEN SET — it was `[]`, so Default read
-         as changed the moment the screen opened. */
-      hidden: [...BROKER_HIDDEN_BY_DEFAULT],
-      columnOrder: [],
-      columnWidths: {},
-      pageSize: 25,
-      dateKey: dateKeyOf(startOfDay(new Date())),
-      dateKeyTo: dateKeyOf(startOfDay(new Date())),
-      colScope: "customer",
-      colQuery: "",
-      facets: [],
-      colFilters: {},
-      cardOff: cardOffToArrays(initialCardOff()),
-      mode: "board",
-      laneSort: {},
-    }),
-    []
-  );
-
-  const applyState = (s: ViewState) => {
-    setSearch(s.search);
-    setSort(
-      s.sortKey && s.sortDir
-        ? { key: s.sortKey as BrokerColumnKey, dir: s.sortDir }
-        : null
-    );
-    setHidden(new Set(s.hidden as BrokerColumnKey[]));
-    setColumnOrder(s.columnOrder ?? []);
-    setColumnWidths(s.columnWidths ?? {});
-    setPageSize(s.pageSize);
-    const [y, m, d] = s.dateKey.split("-").map(Number);
-    const from = new Date(y, m - 1, d);
-    /* A view saved before ranges existed has one date; one date is a range. */
-    const [ty, tm, td] = (s.dateKeyTo ?? s.dateKey).split("-").map(Number);
-    setRange({ from, to: new Date(ty, tm - 1, td) });
-    setColScope(s.colScope);
-    setColQuery(s.colQuery);
-    setFacetSel(new Set(s.facets ?? []));
-    const filters = s.colFilters ?? {};
-    setColFilters(filters);
-    /* The row opens when the view has something typed in it. */
-    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
-    if (s.cardOff) {
-      setCardOff(
-        Object.fromEntries(Object.entries(s.cardOff).map(([k, v]) => [k, new Set(v)]))
-      );
-    } else setCardOff(initialCardOff());
-    if (s.mode) setView(s.mode);
-    setLaneSort(s.laneSort ?? {});
-    setPage(1);
-  };
-
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
 
   /* RECURRING RULES CUT THEIR ORDERS HERE (Pavan, 2026-09-24) — for every
      day the board is looking at, today to a week ahead. Each order is cut
@@ -1302,10 +1262,101 @@ export function BrokerOrdersScreen({
     () => sortBrokerOrders(inBusiness, sort),
     [inBusiness, sort]
   );
-  const pageRows = React.useMemo(
-    () => sorted.slice((page - 1) * pageSize, page * pageSize),
-    [sorted, page, pageSize]
+  /* GROUPED, THE TABLE SHOWS EVERY ROW (Pavan, 2026-10-07) — `useGrouping`
+     suspends the page so a group's count is never cut by a page edge. */
+  const measureOf = React.useCallback((r: BrokerOrder) => totalGal(r.lines), []);
+  const g = useGrouping<BrokerOrder, BrokerColumnKey>({
+    dimensions: BROKER_GROUP_DIMS,
+    rows: sorted,
+    rowId: React.useCallback((r: BrokerOrder) => r.id, []),
+    measureOf,
+    hiddenColumns: hidden,
+    page,
+    pageSize,
+  });
+  const pageRows = g.visibleRows;
+
+  /* THE VIEW BLOCK SITS BELOW THE GROUPING (Pavan, 2026-10-07) so a saved
+     view can carry `groupBy`. */
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hidden],
+    columnOrder,
+    columnWidths,
+    pageSize,
+    dateKey: dateKeyOf(range.from),
+    dateKeyTo: dateKeyOf(range.to),
+    colScope,
+    colQuery,
+    facets: [...facetSel].sort(),
+    colFilters,
+    cardOff: cardOffToArrays(cardOff),
+    mode: view,
+    laneSort,
+    groupBy: g.groupBy,
+  };
+  const defaultState: ViewState = React.useMemo(
+    () => ({
+      search: "",
+      sortKey: null,
+      sortDir: null,
+      /* THE SCREEN'S OWN DEFAULT HIDDEN SET — it was `[]`, so Default read
+         as changed the moment the screen opened. */
+      hidden: [...BROKER_HIDDEN_BY_DEFAULT],
+      columnOrder: [],
+      columnWidths: {},
+      pageSize: 25,
+      dateKey: dateKeyOf(startOfDay(new Date())),
+      dateKeyTo: dateKeyOf(startOfDay(new Date())),
+      colScope: "customer",
+      colQuery: "",
+      facets: [],
+      colFilters: {},
+      cardOff: cardOffToArrays(initialCardOff()),
+      mode: "board",
+      laneSort: {},
+      groupBy: [],
+    }),
+    []
   );
+
+  const applyState = (s: ViewState) => {
+    setSearch(s.search);
+    setSort(
+      s.sortKey && s.sortDir
+        ? { key: s.sortKey as BrokerColumnKey, dir: s.sortDir }
+        : null
+    );
+    setHidden(new Set(s.hidden as BrokerColumnKey[]));
+    setColumnOrder(s.columnOrder ?? []);
+    setColumnWidths(s.columnWidths ?? {});
+    setPageSize(s.pageSize);
+    const [y, m, d] = s.dateKey.split("-").map(Number);
+    const from = new Date(y, m - 1, d);
+    /* A view saved before ranges existed has one date; one date is a range. */
+    const [ty, tm, td] = (s.dateKeyTo ?? s.dateKey).split("-").map(Number);
+    setRange({ from, to: new Date(ty, tm - 1, td) });
+    setColScope(s.colScope);
+    setColQuery(s.colQuery);
+    setFacetSel(new Set(s.facets ?? []));
+    const filters = s.colFilters ?? {};
+    setColFilters(filters);
+    /* The row opens when the view has something typed in it. */
+    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
+    if (s.cardOff) {
+      setCardOff(
+        Object.fromEntries(Object.entries(s.cardOff).map(([k, v]) => [k, new Set(v)]))
+      );
+    } else setCardOff(initialCardOff());
+    if (s.mode) setView(s.mode);
+    setLaneSort(s.laneSort ?? {});
+    g.setGrouping(s.groupBy ?? []);
+    setPage(1);
+  };
+
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
 
   /** Sending the request moves the order's own `invoiceState` on. The lane does
    *  not change: chasing a bill is not a step in the delivery. */
@@ -2261,6 +2312,14 @@ export function BrokerOrdersScreen({
           /* NOT ON THE BOARD, which is already grouped — by lane. See
              `showGroupBy`. */
           showGroupBy={!board}
+          groupBy={{
+            dimensions: g.menuDimensions,
+            value: g.groupBy,
+            onChange: (next) => {
+              g.setGrouping(next);
+              setPage(1);
+            },
+          }}
           filters={
             <ListFilters
               countFor={(sel) =>
@@ -2446,8 +2505,13 @@ export function BrokerOrdersScreen({
           ) : (
             <ListTable
               rows={pageRows}
+              nodes={g.grouped ? g.groups.nodes : undefined}
+              collapsedGroups={g.collapsed}
+              onToggleGroupCollapse={g.toggleGroupCollapse}
+              groupNoun="order"
+              groupUnit="gal"
               columns={BROKER_COLUMNS}
-              hidden={hidden}
+              hidden={g.effectiveHidden}
               sort={sort}
               onSort={onSort}
               rowId={(r) => r.id}
@@ -2612,17 +2676,31 @@ export function BrokerOrdersScreen({
       )}
 
       <div className={cn("mt-4 shrink-0", view !== "table" && "hidden")}>
-        <TablePagination
-          className="h-9"
-          page={page}
-          pageSize={pageSize}
-          total={sorted.length}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
+        {g.grouped ? (
+          <GroupedListFooter
+            groupCount={g.groups.groupCount}
+            rowCount={g.groups.rowCount}
+            noun="order"
+            total={g.total}
+            unit="gal"
+            overCounts={g.groups.overCounts}
+            allCollapsed={g.allCollapsed}
+            onExpandAll={g.expandAll}
+            onCollapseAll={g.collapseAll}
+          />
+        ) : (
+          <TablePagination
+            className="h-9"
+            page={page}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
+        )}
       </div>
     </div>
   );

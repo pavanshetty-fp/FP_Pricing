@@ -5,13 +5,9 @@ import {
   Clock,
   Calendar as CalendarIcon,
   MoreHorizontal,
-  Receipt,
   History,
-  CircleDot,
-  CheckCircle2,
-  FileText,
-  PackageX,
-  UserRound,
+  Ban,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -58,6 +54,7 @@ import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet"
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
+import { ActivityCard, RailRow as SummaryRow, SummaryCard } from "../SheetCards";
 import { useServiceSettings, type ReturnMode } from "./settings";
 import { INVENTORY } from "./catalog";
 
@@ -200,62 +197,6 @@ const STAMP_TIME = new Intl.DateTimeFormat("en-US", {
 function stampLabel(iso: string): string {
   const at = new Date(iso);
   return `${DATE_FMT.format(at)} · ${STAMP_TIME.format(at)}`;
-}
-
-/**
- * THE ORDER'S ACTIVITY, as a timeline under the Record card (Pavan,
- * 2026-09-23) — the same shape 3PL's order rail uses: a line down the marks,
- * most recent first, the change leading and who/when under it. It reads the
- * order's change log (`audit`), which the screen writes on every save.
- */
-function activityMark(text: string): { icon: React.ReactNode; tone: string } {
-  const good = "border-status-success/30 bg-status-success/10 text-status-success";
-  const wait = "border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution";
-  const quiet = "border-border bg-card text-muted-foreground";
-  if (/Parts pending/.test(text)) return { icon: <PackageX />, tone: wait };
-  if (/^(Work recorded|Invoice|Quote approved)|→ (Completed|Reviewed)/.test(text))
-    return { icon: <CheckCircle2 />, tone: good };
-  if (/^Quote/.test(text)) return { icon: <FileText />, tone: quiet };
-  if (/^Visit/.test(text)) return { icon: <CircleDot />, tone: quiet };
-  if (/^(Order created|Technician)/.test(text)) return { icon: <UserRound />, tone: quiet };
-  return { icon: <CircleDot />, tone: quiet };
-}
-
-function ServiceActivity({ order }: { order: ServiceOrder }) {
-  const rows = [...order.audit]
-    .reverse()
-    .flatMap((e, i) => e.changes.map((c, j) => ({ e, c, key: `${e.at}-${i}-${j}` })));
-  if (rows.length === 0)
-    return <p className="px-4 py-3 text-sm text-muted-foreground">Nothing has changed yet.</p>;
-  return (
-    <ol className="flex flex-col px-4 py-3">
-      {rows.map(({ e, c, key }, idx) => {
-        const mark = activityMark(c);
-        return (
-          <li key={key} className="relative flex gap-3 pb-4 last:pb-0">
-            {idx < rows.length - 1 && (
-              <span aria-hidden className="absolute top-7 bottom-0 left-[13px] w-px bg-border" />
-            )}
-            <span
-              className={cn(
-                "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border [&_svg]:size-3.5",
-                mark.tone
-              )}
-            >
-              {mark.icon}
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
-              <span className="text-sm break-words text-foreground">{c}</span>
-              <span className="text-xs text-muted-foreground">
-                {stampLabel(e.at)}
-                {e.by ? ` · ${e.by}` : ""}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 /**
@@ -1150,20 +1091,20 @@ export function ServiceOrderSheet({
       onSelect: () => setFieldOpen(true),
     });
   /* CANCEL, IN THE ··· (Pavan, 2026-09-25) — from Open (unassigned, drafts
-     included) through Job day, confirmed. Recorded work cannot be cancelled. */
-  if (
+     included) through Job day, confirmed. Recorded work cannot be cancelled.
+     IN THE HEADER'S ···, as on 3PL (Pavan, 2026-10-07) — an act on the
+     record, not on the work. */
+  const cancellable =
     !creating &&
-    order &&
+    !!order &&
     (isUnassigned(draft.status) ||
-      ["Assigned", "Yet to start", "Ongoing", "Awaiting approval"].includes(draft.status))
-  )
-    sheetActs.push({ label: "Cancel order", onSelect: () => setConfirmCancel(true) });
+      ["Assigned", "Yet to start", "Ongoing", "Awaiting approval"].includes(draft.status));
   /* THE INVOICE THE CUSTOMER HAS, as a file (Pavan, 2026-09-25). */
   if (dispatch && draft.status === "Awaiting approval")
     sheetActs.push({ label: "Download invoice", onSelect: () => downloadInvoice(draft) });
-  /* DISCARD A DRAFT (2026-09-25) — autosave keeps every draft otherwise. */
-  if (draft.status === "Drafted" && order && onDiscard)
-    sheetActs.push({ label: "Discard draft", onSelect: () => setConfirmDiscard(true) });
+  /* DISCARD A DRAFT (2026-09-25) — autosave keeps every draft otherwise.
+     Header ···, beside Cancel order (Pavan, 2026-10-07). */
+  const discardable = draft.status === "Drafted" && !!order && !!onDiscard;
 
   /* THE FINAL BILL, once the work is recorded — the full amount, labour
      included (Deepika, 2026-09-25). */
@@ -1546,6 +1487,45 @@ export function ServiceOrderSheet({
           </span>
         )
       }
+      /* ACTS ON THE RECORD, as on 3PL (Pavan, 2026-10-07): cancelling and
+         discarding end the order, so they sit behind the header's ···, not
+         beside the footer's next act. */
+      headerMenu={
+        cancellable || discardable ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More order actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {cancellable && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setConfirmCancel(true);
+                  }}
+                >
+                  <Ban />
+                  Cancel order
+                </DropdownMenuItem>
+              )}
+              {discardable && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setConfirmDiscard(true);
+                  }}
+                >
+                  <Trash2 />
+                  Discard draft
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined
+      }
       headerSubtitle={
         creating
           ? undefined
@@ -1667,8 +1647,9 @@ export function ServiceOrderSheet({
                 would make the footer a toolbar.
 
                 IT SITS LEFT OF THE PRIMARY, not in the header. The header's
-                ··· is for acts on the RECORD — deleting it. These are acts on
-                the WORK, which is what the footer is about. */}
+                ··· is for acts on the RECORD — cancelling or discarding it
+                (2026-10-07). These are acts on the WORK, which is what the
+                footer is about. */}
             {sheetActs.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2512,42 +2493,37 @@ export function ServiceOrderSheet({
             exists; on a new one they are empty boxes beside the form. */}
         {!newVisit && (
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
-          {/* THE ACCOUNT OF HOW IT ADDS UP, beside the tables it adds up. */}
-          <RailCard title="Summary" icon={<Receipt />}>
-            <div className="flex flex-col divide-y divide-border">
-              <RailRow label="Parts" value={money(partsSum)} />
-              <RailRow
+          {/* THE SHARED SUMMARY CARD (Pavan, 2026-10-07 — ux §Record sheets):
+              the 3PL Quotation summary's shell, the headline figure last. */}
+          <SummaryCard title="Summary">
+            <dl className="flex flex-col">
+              <SummaryRow variant="line" label="Parts" value={money(partsSum)} />
+              <SummaryRow
+                variant="line"
                 label={`Labour — ${formatHours(draft.labor)}`}
                 value={money(laborSum)}
               />
-              <RailRow label="Fees" value={money(feesSum)} />
+              <SummaryRow variant="line" label="Fees" value={money(feesSum)} />
               {extraSum > 0 && (
-                <RailRow label="Additional charges" value={money(extraSum)} />
+                <SummaryRow variant="line" label="Additional charges" value={money(extraSum)} />
               )}
-              <RailRow
+              {draft.quote && (
+                <SummaryRow variant="line" label="Quoted" value={money(draft.quote.total)} />
+              )}
+              {/* THE GAP AS A FIGURE, not a sentence (Pavan, 2026-10-07). */}
+              {draft.quote && isRecorded(draft.status) && quoteGap > 0.005 && (
+                <SummaryRow variant="line" label="Over the quote" value={money(quoteGap)} />
+              )}
+            </dl>
+            <div aria-hidden className="border-t border-dashed border-border" />
+            <dl className="flex flex-col">
+              <SummaryRow
+                variant="total"
                 label={billed ? "Invoice total" : "Running total"}
                 value={money(total)}
-                bold
               />
-            </div>
-            {draft.quote && (
-              <div className="border-t border-border px-4 py-3">
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">Quoted</span>
-                  <span className="text-sm tabular-nums text-foreground">
-                    {money(draft.quote.total)}
-                  </span>
-                </div>
-                {isRecorded(draft.status) && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    {quoteGap > 0.005
-                      ? `${money(quoteGap)} more than the quote — actual labour and anything extra the job needed.`
-                      : "The job came in at the quoted figure."}
-                  </p>
-                )}
-              </div>
-            )}
-          </RailCard>
+            </dl>
+          </SummaryCard>
 
 
           {/* WHAT ACCOUNTING SAYS WAS PAID, against the invoice (Pavan,
@@ -2654,13 +2630,9 @@ export function ServiceOrderSheet({
             </RailCard>
           )}
 
-          {!creating && order && (
-            <RailCard title="Activity" icon={<History />}>
-              {/* THE LIVE ROW, not the sheet's draft: the log is written by
-                  the screen on save, and the draft never sees it. */}
-              <ServiceActivity order={order} />
-            </RailCard>
-          )}
+          {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07). THE LIVE ROW, not
+              the sheet's draft: the log is written by the screen on save. */}
+          {!creating && order && <ActivityCard entries={order.audit} />}
         </aside>
 
         )}      </div>

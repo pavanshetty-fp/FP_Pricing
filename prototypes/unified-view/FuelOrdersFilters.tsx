@@ -1,5 +1,4 @@
 import { ListFilters, type ListFacet } from "./ListFilters";
-import type { FuelOrder } from "./types";
 
 /*
   Fuel Orders filters — the DS faceted Filter panel (Figma "Action Bar Unit ·
@@ -14,9 +13,6 @@ import type { FuelOrder } from "./types";
 
 /* WIRED (Pavan, 2026-10-07) — it narrowed nothing. Now the shared
    `ListFilters`, as Asset Orders: staged ticks, a live count, Apply. */
-
-/** Options read off the dataset, so the facet lists can't drift from the rows. */
-const uniq = (xs: string[]) => Array.from(new Set(xs));
 
 /**
  * Category options, TRANSCRIBED from the source app's own picker — not invented
@@ -59,17 +55,6 @@ export const FUEL_ORDER_CATEGORIES = [
   "Fuel Oil",
   "Fuels",
 ];
-
-/** The facets, with options read off the rows the screen holds. */
-export function fuelOrderFacets(rows: FuelOrder[]): ListFacet[] {
-  return [
-    { key: "type", label: "Type", options: ["Delivery", "Extraction"] },
-    { key: "status", label: "Status", options: ["Requested", "Scheduled", "Dispatched", "Delivered", "Cancelled"] },
-    { key: "customer", label: "Customer", options: uniq(rows.map((o) => o.customer.title)), searchable: true },
-    { key: "shipTo", label: "Ship-To", options: uniq(rows.map((o) => o.customer.description)), searchable: true },
-    { key: "product", label: "Product", options: uniq(rows.flatMap((o) => o.products.map((p) => p.name))), searchable: true },
-  ];
-}
 
 export function FuelOrdersFilters({
   facets,

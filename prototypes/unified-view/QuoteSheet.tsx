@@ -1,21 +1,31 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { CalendarDays, Send } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CalendarDays, ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
-import { TableCellInput } from "@/components/form-layout/table-cells";
+import {
+  TableCellInput,
+  TableRequiredLabel,
+  TableRowRemove,
+} from "@/components/form-layout/table-cells";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { ProductTable } from "./ProductTable";
 import { HangingAdd } from "./HangingAdd";
 import { PendingStrip, type PendingItem } from "./PendingStrip";
-import { ActivitySection } from "./activity";
+import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
 import { EmailChips } from "./threepl/InvitePartnerSheet";
 import { CUSTOMERS } from "./customers";
 import { MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "./data";
@@ -25,6 +35,7 @@ import {
   QUOTE_PRODUCTS,
   QUOTE_STATUS_TONE,
   dateOfKey,
+  newChargeId,
   printKey,
   priceQuote,
   quoteStatus,
@@ -32,10 +43,21 @@ import {
   reprice,
   type Adjust,
   type AdjustUnit,
+  type Charge,
+  type ChargeKind,
   type Quote,
   type QuoteLine,
 } from "./quotes";
 import { acceptQuote, discardQuote, updateQuote } from "./quoteStore";
+import {
+  ConfiguredForm,
+  extraFilled,
+  isNative,
+  missingRequired,
+  sectionId,
+  type BuiltInField,
+} from "./ConfiguredForm";
+import { notify, useSalesSettings, type FormField } from "./salesSettings";
 
 /*
   THE QUOTE SHEET (Pavan, 2026-10-07). The record exists from the moment
@@ -65,8 +87,9 @@ type QuoteDraft = Pick<
   | "lines"
   | "margin"
   | "fees"
-  | "tax"
+  | "taxes"
   | "notes"
+  | "extra"
 >;
 
 const draftOf = (q: Quote): QuoteDraft => ({
@@ -78,101 +101,135 @@ const draftOf = (q: Quote): QuoteDraft => ({
   lines: q.lines,
   margin: q.margin,
   fees: q.fees,
-  tax: q.tax,
+  taxes: q.taxes,
   notes: q.notes,
+  /* Fields added in Sales Settings, by key (2026-10-07). */
+  extra: q.extra ?? {},
 });
 
 const ACTIVE_CUSTOMERS = CUSTOMERS.filter((c) => c.status === "Active");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** A number typed as text — the buffer `TableCellInput` keeps, for a plain input. */
-function NumberInput({
-  value,
-  onChange,
-  "aria-label": ariaLabel,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-  "aria-label": string;
-}) {
-  const [typed, setTyped] = React.useState<string | null>(null);
-  return (
-    <Input
-      inputMode="decimal"
-      aria-label={ariaLabel}
-      value={typed ?? String(value)}
-      onChange={(e) => {
-        setTyped(e.target.value);
-        onChange(Number(e.target.value.replace(/[^0-9.]/g, "")) || 0);
-      }}
-      onBlur={() => setTyped(null)}
-      className="min-w-0 flex-1 text-right tabular-nums"
-    />
-  );
-}
-
-/** Margin, fees or tax — an amount and what it is in. */
-function AdjustField({
-  label,
-  value,
-  onChange,
-}: {
+/** One row of the Pricing breakdown. */
+interface PricingRow {
+  key: string;
+  /** What the row is called — and, for an added fee or tax, what it is named. */
   label: string;
   value: Adjust;
   onChange: (next: Adjust) => void;
-}) {
-  return (
-    <SheetField label={label}>
-      <div className="flex items-center gap-2">
-        <NumberInput
-          aria-label={label}
-          value={value.value}
-          onChange={(n) => onChange({ ...value, value: n })}
-        />
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={value.unit}
-          /* Radix sends "" when the chosen one is pressed again; a unit is never empty. */
-          onValueChange={(u) => u && onChange({ ...value, unit: u as AdjustUnit })}
-          aria-label={`${label} unit`}
-        >
-          {ADJUST_UNITS.map((u) => (
-            <ToggleGroupItem key={u.value} value={u.value} className="px-2.5 text-xs">
-              {u.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
-    </SheetField>
-  );
+  /** An added fee or tax: its name is typed in its cell. */
+  onRename?: (name: string) => void;
+  /** An added fee or tax: it can go. */
+  onRemove?: () => void;
+  /** "fee 2" — the subject of a blank row's remove. */
+  blankName?: string;
+  autoFocus?: boolean;
 }
 
-/** One row of the build-up: a label in the muted channel, the figure in the foreground. */
-function SummaryRow({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
+/**
+ * THE PRICING BREAKDOWN IS A TABLE (Pavan, 2026-10-07): one row per charge,
+ * every value cell editable, and the unit ($/gal · $ · %) chosen INSIDE that
+ * cell rather than as a toggle beside a field. A set of like inputs in a form
+ * defaults to the editable table (DS ui §10f).
+ *
+ * FEES AND TAXES CAN BE ADDED (Pavan, 2026-10-07). Margin is one row; the
+ * first Fees and the first Tax are the defaults; every row added after them
+ * has its name typed in its Charge cell and a remove that asks ✕ / ✓.
+ */
+function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className={cn("text-sm", strong ? "font-medium text-foreground" : "text-muted-foreground")}>
-        {label}
-      </span>
-      <span
-        className={cn(
-          "text-sm tabular-nums text-foreground",
-          strong && "font-semibold"
-        )}
-      >
-        {value}
-      </span>
-    </div>
+    <table className="w-full table-fixed border-collapse">
+      <colgroup>
+        <col className="w-[40%]" />
+        <col />
+        <col className="w-[52px]" />
+      </colgroup>
+      <thead>
+        <tr className="border-b border-border bg-fp-table-header">
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>Charge</TableRequiredLabel>
+          </th>
+          <th className="px-3 py-2.5 text-right">
+            <TableRequiredLabel>Value</TableRequiredLabel>
+          </th>
+          {/* UNNAMED, like every row remove — DS ui §10f. */}
+          <th aria-hidden />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => {
+          const unit = ADJUST_UNITS.find((u) => u.value === r.value.unit)!;
+          const name = r.label || r.blankName || "";
+          return (
+            <tr key={r.key} className="group/row h-11 border-b border-border last:border-b-0">
+              {r.onRename ? (
+                <td className="relative p-0">
+                  <TableCellInput
+                    value={r.label}
+                    placeholder="Enter name"
+                    disabled={disabled}
+                    autoFocus={r.autoFocus}
+                    aria-label={`Name of ${name}`}
+                    onChange={r.onRename}
+                  />
+                </td>
+              ) : (
+                <td className="px-3 text-sm text-foreground">{r.label}</td>
+              )}
+              <td className="relative p-0">
+                <div className="flex h-11 items-stretch">
+                  <div className="relative min-w-0 flex-1">
+                    <TableCellInput
+                      numeric
+                      disabled={disabled}
+                      aria-label={name}
+                      value={String(r.value.value)}
+                      onChange={(v) => {
+                        const n = Number(v);
+                        r.onChange({ ...r.value, value: Number.isFinite(n) ? n : 0 });
+                      }}
+                    />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={disabled}>
+                      <button
+                        type="button"
+                        aria-label={`${name} unit`}
+                        className="flex w-[72px] shrink-0 items-center justify-end gap-1 px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {unit.label}
+                        <ChevronDown className="size-4 shrink-0" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-24">
+                      <DropdownMenuRadioGroup
+                        value={r.value.unit}
+                        onValueChange={(u) => r.onChange({ ...r.value, unit: u as AdjustUnit })}
+                      >
+                        {ADJUST_UNITS.map((u) => (
+                          <DropdownMenuRadioItem key={u.value} value={u.value}>
+                            {u.label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </td>
+              <td className="relative p-0 text-center">
+                {r.onRemove && (
+                  <TableRowRemove
+                    aria-label={`Remove ${name}`}
+                    disabled={disabled}
+                    onRemove={r.onRemove}
+                  />
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
@@ -197,8 +254,16 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
       return h && d ? { id: h.id, d } : h;
     });
   const [focusProduct, setFocusProduct] = React.useState<number | undefined>();
+  /** The fee or tax just added — its name cell takes the cursor. */
+  const [focusCharge, setFocusCharge] = React.useState<string | undefined>();
+  /** The kind picked in the Add charge menu, added once the menu has closed. */
+  const pickedCharge = React.useRef<ChargeKind | null>(null);
   const [pendingShown, setPendingShown] = React.useState(false);
   const [emailOpen, setEmailOpen] = React.useState(false);
+  /* SALES SETTINGS LAY THE LEFT COLUMN OUT (Pavan, 2026-10-07 — "fix it
+     all", C): order, sections, labels, hidden and required fields. */
+  const settings = useSalesSettings();
+  const formFields = settings.forms.quote;
 
   /* BUILT ONCE PER RECORD, NOT ONCE PER SAVE — the order sheet's `builtFor`:
      every autosave hands back a new quote, and rebuilding from it would move
@@ -270,44 +335,9 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
   const unusedProduct = QUOTE_PRODUCTS.find((p) => !draft.lines.some((l) => l.name === p));
   const anyOverride = draft.lines.some((l) => l.baseSet);
   const today = startOfDay(new Date());
+  /* THE PRIMARY UNIT, as the quantity heading prints it (2026-10-07). */
+  const unitHead = { Gallons: "Gal", Litres: "L", Drums: "Drums" }[settings.unit];
 
-  const pending: PendingItem[] = [
-    !draft.customer && { key: "customer", label: "Choose a customer", target: "quote-customer" },
-    !draft.shipTo && { key: "shipTo", label: "Choose a ship-to", target: "quote-customer" },
-    !EMAIL_RE.test(draft.email.trim()) && {
-      key: "email",
-      label: "Enter the customer's email",
-      target: "quote-customer",
-    },
-    !draft.validThrough && {
-      key: "valid",
-      label: "Choose a valid-through date",
-      target: "quote-customer",
-    },
-    draft.validThrough &&
-      draft.validThrough < dateKeyOf(today) && {
-        key: "validPast",
-        label: "Move the valid-through date to today or later",
-        target: "quote-customer",
-      },
-    !draft.market && { key: "market", label: "Choose a market", target: "quote-products" },
-    draft.lines.some((l) => !l.name) && {
-      key: "product",
-      label: "Choose a product",
-      target: "quote-products",
-    },
-    draft.lines.some((l) => l.gal <= 0) && {
-      key: "gal",
-      label: "Enter gallons",
-      target: "quote-products",
-    },
-    draft.market &&
-      draft.lines.some((l) => l.name && l.base === null) && {
-        key: "base",
-        label: "Enter a base rate",
-        target: "quote-products",
-      },
-  ].filter(Boolean) as PendingItem[];
 
   const pickCustomer = (name: string) => {
     const next = CUSTOMERS.find((c) => c.name === name);
@@ -332,6 +362,327 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
   };
 
   const setLines = (lines: QuoteLine[]) => set("lines", reprice(lines, draft.market));
+
+  /* FEES AND TAXES ARE LISTS (Pavan, 2026-10-07). The first of each is the
+     default — named, and not removable; every one added after it is. */
+  const listKey = (kind: ChargeKind) => (kind === "fee" ? "fees" : "taxes");
+  const addCharge = (kind: ChargeKind) => {
+    const id = newChargeId(kind);
+    setFocusCharge(id);
+    const key = listKey(kind);
+    set(key, [...draft[key], { id, name: "", value: 0, unit: kind === "fee" ? "perGal" : "percent" }]);
+  };
+  const chargeRows = (kind: ChargeKind): PricingRow[] => {
+    const key = listKey(kind);
+    const list = draft[key];
+    const patch = (id: string, p: Partial<Charge>) =>
+      set(key, list.map((c) => (c.id === id ? { ...c, ...p } : c)));
+    return list.map((c, i) => ({
+      key: c.id,
+      label: c.name,
+      value: c,
+      onChange: (v: Adjust) => patch(c.id, v),
+      ...(i > 0 && {
+        onRename: (name: string) => patch(c.id, { name }),
+        onRemove: () => set(key, list.filter((x) => x.id !== c.id)),
+        blankName: `${kind} ${i + 1}`,
+        autoFocus: c.id === focusCharge,
+      }),
+    }));
+  };
+  /** A fee or tax as the summary names it — a blank added one by its kind. */
+  const partsOf = (list: Charge[], parts: number[], fallback: string) =>
+    list.length > 1
+      ? list.map((c, i) => ({ label: c.name || fallback, value: RATE(parts[i] ?? 0) }))
+      : undefined;
+
+  /* ---- the quote's own fields, as Sales Settings place them ---------- */
+
+  const renderers: Record<string, (f: FormField) => BuiltInField> = {
+    customer: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.customer}
+          onValueChange={pickCustomer}
+          options={ACTIVE_CUSTOMERS.map((c) => c.name)}
+          placeholder="Select customer"
+          searchPlaceholder="Search customers…"
+          emptyText="No customer found."
+        />
+      ),
+    }),
+    shipTo: () => ({
+      half: true,
+      /* THE GATE LIVES IN THE PICKER (ux §Side-sheet anatomy): only the
+         chosen customer's ship-tos, and with none chosen it says why it is
+         empty. */
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.shipTo}
+          onValueChange={(v) => set("shipTo", v)}
+          options={shipTos}
+          placeholder={customer ? "Select ship-to" : "Choose a customer first"}
+          emptyText="No ship-to found."
+        />
+      ),
+    }),
+    email: () => ({
+      half: true,
+      control: (
+        <Input
+          type="email"
+          value={draft.email}
+          placeholder="name@company.com"
+          onChange={(e) => set("email", e.target.value)}
+        />
+      ),
+    }),
+    validThrough: () => ({
+      half: true,
+      control: (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-start font-normal">
+              <CalendarDays />
+              {draft.validThrough ? (
+                formatFullDate(dateOfKey(draft.validThrough)!)
+              ) : (
+                <span className="text-muted-foreground">Select date</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={dateOfKey(draft.validThrough) ?? undefined}
+              onSelect={(d) => d && set("validThrough", dateKeyOf(d))}
+              defaultMonth={dateOfKey(draft.validThrough) ?? today}
+              disabled={{ before: today }}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+      ),
+    }),
+    market: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.market}
+          onValueChange={(m) =>
+            setDraft((d) => (d ? { ...d, market: m, lines: reprice(d.lines, m) } : d))
+          }
+          options={MARKETS}
+          placeholder="Select market"
+        />
+      ),
+    }),
+    products: () => ({
+      table: {
+        action:
+          /* Only when a rate was typed over the list's — otherwise every
+             line is already on it. */
+          anyOverride && !locked ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => set("lines", reapplyRates(draft.lines, draft.market))}
+            >
+              Reapply rate
+            </Button>
+          ) : undefined,
+        hanging:
+          unusedProduct !== undefined && !locked ? (
+            <HangingAdd
+              label="Add product"
+              onClick={() => {
+                setFocusProduct(draft.lines.length);
+                setLines([
+                  ...draft.lines,
+                  { name: unusedProduct, gal: 0, base: null, baseSet: false },
+                ]);
+              }}
+            />
+          ) : undefined,
+        node: (
+          <ProductTable<QuoteLine>
+            lines={draft.lines}
+            options={QUOTE_PRODUCTS}
+            focusRow={focusProduct}
+            onChange={setLines}
+            qtyLabel={`Quantity (${unitHead})`}
+            columns={[
+              {
+                key: "base",
+                label: "Base $/gal",
+                width: "w-[18%]",
+                required: true,
+                cell: (l, i) => (
+                  <TableCellInput
+                    value={l.base === null ? "" : l.base.toFixed(3)}
+                    numeric
+                    prefix="$"
+                    placeholder="—"
+                    aria-label={`Base rate of ${l.name || `row ${i + 1}`}`}
+                    onChange={(v) => {
+                      const n = Number(v.replace(/[^0-9.]/g, ""));
+                      /* Typed, it is this line's rate until Reapply;
+                         emptied, the line goes back to the list's. */
+                      setLines(
+                        draft.lines.map((x, j) =>
+                          j !== i
+                            ? x
+                            : v.trim() === ""
+                              ? { ...x, baseSet: false }
+                              : { ...x, baseSet: true, base: Number.isFinite(n) ? n : 0 }
+                        )
+                      );
+                    }}
+                  />
+                ),
+              },
+              {
+                key: "net",
+                label: "Net $/gal",
+                width: "w-[16%]",
+                cell: (_, i) => (
+                  <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
+                    {price.lines[i] ? RATE(price.lines[i]!.net) : "—"}
+                  </div>
+                ),
+                total: price.gallons > 0 ? RATE(price.net) : "—",
+              },
+              {
+                key: "total",
+                label: "Line total",
+                width: "w-[20%]",
+                cell: (_, i) => (
+                  <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
+                    {price.lines[i] ? MONEY(price.lines[i]!.total) : "—"}
+                  </div>
+                ),
+                total: MONEY(price.total),
+              },
+            ]}
+          />
+        ),
+      },
+    }),
+    pricing: () => ({
+      table: {
+        hanging:
+          /* ONE ADD, TWO KINDS OF ROW (Pavan, 2026-10-07). A table has one
+             hanging add; a choice of Fee or Tax is a menu off it, never a
+             second tab beside it. */
+          locked ? undefined : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <HangingAdd label="Add charge" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="min-w-28"
+                /* THE ROW IS ADDED ONCE THE MENU HAS CLOSED, so its name
+                   cell can take the cursor — an open menu holds focus, and
+                   handing it back would land on the add. */
+                onCloseAutoFocus={(e) => {
+                  const kind = pickedCharge.current;
+                  if (!kind) return;
+                  e.preventDefault();
+                  pickedCharge.current = null;
+                  addCharge(kind);
+                }}
+              >
+                <DropdownMenuItem onSelect={() => (pickedCharge.current = "fee")}>
+                  Fee
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => (pickedCharge.current = "tax")}>
+                  Tax
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ),
+        node: (
+          <PricingTable
+            disabled={locked}
+            rows={[
+              {
+                key: "margin",
+                label: "Margin",
+                value: draft.margin,
+                onChange: (v) => set("margin", v),
+              },
+              ...chargeRows("fee"),
+              ...chargeRows("tax"),
+            ]}
+          />
+        ),
+      },
+    }),
+    /* THE NOTES ARE THEIR OWN UNIT, IN THE SAME GROUP (Pavan, 2026-10-07 —
+       ux §Record sheets): under the table's box, not inside it. */
+    notes: () => ({
+      control: (
+        <Textarea
+          value={draft.notes}
+          onChange={(e) => set("notes", e.target.value)}
+          className="min-h-24"
+        />
+      ),
+    }),
+  };
+
+  /* WHERE EACH FIELD SITS NOW — the strip sends the reader to its section. */
+  const secOf = (key: string) =>
+    sectionId("quote", formFields.find((f) => f.key === key)?.section ?? "");
+  const pending: PendingItem[] = [
+    !draft.customer && { key: "customer", label: "Choose a customer", target: secOf("customer") },
+    !draft.shipTo && { key: "shipTo", label: "Choose a ship-to", target: secOf("shipTo") },
+    !EMAIL_RE.test(draft.email.trim()) && {
+      key: "email",
+      label: "Enter the customer's email",
+      target: secOf("email"),
+    },
+    !draft.validThrough && {
+      key: "valid",
+      label: "Choose a valid-through date",
+      target: secOf("validThrough"),
+    },
+    draft.validThrough &&
+      draft.validThrough < dateKeyOf(today) && {
+        key: "validPast",
+        label: "Move the valid-through date to today or later",
+        target: secOf("validThrough"),
+      },
+    !draft.market && { key: "market", label: "Choose a market", target: secOf("market") },
+    draft.lines.some((l) => !l.name) && {
+      key: "product",
+      label: "Choose a product",
+      target: secOf("products"),
+    },
+    draft.lines.some((l) => l.gal <= 0) && {
+      key: "gal",
+      label: "Enter gallons",
+      target: secOf("products"),
+    },
+    draft.market &&
+      draft.lines.some((l) => l.name && l.base === null) && {
+        key: "base",
+        label: "Enter a base rate",
+        target: secOf("products"),
+      },
+    /* AND EVERY OTHER FIELD SALES SETTINGS MARK REQUIRED — the locked ones
+       are asked above, in the quote's own words. */
+    ...missingRequired(
+      "quote",
+      formFields.filter((f) => !f.locked),
+      (f) => (isNative(f, renderers) ? Boolean(draft.notes.trim()) : extraFilled(draft.extra?.[f.key]))
+    ),
+  ].filter(Boolean) as PendingItem[];
 
   const footerPrimary =
     quote.stage === "Draft" ? (
@@ -366,7 +717,10 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
         onClick={() => {
           flush();
           const order = acceptQuote(quote.id);
-          if (order) toast.success(`${quote.quoteNo} accepted · Order ${order.orderNo} created`);
+          /* acceptQuote raises the Quote accepted notification; this is the
+             plain confirmation for when that row is off (2026-10-07). */
+          if (order && !settings.notifications.find((n) => n.key === "quoteAccepted")?.inApp)
+            toast.success(`${quote.quoteNo} accepted · Order ${order.orderNo} created`);
         }}
       >
         Mark as accepted
@@ -387,7 +741,6 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
         showCancel={false}
         /* THE STEPPED LOOK, WITHOUT THE STEP COLUMN — as the 3PL order sheet
            (archived 2026-10-06). */
-        stepColumn={false}
         headerAside={
           <DraftStatusChip tone={QUOTE_STATUS_TONE[status]} label={status} saveState={saveState} />
         }
@@ -405,221 +758,69 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
       >
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <fieldset disabled={locked} className="flex min-w-0 flex-col gap-10">
-            <SheetSection title="Customer & delivery" id="quote-customer">
-              <div className="grid gap-4 md:grid-cols-2">
-                <SheetField label="Customer" required>
-                  <Combobox
-                    className="w-full"
-                    value={draft.customer}
-                    onValueChange={pickCustomer}
-                    options={ACTIVE_CUSTOMERS.map((c) => c.name)}
-                    placeholder="Select customer"
-                    searchPlaceholder="Search customers…"
-                    emptyText="No customer found."
-                  />
-                </SheetField>
-                <SheetField label="Ship-to" required>
-                  {/* THE GATE LIVES IN THE PICKER (ux §Side-sheet anatomy):
-                      only the chosen customer's ship-tos, and with none
-                      chosen it says why it is empty. */}
-                  <Combobox
-                    className="w-full"
-                    value={draft.shipTo}
-                    onValueChange={(v) => set("shipTo", v)}
-                    options={shipTos}
-                    placeholder={customer ? "Select ship-to" : "Choose a customer first"}
-                    emptyText="No ship-to found."
-                  />
-                </SheetField>
-                <SheetField label="Customer email" required>
-                  <Input
-                    type="email"
-                    value={draft.email}
-                    placeholder="name@company.com"
-                    onChange={(e) => set("email", e.target.value)}
-                  />
-                </SheetField>
-                <SheetField label="Valid through" required>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start font-normal">
-                        <CalendarDays />
-                        {draft.validThrough ? (
-                          formatFullDate(dateOfKey(draft.validThrough)!)
-                        ) : (
-                          <span className="text-muted-foreground">Select date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={dateOfKey(draft.validThrough) ?? undefined}
-                        onSelect={(d) => d && set("validThrough", dateKeyOf(d))}
-                        defaultMonth={dateOfKey(draft.validThrough) ?? today}
-                        disabled={{ before: today }}
-                        autoFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </SheetField>
-              </div>
-            </SheetSection>
-
-            <SheetSection
-              title="Product & market"
-              id="quote-products"
-              flush
-              action={
-                /* Only when a rate was typed over the list's — otherwise
-                   every line is already on it. */
-                anyOverride && !locked ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => set("lines", reapplyRates(draft.lines, draft.market))}
-                  >
-                    Reapply rate
-                  </Button>
-                ) : undefined
-              }
-              hanging={
-                unusedProduct !== undefined && !locked ? (
-                  <HangingAdd
-                    label="Add product"
-                    onClick={() => {
-                      setFocusProduct(draft.lines.length);
-                      setLines([
-                        ...draft.lines,
-                        { name: unusedProduct, gal: 0, base: null, baseSet: false },
-                      ]);
-                    }}
-                  />
-                ) : undefined
-              }
-            >
-              <div className="border-b border-border p-4">
-                <SheetField label="Market" required className="md:max-w-[calc(50%-8px)]">
-                  <Combobox
-                    className="w-full"
-                    value={draft.market}
-                    onValueChange={(m) =>
-                      setDraft((d) => (d ? { ...d, market: m, lines: reprice(d.lines, m) } : d))
-                    }
-                    options={MARKETS}
-                    placeholder="Select market"
-                  />
-                </SheetField>
-              </div>
-              <ProductTable<QuoteLine>
-                lines={draft.lines}
-                options={QUOTE_PRODUCTS}
-                focusRow={focusProduct}
-                onChange={setLines}
-                columns={[
-                  {
-                    key: "base",
-                    label: "Base $/gal",
-                    width: "w-[18%]",
-                    required: true,
-                    cell: (l, i) => (
-                      <TableCellInput
-                        value={l.base === null ? "" : l.base.toFixed(3)}
-                        numeric
-                        prefix="$"
-                        placeholder="—"
-                        aria-label={`Base rate of ${l.name || `row ${i + 1}`}`}
-                        onChange={(v) => {
-                          const n = Number(v.replace(/[^0-9.]/g, ""));
-                          /* Typed, it is this line's rate until Reapply;
-                             emptied, the line goes back to the list's. */
-                          setLines(
-                            draft.lines.map((x, j) =>
-                              j !== i
-                                ? x
-                                : v.trim() === ""
-                                  ? { ...x, baseSet: false }
-                                  : { ...x, baseSet: true, base: Number.isFinite(n) ? n : 0 }
-                            )
-                          );
-                        }}
-                      />
-                    ),
-                  },
-                  {
-                    key: "net",
-                    label: "Net $/gal",
-                    width: "w-[16%]",
-                    cell: (_, i) => (
-                      <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
-                        {price.lines[i] ? RATE(price.lines[i]!.net) : "—"}
-                      </div>
-                    ),
-                    total: price.gallons > 0 ? RATE(price.net) : "—",
-                  },
-                  {
-                    key: "total",
-                    label: "Line total",
-                    width: "w-[20%]",
-                    cell: (_, i) => (
-                      <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
-                        {price.lines[i] ? MONEY(price.lines[i]!.total) : "—"}
-                      </div>
-                    ),
-                    total: MONEY(price.total),
-                  },
-                ]}
-              />
-            </SheetSection>
-
-            <SheetSection title="Pricing breakdown" id="quote-pricing">
-              <div className="grid gap-4 md:grid-cols-3">
-                <AdjustField label="Margin" value={draft.margin} onChange={(v) => set("margin", v)} />
-                <AdjustField label="Fees" value={draft.fees} onChange={(v) => set("fees", v)} />
-                <AdjustField label="Tax" value={draft.tax} onChange={(v) => set("tax", v)} />
-              </div>
-              <SheetField label="Customer notes">
-                <Textarea
-                  value={draft.notes}
-                  onChange={(e) => set("notes", e.target.value)}
-                  className="min-h-24"
-                />
-              </SheetField>
-            </SheetSection>
+            <ConfiguredForm
+              kind="quote"
+              renderers={renderers}
+              extra={draft.extra ?? {}}
+              onExtraChange={(key, value) => set("extra", { ...(draft.extra ?? {}), [key]: value })}
+            />
           </fieldset>
 
           {/* WHAT THE FORM MAKES — read-only, and it stays put while the form
               scrolls (ux §Side-sheet anatomy, the two-column sheet). */}
           <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
-            <SheetSection title="Net effective price">
-              <div className="flex flex-col gap-2">
-                <SummaryRow label="Base rate" value={RATE(price.base)} />
-                <SummaryRow label="Margin" value={RATE(price.margin)} />
-                <SummaryRow label="Fees" value={RATE(price.fees)} />
-                <SummaryRow label="Tax" value={RATE(price.tax)} />
-                <div className="my-1 border-t border-dashed border-border" />
-                <SummaryRow label="Net effective price per gallon" value={RATE(price.net)} strong />
-              </div>
-              <div className="flex items-baseline justify-between gap-4 border-t border-border pt-4">
-                <span className="text-sm text-muted-foreground">Quote total</span>
-                <span className="text-lg font-semibold tabular-nums text-foreground">
-                  {MONEY(price.total)}
-                </span>
-              </div>
+            {/* THE SHARED SUMMARY CARD (Pavan, 2026-10-07 — ux §Record
+                sheets): the 3PL Quotation summary's shell. A fee or tax row
+                made of several shows its parts on hover. */}
+            <SummaryCard title="Quote summary">
+              <dl className="flex flex-col">
+                <RailRow variant="line" label="Base rate" value={RATE(price.base)} />
+                <RailRow variant="line" label="Margin" value={RATE(price.margin)} />
+                <RailRow
+                  variant="line"
+                  label="Fees"
+                  value={RATE(price.fees)}
+                  breakdown={partsOf(draft.fees, price.feeParts, "Fee")}
+                />
+                <RailRow
+                  variant="line"
+                  label="Tax"
+                  value={RATE(price.tax)}
+                  breakdown={partsOf(draft.taxes, price.taxParts, "Tax")}
+                />
+              </dl>
+              <div aria-hidden className="border-t border-dashed border-border" />
+              <dl className="flex flex-col">
+                <RailRow
+                  variant="line"
+                  label="Net effective price per gallon"
+                  value={RATE(price.net)}
+                />
+                <RailRow variant="total" label="Quote total" value={MONEY(price.total)} />
+              </dl>
               {quote.orderId && quote.orderNo && (
-                <div className="flex items-baseline justify-between gap-4 border-t border-border pt-4">
-                  <span className="text-sm text-muted-foreground">Fuel order</span>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 tabular-nums"
-                    onClick={() => onOpenOrder(quote.orderId!)}
-                  >
-                    {quote.orderNo}
-                  </Button>
-                </div>
+                <>
+                  <div aria-hidden className="border-t border-border" />
+                  <dl className="flex flex-col">
+                    <RailRow
+                      variant="line"
+                      label="Fuel order"
+                      value={
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 tabular-nums"
+                          onClick={() => onOpenOrder(quote.orderId!)}
+                        >
+                          {quote.orderNo}
+                        </Button>
+                      }
+                    />
+                  </dl>
+                </>
               )}
-            </SheetSection>
-            <ActivitySection entries={quote.audit} />
+            </SummaryCard>
+            {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07). */}
+            <ActivityCard entries={quote.audit} timeZone={settings.timeZone} />
           </aside>
         </div>
       </RecordSheet>
@@ -632,7 +833,11 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
         onSend={() => {
           updateQuote(quote.id, { ...draft, stage: "Sent" });
           lastSaved.current = JSON.stringify(draft);
-          toast.success(`${quote.quoteNo} sent to ${draft.email}`);
+          /* QUOTE SENT — the in-app notification when its row says so;
+             otherwise the plain confirmation (2026-10-07). */
+          if (settings.notifications.find((n) => n.key === "quoteSent")?.inApp)
+            notify("quoteSent", `${quote.quoteNo} sent to ${draft.email}`);
+          else toast.success(`${quote.quoteNo} sent to ${draft.email}`);
         }}
       />
     </>

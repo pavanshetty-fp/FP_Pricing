@@ -48,6 +48,7 @@ import { ListFilters } from "../ListFilters";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
+import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { DATE_FMT } from "../data";
 import {
   LOADING_ACCOUNTS,
@@ -390,6 +391,7 @@ export function RecurringProgramsScreen({
   );
   const [colOrder, setColOrder] = React.useState<string[]>(COL_KEYS);
   const [widths, setWidths] = React.useState<Record<string, number>>({});
+  const [exporting, setExporting] = React.useState(false);
   const [sort, setSort] = React.useState<{
     key: string;
     dir: "asc" | "desc";
@@ -549,6 +551,79 @@ export function RecurringProgramsScreen({
     () => cols.arrange(COLUMNS.filter((c) => !hidden.has(c.key))),
     [cols, hidden]
   );
+
+  /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
+     every narrowing that shapes the file listed. */
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "business",
+      label: "Business",
+      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
+    },
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim() ? [{ value: search.trim(), onRemove: () => setSearch("") }] : [],
+    },
+    {
+      key: "colSearch",
+      label: PROGRAM_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim() ? [{ value: colQuery.trim(), onRemove: () => setColQuery("") }] : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => setColFilters((prev) => ({ ...prev, [key]: "" })),
+        },
+      ],
+    })),
+    ...PROGRAM_FACETS.map((f) => {
+      const mine = [...applied].filter((id) => id.startsWith(`${f.key}:`));
+      const drop = (ids: string[]) =>
+        setApplied((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(f.key.length + 1),
+          onRemove: () => drop([id]),
+        })),
+        onRemoveAll: () => drop(mine),
+      };
+    }),
+  ];
+
+  const exportCsv = () => {
+    downloadCsv(
+      `recurring-programmes-${new Date().toISOString().slice(0, 10)}`,
+      rows.flatMap((p) =>
+        /* ONE CSV ROW PER LANE, not per programme. A spreadsheet of
+           programmes with a "12 sites" cell is a spreadsheet nobody can
+           pivot; the lane is the unit anybody exporting this wants. */
+        p.targets.map((t) => ({
+          "Programme #": p.programNo,
+          Partner: programVendors(p).map((v) => v.name).join(" / "),
+          Product: p.products.join(" + "),
+          Frequency: p.schedule.label,
+          Customer: t.customer.title,
+          "Ship to": t.shipTo,
+          City: t.city,
+          State: t.state,
+          Window: `${t.window.start} – ${t.window.end}`,
+          Lane: t.state_,
+          Serviceable: t.serviceable ? "Yes" : "No",
+          "Partner price": t.vendorPrice ?? "",
+          "Customer price": t.customerPrice ?? "",
+        }))
+      )
+    );
+    toast.success(
+      `Exported ${rows.reduce((s, p) => s + p.targets.length, 0)} lanes`
+    );
+  };
 
   const cell = (p: RecurringProgram, key: string): React.ReactNode => {
     const live = liveTargets(p);
@@ -719,35 +794,7 @@ export function RecurringProgramsScreen({
           setSeed(null);
           setCreating(true);
         }}
-        onExport={() => {
-          downloadCsv(
-            `recurring-programmes-${new Date().toISOString().slice(0, 10)}`,
-            rows.flatMap((p) =>
-              /* ONE CSV ROW PER LANE, not per programme. A spreadsheet of
-                 programmes with a "12 sites" cell is a spreadsheet nobody can
-                 pivot; the lane is the unit anybody exporting this wants. */
-              p.targets.map((t) => ({
-                "Programme #": p.programNo,
-                Partner: programVendors(p).map((v) => v.name).join(" / "),
-                Product: p.products.join(" + "),
-                Frequency: p.schedule.label,
-                Customer: t.customer.title,
-                "Ship to": t.shipTo,
-                City: t.city,
-                State: t.state,
-                Window: `${t.window.start} – ${t.window.end}`,
-                Lane: t.state_,
-                Serviceable: t.serviceable ? "Yes" : "No",
-                "Partner price": t.vendorPrice ?? "",
-                "Customer price": t.customerPrice ?? "",
-              }))
-            )
-          );
-          toast.success(
-            `Exported ${rows.reduce((s, p) => s + p.targets.length, 0)} lanes`,
-            { description: "One row per lane, across the programmes shown." }
-          );
-        }}
+        onExport={() => setExporting(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -794,6 +841,9 @@ export function RecurringProgramsScreen({
           showGroupBy={false}
           boardView={false}
           columns={ALL_COLS.map((c) => ({ key: c.key, label: c.label }))}
+          /* The column menu reorders too (Pavan, 2026-10-07). */
+          columnOrder={colOrder}
+          onReorderColumns={setColOrder}
           hiddenColumns={hidden as Set<string>}
           onToggleColumn={(k) =>
             setHidden((prev) => {
@@ -1015,6 +1065,38 @@ export function RecurringProgramsScreen({
           }}
         />
       </div>
+
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Programmes"
+        noun="programmes"
+        nounOne="programme"
+        count={rows.length}
+        filtersControl={
+          <ListFilters
+            facets={PROGRAM_FACETS.map((f) => ({
+              key: f.key,
+              label: f.label,
+              options: f.options,
+              searchable: f.searchable,
+            }))}
+            value={applied}
+            onApply={setApplied}
+            countFor={(sel) => narrow(sel).length}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          if (format === "csv") exportCsv();
+          else
+            toast.success(
+              `Exporting ${rows.length} ${rows.length === 1 ? "programme" : "programmes"} as .${format}`
+            );
+        }}
+      />
 
       <RecurringProgramCreate
         open={creating || editing !== null}

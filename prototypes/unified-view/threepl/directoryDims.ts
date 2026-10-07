@@ -24,6 +24,7 @@
 */
 import type { GroupDim } from "@/components/tables-layout";
 import { oneLineAddress } from "./directoryCore";
+import { BROKER_PRODUCTS } from "./directory";
 import {
   MAINTENANCE_STATUSES,
   PAYMENT_TERMS,
@@ -76,11 +77,11 @@ export type BrokerCustomerColumnKey =
 export const BROKER_CUSTOMER_COLUMNS = [
   { key: "name" as const, label: "Customer Name", width: 240, sortable: true },
   { key: "erpId" as const, label: "ERP ID", width: 130, sortable: true },
-  { key: "poc" as const, label: "Primary POC", width: 210 },
+  { key: "poc" as const, label: "Primary POC", width: 210, sortable: true },
   { key: "address" as const, label: "Address", width: 260, sortable: true },
   { key: "credit" as const, label: "Credit", width: 170, sortable: true },
   { key: "balance" as const, label: "Current Balance ($)", width: 180, sortable: true, align: "right" as const },
-  { key: "shipTos" as const, label: "Ship-Tos", width: 230 },
+  { key: "shipTos" as const, label: "Ship-Tos", width: 230, sortable: true },
   { key: "terms" as const, label: "Terms", width: 130, sortable: true },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
   /* 64px — the table's own resize minimum, and the narrowest this can be.
@@ -91,7 +92,7 @@ export const BROKER_CUSTOMER_COLUMNS = [
      icon's tooltip and the drawer's own title both say "Delivery instructions"
      in full. Judged within its own table there is no other notes column to
      confuse it with. */
-  { key: "instruction" as const, label: "Notes", width: 64 },
+  { key: "instruction" as const, label: "Notes", width: 64, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -136,6 +137,11 @@ export function sortCustomers(rows: BrokerCustomer[], sort: CustomerSort | null)
       case "balance": return c.currentBalance;
       case "terms": return c.paymentTerms;
       case "status": return c.status;
+      /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — by what the cell prints;
+         an icon column sorts the rows that have a note first. */
+      case "poc": return c.mainContactName ?? c.phone;
+      case "shipTos": return shipToNames(c)[0] ?? null;
+      case "instruction": return c.customerInstruction || c.deliveryNotes ? 0 : 1;
       default: return c.name;
     }
   };
@@ -219,12 +225,12 @@ export const BROKER_PRODUCT_COLUMNS = [
   { key: "topOff" as const, label: "TopOff", width: 130, sortable: true },
   { key: "price" as const, label: "Base Price", width: 140, sortable: true, align: "right" as const },
   { key: "taxCode" as const, label: "Tax Code", width: 140, sortable: true },
-  { key: "accounting" as const, label: "Accounting Mapping", width: 230 },
+  { key: "accounting" as const, label: "Accounting Mapping", width: 230, sortable: true },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
   { key: "customers" as const, label: "Customers", width: 130, sortable: true, align: "right" as const },
   { key: "vendors" as const, label: "Vendors", width: 120, sortable: true, align: "right" as const },
   /* Same 64px icon column as Customers and Vendors — see the note there. */
-  { key: "notes" as const, label: "Notes", width: 64 },
+  { key: "notes" as const, label: "Notes", width: 64, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -262,6 +268,9 @@ export function sortProducts(rows: BrokerProduct[], sort: ProductSort | null): B
       case "status": return p.status;
       case "customers": return customerReach(p);
       case "vendors": return p.availableVendorIds.length;
+      /* Every column sorts (Pavan, 2026-10-07). */
+      case "accounting": return p.revenueAccount;
+      case "notes": return p.notes || p.description ? 0 : 1;
       default: return p.name;
     }
   };
@@ -341,14 +350,14 @@ export const RENTAL_ASSET_COLUMNS = [
   { key: "name" as const, label: "Asset Name", width: 200, sortable: true },
   { key: "asset" as const, label: "Asset ID / Type", width: 180, sortable: true },
   { key: "rental" as const, label: "Rental Start and End Date", width: 230, sortable: true },
-  { key: "customer" as const, label: "Customer", width: 240 },
-  { key: "shipTo" as const, label: "Ship-to / Location", width: 200 },
+  { key: "customer" as const, label: "Customer", width: 240, sortable: true },
+  { key: "shipTo" as const, label: "Ship-to / Location", width: 200, sortable: true },
   { key: "address" as const, label: "Address", width: 240, sortable: true },
   { key: "status" as const, label: "Status", width: 120, sortable: true },
   { key: "rate" as const, label: "Rate", width: 120, sortable: true, align: "right" as const },
-  { key: "product" as const, label: "Linked Product", width: 190 },
+  { key: "product" as const, label: "Linked Product", width: 190, sortable: true },
   { key: "maintenance" as const, label: "Maintenance", width: 150, sortable: true },
-  { key: "notes" as const, label: "Notes", width: 64 },
+  { key: "notes" as const, label: "Notes", width: 64, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -385,6 +394,11 @@ export function sortAssets(rows: RentalAsset[], sort: AssetSort | null): RentalA
       case "status": return a.status;
       case "rate": return a.rentalRate;
       case "maintenance": return a.maintenanceStatus;
+      /* Every column sorts (Pavan, 2026-10-07). */
+      case "customer": return a.customer;
+      case "shipTo": return a.shipTo;
+      case "product": return BROKER_PRODUCTS.find((x) => x.id === a.associatedProductId)?.name ?? null;
+      case "notes": return a.notes ? 0 : 1;
       default: return a.name;
     }
   };

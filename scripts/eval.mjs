@@ -39,8 +39,17 @@ import * as sheets from "./eval/sheets.mjs";
 import * as microcopy from "./eval/microcopy.mjs";
 import * as statusKinds from "./eval/status-kinds.mjs";
 import * as tableRows from "./eval/table-rows.mjs";
+/* 3PL PARITY (2026-10-07) — 3PL is the design guardrail; these count the
+   props and shared parts a screen left off. `6-3pl-guardrails.md` G1–G52. */
+import * as parityLists from "./eval/parity-lists.mjs";
+import * as paritySheets from "./eval/parity-sheets.mjs";
+import * as parityTables from "./eval/parity-tables.mjs";
+import * as parityShell from "./eval/parity-shell.mjs";
 
-const CHECKS = [tokens, boxedTables, sheets, microcopy, statusKinds, tableRows];
+const CHECKS = [
+  tokens, boxedTables, sheets, microcopy, statusKinds, tableRows,
+  parityLists, paritySheets, parityTables, parityShell,
+];
 const RESULTS = join(ROOT, "docs/unified-view/evals/results");
 
 /** The segments that no script covers, so the report can say so out loud. */
@@ -50,6 +59,7 @@ const MANUAL = {
   "3-interactions": "hover/press/keyboard · focus · both themes · contrast",
   "4-content": "every label, and whether the screen explains itself",
   "5-data-and-state": "invariants · derived vs stored · whether it is true",
+  "6-3pl-guardrails": "the L2 guardrails — board/map/export/banner/bulk fit · rails · units in cells · drill-through",
 };
 
 const args = process.argv.slice(2);

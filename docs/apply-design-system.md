@@ -2191,6 +2191,42 @@ and it closes the sheet with the record parked as a draft. It is the one
 exception to "no Save" in Side-sheet anatomy, and it exists only while the
 record is a draft.
 
+## Forms — like inputs are a table by default (Pavan, 2026-10-07)
+
+**Whenever a form asks for the same kind of value more than once** — lines,
+charges, rates, assets, contacts — it is an EDITABLE TABLE (the boxed unit,
+ui §10f), not a row of separate fields. Every value cell is editable in
+place. **A choice that qualifies a value lives INSIDE that value's cell** — a
+unit ($/gal · $ · %), a currency, a fill type — as a compact menu at the cell's
+end, never a toggle or a second field beside it. Applies to every module,
+without being asked; a stack of fields for a repeated thing is the exception
+and needs a reason. First built: the Quote's Pricing breakdown (Margin · Fees ·
+Tax, unit in the Value cell).
+
+## Record sheets — one summary card, one activity card, everywhere (Pavan, 2026-10-07)
+
+**What a form computes is shown in the SUMMARY CARD** — the 3PL order sheet's
+"Quotation summary" shell (tinted frame, title, inner card of label · value
+rows, the headline figure last). **The record's history is the ACTIVITY
+CARD** — the 3PL rail card with the timeline (mark, what changed, then who ·
+when). Every module's record sheet uses these two shared cards; never a
+bespoke summary block or activity list. **A section's free text (notes) is its
+own unit, outside the section's table but inside the same group** — under the
+table, same heading. Applies without being asked.
+
+## Tables — full width, checkboxes, delete on hover (Pavan, 2026-10-07)
+
+- **A table takes the FULL content width.** No `max-w-*` cap on a page or
+  section that holds a table; settings pages included. A table squeezed into
+  a column with empty space beside it is a bug.
+- **Every cell is editable in place** — names, sections, types included; a
+  type or a fixed choice is a dropdown in the cell.
+- **Booleans in a table are CHECKBOXES**, never switches/toggles.
+- **Delete is its own last column, shown only on row hover** (and focus),
+  with the ✕/✓ confirm (§10f). Rows that cannot go show nothing there.
+- **Every reorderable row has a handle** — never a row without one.
+- A list of single settings (Preferences) is a table too: Setting · Value.
+
 ## Mobile — the first five rules
 
 Added 2026-09-23, from the technician's app, which is this system's **first

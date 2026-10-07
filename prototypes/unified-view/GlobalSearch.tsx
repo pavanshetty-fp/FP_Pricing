@@ -61,7 +61,7 @@ const KIND_ICON: Record<SearchKind, React.ReactNode> = {
 };
 
 /** Seeded so the empty state is not blank on first open. */
-const RECENT_IDS = ["page-fuel-orders", "cu-cu-2"];
+const RECENT_IDS = ["page-sales-orders", "cu-cu-2"];
 
 export interface GlobalSearchProps {
   open: boolean;

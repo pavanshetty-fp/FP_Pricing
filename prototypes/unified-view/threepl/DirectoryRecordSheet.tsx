@@ -29,6 +29,7 @@ import {
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import type { PendingItem } from "../PendingStrip";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
 import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
 import { kindTone } from "../statusKind";
@@ -86,6 +87,17 @@ export interface DirectoryRecordSheetProps<T> {
   noun: string;
   /** The record's name, for the edit header. */
   title: string;
+  /** The record's identity — the draft resets only when this changes, so an
+   *  autosaved edit coming back as `initial` does not reset the form. */
+  recordKey: string;
+  /* AUTOSAVE (Pavan, 2026-10-07). An existing record writes each valid change
+     as it settles; Confirm and Close finish the visit. */
+  onAutosave?: (draft: T) => void;
+  /** Closing hands back the latest draft (null while it is invalid), so a
+   *  change still settling is not lost. */
+  onClose?: (latest: T | null) => void;
+  /** The ⋯ menu — acts on the record that are not part of filling it in. */
+  headerMenu?: React.ReactNode;
   headerAside?: React.ReactNode;
   initial: T;
   sections: FormSectionDef<T>[];
@@ -137,6 +149,10 @@ export function DirectoryRecordSheet<T>({
   mode,
   noun,
   title,
+  recordKey,
+  onAutosave,
+  onClose,
+  headerMenu,
   headerAside,
   initial,
   sections,
@@ -158,7 +174,8 @@ export function DirectoryRecordSheet<T>({
     setDraft(initial);
     setTouched(new Set());
     setSubmitted(false);
-  }, [initial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordKey, mode]);
 
   const visibleSections = React.useMemo(
     () =>
@@ -181,6 +198,29 @@ export function DirectoryRecordSheet<T>({
   }, [visibleSections, draft]);
 
   const errorCount = Object.keys(errors).length;
+
+  /* AUTOSAVE (Pavan, 2026-10-07) — the draft chip's promise kept: a valid
+     change on an existing record is written once typing settles. */
+  const latestInitial = React.useRef(initial);
+  latestInitial.current = initial;
+  React.useEffect(() => {
+    if (mode !== "edit" || !onAutosave || !open) return undefined;
+    if (draft === latestInitial.current || errorCount > 0) return undefined;
+    const t = window.setTimeout(() => onAutosave(draft), 600);
+    return () => window.clearTimeout(t);
+  }, [draft, errorCount, mode, onAutosave, open]);
+
+  /* WHAT THE PRIMARY IS WAITING ON (Pavan, 2026-10-07 — G25). The button stays
+     pressable; a press names the gap and goes to its section. */
+  const pending: PendingItem[] = visibleSections.flatMap((s) =>
+    s.fields
+      .filter((f) => errors[f.key])
+      .map((f) => ({
+        key: f.key,
+        label: f.required && isBlank(f.get(draft)) ? `Add ${f.label.toLowerCase()}` : errors[f.key],
+        target: `dir-sec-${s.key}`,
+      }))
+  );
   const showError = (key: string) => Boolean(errors[key]) && (submitted || touched.has(key));
 
   const set = (f: FormFieldDef<T>, v: string | number | boolean | null) =>
@@ -291,7 +331,10 @@ export function DirectoryRecordSheet<T>({
          has to be scrolled sideways to be read. */
       size="wide"
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(o) => {
+        if (!o) onClose?.(errorCount === 0 ? draft : null);
+        onOpenChange(o);
+      }}
       mode={mode}
       editTitle={title}
       createTitle={`Create New ${noun}`}
@@ -300,6 +343,7 @@ export function DirectoryRecordSheet<T>({
          above), and "Cancel" promises to undo something that has already been
          kept. Close is the honest exit. (DS ux rules, side-sheet anatomy.) */
       showCancel={false}
+      headerMenu={headerMenu}
       headerAside={
         <span className="flex items-center gap-2">
           {headerAside}
@@ -328,6 +372,7 @@ export function DirectoryRecordSheet<T>({
         ) : undefined
       }
       canSubmit={errorCount === 0}
+      pending={pending}
       onSubmit={() => {
         setSubmitted(true);
         if (errorCount > 0) return;
@@ -337,6 +382,7 @@ export function DirectoryRecordSheet<T>({
       {visibleSections.map((s) => (
         <SheetSection
           key={s.key}
+          id={`dir-sec-${s.key}`}
           title={s.title}
           note={s.note ? <SheetSectionNote>{s.note}</SheetSectionNote> : undefined}
         >
@@ -786,51 +832,32 @@ export function EditDrawer({
   canSave?: boolean;
   children: React.ReactNode;
 }) {
+  /* ON RECORDSHEET (Pavan, 2026-10-07 — G21/G23). A second-level sheet over
+     the one it was opened from: no Cancel (Close is the exit), and the
+     primary is the sheet's own edit word, not Save Changes. */
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        className="z-[60] w-[min(460px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(460px,calc(100vw-56px))]"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <SheetTitle className="text-base">{title}</SheetTitle>
-            {subtitle && (
-              <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label={`Close ${title.toLowerCase()}`}
-            onClick={() => onOpenChange(false)}
-            className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto p-4">
-          {/* A drawer over a stepped sheet is not part of its form. */}
-          <FormStepsContext.Provider value={false}>
-            <div className="flex flex-col gap-4">{children}</div>
-          </FormStepsContext.Provider>
-        </div>
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!canSave}
-            onClick={() => {
-              onSave();
-              onOpenChange(false);
-            }}
-          >
-            Save Changes
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <RecordSheet
+      level={2}
+      size="narrow"
+      fill={false}
+      stepNav={false}
+      open={open}
+      onOpenChange={onOpenChange}
+      mode="edit"
+      editTitle={title}
+      createTitle={title}
+      createAction="Confirm"
+      headerSubtitle={
+        subtitle ? (
+          <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
+        ) : undefined
+      }
+      showCancel={false}
+      canSubmit={canSave}
+      onSubmit={onSave}
+    >
+      <div className="flex flex-col gap-4">{children}</div>
+    </RecordSheet>
   );
 }
 

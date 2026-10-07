@@ -44,6 +44,7 @@ import {
 } from "@/components/side-sheet/parts";
 import { HangingAdd } from "../HangingAdd";
 import { RecordSheet } from "../RecordSheet";
+import type { PendingItem } from "../PendingStrip";
 import { useOrderFormFields } from "./orderFormFields";
 import {
   AlertDialog,
@@ -696,7 +697,7 @@ function RouteStep({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative pl-7">
+    <div id={`mv-${step}`} className="relative pl-7">
       {step === "from" ? (
         <>
           <span
@@ -838,6 +839,25 @@ export function AssetMovementSheet({
     (route.to !== "site" || Boolean(draft.to.customer)) &&
     Boolean(draft.assetId) &&
     draft.plannedDate !== null;
+
+  /* WHAT CREATE IS WAITING ON (Pavan, 2026-10-07 — G25). Create stays
+     pressable; a press names the gap and goes to its section. */
+  const pending: PendingItem[] = [
+    ...(["from", "to"] as const).flatMap((step) => {
+      const place = step === "from" ? "pickup" : "drop-off";
+      const needsCustomer = route[step] === "site" && !draft[step].customer;
+      const named = step === "from" ? Boolean(fromName) : Boolean(nameOf(draft.to, route.to));
+      return needsCustomer
+        ? [{ key: `${step}-customer`, label: `Choose the ${place} customer`, target: `mv-${step}` }]
+        : !named
+          ? [{ key: `${step}-place`, label: `Choose the ${place} location`, target: `mv-${step}` }]
+          : [];
+    }),
+    ...(draft.assetId ? [] : [{ key: "asset", label: "Choose an asset", target: "mv-asset" }]),
+    ...(draft.plannedDate !== null
+      ? []
+      : [{ key: "date", label: "Choose a planned date", target: "mv-order" }]),
+  ];
 
   /* ── One block per end, written once and pointed at either end. ────────── */
 
@@ -993,7 +1013,6 @@ export function AssetMovementSheet({
       open={open}
       onOpenChange={requestClose}
       /* No step column — see the order sheet. The gear goes to the header. */
-      stepColumn={false}
       headerActions={gear}
       mode="create"
       showCancel={false}
@@ -1012,6 +1031,7 @@ export function AssetMovementSheet({
         </span>
       }
       canSubmit={canSubmit}
+      pending={pending}
       onSubmit={() => onCreate(draft)}
       /* Decisions about the ACT of committing ride in the footer, in view at
          the moment of pressing Create however far the body has scrolled. */
@@ -1193,7 +1213,7 @@ export function AssetMovementSheet({
       </SheetSection>
       )}
 
-      <SheetSection title="Order Details">
+      <SheetSection id="mv-order" title="Order Details">
         {/* THREE REFERENCE NUMBERS AND A DATE, one row. With the type gone to
             the header there is room for BOL beside the PO it sits next to on
             every paper version of this order. */}
@@ -1273,7 +1293,7 @@ export function AssetMovementSheet({
           own, and an Add chip on the squared bottom-left corner. Reading three
           different layouts for three lists of things was the cost of not using
           it here. */}
-      <SheetSection title="Asset Details">
+      <SheetSection id="mv-asset" title="Asset Details">
         {/* ONE ASSET, CHOSEN FROM A TABLE, THEN READ AS A CARD. §5.20: a
             movement order carries exactly one asset — `assertConsistent`
             enforces it — so this section never grows a second row, and the

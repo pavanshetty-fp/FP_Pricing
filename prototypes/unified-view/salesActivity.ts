@@ -1,5 +1,6 @@
 import type { FuelOrder } from "./types";
 import type { AssetOrder } from "./assetOrders";
+import { stageLabel } from "./salesSettings";
 
 /*
   WHAT SALES WRITES DOWN (the list Pavan approved, 2026-09-23). An event, not
@@ -20,12 +21,13 @@ export function diffFuelOrder(a: FuelOrder, b: FuelOrder): string[] {
   if ((a.driver?.name ?? "") !== (b.driver?.name ?? ""))
     out.push(
       `Driver: ${a.driver?.name || "—"} → ${b.driver?.name || "—"}${
-        a.status !== b.status ? ` (${b.status})` : ""
+        a.status !== b.status ? ` (${stageLabel(b.status)})` : ""
       }`
     );
   else
-    /* THE SHEET'S "MOVE TO …" (2026-10-07) changes the stage on its own. */
-    say(out, "Status", a.status, b.status);
+    /* THE SHEET'S "MOVE TO …" (2026-10-07) changes the stage on its own —
+       written under the stage's name as Sales Settings call it. */
+    say(out, "Status", stageLabel(a.status), stageLabel(b.status));
   say(
     out,
     "Planned",
@@ -40,7 +42,7 @@ export function diffFuelOrder(a: FuelOrder, b: FuelOrder): string[] {
 export function diffAssetOrder(a: AssetOrder, b: AssetOrder): string[] {
   const out: string[] = [];
   /* THE STAGE, set by hand — one of the five Sales stages (2026-10-07). */
-  say(out, "Status", a.status, b.status);
+  say(out, "Status", stageLabel(a.status), stageLabel(b.status));
   say(out, "Delivery date", a.date.title, b.date.title);
   return out;
 }

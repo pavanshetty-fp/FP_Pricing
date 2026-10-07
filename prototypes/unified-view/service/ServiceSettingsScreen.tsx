@@ -1,7 +1,10 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  TableCellSelect,
+  TableRequiredLabel,
+} from "@/components/form-layout/table-cells";
 import { Button } from "@/components/ui/button";
 import {
   DEFAULT_SETTINGS,
@@ -9,11 +12,12 @@ import {
   applyServiceProfile,
   setServiceSetting,
   useServiceSettings,
+  type ReturnMode,
   type ServiceSettings,
 } from "./settings";
 
 /**
- * THE SERVICE MODULE'S SWITCH POINTS.
+ * THE SERVICE MODULE'S SWITCH POINTS — a Setting · Value table (2026-10-07).
  *
  * NOT PREFERENCES. Each of these turns a whole step of the flow on or off —
  * whether there is a field app at all, whether a job is quoted before it is
@@ -26,53 +30,62 @@ import {
  * this module, so they sit inside it.
  */
 
-function SwitchRow({
+/* A SETTING · VALUE TABLE, CHECKBOXES NOT SWITCHES (Pavan, 2026-10-07 — ux
+   §Tables): the Sales Preferences table's shape, full width. A settings page
+   is the one place where saying what an option does is the content, so each
+   setting keeps its line under the name. Nothing is added or removed here, so
+   there is no add and no delete column. */
+const TH = "px-3 py-2.5 text-left";
+const ROW = "border-b border-border last:border-b-0";
+
+function SettingRow({
   title,
   description,
-  checked,
-  onChange,
+  value,
+  cell,
   nested,
   disabled,
-  disabledNote,
 }: {
   title: string;
   description: React.ReactNode;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  /** A switch that only means anything while its parent is on. */
+  value: React.ReactNode;
+  /** The value is a table cell control that fills the cell. */
+  cell?: boolean;
+  /** A setting that only means anything while its parent is on. */
   nested?: boolean;
   disabled?: boolean;
-  disabledNote?: string;
 }) {
-  const id = React.useId();
   return (
-    <div
-      className={cn(
-        "flex items-start justify-between gap-8 border-b border-fp-outline-1 py-4 last:border-b-0",
-        /* THE INDENT AND THE RULE ARE THE ONLY THINGS SAYING "UNDER" — the
-           same device the column and card-field menus use. */
-        nested && "ml-2 border-l border-fp-outline-1 py-3 pl-5",
-        disabled && "opacity-50"
-      )}
-    >
-      <div className="max-w-xl">
-        <Label htmlFor={id} className="text-sm font-medium text-foreground">
-          {title}
-        </Label>
+    <tr className={ROW}>
+      <td className={cn("px-3 py-3 align-top", nested && "pl-9", disabled && "opacity-50")}>
+        <p className="text-sm text-foreground">{title}</p>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        {disabled && disabledNote && (
-          <p className="mt-1 text-sm text-muted-foreground">{disabledNote}</p>
-        )}
-      </div>
-      <Switch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onChange}
-      />
-    </div>
+      </td>
+      <td className={cell ? "relative p-0" : "px-3 py-3 align-top"}>{value}</td>
+    </tr>
   );
 }
+
+const RETURN_MODES: { key: ReturnMode; label: string; detail: string }[] = [
+  {
+    key: "rollover",
+    label: "Roll over to the next day",
+    detail:
+      "The same order, same technician, the next day. It stays Assigned and shows Parts pending.",
+  },
+  {
+    key: "neworder",
+    label: "Complete it; the rest is a linked order",
+    detail:
+      "This order is complete. The rest becomes a new Open order with no technician or date, carrying the notes, linked both ways.",
+  },
+  {
+    key: "queue",
+    label: "Complete it; queue the rest",
+    detail:
+      "This order is complete. The rest waits in the queue as a Parts pending order for the dispatcher. No link.",
+  },
+];
 
 function sameSettings(a: ServiceSettings, b: ServiceSettings) {
   return (Object.keys(a) as (keyof ServiceSettings)[]).every((k) => a[k] === b[k]);
@@ -81,18 +94,28 @@ function sameSettings(a: ServiceSettings, b: ServiceSettings) {
 export function ServiceSettingsScreen() {
   const cfg = useServiceSettings();
   const activeProfile = SETTINGS_PROFILES.find((p) => sameSettings(cfg, p.settings));
+  type Flag = { [K in keyof ServiceSettings]: ServiceSettings[K] extends boolean ? K : never }[keyof ServiceSettings];
+  const check = (key: Flag, label: string, disabled?: boolean) => (
+    <Checkbox
+      checked={cfg[key]}
+      disabled={disabled}
+      aria-label={label}
+      onCheckedChange={(v) => setServiceSetting(key, v === true)}
+    />
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="max-w-4xl pb-8">
+        {/* THE FULL CONTENT WIDTH (Pavan, 2026-10-07): no max-width cap. */}
+        <div className="pb-8">
           <p className="text-sm text-muted-foreground">
             These are not preferences. Each one turns a whole step of the flow on
             or off, and the board, the order sheet and the field app change
             with them.
           </p>
 
-          {/* THE TWO ENDS OF THE RANGE, as one click each. Eight switches is
+          {/* THE TWO ENDS OF THE RANGE, as one click each. Eight settings is
               eight decisions; the two configurations the module was shaped
               around are worth being able to reach without making all eight. */}
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -112,137 +135,99 @@ export function ServiceSettingsScreen() {
             </span>
           </div>
 
-          <div className="mt-6 rounded-lg border border-fp-outline-1 bg-fp-surface-1a px-5">
-            {/* FIRST, BECAUSE IT DECIDES WHETHER THERE IS A FIELD STEP AT ALL.
-                Everything below it describes what happens to work once it has
-                been recorded; this one says WHO records it and where. */}
-            <SwitchRow
-              title="Service technician app"
-              description="On: assigned orders flow to the technician's field app for on-site completion — arrive, quote, then do it now or defer for a part. Off: handled by hand from the order sheet — dispatch records the completed work, with no field app and no on-site quote."
-              checked={cfg.techApp}
-              onChange={(v) => setServiceSetting("techApp", v)}
-            />
-            <SwitchRow
-              nested
-              disabled={!cfg.techApp}
-              disabledNote="A quote can only be sent from the field, so this needs the technician app."
-              title="Field quoting"
-              description="On: before starting, the technician sends the customer a quote — parts plus fees — for approval on site. Off: no quote step; work starts straight from dispatch and everything settles on the invoice afterwards."
-              checked={cfg.fieldQuote}
-              onChange={(v) => setServiceSetting("fieldQuote", v)}
-            />
-            <SwitchRow
-              title="Native billing"
-              description="On: the invoice writes itself the moment a job is approved — parts, actual labour and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."
-              checked={cfg.nativeBilling}
-              onChange={(v) => setServiceSetting("nativeBilling", v)}
-            />
-            <SwitchRow
-              title="Service cost feeds asset payback"
-              description="On: what a job costs rolls into the asset's return picture. Off: service is not part of how an asset's payback is worked out."
-              checked={cfg.roiFeed}
-              onChange={(v) => setServiceSetting("roiFeed", v)}
-            />
-            <SwitchRow
-              title="Manager approval required"
-              description="On: finished work waits in Needs approval for a service manager to sign it off before it can be billed. Off: it approves itself the moment the technician submits, and the lane is never used."
-              checked={cfg.managerApproval}
-              onChange={(v) => setServiceSetting("managerApproval", v)}
-            />
-            <SwitchRow
-              title="Price book"
-              description="On: choosing a work type brings its usual parts and a suggested fee with it, as editable lines rather than silently. Off: parts and fees are typed by hand, or handled by product codes in the ERP."
-              checked={cfg.priceBook}
-              onChange={(v) => setServiceSetting("priceBook", v)}
-            />
-            <SwitchRow
-              title="Portal intake"
-              description="On: customers can raise a job themselves, and 'Portal request' is offered as an intake source. Off: every job is keyed here, from a call, a rep, or a flagged inspection."
-              checked={cfg.portalIntake}
-              onChange={(v) => setServiceSetting("portalIntake", v)}
-            />
-            {/* THE ONE SETTING THAT IS A CHOICE, NOT A SWITCH (Pavan,
-                2026-09-23). It had no control at all — the value existed, four
-                screens read it, and nobody could change it, which is the
-                quietest way for a setting to be wrong everywhere at once.
-
-                TWO OPTIONS, SPELLED OUT, because the difference is not a
-                degree of the same thing: one keeps a single reference for one
-                fault, the other makes the second visit a piece of work in its
-                own right. A toggle labelled "linked" would make the reader
-                guess which. */}
-            <div className="flex flex-col gap-3 py-4">
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="text-sm font-medium text-foreground">
-                  When a visit cannot fit everything
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  The work that happened stays on the order, with the labour it
-                  took. Where the parts still owed go is this choice.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                {(
-                  [
-                    [
-                      "rollover",
-                      "Roll over to the next day",
-                      "The same order, same technician, the next day. It stays Assigned and shows Parts pending.",
-                    ],
-                    [
-                      "neworder",
-                      "Complete it; the rest is a linked order",
-                      "This order is complete. The rest becomes a new Open order with no technician or date, carrying the notes, linked both ways.",
-                    ],
-                    [
-                      "queue",
-                      "Complete it; queue the rest",
-                      "This order is complete. The rest waits in the queue as a Parts pending order for the dispatcher. No link.",
-                    ],
-                  ] as const
-                ).map(([key, title, detail]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setServiceSetting("returnMode", key)}
-                    className={cn(
-                      "flex items-start gap-3 rounded-md border p-3 text-left transition-colors",
-                      cfg.returnMode === key
-                        ? "border-primary bg-accent"
-                        : "border-fp-outline-1 hover:bg-accent/50"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                        cfg.returnMode === key
-                          ? "border-primary"
-                          : "border-fp-outline-2"
-                      )}
-                    >
-                      {cfg.returnMode === key && (
-                        <span className="size-2 rounded-full bg-primary" />
-                      )}
-                    </span>
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm text-foreground">{title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {detail}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* A NUMBER AMONG SWITCHES, and it belongs here anyway (Pavan,
-                2026-09-23). It answers the same kind of question the switches
-                do — what does this yard assume, so nobody has to type it —
-                and a settings page that sent one default somewhere else would
-                be a second place to look. */}
+          {/* T2 — the table is its own box, on the page, not in a card. */}
+          <div
+            data-table-variant="T2"
+            className="mt-6 overflow-x-auto rounded-md border border-fp-outline-1"
+          >
+            <table className="w-full min-w-[720px] table-fixed border-collapse">
+              <colgroup>
+                <col />
+                <col className="w-[32%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border bg-fp-table-header">
+                  <th className={TH}>
+                    <TableRequiredLabel>Setting</TableRequiredLabel>
+                  </th>
+                  <th className={TH}>
+                    <TableRequiredLabel>Value</TableRequiredLabel>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* FIRST, BECAUSE IT DECIDES WHETHER THERE IS A FIELD STEP AT
+                    ALL. Everything below it describes what happens to work
+                    once it has been recorded; this one says WHO records it. */}
+                <SettingRow
+                  title="Service technician app"
+                  description="On: assigned orders flow to the technician's field app for on-site completion — arrive, quote, then do it now or defer for a part. Off: handled by hand from the order sheet — dispatch records the completed work, with no field app and no on-site quote."
+                  value={check("techApp", "Service technician app")}
+                />
+                <SettingRow
+                  nested
+                  disabled={!cfg.techApp}
+                  title="Field quoting"
+                  description={
+                    cfg.techApp
+                      ? "On: before starting, the technician sends the customer a quote — parts plus fees — for approval on site. Off: no quote step; work starts straight from dispatch and everything settles on the invoice afterwards."
+                      : "A quote can only be sent from the field, so this needs the technician app."
+                  }
+                  value={check("fieldQuote", "Field quoting", !cfg.techApp)}
+                />
+                <SettingRow
+                  title="Native billing"
+                  description="On: the invoice writes itself the moment a job is approved — parts, actual labour and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."
+                  value={check("nativeBilling", "Native billing")}
+                />
+                <SettingRow
+                  title="Service cost feeds asset payback"
+                  description="On: what a job costs rolls into the asset's return picture. Off: service is not part of how an asset's payback is worked out."
+                  value={check("roiFeed", "Service cost feeds asset payback")}
+                />
+                <SettingRow
+                  title="Manager approval required"
+                  description="On: finished work waits in Needs approval for a service manager to sign it off before it can be billed. Off: it approves itself the moment the technician submits, and the lane is never used."
+                  value={check("managerApproval", "Manager approval required")}
+                />
+                <SettingRow
+                  title="Price book"
+                  description="On: choosing a work type brings its usual parts and a suggested fee with it, as editable lines rather than silently. Off: parts and fees are typed by hand, or handled by product codes in the ERP."
+                  value={check("priceBook", "Price book")}
+                />
+                <SettingRow
+                  title="Portal intake"
+                  description="On: customers can raise a job themselves, and 'Portal request' is offered as an intake source. Off: every job is keyed here, from a call, a rep, or a flagged inspection."
+                  value={check("portalIntake", "Portal intake")}
+                />
+                {/* THE ONE SETTING THAT IS A CHOICE, NOT A YES/NO (Pavan,
+                    2026-09-23) — a dropdown in its value cell (2026-10-07). */}
+                <SettingRow
+                  title="When a visit cannot fit everything"
+                  description={
+                    RETURN_MODES.find((m) => m.key === cfg.returnMode)?.detail
+                  }
+                  cell
+                  value={
+                    <TableCellSelect
+                      value={
+                        RETURN_MODES.find((m) => m.key === cfg.returnMode)?.label ?? ""
+                      }
+                      options={RETURN_MODES.map((m) => m.label)}
+                      searchThreshold={99}
+                      aria-label="When a visit cannot fit everything"
+                      onChange={(v) => {
+                        const m = RETURN_MODES.find((x) => x.label === v);
+                        if (m) setServiceSetting("returnMode", m.key);
+                      }}
+                    />
+                  }
+                />
+              </tbody>
+            </table>
           </div>
 
-          {/* THE ONE RULE THAT IS NOT A SWITCH, said where the switches are —
+          {/* THE ONE RULE THAT IS NOT A SETTING, said where the settings are —
               it is what half of them are about. */}
           <div className="mt-6 rounded-lg border border-fp-outline-1 bg-fp-card-1 p-5">
             <p className="text-sm font-medium text-foreground">Quote and invoice</p>

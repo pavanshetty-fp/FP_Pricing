@@ -491,7 +491,7 @@ export function Hit({
     parts.push(
       <mark
         key={`${from}-${to}`}
-        className="rounded-[2px] bg-brand/25 font-medium text-foreground"
+        className="rounded-xs bg-brand/25 font-medium text-foreground"
       >
         {text.slice(from, to)}
       </mark>

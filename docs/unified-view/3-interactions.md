@@ -43,8 +43,11 @@ the draft builder, the save, and the create.
 - **Every act announces itself; typing does not.** A toast per pause while
   somebody fills in a form is the app narrating typing. The ACTS — sent,
   awarded, approved, created — earn a toast; the autosave earns the chip.
-- **A toast says what happened and what it means.** Title = the act, description
-  = the consequence.
+- **A toast says what happened; a second line only when it has a
+  consequence** (Pavan, 2026-10-07). Title = the act. The second line exists
+  only to warn what follows ("Paused R-1042 / 4 unfinished orders cancelled.")
+  — never to repeat a name or number already on screen, nor to restate the
+  obvious ("Exported 80 vendors / The filtered list…"). Most toasts are one line.
 - **The audit trail records changes past the first stage only.** On a draft
   nobody has sent anywhere, every field is being typed for the first time, and
   an entry per pause buries the entries that matter.

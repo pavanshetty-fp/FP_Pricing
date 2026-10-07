@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { ReceiptText, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +15,10 @@ import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
+import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
 import { useSavedViews } from "./useSavedViews";
-import { DATE_FMT, MONEY, RATE } from "./data";
+import { MONEY, RATE } from "./data";
 import {
   MARKETS,
   QUOTE_COLUMNS,
@@ -33,7 +35,8 @@ import {
   type QuoteColumnKey,
   type QuoteSort,
 } from "./quotes";
-import { createQuote, useQuotes } from "./quoteStore";
+import { createQuote, reportExpired, useQuotes } from "./quoteStore";
+import { dateIn, timeIn, useSalesSettings } from "./salesSettings";
 import { QuoteSheet } from "./QuoteSheet";
 
 /**
@@ -101,11 +104,16 @@ export function QuotesScreen({
   onOpenOrder,
 }: {
   focus?: { id: string; n: number } | null;
-  /** Create Quote pressed elsewhere (Fuel Orders) — a nonce, so twice still opens. */
+  /** Create Quote pressed elsewhere (Orders' Create menu) — a nonce, so twice still opens. */
   create?: number | null;
   onOpenOrder: (orderId: string) => void;
 }) {
   const rows = useQuotes();
+  const { timeZone } = useSalesSettings();
+  /* QUOTE EXPIRED — an in-app notification, once per quote (2026-10-07). */
+  React.useEffect(() => {
+    reportExpired(rows.filter((q) => quoteStatus(q) === "Expired"));
+  }, [rows]);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
@@ -121,6 +129,8 @@ export function QuotesScreen({
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
+  /* EXPORT ASKS FIRST (G10, Pavan, 2026-10-07) — 3PL's ExportSheet. */
+  const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
@@ -277,10 +287,8 @@ export function QuotesScreen({
       case "updated": {
         const d = new Date(r.updatedAt);
         return (
-          <TwoLineCell
-            title={DATE_FMT.format(d)}
-            description={d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-          />
+          /* IN THE SALES TIME ZONE (Preferences, 2026-10-07). */
+          <TwoLineCell title={dateIn(d, timeZone)} description={timeIn(d, timeZone)} />
         );
       }
       default:
@@ -290,9 +298,64 @@ export function QuotesScreen({
 
   const nothing = sorted.length === 0 && !colFiltersOpen;
 
+  /* EVERY NARROWING THAT IS ON, for the export sheet to list — each drops
+     what the shelf's own chip drops (3PL's, 2026-10-07). */
+  const dropFacets = (gone: string[]) => {
+    const next = new Set(facetSel);
+    for (const id of gone) next.delete(id);
+    setFacetSel(next);
+    setPage(1);
+  };
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim()
+        ? [{ value: search.trim(), onRemove: () => { setSearch(""); setPage(1); } }]
+        : [],
+    },
+    {
+      key: "colSearch",
+      label: QUOTE_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim()
+        ? [{ value: colQuery.trim(), onRemove: () => { setColQuery(""); setPage(1); } }]
+        : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: QUOTE_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
+            setPage(1);
+          },
+        },
+      ],
+    })),
+    ...facets.map((f) => {
+      const mine = [...facetSel].filter((id) => id.startsWith(`${f.key}:`));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(id.indexOf(":") + 1),
+          onRemove: () => dropFacets([id]),
+        })),
+        onRemoveAll: () => dropFacets(mine),
+      };
+    }),
+  ];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <FuelOrdersViewBar {...savedViews} ctaLabel="Create Quote" onCreateOrder={startCreate} />
+      <FuelOrdersViewBar
+        {...savedViews}
+        ctaLabel="Create Quote"
+        onCreateOrder={startCreate}
+        onExport={() => setExporting(true)}
+      />
 
       <div className="mt-4 shrink-0">
         <ListToolbar
@@ -366,7 +429,8 @@ export function QuotesScreen({
           }}
         >
           <ColumnSearchChip
-            className=""
+            /* ALONE ON THE SHELF it keeps its own top margin (Pavan, 2026-10-07). */
+            className={facetSel.size > 0 ? "" : undefined}
             searchFields={QUOTE_SEARCH_FIELDS}
             colScope={colScope}
             colQuery={colQuery}
@@ -447,6 +511,34 @@ export function QuotesScreen({
           )}
         </div>
       </div>
+
+      {/* EXPORT ASKS BEFORE IT ACTS (G10, Pavan, 2026-10-07). What leaves is
+          the whole narrowed set, not the page. */}
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Quotes"
+        noun="quotes"
+        nounOne="quote"
+        count={sorted.length}
+        filtersControl={
+          <ListFilters
+            facets={facets}
+            value={facetSel}
+            countFor={(sel) => narrowFacets(sel).length}
+            onApply={(sel) => {
+              setFacetSel(sel);
+              setPage(1);
+            }}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          toast.success(`Exporting ${sorted.length} ${sorted.length === 1 ? "quote" : "quotes"} as .${format}`);
+        }}
+      />
 
       <QuoteSheet
         quote={rows.find((r) => r.id === openId) ?? null}

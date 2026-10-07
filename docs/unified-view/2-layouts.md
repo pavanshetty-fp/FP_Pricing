@@ -94,7 +94,7 @@ are NOT built — there is no prior-period data.
 
 | Module | Tier 1 | Tier 2 |
 |---|---|---|
-| Sales | **Dashboard** · Fuel Orders · Asset Orders · Quotes · Customers · Assets | none |
+| Sales | **Dashboard** · Orders · Quotes · Customers · Assets · Sales Settings (opens on Orders) | none |
 | 3PL | **Dashboard** · Orders · Directory | Orders → Delivery Orders, Recurring Orders · Directory → Customers, Vendors, Products, Rental Assets |
 | Service Work | Service Orders · Technicians · Service Settings | none |
 | Lease, Pricing | none — an unbuilt module shows the module-level empty state rather than invented destinations |
@@ -370,3 +370,22 @@ makes a Requested fuel order; Expired is derived from valid-through. Several
 product lines; margin, fees and tax once per quote ($/gal, $ total or %);
 base rates from an INVENTED price list. Accepted quotes are locked. "Create
 Quote" also sits beside Create Order on Fuel Orders.
+
+### Sales, later the same day (Pavan, 2026-10-07)
+
+**One Orders page** replaces Fuel Orders + Asset Orders: Line of Service
+segment All · Fuel Orders · Asset Orders (default All) on the right, like
+3PL; **Create Order** is a menu — Create Fuel Order · Create Asset Order ·
+Create Quote. Sales opens on Orders. Existing order sheets get the right rail
+(shared Summary + Activity cards).
+
+**Sales Settings** — Form customization (Fuel · Asset · Quote; fields drive
+the real sheets: order, sections, labels, visible, required blocks the commit;
+15-field limit; field library), Workflow (rename/add stages, approval step,
+Over SLA), Notifications (events × In-app/Email/SMS), Preferences (Setting ·
+Value). Every table: full width, every cell editable, checkboxes, delete on
+hover, a handle on every row. Settings persist in the browser.
+
+**3PL is the guardrail** — 52 rules in `evals/6-3pl-guardrails.md`, scripted by
+the `parity-*` checks; the 2026-10-07 pass brought Sales, Service Work and
+3PL's older screens (Directory, Recurring) in line.

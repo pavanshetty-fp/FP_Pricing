@@ -515,14 +515,14 @@ export const VENDOR_COLUMNS: VendorColumnDef[] = [
      digits still line up with each other. Money and long figures keep
      `right`, where lining up the units is the whole point. */
   { key: "assigned", label: "Assigned Orders", width: 150, sortable: true, align: "center" },
-  { key: "dispatch", label: "Dispatch", width: 240 },
-  { key: "lines", label: "Business Lines", width: 230 },
+  { key: "dispatch", label: "Dispatch", width: 240, sortable: true },
+  { key: "lines", label: "Business Lines", width: 230, sortable: true },
   { key: "address", label: "Address", width: 250, sortable: true },
-  { key: "serviceArea", label: "Service Area", width: 200 },
-  { key: "products", label: "Supported Products", width: 230 },
+  { key: "serviceArea", label: "Service Area", width: 200, sortable: true },
+  { key: "products", label: "Supported Products", width: 230, sortable: true },
   { key: "status", label: "Status", width: 120, sortable: true },
-  { key: "rateCard", label: "Default Rate Card", width: 180 },
-  { key: "instruction", label: "Notes", width: 64 },
+  { key: "rateCard", label: "Default Rate Card", width: 180, sortable: true },
+  { key: "instruction", label: "Notes", width: 64, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -563,6 +563,15 @@ export function sortVendors(rows: Vendor[], sort: VendorSortState | null): Vendo
       case "address": return `${v.city ?? ""} ${v.state ?? ""}`.trim();
       case "status": return v.active ? 1 : 0;
       case "assigned": return assignedOrderCount(v.id);
+      /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — by what the cell prints
+         first; an icon column sorts the rows with a note first. */
+      case "dispatch": return v.dispatchPhone ?? "";
+      case "lines": return v.businessLines[0] ?? "";
+      case "serviceArea": return v.serviceStates[0] ?? "";
+      case "products": return v.supportedProductIds.length;
+      case "rateCard":
+        return (v.rateCard.find((l) => l.id === v.defaultRateCardId) ?? v.rateCard[0])?.label ?? "";
+      case "instruction": return v.vendorInstruction ? 0 : 1;
       default: return v.name;
     }
   };

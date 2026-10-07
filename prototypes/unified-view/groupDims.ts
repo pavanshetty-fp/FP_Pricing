@@ -20,110 +20,12 @@
     repeats its own group header.
 */
 import type { GroupDim } from "@/components/tables-layout";
-import type { FuelOrder } from "./types";
-import type { AssetOrder } from "./assetOrders";
-import { ASSET_ORDER_STATUSES } from "./assetOrders";
 import type { Customer } from "./customers";
 import type { Asset } from "./assets";
 import { ASSET_STATUSES } from "./assets";
 
-/* ------------------------------------------------------------ fuel orders --
-   Measure: Qty (Gal). Customer and Ship To share one two-line cell, so neither
-   hides it — grouping by customer makes the title line redundant but the
-   ship-to beneath it is still the row's own information. */
-export const FUEL_ORDER_GROUP_DIMS: GroupDim<FuelOrder>[] = [
-  {
-    key: "customer",
-    label: "Customer",
-    valuesOf: (r) => [r.customer.title],
-  },
-  {
-    key: "shipTo",
-    label: "Ship To",
-    valuesOf: (r) => [r.customer.description],
-  },
-  {
-    key: "driver",
-    label: "Driver",
-    hides: "driver",
-    // The empty group here is the work queue — every order still needing one.
-    valuesOf: (r) => (r.driver ? [r.driver.name] : []),
-  },
-  {
-    key: "type",
-    label: "Order Type",
-    hides: "type",
-    valuesOf: (r) => [r.type.label],
-  },
-  {
-    key: "status",
-    label: "Status",
-    hides: "status",
-    order: ["Requested", "Scheduled", "Dispatched", "Delivered", "Cancelled"],
-    valuesOf: (r) => [r.status],
-  },
-  {
-    key: "date",
-    label: "Date of Delivery",
-    hides: "date",
-    // One group while the toolbar scopes the list to a single day. Earns its
-    // place the moment that scope widens to a range.
-    valuesOf: (r) => [r.date.title],
-  },
-  {
-    key: "product",
-    label: "Product",
-    multi: true,
-    valuesOf: (r) => r.products.map((p) => p.name),
-  },
-  {
-    key: "tags",
-    label: "Tags",
-    multi: true,
-    valuesOf: (r) => r.tags,
-  },
-];
-
-/* ----------------------------------------------------------- asset orders --
-   Measure: quantity (units). Asset Type and Ship To are on the row model but
-   not columns — grouping can see them, the table stays as it was. */
-export const ASSET_ORDER_GROUP_DIMS: GroupDim<AssetOrder>[] = [
-  {
-    key: "customer",
-    label: "Customer",
-    valuesOf: (r) => [r.customer.title],
-  },
-  {
-    key: "salesRep",
-    label: "Sales Rep",
-    hides: "salesRep",
-    valuesOf: (r) => [r.salesRep],
-  },
-  {
-    key: "status",
-    label: "Status",
-    hides: "status",
-    // A real lifecycle, so the groups follow it rather than the alphabet.
-    order: ASSET_ORDER_STATUSES,
-    valuesOf: (r) => [r.status],
-  },
-  {
-    key: "date",
-    label: "Delivery Date",
-    hides: "date",
-    valuesOf: (r) => [r.date.title],
-  },
-  {
-    key: "assetType",
-    label: "Asset Type",
-    valuesOf: (r) => [r.assetType],
-  },
-  {
-    key: "shipTo",
-    label: "Ship To",
-    valuesOf: (r) => [r.shipTo],
-  },
-];
+/* THE ORDERS PAGE'S DIMENSIONS live with its rows, in `salesOrders.ts`
+   (Pavan, 2026-10-07) — fuel and asset orders, one list. */
 
 /* -------------------------------------------------------------- customers --
    Measure: ship-tos. An account count alone would make every header say the

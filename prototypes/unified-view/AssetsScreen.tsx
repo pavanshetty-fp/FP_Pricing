@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { Database, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,9 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
-import { ListFilters } from "./ListFilters";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListFilters, type ListFacet } from "./ListFilters";
+import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { ASSET_GROUP_DIMS } from "./groupDims";
@@ -77,12 +79,30 @@ interface ViewState {
   columnOrder?: string[];
   /** Reader-set column widths in px, by key. Empty means "as declared". */
   columnWidths?: Record<string, number>;
+  /* FACETS (Pavan, 2026-10-07). Optional so a view saved before them applies. */
+  facets?: string[];
 }
+
+/* FILTERS APPLY (Pavan, 2026-10-07). The panel used to tick and do nothing;
+   now it stages, applies and shows chips — 3PL's and Quotes'. */
+const ASSET_FACETS: ListFacet[] = [
+  { key: "status", label: "Status", options: [...ASSET_STATUSES] },
+  { key: "los", label: "LOS", options: ASSET_LOS },
+  { key: "hub", label: "Hub", options: HUBS, searchable: true },
+  {
+    key: "products",
+    label: "Product Compatibility",
+    options: PRODUCT_COMPATIBILITY,
+    searchable: true,
+  },
+  { key: "monitor", label: "Tank Monitor", options: ["Yes", "No"] },
+];
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
     hidden: [...s.hidden].sort(),
+    facets: [...(s.facets ?? [])].sort(),
     /* Empty boxes are no filter — typing then clearing one is not a change. */
     colFilters: Object.fromEntries(
       Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
@@ -139,6 +159,9 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
+  /* EXPORT ASKS FIRST (G10, Pavan, 2026-10-07) — 3PL's ExportSheet. */
+  const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
@@ -155,6 +178,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     colFilters,
     columnOrder,
     columnWidths,
+    facets: [...facetSel],
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -168,6 +192,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       colFilters: {},
       columnOrder: [],
       columnWidths: {},
+      facets: [],
     }),
     []
   );
@@ -189,6 +214,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
     setColumnOrder(s.columnOrder ?? []);
     setColumnWidths(s.columnWidths ?? {});
+    setFacetSel(new Set(s.facets ?? []));
     setPage(1);
   };
 
@@ -203,7 +229,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
-  const filtered = React.useMemo(
+  const searched = React.useMemo(
     () =>
       rows.filter(
         (a) =>
@@ -218,6 +244,25 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       ),
     [rows, q, cq, colScope, activeColFilters]
   );
+  /* Facets AND across, OR within one. Product Compatibility passes when the
+     asset holds any ticked product. */
+  const narrowFacets = React.useCallback(
+    (sel: ReadonlySet<string>) => {
+      if (sel.size === 0) return searched;
+      const on = (facet: string) => [...sel].some((id) => id.startsWith(`${facet}:`));
+      const pass = (facet: string, value: string) => !on(facet) || sel.has(`${facet}:${value}`);
+      return searched.filter(
+        (a) =>
+          pass("status", a.status) &&
+          pass("los", a.los) &&
+          pass("hub", a.hub) &&
+          (!on("products") || a.products.some((p) => sel.has(`products:${p}`))) &&
+          pass("monitor", a.tankMonitor ? "Yes" : "No")
+      );
+    },
+    [searched]
+  );
+  const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
   const sorted = React.useMemo(() => sortAssets(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
      suspends pagination while grouped — a group cannot straddle a page
@@ -314,12 +359,63 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     }
   };
 
+  /* EVERY NARROWING THAT IS ON, for the export sheet to list — each drops
+     what the shelf's own chip drops (3PL's, 2026-10-07). */
+  const dropFacets = (gone: string[]) => {
+    const next = new Set(facetSel);
+    for (const id of gone) next.delete(id);
+    setFacetSel(next);
+    setPage(1);
+  };
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim()
+        ? [{ value: search.trim(), onRemove: () => { setSearch(""); setPage(1); } }]
+        : [],
+    },
+    {
+      key: "colSearch",
+      label: ASSET_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim()
+        ? [{ value: colQuery.trim(), onRemove: () => { setColQuery(""); setPage(1); } }]
+        : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: ASSET_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
+            setPage(1);
+          },
+        },
+      ],
+    })),
+    ...ASSET_FACETS.map((f) => {
+      const mine = [...facetSel].filter((id) => id.startsWith(`${f.key}:`));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(id.indexOf(":") + 1),
+          onRemove: () => dropFacets([id]),
+        })),
+        onRemoveAll: () => dropFacets(mine),
+      };
+    }),
+  ];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create New Asset"
         onCreateOrder={() => setCreating(true)}
+        onExport={() => setExporting(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -332,18 +428,13 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
           searchPlaceholder="Search assets, IDs, hubs…"
           filters={
             <ListFilters
-              facets={[
-                { key: "status", label: "Status", options: [...ASSET_STATUSES] },
-                { key: "los", label: "LOS", options: ASSET_LOS },
-                { key: "hub", label: "Hub", options: HUBS, searchable: true },
-                {
-                  key: "products",
-                  label: "Product Compatibility",
-                  options: PRODUCT_COMPATIBILITY,
-                  searchable: true,
-                },
-                { key: "monitor", label: "Tank Monitor", options: ["Yes", "No"] },
-              ]}
+              facets={ASSET_FACETS}
+              value={facetSel}
+              countFor={(sel) => narrowFacets(sel).length}
+              onApply={(sel) => {
+                setFacetSel(sel);
+                setPage(1);
+              }}
             />
           }
           groupBy={{
@@ -398,15 +489,27 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
           view={view}
           onViewChange={setView}
         />
-        <ColumnSearchChip
-          searchFields={ASSET_SEARCH_FIELDS}
-          colScope={colScope}
-          colQuery={colQuery}
-          onClear={() => {
-            setColQuery("");
+        {/* ONE SHELF for the facets and the column search — 3PL's. */}
+        <FilterChips
+          facets={ASSET_FACETS}
+          selected={facetSel}
+          onChange={(next) => {
+            setFacetSel(next);
             setPage(1);
           }}
-        />
+        >
+          <ColumnSearchChip
+            /* ALONE ON THE SHELF it keeps its own top margin (Pavan, 2026-10-07). */
+            className={facetSel.size > 0 ? "" : undefined}
+            searchFields={ASSET_SEARCH_FIELDS}
+            colScope={colScope}
+            colQuery={colQuery}
+            onClear={() => {
+              setColQuery("");
+              setPage(1);
+            }}
+          />
+        </FilterChips>
         {/* One chip per header box that has something typed in it. */}
         {activeColFilters.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -492,6 +595,34 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
           )}
         </div>
       </div>
+
+      {/* EXPORT ASKS BEFORE IT ACTS (G10, Pavan, 2026-10-07). What leaves is
+          the whole narrowed set, not the page. */}
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Assets"
+        noun="assets"
+        nounOne="asset"
+        count={sorted.length}
+        filtersControl={
+          <ListFilters
+            facets={ASSET_FACETS}
+            value={facetSel}
+            countFor={(sel) => narrowFacets(sel).length}
+            onApply={(sel) => {
+              setFacetSel(sel);
+              setPage(1);
+            }}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          toast.success(`Exporting ${sorted.length} ${sorted.length === 1 ? "asset" : "assets"} as .${format}`);
+        }}
+      />
 
       <AssetSheet
         asset={rows.find((a) => a.id === openId) ?? null}

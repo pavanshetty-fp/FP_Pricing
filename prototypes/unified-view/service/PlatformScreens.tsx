@@ -237,7 +237,9 @@ const MP_COLUMNS: ListColumn<MpKey>[] = [
   { key: "every", label: "Every", width: 100, sortable: true, align: "right" },
   { key: "last", label: "Last done", width: 140, sortable: true },
   { key: "next", label: "Next due", width: 140, sortable: true },
-  { key: "raise", label: "Visit", width: 150 },
+  /* EVERY COLUMN SORTS, as on 3PL (Pavan, 2026-10-07) — by the order a plan
+     raised, so the plans still waiting on a visit gather at one end. */
+  { key: "raise", label: "Visit", width: 150, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -266,7 +268,7 @@ export function MaintenanceScreen() {
     });
     raised.set(p.id, no);
     bump();
-    toast.success(`${no} raised`, { description: `${p.task} · ${p.asset} · waiting to be assigned` });
+    toast.success(`${no} raised`);
   };
   return (
     <ServiceListScreen<MaintenancePlan, MpKey>
@@ -278,7 +280,15 @@ export function MaintenanceScreen() {
       searchPlaceholder="Search plans, assets, customers…"
       searchText={(r) => [r.no, r.asset, r.customer, r.task].join(" ")}
       sortValue={(r, k) =>
-        k === "every" ? r.everyMonths : k === "last" ? r.lastKey : k === "next" ? r.nextKey : String(r[k as "no"] ?? "")
+        k === "every"
+          ? r.everyMonths
+          : k === "last"
+            ? r.lastKey
+            : k === "next"
+              ? r.nextKey
+              : k === "raise"
+                ? (raised.get(r.id) ?? "")
+                : String(r[k as "no"] ?? "")
       }
       renderCell={(r, k) => {
         switch (k) {

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { SearchX, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,9 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, type ListView } from "./ListToolbar";
-import { ListFilters } from "./ListFilters";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListFilters, type ListFacet } from "./ListFilters";
+import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { CUSTOMER_GROUP_DIMS } from "./groupDims";
@@ -68,12 +70,22 @@ interface ViewState {
   columnOrder?: string[];
   /** Reader-set column widths in px, by key. Empty means "as declared". */
   columnWidths?: Record<string, number>;
+  /* FACETS (Pavan, 2026-10-07). Optional so a view saved before them applies. */
+  facets?: string[];
 }
+
+/* FILTERS APPLY (Pavan, 2026-10-07). The panel used to tick and do nothing;
+   now it stages, applies and shows chips — 3PL's and Quotes'. */
+const CUSTOMER_FACETS: ListFacet[] = [
+  { key: "status", label: "Status", options: ["Active", "Inactive"] },
+  { key: "los", label: "LOS", options: [...LINES_OF_SERVICE] },
+];
 
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
     hidden: [...s.hidden].sort(),
+    facets: [...(s.facets ?? [])].sort(),
     /* Empty boxes are no filter — typing then clearing one is not a change. */
     colFilters: Object.fromEntries(
       Object.entries(s.colFilters ?? {}).filter(([, v]) => v.trim() !== "").sort(([a], [b]) => a.localeCompare(b))
@@ -120,6 +132,9 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
+  /* EXPORT ASKS FIRST (G10, Pavan, 2026-10-07) — 3PL's ExportSheet. */
+  const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
     [colFilters]
@@ -136,6 +151,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     colFilters,
     columnOrder,
     columnWidths,
+    facets: [...facetSel],
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -149,6 +165,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       colFilters: {},
       columnOrder: [],
       columnWidths: {},
+      facets: [],
     }),
     []
   );
@@ -170,6 +187,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
     setColumnOrder(s.columnOrder ?? []);
     setColumnWidths(s.columnWidths ?? {});
+    setFacetSel(new Set(s.facets ?? []));
     setPage(1);
   };
 
@@ -184,7 +202,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
-  const filtered = React.useMemo(
+  const searched = React.useMemo(
     () =>
       rows.filter(
         (c) =>
@@ -200,6 +218,21 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       ),
     [rows, q, cq, colScope, activeColFilters]
   );
+  /* Facets AND across, OR within one. A customer with several lines passes
+     LOS when any of its lines is ticked. */
+  const narrowFacets = React.useCallback(
+    (sel: ReadonlySet<string>) => {
+      if (sel.size === 0) return searched;
+      const on = (facet: string) => [...sel].some((id) => id.startsWith(`${facet}:`));
+      return searched.filter(
+        (c) =>
+          (!on("status") || sel.has(`status:${c.status}`)) &&
+          (!on("los") || c.los.some((l) => sel.has(`los:${l}`)))
+      );
+    },
+    [searched]
+  );
+  const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
   const sorted = React.useMemo(() => sortCustomers(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
      suspends pagination while grouped — a group cannot straddle a page
@@ -268,12 +301,63 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     }
   };
 
+  /* EVERY NARROWING THAT IS ON, for the export sheet to list — each drops
+     what the shelf's own chip drops (3PL's, 2026-10-07). */
+  const dropFacets = (gone: string[]) => {
+    const next = new Set(facetSel);
+    for (const id of gone) next.delete(id);
+    setFacetSel(next);
+    setPage(1);
+  };
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim()
+        ? [{ value: search.trim(), onRemove: () => { setSearch(""); setPage(1); } }]
+        : [],
+    },
+    {
+      key: "colSearch",
+      label: CUSTOMER_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim()
+        ? [{ value: colQuery.trim(), onRemove: () => { setColQuery(""); setPage(1); } }]
+        : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: CUSTOMER_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
+            setPage(1);
+          },
+        },
+      ],
+    })),
+    ...CUSTOMER_FACETS.map((f) => {
+      const mine = [...facetSel].filter((id) => id.startsWith(`${f.key}:`));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(id.indexOf(":") + 1),
+          onRemove: () => dropFacets([id]),
+        })),
+        onRemoveAll: () => dropFacets(mine),
+      };
+    }),
+  ];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create New Customer"
         onCreateOrder={() => setCreating(true)}
+        onExport={() => setExporting(true)}
       />
 
       <div className="mt-4 shrink-0">
@@ -286,10 +370,13 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
           searchPlaceholder="Search customers, ERP IDs, ship-tos…"
           filters={
             <ListFilters
-              facets={[
-                { key: "status", label: "Status", options: ["Active", "Inactive"] },
-                { key: "los", label: "LOS", options: [...LINES_OF_SERVICE] },
-              ]}
+              facets={CUSTOMER_FACETS}
+              value={facetSel}
+              countFor={(sel) => narrowFacets(sel).length}
+              onApply={(sel) => {
+                setFacetSel(sel);
+                setPage(1);
+              }}
             />
           }
           groupBy={{
@@ -344,15 +431,27 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
           view={view}
           onViewChange={setView}
         />
-        <ColumnSearchChip
-          searchFields={CUSTOMER_SEARCH_FIELDS}
-          colScope={colScope}
-          colQuery={colQuery}
-          onClear={() => {
-            setColQuery("");
+        {/* ONE SHELF for the facets and the column search — 3PL's. */}
+        <FilterChips
+          facets={CUSTOMER_FACETS}
+          selected={facetSel}
+          onChange={(next) => {
+            setFacetSel(next);
             setPage(1);
           }}
-        />
+        >
+          <ColumnSearchChip
+            /* ALONE ON THE SHELF it keeps its own top margin (Pavan, 2026-10-07). */
+            className={facetSel.size > 0 ? "" : undefined}
+            searchFields={CUSTOMER_SEARCH_FIELDS}
+            colScope={colScope}
+            colQuery={colQuery}
+            onClear={() => {
+              setColQuery("");
+              setPage(1);
+            }}
+          />
+        </FilterChips>
         {/* One chip per header box that has something typed in it. */}
         {activeColFilters.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -436,6 +535,34 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
           )}
         </div>
       </div>
+
+      {/* EXPORT ASKS BEFORE IT ACTS (G10, Pavan, 2026-10-07). What leaves is
+          the whole narrowed set, not the page. */}
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Customers"
+        noun="customers"
+        nounOne="customer"
+        count={sorted.length}
+        filtersControl={
+          <ListFilters
+            facets={CUSTOMER_FACETS}
+            value={facetSel}
+            countFor={(sel) => narrowFacets(sel).length}
+            onApply={(sel) => {
+              setFacetSel(sel);
+              setPage(1);
+            }}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          toast.success(`Exporting ${sorted.length} ${sorted.length === 1 ? "customer" : "customers"} as .${format}`);
+        }}
+      />
 
       <CustomerSheet
         customer={rows.find((c) => c.id === openId) ?? null}

@@ -17,10 +17,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -36,6 +38,7 @@ import {
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
+import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
@@ -312,6 +315,53 @@ function vendorName(id: string | null): string | null {
   return VENDORS.find((v) => v.id === id)?.name ?? null;
 }
 
+/* WHAT A CELL PRINTS, as text — what the filter row's boxes match
+   (Pavan, 2026-10-07), the same idea as Programs' `columnText`. */
+function ruleColumnText(r: RecurringRule, key: string): string {
+  const load = (pick: (l: NonNullable<RecurringRule["loadOrder"]>[number]) => string) =>
+    [...new Set(r.loadOrder?.map(pick) ?? [])].join(" ");
+  switch (key) {
+    case "ruleNo":
+      return `${r.ruleNo} ${DATE_FMT.format(new Date(r.createdAt))}`;
+    case "schedule":
+      return r.schedule.label;
+    case "next":
+      return r.nextKey ? DATE_FMT.format(new Date(`${r.nextKey}T00:00:00`)) : "";
+    case "status":
+      return `${r.status} ${r.stalledReason ?? ""}`;
+    case "customer":
+      return `${r.customer.title} ${r.customer.description}`;
+    case "shipTo":
+      return r.shipTo;
+    case "assets":
+      return r.assets.length > 0 ? r.assets.join(" ") : "Any";
+    case "products":
+      return r.lines.map((l) => l.product).join(" ");
+    case "qty": {
+      const gal = ruleGallons(r);
+      return gal > 0 ? gal.toLocaleString() : "Top off";
+    }
+    case "vendor":
+      return vendorName(r.vendorId) ?? "Not assigned";
+    case "poc":
+      return r.vendorPoc ?? "";
+    case "loadOrder":
+      return r.loadOrder?.length ? "Yes" : "No";
+    case "terminal":
+      return r.loadOrder?.length ? load((l) => l.terminal) : "Partner supplies";
+    case "supplier":
+      return load((l) => l.supplier);
+    case "account":
+      return load((l) => l.loadingAccount);
+    case "vendorPrice":
+      return r.vendorPrice !== null ? MONEY(r.vendorPrice) : "Not priced";
+    case "customerPrice":
+      return r.customerPrice !== null ? MONEY(r.customerPrice) : "Not priced";
+    default:
+      return "";
+  }
+}
+
 /**
  * A load-order field, which is a LIST per product rather than one value. The
  * first is shown and the rest are counted, which is the same call the orders
@@ -382,6 +432,15 @@ export function RecurringRulesScreen({
      Flat, it is exactly the right thing and there is nothing to wire. */
   const [colOrder, setColOrder] = React.useState<string[]>(COL_KEYS);
   const [widths, setWidths] = React.useState<Record<string, number>>({});
+  /* SEARCH BY COLUMN IS A ROW OF BOXES UNDER THE HEADER (Pavan, 2026-10-07)
+     — the Delivery Orders behaviour, as Programs already has it. */
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
+  const [exporting, setExporting] = React.useState(false);
   const [sort, setSort] = React.useState<{
     key: string;
     dir: "asc" | "desc";
@@ -424,6 +483,8 @@ export function RecurringRulesScreen({
     colOrder: string[];
     widths: Record<string, number>;
     sort: { key: string; dir: "asc" | "desc" } | null;
+    /** Optional so a view saved before the filter row still applies. */
+    colFilters?: Record<string, string>;
   };
   const savedViews = useSavedViews<ViewState>({
     current: {
@@ -435,6 +496,7 @@ export function RecurringRulesScreen({
       colOrder,
       widths,
       sort,
+      colFilters: Object.fromEntries(activeColFilters),
     },
     defaultState: {
       search: "",
@@ -445,12 +507,18 @@ export function RecurringRulesScreen({
       colOrder: COL_KEYS,
       widths: {},
       sort: null,
+      colFilters: {},
     },
     keyOf: (v) =>
       JSON.stringify({
         ...v,
         applied: [...v.applied].sort(),
         hidden: [...v.hidden].sort(),
+        colFilters: Object.fromEntries(
+          Object.entries(v.colFilters ?? {})
+            .filter(([, x]) => x.trim() !== "")
+            .sort(([a], [b]) => a.localeCompare(b))
+        ),
       }),
     apply: (v) => {
       setSearch(v.search);
@@ -461,6 +529,8 @@ export function RecurringRulesScreen({
       setColOrder(v.colOrder);
       setWidths(v.widths);
       setSort(v.sort);
+      setColFilters(v.colFilters ?? {});
+      setColFiltersOpen(Object.values(v.colFilters ?? {}).some((x) => x.trim()));
       setPage(1);
     },
   });
@@ -469,16 +539,16 @@ export function RecurringRulesScreen({
      panel, and a question asked OF one column — they answer different
      questions and a reader uses them together, so none of them replaces
      another. */
-  const rows = React.useMemo(() => {
+  const narrow = React.useCallback((sel: ReadonlySet<string>) => {
     const cq = colQuery.trim().toLowerCase();
     const field = RULE_SEARCH_FIELDS.find((f) => f.key === colScope);
-    const byFacet = [...applied].reduce<Record<string, string[]>>((acc, id) => {
+    const byFacet = [...sel].reduce<Record<string, string[]>>((acc, id) => {
       const at = id.indexOf(":");
       const k = id.slice(0, at);
       (acc[k] ??= []).push(id.slice(at + 1));
       return acc;
     }, {});
-    const kept = rules.filter((r) => {
+    return rules.filter((r) => {
       /* THE SCOPE COMES FIRST, because it is not a narrowing of the list — it
          IS the list. A rule on another line is not a hidden row, it is a row
          that belongs to a different screenful. */
@@ -489,6 +559,12 @@ export function RecurringRulesScreen({
       if (!matchesRule(r, search)) return false;
       if (cq && field && !field.text(r).toLowerCase().includes(cq))
         return false;
+      if (
+        !activeColFilters.every(([k, v]) =>
+          ruleColumnText(r, k).toLowerCase().includes(v.trim().toLowerCase())
+        )
+      )
+        return false;
       /* WITHIN a facet the options are OR-ed — picking two partners means
          either — and BETWEEN facets they are AND-ed, which is what ticking
          boxes in two different sections looks like it should do. */
@@ -497,6 +573,10 @@ export function RecurringRulesScreen({
         return !facet || wanted.includes(facet.valueOf(r));
       });
     });
+  }, [rules, search, colScope, colQuery, line, business, ops, activeColFilters]);
+
+  const rows = React.useMemo(() => {
+    const kept = narrow(applied);
 
     /* SORTING IS THE LAST STEP, over what survived the narrowing — sorting
        first and filtering after would do the same work and throw most of it
@@ -513,7 +593,7 @@ export function RecurringRulesScreen({
         return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
-  }, [rules, search, applied, colScope, colQuery, line, business, ops, sort]);
+  }, [narrow, applied, sort]);
 
   /* PAGINATION IS OVER THE NARROWED LIST, and the page resets whenever the
      narrowing changes — page 4 of a list that just became one page long is a
@@ -527,7 +607,7 @@ export function RecurringRulesScreen({
   );
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business, ops]);
+  }, [search, applied, colQuery, colScope, line, business, ops, activeColFilters]);
 
   /* READ THE OPEN RULE OUT OF STATE EVERY RENDER. Holding the rule object
      itself would leave the sheet showing the version it was opened with, so
@@ -535,12 +615,89 @@ export function RecurringRulesScreen({
   const openRule = rules.find((r) => r.id === openId) ?? null;
 
   const filtered =
-    search.trim().length > 0 || applied.size > 0 || colQuery.trim().length > 0;
+    search.trim().length > 0 ||
+    applied.size > 0 ||
+    colQuery.trim().length > 0 ||
+    activeColFilters.length > 0;
 
   const clearAll = () => {
     setSearch("");
     setApplied(new Set());
     setColQuery("");
+    setColFilters({});
+  };
+
+  /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
+     every narrowing that shapes the file listed. */
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "business",
+      label: "Business",
+      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
+    },
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim() ? [{ value: search.trim(), onRemove: () => setSearch("") }] : [],
+    },
+    {
+      key: "colSearch",
+      label: RULE_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim() ? [{ value: colQuery.trim(), onRemove: () => setColQuery("") }] : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => setColFilters((prev) => ({ ...prev, [key]: "" })),
+        },
+      ],
+    })),
+    ...RULE_FACETS.map((f) => {
+      const mine = [...applied].filter((id) => id.startsWith(`${f.key}:`));
+      const drop = (ids: string[]) =>
+        setApplied((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(f.key.length + 1),
+          onRemove: () => drop([id]),
+        })),
+        onRemoveAll: () => drop(mine),
+      };
+    }),
+  ];
+
+  const exportCsv = () => {
+    downloadCsv(
+      `recurring-rules-${new Date().toISOString().slice(0, 10)}`,
+      rows.map((r) => ({
+        "Rule #": r.ruleNo,
+        Schedule: r.schedule.label,
+        Status: r.status,
+        "Next delivery": r.nextKey ?? "",
+        Customer: r.customer.title,
+        "Ship to": r.shipTo,
+        Assets: r.assets.join(" / ") || "Any",
+        Products: r.lines.map((l) => l.product).join(" / "),
+        "Qty (gal)": ruleGallons(r),
+        Partner: vendorName(r.vendorId) ?? "",
+        POC: r.vendorPoc ?? "",
+        "Load order": r.loadOrder?.length ? "Yes" : "No",
+        Terminal: r.loadOrder?.map((l) => l.terminal).join(" / ") ?? "",
+        Supplier: r.loadOrder?.map((l) => l.supplier).join(" / ") ?? "",
+        "Loading account":
+          r.loadOrder?.map((l) => l.loadingAccount).join(" / ") ?? "",
+        "Vendor price": r.vendorPrice ?? "",
+        "Customer price": r.customerPrice ?? "",
+      })),
+    );
+    toast.success(
+      `Exported ${rows.length} ${rows.length === 1 ? "rule" : "rules"}`,
+    );
   };
 
   const cell = (r: RecurringRule, key: string): React.ReactNode => {
@@ -742,37 +899,7 @@ export function RecurringRulesScreen({
         }}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
-        onExport={() => {
-          downloadCsv(
-            `recurring-rules-${new Date().toISOString().slice(0, 10)}`,
-            rows.map((r) => ({
-              "Rule #": r.ruleNo,
-              Schedule: r.schedule.label,
-              Status: r.status,
-              "Next delivery": r.nextKey ?? "",
-              Customer: r.customer.title,
-              "Ship to": r.shipTo,
-              Assets: r.assets.join(" / ") || "Any",
-              Products: r.lines.map((l) => l.product).join(" / "),
-              "Qty (gal)": ruleGallons(r),
-              Partner: vendorName(r.vendorId) ?? "",
-              POC: r.vendorPoc ?? "",
-              "Load order": r.loadOrder?.length ? "Yes" : "No",
-              Terminal: r.loadOrder?.map((l) => l.terminal).join(" / ") ?? "",
-              Supplier: r.loadOrder?.map((l) => l.supplier).join(" / ") ?? "",
-              "Loading account":
-                r.loadOrder?.map((l) => l.loadingAccount).join(" / ") ?? "",
-              "Vendor price": r.vendorPrice ?? "",
-              "Customer price": r.customerPrice ?? "",
-            })),
-          );
-          toast.success(
-            `Exported ${rows.length} ${rows.length === 1 ? "rule" : "rules"}`,
-            {
-              description: "The filtered list, all pages, in the order shown.",
-            },
-          );
-        }}
+        onExport={() => setExporting(true)}
       />
 
       {/* THE TOOLBAR AND THE CHIPS ARE ONE SHELF, and the shelf is spaced
@@ -836,6 +963,7 @@ export function RecurringRulesScreen({
           boardView={false}
           columns={ALL_COLS.map((c) => ({ key: c.key, label: c.label }))}
           columnOrder={colOrder}
+          onReorderColumns={setColOrder}
           hiddenColumns={hidden as Set<string>}
           onToggleColumn={(k) =>
             setHidden((prev) => {
@@ -854,6 +982,18 @@ export function RecurringRulesScreen({
           onColScopeChange={setColScope}
           colQuery={colQuery}
           onColQueryChange={setColQuery}
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view === "table"
+              ? () =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row puts the table back. */
+                    if (open) setColFilters({});
+                    return !open;
+                  })
+              : undefined
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
         />
@@ -875,11 +1015,20 @@ export function RecurringRulesScreen({
             colQuery={colQuery}
             onClear={() => setColQuery("")}
           />
+          {activeColFilters.map(([key, value]) => (
+            <ColumnSearchChip
+              key={key}
+              searchFields={COLUMNS.map((c) => ({ key: c.key, label: c.label }))}
+              colScope={key}
+              colQuery={value.trim()}
+              onClear={() => setColFilters((prev) => ({ ...prev, [key]: "" }))}
+            />
+          ))}
         </FilterChips>
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
-        {rows.length === 0 ? (
+        {rows.length === 0 && !colFiltersOpen ? (
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -981,6 +1130,30 @@ export function RecurringRulesScreen({
                     );
                   })}
                 </TableRow>
+                {colFiltersOpen && (
+                  /* THE SECOND HEADER ROW — the same band ListTable draws. */
+                  <TableRow className="h-11 hover:bg-transparent">
+                    {visibleCols.map((c) => (
+                      <TableHead
+                        key={c.key}
+                        className="sticky top-10 z-20 border-b border-fp-outline-1 bg-fp-surface-1b px-2"
+                      >
+                        <Input
+                          value={colFilters[c.key] ?? ""}
+                          onChange={(e) =>
+                            setColFilters((prev) => ({
+                              ...prev,
+                              [c.key]: e.target.value,
+                            }))
+                          }
+                          placeholder={cols.widthOf(c) >= 96 ? "Filter…" : ""}
+                          aria-label={`Filter by ${c.label}`}
+                          className="h-7 rounded-md px-2.5 text-xs shadow-none"
+                        />
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                )}
               </TableHeader>
               <TableBody>
                 {pageRows.map((r) => (
@@ -1029,6 +1202,38 @@ export function RecurringRulesScreen({
           }}
         />
       </div>
+
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Rules"
+        noun="rules"
+        nounOne="rule"
+        count={rows.length}
+        filtersControl={
+          <ListFilters
+            facets={RULE_FACETS.map((f) => ({
+              key: f.key,
+              label: f.label,
+              options: f.options,
+              searchable: f.searchable,
+            }))}
+            value={applied}
+            onApply={setApplied}
+            countFor={(sel) => narrow(sel).length}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          if (format === "csv") exportCsv();
+          else
+            toast.success(
+              `Exporting ${rows.length} ${rows.length === 1 ? "rule" : "rules"} as .${format}`
+            );
+        }}
+      />
 
       <RecurringRuleSheet
         rule={openRule}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SteppedFormBody } from "@/components/side-sheet/form-steps";
 import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
+import { PendingStrip, attend, type PendingItem } from "./PendingStrip";
 
 /**
  * Side-sheet shell for a single record — edit or create.
@@ -162,6 +163,15 @@ export interface RecordSheetProps {
   /** Disable submit while the draft is incomplete. */
   canSubmit?: boolean;
   /**
+   * WHAT THE DEFAULT PRIMARY IS WAITING ON (Pavan, 2026-10-07 — G25). Given,
+   * the default primary never goes dead: it stays pressable, and a press while
+   * anything is listed (or `canSubmit` is false) raises the pending strip above
+   * the footer and takes the reader to the first gap — the 3PL order / Quote
+   * pattern. Ignored when `footerPrimary` replaces the button, and the caller's
+   * own `footerBanner` wins over the strip.
+   */
+  pending?: PendingItem[];
+  /**
    * Replaces the footer's primary button — and `null` removes it entirely.
    *
    * THE FOOTER'S RIGHT EDGE IS "THE MAIN THING TO DO HERE", and on a
@@ -203,7 +213,8 @@ export interface RecordSheetProps {
   /**
    * The step column itself. Off = the stepped form without the column on the
    * left (Pavan, 2026-10-06 — removed from the 3PL order sheets, archived in
-   * docs/ds/ui/archive/step-column.md). Defaults to on.
+   * docs/ds/ui/archive/step-column.md). OFF IN EVERY MODULE since 2026-10-07
+   * (Pavan): pass `true` to bring it back on one sheet.
    */
   stepColumn?: boolean;
   children: React.ReactNode;
@@ -363,6 +374,7 @@ export function RecordSheet({
   showCancel = true,
   steps,
   canSubmit = true,
+  pending,
   footerPrimary,
   footerAside,
   onSubmit,
@@ -370,7 +382,7 @@ export function RecordSheet({
   footerBannerClassName,
   stepsAction,
   stepNav,
-  stepColumn = true,
+  stepColumn = false,
   children,
 }: RecordSheetProps) {
   const creating = mode === "create";
@@ -379,8 +391,27 @@ export function RecordSheet({
   const navShown = stepped && navOn;
   /* FULL WIDTH WHILE THE STEP COLUMN SHOWS (Pavan, 2026-10-05). */
   const fills = size === "xxwide" || navShown;
-  /* THE CREATION FLOOR — 756px, whatever `size` asks for below it. */
-  const floor = fill ?? creating;
+  /* THE CREATION FLOOR — 756px, whatever `size` asks for below it — FOR THE
+     WHOLE VISIT that started as a create (Pavan, 2026-10-07). A create-then-
+     autosave sheet flips to edit the moment Create is pressed; it must not
+     shrink under the reader's hands. Reset when the sheet closes. */
+  const [createVisit, setCreateVisit] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) setCreateVisit(false);
+    else if (creating) setCreateVisit(true);
+  }, [open, creating]);
+  const floor = fill ?? (creating || createVisit);
+  /* WHY (Pavan, 2026-10-07). A dead primary says why on press (G25): the
+     strip is raised by the press, not shown up front, and drops on close. */
+  const [pendingRaised, setPendingRaised] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) setPendingRaised(false);
+  }, [open]);
+  const saysWhy = pending !== undefined;
+  const notReady = !canSubmit || (pending?.length ?? 0) > 0;
+  const banner =
+    footerBanner ??
+    (saysWhy && pendingRaised ? <PendingStrip tone="caution" pending={pending} /> : undefined);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -446,7 +477,7 @@ export function RecordSheet({
 
         {stepped ? (
           <SteppedFormBody
-            footer={navShown ? footerBanner : undefined}
+            footer={navShown ? banner : undefined}
             footerClassName={footerBannerClassName}
             top={navShown ? steps : undefined}
             onShownChange={setNavOn}
@@ -463,12 +494,12 @@ export function RecordSheet({
           </FormStepsContext.Provider>
         )}
 
-        {footerBanner && !navShown && (
+        {banner && !navShown && (
           /* ABOVE THE FOOTER AND OUTSIDE THE SCROLL — the same reason the
              stage bar sits under the header: a strip that describes the
              footer's button has to be visible whenever the button is. */
           <div className="shrink-0 border-t border-border px-4 py-2.5">
-            {footerBanner}
+            {banner}
           </div>
         )}
 
@@ -488,9 +519,18 @@ export function RecordSheet({
           {footerPrimary !== undefined ? (
             footerPrimary
           ) : (
+            /* WHY (Pavan, 2026-10-07). With `pending` the button is never
+               disabled — a press while not ready names the gap (G25). Without
+               it, the old `disabled` stays so no caller changes unasked. */
             <Button
-              disabled={!canSubmit}
+              disabled={!saysWhy && !canSubmit}
               onClick={() => {
+                if (saysWhy && notReady) {
+                  setPendingRaised(true);
+                  const first = pending?.find((p) => p.target);
+                  if (first?.target) attend(first.target);
+                  return;
+                }
                 onSubmit();
                 onOpenChange(false);
               }}

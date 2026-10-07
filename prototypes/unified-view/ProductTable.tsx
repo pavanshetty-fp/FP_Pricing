@@ -77,6 +77,11 @@ export interface ProductTableProps<L extends ProductLine = ProductLine> {
   focusRow?: number;
   /** Priced columns after the gallons — see `ProductTableColumn`. */
   columns?: ProductTableColumn<L>[];
+  /* THE TWO HEADINGS, AS SALES SETTINGS NAME THEM (Pavan, 2026-10-07) — the
+     form's Product and Quantity rows, and the Preferences unit after the
+     quantity. */
+  productLabel?: string;
+  qtyLabel?: string;
 }
 
 export function ProductTable<L extends ProductLine = ProductLine>({
@@ -85,6 +90,8 @@ export function ProductTable<L extends ProductLine = ProductLine>({
   onChange,
   focusRow,
   columns = [],
+  productLabel = "Product",
+  qtyLabel = "Quantity (Gal)",
 }: ProductTableProps<L>) {
   const update = (i: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -122,10 +129,10 @@ export function ProductTable<L extends ProductLine = ProductLine>({
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
               <th className="px-3 py-2.5 text-left">
-                <TableRequiredLabel required>Product</TableRequiredLabel>
+                <TableRequiredLabel required>{productLabel}</TableRequiredLabel>
               </th>
               <th className="px-3 py-2.5 text-right">
-                <TableRequiredLabel required>Quantity (Gal)</TableRequiredLabel>
+                <TableRequiredLabel required>{qtyLabel}</TableRequiredLabel>
               </th>
               {columns.map((c) => (
                 <th key={c.key} className="px-3 py-2.5 text-right">

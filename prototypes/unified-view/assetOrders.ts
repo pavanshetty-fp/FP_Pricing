@@ -30,11 +30,13 @@ export type AssetOrderStatus =
   | "Scheduled"
   | "Dispatched"
   | "Delivered"
-  | "Cancelled";
+  | "Cancelled"
+  /* …or a stage added in Sales Settings (Pavan, 2026-10-07). */
+  | (string & {});
 
 /** Status → badge colour, by kind (`statusKind.ts`). One map; the sheet and the
  *  table both read it. */
-export const ASSET_ORDER_STATUS_TONE = statusTones<AssetOrderStatus>({
+export const ASSET_ORDER_STATUS_TONE = statusTones<CoreAssetStage>({
   /* Waiting on somebody to schedule it. */
   Requested: "caution",
   /* A date is set. True, and asks nothing. */
@@ -46,8 +48,10 @@ export const ASSET_ORDER_STATUS_TONE = statusTones<AssetOrderStatus>({
   Cancelled: "neutral",
 });
 
+type CoreAssetStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
+
 /** In stage order — the filter, the group-by and the sort all read it. */
-export const ASSET_ORDER_STATUSES: AssetOrderStatus[] = [
+export const ASSET_ORDER_STATUSES: CoreAssetStage[] = [
   "Requested",
   "Scheduled",
   "Dispatched",
@@ -75,33 +79,13 @@ export interface AssetOrder {
   note: string;
   /** The change log — see `activity.tsx`. */
   audit?: ActivityEntry[];
+  /** What a field added in Sales Settings holds, by its key (2026-10-07). */
+  extra?: Record<string, string | boolean>;
+  /** ISO — when the order entered its stage. The SLA clock. */
+  stageSince?: string;
+  /** A move asked for and waiting on approval — the stage it would go to. */
+  approvalFor?: string;
 }
-
-export type AssetOrderColumnKey =
-  | "order"
-  | "customer"
-  | "salesRep"
-  | "date"
-  | "status"
-  | "actions";
-
-export interface AssetOrderColumnDef {
-  key: AssetOrderColumnKey;
-  label: string;
-  width: number;
-  sortable?: boolean;
-}
-
-/** Widths follow the DS column-frame vocabulary; actions = 44 as elsewhere. */
-export const ASSET_ORDER_COLUMNS: AssetOrderColumnDef[] = [
-  { key: "order", label: "Order #", width: 140, sortable: true },
-  /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — DS rule. */
-  { key: "customer", label: "Customer", width: 260, sortable: true },
-  { key: "salesRep", label: "Sales Rep", width: 200, sortable: true },
-  { key: "date", label: "Delivery Date", width: 180, sortable: true },
-  { key: "status", label: "Status", width: 160, sortable: true },
-  { key: "actions", label: "", width: 44 },
-];
 
 export const SALES_REPS = [
   "Dana Whitfield",
@@ -256,49 +240,13 @@ export const ASSET_ORDERS: AssetOrder[] = (() => {
       },
       dateKey: dateKeyOf(when),
       note: "",
+      /* SAMPLE TIME IN STAGE — INVENTED (2026-10-07), for the SLA flag. */
+      stageSince: new Date(Date.now() - [3, 30, 9, 60][i % 4] * 3_600_000).toISOString(),
     };
   });
 })();
 
-/* ---- sorting / searching, same contracts as the Fuel Orders helpers ---- */
-
-export type AssetSortDir = "asc" | "desc";
-export interface AssetSortState {
-  key: AssetOrderColumnKey;
-  dir: AssetSortDir;
-}
-
-function sortValue(r: AssetOrder, key: AssetOrderColumnKey): string | number {
-  switch (key) {
-    case "order":
-      return Number(r.orderNo);
-    case "customer":
-      return r.customer.title.toLowerCase();
-    case "salesRep":
-      return r.salesRep.toLowerCase();
-    case "date":
-      return r.dateKey;
-    /* BY STAGE, not by the alphabet (Pavan, 2026-10-07). */
-    case "status":
-      return ASSET_ORDER_STATUSES.indexOf(r.status);
-    default:
-      return "";
-  }
-}
-
-export function sortAssetOrders(
-  rows: AssetOrder[],
-  sort: AssetSortState | null
-): AssetOrder[] {
-  if (!sort) return rows;
-  const dir = sort.dir === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const av = sortValue(a, sort.key);
-    const bv = sortValue(b, sort.key);
-    if (av === bv) return 0;
-    return av > bv ? dir : -dir;
-  });
-}
+/* ---- searching ---- */
 
 export function matchesAssetOrder(row: AssetOrder, q: string): boolean {
   return [
@@ -315,26 +263,4 @@ export function matchesAssetOrder(row: AssetOrder, q: string): boolean {
     .join(" ")
     .toLowerCase()
     .includes(q);
-}
-
-export const ASSET_ORDER_SEARCH_FIELDS = [
-  { key: "order", label: "Order #", text: (r: AssetOrder) => r.orderNo },
-  {
-    key: "customer",
-    label: "Customer",
-    text: (r: AssetOrder) => `${r.customer.title} ${r.customer.description}`,
-  },
-  { key: "salesRep", label: "Sales Rep", text: (r: AssetOrder) => r.salesRep },
-  { key: "date", label: "Delivery Date", text: (r: AssetOrder) => r.date.title },
-  { key: "status", label: "Status", text: (r: AssetOrder) => r.status },
-];
-
-export function matchesAssetOrderIn(
-  row: AssetOrder,
-  q: string,
-  scope: string
-): boolean {
-  if (!q) return true;
-  const f = ASSET_ORDER_SEARCH_FIELDS.find((x) => x.key === scope);
-  return f ? f.text(row).toLowerCase().includes(q) : true;
 }

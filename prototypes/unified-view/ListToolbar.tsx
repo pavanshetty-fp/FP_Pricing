@@ -373,16 +373,17 @@ export function ListToolbar<K extends string>({
         </div>
         {filters}
         {afterFilters}
-        {showGroupBy &&
-          (groupBy ? (
-            <GroupByMenu
-              dimensions={groupBy.dimensions}
-              value={groupBy.value}
-              onChange={groupBy.onChange}
-            />
-          ) : (
-            <GroupByMenu />
-          ))}
+        {/* WHY (Pavan, 2026-10-07). Group By only when the screen hands it real
+           dimensions. With none, the menu fell back to the DS demo dims and
+           grouped nothing — a dead control on every screen that forgot to
+           switch it off (G8). */}
+        {showGroupBy && groupBy && groupBy.dimensions.length > 0 && (
+          <GroupByMenu
+            dimensions={groupBy.dimensions}
+            value={groupBy.value}
+            onChange={groupBy.onChange}
+          />
+        )}
       </div>
 
       {/* RIGHT — [date]   view switch │ column tools */}

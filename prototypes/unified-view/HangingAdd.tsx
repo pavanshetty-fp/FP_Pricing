@@ -22,22 +22,28 @@ import { cn } from "@/lib/utils";
   way — the collapsed state is a visual economy, never a nameless control.
 */
 
+/* IT CAN OPEN A MENU (Pavan, 2026-10-07). When one add offers a choice of
+   row — the quote's Fee or Tax — it is a menu's trigger, so whatever the
+   trigger hands it (ref, pointer and key handlers, aria) is passed through.
+   Nothing about how it looks changes. */
 export function HangingAdd({
   label,
   onClick,
   disabled,
   className,
+  ...trigger
 }: {
   /** "Add products", "Add vendor" — the table's own noun, always plural-safe. */
   label: string;
-  onClick: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
   className?: string;
-}) {
+} & Omit<React.ComponentPropsWithRef<"button">, "onClick" | "className" | "disabled">) {
   const [open, setOpen] = React.useState(false);
 
   return (
     <button
+      {...trigger}
       type="button"
       aria-label={label}
       disabled={disabled}

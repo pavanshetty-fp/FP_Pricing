@@ -1,6 +1,13 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Archive, CheckCircle2, Download, Tag, XCircle } from "lucide-react";
+import { Archive, CheckCircle2, Download, MoreHorizontal, Tag, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { BulkAction } from "@/components/tables-layout";
 import { DirectoryList, type DirectoryColumn, type DirectoryFacet } from "./DirectoryList";
 import {
@@ -201,26 +208,58 @@ export function DirectoryEntityScreen<Row, K extends string>({
   const plural = config.nounPlural ?? `${config.noun}s`;
   const Noun = config.noun[0].toUpperCase() + config.noun.slice(1);
 
+  /* THE RECORD AS IT WAS WHEN OPENED (Pavan, 2026-10-07). Autosave writes as
+     the reader types; the audit entry is one per visit, against this. */
+  const opened = React.useRef<Row | null>(null);
+  const openedId = sheet?.kind === "record" ? sheet.id : null;
+  React.useEffect(() => {
+    opened.current = openedId
+      ? rows.find((r) => config.rowId(r) === openedId) ?? null
+      : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedId]);
+
+  const autosave = (draft: Row) => replaceRow(config.rowId(draft), () => draft);
+
+  /** Ends an edit visit: one audit entry for everything that moved. */
+  const finish = (draft: Row) => {
+    const before = opened.current;
+    opened.current = null;
+    if (!before) return null;
+    const entry = auditFor(before, draft, config.formSections, "Dana Whitfield");
+    const next = entry ? config.withAudit(draft, entry) : draft;
+    replaceRow(config.rowId(next), () => next);
+    return entry;
+  };
+
+  /* Archive / Restore from the ⋯ — one write with the visit's audit, then
+     back to the list. */
+  const setStatusFromSheet = (row: Row, status: RecordStatus, message: string) => {
+    const before = opened.current;
+    opened.current = null;
+    const after = config.statusField.set(row, status);
+    const entry = before ? auditFor(before, after, config.formSections, "Dana Whitfield") : null;
+    const next = entry ? config.withAudit(after, entry) : after;
+    replaceRow(config.rowId(next), () => next);
+    toast.success(message);
+    closeSheet();
+  };
+
   const submit = (draft: Row) => {
     if (sheet?.kind === "create") {
       onRowsChange([draft, ...rows]);
-      toast.success(`${Noun} created`, { description: config.nameOf(draft) });
+      toast.success(`${Noun} created`);
       closeSheet();
       return;
     }
     if (!record) return;
-    const entry = auditFor(record, draft, config.formSections, "Dana Whitfield");
-    const next = entry ? config.withAudit(draft, entry) : draft;
-    replaceRow(config.rowId(next), () => next);
+    const entry = finish(draft);
     /* A save that changed nothing says so rather than claiming a save — the
        audit trail stays clean and nobody goes looking for the diff. */
     if (entry) {
-      toast.success("Changes saved", {
-        description:
-          entry.changes.length === 1 ? entry.changes[0] : `${entry.changes.length} fields updated`,
-      });
+      toast.success("Changes saved");
     } else {
-      toast.info("Nothing to save", { description: "No fields were changed." });
+      toast.info("Nothing to save");
     }
     closeSheet();
   };
@@ -302,6 +341,46 @@ export function DirectoryEntityScreen<Row, K extends string>({
           onOpenChange={(next) => {
             if (!next) closeSheet();
           }}
+          /* Close keeps the latest valid draft and writes its audit entry. */
+          onClose={(latest) => {
+            if (!record) return;
+            const entry = finish(latest ?? record);
+            if (entry)
+              toast.success("Changes saved");
+          }}
+          recordKey={config.rowId(initial)}
+          onAutosave={autosave}
+          headerMenu={
+            sheet?.kind === "create" || !record ? undefined : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label={`More ${config.noun} actions`}>
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  {config.statusField.get(record) === "archived" ? (
+                    <DropdownMenuItem
+                      disabled={!canWrite}
+                      onSelect={() => setStatusFromSheet(record, "active", `${Noun} restored`)}
+                    >
+                      <CheckCircle2 />
+                      Restore
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!canWrite}
+                      onSelect={() => setStatusFromSheet(record, "archived", `${Noun} archived`)}
+                    >
+                      <Archive />
+                      Archive
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
           mode={sheet?.kind === "create" ? "create" : "edit"}
           noun={Noun}
           title={config.nameOf(initial)}

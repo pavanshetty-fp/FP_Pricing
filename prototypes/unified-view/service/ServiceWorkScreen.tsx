@@ -17,6 +17,7 @@ import { ListToolbar, FilterChips, ColumnSearchChip, type ListView } from "../Li
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
 import { RENTAL_ASSETS } from "../threepl/directory";
@@ -444,6 +445,53 @@ function serviceColumnText(r: ServiceOrder, key: Col): string {
   }
 }
 
+/* ----------------------------------------------------------- saved views */
+
+/** What a saved view captures — the same set as the 3PL board's. */
+interface ViewState {
+  search: string;
+  sortKey: string | null;
+  sortDir: "asc" | "desc" | null;
+  hidden: string[];
+  columnOrder: string[];
+  columnWidths: Record<string, number>;
+  pageSize: number;
+  dateKey: string;
+  dateKeyTo: string;
+  colScope: string;
+  colQuery: string;
+  facets: string[];
+  colFilters: Record<string, string>;
+  cardOff: Record<string, string[]>;
+  mode: ListView;
+  laneSort: Record<string, string | undefined>;
+}
+
+const keyOf = (s: ViewState) =>
+  JSON.stringify({
+    ...s,
+    hidden: [...s.hidden].sort(),
+    /* Empty boxes are no filter — typing then clearing one is not a change. */
+    colFilters: Object.fromEntries(
+      Object.entries(s.colFilters)
+        .filter(([, v]) => v.trim() !== "")
+        .sort(([a], [b]) => a.localeCompare(b))
+    ),
+    laneSort: Object.fromEntries(
+      Object.entries(s.laneSort)
+        .filter(([, v]) => v)
+        .sort(([a], [b]) => a.localeCompare(b))
+    ),
+  });
+
+/** Card fields as plain sorted arrays, so a view can hold and compare them. */
+const cardOffToArrays = (c: Record<string, Set<string>>) =>
+  Object.fromEntries(
+    Object.keys(c)
+      .sort()
+      .map((k) => [k, [...c[k]].sort()])
+  );
+
 /* ------------------------------------------------------------- the screen */
 
 /**
@@ -511,6 +559,74 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     to.setDate(to.getDate() + 3);
     return { from, to };
   });
+
+  /* SAVED VIEWS ARE REAL, as on the 3PL board (Pavan, 2026-10-07). The row
+     was stubbed — "+ View" did nothing. A view keeps everything the screen
+     was left showing, the same set 3PL keeps. */
+  const current: ViewState = {
+    search,
+    sortKey: sort?.key ?? null,
+    sortDir: sort?.dir ?? null,
+    hidden: [...hidden],
+    columnOrder,
+    columnWidths,
+    pageSize,
+    dateKey: dateKeyOf(range.from),
+    dateKeyTo: dateKeyOf(range.to),
+    colScope,
+    colQuery,
+    facets: [...facetSel].sort(),
+    colFilters,
+    cardOff: cardOffToArrays(cardOff),
+    mode: view,
+    laneSort,
+  };
+  const defaultState: ViewState = React.useMemo(() => {
+    const today = startOfDay(new Date());
+    const from = new Date(today);
+    from.setDate(from.getDate() - 3);
+    const to = new Date(today);
+    to.setDate(to.getDate() + 3);
+    return {
+      search: "",
+      sortKey: null,
+      sortDir: null,
+      hidden: [...HIDDEN_BY_DEFAULT],
+      columnOrder: [],
+      columnWidths: {},
+      pageSize: 25,
+      dateKey: dateKeyOf(from),
+      dateKeyTo: dateKeyOf(to),
+      colScope: "customer",
+      colQuery: "",
+      facets: [],
+      colFilters: {},
+      cardOff: cardOffToArrays(initialCardOff()),
+      mode: "board",
+      laneSort: {},
+    };
+  }, []);
+  const applyState = (s: ViewState) => {
+    setSearch(s.search);
+    setSort(s.sortKey && s.sortDir ? { key: s.sortKey as Col, dir: s.sortDir } : null);
+    setHidden(new Set(s.hidden as Col[]));
+    setColumnOrder(s.columnOrder);
+    setColumnWidths(s.columnWidths);
+    setPageSize(s.pageSize);
+    setRange({ from: fromKey(s.dateKey), to: fromKey(s.dateKeyTo) });
+    setColScope(s.colScope);
+    setColQuery(s.colQuery);
+    setFacetSel(new Set(s.facets));
+    setColFilters(s.colFilters);
+    setColFiltersOpen(Object.values(s.colFilters).some((v) => v.trim() !== ""));
+    setCardOff(
+      Object.fromEntries(Object.entries(s.cardOff).map(([k, v]) => [k, new Set(v)]))
+    );
+    setView(s.mode);
+    setLaneSort(s.laneSort);
+    setPage(1);
+  };
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
 
   React.useEffect(() => {
     const problems = assertServiceConsistent(SERVICE_ORDERS);
@@ -1111,15 +1227,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <FuelOrdersViewBar
-        views={[]}
-        activeId={null}
-        dirty={false}
-        onApply={() => {}}
-        onResetToDefault={() => {}}
-        onCreate={() => {}}
-        onRename={() => {}}
-        onUpdate={() => {}}
-        onDelete={() => {}}
+        {...savedViews}
         ctaLabel="New service order"
         onCreateOrder={() => setCreating(true)}
       />

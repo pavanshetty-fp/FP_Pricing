@@ -13,13 +13,14 @@ import { DateFilter } from "./DateFilter";
 import { FUEL_ORDERS, dateKeyOf, startOfDay } from "./data";
 import { BarColumns, BarList, Panel, StatTile, DASHBOARD_GROUND } from "./DashboardParts";
 import type { FuelOrder } from "./types";
+import { useUnitShort } from "./salesSettings";
 
 /*
   SALES DASHBOARD (Pavan, 2026-10-05) — the module's overview and its landing
   page. ONE DAY AT A TIME, because Fuel Orders is: a dispatcher works a day
   and steps through days, and a dashboard over a week would open on a list
-  that can only show one of them. Every press opens Fuel Orders on that day,
-  narrowed with its own column boxes.
+  that can only show one of them. Every press opens Orders on its Fuel Orders
+  line (Pavan, 2026-10-07), on that day, narrowed with its own column boxes.
 
   WHAT IT ASKS: how much is going out and how much of it has a driver · who
   is carrying it · what kind of work · what product · for whom · what is
@@ -28,12 +29,11 @@ import type { FuelOrder } from "./types";
 
 export interface SalesDrill {
   date: Date;
-  /** Fuel Orders' column boxes — column key → text. */
+  /** Orders' column boxes — column key → text. */
   colFilters: Record<string, string>;
 }
 
 const GAL = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const gal = (n: number) => `${GAL.format(n)} gal`;
 
 export function SalesDashboard({
   onDrill,
@@ -43,6 +43,9 @@ export function SalesDashboard({
   onOpenOrder: (id: string, date: Date) => void;
 }) {
   const [date, setDate] = React.useState(() => startOfDay(new Date()));
+  /* THE PRIMARY UNIT'S LABEL — Sales Settings › Preferences (2026-10-07). */
+  const unit = useUnitShort();
+  const gal = (n: number) => `${GAL.format(n)} ${unit}`;
   const key = dateKeyOf(date);
   const rows = React.useMemo(() => FUEL_ORDERS.filter((r) => r.dateKey === key), [key]);
   const drill = (colFilters: Record<string, string> = {}) => onDrill({ date, colFilters });

@@ -48,7 +48,10 @@ right rail** (Summary · Associated records · Activity), so a two-column sheet
 takes the 756 floor while it is being created and becomes two columns once the
 record exists. In code: `RecordSheet`'s `fill` (defaults to `mode ===
 "create"`) now sets the floor; an export or a partner's quote passes
-`fill={false}`.
+`fill={false}`. **The floor holds for the whole visit that began as a create**
+(Pavan, 2026-10-07): a create-then-autosave sheet that turns into the saved
+record when Create is pressed stays at least 756 until it is closed — it never
+shrinks to 560 under the reader. Every module, through `RecordSheet`.
 
 ### Navigation — one panel (Unified View, Pavan, 2026-10-06)
 
@@ -62,9 +65,12 @@ drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
 AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
 of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
 edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
-line (#e6e4e2); the open module takes weight, not a fill, and sits FIRST;
-a very faint rule (`--fp-shell-guide`) parts it from the other modules —
-no ring, dot or chevron marks it (Pavan, 2026-10-07). The panel
+line (#e6e4e2); the open module takes weight, not a fill, and sits FIRST —
+no ring, dot, chevron or divider marks it (Pavan, 2026-10-07). **Switching modules is three steps, in
+order** (Pavan, 2026-10-07): the open module FOLDS its pages (200ms), then the
+rows MOVE — the chosen module glides to the top, the old one back to its place
+(260ms, FLIP) — then the chosen module UNFOLDS (240ms). One curve,
+`cubic-bezier(0.2,0,0,1)`; none with reduced motion. The panel
 is 240px; **Collapse navigation** (a quiet grey mark in its top-right corner) folds it to a 56px icon rail —
 the open module's pages as icons with hairlines between sections, then the
 other modules — and the choice is remembered per browser.

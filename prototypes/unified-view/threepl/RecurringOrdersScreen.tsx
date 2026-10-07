@@ -2,6 +2,8 @@ import * as React from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
+  ChevronsUpDown,
   Info,
   MoreHorizontal,
   Repeat,
@@ -11,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   DropdownMenu,
@@ -34,7 +37,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TablePagination } from "@/components/tables-layout";
+import {
+  TableColumnHeader,
+  TablePagination,
+  useTableColumns,
+} from "@/components/tables-layout";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   ColumnSearchChip,
@@ -43,6 +50,7 @@ import {
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
+import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
@@ -53,6 +61,7 @@ import {
 } from "@/components/ui/tooltip";
 import { DATE_FMT, dateKeyOf, startOfDay } from "../data";
 import {
+  BROKER_STATUSES,
   BROKER_STATUS_TONE,
   totalGal,
   type BrokerStatus,
@@ -101,10 +110,11 @@ import { statusTones } from "../statusKind";
   Ship To, Planned Date, Qty, Partner and Status keep their widths from
   `BROKER_COLUMNS`. A reader who has learnt the orders list has learnt this one.
 
-  NO COLUMN TOOLS, NO SAVED VIEWS, NO MAP. The directory lists carry them
-  because they have twenty columns and four screens sharing a shell. This has
-  nine columns and one screen, and a toolbar of controls that do nothing is the
-  dead-control rule broken eight times in a row.
+  THE LIST FEATURES DELIVERY ORDERS HAS (Pavan, 2026-10-07) — saved views,
+  the filter row, columns that sort, move and resize, Export through the
+  sheet. Built on the DS header (`useTableColumns` + `TableColumnHeader`),
+  not on `ListTable`, because `ListTable` has no expandable row and no row
+  menu yet. No map: a series has no place.
 */
 
 /** Four tones, six words — see the note on `SeriesStatus`. */
@@ -120,26 +130,134 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Expired: "neutral",
 });
 
-const SERIES_COLUMNS = [
-  { key: "order", label: "Order # / Created", width: 165 },
-  { key: "customer", label: "Customer", width: 230 },
-  { key: "shipTo", label: "Ship To", width: 190 },
-  { key: "schedule", label: "Schedule", width: 190 },
-  { key: "next", label: "Next Delivery", width: 165 },
-  { key: "upcoming", label: "Upcoming", width: 100, align: "right" as const },
-  { key: "vendor", label: "Partner", width: 210 },
-  { key: "status", label: "Series", width: 210 },
+/* EVERY COLUMN SORTS, MOVES AND RESIZES (Pavan, 2026-10-07) — the list
+   features Delivery Orders has. `sort` is what the column sorts BY. */
+interface SeriesCol {
+  key: string;
+  label: string;
+  width: number;
+  align?: "right";
+  sort?: (s: RecurringSeries) => string | number;
+}
+
+const SERIES_COLUMNS: SeriesCol[] = [
+  { key: "order", label: "Order # / Created", width: 165, sort: (s) => s.parent.orderNo },
+  { key: "customer", label: "Customer", width: 230, sort: (s) => s.parent.customer.title },
+  { key: "shipTo", label: "Ship To", width: 190, sort: (s) => s.parent.shipTo },
+  { key: "schedule", label: "Schedule", width: 190, sort: (s) => s.schedule.label },
+  /* No next date sorts last, as on Rules. */
+  { key: "next", label: "Next Delivery", width: 165, sort: (s) => s.nextKey ?? "9999" },
+  {
+    key: "upcoming",
+    label: "Upcoming",
+    width: 100,
+    align: "right",
+    sort: (s) => upcomingCount(s, startOfDay(new Date())),
+  },
+  { key: "vendor", label: "Partner", width: 210, sort: (s) => vendorName(s.parent.vendorId) },
+  /* Lifecycle order, not A-Z. */
+  { key: "status", label: "Series", width: 210, sort: (s) => SERIES_STATUSES.indexOf(s.status) },
   { key: "actions", label: "", width: 44 },
 ];
 
-const DELIVERY_COLUMNS = [
-  { key: "order", label: "Order # / Created", width: 165 },
-  { key: "date", label: "Planned Date", width: 165 },
-  { key: "products", label: "Products", width: 230 },
-  { key: "qty", label: "Qty (Gal)", width: 110, align: "right" as const },
-  { key: "vendor", label: "Partner", width: 210 },
-  { key: "status", label: "Status", width: 210 },
+const SERIES_KEYS = SERIES_COLUMNS.map((c) => c.key);
+const FIXED_KEYS = ["actions"];
+
+interface DeliveryCol {
+  key: string;
+  label: string;
+  width: number;
+  align?: "right";
+  sort: (d: Delivery) => string | number;
+}
+
+const DELIVERY_COLUMNS: DeliveryCol[] = [
+  { key: "order", label: "Order # / Created", width: 165, sort: (d) => d.orderNo },
+  { key: "date", label: "Planned Date", width: 165, sort: (d) => d.dateKey },
+  { key: "products", label: "Products", width: 230, sort: (d) => d.lines[0]?.product ?? "" },
+  { key: "qty", label: "Qty (Gal)", width: 110, align: "right", sort: (d) => totalGal(d.lines) },
+  { key: "vendor", label: "Partner", width: 210, sort: (d) => vendorName(d.vendorId) },
+  { key: "status", label: "Status", width: 210, sort: (d) => BROKER_STATUSES.indexOf(d.status) },
 ];
+
+type SortState = { key: string; dir: "asc" | "desc" } | null;
+
+/** ASC → DESC → UNSORTED, the three-press cycle every table here uses. */
+const nextSort = (prev: SortState, key: string): SortState =>
+  !prev || prev.key !== key
+    ? { key, dir: "asc" }
+    : prev.dir === "asc"
+      ? { key, dir: "desc" }
+      : null;
+
+function sortRows<T>(
+  rows: T[],
+  sort: SortState,
+  of: ((r: T) => string | number) | undefined
+): T[] {
+  if (!sort || !of) return rows;
+  const dir = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = of(a);
+    const bv = of(b);
+    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+    return String(av).localeCompare(String(bv)) * dir;
+  });
+}
+
+/** The header's sort button — label and the asc/desc/unsorted glyph. */
+function SortButton({
+  label,
+  sort,
+  colKey,
+  onSort,
+}: {
+  label: string;
+  sort: SortState;
+  colKey: string;
+  onSort: (key: string) => void;
+}) {
+  const active = sort?.key === colKey;
+  const Icon = !active ? ChevronsUpDown : sort?.dir === "asc" ? ChevronUp : ChevronDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(colKey)}
+      aria-label={`Sort by ${label}`}
+      className={cn(
+        "inline-flex items-center gap-1 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+        active && "text-foreground"
+      )}
+    >
+      {label}
+      <Icon className={cn("size-3.5", active ? "opacity-100" : "opacity-70")} />
+    </button>
+  );
+}
+
+/* WHAT A CELL PRINTS, as text — what the filter row's boxes match. */
+function seriesColumnText(s: RecurringSeries, key: string, today: Date): string {
+  switch (key) {
+    case "order":
+      return `${s.parent.orderNo} ${s.parent.audit[0] ? DATE_FMT.format(new Date(s.parent.audit[0].at)) : ""}`;
+    case "customer":
+      return `${s.parent.customer.title} ${s.parent.customer.description}`;
+    case "shipTo":
+      return s.parent.shipTo;
+    case "schedule":
+      return s.schedule.label;
+    case "next":
+      return s.nextKey ? DATE_FMT.format(new Date(`${s.nextKey}T00:00:00`)) : "";
+    case "upcoming":
+      return String(upcomingCount(s, today));
+    case "vendor":
+      return vendorName(s.parent.vendorId);
+    case "status":
+      return `${s.status} ${s.stalledReason ?? ""}`;
+    default:
+      return "";
+  }
+}
 
 /** What the list can be narrowed by. Same three questions as V1's. */
 /** Same three segments as V1 — see the note there. */
@@ -242,6 +360,17 @@ function DeliveryTable({
   series: RecurringSeries;
   width?: number;
 }) {
+  /* THE NESTED TABLE SORTS TOO (Pavan, 2026-10-07). */
+  const [sort, setSort] = React.useState<SortState>(null);
+  const rows = React.useMemo(
+    () =>
+      sortRows(
+        series.deliveries,
+        sort,
+        DELIVERY_COLUMNS.find((c) => c.key === sort?.key)?.sort
+      ),
+    [series.deliveries, sort]
+  );
   return (
     <div
       className="sticky left-0 border-l-2 border-status-processing/70 bg-background"
@@ -265,18 +394,30 @@ function DeliveryTable({
                 <th
                   key={c.key}
                   style={{ width: c.width }}
+                  aria-sort={
+                    sort?.key === c.key
+                      ? sort.dir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
                   className={cn(
                     "whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium text-muted-foreground",
                     c.align === "right" && "text-right",
                   )}
                 >
-                  {c.label}
+                  <SortButton
+                    label={c.label}
+                    sort={sort}
+                    colKey={c.key}
+                    onSort={(k) => setSort((prev) => nextSort(prev, k))}
+                  />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {series.deliveries.map((d) => (
+            {rows.map((d) => (
               <DeliveryRow key={d.id} d={d} />
             ))}
           </tbody>
@@ -373,6 +514,27 @@ export function RecurringOrdersScreen({
   const [pageSize, setPageSize] = React.useState(25);
   const [line, setLine] = React.useState<LineScope>("All");
   const [business, setBusiness] = React.useState<string | null>(null);
+  /* THE COLUMNS ARE THE READER'S (Pavan, 2026-10-07) — order, widths, sort
+     and the filter row, as on Delivery Orders, kept by a saved view. */
+  const [colOrder, setColOrder] = React.useState<string[]>(SERIES_KEYS);
+  const [widths, setWidths] = React.useState<Record<string, number>>({});
+  const [sort, setSort] = React.useState<SortState>(null);
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  const activeColFilters = React.useMemo(
+    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
+    [colFilters]
+  );
+  const [exporting, setExporting] = React.useState(false);
+  const cols = useTableColumns({
+    keys: SERIES_KEYS,
+    fixed: FIXED_KEYS,
+    order: colOrder,
+    onOrderChange: setColOrder,
+    widths,
+    onWidthsChange: setWidths,
+  });
+  const onSort = (key: string) => setSort((prev) => nextSort(prev, key));
 
   /* The visible width the nested table pins itself to. */
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -394,10 +556,10 @@ export function RecurringOrdersScreen({
     [overrides, today],
   );
 
-  const rows = React.useMemo(() => {
+  const narrow = React.useCallback((sel: ReadonlySet<string>) => {
     const cq = colQuery.trim().toLowerCase();
     const field = SERIES_SEARCH_FIELDS.find((f) => f.key === colScope);
-    const byFacet = [...applied].reduce<Record<string, string[]>>((acc, id) => {
+    const byFacet = [...sel].reduce<Record<string, string[]>>((acc, id) => {
       const at = id.indexOf(":");
       const k = id.slice(0, at);
       (acc[k] ??= []).push(id.slice(at + 1));
@@ -411,12 +573,28 @@ export function RecurringOrdersScreen({
       if (!matchesSeries(s, search)) return false;
       if (cq && field && !field.text(s).toLowerCase().includes(cq))
         return false;
+      if (
+        !activeColFilters.every(([k, v]) =>
+          seriesColumnText(s, k, today).toLowerCase().includes(v.trim().toLowerCase())
+        )
+      )
+        return false;
       return Object.entries(byFacet).every(([k, wanted]) => {
         const facet = SERIES_FACETS.find((f) => f.key === k);
         return !facet || wanted.includes(facet.valueOf(s));
       });
     });
-  }, [all, search, applied, colScope, colQuery, line, business, ops]);
+  }, [all, search, colScope, colQuery, line, business, ops, activeColFilters, today]);
+
+  const rows = React.useMemo(
+    () =>
+      sortRows(
+        narrow(applied),
+        sort,
+        SERIES_COLUMNS.find((c) => c.key === sort?.key)?.sort
+      ),
+    [narrow, applied, sort]
+  );
 
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -427,13 +605,15 @@ export function RecurringOrdersScreen({
   );
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business, ops]);
+  }, [search, applied, colQuery, colScope, line, business, ops, activeColFilters]);
 
-  /** The columns actually drawn — the pinned actions cell never hides. */
-  const visibleColumns = React.useMemo(
+  /** The columns actually drawn, in the reader's order — actions never hides. */
+  const visibleCols = React.useMemo(
     () =>
-      SERIES_COLUMNS.filter((c) => c.key === "actions" || !hidden.has(c.key)),
-    [hidden],
+      cols.arrange(
+        SERIES_COLUMNS.filter((c) => c.key === "actions" || !hidden.has(c.key))
+      ),
+    [cols, hidden],
   );
 
   const toggleExpand = (id: string) =>
@@ -500,7 +680,10 @@ export function RecurringOrdersScreen({
   };
 
   const filtered =
-    search.trim().length > 0 || applied.size > 0 || colQuery.trim().length > 0;
+    search.trim().length > 0 ||
+    applied.size > 0 ||
+    colQuery.trim().length > 0 ||
+    activeColFilters.length > 0;
 
   type ViewState = {
     search: string;
@@ -508,6 +691,11 @@ export function RecurringOrdersScreen({
     hidden: string[];
     colScope: string;
     colQuery: string;
+    /* Optional so a view saved before them still applies. */
+    colOrder?: string[];
+    widths?: Record<string, number>;
+    sort?: SortState;
+    colFilters?: Record<string, string>;
   };
   const savedViews = useSavedViews<ViewState>({
     current: {
@@ -516,6 +704,10 @@ export function RecurringOrdersScreen({
       hidden: [...hidden],
       colScope,
       colQuery,
+      colOrder,
+      widths,
+      sort,
+      colFilters: Object.fromEntries(activeColFilters),
     },
     defaultState: {
       search: "",
@@ -523,12 +715,24 @@ export function RecurringOrdersScreen({
       hidden: [],
       colScope: SERIES_SEARCH_FIELDS[0].key,
       colQuery: "",
+      colOrder: SERIES_KEYS,
+      widths: {},
+      sort: null,
+      colFilters: {},
     },
     keyOf: (v) =>
       JSON.stringify({
         ...v,
         applied: [...v.applied].sort(),
         hidden: [...v.hidden].sort(),
+        colOrder: v.colOrder ?? SERIES_KEYS,
+        widths: v.widths ?? {},
+        sort: v.sort ?? null,
+        colFilters: Object.fromEntries(
+          Object.entries(v.colFilters ?? {})
+            .filter(([, x]) => x.trim() !== "")
+            .sort(([a], [b]) => a.localeCompare(b))
+        ),
       }),
     apply: (v) => {
       setSearch(v.search);
@@ -536,6 +740,11 @@ export function RecurringOrdersScreen({
       setHidden(new Set(v.hidden));
       setColScope(v.colScope);
       setColQuery(v.colQuery);
+      setColOrder(v.colOrder ?? SERIES_KEYS);
+      setWidths(v.widths ?? {});
+      setSort(v.sort ?? null);
+      setColFilters(v.colFilters ?? {});
+      setColFiltersOpen(Object.values(v.colFilters ?? {}).some((x) => x.trim()));
       setPage(1);
     },
   });
@@ -544,6 +753,225 @@ export function RecurringOrdersScreen({
     setSearch("");
     setApplied(new Set());
     setColQuery("");
+    setColFilters({});
+  };
+
+  /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
+     every narrowing that shapes the file listed. */
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "business",
+      label: "Business",
+      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
+    },
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim() ? [{ value: search.trim(), onRemove: () => setSearch("") }] : [],
+    },
+    {
+      key: "colSearch",
+      label: SERIES_SEARCH_FIELDS.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim() ? [{ value: colQuery.trim(), onRemove: () => setColQuery("") }] : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: SERIES_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => setColFilters((prev) => ({ ...prev, [key]: "" })),
+        },
+      ],
+    })),
+    ...SERIES_FACETS.map((f) => {
+      const mine = [...applied].filter((id) => id.startsWith(`${f.key}:`));
+      const drop = (ids: string[]) =>
+        setApplied((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(f.key.length + 1),
+          onRemove: () => drop([id]),
+        })),
+        onRemoveAll: () => drop(mine),
+      };
+    }),
+  ];
+
+  const exportCsv = () => {
+    downloadCsv(
+      `recurring-orders-${new Date().toISOString().slice(0, 10)}`,
+      rows.map((s) => ({
+        "Order #": s.parent.orderNo,
+        Customer: s.parent.customer.title,
+        "Ship to": s.parent.shipTo,
+        Schedule: s.schedule.label,
+        "Next delivery": s.nextKey ?? "",
+        Upcoming: upcomingCount(s, today),
+        Partner: vendorName(s.parent.vendorId),
+        Series: s.status,
+        Reason: s.stalledReason ?? "",
+      })),
+    );
+    toast.success(
+      `Exported ${rows.length} recurring ${rows.length === 1 ? "order" : "orders"}`,
+    );
+  };
+
+  const cell = (s: RecurringSeries, key: string): React.ReactNode => {
+    switch (key) {
+      case "order":
+        return (
+          <div className="flex min-w-0 items-start gap-2">
+            <Repeat className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-sm tabular-nums text-foreground">
+                {s.parent.orderNo}
+              </span>
+              {/* WHEN IT WAS SET UP. In V2 that is the order's own creation,
+                  because the order IS the rule — which is the model, said in
+                  one line. */}
+              <span className="truncate text-xs text-muted-foreground">
+                {s.parent.audit[0]
+                  ? DATE_FMT.format(new Date(s.parent.audit[0].at))
+                  : "—"}
+              </span>
+            </div>
+          </div>
+        );
+      case "customer":
+        return (
+          <TwoLineCell
+            title={s.parent.customer.title}
+            description={s.parent.customer.description}
+          />
+        );
+      case "shipTo":
+        return (
+          <span className="truncate text-sm text-foreground">
+            {s.parent.shipTo}
+          </span>
+        );
+      case "schedule":
+        /* THE SCHEDULE AS A SHAPE, the same cell V1 uses. */
+        return <ScheduleCell schedule={s.schedule} />;
+      case "next":
+        return s.nextKey ? (
+          <span className="text-sm tabular-nums text-foreground">
+            {DATE_FMT.format(new Date(`${s.nextKey}T00:00:00`))}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      case "upcoming": {
+        const ahead = upcomingCount(s, today);
+        return ahead > 0 ? (
+          <span className="text-sm tabular-nums text-foreground">{ahead}</span>
+        ) : (
+          /* A ZERO THAT HAS A REASON SAYS SO. An empty count on an Active
+             series is the doc's commonest support call, and a bare 0 is what
+             makes it one. */
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default text-sm tabular-nums text-muted-foreground underline decoration-dotted underline-offset-4">
+                0
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {s.stalledReason ?? "Nothing scheduled in the next month"}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      case "vendor":
+        return (
+          <span className="truncate text-sm text-foreground">
+            {vendorName(s.parent.vendorId)}
+          </span>
+        );
+      case "status":
+        return (
+          <div className="flex min-w-0 flex-col gap-0.5 leading-tight">
+            <StatusChip
+              tone={SERIES_TONE[s.status]}
+              variant="soft"
+              className="self-start"
+            >
+              {s.status}
+            </StatusChip>
+            {/* ENDED AND EXPIRED SHARE A TONE AND MUST NOT SHARE A MEANING.
+                The line under the word separates "somebody stopped this" from
+                "the date arrived"; truncated, but the tooltip finishes it. */}
+            {s.stalledReason && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-default truncate text-xs text-muted-foreground">
+                    {s.stalledReason}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{s.stalledReason}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        );
+      case "actions":
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Actions for ${s.parent.orderNo}`}
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                {/* ONLY THE ACTS THAT APPLY. The menu is short enough that
+                    its shape is the answer. */}
+                {s.status === "Active" || s.status === "Upcoming" ? (
+                  <DropdownMenuItem onSelect={() => pauseNow(s)}>
+                    Pause now
+                  </DropdownMenuItem>
+                ) : null}
+                {s.status === "Paused" && (
+                  <DropdownMenuItem onSelect={() => resume(s)}>
+                    Resume
+                  </DropdownMenuItem>
+                )}
+                {(s.status === "Active" ||
+                  s.status === "Paused" ||
+                  s.status === "Upcoming") && (
+                  <>
+                    <DropdownMenuItem onSelect={() => endToday(s)}>
+                      End recurrence today
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => cancelSeries(s)}
+                    >
+                      Cancel series
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {(s.status === "Cancelled" ||
+                  s.status === "Ended" ||
+                  s.status === "Expired") && (
+                  <DropdownMenuItem onSelect={() => restart(s)}>
+                    Restart series
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -571,40 +999,14 @@ export function RecurringOrdersScreen({
         }}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
-        onExport={() => {
-          downloadCsv(
-            `recurring-orders-${new Date().toISOString().slice(0, 10)}`,
-            rows.map((s) => ({
-              "Order #": s.parent.orderNo,
-              Customer: s.parent.customer.title,
-              "Ship to": s.parent.shipTo,
-              Schedule: s.schedule.label,
-              "Next delivery": s.nextKey ?? "",
-              Upcoming: upcomingCount(s, today),
-              Partner: vendorName(s.parent.vendorId),
-              Series: s.status,
-              Reason: s.stalledReason ?? "",
-            })),
-          );
-          toast.success(
-            `Exported ${rows.length} recurring ${rows.length === 1 ? "order" : "orders"}`,
-            {
-              description: "The filtered list, all pages, in the order shown.",
-            },
-          );
-        }}
+        onExport={() => setExporting(true)}
       />
 
-      {/* THE TOOLBAR AND THE CHIPS ARE ONE SHELF, and the shelf is spaced
-          off the bar above it — `mt-4`, the same step the orders board and
-          the directory lists use. Dropped in without it, the view bar and
-          the toolbar sat flush and read as one crowded band. */}
       <div className="mt-4 shrink-0">
         {/* THE ACTION UNIT — the same one every list in this app carries, in the
-          same order. Board, map and Group By are switched off rather than
-          drawn dead: a series has no lanes, no pins, and row grouping over a
-          list whose rows already expand is two disclosure mechanics fighting
-            for one triangle. */}
+            same order. Board, map and Group By are off: a series has no lanes,
+            no pins, and grouping rows that already expand is two disclosure
+            mechanics fighting for one triangle. */}
         <ListToolbar
           searchValue={search}
           onSearchChange={setSearch}
@@ -619,13 +1021,11 @@ export function RecurringOrdersScreen({
               }))}
               value={applied}
               onApply={setApplied}
+              countFor={(sel) => narrow(sel).length}
             />
           }
           quickFilters={
-            /* OUTLINE + SPACING 0 — the DS's own joined segmented control.
-               It draws the box round the set and the hairlines between the
-               segments, which is what says these three are one choice rather
-               than three buttons that happen to sit together. */
+            /* OUTLINE + SPACING 0 — the DS's own joined segmented control. */
             <ToggleGroup
               type="single"
               variant="outline"
@@ -652,6 +1052,8 @@ export function RecurringOrdersScreen({
               label: c.label,
             }),
           )}
+          columnOrder={colOrder}
+          onReorderColumns={setColOrder}
           hiddenColumns={hidden as Set<string>}
           onToggleColumn={(k) =>
             setHidden((prev) => {
@@ -670,6 +1072,18 @@ export function RecurringOrdersScreen({
           onColScopeChange={setColScope}
           colQuery={colQuery}
           onColQueryChange={setColQuery}
+          columnFiltersOpen={view === "table" && colFiltersOpen}
+          onToggleColumnFilters={
+            view === "table"
+              ? () =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row puts the table back. */
+                    if (open) setColFilters({});
+                    return !open;
+                  })
+              : undefined
+          }
+          columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
         />
@@ -688,11 +1102,22 @@ export function RecurringOrdersScreen({
             colQuery={colQuery}
             onClear={() => setColQuery("")}
           />
+          {activeColFilters.map(([key, value]) => (
+            <ColumnSearchChip
+              key={key}
+              searchFields={SERIES_COLUMNS.map((c) => ({ key: c.key, label: c.label }))}
+              colScope={key}
+              colQuery={value.trim()}
+              onClear={() => setColFilters((prev) => ({ ...prev, [key]: "" }))}
+            />
+          ))}
         </FilterChips>
       </div>
 
       <div className="relative mt-4 min-h-0 flex-1">
-        {rows.length === 0 ? (
+        {/* THE ROW STAYS WHEN NOTHING MATCHES — swapping the table for an
+            empty state would take away the boxes being typed in. */}
+        {rows.length === 0 && !colFiltersOpen ? (
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -720,63 +1145,95 @@ export function RecurringOrdersScreen({
             ref={scrollRef}
             className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible"
           >
-            {/* BORDER-SEPARATE, AND IT IS THE WHOLE FIX.
-
-                Chrome will not honour `position: sticky` on a table CELL while
-                the table's borders are collapsed, and it ignores z-index on
-                `<thead>` in that mode too — so a collapsed table can hold its
-                header still (sticky on the header) or paint it above the body
-                (sticky on the cells), but never both. That is why a scrolled
-                row could be read straight through the header.
-
-                Separating the borders lets the cells stick properly and
-                respect z-index. The cost is that a border on a `<tr>` stops
-                painting, so the row rule moves onto the cells — which is where
-                the header's own borders already were. */}
-              <Table
-                style={{ tableLayout: "fixed" }}
-                className="border-separate border-spacing-0"
-              >
+            {/* BORDER-SEPARATE so the header cells can stick and paint above
+                the body — see `docs/ds/ui/2-rules.md` §10d. The row rule moves
+                onto the cells. */}
+            <Table
+              style={{ tableLayout: "fixed" }}
+              className="border-separate border-spacing-0"
+            >
               <colgroup>
                 <col style={{ width: "44px" }} />
-                {visibleColumns.map((c) => (
-                  <col key={c.key} style={{ width: `${c.width}px` }} />
+                {visibleCols.map((c) => (
+                  <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
                 ))}
               </colgroup>
-              {/* THE CELLS STICK, NOT THE HEADER — see the note in the V1 screen: a
-                  collapsed-border table ignores z-index on `<thead>`, so a
-                  sticky header paints under the body it is holding still
-                  for. */}
               <TableHeader className="bg-fp-table-header">
-                <TableRow className="h-10 bg-fp-table-header">
+                <TableRow className="h-10 bg-fp-table-header hover:bg-transparent">
+                  {/* THE EXPAND CELL IS THE FRAME, not a column — it never
+                      moves, hides or sorts. */}
                   <TableHead className="sticky top-0 z-20 border-b border-fp-outline-1 bg-fp-table-header px-3" />
-                  {visibleColumns.map((c) => (
-                    <TableHead
+                  {visibleCols.map((c) => (
+                    <TableColumnHeader
                       key={c.key}
+                      cols={cols}
+                      col={c}
+                      aria-sort={
+                        sort?.key === c.key
+                          ? sort.dir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
                       className={cn(
                         "sticky top-0 z-20 whitespace-nowrap border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
                         c.align === "right" && "text-right",
+                        c.key === "actions" && "right-0 z-30"
                       )}
                     >
-                      {c.label}
-                    </TableHead>
+                      {c.label ? (
+                        <SortButton
+                          label={c.label}
+                          sort={sort}
+                          colKey={c.key}
+                          onSort={onSort}
+                        />
+                      ) : null}
+                    </TableColumnHeader>
                   ))}
                 </TableRow>
+                {colFiltersOpen && (
+                  /* THE SECOND HEADER ROW — the same band ListTable draws. */
+                  <TableRow className="h-11 hover:bg-transparent">
+                    <TableHead className="sticky top-10 z-20 border-b border-fp-outline-1 bg-fp-surface-1b px-2" />
+                    {visibleCols.map((c) => (
+                      <TableHead
+                        key={c.key}
+                        className={cn(
+                          "sticky top-10 z-20 border-b border-fp-outline-1 bg-fp-surface-1b px-2",
+                          c.key === "actions" && "right-0 z-30"
+                        )}
+                      >
+                        {c.label ? (
+                          <Input
+                            value={colFilters[c.key] ?? ""}
+                            onChange={(e) =>
+                              setColFilters((prev) => ({
+                                ...prev,
+                                [c.key]: e.target.value,
+                              }))
+                            }
+                            placeholder={cols.widthOf(c) >= 96 ? "Filter…" : ""}
+                            aria-label={`Filter by ${c.label}`}
+                            className="h-7 rounded-md px-2.5 text-xs shadow-none"
+                          />
+                        ) : null}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                )}
               </TableHeader>
               <TableBody>
                 {pageRows.map((s) => {
                   const open = expanded.has(s.id);
-                  const ahead = upcomingCount(s, today);
                   return (
                     <React.Fragment key={s.id}>
                       <TableRow
-                        /* The row rule moves onto the cells — see the note on
-                           the table's separated borders. */
                         className="group/row h-14 cursor-pointer [&>td]:border-b [&>td]:border-fp-outline-1"
                         onClick={(e) => {
                           const t = e.target as HTMLElement | null;
                           if (
-                            t?.closest("button,a,input,label,[role='checkbox']")
+                            t?.closest("button,a,input,label,[role='checkbox'],[role='menuitem']")
                           )
                             return;
                           if (window.getSelection()?.toString()) return;
@@ -798,202 +1255,29 @@ export function RecurringOrdersScreen({
                             {open ? <ChevronDown /> : <ChevronRight />}
                           </Button>
                         </TableCell>
-
-                        <TableCell className="px-3">
-                          <div className="flex min-w-0 items-start gap-2">
-                            <Repeat className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                            <div className="flex min-w-0 flex-col leading-tight">
-                              <span className="truncate text-sm tabular-nums text-foreground">
-                                {s.parent.orderNo}
-                              </span>
-                              {/* WHEN IT WAS SET UP. In V2 that is the order's
-                                  own creation, because the order IS the rule —
-                                  which is the model, said in one line. */}
-                              <span className="truncate text-xs text-muted-foreground">
-                                {s.parent.audit[0]
-                                  ? DATE_FMT.format(
-                                      new Date(s.parent.audit[0].at)
-                                    )
-                                  : "—"}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="px-3">
-                          <TwoLineCell
-                            title={s.parent.customer.title}
-                            description={s.parent.customer.description}
-                          />
-                        </TableCell>
-
-                        <TableCell className="px-3">
-                          <span className="truncate text-sm text-foreground">
-                            {s.parent.shipTo}
-                          </span>
-                        </TableCell>
-
-                        {/* THE SCHEDULE AS A SHAPE, the same cell V1 uses.
-                            Repeated table patterns behave the same: two
-                            versions of one screen describing a schedule two
-                            different ways would have the reader comparing the
-                            descriptions rather than the models. */}
-                        <TableCell className="px-3">
-                          <ScheduleCell schedule={s.schedule} />
-                        </TableCell>
-
-                        <TableCell className="px-3">
-                          {s.nextKey ? (
-                            <span className="text-sm tabular-nums text-foreground">
-                              {DATE_FMT.format(
-                                new Date(`${s.nextKey}T00:00:00`),
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              —
-                            </span>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="px-3 text-right tabular-nums">
-                          {ahead > 0 ? (
-                            <span className="text-sm text-foreground">
-                              {ahead}
-                            </span>
-                          ) : (
-                            /* A ZERO THAT HAS A REASON SAYS SO. An empty count
-                               on an Active series is the doc's commonest
-                               support call, and a bare 0 is what makes it one. */
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-default text-sm text-muted-foreground underline decoration-dotted underline-offset-4">
-                                  0
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {s.stalledReason ??
-                                  "Nothing scheduled in the next month"}
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="px-3">
-                          <span className="truncate text-sm text-foreground">
-                            {vendorName(s.parent.vendorId)}
-                          </span>
-                        </TableCell>
-
-                        <TableCell className="px-3">
-                          <div className="flex min-w-0 flex-col gap-0.5 leading-tight">
-                            <StatusChip
-                              tone={SERIES_TONE[s.status]}
-                              variant="soft"
-                              className="self-start"
+                        {visibleCols.map((c) =>
+                          c.key === "actions" ? (
+                            <TableCell
+                              key={c.key}
+                              className="sticky right-0 z-10 bg-fp-surface-1b px-3 before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover"
                             >
-                              {s.status}
-                            </StatusChip>
-                            {/* ENDED AND EXPIRED SHARE A TONE AND MUST NOT
-                                SHARE A MEANING. The line under the word is
-                                what separates "somebody stopped this" from
-                                "the date arrived" — the audit story the doc
-                                says a shared badge destroys. */}
-                            {/* TRUNCATED, BUT NEVER UNREADABLE. The reason is
-                                the valuable half of this cell and the column is
-                                210px; a clipped sentence with no way to finish
-                                it is worse than no sentence. */}
-                            {s.stalledReason && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-default truncate text-xs text-muted-foreground">
-                                    {s.stalledReason}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {s.stalledReason}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="sticky right-0 z-10 bg-fp-surface-1b px-3 before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover">
-                          <span className="relative">
-                            <div className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={`Actions for ${s.parent.orderNo}`}
-                                  >
-                                    <MoreHorizontal />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="w-60"
-                                >
-                                  {/* ONLY THE ACTS THAT APPLY. A Resume on a
-                                      running series and a Pause on a cancelled
-                                      one are dead controls, and hiding them
-                                      beats greying them out here: the menu is
-                                      short enough that its shape is the
-                                      answer. */}
-                                  {s.status === "Active" ||
-                                  s.status === "Upcoming" ? (
-                                    <DropdownMenuItem
-                                      onSelect={() => pauseNow(s)}
-                                    >
-                                      Pause now
-                                    </DropdownMenuItem>
-                                  ) : null}
-                                  {s.status === "Paused" && (
-                                    <DropdownMenuItem
-                                      onSelect={() => resume(s)}
-                                    >
-                                      Resume
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(s.status === "Active" ||
-                                    s.status === "Paused" ||
-                                    s.status === "Upcoming") && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onSelect={() => endToday(s)}
-                                      >
-                                        End recurrence today
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onSelect={() => cancelSeries(s)}
-                                      >
-                                        Cancel series
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {(s.status === "Cancelled" ||
-                                    s.status === "Ended" ||
-                                    s.status === "Expired") && (
-                                    <DropdownMenuItem
-                                      onSelect={() => restart(s)}
-                                    >
-                                      Restart series
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </span>
-                        </TableCell>
+                              <span className="relative">{cell(s, c.key)}</span>
+                            </TableCell>
+                          ) : (
+                            <TableCell
+                              key={c.key}
+                              className={cn("px-3", c.align === "right" && "text-right")}
+                            >
+                              {cell(s, c.key)}
+                            </TableCell>
+                          )
+                        )}
                       </TableRow>
 
                       {open && (
                         <TableRow className="hover:bg-transparent">
                           <TableCell
-                            colSpan={visibleColumns.length + 1}
+                            colSpan={visibleCols.length + 1}
                             className="bg-background p-0"
                           >
                             <DeliveryTable series={s} width={innerWidth} />
@@ -1009,11 +1293,8 @@ export function RecurringOrdersScreen({
         )}
       </div>
 
-      {/* THE PAGE POSITION, and beside it the one fact about the list that a
-          count cannot carry: the horizon. A broker who sets up a weekly order
-          and counts four deliveries needs to know that is the WINDOW and not
-          the life of the schedule, and it is true of the list rather than of
-          any row, so it sits here rather than on all of them. */}
+      {/* THE PAGE POSITION, and beside it the horizon — true of the list
+          rather than of any row. */}
       <div className="mt-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
           Showing deliveries from today through one month out
@@ -1029,6 +1310,38 @@ export function RecurringOrdersScreen({
           }}
         />
       </div>
+
+      <ExportSheet
+        open={exporting}
+        onOpenChange={setExporting}
+        title="Export Recurring Orders"
+        noun="recurring orders"
+        nounOne="recurring order"
+        count={rows.length}
+        filtersControl={
+          <ListFilters
+            facets={SERIES_FACETS.map((f) => ({
+              key: f.key,
+              label: f.label,
+              options: f.options,
+              searchable: f.searchable,
+            }))}
+            value={applied}
+            onApply={setApplied}
+            countFor={(sel) => narrow(sel).length}
+            fullWidth
+          />
+        }
+        filters={exportFilters}
+        onExport={(format) => {
+          setExporting(false);
+          if (format === "csv") exportCsv();
+          else
+            toast.success(
+              `Exporting ${rows.length} recurring ${rows.length === 1 ? "order" : "orders"} as .${format}`
+            );
+        }}
+      />
     </div>
   );
 }

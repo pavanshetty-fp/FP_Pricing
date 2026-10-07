@@ -1,36 +1,9 @@
 import type {
+  CoreFuelStage,
   FuelOrder,
-  FuelOrderColumnDef,
-  FuelOrderColumnKey,
   FuelOrderStatus,
   ProductQty,
-  SortState,
 } from "./types";
-
-/*
-  Column order + labels are the Sales Console's Fuel Orders list with this
-  pass's feedback applied: Type is its own column again, Created is gone, Date is
-  "Date of Delivery", and Window is "Scheduling Window" (a from/to range).
-
-  Widths follow the DS column-frame vocabulary: select = 40, actions = 44, and
-  body widths sized to their content.
-*/
-export const FUEL_ORDER_COLUMNS: FuelOrderColumnDef[] = [
-  { key: "select", label: "", width: 40 },
-  { key: "order", label: "Order #", width: 120, sortable: true },
-  /* EVERY DATA COLUMN SORTS — DS rule (Pavan, 2026-10-07). */
-  { key: "type", label: "Type", width: 70, sortable: true },
-  { key: "customer", label: "Customer", width: 200, sortable: true },
-  { key: "products", label: "Product", width: 190, sortable: true },
-  { key: "qtyGal", label: "Qty (Gal)", width: 105, sortable: true },
-  { key: "date", label: "Date of Delivery", width: 140, sortable: true },
-  { key: "planned", label: "Planned Date & Time", width: 150, sortable: true },
-  { key: "status", label: "Status", width: 135, sortable: true },
-  { key: "driver", label: "Driver", width: 140, sortable: true },
-  { key: "tags", label: "Tags", width: 200, sortable: true },
-  // Sticky: the row-open chevron stays reachable while the grid scrolls.
-  { key: "actions", label: "", width: 52 },
-];
 
 /** Sum of a row's product lines — the Qty (Gal) value. */
 export function totalGal(products: ProductQty[]): number {
@@ -281,7 +254,7 @@ const SEED: Seed[] = [
 ];
 
 /** Every stage, in the order an order moves through them. */
-export const FUEL_ORDER_STAGES: FuelOrderStatus[] = [
+export const FUEL_ORDER_STAGES: CoreFuelStage[] = [
   "Requested",
   "Scheduled",
   "Dispatched",
@@ -297,10 +270,16 @@ export const FUEL_ORDER_STAGES: FuelOrderStatus[] = [
  */
 export function stageAfterDriver(
   status: FuelOrderStatus,
-  hasDriver: boolean
+  hasDriver: boolean,
+  /* THE STAGE BEFORE SCHEDULED, and whether the pick may schedule at all
+     (Pavan, 2026-10-07). Sales Settings can put a stage in front of
+     Scheduled, make Scheduled wait for an approval, or hold it for an
+     accepted quote — `driverStage` in salesSettings.ts passes all three. */
+  before: FuelOrderStatus = "Requested",
+  maySchedule = true
 ): FuelOrderStatus {
-  if (status === "Requested" && hasDriver) return "Scheduled";
-  if (status === "Scheduled" && !hasDriver) return "Requested";
+  if (status === before && hasDriver && maySchedule) return "Scheduled";
+  if (status === "Scheduled" && !hasDriver) return before;
   return status;
 }
 
@@ -323,6 +302,23 @@ function seedStage(i: number, dayOffset: number, hasDriver: boolean): FuelOrderS
  * and still undispatched, so the overdue banner has something to count.
  */
 const seedUrgent = (i: number) => i % 7 === 0;
+
+/**
+ * SAMPLE TIME IN STAGE — INVENTED (Pavan, 2026-10-07). How many hours ago
+ * each order entered its stage, so the SLA flag has something to find: a few
+ * Requested past a day, one Scheduled past two, some Dispatched past eight.
+ */
+function seedStageSince(i: number, stage: FuelOrderStatus): string {
+  const hours =
+    stage === "Requested"
+      ? [2, 6, 30, 10, 14][i % 5]
+      : stage === "Scheduled"
+        ? [5, 20, 52, 12, 30, 8][i % 6]
+        : stage === "Dispatched"
+          ? [1, 3, 10, 4][i % 4]
+          : 24;
+  return new Date(Date.now() - hours * 3_600_000).toISOString();
+}
 
 /** The source list's total. Order numbers count down from the newest, as there. */
 const TOTAL = 115;
@@ -347,6 +343,7 @@ export const FUEL_ORDERS: FuelOrder[] = (() => {
         ? { date: DATE_FMT.format(when), time: plannedTime }
         : null,
       status: seedStage(i, dayOffset, Boolean(seed.driver)),
+      stageSince: seedStageSince(i, seedStage(i, dayOffset, Boolean(seed.driver))),
       urgent: seedUrgent(i),
     };
   });
@@ -365,49 +362,6 @@ export function plannedAt(row: FuelOrder): Date | null {
   if (Number.isNaN(day.getTime()) || !t) return null;
   const hour = (Number(t[1]) % 12) + (t[3].toUpperCase() === "PM" ? 12 : 0);
   return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, Number(t[2]));
-}
-
-/** Value a column sorts on. Empty values sort last in ascending order. */
-function sortValue(row: FuelOrder, key: FuelOrderColumnKey): string | number {
-  switch (key) {
-    case "order":
-      return Number(row.orderNo);
-    case "type":
-      return row.type.label;
-    case "customer":
-      return `${row.customer.title} ${row.customer.description}`.toLowerCase();
-    case "products":
-      return row.products.map((p) => p.name).join(" ").toLowerCase() || "\uffff";
-    case "qtyGal":
-      return row.qtyGal;
-    case "date":
-      return row.dateKey;
-    case "planned":
-      // The moment, not the printed time — "1:35 AM" > "12:11 AM" as text.
-      return plannedAt(row)?.getTime() ?? Number.POSITIVE_INFINITY;
-    case "driver":
-      return row.driver?.name.toLowerCase() ?? "\uffff";
-    case "tags":
-      return row.tags.join(" ").toLowerCase() || "\uffff";
-    case "status":
-      return FUEL_ORDER_STAGES.indexOf(row.status);
-    default:
-      return 0;
-  }
-}
-
-export function sortFuelOrders(
-  rows: FuelOrder[],
-  sort: SortState | null
-): FuelOrder[] {
-  if (!sort) return rows;
-  const dir = sort.dir === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const av = sortValue(a, sort.key);
-    const bv = sortValue(b, sort.key);
-    if (av === bv) return 0;
-    return av > bv ? dir : -dir;
-  });
 }
 
 /**
@@ -431,59 +385,6 @@ export function splitGallons(total: number, n: number): number[] {
   const out = Array.from({ length: n }, () => base);
   out[0] += total - base * n;
   return out;
-}
-
-/**
- * Per-column search — the fields the toolbar's "Search by column" tool offers.
- * This is the screen's analogue of the DS's `data-action-control/helpers.ts`
- * SEARCH_FIELDS, which is bound to that demo's own row shape and so cannot be
- * pointed at a FuelOrder. Same contract: a label for the picker and a text
- * projection to match against.
- *
- * Deliberately omits `select` and `actions` (no text) and Qty — a numeric
- * substring match on gallons ("2,092" vs "2092") misleads more than it helps,
- * and the column sorts instead.
- */
-export interface FuelOrderSearchField {
-  key: string;
-  label: string;
-  text: (r: FuelOrder) => string;
-}
-
-export const FUEL_ORDER_SEARCH_FIELDS: FuelOrderSearchField[] = [
-  { key: "order", label: "Order #", text: (r) => r.orderNo },
-  { key: "type", label: "Type", text: (r) => r.type.label },
-  {
-    key: "customer",
-    label: "Customer",
-    text: (r) => `${r.customer.title} ${r.customer.description}`,
-  },
-  {
-    key: "products",
-    label: "Product",
-    text: (r) => r.products.map((p) => p.name).join(" "),
-  },
-  { key: "date", label: "Date of Delivery", text: (r) => r.date.title },
-  {
-    key: "planned",
-    label: "Planned Date & Time",
-    text: (r) => (r.planned ? `${r.planned.date} ${r.planned.time}` : ""),
-  },
-  { key: "status", label: "Status", text: (r) => r.status },
-  { key: "driver", label: "Driver", text: (r) => r.driver?.name ?? "Unassigned" },
-  { key: "tags", label: "Tags", text: (r) => r.tags.join(" ") },
-];
-
-/** Match a row against a lowercased query inside ONE column. */
-export function matchesFuelOrderIn(
-  row: FuelOrder,
-  q: string,
-  scope: string
-): boolean {
-  if (!q) return true;
-  const field = FUEL_ORDER_SEARCH_FIELDS.find((f) => f.key === scope);
-  if (!field) return true;
-  return field.text(row).toLowerCase().includes(q);
 }
 
 /** Free-text match across a row's text columns. */

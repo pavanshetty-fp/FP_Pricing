@@ -6,8 +6,10 @@ import {
   FIRST_QUOTE_NO,
   SEED_QUOTES,
   diffQuote,
+  newChargeId,
   type Quote,
 } from "./quotes";
+import { notify, ownerOnCreate } from "./salesSettings";
 
 /*
   ONE OWNER FOR QUOTES, AND FOR THE ORDERS THEY MAKE (Pavan, 2026-10-07 —
@@ -83,11 +85,14 @@ export function createQuote(): Quote {
     market: "",
     lines: [{ name: "", gal: 0, base: null, baseSet: false }],
     margin: { value: 0, unit: "perGal" },
-    fees: { value: 0, unit: "perGal" },
-    tax: { value: 0, unit: "percent" },
+    fees: [{ id: newChargeId("fee"), name: "Fees", value: 0, unit: "perGal" }],
+    taxes: [{ id: newChargeId("tax"), name: "Tax", value: 0, unit: "percent" }],
     notes: "",
     stage: "Draft",
     updatedAt: new Date().toISOString(),
+    /* AUTO-ASSIGN OWNER (Pavan, 2026-10-07) — only where the quote form has
+       a Sales rep field to hold it. */
+    extra: ownerOnCreate("quote") ? { salesRep: ownerOnCreate("quote") } : {},
   };
   setQuotes((prev) => [quote, ...prev]);
   return quotes.find((q) => q.id === quote.id)!;
@@ -132,6 +137,10 @@ function orderFrom(q: Quote, when: Date): FuelOrder {
     planned: null,
     tags: [],
     status: "Requested",
+    stageSince: when.toISOString(),
+    /* MADE FROM AN ACCEPTED QUOTE — what "Require an accepted quote before
+       scheduling" asks for (2026-10-07). */
+    fromQuote: q.quoteNo,
     urgent: false,
     driver: null,
     audit: [{ at: when.toISOString(), by: ACTOR, changes: [`Order created from quote ${q.quoteNo}`] }],
@@ -145,7 +154,24 @@ export function acceptQuote(id: string): FuelOrder | null {
   const order = orderFrom(q, new Date());
   orders = [order, ...orders];
   updateQuote(id, { stage: "Accepted", orderId: order.id, orderNo: order.orderNo });
+  notify("quoteAccepted", `${q.quoteNo} accepted · Order ${order.orderNo} created`);
   return order;
+}
+
+/* QUOTE EXPIRED IS SAID ONCE PER QUOTE PER VISIT (Pavan, 2026-10-07). A
+   quote expires with the calendar, not with a press, so the Quotes page asks
+   on arrival and a quote already reported is not reported again. */
+const reportedExpired = new Set<string>();
+export function reportExpired(expired: Quote[]) {
+  const fresh = expired.filter((q) => !reportedExpired.has(q.id));
+  if (fresh.length === 0) return;
+  fresh.forEach((q) => reportedExpired.add(q.id));
+  notify(
+    "quoteExpired",
+    fresh.length === 1
+      ? `${fresh[0].quoteNo} expired`
+      : `${fresh.length} quotes expired · ${fresh.map((q) => q.quoteNo).join(", ")}`
+  );
 }
 
 /* THE SEEDED ACCEPTED QUOTES HAVE THEIR ORDERS TOO, so the link on each one

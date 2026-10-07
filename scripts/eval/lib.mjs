@@ -88,3 +88,127 @@ export function scanLines(file, re, make, skip) {
  * enforce a naming rule.
  */
 export const isComment = (line) => /^\s*(\/\/|\/\*|\*)/.test(line);
+
+/**
+ * The source with every comment blanked out — `//…`, `/* … *\/` and JSX's
+ * `{/* … *\/}` — keeping every newline, so a line number read off the result
+ * is the line number in the file.
+ *
+ * WHY. This codebase explains itself in long capitalised comments that quote
+ * the very props the parity checks look for ("NOT ON THE BOARD … showGroupBy").
+ * A prop-presence check that reads comments reports a prop that is not there.
+ * Strings are respected, so a URL's `//` is not taken for a comment.
+ */
+export function stripComments(src) {
+  let out = "";
+  let i = 0;
+  let q = null;
+  while (i < src.length) {
+    const c = src[i];
+    const n = src[i + 1];
+    if (q) {
+      out += c;
+      if (c === "\\") { out += n ?? ""; i += 2; continue; }
+      if (c === q) q = null;
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { q = c; out += c; i += 1; continue; }
+    if (c === "/" && n === "*") {
+      const end = src.indexOf("*/", i + 2);
+      const stop = end < 0 ? src.length : end + 2;
+      out += src.slice(i, stop).replace(/[^\n]/g, " ");
+      i = stop;
+      continue;
+    }
+    if (c === "/" && n === "/" && src[i - 1] !== ":") {
+      const end = src.indexOf("\n", i);
+      const stop = end < 0 ? src.length : end;
+      out += " ".repeat(stop - i);
+      i = stop;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * Every OPENING tag `<Tag …>` in `src` (pass comment-stripped source), with
+ * the props it sets at its top level.
+ *
+ * `props` is a Map of prop name → raw value text (`true` for a bare flag such
+ * as `boardView`). A spread (`{...savedViews}`) is recorded under `"..."`.
+ * Nested JSX inside a prop's braces is skipped, so `filters={<ListFilters …/>}`
+ * gives ListToolbar a `filters` prop and does not lend it ListFilters' props.
+ */
+export function openTags(src, tag) {
+  const out = [];
+  const re = new RegExp(`<${tag}\\b`, "g");
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    let i = m.index + tag.length + 1;
+    let depth = 0;
+    let q = null;
+    for (; i < src.length; i += 1) {
+      const c = src[i];
+      if (q) { if (c === "\\") { i += 1; continue; } if (c === q) q = null; continue; }
+      if (c === "`" || (depth > 0 && (c === '"' || c === "'")) || (depth === 0 && (c === '"' || c === "'"))) { q = c; continue; }
+      if (c === "{") depth += 1;
+      else if (c === "}") depth -= 1;
+      else if (depth === 0 && c === ">") break;
+    }
+    const text = src.slice(m.index, i + 1);
+    const props = new Map();
+    let d = 0;
+    let j = tag.length + 1;
+    while (j < text.length) {
+      const c = text[j];
+      if (c === "{") {
+        if (d === 0 && text.startsWith("{...", j)) props.set("...", true);
+        d += 1; j += 1; continue;
+      }
+      if (c === "}") { d -= 1; j += 1; continue; }
+      if (d === 0) {
+        const mm = /^\s+([a-zA-Z][\w-]*)(=)?/.exec(text.slice(j));
+        if (mm && /\s/.test(c)) {
+          const name = mm[1];
+          j += mm[0].length;
+          if (!mm[2]) { props.set(name, true); continue; }
+          /* read the value: "…" or {…} */
+          if (text[j] === '"') {
+            const end = text.indexOf('"', j + 1);
+            props.set(name, text.slice(j + 1, end));
+            j = end + 1;
+          } else if (text[j] === "{") {
+            let dd = 0; let k = j;
+            for (; k < text.length; k += 1) {
+              if (text[k] === "{") dd += 1;
+              else if (text[k] === "}") { dd -= 1; if (dd === 0) break; }
+            }
+            props.set(name, text.slice(j, k + 1));
+            j = k + 1;
+          }
+          continue;
+        }
+      }
+      j += 1;
+    }
+    out.push({ index: m.index, line: src.slice(0, m.index).split("\n").length, text, props });
+  }
+  return out;
+}
+
+/** The 1-based line of a character offset. */
+export const lineAt = (src, index) => src.slice(0, index).split("\n").length;
+
+/** Which module a file belongs to, for the parity report. */
+export function moduleOf(file) {
+  const f = rel(file);
+  if (/\/threepl\//.test(f)) return "3PL";
+  if (/\/service\//.test(f)) return "Service Work";
+  if (/Dashboard/.test(f)) return "Dashboards";
+  if (/(Sales|Quote|OrderSheet|AssetOrder|Customer|Asset|ConfiguredForm|ProductTable|salesOrders|quotes)/.test(f)) return "Sales";
+  return "Shared";
+}

@@ -153,7 +153,7 @@ function ChartTip({
       {payload.map((p, i) => (
         <p key={i} className="flex items-center gap-1.5 text-muted-foreground">
           <span
-            className="size-2 rounded-[2px]"
+            className="size-2 rounded-xs"
             style={{ background: p.color || p.fill || "var(--brand)" }}
           />
           <span className="font-semibold text-foreground">
@@ -408,7 +408,7 @@ function DonutCard() {
       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
         {CHANNELS.map((ch, i) => (
           <div key={ch.name} className="flex items-center gap-2 text-xs">
-            <span className="size-2 rounded-[2px]" style={{ background: CHART[i % CHART.length] }} />
+            <span className="size-2 rounded-xs" style={{ background: CHART[i % CHART.length] }} />
             <span className="text-foreground">{ch.name}</span>
             <span className="ml-auto tabular-nums text-muted-foreground">
               {ch.value.toLocaleString()}

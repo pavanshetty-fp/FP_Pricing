@@ -214,6 +214,8 @@ export function AssetSheet({
               onValueChange={(v) => set("hub", v)}
               options={HUBS}
               placeholder="Select hub"
+              /* OPTIONAL, SO THE EMPTY CHOICE FIRST (G46, Pavan, 2026-10-07). */
+              clearLabel="No hub"
             />
           </SheetField>
           <SheetField label="LOS">
@@ -223,6 +225,7 @@ export function AssetSheet({
               onValueChange={(v) => set("los", v)}
               options={ASSET_LOS}
               placeholder="Select line of service"
+              clearLabel="No line of service"
             />
           </SheetField>
         </div>

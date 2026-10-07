@@ -4,6 +4,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,18 +29,36 @@ import {
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip } from "@/components/ui/status-chip";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
+import { PendingStrip } from "./PendingStrip";
 import { formatFullDate } from "./data";
 import {
-  ASSET_ORDER_STATUSES,
   ASSET_TYPES,
   SALES_REPS,
   type AssetOrder,
   type AssetOrderStatus,
 } from "./assetOrders";
-import { ASSET_ORDER_STATUS_TONE } from "./assetOrders";
-import { ActivitySection } from "./activity";
+import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { kindTone } from "./statusKind";
+import {
+  ConfiguredForm,
+  extraFilled,
+  isNative,
+  missingRequired,
+  type BuiltInField,
+  type ExtraValues,
+} from "./ConfiguredForm";
+import {
+  getSalesSettings,
+  notify,
+  ownerOnCreate,
+  stageLabel,
+  stageNeedsApproval,
+  stageTone,
+  useSalesCurrentUser,
+  useSalesSettings,
+  type FormField,
+} from "./salesSettings";
 
 /**
  * Asset Order side sheet — the Fuel Orders order sheet's shape, with this
@@ -53,8 +72,6 @@ import { ActivitySection } from "./activity";
  * Requested, Scheduled, Dispatched, Delivered or Cancelled — so it needs an
  * explicit control.
  */
-const STATUS_TONE = ASSET_ORDER_STATUS_TONE;
-
 export interface AssetOrderDraft {
   customer: string;
   erpId: string;
@@ -67,6 +84,10 @@ export interface AssetOrderDraft {
   status: AssetOrderStatus;
   poNumber: string;
   note: string;
+  /** Fields added in Sales Settings, by key (2026-10-07). */
+  extra: ExtraValues;
+  /** The stage a move is waiting on approval for. */
+  approvalFor?: string;
 }
 
 function draftFrom(o: AssetOrder): AssetOrderDraft {
@@ -83,6 +104,8 @@ function draftFrom(o: AssetOrder): AssetOrderDraft {
     status: o.status,
     poNumber: o.poNumber,
     note: o.note,
+    extra: { ...(o.extra ?? {}) },
+    approvalFor: o.approvalFor,
   };
 }
 
@@ -92,14 +115,17 @@ function emptyDraft(): AssetOrderDraft {
     customer: "",
     erpId: "",
     shipTo: "",
-    salesRep: "",
     assetType: "",
     quantity: 0,
     serialNo: "",
     deliveryDate: null,
     status: "Requested",
+    /* AUTO-ASSIGN OWNER — the signed-in user as Sales Rep (Sales Settings
+       › Preferences, 2026-10-07). */
+    salesRep: ownerOnCreate("asset"),
     poNumber: "",
     note: "",
+    extra: {},
   };
 }
 
@@ -126,7 +152,15 @@ export function AssetOrderSheet({
 }: AssetOrderSheetProps) {
   const [draft, setDraft] = React.useState<AssetOrderDraft | null>(null);
   const creating = mode === "create";
+  /* SALES SETTINGS LAY THE SHEET OUT (Pavan, 2026-10-07 — "fix it all", C). */
+  const settings = useSalesSettings();
+  const formFields = settings.forms.asset;
+  const me = useSalesCurrentUser();
+  const [pendingShown, setPendingShown] = React.useState(false);
   const [confirmCancel, setConfirmCancel] = React.useState(false);
+  /* CLOSING AN UNCREATED ORDER ASKS FIRST (G33, Pavan, 2026-10-07) — the
+     fuel sheet's confirm; nothing is kept before Create Asset Order. */
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const saveState = useDraftSaveState(draft, open);
   /* WHAT WENT OUT LAST. The row comes back changed by our own save, so
      without this the sheet would answer its own write with a rebuild. */
@@ -136,8 +170,20 @@ export function AssetOrderSheet({
      edits never leak between rows — keyed on the ORDER'S ID rather than the
      row, because the row is handed back changed by every autosave. */
   const orderId = order?.id ?? null;
+  /* CREATE, THEN AUTOSAVE — the fuel sheet's handover (Pavan, 2026-10-07).
+     Create Asset Order points this sheet at the new row; the draft in hand
+     IS that order, so it is kept rather than rebuilt. */
+  const builtFor = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      builtFor.current = null;
+      return;
+    }
+    const key = creating ? "create" : orderId;
+    const handover = builtFor.current === "create" && key !== null && key !== "create";
+    builtFor.current = key;
+    setPendingShown(false);
+    if (handover) return;
     const next = creating ? emptyDraft() : order ? draftFrom(order) : null;
     lastSaved.current = next ? JSON.stringify(next) : null;
     setDraft(next);
@@ -169,15 +215,196 @@ export function AssetOrderSheet({
   const cancellable =
     !creating && draft.status !== "Delivered" && draft.status !== "Cancelled";
   const cancelOrder = () => {
-    toast.success(`${order?.orderNo ?? "Order"} cancelled`);
-    set("status", "Cancelled");
+    const quiet = getSalesSettings().notifications.find((n) => n.key === "cancelled")?.inApp;
+    if (!quiet) toast.success(`${order?.orderNo ?? "Order"} cancelled`);
+    setDraft((d) => (d ? { ...d, status: "Cancelled", approvalFor: undefined } : d));
   };
+
+  /* A STAGE THAT REQUIRES APPROVAL (Pavan, 2026-10-07). On an asset order
+     the status is a field, so picking such a stage asks for the move rather
+     than making it; the footer then approves it. On a new order there is no
+     one to ask yet — it is created where it was set. */
+  const pickStatus = (v: string) => {
+    if (!creating && v !== draft.status && stageNeedsApproval(v, settings)) {
+      set("approvalFor", v);
+      const said = `${order?.orderNo ?? "Order"} · approval requested to move to ${stageLabel(v, settings)}`;
+      if (settings.notifications.find((n) => n.key === "approval")?.inApp) notify("approval", said);
+      else toast.success(said);
+      return;
+    }
+    setDraft((d) => (d ? { ...d, status: v as AssetOrderStatus, approvalFor: undefined } : d));
+  };
+
+  const filled = (f: FormField): boolean => {
+    if (!isNative(f, renderers)) return extraFilled(draft.extra[f.key]);
+    switch (f.key) {
+      case "customer":
+        return Boolean(draft.customer);
+      case "shipTo":
+        return Boolean(draft.shipTo);
+      case "salesRep":
+        return Boolean(draft.salesRep);
+      case "assetType":
+        return Boolean(draft.assetType);
+      case "quantity":
+        return draft.quantity > 0;
+      case "serialNo":
+        return Boolean(draft.serialNo.trim());
+      case "deliveryDate":
+        return Boolean(draft.deliveryDate);
+      case "poNumber":
+        return Boolean(draft.poNumber.trim());
+      case "note":
+        return Boolean(draft.note.trim());
+      default:
+        return true;
+    }
+  };
+
+  const reps = me && !SALES_REPS.includes(me) ? [me, ...SALES_REPS] : SALES_REPS;
+
+  const renderers: Record<string, (f: FormField) => BuiltInField> = {
+    customer: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.customer}
+          onValueChange={(v) => set("customer", v)}
+          options={customers}
+          placeholder="Select customer"
+        />
+      ),
+    }),
+    shipTo: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.shipTo}
+          onValueChange={(v) => set("shipTo", v)}
+          options={shipTos}
+          placeholder="Select ship-to"
+        />
+      ),
+    }),
+    salesRep: (f) => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.salesRep}
+          onValueChange={(v) => set("salesRep", v)}
+          options={reps}
+          placeholder="Select sales rep"
+          clearLabel={f.required ? undefined : "No sales rep"}
+        />
+      ),
+    }),
+    status: () => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.status}
+          onValueChange={pickStatus}
+          /* THE STAGES SALES SETTINGS KEEP, under their names. */
+          options={settings.stages.map((r) => ({ value: r.id, label: stageLabel(r.id, settings) }))}
+          placeholder="Select status"
+        />
+      ),
+    }),
+    assetType: () => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.assetType}
+          onValueChange={(v) => set("assetType", v)}
+          options={ASSET_TYPES}
+          placeholder="Select asset type"
+        />
+      ),
+    }),
+    quantity: () => ({
+      half: true,
+      control: (
+        <Input
+          inputMode="numeric"
+          value={draft.quantity ? String(draft.quantity) : ""}
+          placeholder="0"
+          onChange={(e) => set("quantity", Number(e.target.value.replace(/[^0-9]/g, "")) || 0)}
+        />
+      ),
+    }),
+    serialNo: () => ({
+      half: true,
+      control: (
+        <Input
+          value={draft.serialNo}
+          placeholder="e.g. TK-1000-4471"
+          onChange={(e) => set("serialNo", e.target.value)}
+        />
+      ),
+    }),
+    deliveryDate: () => ({
+      control: (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-start">
+              <CalendarDays />
+              {draft.deliveryDate ? formatFullDate(draft.deliveryDate) : "Not scheduled"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={draft.deliveryDate ?? undefined}
+              onSelect={(d) => set("deliveryDate", d ?? null)}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+      ),
+    }),
+    poNumber: () => ({
+      control: (
+        <Input
+          value={draft.poNumber}
+          placeholder="e.g. PO-88213"
+          onChange={(e) => set("poNumber", e.target.value)}
+        />
+      ),
+    }),
+    note: () => ({
+      control: (
+        <Textarea
+          value={draft.note}
+          placeholder="Access notes, delivery instructions…"
+          onChange={(e) => set("note", e.target.value)}
+          className="min-h-24"
+        />
+      ),
+    }),
+  };
+
+  const pending = creating ? missingRequired("asset", formFields, filled) : [];
+  const label = (key: string, fallback: string) =>
+    formFields.find((f) => f.key === key)?.label.trim() || fallback;
+  const requestClose = (o: boolean) => {
+    if (!o && creating && JSON.stringify(draft) !== JSON.stringify(emptyDraft())) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onOpenChange(o);
+  };
+  const awaiting = draft.approvalFor;
 
   return (
     <>
     <RecordSheet
+      /* THE RAIL ONCE IT EXISTS (Pavan, 2026-10-07) — 3PL's BrokerOrderSheet:
+         two columns fill the screen; while creating there is no rail. */
+      size={creating ? "narrow" : "xxwide"}
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestClose}
       mode={mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Asset Order"
@@ -185,12 +412,53 @@ export function AssetOrderSheet({
       /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE.
          Creating still takes an act. */
       showCancel={false}
-      footerPrimary={creating ? undefined : null}
+      /* CREATE KEEPS THE SHEET OPEN on the new order (Pavan, 2026-10-07).
+         A DEAD PRIMARY SAYS WHY ON PRESS — the pending strip. */
+      footerPrimary={
+        creating ? (
+          <Button
+            onClick={() => {
+              if (pending.length > 0) {
+                setPendingShown(true);
+                return;
+              }
+              onCreate?.(draft);
+              toast.success("Order created");
+            }}
+          >
+            Create Asset Order
+          </Button>
+        ) : awaiting ? (
+          <Button
+            onClick={() =>
+              setDraft((d) =>
+                d ? { ...d, status: awaiting as AssetOrderStatus, approvalFor: undefined } : d
+              )
+            }
+          >
+            Approve &amp; move to {stageLabel(awaiting, settings)}
+          </Button>
+        ) : null
+      }
+      footerBanner={
+        creating && pendingShown ? (
+          <PendingStrip
+            tone="caution"
+            pending={pending}
+            clearLabel="Everything this order needs is filled in"
+          />
+        ) : undefined
+      }
       headerAside={
         <span className="flex items-center gap-2">
-          <StatusChip tone={STATUS_TONE[draft.status]} variant="soft">
-            {draft.status}
+          <StatusChip tone={stageTone(draft.status, settings)} variant="soft">
+            {stageLabel(draft.status, settings)}
           </StatusChip>
+          {awaiting && (
+            <StatusChip tone={kindTone("caution")} variant="soft">
+              Needs approval
+            </StatusChip>
+          )}
           {saveState !== "idle" && (
             <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />
           )}
@@ -218,129 +486,45 @@ export function AssetOrderSheet({
           </DropdownMenu>
         ) : undefined
       }
-      onSubmit={() => {
-        if (creating) onCreate?.(draft);
-      }}
+      onSubmit={() => {}}
     >
-      <SheetSection title="Order Details">
-        <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Customer">
-            <Combobox
-              className="w-full"
-              value={draft.customer}
-              onValueChange={(v) => set("customer", v)}
-              options={customers}
-              placeholder="Select customer"
-            />
-          </SheetField>
-          <SheetField label="Ship To">
-            <Combobox
-              className="w-full"
-              value={draft.shipTo}
-              onValueChange={(v) => set("shipTo", v)}
-              options={shipTos}
-              placeholder="Select ship-to"
-            />
-          </SheetField>
+      <div className={cn("grid items-start gap-6", !creating && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+        <div className="flex min-w-0 flex-col gap-10">
+          <ConfiguredForm
+            kind="asset"
+            renderers={renderers}
+            extra={draft.extra}
+            onExtraChange={(key, value) => set("extra", { ...draft.extra, [key]: value })}
+          />
         </div>
 
-        <SheetField label="Sales Rep">
-          <Combobox
-            className="w-full"
-            value={draft.salesRep}
-            onValueChange={(v) => set("salesRep", v)}
-            options={SALES_REPS}
-            placeholder="Select sales rep"
-          />
-        </SheetField>
-
-        <SheetField
-          label="Status"
-        >
-          <Combobox
-            className="w-full"
-            value={draft.status}
-            onValueChange={(v) => set("status", v as AssetOrderStatus)}
-            options={ASSET_ORDER_STATUSES}
-            placeholder="Select status"
-          />
-        </SheetField>
-      </SheetSection>
-
-      <SheetSection title="Asset">
-        <SheetField label="Asset Type">
-          <Combobox
-            className="w-full"
-            value={draft.assetType}
-            onValueChange={(v) => set("assetType", v)}
-            options={ASSET_TYPES}
-            placeholder="Select asset type"
-          />
-        </SheetField>
-
-        <div className="grid grid-cols-2 gap-4">
-          <SheetField label="Quantity">
-            <Input
-              inputMode="numeric"
-              value={draft.quantity ? String(draft.quantity) : ""}
-              placeholder="0"
-              onChange={(e) =>
-                set("quantity", Number(e.target.value.replace(/[^0-9]/g, "")) || 0)
-              }
-            />
-          </SheetField>
-          <SheetField label="Serial No">
-            <Input
-              value={draft.serialNo}
-              placeholder="e.g. TK-1000-4471"
-              onChange={(e) => set("serialNo", e.target.value)}
-            />
-          </SheetField>
-        </div>
-      </SheetSection>
-
-      <SheetSection title="Schedule">
-        <SheetField label="Delivery Date">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start">
-                <CalendarDays />
-                {draft.deliveryDate
-                  ? formatFullDate(draft.deliveryDate)
-                  : "Not scheduled"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={draft.deliveryDate ?? undefined}
-                onSelect={(d) => set("deliveryDate", d ?? null)}
-                autoFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </SheetField>
-      </SheetSection>
-
-      <SheetSection title="Reference">
-        <SheetField label="PO Number">
-          <Input
-            value={draft.poNumber}
-            placeholder="e.g. PO-88213"
-            onChange={(e) => set("poNumber", e.target.value)}
-          />
-        </SheetField>
-        <SheetField label="Note">
-          <Textarea
-            value={draft.note}
-            placeholder="Access notes, delivery instructions…"
-            onChange={(e) => set("note", e.target.value)}
-            className="min-h-24"
-          />
-        </SheetField>
-      </SheetSection>
-
-      {order && <ActivitySection entries={order.audit} />}
+        {/* WHAT THE ORDER HAS BECOME — read-only, sticky; no rail while
+            creating (G29 · G30 · G31 · G32, Pavan, 2026-10-07). */}
+        {!creating && order && (
+          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            <SummaryCard title="Order summary">
+              <dl className="flex flex-col">
+                <RailRow variant="line" label={label("assetType", "Asset type")} value={draft.assetType || "—"} />
+                <RailRow variant="line" label={label("serialNo", "Serial no.")} value={draft.serialNo.trim() || "—"} />
+                <RailRow
+                  variant="line"
+                  label={label("deliveryDate", "Delivery date")}
+                  value={draft.deliveryDate ? formatFullDate(draft.deliveryDate) : "—"}
+                />
+              </dl>
+              <div aria-hidden className="border-t border-dashed border-border" />
+              <dl className="flex flex-col">
+                <RailRow
+                  variant="total"
+                  label={`Total ${label("quantity", "Quantity").toLowerCase()}`}
+                  value={draft.quantity.toLocaleString("en-US")}
+                />
+              </dl>
+            </SummaryCard>
+            <ActivityCard entries={order.audit} timeZone={settings.timeZone} />
+          </aside>
+        )}
+      </div>
     </RecordSheet>
 
     <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
@@ -355,6 +539,23 @@ export function AssetOrderSheet({
           <AlertDialogCancel>Keep it</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={cancelOrder}>
             Cancel order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard this order?</AlertDialogTitle>
+          <AlertDialogDescription>
+            All the details you've added will be discarded.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => onOpenChange(false)}>
+            Discard
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

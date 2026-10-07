@@ -1,6 +1,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { Ban, CalendarDays, Clock, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { StatusChip } from "@/components/ui/status-chip";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
@@ -30,15 +32,40 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { HangingAdd } from "./HangingAdd";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
-import { formatFullDate, startOfDay, stageAfterDriver } from "./data";
+import { PendingStrip, type PendingItem } from "./PendingStrip";
+import { formatFullDate, startOfDay } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
-import { STATUS_TONE } from "./FuelOrdersTable";
-import { ActivitySection } from "./activity";
+import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { kindTone } from "./statusKind";
+import {
+  ConfiguredForm,
+  extraFilled,
+  isNative,
+  missingRequired,
+  sectionId,
+  type BuiltInField,
+  type ExtraValues,
+} from "./ConfiguredForm";
+import {
+  UNIT_SHORT,
+  driverStage,
+  getSalesSettings,
+  liveStage,
+  nextStage,
+  notify,
+  ownerOnCreate,
+  quoteAllows,
+  stageBeforeScheduled,
+  stageLabel,
+  stageNeedsApproval,
+  stageTone,
+  useSalesSettings,
+  type FormField,
+} from "./salesSettings";
 
 /*
   Order side sheet.
@@ -97,6 +124,10 @@ export interface OrderDraft {
   site: string;
   poc: string;
   note: string;
+  /** Fields added in Sales Settings, by key (2026-10-07). */
+  extra: ExtraValues;
+  /** The stage a move is waiting on approval for. */
+  approvalFor?: string;
 }
 
 function draftFrom(order: FuelOrder): OrderDraft {
@@ -124,6 +155,8 @@ function draftFrom(order: FuelOrder): OrderDraft {
     site: order.customer.description,
     poc: "",
     note: "",
+    extra: { ...(order.extra ?? {}) },
+    approvalFor: order.approvalFor,
   };
 }
 
@@ -152,8 +185,21 @@ function emptyDraft(): OrderDraft {
     site: "",
     poc: "",
     note: "",
+    /* AUTO-ASSIGN OWNER — the signed-in user in a Sales rep field, where the
+       form has one (Sales Settings › Preferences, 2026-10-07). */
+    extra: ownerOnCreate("fuel") ? { salesRep: ownerOnCreate("fuel") } : {},
   };
 }
+
+/** The notification a move into this stage raises. */
+const EVENT_OF: Record<string, string> = {
+  Dispatched: "dispatched",
+  Delivered: "delivered",
+  Cancelled: "cancelled",
+};
+/** Would that notification show? Then it is the move's toast, not a second one. */
+const notifies = (stage: string) =>
+  Boolean(getSalesSettings().notifications.find((n) => n.key === EVENT_OF[stage])?.inApp);
 
 export interface OrderSheetProps {
   /** The order being edited. `null` in create mode. */
@@ -186,6 +232,15 @@ export function OrderSheet({
   /* The product line just added — its first cell takes the cursor. */
   const [focusProduct, setFocusProduct] = React.useState<number | undefined>();
   const creating = mode === "create";
+  /* SALES SETTINGS LAY THE SHEET OUT (Pavan, 2026-10-07 — "fix it all", C):
+     which fields, in what order and sections, under what labels, which are
+     required. A hidden field keeps its value; it is only not asked. */
+  const settings = useSalesSettings();
+  const formFields = settings.forms.fuel;
+  /* WHAT THE NEXT ACT IS WAITING ON — raised by pressing it (the quote
+     sheet's PendingStrip rule: a dead primary says why on press). */
+  const [pendingShown, setPendingShown] = React.useState(false);
+  const [quoteBlocked, setQuoteBlocked] = React.useState(false);
 
   /* BUILT ONCE PER RECORD, NOT ONCE PER SAVE — 3PL's `builtFor`. Every
      autosave hands back a new row; rebuilding from it would move the caret
@@ -205,6 +260,8 @@ export function OrderSheet({
     if (builtFor.current === key) return;
     const handover = builtFor.current === "create" && key !== null;
     builtFor.current = key;
+    setPendingShown(false);
+    setQuoteBlocked(false);
     if (handover) return;
     const built = creating ? emptyDraft() : order ? draftFrom(order) : null;
     /* Opening a record is not a change to it. */
@@ -253,17 +310,41 @@ export function OrderSheet({
     (o) => !draft.products.some((l) => l.name === o)
   );
 
-  // The stage the driver pick leaves — see `stageAfterDriver`.
-  const status: FuelOrderStatus = stageAfterDriver(draft.status, Boolean(draft.driver));
+  const fromQuote = order?.fromQuote;
+  // The stage the driver pick leaves — see `driverStage`.
+  const status: FuelOrderStatus = driverStage(
+    { status: liveStage(draft.status, settings), fromQuote },
+    Boolean(draft.driver),
+    settings
+  );
 
-  /* THE FOOTER'S PRIMARY IS THE NEXT STAGE. Requested moves on by picking a
-     driver, and Delivered and Cancelled are done — none of the three has a
-     press. */
-  const nextStage: FuelOrderStatus | null =
-    status === "Scheduled" ? "Dispatched" : status === "Dispatched" ? "Delivered" : null;
+  /* THE FOOTER'S PRIMARY IS THE NEXT STAGE, in the order Sales Settings
+     keeps (Pavan, 2026-10-07). The stage right before Scheduled moves on by
+     picking a driver; Delivered and Cancelled are done. */
+  const target = creating ? null : nextStage(status, settings);
+  const toScheduled = target === "Scheduled";
+  const needsDriver = toScheduled && !draft.driver;
+  const quoteOk = quoteAllows({ fromQuote }, settings);
+  const approval = target ? stageNeedsApproval(target, settings) : false;
+  /* A MOVE ASKED FOR — to the next stage, or to Cancelled. */
+  const awaiting = draft.approvalFor;
+
   const advance = (next: FuelOrderStatus) => {
-    toast.success(`${order?.orderNo ?? "Order"} → ${next}`);
-    set("status", next);
+    if (!notifies(next)) toast.success(`${order?.orderNo ?? "Order"} → ${stageLabel(next, settings)}`);
+    setDraft((d) => (d ? { ...d, status: next, approvalFor: undefined } : d));
+  };
+
+  /* A STAGE THAT REQUIRES APPROVAL IS TWO PRESSES (Pavan, 2026-10-07): the
+     move is asked for, the order says so, and the same button then approves
+     it and moves it. No approver, roles or queue exist in the prototype —
+     the second press stands for the approver's. */
+  const requestApproval = (next: string) => {
+    set("approvalFor", next);
+    const said = `${order?.orderNo ?? "Order"} · approval requested to move to ${stageLabel(next, settings)}`;
+    /* The Approval requested notification when its row is routed in-app;
+       otherwise the plain confirmation. */
+    if (settings.notifications.find((n) => n.key === "approval")?.inApp) notify("approval", said);
+    else toast.success(said);
   };
 
   /* CANCEL ORDER — 3PL's: behind the ··· and a confirm (Pavan, 2026-10-07).
@@ -271,13 +352,317 @@ export function OrderSheet({
      autosave as "Move to …", so the change log records it. */
   const cancellable = !creating && status !== "Delivered" && status !== "Cancelled";
   const cancelOrder = () => {
-    toast.success(`${order?.orderNo ?? "Order"} cancelled`);
-    set("status", "Cancelled");
+    /* CANCELLED CAN ASK FOR APPROVAL TOO (Sales Settings › Workflow). */
+    if (stageNeedsApproval("Cancelled", settings)) {
+      requestApproval("Cancelled");
+      return;
+    }
+    if (!notifies("Cancelled")) toast.success(`${order?.orderNo ?? "Order"} cancelled`);
+    setDraft((d) => (d ? { ...d, status: "Cancelled", approvalFor: undefined } : d));
   };
+
+  /* ---- what each field is filled by ---------------------------------- */
+
+  const filled = (f: FormField): boolean => {
+    if (!isNative(f, renderers)) return extraFilled(draft.extra[f.key]);
+    switch (f.key) {
+      case "customer":
+        return Boolean(draft.customer);
+      case "shipTo":
+        return Boolean(draft.shipTo);
+      case "driver":
+        return Boolean(draft.driver);
+      case "planDate":
+        return Boolean(draft.plannedDate);
+      case "planTime":
+        return Boolean(draft.plannedTime.trim());
+      case "product":
+        return draft.products.length > 0 && draft.products.every((l) => l.name);
+      case "quantity":
+        return draft.products.length > 0 && draft.products.every((l) => l.gal > 0);
+      case "tags":
+        return draft.tags.length > 0;
+      case "site":
+        return Boolean(draft.site);
+      case "poc":
+        return Boolean(draft.poc);
+      case "note":
+        return Boolean(draft.note.trim());
+      default:
+        return true;
+    }
+  };
+
+  const label = (key: string, fallback: string) =>
+    formFields.find((f) => f.key === key)?.label.trim() || fallback;
+  const unit = UNIT_SHORT[settings.unit];
+
+  /* ---- the sheet's own fields, as Sales Settings place them ---------- */
+
+  const renderers: Record<string, (f: FormField) => BuiltInField> = {
+    orderType: () => ({
+      /* 12px from the label to the options; the two sit 24px apart. */
+      className: "gap-3",
+      control: (
+        <RadioGroup
+          value={draft.typeCode}
+          onValueChange={(v) => set("typeCode", v as OrderTypeCode)}
+          className="flex gap-6"
+        >
+          {(
+            [
+              ["D", "Delivery"],
+              ["E", "Extraction"],
+            ] as const
+          ).map(([code, text]) => (
+            <div key={code} className="flex items-center gap-2">
+              <RadioGroupItem value={code} id={`type-${code}`} />
+              <Label htmlFor={`type-${code}`} className="font-normal">
+                {text}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      ),
+    }),
+    customer: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.customer}
+          onValueChange={(v) => set("customer", v)}
+          options={customers}
+          placeholder="Select customer"
+          searchPlaceholder="Search customers…"
+          emptyText="No customer found."
+        />
+      ),
+    }),
+    shipTo: () => ({
+      half: true,
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.shipTo}
+          onValueChange={(v) => set("shipTo", v)}
+          options={shipTos}
+          placeholder="Select ship-to"
+        />
+      ),
+    }),
+    driver: (f) => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.driver ?? (f.required ? "" : "none")}
+          placeholder="Select driver"
+          onValueChange={(v) => {
+            const driver = v === "none" ? null : v;
+            /* THE PICK THAT WOULD SCHEDULE, AND MAY NOT, SAYS WHY (Pavan,
+               2026-10-07): the driver is kept, the order stays where it is,
+               and the strip names the accepted quote it is waiting on. */
+            if (driver && status === stageBeforeScheduled(settings) && !quoteOk) {
+              setQuoteBlocked(true);
+              setPendingShown(true);
+            }
+            set("driver", driver);
+          }}
+          /* "Unassigned" is a real choice, not the absence of one. A
+             REQUIRED FIELD GETS NO EMPTY CHOICE (ux §Forms). */
+          options={[
+            ...(f.required ? [] : [{ value: "none", label: "— Unassigned" }]),
+            ...DRIVERS,
+          ]}
+          searchPlaceholder="Search drivers…"
+          emptyText="No driver found."
+        />
+      ),
+    }),
+    planDate: () => ({
+      half: true,
+      control: (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-start font-normal">
+              <CalendarDays />
+              {draft.plannedDate ? formatFullDate(draft.plannedDate) : "Not planned"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={draft.plannedDate ?? undefined}
+              onSelect={(d) => d && set("plannedDate", d)}
+              defaultMonth={draft.plannedDate ?? undefined}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+      ),
+    }),
+    planTime: () => ({
+      half: true,
+      control: (
+        <div className="relative">
+          <Input
+            value={draft.plannedTime}
+            placeholder="e.g. 1:35 AM"
+            onChange={(e) => set("plannedTime", e.target.value)}
+            className="pr-9"
+          />
+          <Clock className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
+      ),
+    }),
+    urgent: () => ({
+      bare: (text) => (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{text}</span>
+          <Switch
+            checked={draft.urgent}
+            onCheckedChange={(v) => set("urgent", v)}
+            aria-label={text}
+          />
+        </div>
+      ),
+    }),
+    product: () => productTable,
+    quantity: () => productTable,
+    tags: () => ({
+      control: (
+        <TokenMultiSelect
+          options={TAG_OPTIONS}
+          value={draft.tags}
+          onChange={(next) => set("tags", next)}
+          addLabel="Add tags"
+          searchPlaceholder="Search tags..."
+        />
+      ),
+    }),
+    site: () => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.site}
+          onValueChange={(v) => set("site", v)}
+          options={shipTos}
+          placeholder="Select site"
+        />
+      ),
+    }),
+    poc: (f) => ({
+      control: (
+        <Combobox
+          className="w-full"
+          value={draft.poc || (f.required ? "" : "none")}
+          onValueChange={(v) => set("poc", v === "none" ? "" : v)}
+          options={[...(f.required ? [] : [{ value: "none", label: "Not set" }]), ...POC_OPTIONS]}
+          placeholder="Select PoC"
+          searchPlaceholder="Search contacts…"
+          emptyText="No contact found."
+        />
+      ),
+    }),
+    note: () => ({
+      control: (
+        <Textarea
+          value={draft.note}
+          placeholder="Gate codes, access notes, anything the driver needs…"
+          onChange={(e) => set("note", e.target.value)}
+          className="min-h-24"
+        />
+      ),
+    }),
+  };
+
+  /* THE PRODUCT TABLE IS TWO ROWS OF THE FORM — its two columns — and is
+     drawn where the first of them sits. The add hangs off the card (ui
+     §10f); with nothing left to add it is not rendered. */
+  const productTable: BuiltInField = {
+    table: {
+      hanging:
+        unusedProduct !== undefined ? (
+          <HangingAdd
+            label="Add product"
+            onClick={() => {
+              setFocusProduct(draft.products.length);
+              set("products", [...draft.products, { name: unusedProduct, gal: 0 }]);
+            }}
+          />
+        ) : undefined,
+      node: (
+        <ProductTable
+          lines={draft.products}
+          options={productNames}
+          focusRow={focusProduct}
+          onChange={(next) => set("products", next)}
+          productLabel={label("product", "Product")}
+          qtyLabel={`${label("quantity", "Quantity")} (${unit.charAt(0).toUpperCase()}${unit.slice(1)})`}
+        />
+      ),
+    },
+  };
+
+  /* ---- the next act ---------------------------------------------------- */
+
+  const pending: PendingItem[] = creating
+    ? missingRequired("fuel", formFields, filled)
+    : quoteBlocked && toScheduled && !quoteOk
+      ? [
+          {
+            key: "quote",
+            label: `${stageLabel("Scheduled", settings)} needs an accepted quote`,
+            target: sectionId("fuel", formFields.find((f) => f.key === "driver")?.section ?? ""),
+          },
+        ]
+      : [];
+
+  const commit = () => {
+    if (pending.length > 0) {
+      setPendingShown(true);
+      return;
+    }
+    onCreate?.(draft);
+    toast.success("Order created");
+  };
+
+  let footerPrimary: React.ReactNode = null;
+  if (creating) footerPrimary = <Button onClick={commit}>Create Order</Button>;
+  else if (awaiting && awaiting !== status) {
+    /* THE SECOND PRESS — it stands for the approver's. */
+    footerPrimary = (
+      <Button onClick={() => advance(awaiting)}>
+        Approve &amp; move to {stageLabel(awaiting, settings)}
+      </Button>
+    );
+  } else if (target && !needsDriver) {
+    const name = stageLabel(target, settings);
+    footerPrimary =
+      toScheduled && !quoteOk ? (
+        /* PRESSABLE, AND PRESSING SAYS WHY — the quote rule. */
+        <Button
+          onClick={() => {
+            setQuoteBlocked(true);
+            setPendingShown(true);
+          }}
+        >
+          Move to {name}
+        </Button>
+      ) : approval ? (
+        <Button onClick={() => requestApproval(target)}>Request approval</Button>
+      ) : (
+        <Button onClick={() => advance(target)}>Move to {name}</Button>
+      );
+  }
 
   return (
     <>
       <RecordSheet
+        /* THE RAIL ONCE IT EXISTS (Pavan, 2026-10-07) — 3PL's BrokerOrderSheet:
+           two columns fill the screen; while creating there is no rail, so it
+           keeps the creation floor. */
+        size={creating ? "narrow" : "xxwide"}
         open={open}
         onOpenChange={requestClose}
         mode={creating ? "create" : "edit"}
@@ -287,12 +672,19 @@ export function OrderSheet({
         /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
         showCancel={false}
         headerAside={
-          <DraftStatusChip
-            tone={STATUS_TONE[status]}
-            label={status}
-            /* Nothing is kept before Create Order, so nothing to report. */
-            saveState={creating ? "idle" : saveState}
-          />
+          <span className="flex items-center gap-2">
+            <DraftStatusChip
+              tone={stageTone(status, settings)}
+              label={stageLabel(status, settings)}
+              /* Nothing is kept before Create Order, so nothing to report. */
+              saveState={creating ? "idle" : saveState}
+            />
+            {awaiting && (
+              <StatusChip tone={kindTone("caution")} variant="soft">
+                Needs approval
+              </StatusChip>
+            )}
+          </span>
         }
         headerMenu={
           cancellable ? (
@@ -316,223 +708,62 @@ export function OrderSheet({
             </DropdownMenu>
           ) : undefined
         }
-        onSubmit={() => {}}
-        footerPrimary={
-          creating ? (
-            <Button
-              onClick={() => {
-                onCreate?.(draft);
-                toast.success("Order created");
-              }}
-            >
-              Create Order
-            </Button>
-          ) : nextStage ? (
-            <Button onClick={() => advance(nextStage)}>Move to {nextStage}</Button>
-          ) : null
+        footerBanner={
+          pendingShown && (creating || pending.length > 0) ? (
+            <PendingStrip
+              tone="caution"
+              pending={pending}
+              clearLabel="Everything this order needs is filled in"
+            />
+          ) : undefined
         }
+        onSubmit={() => {}}
+        footerPrimary={footerPrimary}
       >
-        <SheetSection title="Order Details">
-          {/* 12px from the label to the options (the DS field default is 6px),
-              and the two options sit 24px apart instead of being stretched to
-              half-width each by a 2-col grid. `mb-2` keeps the extra air below
-              the borderless row before the bordered selects. */}
-          <SheetField label="Order Type" className="gap-3">
-            <RadioGroup
-              value={draft.typeCode}
-              onValueChange={(v) => set("typeCode", v as OrderTypeCode)}
-              className="flex gap-6"
-            >
-              {(
-                [
-                  ["D", "Delivery"],
-                  ["E", "Extraction"],
-                ] as const
-              ).map(([code, label]) => (
-                <div key={code} className="flex items-center gap-2">
-                  <RadioGroupItem value={code} id={`type-${code}`} />
-                  <Label htmlFor={`type-${code}`} className="font-normal">
-                    {label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </SheetField>
-
-          {/* Customer and Ship-To sit side by side. */}
-          <div className="grid grid-cols-2 gap-4">
-            <SheetField label="Customer">
-              {/* Placeholders matter only in create mode — on an existing
-                  order these always carry a value. Without them the two
-                  triggers render completely blank while every other control
-                  shows an empty state ("Not planned", "— Unassigned", "Add
-                  tags"), so they read as broken. */}
-              <Combobox
-                className="w-full"
-                value={draft.customer}
-                onValueChange={(v) => set("customer", v)}
-                options={customers}
-                placeholder="Select customer"
-                searchPlaceholder="Search customers…"
-                emptyText="No customer found."
-              />
-            </SheetField>
-
-            <SheetField label="Ship To">
-              <Combobox
-                className="w-full"
-                value={draft.shipTo}
-                onValueChange={(v) => set("shipTo", v)}
-                options={shipTos}
-                placeholder="Select ship-to"
-              />
-            </SheetField>
+        <div className={cn("grid items-start gap-6", !creating && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+          <div className="flex min-w-0 flex-col gap-10">
+            <ConfiguredForm
+              kind="fuel"
+              renderers={renderers}
+              together={[["product", "quantity"]]}
+              extra={draft.extra}
+              onExtraChange={(key, value) => set("extra", { ...draft.extra, [key]: value })}
+            />
           </div>
 
-          <SheetField
-            label="Driver Selection"
-          >
-            <Combobox
-              className="w-full"
-              value={draft.driver ?? "none"}
-              onValueChange={(v) => set("driver", v === "none" ? null : v)}
-              /* "Unassigned" is a real choice, not the absence of one, so it
-                 is an option in the list rather than an empty field. */
-              options={[
-                { value: "none", label: "— Unassigned" },
-                ...DRIVERS,
-              ]}
-              searchPlaceholder="Search drivers…"
-              emptyText="No driver found."
-            />
-          </SheetField>
-
-        </SheetSection>
-
-        <SheetSection title="Schedule">
-          {/* Plan Date and Plan Time side by side. */}
-          <div className="grid grid-cols-2 gap-4">
-            <SheetField label="Plan Date">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start font-normal"
-                  >
-                    <CalendarDays />
-                    {draft.plannedDate
-                      ? formatFullDate(draft.plannedDate)
-                      : "Not planned"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={draft.plannedDate ?? undefined}
-                    onSelect={(d) => d && set("plannedDate", d)}
-                    defaultMonth={draft.plannedDate ?? undefined}
-                    autoFocus
+          {/* WHAT THE ORDER HAS BECOME — read-only, sticky; no rail while
+              creating (G29 · G30 · G31 · G32, Pavan, 2026-10-07). */}
+          {!creating && order && (
+            <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+              <SummaryCard title="Order summary">
+                <dl className="flex flex-col">
+                  {draft.products.length === 0 ? (
+                    <RailRow variant="line" label={label("product", "Product")} value="—" />
+                  ) : (
+                    draft.products.map((l, i) => (
+                      <RailRow
+                        key={`${l.name}-${i}`}
+                        variant="line"
+                        label={l.name || "—"}
+                        value={`${l.gal.toLocaleString("en-US")} ${unit}`}
+                      />
+                    ))
+                  )}
+                </dl>
+                <div aria-hidden className="border-t border-dashed border-border" />
+                <dl className="flex flex-col">
+                  {fromQuote && <RailRow variant="line" label="Quote" value={fromQuote} />}
+                  <RailRow
+                    variant="total"
+                    label={`Total ${label("quantity", "Quantity").toLowerCase()}`}
+                    value={`${draft.products.reduce((n, l) => n + l.gal, 0).toLocaleString("en-US")} ${unit}`}
                   />
-                </PopoverContent>
-              </Popover>
-            </SheetField>
-
-            <SheetField label="Plan Time">
-              <div className="relative">
-                <Input
-                  value={draft.plannedTime}
-                  placeholder="e.g. 1:35 AM"
-                  onChange={(e) => set("plannedTime", e.target.value)}
-                  className="pr-9"
-                />
-                <Clock className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
-            </SheetField>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Mark as Urgent</span>
-            <Switch
-              checked={draft.urgent}
-              onCheckedChange={(v) => set("urgent", v)}
-              aria-label="Mark as Urgent"
-            />
-          </div>
-        </SheetSection>
-
-        <SheetSection
-          title="Product Details"
-          flush
-          /* THE ADD HANGS OFF THE CARD, not on a band inside it — DS ui
-             §10f. It lives here rather than in `ProductTable` because the
-             tab is outside the card and the table is inside it. */
-          hanging={
-            /* AN ADD WITH NOTHING LEFT TO ADD IS NOT RENDERED (§10f). It used
-               to fall back to the first product, so the last press added a
-               duplicate line. */
-            unusedProduct !== undefined ? (
-              <HangingAdd
-                label="Add product"
-                onClick={() => {
-                  setFocusProduct(draft.products.length);
-                  set("products", [...draft.products, { name: unusedProduct, gal: 0 }]);
-                }}
-              />
-            ) : undefined
-          }
-        >
-          <ProductTable
-            lines={draft.products}
-            options={productNames}
-            focusRow={focusProduct}
-            onChange={(next) => set("products", next)}
-          />
-        </SheetSection>
-
-        <SheetSection title="Tags">
-          <TokenMultiSelect
-            options={TAG_OPTIONS}
-            value={draft.tags}
-            onChange={(next) => set("tags", next)}
-            addLabel="Add tags"
-            searchPlaceholder="Search tags..."
-          />
-        </SheetSection>
-
-        <SheetSection title="Delivery Details">
-          <SheetField label="Site">
-            <Combobox
-              className="w-full"
-              value={draft.site}
-              onValueChange={(v) => set("site", v)}
-              options={shipTos}
-              placeholder="Select site"
-            />
-          </SheetField>
-
-          <SheetField label="PoC at Delivery">
-            <Combobox
-              className="w-full"
-              value={draft.poc || "none"}
-              onValueChange={(v) => set("poc", v === "none" ? "" : v)}
-              options={[{ value: "none", label: "Not set" }, ...POC_OPTIONS]}
-              placeholder="Select PoC"
-              searchPlaceholder="Search contacts…"
-              emptyText="No contact found."
-            />
-          </SheetField>
-
-          <SheetField label="Note">
-            <Textarea
-              value={draft.note}
-              placeholder="Gate codes, access notes, anything the driver needs…"
-              onChange={(e) => set("note", e.target.value)}
-              className="min-h-24"
-            />
-          </SheetField>
-        </SheetSection>
-
-        {!creating && order && <ActivitySection entries={order.audit} />}
+                </dl>
+              </SummaryCard>
+              <ActivityCard entries={order.audit} timeZone={settings.timeZone} />
+            </aside>
+          )}
+        </div>
       </RecordSheet>
 
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>

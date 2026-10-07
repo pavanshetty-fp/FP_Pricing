@@ -61,7 +61,15 @@ export function useLoggedRows<T extends Logged>(
 }
 
 const STAMP_TIME = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
-const stamp = (iso: string) => `${DATE_FMT.format(new Date(iso))} · ${STAMP_TIME.format(new Date(iso))}`;
+/* IN A CHOSEN ZONE WHEN ONE IS GIVEN — Sales passes its Preferences time
+   zone (2026-10-07); without one, the browser's. */
+const stamp = (iso: string, timeZone?: string) => {
+  const d = new Date(iso);
+  if (!timeZone) return `${DATE_FMT.format(d)} · ${STAMP_TIME.format(d)}`;
+  const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone });
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone });
+  return `${date.format(d)} · ${time.format(d)}`;
+};
 
 function mark(text: string): { icon: React.ReactNode; tone: string } {
   const quiet = "border-border bg-card text-muted-foreground";
@@ -80,7 +88,13 @@ function mark(text: string): { icon: React.ReactNode; tone: string } {
  * first, the change leading and who/when under it. Rendered as its own
  * section at the foot of a sheet that has no rail.
  */
-export function ActivitySection({ entries }: { entries: ActivityEntry[] | undefined }) {
+export function ActivitySection({
+  entries,
+  timeZone,
+}: {
+  entries: ActivityEntry[] | undefined;
+  timeZone?: string;
+}) {
   const rows = [...(entries ?? [])]
     .reverse()
     .flatMap((e, i) => e.changes.map((c, j) => ({ e, c, key: `${e.at}-${i}-${j}` })));
@@ -108,7 +122,7 @@ export function ActivitySection({ entries }: { entries: ActivityEntry[] | undefi
                 <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
                   <span className="text-sm break-words text-foreground">{c}</span>
                   <span className="text-xs text-muted-foreground">
-                    {stamp(e.at)} · {e.by}
+                    {stamp(e.at, timeZone)} · {e.by}
                   </span>
                 </span>
               </li>

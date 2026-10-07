@@ -11,7 +11,11 @@ import type { ActivityEntry } from "./activity";
  * Requested → Scheduled → Dispatched → Delivered, or Cancelled. Replaces the
  * old Assigned / Unassigned, which only said whether a driver was picked.
  */
-export type FuelOrderStatus = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
+export type CoreFuelStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
+/* A STAGE IS AN ID, NOT ONE OF FIVE WORDS (Pavan, 2026-10-07). Sales
+   Settings can add stages between the five, so an order's stage is the core
+   name or an added stage's `stage-…` id; `stageLabel` prints it. */
+export type FuelOrderStatus = CoreFuelStage | (string & {});
 
 /** Order type. The list column renders the code; the label is the tooltip. */
 export type OrderTypeCode = "D" | "E";
@@ -81,36 +85,15 @@ export interface FuelOrder {
   urgent: boolean;
   /** The change log — see `activity.tsx`. Written by the screen's setter. */
   audit?: ActivityEntry[];
-}
-
-export type FuelOrderColumnKey =
-  | "select"
-  | "order"
-  | "type"
-  | "customer"
-  | "products"
-  | "qtyGal"
-  | "date"
-  | "planned"
-  | "status"
-  | "driver"
-  | "tags"
-  | "actions";
-
-export interface FuelOrderColumnDef {
-  key: FuelOrderColumnKey;
-  label: string;
-  /** px width — follows the DS column-frame vocabulary (select 40, actions 44). */
-  width: number;
-  sortable?: boolean;
-  align?: "left" | "right";
-}
-
-export type SortDir = "asc" | "desc";
-
-export interface SortState {
-  key: FuelOrderColumnKey;
-  dir: SortDir;
+  /* SALES SETTINGS' FIELDS (Pavan, 2026-10-07). What a field added on Form
+     customization holds, by its key. */
+  extra?: Record<string, string | boolean>;
+  /** ISO — when the order entered its stage. The SLA clock. */
+  stageSince?: string;
+  /** The quote this order was made from, when it was. */
+  fromQuote?: string;
+  /** A move asked for and waiting on approval — the stage it would go to. */
+  approvalFor?: string;
 }
 
 /**

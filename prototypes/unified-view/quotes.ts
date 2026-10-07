@@ -38,6 +38,23 @@ export interface Adjust {
   unit: AdjustUnit;
 }
 
+/**
+ * A FEE OR A TAX — an `Adjust` with a name (Pavan, 2026-10-07). Fees and taxes
+ * are lists: every quote starts with one "Fees" and one "Tax", and more of
+ * either can be added under the table. The first of each list is that
+ * default — its name is fixed and it cannot be removed.
+ */
+export interface Charge extends Adjust {
+  id: string;
+  name: string;
+}
+
+export type ChargeKind = "fee" | "tax";
+
+let chargeSeq = 0;
+/** A new charge's id — unique for the session. */
+export const newChargeId = (kind: ChargeKind) => `${kind}-${++chargeSeq}`;
+
 export const ADJUST_UNITS: { value: AdjustUnit; label: string }[] = [
   { value: "perGal", label: "$/gal" },
   { value: "total", label: "$" },
@@ -70,10 +87,11 @@ export interface Quote {
   market: string;
   lines: QuoteLine[];
   /* QUOTE-LEVEL, NOT PER LINE (Pavan, 2026-10-07 — decision 2). One margin,
-     one fee and one tax, each spread over every line by its unit. */
+     and lists of fees and taxes (Pavan, 2026-10-07 — more can be added), each
+     spread over every line by its unit. */
   margin: Adjust;
-  fees: Adjust;
-  tax: Adjust;
+  fees: Charge[];
+  taxes: Charge[];
   notes: string;
   stage: QuoteStage;
   /** ISO — the Updated column. */
@@ -82,6 +100,8 @@ export interface Quote {
   orderId?: string;
   orderNo?: string;
   audit?: ActivityEntry[];
+  /** What a field added in Sales Settings holds, by its key (2026-10-07). */
+  extra?: Record<string, string | boolean>;
 }
 
 /* ------------------------------------------------------------ status ----- */
@@ -180,11 +200,14 @@ export function reapplyRates(lines: QuoteLine[], market: string): QuoteLine[] {
 /*
   THE ARITHMETIC (Pavan, 2026-10-07 — decision 2).
 
-  Margin, fees and tax are set ONCE for the quote and applied to every line:
+  Margin, fees and taxes are set ONCE for the quote and applied to every line:
     $/gal    the same amount on every gallon;
     $ total  that amount spread evenly over every gallon on the quote;
-    %        margin is a % of the line's base, fees a % of base + margin,
-             tax a % of base + margin + fees (tax is on the selling price).
+    %        margin is a % of the line's base, a fee a % of base + margin,
+             a tax a % of base + margin + ALL the fees (tax is on the selling
+             price).
+  SEVERAL FEES ADD, AND SEVERAL TAXES ADD (Pavan, 2026-10-07): each is worked
+  out by its own unit on the same footing, never one on top of another.
   So each line has its own net $/gal, the quote total is the sum of the lines,
   and the net effective $/gal is that total over the total gallons — the
   build-up beside it is the gallon-weighted average of each part, so the parts
@@ -193,10 +216,15 @@ export function reapplyRates(lines: QuoteLine[], market: string): QuoteLine[] {
 export interface LinePrice {
   base: number;
   margin: number;
+  /** Every fee, summed. */
   fees: number;
+  /** Every tax, summed. */
   tax: number;
   net: number;
   total: number;
+  /** $/gal of each fee and each tax, in list order. */
+  feeParts: number[];
+  taxParts: number[];
 }
 
 export interface QuotePrice {
@@ -209,6 +237,9 @@ export interface QuotePrice {
   tax: number;
   net: number;
   total: number;
+  /** Gallon-weighted $/gal of each fee and each tax, in list order. */
+  feeParts: number[];
+  taxParts: number[];
   /** Every line has a product, gallons and a base rate. */
   complete: boolean;
 }
@@ -219,21 +250,30 @@ function perGal(a: Adjust, on: number, gallons: number): number {
   return (on * a.value) / 100;
 }
 
-export function priceQuote(q: Pick<Quote, "lines" | "margin" | "fees" | "tax">): QuotePrice {
+export function priceQuote(q: Pick<Quote, "lines" | "margin" | "fees" | "taxes">): QuotePrice {
   const priced = q.lines.filter((l) => l.base !== null && l.name && l.gal > 0);
   const gallons = priced.reduce((n, l) => n + l.gal, 0);
   const lines = q.lines.map((l): LinePrice | null => {
     if (l.base === null || !l.name || l.gal <= 0) return null;
     const base = l.base;
     const margin = perGal(q.margin, base, gallons);
-    const fees = perGal(q.fees, base + margin, gallons);
-    const tax = perGal(q.tax, base + margin + fees, gallons);
+    const feeParts = q.fees.map((f) => perGal(f, base + margin, gallons));
+    const fees = feeParts.reduce((n, v) => n + v, 0);
+    const taxParts = q.taxes.map((t) => perGal(t, base + margin + fees, gallons));
+    const tax = taxParts.reduce((n, v) => n + v, 0);
     const net = base + margin + fees + tax;
-    return { base, margin, fees, tax, net, total: net * l.gal };
+    return { base, margin, fees, tax, net, total: net * l.gal, feeParts, taxParts };
   });
-  const sum = (k: keyof LinePrice) =>
+  type Scalar = Exclude<keyof LinePrice, "feeParts" | "taxParts">;
+  const sum = (k: Scalar) =>
     lines.reduce((n, p, i) => (p ? n + p[k] * q.lines[i].gal : n), 0);
-  const avg = (k: keyof LinePrice) => (gallons > 0 ? sum(k) / gallons : 0);
+  const avg = (k: Scalar) => (gallons > 0 ? sum(k) / gallons : 0);
+  const avgParts = (k: "feeParts" | "taxParts", count: number) =>
+    Array.from({ length: count }, (_, j) =>
+      gallons > 0
+        ? lines.reduce((n, p, i) => (p ? n + p[k][j] * q.lines[i].gal : n), 0) / gallons
+        : 0
+    );
   const total = lines.reduce((n, p) => n + (p?.total ?? 0), 0);
   return {
     gallons,
@@ -244,6 +284,8 @@ export function priceQuote(q: Pick<Quote, "lines" | "margin" | "fees" | "tax">):
     tax: avg("tax"),
     net: gallons > 0 ? total / gallons : 0,
     total,
+    feeParts: avgParts("feeParts", q.fees.length),
+    taxParts: avgParts("taxParts", q.taxes.length),
     complete: q.lines.length > 0 && lines.every(Boolean),
   };
 }
@@ -268,16 +310,21 @@ const contactOf = (name: string) => CUSTOMERS.find((c) => c.name === name)?.cont
   SAMPLE QUOTES — INVENTED (Pavan, 2026-10-07). Customers and ship-tos are the
   Customers fixtures; products are the fuel orders' own. Mixed on purpose: two
   drafts, sent ones still open, two Sent past their date (so Expired shows),
-  and accepted ones that made an order.
+  and accepted ones that made an order. Two carry a second charge — a state
+  fuel tax and an after-hours fee — so the lists show (Pavan, 2026-10-07;
+  INVENTED amounts).
 */
+/** A seeded fee or tax — named only when it is not the default "Fees" / "Tax". */
+type SeedCharge = Adjust & { name?: string };
+
 interface SeedQuote {
   customer: string;
   shipTo: string;
   market: string;
   lines: [string, number][];
   margin: Adjust;
-  fees: Adjust;
-  tax: Adjust;
+  fees: SeedCharge[];
+  taxes: SeedCharge[];
   stage: QuoteStage;
   /** Days from today. */
   valid: number;
@@ -286,16 +333,16 @@ interface SeedQuote {
 }
 
 const SEED: SeedQuote[] = [
-  { customer: "Bray, Raymond and Marks", shipTo: "Bray North Yard", market: "Houston", lines: [["200* Diesel Onroad clear", 6000], ["Gas Pr 1", 1500]], margin: { value: 0.18, unit: "perGal" }, fees: { value: 85, unit: "total" }, tax: { value: 0, unit: "percent" }, stage: "Draft", valid: 14, updated: 0 },
-  { customer: "Morris Group", shipTo: "Morris West Terminal", market: "Dallas–Fort Worth", lines: [["CLR DSL", 9000]], margin: { value: 6, unit: "percent" }, fees: { value: 0.02, unit: "perGal" }, tax: { value: 8.25, unit: "percent" }, stage: "Sent", valid: 10, updated: -1, notes: "Price holds for loads delivered before the valid-through date." },
-  { customer: "Gonzalez, Palmer and Miller", shipTo: "GPM Southside", market: "San Antonio", lines: [["123", 2200], ["1652", 800], ["CTL1", 400]], margin: { value: 0.15, unit: "perGal" }, fees: { value: 120, unit: "total" }, tax: { value: 8.25, unit: "percent" }, stage: "Sent", valid: -3, updated: -9 },
-  { customer: "Cardinal Logistics", shipTo: "Cardinal Hub A", market: "Houston", lines: [["200* Diesel Onroad clear", 12000]], margin: { value: 0.12, unit: "perGal" }, fees: { value: 0.015, unit: "perGal" }, tax: { value: 0, unit: "percent" }, stage: "Accepted", valid: 5, updated: -2 },
-  { customer: "Westbrook Agriculture", shipTo: "Westbrook Farm 2", market: "San Antonio", lines: [["Gas Pr 1", 3000]], margin: { value: 5, unit: "percent" }, fees: { value: 60, unit: "total" }, tax: { value: 6.25, unit: "percent" }, stage: "Sent", valid: 21, updated: -1 },
-  { customer: "Bray, Raymond and Marks", shipTo: "Bray Depot 2", market: "Houston", lines: [["CLR DSL", 4000], ["Test", 500]], margin: { value: 0.2, unit: "perGal" }, fees: { value: 0, unit: "perGal" }, tax: { value: 0, unit: "percent" }, stage: "Draft", valid: 0, updated: -3 },
-  { customer: "Morris Group", shipTo: "Morris Group - 505112", market: "Dallas–Fort Worth", lines: [["123", 1800]], margin: { value: 0.16, unit: "perGal" }, fees: { value: 45, unit: "total" }, tax: { value: 8.25, unit: "percent" }, stage: "Accepted", valid: 2, updated: -6 },
-  { customer: "Cardinal Logistics", shipTo: "Cardinal Overflow", market: "Houston", lines: [["CTL1", 2600], ["1652", 2600]], margin: { value: 7, unit: "percent" }, fees: { value: 0.01, unit: "perGal" }, tax: { value: 0, unit: "percent" }, stage: "Sent", valid: -1, updated: -12 },
-  { customer: "Gonzalez, Palmer and Miller", shipTo: "Gonzalez, Palmer and Miller", market: "San Antonio", lines: [["200* Diesel Onroad clear", 7800]], margin: { value: 0.14, unit: "perGal" }, fees: { value: 150, unit: "total" }, tax: { value: 8.25, unit: "percent" }, stage: "Sent", valid: 6, updated: 0 },
-  { customer: "Westbrook Agriculture", shipTo: "Westbrook Farm 1", market: "San Antonio", lines: [["Gas Pr 1", 1200], ["123", 1200]], margin: { value: 0.22, unit: "perGal" }, fees: { value: 0, unit: "perGal" }, tax: { value: 6.25, unit: "percent" }, stage: "Accepted", valid: -4, updated: -15 },
+  { customer: "Bray, Raymond and Marks", shipTo: "Bray North Yard", market: "Houston", lines: [["200* Diesel Onroad clear", 6000], ["Gas Pr 1", 1500]], margin: { value: 0.18, unit: "perGal" }, fees: [{ value: 85, unit: "total" }], taxes: [{ value: 0, unit: "percent" }], stage: "Draft", valid: 14, updated: 0 },
+  { customer: "Morris Group", shipTo: "Morris West Terminal", market: "Dallas–Fort Worth", lines: [["CLR DSL", 9000]], margin: { value: 6, unit: "percent" }, fees: [{ value: 0.02, unit: "perGal" }], taxes: [{ value: 8.25, unit: "percent" }, { name: "State fuel tax", value: 0.2, unit: "perGal" }], stage: "Sent", valid: 10, updated: -1, notes: "Price holds for loads delivered before the valid-through date." },
+  { customer: "Gonzalez, Palmer and Miller", shipTo: "GPM Southside", market: "San Antonio", lines: [["123", 2200], ["1652", 800], ["CTL1", 400]], margin: { value: 0.15, unit: "perGal" }, fees: [{ value: 120, unit: "total" }, { name: "After-hours delivery", value: 75, unit: "total" }], taxes: [{ value: 8.25, unit: "percent" }], stage: "Sent", valid: -3, updated: -9 },
+  { customer: "Cardinal Logistics", shipTo: "Cardinal Hub A", market: "Houston", lines: [["200* Diesel Onroad clear", 12000]], margin: { value: 0.12, unit: "perGal" }, fees: [{ value: 0.015, unit: "perGal" }], taxes: [{ value: 0, unit: "percent" }], stage: "Accepted", valid: 5, updated: -2 },
+  { customer: "Westbrook Agriculture", shipTo: "Westbrook Farm 2", market: "San Antonio", lines: [["Gas Pr 1", 3000]], margin: { value: 5, unit: "percent" }, fees: [{ value: 60, unit: "total" }], taxes: [{ value: 6.25, unit: "percent" }], stage: "Sent", valid: 21, updated: -1 },
+  { customer: "Bray, Raymond and Marks", shipTo: "Bray Depot 2", market: "Houston", lines: [["CLR DSL", 4000], ["Test", 500]], margin: { value: 0.2, unit: "perGal" }, fees: [{ value: 0, unit: "perGal" }], taxes: [{ value: 0, unit: "percent" }], stage: "Draft", valid: 0, updated: -3 },
+  { customer: "Morris Group", shipTo: "Morris Group - 505112", market: "Dallas–Fort Worth", lines: [["123", 1800]], margin: { value: 0.16, unit: "perGal" }, fees: [{ value: 45, unit: "total" }], taxes: [{ value: 8.25, unit: "percent" }], stage: "Accepted", valid: 2, updated: -6 },
+  { customer: "Cardinal Logistics", shipTo: "Cardinal Overflow", market: "Houston", lines: [["CTL1", 2600], ["1652", 2600]], margin: { value: 7, unit: "percent" }, fees: [{ value: 0.01, unit: "perGal" }], taxes: [{ value: 0, unit: "percent" }], stage: "Sent", valid: -1, updated: -12 },
+  { customer: "Gonzalez, Palmer and Miller", shipTo: "Gonzalez, Palmer and Miller", market: "San Antonio", lines: [["200* Diesel Onroad clear", 7800]], margin: { value: 0.14, unit: "perGal" }, fees: [{ value: 150, unit: "total" }], taxes: [{ value: 8.25, unit: "percent" }], stage: "Sent", valid: 6, updated: 0 },
+  { customer: "Westbrook Agriculture", shipTo: "Westbrook Farm 1", market: "San Antonio", lines: [["Gas Pr 1", 1200], ["123", 1200]], margin: { value: 0.22, unit: "perGal" }, fees: [{ value: 0, unit: "perGal" }], taxes: [{ value: 6.25, unit: "percent" }], stage: "Accepted", valid: -4, updated: -15 },
 ];
 
 export const FIRST_QUOTE_NO = 2041;
@@ -317,8 +364,10 @@ export const SEED_QUOTES: Quote[] = SEED.map((s, i) => {
       baseSet: false,
     })),
     margin: s.margin,
-    fees: s.fees,
-    tax: s.tax,
+    /* MIGRATED (Pavan, 2026-10-07): the one fee and one tax each seed had
+       are now the first of its lists. */
+    fees: s.fees.map((c) => ({ ...c, id: newChargeId("fee"), name: c.name ?? "Fees" })),
+    taxes: s.taxes.map((c) => ({ ...c, id: newChargeId("tax"), name: c.name ?? "Tax" })),
     notes: s.notes ?? "",
     stage: s.stage,
     updatedAt: stamp,
@@ -479,6 +528,20 @@ export function diffQuote(a: Quote, b: Quote): string[] {
     const p = priceQuote(q);
     return p.gallons > 0 ? MONEY(p.total) : "";
   };
+  /* A FEE OR TAX ADDED, REMOVED OR RENAMED is an event (Pavan, 2026-10-07);
+     its value is not — that shows as the quote total moving. */
+  const charges = (kind: string, from: Charge[], to: Charge[]) => {
+    to.forEach((c) => {
+      const was = from.find((x) => x.id === c.id);
+      if (!was) out.push(`${kind} added${c.name ? `: ${c.name}` : ""}`);
+      else say(out, kind, was.name, c.name);
+    });
+    from
+      .filter((c) => !to.some((x) => x.id === c.id))
+      .forEach((c) => out.push(`${kind} removed${c.name ? `: ${c.name}` : ""}`));
+  };
+  charges("Fee", a.fees, b.fees);
+  charges("Tax", a.taxes, b.taxes);
   say(out, "Quote total", total(a), total(b));
   return out;
 }

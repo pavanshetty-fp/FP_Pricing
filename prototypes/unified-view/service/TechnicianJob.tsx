@@ -371,7 +371,7 @@ export function TechnicianJob({
         onBack={() => setTicketOpen(false)}
         onCreate={(req) => {
           const no = onCreateTicket(req);
-          toast.success(`Ticket ${no} created`, { description: `${job.customer} · ${job.shipTo}` });
+          toast.success(`Ticket ${no} created`);
           setTicketOpen(false);
         }}
       />

@@ -285,6 +285,8 @@ export function CustomerSheet({
             onValueChange={(v) => set("billingTerms", v)}
             options={BILLING_TERMS}
             placeholder="Select terms"
+            /* OPTIONAL, SO THE EMPTY CHOICE FIRST (G46, Pavan, 2026-10-07). */
+            clearLabel="No billing terms"
           />
         </SheetField>
 

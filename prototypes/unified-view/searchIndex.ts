@@ -82,22 +82,16 @@ export const SEARCH_SCOPES: { key: SearchKind | "all"; label: string }[] = [
 ];
 
 const PAGES: Omit<SearchEntry, "haystack">[] = [
+  /* ONE ORDERS PAGE (Pavan, 2026-10-07) — fuel and asset orders together. */
   {
-    id: "page-fuel-orders",
+    id: "page-sales-orders",
     kind: "page",
-    title: "Fuel Orders",
-    subtitle: "Delivery and extraction orders · list",
+    title: "Orders",
+    subtitle: "Fuel and asset orders · list",
+    /* The two old page names still find it. */
+    keywords: "fuel orders asset orders",
     moduleKey: "sales",
-    navKey: "fuel-orders",
-    recordId: null,
-  },
-  {
-    id: "page-asset-orders",
-    kind: "page",
-    title: "Asset Orders",
-    subtitle: "Tank, pump and meter orders · list",
-    moduleKey: "sales",
-    navKey: "asset-orders",
+    navKey: "sales-orders",
     recordId: null,
   },
   {
@@ -155,7 +149,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
         o.customer.description,
       ].join(" "),
       moduleKey: "sales",
-      navKey: "fuel-orders",
+      navKey: "sales-orders",
       recordId: o.id,
     })
   ),
@@ -168,7 +162,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
       subtitle: [o.assetType, `Qty ${o.quantity}`, o.salesRep, o.status].join(" · "),
       keywords: [o.serialNo, o.poNumber, o.shipTo, o.customer.description].join(" "),
       moduleKey: "sales",
-      navKey: "asset-orders",
+      navKey: "sales-orders",
       recordId: o.id,
     })
   ),

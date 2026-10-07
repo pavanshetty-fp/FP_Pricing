@@ -7,16 +7,12 @@ import {
   PerformanceScreen,
   PriceBookScreen,
 } from "./service/PlatformScreens";
-import { useSavedViews } from "./useSavedViews";
 import { ThreePLDashboard, type ThreePLDrill } from "./threepl/ThreePLDashboard";
 import { SalesDashboard, type SalesDrill } from "./SalesDashboard";
 import {
-  Fuel,
   ClipboardList,
   Users,
   Database,
-  SearchX,
-  CalendarOff,
   Construction,
   Truck,
   LayoutGrid,
@@ -26,7 +22,6 @@ import {
   Contact,
   Droplet,
   Caravan,
-  Clock,
   Handshake,
   FileSignature,
   DollarSign,
@@ -53,52 +48,20 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
 import { TechniciansScreen } from "./service/TechniciansScreen";
 import { ServiceSettingsScreen } from "./service/ServiceSettingsScreen";
+import { SalesSettingsScreen } from "./SalesSettingsScreen";
+import { setSalesCurrentUser, useSalesUnread } from "./salesSettings";
 import { TechnicianMobile } from "./service/TechnicianMobile";
-import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
-import { TablePagination } from "@/components/tables-layout/TablePagination";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  ColumnFilterChips,
-  ColumnSearchChip,
-  FuelOrdersToolbar,
-  type FuelOrdersView,
-} from "./FuelOrdersToolbar";
-import { fuelOrderFacets } from "./FuelOrdersFilters";
-import { FuelOrdersTable, STATUS_TONE, TYPE_TONE, fuelOrderColumnText } from "./FuelOrdersTable";
-import {
-  BrokerBoard,
-  type BoardCardUnit,
-  type BoardLane,
-  type LaneColor,
-} from "./threepl/BrokerBoard";
-import { type DateRange } from "./threepl/DateRangeFilter";
-import { FilterChips } from "./ListToolbar";
-import { OrderMapView } from "./OrderMapView";
-import { AssetOrdersScreen } from "./AssetOrdersScreen";
+import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
-import { quoteOrders } from "./quoteStore";
 import { CustomersScreen } from "./CustomersScreen";
 import { AssetsScreen } from "./AssetsScreen";
 import {
@@ -116,40 +79,7 @@ import {
 import { ProfileScreen } from "./ProfileScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
-import { OrderSheet, type OrderDraft } from "./OrderSheet";
-import {
-  FuelOrdersViewBar,
-  viewStateKey,
-  type ViewState,
-} from "./FuelOrdersViewBar";
-import {
-  DATE_FMT,
-  FUEL_ORDERS,
-  FUEL_ORDER_COLUMNS,
-  dateKeyOf,
-  formatFullDate,
-  matchesFuelOrder,
-  matchesFuelOrderIn,
-  plannedAt,
-  relativeLabel,
-  splitGallons,
-  sortFuelOrders,
-  stageAfterDriver,
-  startOfDay,
-  FUEL_ORDER_STAGES,
-} from "./data";
-import type {
-  AccountUser,
-  FuelOrderStatus,
-  FuelOrder,
-  FuelOrderColumnKey,
-  SortState,
-} from "./types";
-import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
-import { FUEL_ORDER_GROUP_DIMS } from "./groupDims";
-import { useLoggedRows } from "./activity";
-import { diffFuelOrder } from "./salesActivity";
-
+import type { AccountUser } from "./types";
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
 
@@ -164,18 +94,6 @@ import { diffFuelOrder } from "./salesActivity";
   destinations · NO Tier-2 sidebar, because this workspace has no second nav
   level — so the content layer takes the full remaining width.
 */
-
-/** Shared with the order sheet — one list, so bulk and single edits agree. */
-const DRIVER_OPTIONS = ["Shriya", "Shriya Test 2", "Aakash"];
-const TAG_OPTIONS = [
-  "Keep Full",
-  "Rush",
-  "Night",
-  "Weekend",
-  "Split Load",
-  "Hazmat",
-  "After Hours",
-];
 
 /*
   MODULE-SCOPED NAVIGATION.
@@ -194,12 +112,15 @@ const TAG_OPTIONS = [
 const SALES_NAV: NavItem[] = [
   /* First, so it is where Sales opens (Pavan, 2026-10-05). */
   { key: "sales-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
-  { key: "fuel-orders", label: "Fuel Orders", icon: <Fuel /> },
-  { key: "asset-orders", label: "Asset Orders", icon: <ClipboardList /> },
+  /* ONE ORDERS PAGE (Pavan, 2026-10-07) — Fuel Orders and Asset Orders,
+     together, as 3PL's Orders. */
+  { key: "sales-orders", label: "Orders", icon: <ClipboardList /> },
   /* QUOTES (Pavan, 2026-10-07) — after the orders a quote turns into. */
   { key: "quotes", label: "Quotes", icon: <ReceiptText /> },
   { key: "customers", label: "Customers", icon: <Users /> },
   { key: "assets", label: "Assets", icon: <Database /> },
+  /* THE MODULE'S OWN SETTINGS, last — as Service's (Pavan, 2026-10-07). */
+  { key: "sales-settings", label: "Sales Settings", icon: <SlidersHorizontal /> },
 ];
 
 /**
@@ -349,9 +270,13 @@ const MODULE_NAV: Record<string, NavItem[]> = {
 
 /**
  * WHERE A MODULE OPENS, when it is not its first rail item. 3PL opens on
- * Orders for now (Pavan, 2026-10-06), with Dashboard still first in the rail.
+ * Orders for now (Pavan, 2026-10-06), and Sales too (2026-10-07), with
+ * Dashboard still first in the rail.
  */
-const MODULE_LANDING: Record<string, string> = { "3pl": "3pl-orders" };
+const MODULE_LANDING: Record<string, string> = {
+  "3pl": "3pl-orders",
+  sales: "sales-orders",
+};
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
 
@@ -403,1233 +328,6 @@ const ACCOUNT_PAGES: Record<string, string> = {
   profile: "Profile",
   settings: "Settings",
 };
-
-/** The shared view state plus the filter row's boxes, by column key. Optional
- *  so a view saved before the row still applies. */
-type FuelViewState = ViewState & {
-  colFilters?: Record<string, string>;
-  /* THE RANGE'S OTHER END, THE CARDS, THE LANE SORTS AND THE BANNER'S FILTER
-     (2026-10-07). Optional so a view saved before them still applies. */
-  dateKeyTo?: string;
-  cardOff?: Record<string, string[]>;
-  laneSort?: Record<string, string | undefined>;
-  overdueOnly?: boolean;
-  /** The filter panel's ticks, as `facetKey:option` ids (Pavan, 2026-10-07).
-   *  Optional so a view saved before the panel worked still applies. */
-  facets?: string[];
-};
-
-const fuelViewStateKey = (s: FuelViewState) =>
-  JSON.stringify([
-    viewStateKey(s),
-    /* Empty boxes are no filter — typing then clearing one is not a change. */
-    Object.entries(s.colFilters ?? {})
-      .filter(([, v]) => v.trim() !== "")
-      .sort(([a], [b]) => a.localeCompare(b)),
-    s.dateKeyTo ?? s.dateKey,
-    s.cardOff ?? {},
-    Object.entries(s.laneSort ?? {})
-      .filter(([, v]) => v)
-      .sort(([a], [b]) => a.localeCompare(b)),
-    Boolean(s.overdueOnly),
-    [...(s.facets ?? [])].sort(),
-  ]);
-
-/** Columns the column-visibility menu can toggle (everything with a label). */
-const TOGGLE_COLUMNS = FUEL_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
-  key: c.key,
-  label: c.label,
-}));
-
-/**
- * How long "remind me later" puts the alert away for.
- *
- * Hours, not a date picker: the question a dispatcher is answering is "when do
- * I next want to look at this", and the honest answers are all inside one
- * shift. "Tomorrow" is the one that leaves the shift, so it is last and it is
- * the same clock time rather than a fixed hour — snoozing at 6am and snoozing
- * at 6pm are different asks.
- */
-const HOUR_MS = 60 * 60 * 1000;
-const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
-  { label: "1 hour", ms: HOUR_MS },
-  { label: "2 hours", ms: 2 * HOUR_MS },
-  { label: "4 hours", ms: 4 * HOUR_MS },
-  { label: "8 hours", ms: 8 * HOUR_MS },
-  { label: "Tomorrow, same time", ms: 24 * HOUR_MS },
-];
-
-/** Each stage's lane colour — the 3PL board's palette (2026-10-07). */
-const STAGE_LANE_COLOR: Record<FuelOrderStatus, LaneColor> = {
-  Requested: "yellow",
-  Scheduled: "blue",
-  Dispatched: "cyan",
-  Delivered: "green",
-  Cancelled: "grey",
-};
-
-/**
- * WHAT A FUEL CARD CAN SHOW — 3PL's `CARD_UNITS`, for this card (Pavan,
- * 2026-10-07). The heading and the number are not in the list, because a card
- * with no number is not a card you can act on.
- */
-const FUEL_CARD_UNITS: { key: string; label: string; group?: string }[] = [
-  { key: "customer", label: "Customer Details" },
-  { key: "customer.account", label: "Account", group: "customer" },
-  { key: "customer.site", label: "Ship-to site", group: "customer" },
-  { key: "schedule", label: "Schedule" },
-  { key: "product", label: "Delivery Product Details" },
-  { key: "product.product", label: "Product", group: "product" },
-  { key: "product.qty", label: "Quantity", group: "product" },
-  { key: "product.total", label: "Total", group: "product" },
-  { key: "driver", label: "Driver" },
-];
-
-/** One shared empty set, so a lane with nothing hidden does not allocate. */
-const FUEL_EMPTY_SET: ReadonlySet<string> = new Set<string>();
-
-/** Which lanes one press in the card-fields menu writes to. */
-const fuelLanesInScope = (scope: string | null): string[] =>
-  scope ? [scope] : [...FUEL_ORDER_STAGES];
-
-/**
- * One field on or off in one lane's set — 3PL's `toggleField`, copied rather
- * than shared so 3PL's stays untouched. A parent carries its children; the
- * last child going off takes the parent.
- */
-function toggleFuelField(
-  current: ReadonlySet<string>,
-  key: string,
-  turningOff: boolean
-): Set<string> {
-  const next = new Set(current);
-  const kids = FUEL_CARD_UNITS.filter((c) => c.group === key).map((c) => c.key);
-  const entry = FUEL_CARD_UNITS.find((c) => c.key === key);
-  if (!turningOff) {
-    next.delete(key);
-    for (const c of kids) next.delete(c);
-    if (entry?.group) next.delete(entry.group);
-    return next;
-  }
-  next.add(key);
-  for (const c of kids) next.add(c);
-  if (entry?.group) {
-    const siblings = FUEL_CARD_UNITS.filter((c) => c.group === entry.group).map(
-      (c) => c.key
-    );
-    if (siblings.every((sib) => next.has(sib))) next.add(entry.group);
-  }
-  return next;
-}
-
-/** Card fields as plain sorted arrays, so a view can hold and compare them. */
-const fuelCardOffToArrays = (c: Record<string, ReadonlySet<string>>) =>
-  Object.fromEntries(
-    Object.keys(c)
-      .sort()
-      .map((k) => [k, [...c[k]].sort()])
-  );
-
-/** A planned moment as a number — no plan sorts after every plan. */
-const plannedMs = (r: FuelOrder) => plannedAt(r)?.getTime() ?? Number.POSITIVE_INFINITY;
-
-/**
- * THE WAYS A LANE CAN BE ORDERED — 3PL's `LANE_SORTS`, its labels kept where
- * they apply (Pavan, 2026-10-07). Urgent first is the one a lane earns: the
- * two stages still waiting to go out.
- */
-const FUEL_LANE_SORTS: Record<
-  string,
-  { label: string; compare: (a: FuelOrder, b: FuelOrder) => number }
-> = {
-  "time-asc": {
-    label: "Schedule time — earliest first",
-    compare: (a, b) => plannedMs(a) - plannedMs(b),
-  },
-  "time-desc": {
-    label: "Schedule time — latest first",
-    /* No plan stays last in both directions. */
-    compare: (a, b) =>
-      (plannedAt(b)?.getTime() ?? Number.NEGATIVE_INFINITY) -
-      (plannedAt(a)?.getTime() ?? Number.NEGATIVE_INFINITY),
-  },
-  "qty-desc": {
-    label: "Quantity — largest first",
-    compare: (a, b) => b.qtyGal - a.qtyGal,
-  },
-  "qty-asc": {
-    label: "Quantity — smallest first",
-    compare: (a, b) => a.qtyGal - b.qtyGal,
-  },
-  "customer-asc": {
-    label: "Customer — A to Z",
-    compare: (a, b) => a.customer.title.localeCompare(b.customer.title),
-  },
-  "order-desc": {
-    label: "Order # — newest first",
-    compare: (a, b) => Number(b.orderNo) - Number(a.orderNo),
-  },
-  "urgent-first": {
-    label: "Urgent first",
-    compare: (a, b) => Number(b.urgent) - Number(a.urgent),
-  },
-};
-
-const FUEL_COMMON_LANE_SORTS = [
-  "time-asc",
-  "time-desc",
-  "qty-desc",
-  "qty-asc",
-  "customer-asc",
-  "order-desc",
-];
-
-const FUEL_LANE_EXTRA_SORTS: Record<string, string> = {
-  Requested: "urgent-first",
-  Scheduled: "urgent-first",
-};
-
-function fuelLaneSortOptions(laneKey: string) {
-  const extra = FUEL_LANE_EXTRA_SORTS[laneKey];
-  return [...(extra ? [extra] : []), ...FUEL_COMMON_LANE_SORTS].map((k) => ({
-    key: k,
-    label: FUEL_LANE_SORTS[k].label,
-  }));
-}
-
-/** A fuel order as board units, less what the lane has switched off. */
-function fuelCardUnits(r: FuelOrder, off: ReadonlySet<string>): BoardCardUnit[] {
-  const showProduct = !off.has("product.product");
-  const showQty = !off.has("product.qty");
-  const units: BoardCardUnit[] = [
-    {
-      kind: "stack",
-      key: "customer",
-      heading: "Customer Details",
-      lines: [
-        ...(off.has("customer.account")
-          ? []
-          : [{ text: r.customer.title, level: 1 as const }]),
-        ...(off.has("customer.site")
-          ? []
-          : [{ text: r.customer.description, level: 2 as const }]),
-      ],
-    },
-    {
-      kind: "inline",
-      key: "schedule",
-      heading: "Schedule",
-      parts: r.planned ? [r.planned.date, r.planned.time] : ["Not planned"],
-    },
-    {
-      kind: "rows",
-      key: "product",
-      heading: "Delivery Product Details",
-      rows:
-        showProduct || showQty
-          ? r.products.map((p) => ({
-              asset: showProduct ? p.name : "",
-              qty: showQty ? `${p.gal.toLocaleString()} gal` : "",
-            }))
-          : [],
-      total:
-        r.products.length > 1 && !off.has("product.total")
-          ? `${r.qtyGal.toLocaleString()} gal`
-          : undefined,
-    },
-    {
-      kind: "stack",
-      key: "driver",
-      heading: "Driver",
-      lines: [{ text: r.driver?.name ?? "Unassigned", level: 2 as const }],
-    },
-  ];
-  /* A HEADING WITH NOTHING UNDER IT IS NOT A UNIT — 3PL's rule. */
-  return units.filter((u) => {
-    if (off.has(u.key)) return false;
-    if (u.kind === "stack") return u.lines.length > 0;
-    if (u.kind === "rows") return u.rows.length > 0 || Boolean(u.total);
-    return true;
-  });
-}
-
-/**
- * URGENT AND LATE (Pavan, 2026-10-07): marked urgent, not yet out of the yard
- * (Requested or Scheduled), and its planned moment has passed. An order with
- * no plan has no moment to be late for.
- */
-const isOverdueUrgent = (r: FuelOrder, now: number) =>
-  r.urgent &&
-  (r.status === "Requested" || r.status === "Scheduled") &&
-  (plannedAt(r)?.getTime() ?? Number.POSITIVE_INFINITY) < now;
-
-/** The banner's filter, as the chip shelf names it. */
-const OVERDUE_FACETS = [{ key: "urgent", label: "Urgent" }];
-const OVERDUE_ID = "urgent:Overdue for dispatch";
-
-/** Fuel Orders list — toolbar + table + pagination, inside the content layer. */
-function FuelOrdersScreen({
-  focus,
-  drill = null,
-  onCreateQuote,
-}: {
-  focus?: { id: string; n: number } | null;
-  /** Create Quote, beside Create Order — opens the Quotes create sheet. */
-  onCreateQuote?: () => void;
-  /** Arrived from the Sales dashboard — open on that day (a one-day range),
-   *  narrowed by these column boxes. A nonce so the same press twice still
-   *  lands. */
-  drill?: (SalesDrill & { n: number }) | null;
-}) {
-  /* THE SETTER WRITES THE CHANGE LOG (sales, 2026-09-23) — see activity.tsx. */
-  /* THE ORDERS ACCEPTED QUOTES MADE COME FIRST (Pavan, 2026-10-07) — they
-     live in the quote store, which outlives this screen. */
-  const seedRows = React.useMemo(() => [...quoteOrders(), ...FUEL_ORDERS], []);
-  const [rows, setRows] = useLoggedRows(seedRows, diffFuelOrder);
-  // Picker options come from the data, so the sheet can't offer a value the
-  // table has never seen.
-  const uniq = (xs: string[]) => Array.from(new Set(xs));
-  const customers = React.useMemo(
-    () => uniq(seedRows.map((r) => r.customer.title)),
-    [seedRows]
-  );
-  const shipTos = React.useMemo(
-    () => uniq(seedRows.map((r) => r.customer.description)),
-    [seedRows]
-  );
-  const productNames = React.useMemo(
-    () => uniq(seedRows.flatMap((r) => r.products.map((p) => p.name))),
-    [seedRows]
-  );
-  const [openOrderId, setOpenOrderId] = React.useState<string | null>(null);
-  // Create Order reuses the order sheet, opened blank. Separate from
-  // openOrderId because there is no row to point at yet.
-  const [creating, setCreating] = React.useState(false);
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [search, setSearch] = React.useState("");
-  const [sort, setSort] = React.useState<SortState | null>(null);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(25);
-  const [hiddenColumns, setHiddenColumns] = React.useState<
-    Set<FuelOrderColumnKey>
-  >(new Set());
-  /* Empty = the table's declared order. The table fills in anything a saved
-     order does not mention, so a stale view never costs a column. */
-  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
-  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
-  /* A RANGE, not a day — 3PL's `DateRangeFilter` (Pavan, 2026-10-07). It
-     opens on today, so one day at a time still works as before. */
-  const [range, setRange] = React.useState<DateRange>(() => {
-    const today = startOfDay(new Date());
-    return { from: today, to: today };
-  });
-  /* WHAT IS ON THE CARD, A SET PER LANE — 3PL's `cardOff`. `cardScope` null
-     is the menu speaking for every lane at once. */
-  const [cardOff, setCardOff] = React.useState<Record<string, ReadonlySet<string>>>({});
-  const [cardScope, setCardScope] = React.useState<string | null>(null);
-  /* On All lanes a field reads hidden unless it shows in EVERY lane. */
-  const scopedHidden = React.useMemo<ReadonlySet<string>>(() => {
-    if (cardScope) return cardOff[cardScope] ?? FUEL_EMPTY_SET;
-    const out = new Set<string>();
-    for (const u of FUEL_CARD_UNITS) {
-      if (FUEL_ORDER_STAGES.some((l) => (cardOff[l] ?? FUEL_EMPTY_SET).has(u.key)))
-        out.add(u.key);
-    }
-    return out;
-  }, [cardOff, cardScope]);
-  /** Each lane's own sort — see `BrokerBoardProps.laneSortOptions`. */
-  const [laneSort, setLaneSort] = React.useState<Record<string, string | undefined>>({});
-  /** The banner's Show orders — exactly the urgent orders overdue for dispatch. */
-  const [overdueOnly, setOverdueOnly] = React.useState(false);
-  /* The filter panel's applied ticks, as `facetKey:option` ids — Asset
-     Orders' (Pavan, 2026-10-07). */
-  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
-  const facets = React.useMemo(() => fuelOrderFacets(seedRows), [seedRows]);
-  // Search-by-column and the view switch — both part of the DS toolbar unit.
-  const [colScope, setColScope] = React.useState("customer");
-  const [colQuery, setColQuery] = React.useState("");
-  const [view, setView] = React.useState<FuelOrdersView>("table");
-  /** One box per column, under the headers — see `FuelOrdersTableProps.columnFilters`. */
-  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
-  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
-  const activeColFilters = React.useMemo(
-    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
-    [colFilters]
-  );
-  React.useEffect(() => {
-    if (!drill) return;
-    const day = startOfDay(drill.date);
-    setRange({ from: day, to: day });
-    setOverdueOnly(false);
-    /* The dashboard's count has no ticks in it (Pavan, 2026-10-07). */
-    setFacetSel(new Set());
-    setSearch("");
-    setColQuery("");
-    setView("table");
-    setColFilters(drill.colFilters);
-    setColFiltersOpen(Object.keys(drill.colFilters).length > 0);
-    setPage(1);
-  }, [drill]);
-
-  const defaultState: FuelViewState = React.useMemo(
-    () => ({
-      search: "",
-      sortKey: null,
-      sortDir: null,
-      hidden: [],
-      columnOrder: [],
-      columnWidths: {},
-      pageSize: 25,
-      dateKey: dateKeyOf(startOfDay(new Date())),
-      dateKeyTo: dateKeyOf(startOfDay(new Date())),
-      colScope: "customer",
-      colQuery: "",
-      groupBy: [],
-      colFilters: {},
-      cardOff: {},
-      laneSort: {},
-      overdueOnly: false,
-      facets: [],
-    }),
-    []
-  );
-
-  const applyState = (st: FuelViewState) => {
-    setSearch(st.search);
-    setSort(
-      st.sortKey && st.sortDir
-        ? { key: st.sortKey as FuelOrderColumnKey, dir: st.sortDir }
-        : null
-    );
-    setHiddenColumns(new Set(st.hidden as FuelOrderColumnKey[]));
-    setColumnOrder(st.columnOrder ?? []);
-    setColumnWidths(st.columnWidths ?? {});
-    setPageSize(st.pageSize);
-    const [y, m, d] = st.dateKey.split("-").map(Number);
-    /* A view saved before ranges has one date; one date is a range. */
-    const [ty, tm, td] = (st.dateKeyTo ?? st.dateKey).split("-").map(Number);
-    setRange({ from: new Date(y, m - 1, d), to: new Date(ty, tm - 1, td) });
-    setCardOff(
-      Object.fromEntries(
-        Object.entries(st.cardOff ?? {}).map(([k, v]) => [k, new Set(v)])
-      )
-    );
-    setLaneSort(st.laneSort ?? {});
-    setOverdueOnly(Boolean(st.overdueOnly));
-    setFacetSel(new Set(st.facets ?? []));
-    setColScope(st.colScope);
-    setColQuery(st.colQuery);
-    const filters = st.colFilters ?? {};
-    setColFilters(filters);
-    /* The row opens when the view has something typed in it. */
-    setColFiltersOpen(Object.values(filters).some((v) => v.trim() !== ""));
-    g.setGrouping(st.groupBy ?? []);
-    setPage(1);
-  };
-
-  const toggleColumn = (key: FuelOrderColumnKey) =>
-    setHiddenColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  // A global-search hit lands here: open that order's sheet on arrival.
-  React.useEffect(() => {
-    if (!focus) return;
-    setCreating(false);
-    setOpenOrderId(focus.id);
-  }, [focus]);
-
-  const query = search.trim().toLowerCase();
-  // The range scopes the list first — every row on screen has its delivery
-  // date inside it — then the search narrows within it.
-  const fromKey = dateKeyOf(range.from);
-  const toKey = dateKeyOf(range.to);
-  const onDate = React.useMemo(
-    () => rows.filter((r) => r.dateKey >= fromKey && r.dateKey <= toKey),
-    [rows, fromKey, toKey]
-  );
-  /* OVERDUE IS A CLAIM ABOUT THE CLOCK, so the clock is read once a minute —
-     a banner computed once would go on saying "not late" all shift. */
-  const [now, setNow] = React.useState(() => Date.now());
-  React.useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(t);
-  }, []);
-  // Global search and column search BOTH apply, per the DS unit — the toolbar
-  // input narrows across every column, the popover narrows within one.
-  const cq = colQuery.trim().toLowerCase();
-  const searched = React.useMemo(
-    () =>
-      onDate.filter(
-        (r) =>
-          (!query || matchesFuelOrder(r, query)) &&
-          (!cq || matchesFuelOrderIn(r, cq, colScope)) &&
-          (!overdueOnly || isOverdueUrgent(r, now)) &&
-          /* AND-ed, and each box matches the text its own column PRINTS —
-             see `fuelOrderColumnText`. */
-          activeColFilters.every(([key, value]) =>
-            fuelOrderColumnText(r, key as FuelOrderColumnKey)
-              .toLowerCase()
-              .includes(value.trim().toLowerCase())
-          )
-      ),
-    [onDate, query, cq, colScope, activeColFilters, overdueOnly, now]
-  );
-  /* THE FACET NARROWING, FOR ANY SET OF TICKS — Asset Orders' (Pavan,
-     2026-10-07). The list uses the applied set; the panel asks it of its own
-     ticks, to count them. AND across facets, OR within one. */
-  const narrowFacets = React.useCallback(
-    (sel: ReadonlySet<string>) => {
-      if (sel.size === 0) return searched;
-      const on = (facet: string) => [...sel].some((id) => id.startsWith(`${facet}:`));
-      const pass = (facet: string, value: string) => !on(facet) || sel.has(`${facet}:${value}`);
-      return searched.filter(
-        (r) =>
-          pass("type", r.type.label) &&
-          pass("status", r.status) &&
-          pass("customer", r.customer.title) &&
-          pass("shipTo", r.customer.description) &&
-          /* Any of the order's products. */
-          (!on("product") || r.products.some((p) => sel.has(`product:${p.name}`)))
-      );
-    },
-    [searched]
-  );
-  const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
-  const sorted = React.useMemo(() => sortFuelOrders(filtered, sort), [filtered, sort]);
-
-  /*
-    THE ONE THING ON THIS PAGE THAT CANNOT WAIT — an urgent order whose planned
-    time has gone by and is still not out (Pavan, 2026-10-07; was "waiting on
-    a driver"). The banner is derived, never seeded: it counts what is actually
-    there in the chosen range, so it cannot go on saying two after one of them
-    is dispatched, and it is absent when there are none.
-
-    NOT A FACET. The filter panel answers "show me the unassigned ones" when you
-    already suspect there are some; this answers "there are some" when you do
-    not.
-  */
-  const overdue = React.useMemo(
-    () => onDate.filter((r) => isOverdueUrgent(r, now)),
-    [onDate, now]
-  );
-
-  /* THE BOARD'S LANES — one per stage, built from the same filtered and
-     sorted set as the table (2026-10-07). Each lane then takes its own sort
-     and its own card fields, as 3PL's do. */
-  const boardLanes = React.useMemo<BoardLane[]>(
-    () =>
-      FUEL_ORDER_STAGES.map((stage) => {
-        let cards = sorted.filter((r) => r.status === stage);
-        const cmp = FUEL_LANE_SORTS[laneSort[stage] ?? ""]?.compare;
-        if (cmp) cards = [...cards].sort(cmp);
-        return {
-          key: stage,
-          title: stage,
-          color: STAGE_LANE_COLOR[stage],
-          apart: stage === "Cancelled",
-          emptyLabel: "No orders",
-          cards: cards.map((r) => ({
-            id: r.id,
-            title: r.orderNo,
-            code: { text: r.type.code, label: r.type.label, tone: TYPE_TONE[r.type.code] },
-            units: fuelCardUnits(r, cardOff[stage] ?? FUEL_EMPTY_SET),
-          })),
-        };
-      }),
-    [sorted, laneSort, cardOff]
-  );
-  /*
-    TWO WAYS TO PUT IT AWAY, AND THEY ARE NOT THE SAME PROMISE. The ✕ says "I
-    have seen this" — gone for this range, full stop. Snooze says "not now",
-    which is only honest if it actually comes back, so it is a deadline rather
-    than a flag: the banner is hidden while the clock has not reached it and a
-    timer brings it back at the minute it does. Both reset on a range change,
-    because other days are a different set of orders making a different claim.
-  */
-  const [alertDismissed, setAlertDismissed] = React.useState(false);
-  const [snoozedUntil, setSnoozedUntil] = React.useState<number | null>(null);
-  React.useEffect(() => {
-    setAlertDismissed(false);
-    setSnoozedUntil(null);
-  }, [fromKey, toKey]);
-  React.useEffect(() => {
-    if (snoozedUntil == null) return;
-    const ms = snoozedUntil - Date.now();
-    if (ms <= 0) {
-      setSnoozedUntil(null);
-      return;
-    }
-    const t = window.setTimeout(() => setSnoozedUntil(null), ms);
-    return () => window.clearTimeout(t);
-  }, [snoozedUntil]);
-  const alertVisible =
-    overdue.length > 0 && !alertDismissed && snoozedUntil == null;
-
-  /* Grouping — the same hook the other three lists use, so all four behave
-     identically. It suspends pagination while grouped, because a group that
-     straddles a page boundary cannot have an honest header. */
-  const g = useGrouping<FuelOrder, FuelOrderColumnKey>({
-    dimensions: FUEL_ORDER_GROUP_DIMS,
-    rows: sorted,
-    rowId: React.useCallback((r: FuelOrder) => r.id, []),
-    // Qty (Gal) is the only column on this list that sums to something true.
-    measureOf: React.useCallback((r: FuelOrder) => r.qtyGal, []),
-    hiddenColumns,
-    page,
-    pageSize,
-  });
-  const pageRows = g.visibleRows;
-
-  /* A view captures the state a user would otherwise have to rebuild by
-     hand. Declared after the grouping hook because it reads from it. */
-  const current: FuelViewState = {
-    search,
-    sortKey: sort?.key ?? null,
-    sortDir: sort?.dir ?? null,
-    hidden: [...hiddenColumns],
-    columnOrder,
-    columnWidths,
-    pageSize,
-    dateKey: fromKey,
-    dateKeyTo: toKey,
-    colScope,
-    colQuery,
-    groupBy: g.groupBy,
-    colFilters,
-    cardOff: fuelCardOffToArrays(cardOff),
-    laneSort,
-    overdueOnly,
-    facets: [...facetSel].sort(),
-  };
-
-  /* THE SHARED SAVED-VIEWS HOOK (2026-09-24) — this screen had its own copy,
-     so it missed the rule every other list follows: a view keeps its unsaved
-     changes when you leave it, and pressing the tab you are on reverts it. */
-  const savedViews = useSavedViews({
-    current,
-    defaultState,
-    keyOf: fuelViewStateKey,
-    apply: applyState,
-  });
-
-
-  // Sort cycles asc → desc → unsorted; changing sort/size returns to page 1.
-  const onSort = (key: FuelOrderColumnKey) => {
-    setSort((prev) => {
-      if (prev?.key !== key) return { key, dir: "asc" };
-      if (prev.dir === "asc") return { key, dir: "desc" };
-      return null;
-    });
-    setPage(1);
-  };
-
-  /**
-   * The two sides the bulk dialogs preview against. Derived from the FULL row
-   * list, not the visible page: the selection survives paging, so a preview
-   * built from the page would silently under-report what is about to change.
-   */
-  const selectedOrders = React.useMemo(
-    () => rows.filter((r) => selectedIds.has(r.id)),
-    [rows, selectedIds]
-  );
-  const unselectedOrders = React.useMemo(
-    () => rows.filter((r) => !selectedIds.has(r.id)),
-    [rows, selectedIds]
-  );
-
-  /** Apply a change to every selected order. */
-  const applyToSelected = (fn: (r: FuelOrder) => FuelOrder) =>
-    setRows((prev) => prev.map((r) => (selectedIds.has(r.id) ? fn(r) : r)));
-
-  const bulk = {
-    setProducts: (names: string[]) =>
-      // Replaces each order's lines, keeping ITS OWN total — a bulk product
-      // change shouldn't silently rewrite quantities too. With several products
-      // the total splits across them (see splitGallons), so the sum, and so the
-      // Qty column, is unchanged either way.
-      applyToSelected((r) => {
-        const split = splitGallons(r.qtyGal, names.length);
-        return { ...r, products: names.map((name, i) => ({ name, gal: split[i] })) };
-      }),
-    setDriver: (driver: string | null) =>
-      applyToSelected((r) => ({
-        ...r,
-        driver: driver
-          ? {
-              name: driver,
-              initials: driver
-                .split(" ")
-                .map((w) => w[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase(),
-            }
-          : null,
-        // The stage follows the driver everywhere, bulk edits included.
-        status: stageAfterDriver(r.status, Boolean(driver)),
-      })),
-    setPlannedDate: (d: Date) =>
-      applyToSelected((r) => ({
-        ...r,
-        planned: { date: DATE_FMT.format(d), time: r.planned?.time ?? "12:00 PM" },
-      })),
-    setPlannedTime: (time: string) =>
-      applyToSelected((r) => ({
-        ...r,
-        planned: { date: r.planned?.date ?? r.date.title, time },
-      })),
-    addTags: (tags: string[]) =>
-      // Adds to what each order already carries rather than replacing.
-      applyToSelected((r) => ({
-        ...r,
-        tags: Array.from(new Set([...r.tags, ...tags])),
-      })),
-    remove: () => {
-      setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
-      setSelectedIds(new Set());
-    },
-  };
-
-  /**
-   * Commit a blank-sheet draft as a new row.
-   *
-   * Two values the sheet cannot supply, both DERIVED from what is already on
-   * screen rather than invented:
-   *   • the order number continues the existing sequence — the seeds run in
-   *     steps of 2 down from the newest, so a new one is the highest + 2;
-   *   • the delivery date is the first day of the toolbar's range, which is
-   *     always on screen, so the new order appears instead of landing on a
-   *     day the operator is not looking at.
-   * Status stays derived from the driver, as everywhere else.
-   *
-   * THE SHEET IS HANDED OVER TO THE NEW ROW (3PL, 2026-10-07): same sheet,
-   * now with a number, and every edit from here on autosaves.
-   */
-  const createOrder = (draft: OrderDraft) => {
-    const date = range.from;
-    const nextNo =
-      Math.max(...rows.map((r) => Number(r.orderNo))) + 2;
-    const newRow: FuelOrder = {
-      id: `fo-new-${nextNo}`,
-      orderNo: String(nextNo),
-      type: {
-        code: draft.typeCode,
-        label: draft.typeCode === "D" ? "Delivery" : "Extraction",
-      },
-      customer: { title: draft.customer, description: draft.shipTo },
-      products: draft.products,
-      qtyGal: draft.products.reduce((n, p) => n + p.gal, 0),
-      // Same relative labelling the seeds use, so a new order on a day other
-      // than today does not claim to be "Today".
-      date: {
-        // DATE_FMT, not formatFullDate: the seeds render "Aug 25, 2026" while
-        // formatFullDate prepends the weekday ("Tue, Aug 25, 2026"), which made
-        // a created row the only one in the column formatted differently.
-        title: DATE_FMT.format(date),
-        description: relativeLabel(
-          Math.round(
-            (date.getTime() - startOfDay(new Date()).getTime()) / 86_400_000
-          ),
-          date
-        ),
-      },
-      dateKey: dateKeyOf(date),
-      planned: draft.plannedDate
-        ? {
-            date: DATE_FMT.format(draft.plannedDate),
-            time: draft.plannedTime || "12:00 PM",
-          }
-        : null,
-      tags: draft.tags,
-      status: stageAfterDriver("Requested", Boolean(draft.driver)),
-      urgent: draft.urgent,
-      driver: draft.driver
-        ? {
-            name: draft.driver,
-            initials: draft.driver
-              .split(" ")
-              .map((w) => w[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase(),
-          }
-        : null,
-    };
-    setRows((prev) => [newRow, ...prev]);
-    setPage(1);
-    setCreating(false);
-    setOpenOrderId(newRow.id);
-  };
-
-  /** Fold a sheet draft back onto its row — the sheet's autosave. */
-  const saveOrder = (order: FuelOrder, draft: OrderDraft) => {
-    const plannedDate = draft.plannedDate;
-    const time = draft.plannedTime.trim();
-    /* A HALF-TYPED TIME IS NOT A PLAN. With every pause saved, "1:3" would
-       be written — and logged — on its way to "1:35 AM"; the row keeps what
-       it had until the time reads as one. */
-    const readable = /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(time);
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id !== order.id
-          ? r
-          : {
-              ...r,
-              type: {
-                code: draft.typeCode,
-                label: draft.typeCode === "D" ? "Delivery" : "Extraction",
-              },
-              customer: { title: draft.customer, description: draft.shipTo },
-              products: draft.products,
-              qtyGal: draft.products.reduce((n, p) => n + p.gal, 0),
-              // Date of Delivery was dropped from the sheet, so the row keeps
-              // its own; only the planned date/time is editable here.
-              planned:
-                !plannedDate || !time
-                  ? null
-                  : readable
-                    ? { date: DATE_FMT.format(plannedDate), time }
-                    : r.planned,
-              // The sheet's stage, then the driver rule over it.
-              status: stageAfterDriver(draft.status, Boolean(draft.driver)),
-              urgent: draft.urgent,
-              driver: draft.driver
-                ? {
-                    name: draft.driver,
-                    initials: draft.driver
-                      .split(" ")
-                      .map((w) => w[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase(),
-                  }
-                : null,
-              tags: draft.tags,
-            }
-      )
-    );
-  };
-
-  const toggleRow = (id: string) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  const toggleAll = (checked: boolean) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const r of pageRows) {
-        if (checked) next.add(r.id);
-        else next.delete(r.id);
-      }
-      return next;
-    });
-
-  /* A group's checkbox owns the group's WHOLE membership, collapsed rows
-     included — otherwise it would quietly mean "the rows you can see". */
-  const toggleGroup = (rowIds: string[], checked: boolean) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of rowIds) {
-        if (checked) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-
-  /* THE WINDOW, IN WORDS — 3PL's: one day reads as a date, a range as a range. */
-  const rangeLabel =
-    fromKey === toKey
-      ? formatFullDate(range.from)
-      : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`;
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <FuelOrdersViewBar
-        {...savedViews}
-        onCreateOrder={() => setCreating(true)}
-        /* CREATE ORDER STAYS THE PRIMARY; Create Quote sits beside it,
-           outlined (Pavan, 2026-10-07). */
-        secondaryCta={
-          onCreateQuote ? { label: "Create Quote", onClick: onCreateQuote } : undefined
-        }
-      />
-
-      <div className="mt-4 shrink-0">
-        <FuelOrdersToolbar
-          searchValue={search}
-          onSearchChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
-          columns={TOGGLE_COLUMNS}
-          hiddenColumns={hiddenColumns}
-          onToggleColumn={toggleColumn}
-          onShowAllColumns={() => setHiddenColumns(new Set())}
-          colScope={colScope}
-          onColScopeChange={(v) => {
-            setColScope(v);
-            setPage(1);
-          }}
-          colQuery={colQuery}
-          onColQueryChange={(v) => {
-            setColQuery(v);
-            setPage(1);
-          }}
-          /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only:
-             board and map have no columns to type under. */
-          columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view !== "table"
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* Closing the row clears it: a narrowing with no boxes on
-                       screen would be one nobody could see. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
-          columnFilterCount={activeColFilters.length}
-          view={view}
-          onViewChange={setView}
-          /* Same switch as 3PL, same order: table, board, map. */
-          mapView
-          range={range}
-          onRangeChange={(next) => {
-            setRange(next);
-            setPage(1);
-          }}
-          /* WHAT IS ON THE CARD, PER LANE — 3PL's control. `ListToolbar`
-             shows it on the board only. */
-          cardFields={{
-            units: FUEL_CARD_UNITS,
-            /* On All lanes a field reads ON only when it is on in every lane. */
-            hidden: scopedHidden,
-            scope: cardScope,
-            scopes: FUEL_ORDER_STAGES.map((stage) => ({ key: stage, label: stage })),
-            onScopeChange: setCardScope,
-            onShowAll: () =>
-              setCardOff((prev) => {
-                const next = { ...prev };
-                for (const lane of fuelLanesInScope(cardScope)) next[lane] = new Set();
-                return next;
-              }),
-            /* One press means one thing on All lanes: the field ends up the
-               same everywhere. */
-            onToggle: (k) =>
-              setCardOff((prev) => {
-                const turningOff = !scopedHidden.has(k);
-                const next = { ...prev };
-                for (const lane of fuelLanesInScope(cardScope)) {
-                  next[lane] = toggleFuelField(prev[lane] ?? FUEL_EMPTY_SET, k, turningOff);
-                }
-                return next;
-              }),
-          }}
-          groupBy={{
-            dimensions: g.menuDimensions,
-            value: g.groupBy,
-            onChange: (next) => {
-              g.setGrouping(next);
-              setPage(1);
-            },
-          }}
-          /* WIRED (Pavan, 2026-10-07) — it narrowed nothing. */
-          facets={facets}
-          facetValue={facetSel}
-          facetCountFor={(sel) => narrowFacets(sel).length}
-          onFacetsApply={(sel) => {
-            setFacetSel(sel);
-            setPage(1);
-          }}
-        />
-        {/* ONE SHELF for the ticks, the banner's filter and the column
-            search — Asset Orders' (Pavan, 2026-10-07). */}
-        <FilterChips
-          facets={[...facets, ...OVERDUE_FACETS]}
-          selected={
-            new Set([...facetSel, ...(overdueOnly ? [OVERDUE_ID] : [])])
-          }
-          onChange={(next) => {
-            setOverdueOnly(next.has(OVERDUE_ID));
-            setFacetSel(new Set([...next].filter((id) => id !== OVERDUE_ID)));
-            setPage(1);
-          }}
-        >
-          <ColumnSearchChip
-            className=""
-            colScope={colScope}
-            colQuery={colQuery}
-            onClear={() => {
-              setColQuery("");
-              setPage(1);
-            }}
-          />
-        </FilterChips>
-        <ColumnFilterChips
-          columns={TOGGLE_COLUMNS}
-          filters={activeColFilters}
-          onClear={(key) => {
-            setColFilters((prev) => ({ ...prev, [key]: "" }));
-            setPage(1);
-          }}
-        />
-      </div>
-
-      {alertVisible && (
-        /* URGENT AND LATE reads as a warning, not news (Pavan, 2026-10-07). */
-        <BannerCallout
-          status="warning"
-          variant="soft"
-          className="mt-3 shrink-0"
-          title={`${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`}
-          action={
-            <>
-              {/* SHOW ORDERS IS THE FILTER, not a jump to the first one. The
-                  alert names a SET, so the action has to leave the reader
-                  looking at that set — the banner IS a quick filter. */}
-              <Button
-                variant="outline"
-                size="sm"
-                className={bannerSoftAction}
-                onClick={() => {
-                  /* EXACTLY THE SET THE BANNER COUNTS — a flag, an age and two
-                     stages, which no text query can say (2026-10-07). */
-                  setOverdueOnly(true);
-                  setPage(1);
-                }}
-              >
-                Show orders
-              </Button>
-              {/* SNOOZE IS A CHOICE OF DEADLINE, not a second dismiss. The
-                  useful question is "how long", and a menu is the cheapest
-                  place to ask it — one click to open, one to answer. */}
-              <DropdownMenu>
-                {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE. Both claim the
-                    button through `asChild`, and only this order composes:
-                    the tooltip's props land on the menu trigger, which is
-                    itself `asChild` and forwards both sets to the Button.
-                    Inverted, the menu trigger's props land on `<Tooltip>` —
-                    a provider, not a DOM node — and are silently dropped. */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Remind me later"
-                      >
-                        <Clock />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Remind me later</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {SNOOZE_OPTIONS.map((o) => (
-                    <DropdownMenuItem
-                      key={o.label}
-                      onSelect={() => setSnoozedUntil(Date.now() + o.ms)}
-                    >
-                      {o.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-          onDismiss={() => setAlertDismissed(true)}
-        />
-      )}
-
-      {/* Table region — `relative` anchors the floating bulk-action bar. */}
-      <div className="relative mt-4 min-h-0 flex-1">
-        <div className="h-full min-h-0">
-          {view === "map" ? (
-            /* THE MAP READS THE SAME LIST THE TABLE DOES — `sorted`, so the
-               date, the search and every filter apply to it. A map that quietly
-               showed everything would be answering a different question from
-               the one the toolbar above it says is being asked. */
-            <OrderMapView
-              orders={sorted.map((r) => ({
-                id: r.id,
-                orderNo: r.orderNo,
-                site: r.customer.description,
-                subtitle: r.customer.title,
-                status: r.status,
-                tone: STATUS_TONE[r.status],
-              }))}
-              onOpenOrder={setOpenOrderId}
-            />
-          ) : view === "board" ? (
-            /* THE SALES BOARD (Pavan, 2026-10-07): one lane per stage, left
-               to right as an order moves; Cancelled set apart. The 3PL board,
-               reused. Takes the whole filtered set, not the page. */
-            <BrokerBoard
-              lanes={boardLanes}
-              onOpenCard={setOpenOrderId}
-              laneSortOptions={fuelLaneSortOptions}
-              laneSort={laneSort}
-              onLaneSortChange={(laneKey, option) =>
-                setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }))
-              }
-            />
-          ) : /* THE ROW STAYS WHILE IT IS OPEN — an empty result would
-                 otherwise take the boxes being typed in away with the table. */
-            sorted.length === 0 && !colFiltersOpen ? (
-            <Empty className="h-full">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {query ? <SearchX /> : <CalendarOff />}
-                </EmptyMedia>
-                <EmptyTitle>
-                  {query ? "No matching orders" : "Nothing scheduled"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {query
-                    ? `No fuel orders in ${rangeLabel} match “${search.trim()}”.`
-                    : `No fuel orders are scheduled for ${rangeLabel}.`}
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                {query ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearch("");
-                      setPage(1);
-                    }}
-                  >
-                    Clear search
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const today = startOfDay(new Date());
-                      setRange({ from: today, to: today });
-                      setPage(1);
-                    }}
-                  >
-                    Go to today
-                  </Button>
-                )}
-              </EmptyContent>
-            </Empty>
-          ) : (
-            <FuelOrdersTable
-              rows={pageRows}
-              nodes={g.grouped ? g.groups.nodes : undefined}
-              collapsedGroups={g.collapsed}
-              onToggleGroupCollapse={g.toggleGroupCollapse}
-              onToggleGroup={toggleGroup}
-              selectedIds={selectedIds}
-              onToggleRow={toggleRow}
-              onToggleAll={toggleAll}
-              sort={sort}
-              onSort={onSort}
-              hidden={g.effectiveHidden}
-              columnOrder={columnOrder}
-              onReorderColumns={setColumnOrder}
-              columnWidths={columnWidths}
-              onResizeColumns={setColumnWidths}
-              onOpenOrder={(row) => setOpenOrderId(row.id)}
-              showColumnFilters={colFiltersOpen}
-              columnFilters={colFilters}
-              onColumnFilterChange={(key, value) => {
-                setColFilters((prev) => ({ ...prev, [key]: value }));
-                setPage(1);
-              }}
-            />
-          )}
-        </div>
-
-        {view === "table" && selectedIds.size > 0 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
-            <div className="pointer-events-auto">
-              <FuelOrdersBulkBar
-                count={selectedIds.size}
-                onClear={() => setSelectedIds(new Set())}
-                onSetProducts={bulk.setProducts}
-                onSetDriver={bulk.setDriver}
-                onSetPlannedDate={bulk.setPlannedDate}
-                onSetPlannedTime={bulk.setPlannedTime}
-                onAddTags={bulk.addTags}
-                onDelete={bulk.remove}
-                productOptions={productNames}
-                driverOptions={DRIVER_OPTIONS}
-                tagOptions={TAG_OPTIONS}
-                selectedOrders={selectedOrders}
-                unselectedOrders={unselectedOrders}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <OrderSheet
-        order={rows.find((r) => r.id === openOrderId) ?? null}
-        mode={creating ? "create" : "edit"}
-        open={creating || openOrderId !== null}
-        onOpenChange={(o) => {
-          if (o) return;
-          setCreating(false);
-          setOpenOrderId(null);
-        }}
-        onSave={saveOrder}
-        onCreate={createOrder}
-        customers={customers}
-        shipTos={shipTos}
-        productNames={productNames}
-      />
-
-      {/* Pagination belongs to the paged table. The board view has no paged
-          list, so a "Showing 1-25 of 57" footer under it would be describing
-          something that isn't on screen. */}
-      {/* No top hairline: the table's own last-row rule already closes the list,
-          so a second line here read as a stray divider. */}
-      <div className={cn("mt-4 shrink-0", view !== "table" && "hidden")}>
-        {g.grouped ? (
-          <GroupedListFooter
-            groupCount={g.groups.groupCount}
-            rowCount={g.groups.rowCount}
-            noun="order"
-            total={g.total}
-            unit="gal"
-            overCounts={g.groups.overCounts}
-            allCollapsed={g.allCollapsed}
-            onExpandAll={g.expandAll}
-            onCollapseAll={g.collapseAll}
-          />
-        ) : (
-          <TablePagination
-            page={page}
-            pageSize={pageSize}
-            total={sorted.length}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Placeholder for destinations and modules this pass hasn't built.
@@ -1744,7 +442,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
      a second way to make one record, and the two would drift. A nonce rather
      than a flag — see `startCreate`. */
   const [startCreate, setStartCreate] = React.useState<number | null>(null);
-  /** Create Quote pressed on Fuel Orders — a nonce, as `startCreate`. */
+  /** Create Order › Create Quote pressed on Orders — a nonce, as `startCreate`. */
   const [startQuote, setStartQuote] = React.useState<number | null>(null);
   /* A DASHBOARD PRESS — which list, narrowed how. A nonce so the same press
      twice still lands. */
@@ -1773,6 +471,11 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     email: "pavanshetty@fleetpanda.com",
     fallback: "PS",
   });
+  /* WHO "ME" IS for Sales' Auto-assign owner, and the bell's count with
+     what Sales has raised in-app this visit (Pavan, 2026-10-07). The three
+     were already there — sample, never read from anything. */
+  React.useEffect(() => setSalesCurrentUser(user.name), [user.name]);
+  const salesUnread = useSalesUnread();
   /**
    * The record a global-search hit asked for. Passed to the destination screen
    * as `focus`, which opens that record's sheet on arrival. Keyed by an
@@ -1915,38 +618,36 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return (
           <SalesDashboard
             onDrill={(d) => {
-              goToArea("fuel-orders");
+              goToArea("sales-orders");
               setDrillSales({ ...d, n: Date.now() });
             }}
             onOpenOrder={(id, date) => {
-              goToArea("fuel-orders");
+              goToArea("sales-orders");
               setDrillSales({ date, colFilters: {}, n: Date.now() });
               setFocus({ id, n: Date.now() });
             }}
           />
         );
-      case "fuel-orders":
+      case "sales-orders":
         return (
-          <FuelOrdersScreen
+          <SalesOrdersScreen
             focus={focus}
             drill={drillSales}
-            /* ON THE QUOTES SCREEN, not over Fuel Orders (2026-10-07): the
-               quote lands in the list it belongs to. */
+            /* ON THE QUOTES SCREEN, not over Orders (2026-10-07): the quote
+               lands in the list it belongs to. */
             onCreateQuote={() => {
               goToArea("quotes");
               setStartQuote(Date.now());
             }}
           />
         );
-      case "asset-orders":
-        return <AssetOrdersScreen focus={focus} />;
       case "quotes":
         return (
           <QuotesScreen
             focus={focus}
             create={startQuote}
             onOpenOrder={(id) => {
-              goToArea("fuel-orders");
+              goToArea("sales-orders");
               setFocus({ id, n: Date.now() });
             }}
           />
@@ -1955,6 +656,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <CustomersScreen focus={focus} />;
       case "assets":
         return <AssetsScreen focus={focus} />;
+      case "sales-settings":
+        return <SalesSettingsScreen />;
       case "3pl-dashboard":
         return (
           <ThreePLDashboard
@@ -2085,7 +788,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         topBar={
           <TopBar
             user={user}
-            unread={3}
+            unread={3 + salesUnread}
             searchPlaceholder="Search everything"
             onSearchActivate={() => setSearchOpen(true)}
             onProfile={() => setNavKey("profile")}

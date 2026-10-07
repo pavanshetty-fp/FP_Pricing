@@ -93,6 +93,12 @@ function sectionsFor(
   return out;
 }
 
+/** The module switch's three steps, in order: fold · move · unfold. */
+const FOLD_MS = 200;
+const MOVE_MS = 260;
+const UNFOLD_MS = 240;
+const EASE = "cubic-bezier(0.2, 0, 0, 1)";
+
 export function ModuleSidebar({
   modules,
   moduleNav,
@@ -132,6 +138,81 @@ export function ModuleSidebar({
   };
 
   const sections = sectionsFor(moduleNav[activeModule] ?? [], subNav);
+
+  /*
+    SWITCHING MODULES IS THREE STEPS, ONE AFTER ANOTHER (Pavan, 2026-10-07):
+      1. FOLD — the open module's pages fold away, the list order unchanged;
+      2. MOVE — the rows glide to the new order: the chosen module rises to
+         the top, the old one settles back into its place (FLIP);
+      3. UNFOLD — the chosen module's pages open.
+    `view` is what the list is SHOWING, which trails `activeModule` through
+    the steps. The click itself (bold, page content) lands at once.
+  */
+  const [view, setView] = React.useState<{
+    first: string;
+    mounted: string | null;
+    unfolded: string | null;
+  }>({ first: activeModule, mounted: activeModule, unfolded: activeModule });
+  const rowRefs = React.useRef(new Map<string, HTMLLIElement>());
+  const fromTops = React.useRef<Map<string, number> | null>(null);
+  const timers = React.useRef<number[]>([]);
+  const reduced = () => {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  };
+  React.useEffect(() => {
+    if (view.first === activeModule) return;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    const target = activeModule;
+    if (reduced()) {
+      setView({ first: target, mounted: target, unfolded: target });
+      return;
+    }
+    const later = (ms: number, fn: () => void) =>
+      timers.current.push(window.setTimeout(fn, ms));
+    /* 1 · FOLD */
+    setView((v) => ({ ...v, unfolded: null }));
+    /* 2 · MOVE — measured with everything folded, then reordered. */
+    later(FOLD_MS, () => {
+      const tops = new Map<string, number>();
+      rowRefs.current.forEach((el, key) => tops.set(key, el.getBoundingClientRect().top));
+      fromTops.current = tops;
+      setView({ first: target, mounted: null, unfolded: null });
+    });
+    /* 3 · UNFOLD — mounted folded, opened on the next frame. */
+    later(FOLD_MS + MOVE_MS, () => {
+      setView({ first: target, mounted: target, unfolded: null });
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setView({ first: target, mounted: target, unfolded: target }))
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeModule]);
+  React.useEffect(
+    () => () => timers.current.forEach((t) => window.clearTimeout(t)),
+    []
+  );
+  /* THE GLIDE — each row set back to where it was, then let go. */
+  React.useLayoutEffect(() => {
+    const from = fromTops.current;
+    if (!from) return;
+    fromTops.current = null;
+    rowRefs.current.forEach((el, key) => {
+      const was = from.get(key);
+      if (was === undefined) return;
+      const delta = was - el.getBoundingClientRect().top;
+      if (Math.abs(delta) < 1) return;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${delta}px)`;
+      void el.offsetHeight;
+      el.style.transition = `transform ${MOVE_MS}ms ${EASE}`;
+      el.style.transform = "";
+    });
+  }, [view.first]);
   const isActive = (p: Page) =>
     p.area === activeArea &&
     (p.sub === null ? activeSub === null : p.sub === activeSub);
@@ -243,13 +324,18 @@ export function ModuleSidebar({
           {/* THE OPEN MODULE GOES FIRST (Pavan, 2026-10-06); the rest follow
             in their usual order. */}
           {[
-            ...modules.filter((m) => m.key === activeModule),
-            ...modules.filter((m) => m.key !== activeModule),
+            ...modules.filter((m) => m.key === view.first),
+            ...modules.filter((m) => m.key !== view.first),
           ].map((m) => {
             const open = m.key === activeModule;
             return (
               <React.Fragment key={m.key}>
-                <li>
+                <li
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(m.key, el);
+                    else rowRefs.current.delete(m.key);
+                  }}
+                >
                   <button
                     type="button"
                     aria-expanded={open}
@@ -266,9 +352,29 @@ export function ModuleSidebar({
                       {m.name}
                     </span>
                   </button>
-                  {open && sections.length > 0 && (
+                  {(() => {
+                    const own =
+                      m.key === view.mounted ? sectionsFor(moduleNav[m.key] ?? [], subNav) : [];
+                    if (own.length === 0) return null;
+                    const unfolded = view.unfolded === m.key;
+                    return (
+                    /* THE FOLD — grid rows 0fr ↔ 1fr, so the height animates
+                       to and from its natural size without being measured. */
+                    <div
+                      aria-hidden={!open}
+                      inert={!open}
+                      className="grid motion-reduce:transition-none"
+                      style={{
+                        gridTemplateRows: unfolded ? "1fr" : "0fr",
+                        opacity: unfolded ? 1 : 0,
+                        transition: unfolded
+                          ? `grid-template-rows ${UNFOLD_MS}ms ${EASE}, opacity ${UNFOLD_MS}ms ${EASE}`
+                          : `grid-template-rows ${FOLD_MS}ms ${EASE}, opacity ${FOLD_MS}ms ${EASE}`,
+                      }}
+                    >
+                    <div className="min-h-0 overflow-hidden">
                     <div className="mt-1 mb-2 ml-5 flex flex-col gap-2 border-l border-fp-shell-guide pl-2.5">
-                      {sections.map((sec, i) => (
+                      {own.map((sec, i) => (
                         <div
                           key={sec.heading ?? `loose-${i}`}
                           className="flex flex-col gap-0.5"
@@ -302,16 +408,11 @@ export function ModuleSidebar({
                         </div>
                       ))}
                     </div>
-                  )}
+                    </div>
+                    </div>
+                    );
+                  })()}
                 </li>
-                {/* THE OPEN MODULE AND THE REST, parted by a faint rule (Pavan,
-                2026-10-07) — no mark on the module itself. */}
-                {open && modules.length > 1 && (
-                  <li
-                    aria-hidden
-                    className="mx-2.5 my-1.5 border-t border-fp-shell-guide"
-                  />
-                )}
               </React.Fragment>
             );
           })}

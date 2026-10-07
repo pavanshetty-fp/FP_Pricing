@@ -185,6 +185,22 @@ const recommendedSuppliers = (r: Recommendation) =>
       ]
     : r.suppliers;
 
+/**
+ * WHAT A RECOMMENDATION COVERS — counted from its ship-tos. Assets are the
+ * tanks at those sites that hold the rule's product; gallons are the six
+ * months' total. INVENTED through the fixture, like the history.
+ */
+function coverage(r: Recommendation) {
+  const customers = new Set(r.targets.map((t) => t.customer.name)).size;
+  const products = new Set(r.targets.flatMap((t) => t.products)).size;
+  const assets = r.targets.reduce(
+    (n, t) => n + (siteByName(t.shipTo)?.assets.filter((a) => a.product === r.product).length ?? 0),
+    0
+  );
+  const gallons = r.targets.reduce((n, t) => n + t.gallons, 0);
+  return { customers, products, assets, gallons, perAsset: assets > 0 ? Math.round(gallons / assets) : 0 };
+}
+
 /** The ship-tos grouped under their customer, in first-seen order. */
 const byCustomer = (targets: RecommendedTarget[]) => {
   const groups = new Map<string, RecommendedTarget[]>();
@@ -260,7 +276,7 @@ export function RuleRecommendations({
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="z-[60] w-[min(560px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(560px,calc(100vw-56px))]"
+          className="z-[60] w-[calc(100vw-56px)] gap-0 p-0 sm:max-w-[calc(100vw-56px)]"
         >
           <div className="flex items-start justify-between gap-4 border-b border-border p-4">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -285,7 +301,7 @@ export function RuleRecommendations({
                     titles. */}
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-start justify-between gap-3">
-                    <ScheduleCell schedule={toSchedule(r.frequency)} />
+                    <ScheduleCell schedule={toSchedule(r.frequency)} emphasis />
                     <Button
                       size="sm"
                       variant="outline"
@@ -306,7 +322,20 @@ export function RuleRecommendations({
                     title={r.match}
                     className="[&>p]:flex-wrap [&>p]:items-baseline [&>p]:gap-y-1 [&>p]:leading-snug"
                   >
-                    {r.deliveries} · {r.quantity}
+                    {/* WHAT THE RULE WOULD COVER (Pavan, 2026-10-07): customers,
+                        products, assets and gallons, beside the history. */}
+                    {(() => {
+                      const c = coverage(r);
+                      return [
+                        r.deliveries,
+                        r.quantity,
+                        `${c.customers} ${c.customers === 1 ? "customer" : "customers"}`,
+                        `${c.products} ${c.products === 1 ? "product" : "products"}`,
+                        `${c.assets} ${c.assets === 1 ? "asset" : "assets"}`,
+                        `${c.gallons.toLocaleString("en-US")} gal total`,
+                        `${c.perAsset.toLocaleString("en-US")} gal per asset`,
+                      ].join(" · ");
+                    })()}
                   </BannerCallout>
                   {/* VENDORS, SUPPLIERS, LOAD ORDER (Pavan, 2026-10-07). */}
                   <dl className="grid grid-cols-3 gap-3">

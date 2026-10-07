@@ -57,3 +57,7 @@ and is switched off per sheet.
 The stepped form's look is kept: plain group headings
 (`text-base font-medium text-muted-foreground`), field sections `plain`, table
 sections `outline`, 40px between groups, one long scroll. Only the column goes.
+
+**2026-10-07 (Pavan): off in EVERY module.** `RecordSheet`'s `stepColumn`
+now defaults to `false`; no sheet passes it. To bring it back on one sheet,
+pass `stepColumn`; everywhere, flip the default back to `true`.

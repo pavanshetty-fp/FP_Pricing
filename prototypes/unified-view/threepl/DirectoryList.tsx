@@ -1,6 +1,6 @@
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Download, Plus, SearchX } from "lucide-react";
+import { Plus, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -27,6 +27,7 @@ import {
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
+import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { ListTable } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import { packList, readUrl, unpackList, writeUrl } from "./directoryUrl";
@@ -206,6 +207,10 @@ interface ViewState {
   /** The header row's boxes, by column key. Optional so a view saved before
    *  them still applies. */
   colFilters?: Record<string, string>;
+  /* A SAVED VIEW KEEPS THE COLUMNS' ORDER AND WIDTHS (Pavan, 2026-10-07), as
+     Delivery Orders does. Optional so an older view still applies. */
+  columnOrder?: string[];
+  columnWidths?: Record<string, number>;
 }
 
 const keyOf = (s: ViewState) =>
@@ -214,6 +219,8 @@ const keyOf = (s: ViewState) =>
     hidden: [...s.hidden].sort(),
     filters: [...s.filters].sort(),
     colFilters: Object.fromEntries(liveColFilters(s.colFilters)),
+    columnOrder: s.columnOrder ?? [],
+    columnWidths: s.columnWidths ?? {},
   });
 
 export function DirectoryList<Row, K extends string>({
@@ -286,6 +293,10 @@ export function DirectoryList<Row, K extends string>({
     () => liveColFilters(readColFilters(boot.colFilters)).length > 0
   );
   const activeColFilters = React.useMemo(() => liveColFilters(colFilters), [colFilters]);
+  /* Columns move and resize, lifted so a view keeps them (Pavan, 2026-10-07). */
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
+  const [exporting, setExporting] = React.useState(false);
 
   /*
     THE LOADING STATE IS REAL, not a toggle in a demo.
@@ -315,6 +326,8 @@ export function DirectoryList<Row, K extends string>({
     colQuery,
     filters: applied,
     colFilters,
+    columnOrder,
+    columnWidths,
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
@@ -327,6 +340,8 @@ export function DirectoryList<Row, K extends string>({
       colQuery: "",
       filters: [],
       colFilters: {},
+      columnOrder: [],
+      columnWidths: {},
     }),
     [firstScope]
   );
@@ -342,6 +357,8 @@ export function DirectoryList<Row, K extends string>({
     setColFilters(filters);
     /* The row opens when the view has something typed in it. */
     setColFiltersOpen(liveColFilters(filters).length > 0);
+    setColumnOrder(s.columnOrder ?? []);
+    setColumnWidths(s.columnWidths ?? {});
     setPage(1);
     reload();
   };
@@ -484,9 +501,60 @@ export function DirectoryList<Row, K extends string>({
   const typed = Boolean(q || cq || activeColFilters.length > 0);
   const typedText = (search || colQuery).trim() || activeColFilters[0]?.[1].trim() || "";
 
+  /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the same sheet as Delivery
+     Orders, listing every narrowing that shapes the file. */
+  const exportFilters: ExportFilterRow[] = [
+    {
+      key: "search",
+      label: "Search",
+      values: search.trim()
+        ? [{ value: search.trim(), onRemove: () => { setSearch(""); setPage(1); } }]
+        : [],
+    },
+    {
+      key: "colSearch",
+      label: searchFields.find((f) => f.key === colScope)?.label ?? "Column",
+      values: colQuery.trim()
+        ? [{ value: colQuery.trim(), onRemove: () => { setColQuery(""); setPage(1); } }]
+        : [],
+    },
+    ...activeColFilters.map(([key, value]) => ({
+      key: `col:${key}`,
+      label: columns.find((c) => c.key === key)?.label ?? key,
+      values: [
+        {
+          value: value.trim(),
+          onRemove: () => {
+            setColFilters((prev) => ({ ...prev, [key]: "" }));
+            setPage(1);
+          },
+        },
+      ],
+    })),
+    ...facets.map((f) => {
+      const mine = applied.filter((id) => id.startsWith(`${f.key}:`));
+      const drop = (ids: string[]) => {
+        setApplied((prev) => prev.filter((id) => !ids.includes(id)));
+        setPage(1);
+      };
+      return {
+        key: f.key,
+        label: f.label,
+        values: mine.map((id) => ({
+          value: id.slice(f.key.length + 1),
+          onRemove: () => drop([id]),
+        })),
+        onRemoveAll: () => drop(mine),
+      };
+    }),
+  ];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <FuelOrdersViewBar {...savedViews} />
+      <FuelOrdersViewBar
+        {...savedViews}
+        onExport={exportRow ? () => setExporting(true) : undefined}
+      />
 
       <div className="mt-4 flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -526,6 +594,8 @@ export function DirectoryList<Row, K extends string>({
             }}
             columns={toggleColumns}
             hiddenColumns={hidden}
+            columnOrder={columnOrder}
+            onReorderColumns={setColumnOrder}
             onToggleColumn={(k) =>
               setHidden((prev) => {
                 const next = new Set(prev);
@@ -572,26 +642,6 @@ export function DirectoryList<Row, K extends string>({
           />
         </div>
 
-        {/* EXPORT SITS WITH THE SEARCH, not with Add New. Both act on the list
-            you have narrowed to; Add New acts on the directory. */}
-        {exportRow && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            disabled={count === 0}
-            onClick={() => {
-              downloadCsv(`${urlKey}-${new Date().toISOString().slice(0, 10)}`,
-                sorted.map(exportRow));
-              toast.success(`Exported ${count.toLocaleString()} ${count === 1 ? noun : plural}`, {
-                description: "The filtered list, all pages, in the order shown.",
-              });
-            }}
-          >
-            <Download />
-            Export
-          </Button>
-        )}
         {onCreate && (
           <Button
             size="sm"
@@ -712,6 +762,10 @@ export function DirectoryList<Row, K extends string>({
               rowId={rowId}
               renderCell={renderCell}
               actionsKey={"actions" as K}
+              columnOrder={columnOrder}
+              onReorderColumns={setColumnOrder}
+              columnWidths={columnWidths}
+              onResizeColumns={setColumnWidths}
               openLabel={openLabel}
               onOpenRow={onOpenRow}
               showColumnFilters={colFiltersOpen}
@@ -799,6 +853,49 @@ export function DirectoryList<Row, K extends string>({
           />
         )}
       </div>
+
+      {exportRow && (
+        <ExportSheet
+          open={exporting}
+          onOpenChange={setExporting}
+          title={`Export ${plural[0].toUpperCase()}${plural.slice(1)}`}
+          noun={plural}
+          nounOne={noun}
+          count={count}
+          filtersControl={
+            facets.length > 0 ? (
+              <ListFilters
+                facets={facets.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                  options: f.options,
+                  searchable: f.searchable,
+                }))}
+                value={appliedSet}
+                countFor={(sel) => narrow(sel).length}
+                onApply={(ids) => {
+                  setApplied([...ids]);
+                  setPage(1);
+                }}
+                fullWidth
+              />
+            ) : undefined
+          }
+          filters={exportFilters}
+          onExport={(format) => {
+            setExporting(false);
+            if (format === "csv") {
+              downloadCsv(`${urlKey}-${new Date().toISOString().slice(0, 10)}`,
+                sorted.map(exportRow));
+              toast.success(`Exported ${count.toLocaleString()} ${count === 1 ? noun : plural}`);
+            } else {
+              toast.success(
+                `Exporting ${count.toLocaleString()} ${count === 1 ? noun : plural} as .${format}`
+              );
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

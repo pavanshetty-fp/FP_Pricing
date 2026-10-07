@@ -103,6 +103,12 @@ import type { FuelOrder } from "./types";
 
 export interface FuelOrdersBulkBarProps {
   count: number;
+  /**
+   * HOW MANY OF THEM THE FIELD EDITS REACH (Pavan, 2026-10-07) — Sales Orders
+   * mixes fuel and asset orders, and the five edits are a fuel order's
+   * fields. Defaults to `count`; at 0 only Delete is offered.
+   */
+  editCount?: number;
   onClear: () => void;
   /**
    * Replace every selected order's product lines with these products, splitting
@@ -174,6 +180,7 @@ function initialsOf(name: string) {
 
 export function FuelOrdersBulkBar({
   count,
+  editCount = count,
   onClear,
   onSetProducts,
   onSetDriver,
@@ -266,33 +273,36 @@ export function FuelOrdersBulkBar({
           </button>
         </span>
 
-        <FieldAction
-          icon={<Package />}
-          label="Products"
-          onClick={() => setAction("products")}
-        />
-        <FieldAction
-          icon={<User />}
-          label="Driver"
-          onClick={() => setAction("driver")}
-        />
-        <FieldAction
-          icon={<CalendarIcon />}
-          label="Planned date"
-          onClick={() => setAction("date")}
-        />
-        <FieldAction
-          icon={<Clock />}
-          label="Planned time"
-          onClick={() => setAction("time")}
-        />
-        <FieldAction
-          icon={<Tag />}
-          label="Add tags"
-          onClick={() => setAction("tags")}
-        />
-
-        <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+        {editCount > 0 && (
+          <>
+            <FieldAction
+              icon={<Package />}
+              label="Products"
+              onClick={() => setAction("products")}
+            />
+            <FieldAction
+              icon={<User />}
+              label="Driver"
+              onClick={() => setAction("driver")}
+            />
+            <FieldAction
+              icon={<CalendarIcon />}
+              label="Planned date"
+              onClick={() => setAction("date")}
+            />
+            <FieldAction
+              icon={<Clock />}
+              label="Planned time"
+              onClick={() => setAction("time")}
+            />
+            <FieldAction
+              icon={<Tag />}
+              label="Add tags"
+              onClick={() => setAction("tags")}
+            />
+            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+          </>
+        )}
 
         {/* Delete — icon only, and always behind a confirm. */}
         <AlertDialog>
@@ -333,7 +343,7 @@ export function FuelOrdersBulkBar({
         onOpenChange={(o) => !o && close()}
         title="Products"
         scopeVerb="Set the products on"
-        count={count}
+        count={editCount}
         canProceed={products.length > 0}
         summaryDescription={
           products.length === 1
@@ -377,7 +387,7 @@ export function FuelOrdersBulkBar({
         onOpenChange={(o) => !o && close()}
         title="Driver"
         scopeVerb="Assign driver to"
-        count={count}
+        count={editCount}
         canProceed={driver !== undefined}
         summaryDescription={
           driver
@@ -451,7 +461,7 @@ export function FuelOrdersBulkBar({
         onOpenChange={(o) => !o && close()}
         title="Planned date"
         scopeVerb="Set the planned date on"
-        count={count}
+        count={editCount}
         canProceed={date !== undefined}
         summaryDescription="This planned date replaces whatever each selected order carries now. The delivery date is unaffected."
         onConfirm={() => date && onSetPlannedDate(date)}
@@ -476,7 +486,7 @@ export function FuelOrdersBulkBar({
         onOpenChange={(o) => !o && close()}
         title="Planned time"
         scopeVerb="Set the planned time on"
-        count={count}
+        count={editCount}
         canProceed={time.trim().length > 0}
         summaryDescription="This planned time replaces whatever each selected order carries now."
         onConfirm={() => time.trim() && onSetPlannedTime(time.trim())}
@@ -509,7 +519,7 @@ export function FuelOrdersBulkBar({
         onOpenChange={(o) => !o && close()}
         title="Add tags"
         scopeVerb="Add tags to"
-        count={count}
+        count={editCount}
         canProceed={tags.length > 0}
         summaryDescription="These tags are ADDED to whatever each order already carries — nothing is removed."
         onConfirm={() => tags.length > 0 && onAddTags(tags)}

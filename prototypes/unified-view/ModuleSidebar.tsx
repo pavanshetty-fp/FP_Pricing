@@ -94,6 +94,14 @@ function sectionsFor(
 }
 
 /** The module switch's three steps, in order: fold · move · unfold. */
+const PROGRESS_MS = 320;
+const reducedMotion = () => {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+};
 const FOLD_MS = 200;
 const MOVE_MS = 260;
 const UNFOLD_MS = 240;
@@ -153,6 +161,29 @@ export function ModuleSidebar({
     mounted: string | null;
     unfolded: string | null;
   }>({ first: activeModule, mounted: activeModule, unfolded: activeModule });
+  /* STEP 0 · PROGRESS (Pavan, 2026-10-08): a click first runs a thin bar
+     across the chosen row, left to right; the switch — and the fold, move,
+     unfold after it — starts when the bar arrives. */
+  const [progress, setProgress] = React.useState<string | null>(null);
+  const progressTimer = React.useRef<number | null>(null);
+  const pick = (key: string) => {
+    if (key === activeModule || progress) return;
+    if (reducedMotion()) {
+      onModuleChange(key);
+      return;
+    }
+    setProgress(key);
+    progressTimer.current = window.setTimeout(() => {
+      setProgress(null);
+      onModuleChange(key);
+    }, PROGRESS_MS);
+  };
+  React.useEffect(
+    () => () => {
+      if (progressTimer.current) window.clearTimeout(progressTimer.current);
+    },
+    []
+  );
   const rowRefs = React.useRef(new Map<string, HTMLLIElement>());
   const fromTops = React.useRef<Map<string, number> | null>(null);
   const timers = React.useRef<number[]>([]);
@@ -186,9 +217,9 @@ export function ModuleSidebar({
     /* 3 · UNFOLD — mounted folded, opened on the next frame. */
     later(FOLD_MS + MOVE_MS, () => {
       setView({ first: target, mounted: target, unfolded: null });
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => setView({ first: target, mounted: target, unfolded: target }))
-      );
+      /* A TIMER, NOT A FRAME — frames stall in a background tab and would
+         leave the pages folded. */
+      later(30, () => setView({ first: target, mounted: target, unfolded: target }));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeModule]);
@@ -339,9 +370,9 @@ export function ModuleSidebar({
                   <button
                     type="button"
                     aria-expanded={open}
-                    onClick={() => !open && onModuleChange(m.key)}
+                    onClick={() => !open && pick(m.key)}
                     className={cn(
-                      "flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
+                      "relative flex h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
                       open
                         ? "font-medium text-sidebar-foreground"
                         : "text-sidebar-foreground/80 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
@@ -351,6 +382,12 @@ export function ModuleSidebar({
                     <span className="min-w-0 flex-1 truncate text-left">
                       {m.name}
                     </span>
+                    {progress === m.key && (
+                      <span
+                        aria-hidden
+                        className="fp-nav-progress absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand"
+                      />
+                    )}
                   </button>
                   {(() => {
                     const own =

@@ -25,6 +25,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Module-switch progress (Pavan, 2026-10-08) — a thin bar filling its row
+   left to right before the switch. A keyframe, not a JS-timed transition, so
+   it can never stall half-way. */
+@keyframes fp-nav-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.fp-nav-progress {
+  transform-origin: left center;
+  animation: fp-nav-progress 320ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
 /* Bulk-action bar entrance — a vertical translate (200ms), not opacity alone.
    Default state has no transform, so the docked position is correct without JS. */
 @keyframes bulk-bar-in {

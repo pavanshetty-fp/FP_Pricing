@@ -66,7 +66,10 @@ AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
 of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
 edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
 line (#e6e4e2); the open module takes weight, not a fill, and sits FIRST —
-no ring, dot, chevron or divider marks it (Pavan, 2026-10-07). **Switching modules is three steps, in
+no ring, dot, chevron or divider marks it (Pavan, 2026-10-07). **Switching modules starts with a
+progress bar** (Pavan, 2026-10-08): a 2px bar in the BRAND colour (`bg-brand`, Pavan 2026-10-09)
+fills the clicked row left to right (320ms, CSS keyframe); when it arrives the
+module switches and the three steps run. **The three steps, in
 order** (Pavan, 2026-10-07): the open module FOLDS its pages (200ms), then the
 rows MOVE — the chosen module glides to the top, the old one back to its place
 (260ms, FLIP) — then the chosen module UNFOLDS (240ms). One curve,

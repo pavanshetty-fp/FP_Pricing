@@ -38,7 +38,7 @@
 }
 .fp-nav-progress {
   transform-origin: left center;
-  animation: fp-nav-progress 320ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  animation: fp-nav-progress 3000ms linear forwards;
 }
 
 /* Bulk-action bar entrance — a vertical translate (200ms), not opacity alone.

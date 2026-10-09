@@ -94,7 +94,9 @@ function sectionsFor(
 }
 
 /** The module switch's three steps, in order: fold · move · unfold. */
-const PROGRESS_MS = 320;
+/* A MODULE TAKES 3–5s TO LOAD (Pavan, 2026-10-09); the bar runs for the
+   short end of that, and must match `.fp-nav-progress` in src/index.css. */
+const PROGRESS_MS = 3000;
 const reducedMotion = () => {
   try {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -389,6 +391,13 @@ export function ModuleSidebar({
                       />
                     )}
                   </button>
+                  {/* SAID UNDER THE BAR, in the same row's group, no box
+                      (Pavan, 2026-10-09). */}
+                  {progress === m.key && (
+                    <p role="status" className="mt-1 px-2.5 text-xs text-muted-foreground">
+                      Loading data for this module.
+                    </p>
+                  )}
                   {(() => {
                     const own =
                       m.key === view.mounted ? sectionsFor(moduleNav[m.key] ?? [], subNav) : [];

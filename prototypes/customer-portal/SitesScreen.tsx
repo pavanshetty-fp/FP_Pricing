@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Database, MapPin, Wrench } from "lucide-react";
+import { Database, History, MapPin, Wrench } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -9,8 +10,11 @@ import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
 import { OverflowList, TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { useSavedViews } from "../unified-view/useSavedViews";
-import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, type Asset, type ShipTo } from "./orders";
-import { useShipTos } from "./sites";
+import { DATE_FMT } from "../unified-view/data";
+import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, printKey, type Asset, type ShipTo } from "./orders";
+import { createdOf, lastDeliveryFor, useShipTos } from "./sites";
+import { ActivityLogSheet } from "./ActivityLogSheet";
+import { assetLog } from "./activityLog";
 import { PortalList } from "./PortalList";
 import { ShipToSheet } from "./ShipToSheet";
 import { AssetSheet } from "./AssetSheet";
@@ -83,25 +87,38 @@ interface AssetRow {
 }
 type AK =
   | "asset"
+  | "rfid"
+  | "erpId"
   | "type"
   | "shipTo"
+  | "categories"
   | "product"
   | "capacity"
   | "ownership"
   | "monitor"
   | "level"
+  | "created"
+  | "lastFilled"
+  | "log"
   | "location"
   | "status"
   | "actions";
+/* THE ASSET SHEET'S DETAILS, column for column (Pavan, 2026-10-13). */
 const ASSET_COLUMNS: ListColumn<AK>[] = [
   { key: "asset", label: "Asset", width: 180, sortable: true },
+  { key: "rfid", label: "RFID Code", width: 150, sortable: true },
+  { key: "erpId", label: "ERP ID", width: 120, sortable: true },
   { key: "type", label: "Type", width: 110, sortable: true },
   { key: "shipTo", label: "Ship-to", width: 150, sortable: true },
-  { key: "product", label: "Product", width: 140, sortable: true },
+  { key: "categories", label: "Product Categories", width: 160, sortable: true },
+  { key: "product", label: "Products", width: 160, sortable: true },
   { key: "capacity", label: "Size (Gal)", width: 100, sortable: true, align: "right" },
   { key: "ownership", label: "Ownership", width: 110, sortable: true },
   { key: "monitor", label: "Tank Monitor", width: 130, sortable: true },
   { key: "level", label: "Level", width: 130, sortable: true },
+  { key: "created", label: "Created By", width: 150, sortable: true },
+  { key: "lastFilled", label: "Last Filled", width: 120, sortable: true },
+  { key: "log", label: "Activity Log", width: 110 },
   { key: "location", label: "Location", width: 170, sortable: true },
   { key: "status", label: "Status", width: 110, sortable: true },
   { key: "actions", label: "", width: 44 },
@@ -110,12 +127,26 @@ const assetText = ({ asset: a, shipTo: s }: AssetRow, k: AK): string => {
   switch (k) {
     case "asset":
       return `${a.name} ${a.code}`;
+    case "rfid":
+      return a.rfid;
+    case "erpId":
+      return a.erpId;
+    case "categories":
+      return a.categories.join(", ");
+    case "created": {
+      const c = createdOf(a);
+      return c ? `${c.by} ${DATE_FMT.format(new Date(c.at))}` : "";
+    }
+    case "lastFilled": {
+      const d = lastDeliveryFor(a.id);
+      return d ? printKey(d) : "";
+    }
     case "type":
       return a.type;
     case "shipTo":
       return s.name;
     case "product":
-      return a.product;
+      return a.products.join(", ");
     case "capacity":
       return a.capacity ? a.capacity.toLocaleString() : "";
     case "ownership":
@@ -163,6 +194,7 @@ export function SitesScreen({
   const [tab, setTab] = React.useState("shipTos");
   const [openShipTo, setOpenShipTo] = React.useState<{ id: string | null } | null>(null);
   const [openAsset, setOpenAsset] = React.useState<{ id: string | null } | null>(null);
+  const [logFor, setLogFor] = React.useState<AssetRow | null>(null);
   const assetRows = React.useMemo<AssetRow[]>(
     () => shipTos.flatMap((s) => s.assets.map((asset) => ({ asset, shipTo: s }))),
     [shipTos]
@@ -247,19 +279,60 @@ export function SitesScreen({
           rowId={(r) => r.asset.id}
           text={assetText}
           sortValue={(r, k) =>
-            k === "capacity" ? r.asset.capacity : k === "level" ? (r.asset.monitor ? r.asset.level : -1) : undefined
+            k === "capacity"
+              ? r.asset.capacity
+              : k === "level"
+                ? r.asset.monitor
+                  ? r.asset.level
+                  : -1
+                : k === "created"
+                  ? (createdOf(r.asset)?.at ?? "")
+                  : k === "lastFilled"
+                    ? (lastDeliveryFor(r.asset.id) ?? "")
+                    : undefined
           }
           renderCell={(r, k) => {
             const a = r.asset;
             switch (k) {
               case "asset":
                 return <TwoLineCell title={a.name} description={a.code || "—"} />;
+              case "rfid":
+                return a.rfid ? <span className="text-sm tabular-nums">{a.rfid}</span> : muted;
+              case "erpId":
+                return a.erpId ? <span className="text-sm tabular-nums">{a.erpId}</span> : muted;
+              case "categories":
+                return <OverflowList values={a.categories} label="categories" />;
+              case "created": {
+                const c = createdOf(a);
+                return c ? <TwoLineCell title={c.by} description={DATE_FMT.format(new Date(c.at))} /> : muted;
+              }
+              case "lastFilled": {
+                const d = lastDeliveryFor(a.id);
+                return d ? <span className="text-sm">{printKey(d)}</span> : muted;
+              }
+              case "log":
+                /* THE ROW'S HISTORY, on its own sheet — not the row's open. */
+                return (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 text-muted-foreground"
+                    aria-label={`Activity log of ${a.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLogFor(r);
+                    }}
+                  >
+                    <History />
+                    Log
+                  </Button>
+                );
               case "type":
                 return <span className="text-sm">{a.type}</span>;
               case "shipTo":
                 return <span className="truncate text-sm">{r.shipTo.name}</span>;
               case "product":
-                return <span className="text-sm">{a.product}</span>;
+                return <OverflowList values={a.products} label="products" />;
               case "capacity":
                 return <span className="text-sm tabular-nums">{a.capacity.toLocaleString()}</span>;
               case "ownership":
@@ -292,6 +365,7 @@ export function SitesScreen({
           facets={[
             { key: "type", label: "Type", options: ASSET_TYPES },
             { key: "shipTo", label: "Ship-to", options: shipTos.map((s) => s.name) },
+            { key: "categories", label: "Product category", options: [...PRODUCT_CATEGORIES] },
             { key: "product", label: "Product", options: PRODUCTS },
             { key: "ownership", label: "Ownership", options: ["Owned", "Rented"] },
             { key: "monitor", label: "Tank monitor", options: ["Monitored", "No monitor"] },
@@ -304,8 +378,10 @@ export function SitesScreen({
                 return [a.type];
               case "shipTo":
                 return [r.shipTo.name];
+              case "categories":
+                return a.categories;
               case "product":
-                return [a.product];
+                return a.products;
               case "ownership":
                 return [a.rented ? "Rented" : "Owned"];
               case "monitor":
@@ -344,6 +420,13 @@ export function SitesScreen({
         creating={openAsset !== null && openAsset.id === null}
         onOpenChange={(o) => !o && setOpenAsset(null)}
         onCreateOrder={order}
+      />
+      <ActivityLogSheet
+        open={logFor !== null}
+        onOpenChange={(o) => !o && setLogFor(null)}
+        title={logFor?.asset.name ?? "Asset"}
+        subtitle={logFor?.shipTo.name}
+        entries={logFor ? assetLog(logFor.asset.id) : []}
       />
     </div>
   );

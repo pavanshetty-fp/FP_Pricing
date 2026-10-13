@@ -1,14 +1,16 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, ClipboardPlus, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Ban, ClipboardPlus, History, MoreHorizontal, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import {
   TableCellInput,
+  TableCellMultiSelect,
   TableCellSelect,
   TableRequiredLabel,
   TableRowRemove,
@@ -20,13 +22,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
-import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { LocationMap } from "./LocationMap";
+import { searchPlaces } from "./geo";
+import { ActivityLogSheet } from "./ActivityLogSheet";
+import { assetLog, shipToLog } from "./activityLog";
 import { type PendingItem } from "../unified-view/PendingStrip";
-import { ASSET_TYPES, PRODUCTS, type ShipTo } from "./orders";
+import { ASSET_TYPES, productsIn, type ShipTo } from "./orders";
 import {
   blankAsset,
   blankShipTo,
@@ -75,10 +82,13 @@ function AssetsTable({
   rows,
   focusRow,
   onChange,
+  onLog,
 }: {
   rows: AssetDraft[];
   focusRow?: number;
   onChange: (next: AssetDraft[]) => void;
+  /** Opens a row's activity log (Pavan, 2026-10-13). */
+  onLog: (i: number) => void;
 }) {
   const update = (i: number, p: Partial<AssetDraft>) =>
     onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
@@ -87,25 +97,27 @@ function AssetsTable({
   return (
     <table className="w-full table-fixed border-collapse">
       <colgroup>
-        <col className="w-[22%]" />
+        <col className="w-[19%]" />
+        <col className="w-[13%]" />
         <col className="w-[15%]" />
-        <col className="w-[17%]" />
+        <col className="w-[10%]" />
         <col className="w-[11%]" />
-        <col className="w-[12%]" />
-        <col className="w-[12%]" />
-        <col className="w-[72px]" />
+        <col className="w-[11%]" />
+        <col className="w-[92px]" />
+        <col className="w-[104px]" />
         <col className="w-[52px]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
           <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Asset</TableRequiredLabel></th>
           <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Type</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Product</TableRequiredLabel></th>
+          <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Products</TableRequiredLabel></th>
           <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Size (gal)</TableRequiredLabel></th>
           <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Latitude</TableRequiredLabel></th>
           <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Longitude</TableRequiredLabel></th>
           {/* A NAMED CHECKBOX COLUMN — interactions T5. */}
           <th className="px-3 py-2.5 text-left"><TableRequiredLabel>Rented</TableRequiredLabel></th>
+          <th className="px-3 py-2.5 text-left"><TableRequiredLabel>Activity log</TableRequiredLabel></th>
           <th aria-hidden />
         </tr>
       </thead>
@@ -133,12 +145,15 @@ function AssetsTable({
                 />
               </td>
               <td className="relative p-0">
-                <TableCellSelect
-                  value={r.product}
-                  options={PRODUCTS}
-                  placeholder="Select product"
-                  aria-label={`Product of ${name}`}
-                  onChange={(v) => update(i, { product: v })}
+                {/* SEVERAL PRODUCTS, as on the asset sheet — same data, same
+                    control; its categories follow the products picked here. */}
+                <TableCellMultiSelect
+                  values={r.products}
+                  options={productsIn(r.categories)}
+                  placeholder="Select products"
+                  unitLabel="product"
+                  aria-label={`Products of ${name}`}
+                  onChange={(v) => update(i, { products: v })}
                 />
               </td>
               <td className="relative p-0">
@@ -168,12 +183,31 @@ function AssetsTable({
                   onChange={(v) => update(i, { lng: num(v) })}
                 />
               </td>
+              {/* RENTED IS SET WHEN THE ASSET IS ADDED (Pavan, 2026-10-13) —
+                  a saved asset shows it, read-only, as the Assets list does. */}
               <td className="px-3">
-                <Checkbox
-                  checked={r.rented}
-                  onCheckedChange={(c) => update(i, { rented: c === true })}
-                  aria-label={`${name} is rented`}
-                />
+                {r.id ? (
+                  r.rented ? <Pill>Rented</Pill> : <span className="text-sm">Owned</span>
+                ) : (
+                  <Checkbox
+                    checked={r.rented}
+                    onCheckedChange={(c) => update(i, { rented: c === true })}
+                    aria-label={`${name} is rented`}
+                  />
+                )}
+              </td>
+              {/* THE ROW'S HISTORY, on its own sheet over this one. */}
+              <td className="px-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  aria-label={`Activity log of ${name}`}
+                  onClick={() => onLog(i)}
+                >
+                  <History />
+                  Log
+                </Button>
               </td>
               <td className="relative p-0 text-center">
                 <TableRowRemove
@@ -206,10 +240,18 @@ export function ShipToSheet({
 }) {
   const [draft, setDraft] = React.useState<ShipToDraft | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | undefined>();
+  const typed = React.useRef(false);
+  const [logFor, setLogFor] = React.useState<number | null>(null);
+  const [shipLog, setShipLog] = React.useState(false);
   const lastSaved = React.useRef<string | null>(null);
   const key = creating ? "new" : (shipTo?.id ?? null);
   React.useEffect(() => {
-    if (!open) return;
+    /* CLOSED, THE DRAFT GOES — the next record must not start from the
+       last one's, or opening it reads as an edit ("Draft saved"). */
+    if (!open) {
+      setDraft(null);
+      return;
+    }
     const d = creating ? blankShipTo() : shipTo ? draftOf(shipTo) : null;
     lastSaved.current = JSON.stringify(d);
     setDraft(d);
@@ -238,9 +280,33 @@ export function ShipToSheet({
   }, [draft, shipTo, creating]);
   const saveState = useDraftSaveState(draft, open && !creating);
 
+  const addressLine = draft ? [draft.street, draft.city, draft.state, draft.zip].filter((x) => x.trim()).join(", ") : "";
+  React.useEffect(() => {
+    if (!typed.current || addressLine.length < 8) return;
+    const ctl = new AbortController();
+    const t = window.setTimeout(async () => {
+      try {
+        const [hit] = await searchPlaces(addressLine, ctl.signal);
+        if (hit && typed.current)
+          setDraft((d) => (d ? { ...d, lat: Number(Number(hit.lat).toFixed(6)), lng: Number(Number(hit.lon).toFixed(6)) } : d));
+      } catch {
+        /* Offline — the pin stays where it was; the map says search is unavailable. */
+      }
+    }, 900);
+    return () => {
+      window.clearTimeout(t);
+      ctl.abort();
+    };
+  }, [addressLine]);
+
   if (!draft) return null;
   const set = <K extends keyof ShipToDraft>(k: K, v: ShipToDraft[K]) =>
     setDraft((d) => (d ? { ...d, [k]: v } : d));
+  /* A TYPED ADDRESS IS LOOKED UP once the typing pauses, and moves the pin. */
+  const typeAddress = (k: "street" | "city" | "state" | "zip", v: string) => {
+    typed.current = true;
+    set(k, v);
+  };
 
   const pending: PendingItem[] = [
     !draft.name.trim() && { key: "name", label: "Enter the ship-to's name", target: "st-details" },
@@ -251,10 +317,11 @@ export function ShipToSheet({
     },
     (!Number.isFinite(draft.lat) || !Number.isFinite(draft.lng)) && {
       key: "geo",
-      label: "Enter its latitude and longitude",
+      label: "Find the ship-to on the map",
       target: "st-address",
     },
-    draft.assets.some((a) => !a.name.trim() || !a.type || !a.product || a.capacity <= 0) && {
+
+    draft.assets.some((a) => !a.name.trim() || !a.type || a.products.length === 0 || a.capacity <= 0) && {
       key: "assets",
       label: "Complete each asset's name, type, product and size",
       target: "st-assets",
@@ -284,6 +351,7 @@ export function ShipToSheet({
   };
 
   return (
+    <>
     <RecordSheet
       size="xxwide"
       open={open}
@@ -304,6 +372,18 @@ export function ShipToSheet({
           )}
           {saveState !== "idle" && <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />}
         </span>
+      }
+      headerActions={
+        creating || !shipTo ? undefined : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Activity log" onClick={() => setShipLog(true)}>
+                <History />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Activity log</TooltipContent>
+          </Tooltip>
+        )
       }
       headerMenu={
         creating || !shipTo ? undefined : (
@@ -333,7 +413,9 @@ export function ShipToSheet({
         toast.success(`${s.name} created`);
       }}
     >
-      <div className={cn("grid items-start gap-6", !creating && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+      {/* ONE COLUMN — no summary card for a ship-to (Pavan, 2026-10-13); its
+          history is the activity icon in the header. */}
+      <div className="grid items-start gap-6">
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="st-details" title="Details">
             <div className="grid grid-cols-2 gap-4">
@@ -354,38 +436,88 @@ export function ShipToSheet({
             </div>
           </SheetSection>
 
+          {/* THE ADDRESS AND ITS MAP, side by side (Pavan, 2026-10-13): the
+              fields on the left, the map on the right with its own search.
+              A confirmed pin fills the fields; a typed address moves the pin. */}
           <SheetSection id="st-address" title="Address">
-            <div className="grid grid-cols-2 gap-4">
-              <SheetField label="Street" required className="col-span-2">
-                <Input value={draft.street} onChange={(e) => set("street", e.target.value)} />
-              </SheetField>
-              <SheetField label="City" required>
-                <Input value={draft.city} onChange={(e) => set("city", e.target.value)} />
-              </SheetField>
-              <div className="grid grid-cols-2 gap-4">
-                <SheetField label="State" required>
-                  <Input value={draft.state} onChange={(e) => set("state", e.target.value)} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="flex flex-col gap-4">
+                <SheetField label="Street" required>
+                  <Input value={draft.street} onChange={(e) => typeAddress("street", e.target.value)} />
                 </SheetField>
-                <SheetField label="ZIP" required>
-                  <Input inputMode="numeric" value={draft.zip} onChange={(e) => set("zip", e.target.value)} />
+                <SheetField label="City" required>
+                  <Input value={draft.city} onChange={(e) => typeAddress("city", e.target.value)} />
                 </SheetField>
+                <div className="grid grid-cols-2 gap-4">
+                  <SheetField label="State" required>
+                    <Input value={draft.state} onChange={(e) => typeAddress("state", e.target.value)} />
+                  </SheetField>
+                  <SheetField label="ZIP" required>
+                    <Input inputMode="numeric" value={draft.zip} onChange={(e) => typeAddress("zip", e.target.value)} />
+                  </SheetField>
+                </div>
+                {/* THE GEOFENCE — a labelled toggle row (Pavan, 2026-10-13:
+                    a switch on the right, not a checkbox); on, a slider for
+                    its radius in miles right under it, drawn as a ring. */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <label htmlFor="st-geofence" className="text-sm font-medium text-foreground">
+                      Geofence
+                    </label>
+                    <Switch
+                      id="st-geofence"
+                      checked={draft.geofence !== null}
+                      onCheckedChange={(on) => set("geofence", on ? (draft.geofence ?? 0.25) : null)}
+                    />
+                  </div>
+                  {draft.geofence !== null && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Radius</span>
+                        <span className="font-medium tabular-nums text-foreground">
+                          {draft.geofence.toFixed(2)} mi
+                        </span>
+                      </div>
+                      <Slider
+                        aria-label="Geofence radius in miles"
+                        min={0.05}
+                        max={5}
+                        step={0.05}
+                        value={[draft.geofence]}
+                        onValueChange={([v]) => set("geofence", Number(v.toFixed(2)))}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-              <SheetField label="Latitude" required>
-                <Input
-                  inputMode="decimal"
-                  value={Number.isFinite(draft.lat) ? String(draft.lat) : ""}
-                  placeholder="e.g. 29.7800"
-                  onChange={(e) => set("lat", num(e.target.value) ?? NaN)}
-                />
-              </SheetField>
-              <SheetField label="Longitude" required>
-                <Input
-                  inputMode="decimal"
-                  value={Number.isFinite(draft.lng) ? String(draft.lng) : ""}
-                  placeholder="e.g. -95.3800"
-                  onChange={(e) => set("lng", num(e.target.value) ?? NaN)}
-                />
-              </SheetField>
+              <LocationMap
+                className="h-80 lg:h-auto lg:min-h-80"
+                location={Number.isFinite(draft.lat) && Number.isFinite(draft.lng) ? { lat: draft.lat, lng: draft.lng } : null}
+                geofence={draft.geofence ? draft.geofence * 1609.34 : null}
+                assets={draft.assets.map((x, i) => ({ key: String(i), name: x.name, lat: x.lat, lng: x.lng }))}
+                onConfirm={(p) => {
+                  typed.current = false;
+                  setDraft((d) =>
+                    d
+                      ? {
+                          ...d,
+                          lat: Number(p.lat.toFixed(6)),
+                          lng: Number(p.lng.toFixed(6)),
+                          street: p.street || d.street,
+                          city: p.city || d.city,
+                          state: p.state || d.state,
+                          zip: p.zip || d.zip,
+                        }
+                      : d
+                  );
+                }}
+                onAssetMove={(key, lat, lng) =>
+                  set(
+                    "assets",
+                    draft.assets.map((x, i) => (String(i) === key ? { ...x, lat, lng } : x))
+                  )
+                }
+              />
             </div>
           </SheetSection>
 
@@ -423,24 +555,30 @@ export function ShipToSheet({
               />
             }
           >
-            <AssetsTable rows={draft.assets} focusRow={focusRow} onChange={(rows) => set("assets", rows)} />
+            <AssetsTable
+              rows={draft.assets}
+              focusRow={focusRow}
+              onChange={(rows) => set("assets", rows)}
+              onLog={setLogFor}
+            />
           </SheetSection>
         </div>
 
-        {!creating && shipTo && (
-          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
-            <SummaryCard title="Ship-to summary">
-              <dl className="flex flex-col">
-                <RailRow variant="line" label="Assets" value={shipTo.assets.length} />
-                <RailRow variant="line" label="Rented" value={shipTo.assets.filter((a) => a.rented).length} />
-                <RailRow variant="line" label="Monitored" value={shipTo.assets.filter((a) => a.monitor).length} />
-                <RailRow variant="line" label="Open orders" value={openOrdersForShipTo(shipTo.name)} />
-              </dl>
-            </SummaryCard>
-            <ActivityCard entries={shipTo.audit} />
-          </aside>
-        )}
       </div>
     </RecordSheet>
+    <ActivityLogSheet
+      open={logFor !== null}
+      onOpenChange={(o) => !o && setLogFor(null)}
+      title={(logFor !== null && draft.assets[logFor]?.name) || "Asset"}
+      subtitle={draft.name}
+      entries={logFor !== null ? assetLog(draft.assets[logFor]?.id) : []}
+    />
+    <ActivityLogSheet
+      open={shipLog && Boolean(shipTo)}
+      onOpenChange={setShipLog}
+      title={shipTo?.name ?? "Ship-to"}
+      entries={shipTo ? shipToLog(shipTo) : []}
+    />
+    </>
   );
 }

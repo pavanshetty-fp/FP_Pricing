@@ -104,10 +104,20 @@ export type ActiveStatus = "Active" | "Inactive";
 
 export interface Asset {
   id: string;
+  /** Display name. */
   name: string;
-  /** The customer's own identifier for it. */
+  /** The customer's own unique identifier for it. */
   code: string;
+  /** RFID tag code, if it wears one. */
+  rfid: string;
+  /** Its ID in the customer's ERP. */
+  erpId: string;
   type: string;
+  /** Product categories it can hold — the line-of-service words. */
+  categories: string[];
+  /** Products it takes; the first is its usual one. */
+  products: string[];
+  /** = products[0] — the product an order line starts from. */
   product: string;
   /** Gallons. */
   capacity: number;
@@ -138,16 +148,38 @@ export interface ShipTo {
   hoursStart: number;
   hoursEnd: number;
   accessNotes: string;
+  /** Geofence radius round the pin, MILES — null for none. */
+  geofence: number | null;
   status: ActiveStatus;
   assets: Asset[];
   audit?: ActivityEntry[];
 }
+
+/*
+  PRODUCT CATEGORIES (Pavan, 2026-10-13) — what an asset is compatible with:
+  Gas · Additive · Aviation fuel · Propane, with the products that sit under
+  each. Lubricant is kept for the hydraulic oil. Not the LOS words — those
+  are the Orders filter's.
+*/
+export const PRODUCT_CATEGORIES = ["Gas", "Additive", "Aviation fuel", "Propane", "Lubricant"] as const;
+const CATEGORY_OF: Record<string, (typeof PRODUCT_CATEGORIES)[number]> = {
+  Diesel: "Gas",
+  "Dyed Diesel": "Gas",
+  "Unleaded 87": "Gas",
+  DEF: "Additive",
+  "Jet A": "Aviation fuel",
+  "Avgas 100LL": "Aviation fuel",
+  Propane: "Propane",
+  "Hydraulic Oil AW-46": "Lubricant",
+};
 
 export const PRODUCTS = [
   "Diesel",
   "Dyed Diesel",
   "Unleaded 87",
   "DEF",
+  "Jet A",
+  "Avgas 100LL",
   "Propane",
   "Hydraulic Oil AW-46",
 ];
@@ -164,9 +196,15 @@ const LINE_OF: Record<string, Exclude<LineScope, "All">> = {
   "Dyed Diesel": "Fuel",
   "Unleaded 87": "Fuel",
   DEF: "Fuel",
+  "Jet A": "Fuel",
+  "Avgas 100LL": "Fuel",
   Propane: "Propane",
   "Hydraulic Oil AW-46": "Lubricants",
 };
+/** Products in the chosen categories (all when none chosen). */
+export const productsIn = (cats: readonly string[]) =>
+  cats.length ? PRODUCTS.filter((p) => cats.includes(CATEGORY_OF[p])) : PRODUCTS;
+export const categoryOf = (product: string): string => CATEGORY_OF[product];
 export const inLine = (r: { lines: { product: string }[] }, scope: LineScope) =>
   scope === "All" || r.lines.some((l) => LINE_OF[l.product] === scope);
 
@@ -180,12 +218,16 @@ const asset = (
   product: string,
   capacity: number,
   at: [number, number],
-  o: { rented?: boolean; monitor?: string; level?: number } = {}
+  o: { rented?: boolean; monitor?: string; level?: number; rfid?: string } = {}
 ): Asset => ({
   id,
   name,
   code: `CL-${id.toUpperCase().replace("-", "")}`,
+  rfid: o.rfid ?? "",
+  erpId: `ERP-${40100 + id.charCodeAt(0) * 10 + Number(id.slice(2))}`,
   type,
+  categories: [CATEGORY_OF[product]],
+  products: [product],
   product,
   capacity,
   rented: o.rented ?? false,
@@ -213,9 +255,10 @@ export const SHIP_TOS: ShipTo[] = [
     hoursStart: 5 * 60,
     hoursEnd: 19 * 60,
     accessNotes: "Gate code 4471. Tanks behind building 2.",
+    geofence: 0.1,
     status: "Active",
     assets: [
-      asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64 }),
+      asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64, rfid: "E2801160600002" }),
       asset("a-2", "Tank A2", "Tank", "Diesel", 10000, [29.7805, -95.3804], { monitor: "TM8K2A92", level: 31 }),
       asset("a-3", "DEF Tote 1", "Tote", "DEF", 330, [29.7801, -95.3799], { rented: true }),
       asset("a-4", "Generator G-12", "Generator", "Diesel", 500, [29.7797, -95.3811]),
@@ -236,9 +279,10 @@ export const SHIP_TOS: ShipTo[] = [
     hoursStart: 6 * 60,
     hoursEnd: 20 * 60,
     accessNotes: "Check in at the guard house.",
+    geofence: 0.15,
     status: "Active",
     assets: [
-      asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72 }),
+      asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72, rfid: "E2801160600417" }),
       asset("b-2", "Tank B2", "Tank", "Unleaded 87", 8000, [29.9606, -95.5601], { monitor: "TM3P7B12", level: 18 }),
       asset("b-3", "Reefer Truck R-7", "Reefer truck", "Dyed Diesel", 150, [29.9598, -95.5609], { rented: true, monitor: "TL9R7X03", level: 14 }),
     ],
@@ -257,6 +301,7 @@ export const SHIP_TOS: ShipTo[] = [
     hoursStart: 6 * 60,
     hoursEnd: 18 * 60,
     accessNotes: "",
+    geofence: null,
     status: "Active",
     assets: [
       asset("c-1", "Tank O1", "Tank", "Dyed Diesel", 6000, [29.6403, -95.2204], { monitor: "TM5C2O01", level: 22 }),
@@ -570,6 +615,8 @@ export const MARKET_PRICE: Record<string, number> = {
   "Dyed Diesel": 3.188,
   "Unleaded 87": 2.964,
   DEF: 2.75,
+  "Jet A": 4.36,
+  "Avgas 100LL": 5.84,
   Propane: 1.92,
 };
 /** The pricing the tenant has set for this customer, against the market, $/gal. */
@@ -577,8 +624,10 @@ export const CUSTOMER_DIFF: Record<string, number> = {
   Diesel: -0.08,
   "Dyed Diesel": -0.06,
   "Unleaded 87": -0.05,
-  DEF: 0.15,
-  Propane: 0.1,
+  DEF: -0.06,
+  "Jet A": -0.09,
+  "Avgas 100LL": -0.11,
+  Propane: -0.07,
 };
 /** How far the market may move before the quote, either way, $/gal. */
 const BAND = 0.04;

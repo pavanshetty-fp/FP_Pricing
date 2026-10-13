@@ -5,6 +5,7 @@ import {
   PORTAL_ACTOR,
   SHIP_TOS,
   allRequests,
+  categoryOf,
   renameShipToInRequests,
   type ActiveStatus,
   type Asset,
@@ -44,8 +45,14 @@ const newId = (p: string) => `${p}-new-${Date.now().toString(36)}-${++seq}`;
 export type AssetDraft = Omit<Asset, "id" | "audit" | "level"> & { id?: string };
 export type ShipToDraft = Omit<ShipTo, "id" | "audit" | "assets"> & { assets: AssetDraft[] };
 
+/* ONE PRODUCT LIST — `product` is its first (what an order line starts
+   from); categories left empty follow the products chosen. */
 const toAsset = (d: AssetDraft, keep?: Asset): Asset => ({
   ...d,
+  product: d.products[0] ?? "",
+  categories: d.categories.length
+    ? d.categories
+    : Array.from(new Set(d.products.map(categoryOf).filter(Boolean))),
   id: d.id ?? newId("as"),
   level: keep?.level ?? 0,
   audit: keep?.audit ?? [{ at: new Date().toISOString(), by: PORTAL_ACTOR, changes: ["Asset added"] }],
@@ -55,7 +62,11 @@ export function blankAsset(): AssetDraft {
   return {
     name: "",
     code: "",
+    rfid: "",
+    erpId: "",
     type: "",
+    categories: [],
+    products: [],
     product: "",
     capacity: 0,
     rented: false,
@@ -82,6 +93,7 @@ export function blankShipTo(): ShipToDraft {
     hoursStart: 6 * 60,
     hoursEnd: 18 * 60,
     accessNotes: "",
+    geofence: null,
     status: "Active",
     assets: [],
   };
@@ -128,7 +140,7 @@ export function updateAsset(id: string, shipToId: string, d: AssetDraft, change?
   const from = SHIP_TOS.find((s) => s.assets.some((a) => a.id === id));
   const prev = from?.assets.find((a) => a.id === id);
   if (!from || !prev) return;
-  const next: Asset = { ...prev, ...d, id, audit: change ? log(prev.audit, change) : prev.audit };
+  const next: Asset = { ...prev, ...d, product: d.products[0] ?? "", id, audit: change ? log(prev.audit, change) : prev.audit };
   if (from.id === shipToId) {
     from.assets = from.assets.map((a) => (a.id === id ? next : a));
   } else {
@@ -177,4 +189,10 @@ export function lastDeliveryFor(id: string): string | null {
     .map((r) => r.date)
     .sort();
   return d.length ? d[d.length - 1] : null;
+}
+
+/** Who added the asset, and when — its first log entry. */
+export function createdOf(a: Asset): { by: string; at: string } | null {
+  const e = a.audit?.[0];
+  return e ? { by: e.by, at: e.at } : null;
 }

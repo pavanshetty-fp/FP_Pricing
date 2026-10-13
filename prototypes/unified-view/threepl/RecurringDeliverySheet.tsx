@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -232,7 +232,7 @@ export function RecurringDeliverySheet({
         title="This delivery"
         aside={
           delivery.tweak ? (
-            <Badge variant="secondary">Tweaked</Badge>
+            <Pill>Tweaked</Pill>
           ) : undefined
         }
       >
@@ -373,7 +373,7 @@ export function RecurringDeliverySheet({
                         }
                       />
                     ) : l.topOff ? (
-                      <Badge variant="secondary">Yes</Badge>
+                      <Pill>Yes</Pill>
                     ) : (
                       <span className="text-muted-foreground">No</span>
                     )}

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Boxes, Contact, Droplet, NotebookPen, TriangleAlert, Truck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -1119,9 +1119,9 @@ export function assetConfig(
                   <span className="text-sm text-muted-foreground/70">N/A</span>
                 )}
                 {endingSoon(a) && (
-                  <Badge variant="secondary" className="shrink-0 font-normal">
+                  <Pill className="shrink-0">
                     Soon
-                  </Badge>
+                  </Pill>
                 )}
               </span>
               <span className={cn("truncate text-xs font-medium", tone)}>

@@ -645,8 +645,8 @@ status is stays a reading — the binding table in the application's own docs.
 
 Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
 
-- **No dot beside a status label.** `text` (now the default) colours the label
-  itself and `soft` tints the whole pill, so in both the dot repeated a tone the
+- **No dot beside a status label.** `text` (the default) and `soft` both draw
+  the pill since 2026-10-09 (§11b), so in both the dot repeated a tone the
   chip was already carrying and spent 12px of a control whose whole job is to be
   small. The word is the status; the colour is a second channel on the same
   word, not a third element beside it.
@@ -659,3 +659,41 @@ Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
   what is already on screen is not neutral, it costs room and reading. If a
   status needs more emphasis, change the treatment it is rendered in rather than
   hanging something off it.
+
+## 11b. Chips and badges are pills
+
+Added 2026-10-09, from the Sales Orders table. Approved by Pavan on screen
+before it was written down. The component is `Pill` (`ui/pill.tsx`).
+
+- **Every chip and badge is a pill** — a status, a tag, a flag (Urgent, Over
+  SLA, Needs approval), a placing ("Best price"), a "+N" overflow. One recipe:
+  fully rounded, 28px tall (`h-7`), 12px side padding, 12px regular text, no
+  border, a faint tint of the hue behind text in that hue.
+- **A status column shows the pill, never coloured text alone.** `StatusChip`
+  draws the pill for `text` and `soft` alike, so a status reads the same in a
+  table cell, a sheet header and on a board card. `variant="dot"` is unchanged
+  and stays opt-in.
+- **Colour is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
+  `critical` — so the same kind is the same colour in every module. **The one
+  exception is a colour the user chooses**: where a module lets the user pick a
+  colour (Sales stages and order types, in Sales Settings), `color` takes the
+  DS lane palette over the kind, and that choice is kept wherever the value
+  shows.
+- **Not pills:** a counter inside a button or a nav item (`BadgeNumber`), a
+  code disc (`CodeDisc` — a type's initial, not a chip).
+- **Removable chips are pills too** (Pavan, 2026-10-09): applied-filter chips,
+  the column-search chip, the Export sheet's narrowing chips and form token
+  chips take the pill recipe — 28px, fully round, `text-xs` regular on the
+  neutral tint (`bg-muted`), label muted and value in body ink — with the ✕
+  INSIDE the pill as a 20px round button (`hover:bg-foreground/10`). A count
+  in a grouped filter chip is a small `bg-background` bubble. **Clear all sits right
+  after the last chip**, `text-sm` muted with an underline on hover — never
+  pushed to the far end of the row.
+
+## 11c. Skeletons shimmer (Pavan, 2026-10-10)
+
+A loading block is the DS `Skeleton`: the `bg-accent` block with a light
+sweeping left to right across it (`.fp-shimmer`, 1.4s, off with reduced
+motion) — never a pulse. A loading PAGE is its parts as skeletons in their own
+places (title, tabs, toolbar, table header and rows), so it arrives in the
+shape it is about to take.

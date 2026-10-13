@@ -98,7 +98,7 @@ export type SalesOrderColumnKey =
    kind has no value for prints an em-dash. */
 export const SALES_ORDER_COLUMNS: ListColumn<SalesOrderColumnKey>[] = [
   { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 70, sortable: true },
+  { key: "type", label: "Type", width: 130, sortable: true },
   { key: "customer", label: "Customer", width: 220, sortable: true },
   { key: "products", label: "Product / Asset", width: 190, sortable: true },
   { key: "qty", label: "Qty", width: 110, sortable: true },

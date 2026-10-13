@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Combobox } from "@/components/ui/combobox";
@@ -1027,7 +1027,7 @@ export function AssetMovementSheet({
          all four: on the board, every one of them is an M. */
       headerAside={
         <span className="flex items-center gap-2">
-          <Badge variant="pastel-violet">{MOVEMENT_LABEL[direction]}</Badge>
+          <Pill color="violet">{MOVEMENT_LABEL[direction]}</Pill>
         </span>
       }
       canSubmit={canSubmit}

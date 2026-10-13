@@ -67,13 +67,13 @@ function ValueChip({
   onRemove: () => void;
 }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground">
+    <span className="inline-flex h-7 max-w-full items-center gap-1 rounded-full bg-muted pr-1 pl-3 text-xs text-foreground">
       <span className="truncate">{value}</span>
       <button
         type="button"
         aria-label={`Remove filter ${label}: ${value}`}
         onClick={onRemove}
-        className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <X className="size-3" />
       </button>

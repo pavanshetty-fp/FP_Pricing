@@ -164,3 +164,20 @@ A module may carry switches that turn whole steps on or off. Three rules:
   no longer exists.
 - **A setting that removes a step removes its UI.** A facet for a source
   nothing can arrive from is a filter that can only return zero.
+
+## A list remembers where it was left (Pavan, 2026-10-09)
+
+Leaving a list and coming back finds it as it was left: filters, column
+search, filter boxes, search, sort, columns, date, the active view and any
+unsaved changes (dirty dot and all) — still clearable, still savable as a
+view. Nothing goes away until **Clear all** (or the view's own reset) takes it
+off. Kept for the session per list (`useSavedViews` `storageKey`); a page
+reload starts clean. A dashboard drill arriving with its own narrowing wins
+over what was left.
+
+## A list's alert banner sits above its controls (Pavan, 2026-10-11)
+
+On a list page the alert banner ("2 urgent orders overdue for dispatch")
+comes directly under the view-tabs row and ABOVE the toolbar — search,
+Filters, Group By, date, view switch — so what needs attention is read before
+the tools to act on it.

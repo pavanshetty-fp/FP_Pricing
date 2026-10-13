@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -472,6 +472,8 @@ export function RecurringProgramsScreen({
       setSort(v.sort ?? null);
       setPage(1);
     },
+    /* REMEMBERED ACROSS VISITS (Pavan, 2026-10-09). */
+    storageKey: "3pl-recurring-programs",
   });
 
   /* THE NARROWING, FOR ANY SET OF FACET TICKS — the list uses the applied
@@ -1035,9 +1037,9 @@ export function RecurringProgramsScreen({
 
       <div className="mt-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="secondary" className="tabular-nums">
+          <Pill className="tabular-nums">
             {rows.reduce((s, p) => s + liveTargets(p).length, 0)} live lanes
-          </Badge>
+          </Pill>
           across {rows.length} {rows.length === 1 ? "programme" : "programmes"}
           {/* THE ARCHIVE IS TUCKED AWAY ON PURPOSE (Pavan, 2026-09-23). V1
               and V2 are kept to refer back to until they are kept or deleted

@@ -8,6 +8,16 @@ export {
 } from "./badge";
 export { CodeDisc, type CodeDiscProps, type CodeDiscTone } from "./code-disc";
 export {
+  Pill,
+  PillList,
+  PILL_COLORS,
+  PILL_SHAPE,
+  pillColorClass,
+  type PillColor,
+  type PillKind,
+  type PillProps,
+} from "./pill";
+export {
   MultiSelectList,
   type MultiSelectListProps,
 } from "./multi-select-list";

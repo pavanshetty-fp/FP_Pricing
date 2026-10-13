@@ -63,6 +63,7 @@ import {
   stageLabel,
   stageNeedsApproval,
   stageTone,
+  stageColor,
   useSalesSettings,
   type FormField,
 } from "./salesSettings";
@@ -675,6 +676,7 @@ export function OrderSheet({
           <span className="flex items-center gap-2">
             <DraftStatusChip
               tone={stageTone(status, settings)}
+              color={stageColor(status, settings)}
               label={stageLabel(status, settings)}
               /* Nothing is kept before Create Order, so nothing to report. */
               saveState={creating ? "idle" : saveState}

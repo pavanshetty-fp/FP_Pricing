@@ -1,3 +1,4 @@
+import type { PillColor } from "@/components/ui/pill";
 import * as React from "react";
 import { toast } from "sonner";
 import { FUEL_ORDER_STAGES, stageAfterDriver } from "./data";
@@ -190,7 +191,20 @@ export interface StageRule {
      order may sit in a stage before it is late; Delivered and Cancelled are
      never left, so nothing can be late in them. */
   slaHours: number | null;
+  /** THE TAG'S COLOUR (Pavan, 2026-10-09). Null = the stage's kind colour. */
+  color?: PillColor | null;
 }
+
+/* THE ORDER TYPES AS TAGS, each with a colour of its own (Pavan, 2026-10-09). */
+export interface TypeTag {
+  label: string;
+  color: PillColor;
+}
+export const DEFAULT_TYPE_TAGS: TypeTag[] = [
+  { label: "Delivery", color: "cyan" },
+  { label: "Extraction", color: "orange" },
+  { label: "Asset Order", color: "violet" },
+];
 
 /* ---------------------------------------------------- notifications --- */
 
@@ -242,6 +256,7 @@ export const UNIT_SHORT: Record<SalesUnit, string> = {
 export interface SalesSettings {
   forms: Record<SalesFormKind, FormField[]>;
   stages: StageRule[];
+  typeTags: TypeTag[];
   notifications: NotificationRule[];
   timeZone: (typeof TIME_ZONES)[number];
   unit: SalesUnit;
@@ -253,6 +268,9 @@ export interface SalesSettings {
    anything a customer asked for. */
 const TERMINAL = ["Delivered", "Cancelled"];
 const SLA: Record<string, number> = { Requested: 24, Scheduled: 48, Dispatched: 8 };
+/* STATUS COLOURS PAVAN SET (2026-10-09): Scheduled yellow, Dispatched blue;
+   Requested, Delivered and Cancelled keep their kind's colour. */
+const STAGE_COLOR: Record<string, PillColor> = { Scheduled: "yellow", Dispatched: "blue" };
 
 export const DEFAULT_SALES_SETTINGS: SalesSettings = {
   forms: { fuel: FUEL_FIELDS, asset: ASSET_FIELDS, quote: QUOTE_FIELDS },
@@ -261,7 +279,9 @@ export const DEFAULT_SALES_SETTINGS: SalesSettings = {
     label: stage,
     approval: false,
     slaHours: TERMINAL.includes(stage) ? null : (SLA[stage] ?? null),
+    color: STAGE_COLOR[stage] ?? null,
   })),
+  typeTags: DEFAULT_TYPE_TAGS,
   notifications: [
     { key: "urgent", event: "Urgent order created", inApp: true, email: true, sms: true },
     { key: "noDriver", event: "Scheduled order without driver", inApp: true, email: true, sms: false },
@@ -312,9 +332,19 @@ function revive(raw: unknown): SalesSettings {
   const notesOk =
     Array.isArray(raw.notifications) &&
     raw.notifications.every((n) => isObj(n) && typeof n.key === "string" && typeof n.event === "string");
+  /* A STAGE SAVED BEFORE COLOURS EXISTED takes the default colour. */
+  const stages = stagesOk
+    ? (raw.stages as StageRule[]).map((r) =>
+        r.color === undefined ? { ...r, color: STAGE_COLOR[r.id] ?? null } : r
+      )
+    : d.stages;
+  const typeTagsOk =
+    Array.isArray(raw.typeTags) &&
+    raw.typeTags.every((t) => isObj(t) && typeof t.label === "string" && typeof t.color === "string");
   return {
     forms,
-    stages: stagesOk ? (raw.stages as StageRule[]) : d.stages,
+    stages,
+    typeTags: typeTagsOk ? (raw.typeTags as TypeTag[]) : d.typeTags,
     notifications: notesOk ? (raw.notifications as NotificationRule[]) : d.notifications,
     timeZone: TIME_ZONES.includes(raw.timeZone as SalesSettings["timeZone"])
       ? (raw.timeZone as SalesSettings["timeZone"])
@@ -462,6 +492,14 @@ export function stageKind(id: string, s: SalesSettings = current): StatusKind {
   }
   return "info";
 }
+
+/** The colour chosen for a stage, or null for its kind's. */
+export const stageColor = (id: string, s: SalesSettings = current): PillColor | null =>
+  s.stages.find((r) => r.id === id)?.color ?? null;
+
+/** The colour chosen for an order type's tag. */
+export const typeColor = (label: string, s: SalesSettings = current): PillColor =>
+  s.typeTags.find((t) => t.label === label)?.color ?? "grey";
 
 export const stageTone = (id: string, s: SalesSettings = current): StatusTone =>
   KIND_TONE[stageKind(id, s)];

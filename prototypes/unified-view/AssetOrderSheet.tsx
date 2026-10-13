@@ -55,6 +55,7 @@ import {
   stageLabel,
   stageNeedsApproval,
   stageTone,
+  stageColor,
   useSalesCurrentUser,
   useSalesSettings,
   type FormField,
@@ -451,7 +452,11 @@ export function AssetOrderSheet({
       }
       headerAside={
         <span className="flex items-center gap-2">
-          <StatusChip tone={stageTone(draft.status, settings)} variant="soft">
+          <StatusChip
+            tone={stageTone(draft.status, settings)}
+            color={stageColor(draft.status, settings)}
+            variant="soft"
+          >
             {stageLabel(draft.status, settings)}
           </StatusChip>
           {awaiting && (

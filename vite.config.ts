@@ -12,10 +12,13 @@ import path from "node:path";
 // always single-file. The prototype consumes the DS via the `@` alias; it is not
 // a section of the gallery, so the two never share a bundle.
 const unified = process.env.UNIFIED === "1" || process.env.SERVICE === "1";
+// PORTAL=1 builds the *Customer Portal* — a separate module with its own entry
+// (prototypes/customer-portal) and output (dist-portal), always single-file.
+const portal = process.env.PORTAL === "1";
 // SERVICE=1 is the Unified View locked to the Service Work module
 // (prototypes/unified-view/service.html), built to dist-service/service.html.
 const service = process.env.SERVICE === "1";
-const singleFile = process.env.SINGLEFILE === "1" || unified;
+const singleFile = process.env.SINGLEFILE === "1" || unified || portal;
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -27,7 +30,24 @@ export default defineConfig({
   // prefix, so that URL cannot resolve to anything but the Unified View. Serving
   // it as a path under the gallery's dev server is what made a stray reload land
   // on the gallery instead. The build lands flat in dist-unified/index.html.
-  ...(unified
+  ...(portal
+    ? {
+        root: path.resolve(__dirname, "prototypes/customer-portal"),
+        build: {
+          outDir: path.resolve(__dirname, "dist-portal"),
+          emptyOutDir: true,
+        },
+        // 4310 = Customer Portal source, 4183 = its built artifact.
+        server: {
+          port: process.env.PORT ? Number(process.env.PORT) : 4310,
+          strictPort: !process.env.PORT,
+        },
+        preview: {
+          port: process.env.PORT ? Number(process.env.PORT) : 4183,
+          strictPort: !process.env.PORT,
+        },
+      }
+    : unified
     ? {
         root: path.resolve(__dirname, "prototypes/unified-view"),
         build: {

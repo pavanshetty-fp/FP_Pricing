@@ -7,7 +7,7 @@ import {
   SearchX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -377,6 +377,8 @@ function LoadField({ values, empty }: { values: string[]; empty: string }) {
       <span className="truncate text-sm text-foreground">{unique[0]}</span>
       {unique.length > 1 && (
         <Tooltip>
+          {/* PLAIN TEXT STAYS PLAIN (Pavan, 2026-10-09) — only a product's
+              "+N" is a pill. */}
           <TooltipTrigger asChild>
             <span className="shrink-0 cursor-default text-xs text-muted-foreground">
               +{unique.length - 1}
@@ -533,6 +535,8 @@ export function RecurringRulesScreen({
       setColFiltersOpen(Object.values(v.colFilters ?? {}).some((x) => x.trim()));
       setPage(1);
     },
+    /* REMEMBERED ACROSS VISITS (Pavan, 2026-10-09). */
+    storageKey: "3pl-recurring-rules",
   });
 
   /* THREE NARROWINGS, AND-ED. Free text across the whole record, the facet
@@ -792,7 +796,7 @@ export function RecurringRulesScreen({
             {gal.toLocaleString()}
           </span>
         ) : (
-          <Badge variant="secondary">Top off</Badge>
+          <Pill>Top off</Pill>
         );
       }
       case "vendor": {

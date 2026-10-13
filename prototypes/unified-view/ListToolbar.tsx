@@ -820,14 +820,14 @@ export function ColumnSearchChip({
   const label = searchFields.find((f) => f.key === colScope)?.label ?? "column";
   return (
     <div className={cn("flex shrink-0 items-center gap-2", className)}>
-      <span className="inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground">
+      <span className="inline-flex h-7 items-center gap-1 rounded-full bg-muted pr-1 pl-3 text-xs text-foreground">
         <Search className="size-3 text-muted-foreground" />
         {label}: “{colQuery}”
         <button
           type="button"
           aria-label="Clear column search"
           onClick={onClear}
-          className="rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex size-5 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <X className="size-3" />
         </button>
@@ -917,13 +917,17 @@ export function FilterChips({
 
   return (
     <div className={cn("mt-3 flex shrink-0 items-center gap-2", className)}>
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+      {/* THE CHIPS TAKE ONLY THE WIDTH THEY NEED, so Clear all sits right
+          after the last one (Pavan, 2026-10-09); past the row's width they
+          still scroll rather than wrap. */}
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
         {groups.map((g) => {
           const one = g.ids.length === 1;
           const chip = (
             <span
               className={cn(
-                "inline-flex max-w-[240px] shrink-0 items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2 text-[11px] text-foreground",
+                /* A REMOVABLE PILL (Pavan, 2026-10-09): the pill recipe with its ✕ inside. */
+                "inline-flex h-7 max-w-[260px] shrink-0 items-center gap-1 rounded-full bg-muted pr-1 pl-3 text-xs text-foreground",
                 !one && "cursor-default"
               )}
             >
@@ -935,7 +939,7 @@ export function FilterChips({
                 {one ? valueOf(g.ids[0]) : null}
               </span>
               {!one && (
-                <span className="shrink-0 rounded-full bg-accent px-1.5 tabular-nums">
+                <span className="shrink-0 rounded-full bg-background px-1.5 tabular-nums">
                   {g.ids.length}
                 </span>
               )}
@@ -947,7 +951,7 @@ export function FilterChips({
                     : `Remove all ${g.ids.length} ${g.label} filters`
                 }
                 onClick={() => drop(g.ids)}
-                className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <X className="size-3" />
               </button>
@@ -979,7 +983,7 @@ export function FilterChips({
                         type="button"
                         aria-label={`Remove filter ${g.label}: ${valueOf(id)}`}
                         onClick={() => drop([id])}
-                        className="shrink-0 rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                        className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                       >
                         <X className="size-3" />
                       </button>
@@ -999,7 +1003,7 @@ export function FilterChips({
       <button
         type="button"
         onClick={() => onChange(new Set())}
-        className="shrink-0 rounded-sm text-[11px] text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="shrink-0 rounded-sm text-sm text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         Clear all
       </button>

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 import { Download, FileText, History, Image as ImageIcon, Sheet as SheetIcon, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
@@ -676,10 +676,13 @@ export function AttachmentTable({ files }: { files: Attachment[] }) {
           render: (f) => {
             if (!f.expiresOn) return <span className="text-muted-foreground/70">{DASH}</span>;
             const gone = new Date(`${f.expiresOn}T00:00:00Z`) < today;
-            return (
-              <StatusChip tone={kindTone(gone ? "critical" : "neutral")} variant="text">
-                {gone ? `Expired ${formatDate(f.expiresOn)}` : formatDate(f.expiresOn)}
-              </StatusChip>
+            /* A DATE IS NOT A STATUS (Pavan, 2026-10-09). Now that a status is
+               a pill, a grey pill round every date would read as one; only the
+               expired date — the warning — takes the pill. */
+            return gone ? (
+              <StatusChip tone={kindTone("critical")}>Expired {formatDate(f.expiresOn)}</StatusChip>
+            ) : (
+              <span className="text-sm tabular-nums">{formatDate(f.expiresOn)}</span>
             );
           },
         },
@@ -891,9 +894,9 @@ export function TagRow({ tags }: { tags: string[] }) {
   return (
     <span className="flex flex-wrap gap-1">
       {tags.map((t) => (
-        <Badge key={t} variant="secondary" className="font-normal">
+        <Pill key={t}>
           {t}
-        </Badge>
+        </Pill>
       ))}
     </span>
   );

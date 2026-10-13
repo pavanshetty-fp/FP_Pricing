@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
@@ -140,9 +140,9 @@ export function customerReadSections(
                 <span className="flex items-center gap-2">
                   {p.name}
                   {p.isPrimary && (
-                    <Badge variant="secondary" className="font-normal">
+                    <Pill>
                       Primary
-                    </Badge>
+                    </Pill>
                   )}
                 </span>
               ),
@@ -171,9 +171,9 @@ export function customerReadSections(
                 <span className="flex items-center gap-2">
                   {s.locationName}
                   {s.isDefault && (
-                    <Badge variant="secondary" className="font-normal">
+                    <Pill>
                       Default
-                    </Badge>
+                    </Pill>
                   )}
                 </span>
               ),

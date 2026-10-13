@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -550,11 +550,11 @@ export function OverflowList({
             <button
               type="button"
               aria-label={`Show all ${values.length} ${label}`}
-              className="shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Badge variant="secondary" className="tabular-nums">
+              <Pill className="tabular-nums">
                 +{rest.length}
-              </Badge>
+              </Pill>
             </button>
           </HoverCardTrigger>
           <HoverCardContent align="start" className="w-auto max-w-72 p-2">

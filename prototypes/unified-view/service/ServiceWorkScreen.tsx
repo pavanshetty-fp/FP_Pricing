@@ -3,7 +3,7 @@ import { Wrench, SearchX, CalendarOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CodeDisc } from "@/components/ui/code-disc";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   Empty,
@@ -626,7 +626,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     setLaneSort(s.laneSort);
     setPage(1);
   };
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: `service-orders-${flow ?? "all"}` });
 
   React.useEffect(() => {
     const problems = assertServiceConsistent(SERVICE_ORDERS);
@@ -1157,9 +1157,9 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
         return r.priority === "Normal" ? (
           <span className="text-muted-foreground">Normal</span>
         ) : (
-          <Badge variant={r.priority === "Urgent" ? "destructive" : "secondary"}>
+          <Pill kind={r.priority === "Urgent" ? "critical" : "neutral"}>
             {r.priority}
-          </Badge>
+          </Pill>
         );
       case "status":
         return <StatusChip tone={WORK_STATUS_TONE[r.status]}>{r.status}</StatusChip>;

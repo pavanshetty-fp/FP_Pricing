@@ -1,6 +1,6 @@
 import * as React from "react";
 import { HardHat, SearchX } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   Empty,
@@ -195,9 +195,9 @@ export function TechniciansScreen() {
         return (
           <span className="flex flex-wrap items-center gap-1">
             {t.skills.map((s) => (
-              <Badge key={s} variant="secondary">
+              <Pill key={s}>
                 {s}
-              </Badge>
+              </Pill>
             ))}
           </span>
         );

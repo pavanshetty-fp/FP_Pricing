@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -559,7 +560,7 @@ export function RecurringRuleSheet({
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                     {l.topOff ? (
-                      <Badge variant="secondary">Top off</Badge>
+                      <Pill>Top off</Pill>
                     ) : (
                       (l.gal ?? 0).toLocaleString()
                     )}

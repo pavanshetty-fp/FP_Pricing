@@ -1,6 +1,12 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import {
+  PILL_SHAPE,
+  pillColorClass,
+  type PillColor,
+  type PillKind,
+} from "@/components/ui/pill";
 
 /**
  * Visual channel a status is rendered in. Deliberately NOT a list of domain
@@ -18,23 +24,27 @@ import { cn } from "@/lib/utils";
 export type StatusTone = "success" | "processing" | "failed" | "neutral" | "info";
 
 /**
- * Which of the three status treatments to render.
- *   text — the DEFAULT: the label alone, in the tone colour, on no fill.
- *   soft — soft tinted pill (`/10` fill + tone text). The DS's canonical
- *          treatment for states that need to be noticed, e.g. errors.
+ * Which of the status treatments to render.
+ *   text — the DEFAULT. Since 2026-10-09 it draws the PILL, as `soft` does.
+ *   soft — the PILL (`ui/pill.tsx`): rounded-full, 28px, a faint tint of the
+ *          tone's hue behind text in that hue.
  *   dot  — token-coloured dot BESIDE a neutral label. Asked for by name and
  *          never arrived at by default: for a dense grid where many rows show
  *          a status and a column of coloured words would shout.
  */
 export type StatusChipVariant = "dot" | "text" | "soft";
 
-/** Foreground per tone — drives `text` and `soft`. */
-const TONE_FG: Record<StatusTone, string> = {
-  success: "text-status-success",
-  processing: "text-status-processing",
-  failed: "text-status-failed",
-  neutral: "text-muted-foreground",
-  info: "text-fp-banner-accent-info",
+/* EVERY STATUS IS A PILL (Pavan, 2026-10-09). `text` used to be the label
+   alone in the tone colour and `soft` a smaller tinted chip; both now draw the
+   DS pill, so a status reads the same in a table cell, a sheet header and on
+   a board card. The tone is one of the DS's channels; the pill speaks in
+   kinds, and this is the one place the two are matched. */
+const TONE_KIND: Record<StatusTone, PillKind> = {
+  success: "success",
+  processing: "caution",
+  failed: "critical",
+  neutral: "neutral",
+  info: "info",
 };
 
 /** Dot fill per tone — only `dot` needs this; the others ride `bg-current`. */
@@ -46,19 +56,12 @@ const TONE_DOT: Record<StatusTone, string> = {
   info: "bg-fp-banner-accent-info",
 };
 
-/** Soft tint per tone — `/10` fill, matching the destructive Badge recipe. */
-const TONE_SOFT: Record<StatusTone, string> = {
-  success: "bg-status-success/10",
-  processing: "bg-status-processing/10",
-  failed: "bg-status-failed/10",
-  neutral: "bg-muted-foreground/10",
-  info: "bg-fp-banner-accent-info/10",
-};
-
-export interface StatusChipProps extends React.ComponentProps<"span"> {
+export interface StatusChipProps extends Omit<React.ComponentProps<"span">, "color"> {
   /** The colour channel. Caller-supplied — the DS ships no status→tone map. */
   tone?: StatusTone;
   variant?: StatusChipVariant;
+  /** A colour the user chose (Sales stages), over the tone's — pill only. */
+  color?: PillColor | null;
 }
 
 /**
@@ -69,12 +72,13 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
  * spells the status out.
  *
  * ```tsx
- * <StatusChip tone="success">Success</StatusChip>                  // the word, in tone
- * <StatusChip tone="failed" variant="soft">Failed</StatusChip>     // tinted pill
+ * <StatusChip tone="success">Success</StatusChip>                  // the pill
+ * <StatusChip tone="failed" variant="soft">Failed</StatusChip>     // the pill too
  * <StatusChip tone="neutral" variant="dot">Queued</StatusChip>     // dot + neutral word
  * ```
  *
- * CONTRAST — measured label-vs-fill ratios, both themes. `dot` keeps a
+ * CONTRAST — measured before 2026-10-09, when `text` and `soft` both became
+ * the pill; the pill's ratios are the `soft` rows below. Label-vs-fill, both themes. `dot` keeps a
  * `foreground` label and is safe everywhere (14.6 dark / 20.5 light).
  *
  *   variant/tone          FP-dark      Light (was -> now)
@@ -109,25 +113,21 @@ export interface StatusChipProps extends React.ComponentProps<"span"> {
 export function StatusChip({
   tone = "neutral",
   variant = "text",
+  color,
   className,
   children,
   ...props
 }: StatusChipProps) {
-  const isSoft = variant === "soft";
+  const isPill = variant !== "dot";
   return (
     <span
       data-slot="status-chip"
       data-tone={tone}
       data-variant={variant}
       className={cn(
-        "inline-flex w-fit shrink-0 items-center whitespace-nowrap",
-        isSoft
-          ? cn(
-              "gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-              TONE_SOFT[tone],
-              TONE_FG[tone]
-            )
-          : cn("gap-2 text-sm", variant === "text" && cn("font-medium", TONE_FG[tone])),
+        isPill
+          ? cn(PILL_SHAPE, "w-fit", pillColorClass(TONE_KIND[tone], color))
+          : "inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap text-sm",
         className
       )}
       {...props}
@@ -147,7 +147,7 @@ export function StatusChip({
           className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT[tone])}
         />
       )}
-      {children}
+      {isPill ? <span className="truncate">{children}</span> : children}
     </span>
   );
 }

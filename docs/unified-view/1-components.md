@@ -15,7 +15,7 @@ for**, not how big it is.
 | Level | What it is | Lives in | Examples |
 |---|---|---|---|
 | **Token** | a value with a name, and no opinion about where it is used | `src/index.css` | `--fp-surface-1a`, `--fp-lane-blue`, `--radius-lg` |
-| **Atom** | one control, no knowledge of any dataset | `src/components/ui/` | `Button`, `Input`, `Badge`, `StatusChip`, `CodeDisc`, `Slider`, `Checkbox`, `Combobox`, `Popover`, `Tooltip` |
+| **Atom** | one control, no knowledge of any dataset | `src/components/ui/` | `Button`, `Input`, `Pill`, `Badge`, `StatusChip`, `CodeDisc`, `Slider`, `Checkbox`, `Combobox`, `Popover`, `Tooltip` |
 | **Molecule** | atoms arranged to answer one question | `src/components/` | `SheetSection`, `SheetField`, `RailCard`, `MeasureSlider`, `TableCellInput`, `MandatoryStepsBanner`, `LaneChip`, `FilterChips` |
 | **Organism** | a molecule set that owns a region of a screen | `src/components/*-layout/`, `prototypes/unified-view/` | `AppShell`, `NavRail`, `NavigationDrawer`, `TopBar`, `ListToolbar`, `ListTable`, `ListFilters`, `BrokerBoard`, `RecordSheet`, `TablePagination` |
 | **Screen** | an organism set bound to a dataset | `prototypes/unified-view/*/` | `BrokerOrdersScreen`, `ServiceWorkScreen`, `ServiceOrderSheet` |
@@ -206,13 +206,25 @@ tooltip and `aria-label` — **the letter is never the only carrier**.
 > same thing in both modules. Emergency is the one two-character code, because
 > Extraction already owns the E.
 
-### Badges
+### Pills — every chip and badge
 
-| Variant | Means |
+**Chips and badges are pills** (DS §11b, `src/components/ui/pill.tsx`; Pavan,
+2026-10-09). Every status cell in every list, every sheet-header status, every
+board-card badge, tag and "+N" draws the one pill recipe. `StatusChip` draws it
+too, for `text` and `soft` alike, so no status column shows coloured text alone.
+
+| Pill | Means |
 |---|---|
-| `destructive` | the top priority only — Urgent, Emergency |
-| `secondary` | a neutral fact — Recurring, Ready, a skill, a middling priority |
-| `pastel-green` | the one placing anybody acts on — "Best price" |
+| `kind` from the table above | a status — the same kind is the same colour in every module |
+| `kind="critical"` | the top priority only — Urgent, Emergency · Over SLA |
+| `kind="caution"` | Needs approval |
+| `kind="success"` | the one placing anybody acts on — "Best price" |
+| `kind="neutral"` (default) | a neutral fact — Recurring, Rental, a tag, a skill, a middling priority, "+N" |
+| `color` — chosen | **Sales only**: a stage's or an order type's colour picked in Sales Settings → Workflow; kept in the table, the map and the sheet header. 3PL's Asset Order route chip is `violet`, matching its M disc |
+
+**Not pills:** button and nav counters (`BadgeNumber`), the board lane's count,
+code discs (`CodeDisc`), and the filter shelf's removable chips (controls). The
+technician's mobile app keeps its own badges until it is in scope.
 
 **Render the absence.** A priority of Normal, a status repeating its own lane
 heading, a placing on a board of one — a chip every row carries says nothing.

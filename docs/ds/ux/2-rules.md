@@ -311,11 +311,33 @@ record is a draft.
 charges, rates, assets, contacts — it is an EDITABLE TABLE (the boxed unit,
 ui §10f), not a row of separate fields. Every value cell is editable in
 place. **A choice that qualifies a value lives INSIDE that value's cell** — a
-unit ($/gal · $ · %), a currency, a fill type — as a compact menu at the cell's
-end, never a toggle or a second field beside it. Applies to every module,
-without being asked; a stack of fields for a repeated thing is the exception
-and needs a reason. First built: the Quote's Pricing breakdown (Margin · Fees ·
-Tax, unit in the Value cell).
+unit ($/gal · $ · %), a currency — as a compact menu at the cell's end, never a
+toggle or a second field beside it. Applies to every module, without being
+asked; a stack of fields for a repeated thing is the exception and needs a
+reason. First built: the Quote's Pricing breakdown (Margin · Fees · Tax, unit
+in the Value cell).
+
+**A unit is not a yes/no (Pavan, 2026-10-13).** The in-cell menu is for
+several ways of STATING the same number. A choice that REPLACES the number —
+top off, TBD, "decided later" — is a yes/no, so it is a **named checkbox
+column** (interactions T5), the number cell shuts while it is ticked, and the
+typed number is kept but never counted (T3). Fuel lines: **Top off**, as the
+3PL Delivery Order. *Why this line exists:* this paragraph used to list "a
+fill type" as an in-cell unit, and the Customer Portal's first order sheet
+followed it and shipped a "Gal / Fill to full" menu where every other module
+has the Top off checkbox.
+
+## Same data, same control — look before building (Pavan, 2026-10-13)
+
+**Before building any field, table or column, find where the same data
+already lives in a built module and reuse its control, columns, order and
+words.** A fuel order line is the 3PL Delivery Order's line table (Top off ·
+Asset · Product · Qty (gal)); a delivery window is the `TimeWindowSlider`; a
+recurring order is the "Recurring order" checkbox with Frequency beside it.
+**A PRD's or reference's wording does not replace the app's term** ("fill to
+full" in a PRD is Top off here). A new pattern is only right when no module
+has the data yet — and then it is named in the reply as new, so it can be
+ruled on, never shipped silently.
 
 ## Record sheets — one summary card, one activity card, everywhere (Pavan, 2026-10-07)
 

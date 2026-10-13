@@ -81,6 +81,8 @@ has four routes — stay in the module READMEs:
 - `prototypes/unified-view/README.md` — the app
 - `prototypes/unified-view/threepl/README.md`
 - `prototypes/unified-view/service/README.md`
+- `prototypes/customer-portal/README.md` — a SEPARATE module (not in the
+  Unified View) that consumes its shell and parts; its own HTML
 
 **These documents are for what is true across modules.** A decision that only
 one module makes stays in its README; the second module to need it is the

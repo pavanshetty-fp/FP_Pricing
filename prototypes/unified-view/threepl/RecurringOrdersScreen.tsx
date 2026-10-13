@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -440,9 +440,9 @@ function DeliveryRow({ d }: { d: Delivery }) {
           {/* THE PARENT, SEEN FROM BELOW. In V2 the schedule and the first
               delivery are one record, and this badge is where that shows. */}
           {d.isParent && (
-            <Badge variant="secondary" className="shrink-0">
+            <Pill className="shrink-0">
               First delivery
-            </Badge>
+            </Pill>
           )}
         </div>
       </td>
@@ -453,10 +453,11 @@ function DeliveryRow({ d }: { d: Delivery }) {
         </div>
       </td>
       <td className="px-4 py-3 text-muted-foreground">
-        <span className="truncate">{first}</span>
-        {more > 0 && (
-          <span className="ml-1.5 text-xs text-muted-foreground">+{more}</span>
-        )}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate">{first}</span>
+          {/* "+N" IS A PILL (Pavan, 2026-10-09) — the same overflow chip Sales shows. */}
+          {more > 0 && <Pill className="tabular-nums">+{more}</Pill>}
+        </span>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-foreground">
         {gal > 0 ? gal.toLocaleString() : "—"}
@@ -747,6 +748,8 @@ export function RecurringOrdersScreen({
       setColFiltersOpen(Object.values(v.colFilters ?? {}).some((x) => x.trim()));
       setPage(1);
     },
+    /* REMEMBERED ACROSS VISITS (Pavan, 2026-10-09). */
+    storageKey: "3pl-recurring-orders",
   });
 
   const clearAll = () => {

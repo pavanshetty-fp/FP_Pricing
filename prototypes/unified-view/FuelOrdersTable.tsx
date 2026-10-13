@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { type CodeDiscTone } from "@/components/ui/code-disc";
 import { type StatusTone } from "@/components/ui/status-chip";
 import {
@@ -143,9 +143,9 @@ export function ProductCell({ products }: { products: ProductQty[] }) {
               aria-label={`Show all ${products.length} products`}
               className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Badge variant="outline" className="cursor-pointer tabular-nums">
+              <Pill className="cursor-pointer tabular-nums">
                 +{hidden}
-              </Badge>
+              </Pill>
             </button>
           </HoverCardTrigger>
           <HoverCardContent align="start" side="top" className="w-[260px]">
@@ -164,9 +164,9 @@ export function ProductCell({ products }: { products: ProductQty[] }) {
         className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-1 whitespace-nowrap"
       >
         <span ref={textRef} className="text-sm" />
-        <Badge variant="outline" className="tabular-nums">
+        <Pill className="tabular-nums">
           +{Math.max(1, products.length - 1)}
-        </Badge>
+        </Pill>
       </div>
     </div>
   );
@@ -230,9 +230,9 @@ export function TagsCell({ tags }: { tags: string[] }) {
       className="relative flex min-w-0 items-center gap-1 overflow-hidden"
     >
       {tags.slice(0, visible).map((t) => (
-        <Badge key={t} variant="secondary" className="min-w-0 truncate">
+        <Pill key={t} className="min-w-0 truncate">
           {t}
-        </Badge>
+        </Pill>
       ))}
 
       {hidden > 0 && (
@@ -243,9 +243,9 @@ export function TagsCell({ tags }: { tags: string[] }) {
               aria-label={`Show all ${tags.length} tags`}
               className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Badge variant="outline" className="cursor-pointer tabular-nums">
+              <Pill className="cursor-pointer tabular-nums">
                 +{hidden}
-              </Badge>
+              </Pill>
             </button>
           </HoverCardTrigger>
           <HoverCardContent align="start" side="top" className="w-[220px]">
@@ -264,13 +264,13 @@ export function TagsCell({ tags }: { tags: string[] }) {
         className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-1 whitespace-nowrap"
       >
         {tags.map((t) => (
-          <Badge key={t} variant="secondary">
+          <Pill key={t}>
             {t}
-          </Badge>
+          </Pill>
         ))}
-        <Badge variant="outline" className="tabular-nums">
+        <Pill className="tabular-nums">
           +{Math.max(1, tags.length - 1)}
-        </Badge>
+        </Pill>
       </div>
     </div>
   );

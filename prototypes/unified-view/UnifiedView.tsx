@@ -43,6 +43,8 @@ import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ModuleSidebar } from "./ModuleSidebar";
+import { ModuleSkeleton } from "./ModuleSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/theme";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
@@ -467,6 +469,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     setSubKey(firstSubKey(key));
   };
   const [searchOpen, setSearchOpen] = React.useState(false);
+  /** The module whose data is loading (its bar is running) — see ModuleSidebar. */
+  const [loadingModule, setLoadingModule] = React.useState<string | null>(null);
   /* The signed-in account lives here, above both the top bar and the Profile
      page, so editing it on Profile updates the chrome without a round trip. */
   const [user, setUser] = React.useState<AccountUser>({
@@ -743,9 +747,14 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       <AppShell
         title={
           <div className="flex min-w-0 items-baseline gap-3">
+            {loadingModule ? (
+              /* THE TITLE LOADS WITH THE PAGE (Pavan, 2026-10-10). */
+              <Skeleton className="h-6 w-40" />
+            ) : (
             <h1 className="truncate text-xl font-semibold leading-none text-foreground">
               {accountTitle ?? activeSub?.label ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
             </h1>
+            )}
             {listTotal && (
               <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                 {listTotal}
@@ -808,6 +817,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
               activeArea={accountTitle ? "" : navKey}
               activeSub={subKey}
               onModuleChange={switchModule}
+              onLoadingChange={setLoadingModule}
               onNavigate={(area, sub) => {
                 setNavKey(area);
                 setSubKey(sub ?? firstSubKey(area));
@@ -851,7 +861,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
            page header carries only the theme toggle. */
         headerAction={<ThemeToggle />}
       >
-        {screen}
+        {/* WHILE A MODULE LOADS, its page is shimmering placeholders
+            (Pavan, 2026-10-10). */}
+        {loadingModule ? <ModuleSkeleton /> : screen}
         <GlobalSearch
           open={searchOpen}
           onOpenChange={setSearchOpen}

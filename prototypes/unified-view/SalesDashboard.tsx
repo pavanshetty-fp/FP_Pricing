@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { DateFilter } from "./DateFilter";
 import { FUEL_ORDERS, dateKeyOf, startOfDay } from "./data";
 import { BarColumns, BarList, Panel, StatTile, DASHBOARD_GROUND } from "./DashboardParts";
@@ -225,9 +225,9 @@ export function SalesDashboard({
                       <span className="text-muted-foreground">Unassigned</span>
                     )}
                     {r.tags.includes("Rush") && (
-                      <Badge variant="secondary" className="ml-2">
+                      <Pill className="ml-2">
                         Rush
-                      </Badge>
+                      </Pill>
                     )}
                   </TableCell>
                   <TableCell className="px-2 text-right tabular-nums">{gal(r.qtyGal)}</TableCell>

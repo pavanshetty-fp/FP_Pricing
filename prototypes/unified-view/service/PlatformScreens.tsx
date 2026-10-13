@@ -1,7 +1,7 @@
 import * as React from "react";
 import { BookOpen, CalendarClock, FileSignature, Gauge, Package, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { DATE_FMT } from "../data";
@@ -195,7 +195,7 @@ export function AgreementsScreen() {
           case "no":
             return <span className="font-medium tabular-nums">{r.no}</span>;
           case "kind":
-            return <Badge variant="secondary">{r.kind}</Badge>;
+            return <Pill>{r.kind}</Pill>;
           case "customer":
             return r.customer;
           case "asset":
@@ -461,9 +461,9 @@ export function PerformanceScreen() {
             return (
               <span className="flex flex-wrap items-center gap-1">
                 {r.skills.map((s) => (
-                  <Badge key={s} variant="secondary">
+                  <Pill key={s}>
                     {s}
-                  </Badge>
+                  </Pill>
                 ))}
               </span>
             );

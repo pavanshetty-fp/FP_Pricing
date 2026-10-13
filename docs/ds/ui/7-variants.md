@@ -71,7 +71,9 @@ module order **3PL · Sales · Service Work · Pricing · Lease** (Pavan,
 no ring, dot, chevron or divider marks it (Pavan, 2026-10-07). **Switching modules starts with a
 progress bar** (Pavan, 2026-10-08): a 2px bar in the BRAND colour (`bg-brand`, Pavan 2026-10-09)
 fills the clicked row left to right (3s — a module takes 3–5s to load,
-2026-10-09 — CSS keyframe), with "Loading data for this module." in small muted
+2026-10-09 — CSS keyframe), with the PAGE in its loading state meanwhile — the title,
+view tabs, toolbar and table rows as shimmering skeletons in their own places
+(`ModuleSkeleton`, Pavan 2026-10-10) — and with "Loading data for this module." in small muted
 text right under it, flush left with the row, same group, no box; when it arrives the module switches and the three steps run. **The three steps, in
 order** (Pavan, 2026-10-07): the open module FOLDS its pages (200ms), then the
 rows MOVE — the chosen module glides to the top, the old one back to its place

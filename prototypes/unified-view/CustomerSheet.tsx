@@ -231,7 +231,7 @@ export function CustomerSheet({
                 {draft.shipTos.map((s) => (
                   <span
                     key={s}
-                    className="inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pr-1 pl-2.5 text-xs text-foreground"
+                    className="inline-flex h-7 items-center gap-1 rounded-full bg-muted pr-1 pl-3 text-xs text-foreground"
                   >
                     {s}
                     <button
@@ -243,7 +243,7 @@ export function CustomerSheet({
                           draft.shipTos.filter((x) => x !== s)
                         )
                       }
-                      className="rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex size-5 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       <X className="size-3" />
                     </button>

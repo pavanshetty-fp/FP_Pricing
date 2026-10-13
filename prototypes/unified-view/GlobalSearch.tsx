@@ -9,7 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -124,9 +124,9 @@ export function GlobalSearch({ open, onOpenChange, onNavigate }: GlobalSearchPro
         </span>
       }
       shortcut={
-        <Badge variant="secondary" className="tracking-normal">
+        <Pill>
           {KIND_LABEL[entry.kind]}
-        </Badge>
+        </Pill>
       }
     >
       <span className="flex min-w-0 flex-col">

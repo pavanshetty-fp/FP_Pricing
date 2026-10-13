@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Check, ChevronDown, Eye, Plus, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -309,7 +309,7 @@ function TargetEditor({
                     <td className="relative p-0">
                       {asset?.rental && (
                         <span className="pointer-events-none absolute top-1/2 right-8 z-10 -translate-y-1/2">
-                          <Badge variant="secondary">Rental</Badge>
+                          <Pill>Rental</Pill>
                         </span>
                       )}
                       <TableCellCombobox

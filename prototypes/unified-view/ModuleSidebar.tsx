@@ -117,6 +117,7 @@ export function ModuleSidebar({
   activeArea,
   activeSub,
   onModuleChange,
+  onLoadingChange,
   onNavigate,
 }: {
   modules: SidebarModule[];
@@ -127,6 +128,9 @@ export function ModuleSidebar({
   activeArea: string;
   activeSub: string | null;
   onModuleChange: (key: string) => void;
+  /** The module whose data is loading while its bar runs — null when done.
+      The page shows its loading state meanwhile (Pavan, 2026-10-10). */
+  onLoadingChange?: (key: string | null) => void;
   onNavigate: (area: string, sub: string | null) => void;
 }) {
   const [collapsed, setCollapsed] = React.useState(() => {
@@ -175,8 +179,10 @@ export function ModuleSidebar({
       return;
     }
     setProgress(key);
+    onLoadingChange?.(key);
     progressTimer.current = window.setTimeout(() => {
       setProgress(null);
+      onLoadingChange?.(null);
       onModuleChange(key);
     }, PROGRESS_MS);
   };

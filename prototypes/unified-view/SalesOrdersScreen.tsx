@@ -3,9 +3,6 @@ import { CalendarOff, Clock, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CodeDisc } from "@/components/ui/code-disc";
-import { StatusChip } from "@/components/ui/status-chip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,8 +36,8 @@ import { OrderMapView } from "./OrderMapView";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import { AssetOrderSheet, type AssetOrderDraft } from "./AssetOrderSheet";
-import { PlannedCell, ProductCell, QtyCell, TagsCell } from "./FuelOrdersTable";
-import { kindTone } from "./statusKind";
+import { PlannedCell, ProductCell, QtyCell } from "./FuelOrdersTable";
+import { Pill, PillList } from "@/components/ui/pill";
 import {
   UNIT_SHORT,
   driverStage,
@@ -51,6 +48,9 @@ import {
   stageLabel,
   stageLaneColor,
   stageTone,
+  stageKind,
+  stageColor,
+  typeColor,
   useSalesSettings,
 } from "./salesSettings";
 import { useSavedViews } from "./useSavedViews";
@@ -822,6 +822,9 @@ export function SalesOrdersScreen({
     defaultState,
     keyOf: salesViewStateKey,
     apply: applyState,
+    /* REMEMBERED ACROSS VISITS (Pavan, 2026-10-09); a dashboard drill wins. */
+    storageKey: "sales-orders",
+    restore: !drill,
   });
 
   /*
@@ -1151,8 +1154,12 @@ export function SalesOrdersScreen({
       case "order":
         return <span className="truncate text-sm tabular-nums text-foreground">{orderNoOf(r)}</span>;
       case "type": {
+        /* THE PILL STYLE, a trial after Lovable (Pavan, 2026-10-09) — on the
+           columns that were already chips: Type, Status, Tags. */
+        /* THE FULL TAG, in the colour chosen for it in Sales Settings
+           (Pavan, 2026-10-09). */
         const c = salesTypeCode(r);
-        return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
+        return <Pill color={typeColor(c.label, settings)}>{c.label}</Pill>;
       }
       case "customer":
         return <TwoLineCell title={customerOf(r)} description={shipToOf(r)} q={f} />;
@@ -1185,30 +1192,18 @@ export function SalesOrdersScreen({
            (Pavan, 2026-10-07). */
         return (
           <span className="flex min-w-0 items-center gap-2">
-            <StatusChip tone={stageTone(statusOf(r), settings)} variant="text">
+            <Pill kind={stageKind(statusOf(r), settings)} color={stageColor(statusOf(r), settings)}>
               {stageLabel(statusOf(r), settings)}
-            </StatusChip>
-            {isOverSla(r, now) && (
-              <StatusChip tone={kindTone("critical")} variant="soft">
-                Over SLA
-              </StatusChip>
-            )}
-            {approvalOf(r) && (
-              <StatusChip tone={kindTone("caution")} variant="soft">
-                Needs approval
-              </StatusChip>
-            )}
+            </Pill>
+            {isOverSla(r, now) && <Pill kind="critical">Over SLA</Pill>}
+            {approvalOf(r) && <Pill kind="caution">Needs approval</Pill>}
           </span>
         );
       case "driver":
         if (r.kind !== "fuel") return dash;
+        /* THE NAME ALONE — no initials beside it (Pavan, 2026-10-09). */
         return r.fuel.driver ? (
-          <span className="flex min-w-0 items-center gap-2">
-            <Avatar className="size-5 shrink-0">
-              <AvatarFallback className="text-[10px]">{r.fuel.driver.initials}</AvatarFallback>
-            </Avatar>
-            <span className="truncate text-sm text-foreground">{r.fuel.driver.name}</span>
-          </span>
+          <span className="truncate text-sm text-foreground">{r.fuel.driver.name}</span>
         ) : (
           <span className="truncate text-sm italic text-muted-foreground">— Unassigned</span>
         );
@@ -1219,7 +1214,7 @@ export function SalesOrdersScreen({
           dash
         );
       case "tags":
-        return r.kind === "fuel" ? <TagsCell tags={r.fuel.tags} /> : dash;
+        return r.kind === "fuel" ? <PillList values={r.fuel.tags} label="tags" /> : dash;
       default:
         return null;
     }
@@ -1322,7 +1317,60 @@ export function SalesOrdersScreen({
         onExport={() => setExporting(true)}
       />
 
-      <div className="mt-4 shrink-0">
+      {/* THE BANNER SITS ABOVE THE CONTROLS (Pavan, 2026-10-11) — what
+          needs attention is read before the tools to act on it. */}
+      {alertVisible && (
+        <BannerCallout
+          status="warning"
+          variant="soft"
+          className="mt-4 shrink-0"
+          /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
+          title={`${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`}
+          action={
+            <>
+              {/* SHOW ORDERS IS THE FILTER — exactly the set the banner counts. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className={bannerSoftAction}
+                onClick={() => {
+                  setOverdueOnly(true);
+                  setPage(1);
+                }}
+              >
+                Show orders
+              </Button>
+              {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE — see the old Fuel Orders
+                  screen: only this order composes. */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label="Remind me later">
+                        <Clock />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Remind me later</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  {SNOOZE_OPTIONS.map((o) => (
+                    <DropdownMenuItem
+                      key={o.label}
+                      onSelect={() => setSnoozedUntil(Date.now() + o.ms)}
+                    >
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+          onDismiss={() => setAlertDismissed(true)}
+        />
+      )}
+
+      <div className="mt-3 shrink-0">
         <ListToolbar
           boardView
           mapView
@@ -1469,57 +1517,6 @@ export function SalesOrdersScreen({
         )}
       </div>
 
-      {alertVisible && (
-        <BannerCallout
-          status="warning"
-          variant="soft"
-          className="mt-3 shrink-0"
-          /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
-          title={`${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`}
-          action={
-            <>
-              {/* SHOW ORDERS IS THE FILTER — exactly the set the banner counts. */}
-              <Button
-                variant="outline"
-                size="sm"
-                className={bannerSoftAction}
-                onClick={() => {
-                  setOverdueOnly(true);
-                  setPage(1);
-                }}
-              >
-                Show orders
-              </Button>
-              {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE — see the old Fuel Orders
-                  screen: only this order composes. */}
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="Remind me later">
-                        <Clock />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Remind me later</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {SNOOZE_OPTIONS.map((o) => (
-                    <DropdownMenuItem
-                      key={o.label}
-                      onSelect={() => setSnoozedUntil(Date.now() + o.ms)}
-                    >
-                      {o.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-          onDismiss={() => setAlertDismissed(true)}
-        />
-      )}
-
       {/* `relative` anchors the floating bulk-action bar. */}
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">
@@ -1561,6 +1558,7 @@ export function SalesOrdersScreen({
                 subtitle: customerOf(r),
                 status: stageLabel(statusOf(r), settings),
                 tone: stageTone(statusOf(r), settings),
+                color: stageColor(statusOf(r), settings),
               }))}
               onOpenOrder={openById}
             />

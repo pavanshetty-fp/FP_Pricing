@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import {
   Popover,
   PopoverContent,
@@ -226,13 +226,8 @@ export interface BoardCardBadge {
   tone?: "critical" | "neutral" | "caution" | "success" | "info";
 }
 
-/** The soft tints, one per tone — the `/10` fill the DS's `StatusChip` uses. */
-const BADGE_TONE: Record<string, string> = {
-  caution:
-    "border-transparent bg-fp-banner-accent-caution/10 text-fp-banner-accent-caution",
-  success: "border-transparent bg-status-success/10 text-status-success",
-  info: "border-transparent bg-fp-banner-accent-info/10 text-fp-banner-accent-info",
-};
+/* THE BADGE IS THE DS PILL (Pavan, 2026-10-09) — the tone is a kind, and
+   the pill draws every kind the same way it does in a table cell. */
 
 export interface BoardCard {
   id: string;
@@ -580,12 +575,9 @@ function CardQuotes({
               the rest are neutral, so a board of chips does not turn into a
               ranking nobody asked to see. */}
           {q.rank !== undefined && (
-          <Badge
-            variant={q.rank === 1 ? "pastel-green" : "secondary"}
-            className="max-w-full truncate text-[11px]"
-          >
+          <Pill kind={q.rank === 1 ? "success" : "neutral"} className="self-start">
             {rankLabel(q.rank)}
-          </Badge>
+          </Pill>
           )}
         </span>
         {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
@@ -715,13 +707,9 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           {card.badges && card.badges.length > 0 && (
             <div className="flex shrink-0 flex-wrap justify-end gap-1">
               {card.badges.map((b) => (
-                <Badge
-                  key={b.label}
-                  variant={b.tone === "critical" ? "destructive" : "secondary"}
-                  className={b.tone ? BADGE_TONE[b.tone] : undefined}
-                >
+                <Pill key={b.label} kind={b.tone ?? "neutral"}>
                   {b.label}
-                </Badge>
+                </Pill>
               ))}
             </div>
           )}

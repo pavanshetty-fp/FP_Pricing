@@ -1,5 +1,5 @@
 import * as React from "react";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +32,8 @@ import {
   TableRowRemove,
 } from "@/components/form-layout/table-cells";
 import { HangingAdd } from "./HangingAdd";
+import { Pill, PILL_COLORS, type PillColor } from "@/components/ui/pill";
+import { stageKind, type TypeTag } from "./salesSettings";
 import {
   CORE_STAGES,
   DEFAULT_SALES_SETTINGS,
@@ -485,6 +487,91 @@ const coreOrderKept = (next: StageRule[]) => {
   );
 };
 
+/**
+ * A TAG'S COLOUR, CHOSEN IN ITS CELL (Pavan, 2026-10-09). The cell shows the
+ * tag as it will look; the menu offers every colour as that same tag. Stages
+ * can go back to their kind's colour ("Default").
+ */
+function ColorCell({
+  label,
+  color,
+  kind,
+  allowDefault,
+  onChange,
+}: {
+  label: string;
+  color: PillColor | null;
+  kind?: Parameters<typeof Pill>[0]["kind"];
+  allowDefault?: boolean;
+  onChange: (c: PillColor | null) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Colour of ${label}`}
+          className="absolute inset-0 flex items-center justify-between gap-2 px-3 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+        >
+          <Pill kind={kind} color={color}>
+            {label || "—"}
+          </Pill>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-40">
+        {allowDefault && (
+          <DropdownMenuItem onSelect={() => onChange(null)}>
+            <Pill kind={kind}>Default</Pill>
+          </DropdownMenuItem>
+        )}
+        {PILL_COLORS.map((c) => (
+          <DropdownMenuItem key={c.value} onSelect={() => onChange(c.value)}>
+            <Pill color={c.value}>{c.label}</Pill>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** THE ORDER TYPES AS TAGS, each with its colour (Pavan, 2026-10-09). */
+function TypeTagsTable({ tags }: { tags: TypeTag[] }) {
+  const patch = (label: string, color: PillColor) =>
+    setSalesSettings((s) => ({
+      ...s,
+      typeTags: s.typeTags.map((t) => (t.label === label ? { ...t, color } : t)),
+    }));
+  return (
+    <SheetSection title="Order types" flush>
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] table-fixed border-collapse">
+        <colgroup>
+          <col />
+          <col className="w-[220px]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border bg-fp-table-header">
+            <Head>Type</Head>
+            <Head>Colour</Head>
+          </tr>
+        </thead>
+        <tbody>
+          {tags.map((t) => (
+            <tr key={t.label} className={ROW}>
+              <td className="px-3 text-sm text-foreground">{t.label}</td>
+              <td className="relative p-0">
+                <ColorCell label={t.label} color={t.color} onChange={(c) => c && patch(t.label, c)} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+    </SheetSection>
+  );
+}
+
 function WorkflowTable({ stages }: { stages: StageRule[] }) {
   const [focusId, setFocusId] = React.useState<string | null>(null);
   const setStages = (fn: (prev: StageRule[]) => StageRule[]) =>
@@ -526,9 +613,10 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
       {/* FULL WIDTH, NEVER CRUSHED (Pavan, 2026-10-07): below its minimum the
           table scrolls sideways rather than squeezing a column to nothing. */}
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] table-fixed border-collapse">
+      <table className="w-full min-w-[900px] table-fixed border-collapse">
         <colgroup>
           <col />
+          <col className="w-[200px]" />
           <col className="w-[180px]" />
           <col className="w-[160px]" />
           <col className="w-[80px]" />
@@ -537,6 +625,7 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
         <thead>
           <tr className="border-b border-border bg-fp-table-header">
             <Head>Stage</Head>
+            <Head>Colour</Head>
             <Head>Requires approval</Head>
             <Head className="text-right">SLA (hours)</Head>
             <Head>Order</Head>
@@ -563,6 +652,15 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
                     autoFocus={focusId === r.id}
                     aria-label={`Name of ${name}`}
                     onChange={(v) => patch(r.id, { label: v })}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <ColorCell
+                    label={r.label}
+                    color={r.color ?? null}
+                    kind={stageKind(r.id)}
+                    allowDefault
+                    onChange={(c) => patch(r.id, { color: c })}
                   />
                 </td>
                 <td className="px-3">
@@ -865,7 +963,10 @@ export function SalesSettingsScreen() {
           <FormFieldsTable key={kind} kind={kind} onKindChange={setKind} />
         </TabsContent>
         <TabsContent value="workflow">
-          <WorkflowTable stages={cfg.stages} />
+          <div className="flex flex-col gap-6">
+            <WorkflowTable stages={cfg.stages} />
+            <TypeTagsTable tags={cfg.typeTags} />
+          </div>
         </TabsContent>
         <TabsContent value="notifications">
           <NotificationsTable rules={cfg.notifications} />

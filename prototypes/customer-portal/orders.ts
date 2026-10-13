@@ -1,0 +1,924 @@
+import * as React from "react";
+import { DATE_FMT, dateKeyOf, startOfDay } from "../unified-view/data";
+import { statusTones } from "../unified-view/statusKind";
+import type { ActivityEntry } from "../unified-view/activity";
+import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
+
+/*
+  CUSTOMER PORTAL — ORDER REQUESTS (Pavan, 2026-10-13).
+
+  What the CUSTOMER sees: the fuel requests they raise to their supplier (the
+  tenant), each for ONE ship-to and any number of its tanks and assets, and
+  the status the tenant moves it through. How the tenant turns a request into
+  its own orders is the tenant unit's business and is not shown here.
+
+  No customer-side approval (Pavan, 2026-10-13): a user allowed to create an
+  order sends it straight to the tenant.
+
+  INVENTED, all of it: the account, ship-tos, tanks and seed requests.
+*/
+
+/** The signed-in customer account. */
+export const ACCOUNT = "Cardinal Logistics";
+/** Who is acting — the signed-in customer user. */
+export const PORTAL_ACTOR = "Pavan Shetty";
+/** The supplier — the tenant whose portal this is (white-labelled, PRD FR-19). */
+export const TENANT = "Lone Star Fuels";
+
+/* ------------------------------------------------------------ statuses --- */
+
+/*
+  THE PRD's CUSTOMER-FACING LIFECYCLE (Pavan chose the full list, 2026-10-13),
+  without Pending approval. "Billing complete" is shown as Paid; the PRD's
+  combined exception states are split so each says one thing.
+*/
+/* RENAMED (Pavan, 2026-10-13): Submitted → Created, Under review → In
+   review, Confirmed + Scheduled → Scheduled, Delivery exception → Partial
+   delivery. */
+export const REQUEST_STATUSES = [
+  "Draft",
+  "Created",
+  "In review",
+  "Action needed",
+  "Quote sent",
+  "Quote declined",
+  "Quote expired",
+  "Scheduled",
+  "Cancellation requested",
+  "Out for delivery",
+  "Partial delivery",
+  "Delivered",
+  "Invoiced",
+  "Invoice disputed",
+  "Paid",
+  "Rejected",
+  "Cancelled",
+] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+/* KINDS, NEVER TONES — docs/unified-view/1-components.md §Status kinds. */
+export const REQUEST_STATUS_TONE = statusTones<RequestStatus>({
+  Draft: "neutral",
+  /* Waiting on the tenant to pick it up. */
+  Created: "caution",
+  "In review": "info",
+  /* The tenant needs something from the customer before it can go on. */
+  "Action needed": "critical",
+  /* Waiting on the customer's answer. */
+  "Quote sent": "caution",
+  "Quote declined": "neutral",
+  "Quote expired": "neutral",
+  Scheduled: "info",
+  /* Inside the cut-off: waiting on the tenant to say yes or no. */
+  "Cancellation requested": "caution",
+  "Out for delivery": "info",
+  "Partial delivery": "critical",
+  Delivered: "success",
+  /* Waiting on payment. */
+  Invoiced: "caution",
+  "Invoice disputed": "caution",
+  Paid: "success",
+  /* Ends, not faults. */
+  Rejected: "neutral",
+  Cancelled: "neutral",
+});
+
+/** Lifecycle position — status sorts by this, never the alphabet. */
+export const statusRank = (s: RequestStatus) => REQUEST_STATUSES.indexOf(s);
+
+/* ---------------------------------------------------- ship-tos & assets --- */
+
+export interface Asset {
+  id: string;
+  name: string;
+  product: string;
+  /** Gallons. */
+  capacity: number;
+  /** Last reading, % full — monitored tanks. INVENTED. */
+  level: number;
+}
+
+export interface ShipTo {
+  name: string;
+  /** Where it is — for the map. INVENTED, around Houston. */
+  lat: number;
+  lng: number;
+  assets: Asset[];
+}
+
+export const PRODUCTS = [
+  "Diesel",
+  "Dyed Diesel",
+  "Unleaded 87",
+  "DEF",
+  "Propane",
+  "Hydraulic Oil AW-46",
+];
+
+/*
+  LINE OF SERVICE — the 3PL line switch's words (All · Fuel · Lubricants ·
+  Propane), the "same data, same control" rule. DEF rides with fuel, as on
+  3PL. A request is in a line when any of its products is.
+*/
+export const LINE_SCOPES = ["All", "Fuel", "Lubricants", "Propane"] as const;
+export type LineScope = (typeof LINE_SCOPES)[number];
+const LINE_OF: Record<string, Exclude<LineScope, "All">> = {
+  Diesel: "Fuel",
+  "Dyed Diesel": "Fuel",
+  "Unleaded 87": "Fuel",
+  DEF: "Fuel",
+  Propane: "Propane",
+  "Hydraulic Oil AW-46": "Lubricants",
+};
+export const inLine = (r: { lines: { product: string }[] }, scope: LineScope) =>
+  scope === "All" || r.lines.some((l) => LINE_OF[l.product] === scope);
+
+/** The tenant's terminal — where the trucks leave from. INVENTED. */
+export const TERMINAL = { name: `${"Lone Star Fuels"} terminal`, lat: 29.88, lng: -95.06 };
+
+export const SHIP_TOS: ShipTo[] = [
+  {
+    name: "Cardinal Hub A",
+    lat: 29.78,
+    lng: -95.38,
+    assets: [
+      { id: "a-1", name: "Tank A1", product: "Diesel", capacity: 10000, level: 64 },
+      { id: "a-2", name: "Tank A2", product: "Diesel", capacity: 10000, level: 31 },
+      { id: "a-3", name: "DEF Tote 1", product: "DEF", capacity: 330, level: 40 },
+      { id: "a-4", name: "Generator G-12", product: "Diesel", capacity: 500, level: 55 },
+      { id: "a-5", name: "Hydraulic Reservoir H-2", product: "Hydraulic Oil AW-46", capacity: 275, level: 61 },
+    ],
+  },
+  {
+    name: "Cardinal Hub B",
+    lat: 29.96,
+    lng: -95.56,
+    assets: [
+      { id: "b-1", name: "Tank B1", product: "Diesel", capacity: 12000, level: 72 },
+      { id: "b-2", name: "Tank B2", product: "Unleaded 87", capacity: 8000, level: 18 },
+      { id: "b-3", name: "Reefer Truck R-7", product: "Dyed Diesel", capacity: 150, level: 14 },
+    ],
+  },
+  {
+    name: "Cardinal Overflow",
+    lat: 29.64,
+    lng: -95.22,
+    assets: [
+      { id: "c-1", name: "Tank O1", product: "Dyed Diesel", capacity: 6000, level: 22 },
+      { id: "c-2", name: "Propane Tank P1", product: "Propane", capacity: 1000, level: 47 },
+      { id: "c-3", name: "Light Tower L-3", product: "Diesel", capacity: 60, level: 0 },
+    ],
+  },
+];
+
+export const assetById = (id: string): Asset | undefined =>
+  SHIP_TOS.flatMap((s) => s.assets).find((a) => a.id === id);
+
+/* ---------------------------------------------------------- the request --- */
+
+/**
+ * One line: a tank or asset, the product going into it, and how much — the
+ * 3PL Delivery Order's line (Top off · Asset · Product · Qty). TOP OFF IS A
+ * CHECKBOX: ticked, the tank is filled and no gallons are typed; the typed
+ * number is kept, so unticking hands it back, but it never counts.
+ */
+export interface RequestLine {
+  /** "" — a line can name a product with no tank, as on 3PL. */
+  assetId: string;
+  product: string;
+  topOff: boolean;
+  gal: number;
+}
+
+export const FREQUENCIES = [
+  "Daily",
+  "Every weekday (Mon–Fri)",
+  "Weekly",
+  "Every 2 weeks",
+  "Monthly",
+];
+
+export interface OrderRequest {
+  id: string;
+  requestNo: string;
+  shipTo: string;
+  lines: RequestLine[];
+  /** `YYYY-MM-DD`, or "" while unset. */
+  date: string;
+  /** Minutes from midnight. */
+  windowStart: number;
+  windowEnd: number;
+  po: string;
+  instructions: string;
+  recurring: boolean;
+  frequency: string;
+  /** `YYYY-MM-DD`, or "" for no end. */
+  endDate: string;
+  status: RequestStatus;
+  flags: Flag[];
+  documents: RequestDoc[];
+  /** While out for delivery — who is driving, and the live trip. */
+  trip?: Trip;
+  /** Once the tenant has invoiced it. */
+  invoiceNo?: string;
+  updatedAt: string;
+  audit?: ActivityEntry[];
+}
+
+/*
+  THE LIVE TRIP (Pavan, 2026-10-13 — the map tracks trucks out for delivery).
+  Where the truck is, is worked out from the clock between leaving the
+  terminal and its ETA. INVENTED.
+*/
+export interface Trip {
+  driver: string;
+  truck: string;
+  departedAt: string;
+  eta: string;
+}
+/** 0 at the terminal, 1 at the site. */
+export function tripProgress(t: Trip, now = Date.now()) {
+  const a = Date.parse(t.departedAt);
+  const b = Date.parse(t.eta);
+  return Math.min(1, Math.max(0, (now - a) / (b - a)));
+}
+
+export const blankLine = (): RequestLine => ({ assetId: "", product: "", topOff: false, gal: 0 });
+
+/* ------------------------------------------------- flags & documents ---- */
+
+/*
+  FLAGS (Pavan, 2026-10-13) — what needs the customer's eye on a request:
+  late risk, a driver's note, an invoice past due, a credit hold.
+*/
+export const FLAG_KINDS = [
+  "At risk of being late",
+  "Driver note",
+  "Invoice past due",
+  "Credit hold",
+] as const;
+export type FlagKind = (typeof FLAG_KINDS)[number];
+/** How much it matters — drives the text colour: red · amber · plain. */
+export type FlagLevel = "critical" | "warning" | "info";
+export interface Flag {
+  kind: FlagKind;
+  detail: string;
+  level: FlagLevel;
+}
+
+/*
+  DOCUMENTS (Pavan, 2026-10-13) — everything on a request, whoever added it:
+  what the tenant shares (tickets, BOLs, quotes, invoices) and what the
+  customer uploads.
+*/
+export const DOC_KINDS = ["Delivery ticket", "BOL", "Quote", "Invoice", "Photo", "Other"] as const;
+export type DocKind = (typeof DOC_KINDS)[number];
+export interface RequestDoc {
+  id: string;
+  name: string;
+  kind: DocKind;
+  /** The tenant's name, or the customer user who uploaded it. */
+  by: string;
+  at: string;
+}
+
+export const dateOfKey = (key: string): Date | null => {
+  if (!key) return null;
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+export const printKey = (key: string) => {
+  const d = dateOfKey(key);
+  return d ? DATE_FMT.format(d) : "—";
+};
+export const windowText = (r: Pick<OrderRequest, "windowStart" | "windowEnd">) =>
+  `${formatMinutes(r.windowStart)} – ${formatMinutes(r.windowEnd)}`;
+
+/** Gallons asked for, and how many lines are top off. */
+export function quantityOf(lines: RequestLine[]) {
+  return {
+    gal: lines.reduce((n, l) => n + (l.topOff ? 0 : l.gal), 0),
+    topOff: lines.filter((l) => l.topOff).length,
+  };
+}
+
+/** A line's quantity as the app prints it. */
+export const lineQty = (l: RequestLine) =>
+  l.topOff ? "Top off" : l.gal > 0 ? `${l.gal.toLocaleString()} gal` : "—";
+
+export function quantityText(lines: RequestLine[]): string {
+  const { gal, topOff } = quantityOf(lines);
+  /* ALL TOP OFF SAYS THE WORD, not a number — interactions T2. */
+  if (topOff === 0) return gal > 0 ? gal.toLocaleString() : "";
+  const t = `${topOff} top off`;
+  return gal > 0 ? `${gal.toLocaleString()} + ${t}` : t;
+}
+
+const assetNames = (r: OrderRequest) =>
+  r.lines.map((l) => assetById(l.assetId)?.name).filter(Boolean) as string[];
+const productNames = (r: OrderRequest) =>
+  Array.from(new Set(r.lines.map((l) => l.product).filter(Boolean)));
+
+/* --------------------------------------------------------------- seed ---- */
+
+const dayKey = (offset: number) => {
+  const d = startOfDay(new Date());
+  d.setDate(d.getDate() + offset);
+  return dateKeyOf(d);
+};
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+
+type Seed = [
+  status: RequestStatus,
+  shipTo: number,
+  lines: [asset: string, topOff: boolean, gal: number][],
+  dayOffset: number,
+  window: [number, number],
+  po: string,
+  recurring: string,
+  updatedHoursAgo: number,
+];
+
+const SEED: Seed[] = [
+  ["Created", 0, [["a-1", false, 4000], ["a-2", false, 3500]], 2, [8, 12], "PO-77120", "", 1],
+  ["Created", 1, [["b-2", false, 2200]], 0, [15, 19], "", "", 2],
+  ["In review", 1, [["b-1", true, 0], ["b-2", false, 2500]], 3, [7, 11], "", "", 3],
+  ["Action needed", 2, [["c-1", false, 3000]], 1, [9, 13], "", "", 5],
+  ["Quote sent", 0, [["a-1", false, 6000], ["a-3", false, 250], ["a-5", false, 120]], 4, [8, 16], "PO-77131", "", 8],
+  ["Scheduled", 1, [["b-1", false, 5000]], 2, [6, 10], "PO-77098", "Weekly", 20],
+  ["Scheduled", 0, [["a-4", true, 0], ["a-2", false, 4200]], 0, [13, 17], "", "", 26],
+  ["Out for delivery", 2, [["c-2", false, 800]], 0, [8, 12], "PO-77090", "", 2],
+  ["Out for delivery", 0, [["a-1", false, 5200], ["a-3", false, 200]], 0, [10, 14], "", "Every 2 weeks", 1.5],
+  ["Partial delivery", 1, [["b-2", false, 6000]], -1, [13, 17], "", "", 18],
+  ["Delivered", 0, [["a-1", false, 5500], ["a-3", false, 300]], 0, [6, 9], "PO-77071", "Every 2 weeks", 4],
+  ["Delivered", 2, [["c-1", false, 2800]], 0, [6, 9], "", "", 3],
+  ["Invoiced", 2, [["c-1", true, 0], ["c-3", true, 0]], -6, [7, 11], "PO-77052", "", 90],
+  ["Invoiced", 0, [["a-2", false, 3900]], -3, [8, 12], "PO-77066", "", 60],
+  ["Invoice disputed", 1, [["b-1", false, 7000]], -9, [9, 13], "PO-77044", "", 120],
+  ["Paid", 0, [["a-2", false, 4800]], -14, [8, 12], "PO-77010", "Monthly", 300],
+  ["Quote declined", 2, [["c-2", false, 600]], 5, [12, 16], "", "", 30],
+  ["Quote expired", 1, [["b-3", true, 0]], -3, [8, 12], "", "", 96],
+  ["Rejected", 0, [["a-4", false, 450]], -4, [14, 18], "", "", 70],
+  ["Cancelled", 2, [["c-1", false, 2000]], -5, [8, 12], "PO-77031", "", 110],
+  ["Cancellation requested", 2, [["c-1", false, 2500]], 0, [14, 18], "PO-77140", "", 4],
+  ["Delivered", 1, [["b-1", false, 4100]], 0, [5, 8], "", "", 5],
+  ["Draft", 1, [["b-1", false, 3000]], 6, [8, 12], "", "", 0.5],
+];
+
+/* SAMPLE FLAGS, by seed row. INVENTED. */
+const SEED_FLAGS: Record<number, Flag[]> = {
+  3: [{ kind: "Credit hold", detail: "Account is on credit hold until the balance is cleared.", level: "critical" }],
+  7: [{ kind: "At risk of being late", detail: "ETA 12:40 PM, past the 8:00 AM – 12:00 PM window.", level: "warning" }],
+  9: [{ kind: "Driver note", detail: "Gate locked at Cardinal Hub B; 2,400 gal not delivered.", level: "warning" }],
+  11: [{ kind: "Driver note", detail: "Water found at the bottom of Tank O1.", level: "critical" }],
+  12: [{ kind: "Invoice past due", detail: "Due 6 days ago.", level: "critical" }],
+  14: [
+    { kind: "Invoice past due", detail: "Due 2 days ago; due date paused by the dispute.", level: "warning" },
+    { kind: "Driver note", detail: "Tank B1 sensor offline on arrival.", level: "info" },
+  ],
+};
+
+/** What the tenant has shared by this point, plus a sample upload. INVENTED. */
+function seedDocs(status: RequestStatus, i: number, at: string): RequestDoc[] {
+  const n = 4400 + i;
+  const docs: RequestDoc[] = [];
+  const add = (name: string, kind: DocKind, by = TENANT) =>
+    docs.push({ id: `doc-${i}-${docs.length}`, name, kind, by, at });
+  const rank = statusRank(status);
+  if (status === "Quote sent" || status === "Quote declined" || status === "Quote expired" || rank >= statusRank("Scheduled"))
+    if (status !== "Rejected" && status !== "Cancelled") add(`Quote Q-${n}.pdf`, "Quote");
+  if (rank >= statusRank("Partial delivery") && rank <= statusRank("Paid")) {
+    add(`Delivery ticket T-${n}.pdf`, "Delivery ticket");
+    add(`BOL B-${n}.pdf`, "BOL");
+  }
+  if (status === "Invoiced" || status === "Invoice disputed" || status === "Paid")
+    add(`Invoice INV-${5400 + i}.pdf`, "Invoice");
+  if (i % 4 === 1) add("Site access map.png", "Photo", PORTAL_ACTOR);
+  return docs;
+}
+
+export const FIRST_REQUEST_NO = 1101;
+
+export const SEED_REQUESTS: OrderRequest[] = SEED.map(
+  ([status, s, lines, offset, [ws, we], po, recurring, ago], i) => {
+    const shipTo = SHIP_TOS[s];
+    const at = hoursAgo(ago);
+    const n = FIRST_REQUEST_NO + SEED.length - 1 - i;
+    return {
+      id: `req-${n}`,
+      requestNo: `REQ-${n}`,
+      shipTo: shipTo.name,
+      lines: lines.map(([assetId, topOff, gal]) => ({
+        assetId,
+        product: assetById(assetId)?.product ?? "",
+        topOff,
+        gal,
+      })),
+      date: dayKey(offset),
+      windowStart: ws * 60,
+      windowEnd: we * 60,
+      po,
+      instructions: "",
+      recurring: recurring !== "",
+      frequency: recurring,
+      endDate: "",
+      status,
+      flags: SEED_FLAGS[i] ?? [],
+      trip:
+        status === "Out for delivery"
+          ? {
+              driver: ["Marcus Reyes", "Dana Holt"][i % 2],
+              truck: ["Truck 14", "Truck 22"][i % 2],
+              departedAt: new Date(Date.now() - (30 + 15 * (i % 2)) * 60_000).toISOString(),
+              eta: new Date(Date.now() + (35 + 20 * (i % 2)) * 60_000).toISOString(),
+            }
+          : undefined,
+      documents: seedDocs(status, i, at),
+      invoiceNo:
+        status === "Invoiced" || status === "Invoice disputed" || status === "Paid"
+          ? `INV-${5400 + i}`
+          : undefined,
+      updatedAt: at,
+      audit: [
+        { at: hoursAgo(ago + 2), by: PORTAL_ACTOR, changes: ["Request created"] },
+        ...(status === "Draft"
+          ? []
+          : [{ at, by: status === "Created" ? PORTAL_ACTOR : TENANT, changes: [`Status: ${status}`] }]),
+      ],
+    };
+  }
+);
+
+/* ----------------------------------------------------------- estimate ---- */
+
+/*
+  THE ESTIMATED COST (Pavan, 2026-10-13) — from the market price and the
+  customer's own pricing, shown before AND after submitting, and always said
+  to be an estimate, not the final price.
+
+  INVENTED: the market prices, the customer's differentials and the band.
+*/
+/** Today's market (rack) price, $/gal. */
+export const MARKET_PRICE: Record<string, number> = {
+  Diesel: 3.412,
+  "Dyed Diesel": 3.188,
+  "Unleaded 87": 2.964,
+  DEF: 2.75,
+  Propane: 1.92,
+};
+/** The pricing the tenant has set for this customer, against the market, $/gal. */
+export const CUSTOMER_DIFF: Record<string, number> = {
+  Diesel: -0.08,
+  "Dyed Diesel": -0.06,
+  "Unleaded 87": -0.05,
+  DEF: 0.15,
+  Propane: 0.1,
+};
+/** How far the market may move before the quote, either way, $/gal. */
+const BAND = 0.04;
+/** When the market prices were read — the estimate's "as of". */
+export const PRICES_AS_OF = (() => {
+  const d = new Date();
+  d.setHours(9, 0, 0, 0);
+  return d;
+})();
+
+export interface LineEstimate {
+  line: RequestLine;
+  market: number;
+  diff: number;
+  /** $/gal, low and high. */
+  rateLow: number;
+  rateHigh: number;
+  /** $, low and high — null for top off, priced on delivery. */
+  low: number | null;
+  high: number | null;
+}
+
+export function estimate(lines: RequestLine[]) {
+  const rows: LineEstimate[] = lines
+    .filter((l) => l.product && MARKET_PRICE[l.product] !== undefined)
+    .map((line) => {
+      const market = MARKET_PRICE[line.product];
+      const diff = CUSTOMER_DIFF[line.product] ?? 0;
+      const rate = market + diff;
+      const priced = !line.topOff && line.gal > 0;
+      return {
+        line,
+        market,
+        diff,
+        rateLow: rate - BAND,
+        rateHigh: rate + BAND,
+        low: priced ? line.gal * (rate - BAND) : null,
+        high: priced ? line.gal * (rate + BAND) : null,
+      };
+    });
+  return {
+    rows,
+    low: rows.reduce((n, r) => n + (r.low ?? 0), 0),
+    high: rows.reduce((n, r) => n + (r.high ?? 0), 0),
+  };
+}
+
+/* ------------------------------------------------------------- cancel ---- */
+
+/** The tenant's cancel cut-off before the requested window. INVENTED: 24 h. */
+export const CANCEL_CUTOFF_HOURS = 24;
+
+/*
+  WHAT CANCEL DOES, BY WHERE THE REQUEST IS (PRD FR-27):
+    now      before Scheduled, or Scheduled outside the cut-off — cancelled
+             at once
+    request  Scheduled inside the cut-off — the tenant decides,
+             and a fee may apply
+    blocked  out for delivery — too late to cancel here
+    none     already finished or already ended
+*/
+export type CancelRule = "now" | "request" | "blocked" | "none";
+
+export function cancelRule(r: OrderRequest, now = new Date()): CancelRule {
+  switch (r.status) {
+    case "Created":
+    case "In review":
+    case "Action needed":
+    case "Quote sent":
+    case "Quote declined":
+    case "Quote expired":
+      return "now";
+    case "Scheduled": {
+      const start = dateOfKey(r.date);
+      if (!start) return "now";
+      start.setMinutes(r.windowStart);
+      return start.getTime() - now.getTime() > CANCEL_CUTOFF_HOURS * 3600_000 ? "now" : "request";
+    }
+    case "Out for delivery":
+      return "blocked";
+    default:
+      return "none";
+  }
+}
+
+/* --------------------------------------------------------- the product --- */
+
+/** The product last ordered for this tank or asset, if any. */
+export function lastProductFor(assetId: string, all: OrderRequest[]): string | undefined {
+  return [...all]
+    .filter((r) => r.status !== "Draft")
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .flatMap((r) => r.lines)
+    .find((l) => l.assetId === assetId && l.product)?.product;
+}
+
+/* ----------------------------------------------------------- overview ---- */
+
+export const todayKey = () => dateKeyOf(startOfDay(new Date()));
+
+/** A request that is live — not a draft, not ended. */
+export const LIVE: RequestStatus[] = REQUEST_STATUSES.filter(
+  (st) => !["Draft", "Rejected", "Cancelled", "Quote declined", "Quote expired"].includes(st)
+);
+export const DELIVERED: RequestStatus[] = [
+  "Partial delivery",
+  "Delivered",
+  "Invoiced",
+  "Invoice disputed",
+  "Paid",
+];
+
+/** Live, today, not yet delivered and not on the road. */
+export const YET_TO_DELIVER: RequestStatus[] = LIVE.filter(
+  (st) => !DELIVERED.includes(st) && st !== "Out for delivery"
+);
+
+/*
+  THE OVERVIEW'S FIGURES (Pavan, 2026-10-13) — read-only counts: the statuses
+  each counts, on the date it is about (today, or any date for invoices).
+*/
+export interface Drill {
+  key: string;
+  label: string;
+  statuses: RequestStatus[];
+  /** `today` sets the date range to today; `any` widens it to every request. */
+  range: "today" | "any";
+}
+export const DRILLS: Record<string, Drill> = {
+  today: { key: "today", label: "Today's orders", statuses: LIVE, range: "today" },
+  delivered: { key: "delivered", label: "Delivered", statuses: DELIVERED, range: "today" },
+  out: { key: "out", label: "Out for delivery", statuses: ["Out for delivery"], range: "today" },
+  pending: { key: "pending", label: "Yet to be delivered", statuses: YET_TO_DELIVER, range: "today" },
+  invoices: { key: "invoices", label: "Invoices to review", statuses: ["Invoiced"], range: "any" },
+};
+
+/** One drill's count: every request with its statuses, on its own range. */
+export function drillCount(rows: OrderRequest[], d: Drill) {
+  const t = todayKey();
+  return rows.filter((r) => d.statuses.includes(r.status) && (d.range === "any" || r.date === t))
+    .length;
+}
+
+/* THE REFERENCE CARD'S TONES, by meaning (Pavan, 2026-10-13) — done green,
+   under way violet, coming orange; the DS lane green and violet, and the
+   chart orange lifted a sixth toward white. Green is the lane green as it
+   stands: lifted, it fell out of the validated lightness band (dataviz
+   validator, 2026-10-13). Literal so Tailwind keeps them. */
+export const DAY_TONE = {
+  delivered: "bg-fp-lane-green",
+  out: "bg-fp-lane-violet",
+  pending: "bg-[color-mix(in_oklab,var(--fp-viz-2)_85%,white)]",
+} as const;
+
+/*
+  TODAY, IN FIGURES (Pavan, 2026-10-13) — what the overview cards and the
+  details sheet read: today's live requests, how many are delivered, out
+  and yet to go, and gallons delivered of gallons requested, overall and by
+  product. A top-off line has no gallons until it is delivered, so it is
+  counted beside them.
+*/
+export function todayStats(rows: OrderRequest[]) {
+  const t = todayKey();
+  const todays = rows.filter((r) => r.date === t && LIVE.includes(r.status));
+  const isDelivered = (r: OrderRequest) => DELIVERED.includes(r.status);
+  const products = PRODUCTS.map((product) => {
+    const mine = todays.flatMap((r) =>
+      r.lines.filter((l) => l.product === product).map((l) => ({ l, done: isDelivered(r) }))
+    );
+    const gal = (xs: typeof mine) => xs.reduce((g, x) => g + (x.l.topOff ? 0 : x.l.gal), 0);
+    return {
+      product,
+      requested: gal(mine),
+      delivered: gal(mine.filter((x) => x.done)),
+      topOff: mine.filter((x) => x.l.topOff).length,
+      lines: mine.length,
+    };
+  }).filter((p) => p.lines > 0);
+  return {
+    todays,
+    due: todays.length,
+    delivered: todays.filter(isDelivered).length,
+    out: todays.filter((r) => r.status === "Out for delivery").length,
+    pending: todays.filter((r) => YET_TO_DELIVER.includes(r.status)).length,
+    products,
+    galRequested: products.reduce((g, p) => g + p.requested, 0),
+    galDelivered: products.reduce((g, p) => g + p.delivered, 0),
+    topOff: products.reduce((n, p) => n + p.topOff, 0),
+  };
+}
+
+/*
+  THE LAST SEVEN DAYS (Pavan, 2026-10-13 — the tiles' trend and change).
+  Delivered orders and gallons for each of the seven days before today,
+  oldest first; [0] is the same weekday last week, which today is compared
+  with. INVENTED.
+*/
+export const PAST_WEEK = {
+  orders: [2, 6, 7, 5, 8, 6, 7],
+  gallons: [11500, 21800, 24500, 17600, 27100, 20400, 23900],
+};
+
+/* ------------------------------------------------------------- tanks ----- */
+
+/** A tank at or under this is nearly empty; at or under EMPTY, empty. INVENTED. */
+export const LOW_LEVEL = 20;
+export const EMPTY_LEVEL = 3;
+
+/*
+  NEARLY EMPTY, AND NOTHING ORDERED (Pavan, 2026-10-13) — a tank at or under
+  the low level with no live request on its way to it. The list's critical
+  banner names them.
+*/
+export function lowTanksWithoutOrder(all: OrderRequest[]) {
+  const open = new Set(
+    all
+      .filter((r) => LIVE.includes(r.status) && !DELIVERED.includes(r.status))
+      .flatMap((r) => r.lines.map((l) => l.assetId))
+  );
+  return SHIP_TOS.flatMap((s) =>
+    s.assets
+      .filter((a) => a.level <= LOW_LEVEL && !open.has(a.id))
+      .map((a) => ({ asset: a, shipTo: s.name }))
+  );
+}
+
+/* ------------------------------------------------------------ columns ---- */
+
+export type RequestColumnKey =
+  | "requestNo"
+  | "shipTo"
+  | "assets"
+  | "products"
+  | "quantity"
+  | "date"
+  | "repeats"
+  | "po"
+  | "flags"
+  | "documents"
+  | "status"
+  | "updated"
+  | "actions";
+
+export const REQUEST_COLUMNS: {
+  key: RequestColumnKey;
+  label: string;
+  width: number;
+  sortable?: boolean;
+  align?: "left" | "right";
+}[] = [
+  { key: "requestNo", label: "Request #", width: 110, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 140, sortable: true },
+  { key: "assets", label: "Tanks & assets", width: 150, sortable: true },
+  { key: "products", label: "Product", width: 120, sortable: true },
+  { key: "quantity", label: "Quantity (Gal)", width: 140, sortable: true, align: "right" },
+  { key: "date", label: "Requested date", width: 140, sortable: true },
+  { key: "status", label: "Status", width: 180, sortable: true },
+  /* WHAT NEEDS THE EYE, and WHAT HAS BEEN SHARED (Pavan, 2026-10-13). */
+  { key: "flags", label: "Flags", width: 180, sortable: true },
+  { key: "documents", label: "Documents", width: 130, sortable: true },
+  { key: "repeats", label: "Repeats", width: 110, sortable: true },
+  { key: "po", label: "PO #", width: 120, sortable: true },
+  { key: "updated", label: "Updated", width: 140, sortable: true },
+  { key: "actions", label: "", width: 44 },
+];
+
+/* HIDDEN UNTIL ASKED FOR — so Status is on screen without scrolling
+   (docs/unified-view/2-layouts.md §5). All are in the column menu. */
+export const DEFAULT_HIDDEN: RequestColumnKey[] = ["po", "repeats", "updated"];
+
+export const REQUEST_SEARCH_FIELDS = REQUEST_COLUMNS.filter((c) => c.label).map((c) => ({
+  key: c.key,
+  label: c.label,
+}));
+
+/** What each column PRINTS, as text a header box or a search can match. */
+export function requestColumnText(r: OrderRequest, key: RequestColumnKey): string {
+  switch (key) {
+    case "requestNo":
+      return r.requestNo;
+    case "shipTo":
+      return r.shipTo;
+    case "assets":
+      return assetNames(r).join(", ");
+    case "products":
+      return productNames(r).join(", ");
+    case "quantity":
+      return quantityText(r.lines);
+    case "date":
+      return r.date ? `${printKey(r.date)} ${windowText(r)}` : "";
+    case "repeats":
+      return r.recurring ? r.frequency : "";
+    case "po":
+      return r.po;
+    case "flags":
+      return r.flags.map((f) => f.kind).join(", ");
+    case "documents":
+      return r.documents.map((d) => d.name).join(", ");
+    case "status":
+      return r.status;
+    case "updated":
+      return DATE_FMT.format(new Date(r.updatedAt));
+    default:
+      return "";
+  }
+}
+
+export function matchesRequest(r: OrderRequest, q: string): boolean {
+  return REQUEST_SEARCH_FIELDS.map((f) => requestColumnText(r, f.key))
+    .join(" ")
+    .toLowerCase()
+    .includes(q);
+}
+
+export interface RequestSort {
+  key: RequestColumnKey;
+  dir: "asc" | "desc";
+}
+
+function sortValue(r: OrderRequest, key: RequestColumnKey): string | number {
+  switch (key) {
+    case "quantity":
+      return quantityOf(r.lines).gal;
+    case "date":
+      return `${r.date}-${String(r.windowStart).padStart(4, "0")}`;
+    case "status":
+      return statusRank(r.status);
+    case "flags":
+      return r.flags.length;
+    case "documents":
+      return r.documents.length;
+    case "updated":
+      return r.updatedAt;
+    default:
+      return requestColumnText(r, key).toLowerCase();
+  }
+}
+
+export function sortRequests(rows: OrderRequest[], sort: RequestSort | null): OrderRequest[] {
+  /* Unsorted, the newest change is on top. */
+  if (!sort) return [...rows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const dir = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const x = sortValue(a, sort.key);
+    const y = sortValue(b, sort.key);
+    return (x < y ? -1 : x > y ? 1 : 0) * dir;
+  });
+}
+
+/* -------------------------------------------------------------- store ---- */
+
+/*
+  ONE OWNER FOR THE REQUESTS — outlives the screen, so a request made here
+  is still here after visiting another page. The setter writes the activity
+  log, as `quoteStore` does.
+*/
+let requests: OrderRequest[] = SEED_REQUESTS;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => listeners.delete(l);
+};
+
+export function useRequests(): OrderRequest[] {
+  return React.useSyncExternalStore(subscribe, () => requests);
+}
+
+export function updateRequest(id: string, patch: Partial<OrderRequest>, change?: string) {
+  const at = new Date().toISOString();
+  requests = requests.map((r) =>
+    r.id !== id
+      ? r
+      : {
+          ...r,
+          ...patch,
+          updatedAt: at,
+          /* MEANINGFUL EVENTS ONLY — a draft's typing is not logged. */
+          audit: change ? [...(r.audit ?? []), { at, by: PORTAL_ACTOR, changes: [change] }] : r.audit,
+        }
+  );
+  emit();
+}
+
+/** A blank Draft, made the moment Create Order is pressed. */
+export function createRequest(recurring = false): OrderRequest {
+  const n = Math.max(FIRST_REQUEST_NO - 1, ...requests.map((r) => Number(r.requestNo.slice(4)))) + 1;
+  const at = new Date().toISOString();
+  const r: OrderRequest = {
+    id: `req-new-${n}`,
+    requestNo: `REQ-${n}`,
+    /* One ship-to on the account is simply that ship-to. */
+    shipTo: SHIP_TOS.length === 1 ? SHIP_TOS[0].name : "",
+    lines: [blankLine()],
+    date: "",
+    windowStart: 8 * 60,
+    windowEnd: 12 * 60,
+    po: "",
+    instructions: "",
+    recurring,
+    frequency: recurring ? FREQUENCIES[2] : "",
+    endDate: "",
+    status: "Draft",
+    flags: [],
+    documents: [],
+    updatedAt: at,
+    audit: [{ at, by: PORTAL_ACTOR, changes: ["Request created"] }],
+  };
+  requests = [r, ...requests];
+  emit();
+  return r;
+}
+
+/** Every request, as it is now — for reads outside React. */
+export const allRequests = () => requests;
+
+/*
+  DUPLICATE (Pavan, 2026-10-13 — "Duplicate", not "Reorder"): a new Draft
+  with the same ship-to, tanks, products, quantities, window, recurrence and
+  instructions. The date is left blank — the old one has usually passed.
+*/
+export function duplicateRequest(id: string): OrderRequest | null {
+  const src = requests.find((r) => r.id === id);
+  if (!src) return null;
+  const r = createRequest();
+  updateRequest(r.id, {
+    shipTo: src.shipTo,
+    lines: src.lines.map((l) => ({ ...l })),
+    windowStart: src.windowStart,
+    windowEnd: src.windowEnd,
+    instructions: src.instructions,
+    recurring: src.recurring,
+    frequency: src.frequency,
+  });
+  const at = new Date().toISOString();
+  requests = requests.map((x) =>
+    x.id === r.id
+      ? { ...x, audit: [{ at, by: PORTAL_ACTOR, changes: [`Duplicated from ${src.requestNo}`] }] }
+      : x
+  );
+  emit();
+  return requests.find((x) => x.id === r.id)!;
+}
+
+/** Drop an untouched new draft, closed unfilled. */
+export function discardRequest(id: string) {
+  requests = requests.filter((r) => r.id !== id);
+  emit();
+}

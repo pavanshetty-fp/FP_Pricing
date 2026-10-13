@@ -26,7 +26,7 @@ import {
   MailX,
   X,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { BannerCallout } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -749,9 +749,9 @@ function VendorRow({ id }: { id: string }) {
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-medium text-foreground">{v.name}</span>
         {!v.hasAccount && (
-          <Badge variant="secondary" className="shrink-0">
+          <Pill className="shrink-0">
             Link only
-          </Badge>
+          </Pill>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
@@ -4328,7 +4328,7 @@ export function BrokerOrderSheet({
         <div className="flex items-center gap-2">
           {/* ONE CHIP. "Draft" and "Saved" were two elements saying one thing
               between them — what state this order is in. */}
-          {draft.urgent && <Badge variant="destructive">Urgent</Badge>}
+          {draft.urgent && <Pill kind="critical">Urgent</Pill>}
           {/* THE TRY-OUT SWITCH — D-104634 only, for now. */}
           {order?.orderNo === "D-104634" && (
             <Tabs value={summaryMode} onValueChange={(v) => setSummaryMode(v as "card" | "banner")}>
@@ -5262,7 +5262,7 @@ export function BrokerOrderSheet({
                         <td className="relative p-0">
                           {asset?.rental && (
                             <span className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2 z-10">
-                              <Badge variant="secondary">Rental</Badge>
+                              <Pill>Rental</Pill>
                             </span>
                           )}
                           <TableCellCombobox
@@ -5470,9 +5470,9 @@ export function BrokerOrderSheet({
                 {draft.tags.length > 0 ? (
                   <span className="flex flex-wrap gap-1.5">
                     {draft.tags.map((t) => (
-                      <Badge key={t} variant="secondary">
+                      <Pill key={t}>
                         {t}
-                      </Badge>
+                      </Pill>
                     ))}
                   </span>
                 ) : (
@@ -5591,9 +5591,9 @@ export function BrokerOrderSheet({
                   >
                     Total
                     {draft.winterAdditive && (
-                      <Badge variant="secondary" className="ml-2 font-normal">
+                      <Pill className="ml-2">
                         Winter additive
-                      </Badge>
+                      </Pill>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right text-sm font-semibold tabular-nums text-foreground">
@@ -6947,9 +6947,9 @@ export function BrokerOrderSheet({
                   className="border-b border-border last:border-0"
                 >
                   <td className="px-3 py-2.5">
-                    <Badge variant="secondary" className="font-normal">
+                    <Pill>
                       {doc.kind}
-                    </Badge>
+                    </Pill>
                   </td>
                   <td className="px-3 py-2.5 text-foreground">{doc.name}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">

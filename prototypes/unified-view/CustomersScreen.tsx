@@ -2,7 +2,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { SearchX, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -191,7 +191,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     setPage(1);
   };
 
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: "sales-customers" });
 
   // A global-search hit lands here: open that customer's sheet on arrival.
   React.useEffect(() => {
@@ -281,9 +281,9 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
         return (
           <div className="flex min-w-0 flex-wrap items-center gap-1">
             {c.los.map((l) => (
-              <Badge key={l} variant="secondary">
+              <Pill key={l}>
                 {l}
-              </Badge>
+              </Pill>
             ))}
           </div>
         );

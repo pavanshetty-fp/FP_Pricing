@@ -25,6 +25,39 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* SHIMMER (Pavan, 2026-10-10) — a skeleton is a light sweeping across the
+   block, left to right, not a pulse. Off with reduced motion. */
+@keyframes fp-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.fp-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.fp-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--background) 65%, transparent),
+    transparent
+  );
+  animation: fp-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-shimmer::after {
+    animation: none;
+  }
+}
+
 /* Module-switch progress (Pavan, 2026-10-08) — a thin bar filling its row
    left to right before the switch. A keyframe, not a JS-timed transition, so
    it can never stall half-way. */

@@ -2,7 +2,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { Database, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -218,7 +218,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     setPage(1);
   };
 
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: "sales-assets" });
 
   // A global-search hit lands here: open that asset's sheet on arrival.
   React.useEffect(() => {
@@ -325,7 +325,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
         );
       case "los":
         return a.los ? (
-          <Badge variant="secondary">{a.los}</Badge>
+          <Pill>{a.los}</Pill>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         );

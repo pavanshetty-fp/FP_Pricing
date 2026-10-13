@@ -362,7 +362,7 @@ export function DirectoryList<Row, K extends string>({
     setPage(1);
     reload();
   };
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: `3pl-directory-${nounPlural}` });
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();

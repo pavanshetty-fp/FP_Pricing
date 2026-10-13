@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
+import type { PillColor } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -277,11 +278,15 @@ export function useDraftSaveState(draft: unknown, enabled = true) {
  */
 export function DraftStatusChip({
   tone,
+  color,
   label,
   saveState = "idle",
   showStatus = true,
 }: {
   tone: StatusTone;
+  /* A STAGE COLOUR THE USER CHOSE (Pavan, 2026-10-09) — Sales stages keep
+     the colour set in Sales Settings, in the header as in the table. */
+  color?: PillColor | null;
   label: string;
   saveState?: "idle" | "saving" | "saved";
   /**
@@ -317,7 +322,7 @@ export function DraftStatusChip({
 
   if (saveState === "idle") {
     return (
-      <StatusChip tone={tone} variant="soft">
+      <StatusChip tone={tone} color={color} variant="soft">
         {label}
       </StatusChip>
     );
@@ -343,7 +348,7 @@ export function DraftStatusChip({
      because what is kept is the draft of the edit, not the order. */
   return (
     <span className="flex items-center gap-2">
-      <StatusChip tone={tone} variant="soft">
+      <StatusChip tone={tone} color={color} variant="soft">
         {label}
       </StatusChip>
       <span

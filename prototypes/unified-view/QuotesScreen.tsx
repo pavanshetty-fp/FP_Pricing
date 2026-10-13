@@ -171,6 +171,7 @@ export function QuotesScreen({
     defaultState: DEFAULT_STATE,
     keyOf,
     apply: applyState,
+    storageKey: "sales-quotes",
   });
 
   const startCreate = React.useCallback(() => {

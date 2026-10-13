@@ -16,6 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import {
@@ -1356,7 +1357,15 @@ export function BrokerOrdersScreen({
     setPage(1);
   };
 
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState });
+  const savedViews = useSavedViews({
+    current,
+    defaultState,
+    keyOf,
+    apply: applyState,
+    /* REMEMBERED ACROSS VISITS (Pavan, 2026-10-09); a dashboard drill wins. */
+    storageKey: "3pl-delivery-orders",
+    restore: !drill,
+  });
 
   /** Sending the request moves the order's own `invoiceState` on. The lane does
    *  not change: chasing a bill is not a step in the delivery. */
@@ -2001,11 +2010,12 @@ export function BrokerOrdersScreen({
           names = [...hit, ...names.filter((n) => !hit.includes(n))];
         }
         return (
-          <span className="truncate text-sm text-foreground" title={names.join(", ")}>
-            {names[0] ? <Hit text={names[0]} q={f} /> : "—"}
-            {names.length > 1 && (
-              <span className="text-muted-foreground"> +{names.length - 1}</span>
-            )}
+          <span className="flex min-w-0 items-center gap-1.5" title={names.join(", ")}>
+            <span className="truncate text-sm text-foreground">
+              {names[0] ? <Hit text={names[0]} q={f} /> : "—"}
+            </span>
+            {/* "+N" IS A PILL (Pavan, 2026-10-09) — the same overflow chip Sales shows. */}
+            {names.length > 1 && <Pill className="tabular-nums">+{names.length - 1}</Pill>}
           </span>
         );
       }

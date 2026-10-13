@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "dev:unified": "UNIFIED=1 vite",
+    "dev:portal": "PORTAL=1 vite",
     "build": "tsc -b && vite build",
     "build:single": "tsc -b && SINGLEFILE=1 vite build --outDir dist-single",
     "build:unified": "tsc -b && UNIFIED=1 vite build",
     "build:service": "tsc -b && SERVICE=1 vite build",
+    "build:portal": "tsc -b && PORTAL=1 vite build",
     "preview": "vite preview",
     "preview:unified": "UNIFIED=1 vite preview",
     "typecheck": "tsc -b --noEmit",

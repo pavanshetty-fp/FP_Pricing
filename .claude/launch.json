@@ -27,6 +27,15 @@
         "preview:unified"
       ],
       "autoPort": true
+    },
+    {
+      "name": "customer-portal",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:portal"
+      ],
+      "autoPort": true
     }
   ]
 }

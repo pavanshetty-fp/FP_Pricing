@@ -849,8 +849,8 @@ status is stays a reading — the binding table in the application's own docs.
 
 Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
 
-- **No dot beside a status label.** `text` (now the default) colours the label
-  itself and `soft` tints the whole pill, so in both the dot repeated a tone the
+- **No dot beside a status label.** `text` (the default) and `soft` both draw
+  the pill since 2026-10-09 (§11b), so in both the dot repeated a tone the
   chip was already carrying and spent 12px of a control whose whole job is to be
   small. The word is the status; the colour is a second channel on the same
   word, not a third element beside it.
@@ -863,6 +863,44 @@ Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
   what is already on screen is not neutral, it costs room and reading. If a
   status needs more emphasis, change the treatment it is rendered in rather than
   hanging something off it.
+
+## 11b. Chips and badges are pills
+
+Added 2026-10-09, from the Sales Orders table. Approved by Pavan on screen
+before it was written down. The component is `Pill` (`ui/pill.tsx`).
+
+- **Every chip and badge is a pill** — a status, a tag, a flag (Urgent, Over
+  SLA, Needs approval), a placing ("Best price"), a "+N" overflow. One recipe:
+  fully rounded, 28px tall (`h-7`), 12px side padding, 12px regular text, no
+  border, a faint tint of the hue behind text in that hue.
+- **A status column shows the pill, never coloured text alone.** `StatusChip`
+  draws the pill for `text` and `soft` alike, so a status reads the same in a
+  table cell, a sheet header and on a board card. `variant="dot"` is unchanged
+  and stays opt-in.
+- **Colour is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
+  `critical` — so the same kind is the same colour in every module. **The one
+  exception is a colour the user chooses**: where a module lets the user pick a
+  colour (Sales stages and order types, in Sales Settings), `color` takes the
+  DS lane palette over the kind, and that choice is kept wherever the value
+  shows.
+- **Not pills:** a counter inside a button or a nav item (`BadgeNumber`), a
+  code disc (`CodeDisc` — a type's initial, not a chip).
+- **Removable chips are pills too** (Pavan, 2026-10-09): applied-filter chips,
+  the column-search chip, the Export sheet's narrowing chips and form token
+  chips take the pill recipe — 28px, fully round, `text-xs` regular on the
+  neutral tint (`bg-muted`), label muted and value in body ink — with the ✕
+  INSIDE the pill as a 20px round button (`hover:bg-foreground/10`). A count
+  in a grouped filter chip is a small `bg-background` bubble. **Clear all sits right
+  after the last chip**, `text-sm` muted with an underline on hover — never
+  pushed to the far end of the row.
+
+## 11c. Skeletons shimmer (Pavan, 2026-10-10)
+
+A loading block is the DS `Skeleton`: the `bg-accent` block with a light
+sweeping left to right across it (`.fp-shimmer`, 1.4s, off with reduced
+motion) — never a pulse. A loading PAGE is its parts as skeletons in their own
+places (title, tabs, toolbar, table header and rows), so it arrives in the
+shape it is about to take.
 
 
 ---
@@ -1036,7 +1074,8 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 - **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
 - **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
 - **Data table** — `rounded-md` with an **outer stroke** `border border-border` (the structural-divider weight — see Strokes; it is NOT `--fp-outline-1`, which is a card's rim); header on **`bg-fp-table-header`** (never `bg-fp-surface-1a` — in light both that and the content layer are `#ffffff`, and a header that is only a hairline stops being a header the moment the first row has one too); horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the table sets **`border-separate border-spacing-0`** and the header sticks on its **CELLS** — `sticky top-0` on the first header row, `top-<height>` on a second tier (see §10d: collapsed, Chrome ignores z-index on the table and its rows, so a `sticky z-20` `<thead>` paints *underneath* the body; the row rule moves onto the cells with `[&>td]:border-b`), and the header cells carry a **solid `bg-fp-table-header`** + bottom hairline so rows scroll *under* the titles, never through them.
-- **Status chip** — one component, three treatments, via `StatusChip` (`ui/status-chip.tsx`): `dot` (token-coloured dot, neutral label — the quietest, for dense grids), `text` (dot **and** label share the tone via `bg-current`, no fill), `soft` (`bg-status-*/10` + tone text — the canonical treatment for a state that must be noticed, same recipe as the `destructive` Badge variant). The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
+- **Pill** — the DS's chip and badge, `Pill` (`ui/pill.tsx`), the default for every status, tag, flag and "+N" (§11b): `inline-flex h-7 rounded-full px-3 text-xs font-normal`, no border, a faint tint of the hue + text in that hue. `kind` (`neutral | info | caution | success | critical`) picks the colour; `color` (the lane palette, `PILL_COLORS`) overrides it only where the user chose a colour. `PillList` shows the first value and a "+N" pill that lists the rest on hover. `PILL_SHAPE` / `pillColorClass()` are exported so another chip (`StatusChip`) cannot drift from the recipe.
+- **Status chip** — `StatusChip` (`ui/status-chip.tsx`). Since 2026-10-09 `text` (the default) and `soft` both draw the **Pill**, tone matched to kind (`processing`→`caution`, `failed`→`critical`); it takes the same optional `color`. `dot` (token-coloured dot, neutral label — the quietest, for dense grids) is unchanged and opt-in. The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
 - **Pastel code disc** — a 22px pastel circle carrying a 12px initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(Both pastel pairs were chosen in the repo and measure AAA; extending the set is a one-line change per pair — measure the pair before adding it. See `00-meta/token-provenance.md`.)*
 - **Bulk-attribute edit** — never a popover that commits on click. Three tiers by cardinality (scalar → single input; one-value-per-row → searchable select; a collection per row → multi-select), each opening a **dialog**, each taking the same two-step shape via `BulkEditDialog` (`components/bulk-edit/`): (1) picker, header leading with **scope + count**, primary gated until a value is picked; (2) per-row **before/after** preview, title becomes "View Summary", footer becomes `Go back` / `Confirm`; (3) commit → **toast**. Destructive replaces arm before they commit. **Why both steps earn their keep:** the operator must see the state that *already exists* on the target before piling onto it — `StandingItems` surfaces that standing state in step 1, `BeforeAfterTable` shows the delta in step 2. Collapsing to one step removes the only chance to notice you are about to replace something. `before` renders muted + `line-through` so a row reads as a replacement, with an em-dash fallback so "had nothing" and "had something" stay distinct. The dialog always reopens on step 1 — reopening mid-flow would offer a Confirm for a value the operator can no longer see. Body scrolls at `max-h-[55vh]`; header and footer stay put. **Inner panels use `bg-fp-surface-1b`, not `bg-fp-card-1`** — measured against the dialog's own `bg-background`, card-1 is only [6,3,6] away in light (near-invisible) while surface-1b is [16,16,20] light / [19,24,32] dark.
 - **Faceted filter panel** — facet side-menu + options pane. **The search field is per-facet and opt-in** (`Facet.searchable`): a facet gets one when its option list *cannot be taken in at once*, and does not when the list is short enough to scan — on a two-option facet a search field can only ever filter to one of the two, and it pushes the options down for nothing. Use an **explicit flag, not a length threshold**: a threshold silently changes a facet's affordance as its options grow or shrink, so the same facet gains and loses a control without anyone deciding. When the field is absent the option list needs its own `pt-2`, or it starts flush against the panel edge; placeholder reads `Search {facet}…`, matching the DS's `Search…` convention. Switching facets clears the query — carrying it over lets a term typed on a searchable facet silently filter a facet with no field to clear it in.
@@ -2197,11 +2236,33 @@ record is a draft.
 charges, rates, assets, contacts — it is an EDITABLE TABLE (the boxed unit,
 ui §10f), not a row of separate fields. Every value cell is editable in
 place. **A choice that qualifies a value lives INSIDE that value's cell** — a
-unit ($/gal · $ · %), a currency, a fill type — as a compact menu at the cell's
-end, never a toggle or a second field beside it. Applies to every module,
-without being asked; a stack of fields for a repeated thing is the exception
-and needs a reason. First built: the Quote's Pricing breakdown (Margin · Fees ·
-Tax, unit in the Value cell).
+unit ($/gal · $ · %), a currency — as a compact menu at the cell's end, never a
+toggle or a second field beside it. Applies to every module, without being
+asked; a stack of fields for a repeated thing is the exception and needs a
+reason. First built: the Quote's Pricing breakdown (Margin · Fees · Tax, unit
+in the Value cell).
+
+**A unit is not a yes/no (Pavan, 2026-10-13).** The in-cell menu is for
+several ways of STATING the same number. A choice that REPLACES the number —
+top off, TBD, "decided later" — is a yes/no, so it is a **named checkbox
+column** (interactions T5), the number cell shuts while it is ticked, and the
+typed number is kept but never counted (T3). Fuel lines: **Top off**, as the
+3PL Delivery Order. *Why this line exists:* this paragraph used to list "a
+fill type" as an in-cell unit, and the Customer Portal's first order sheet
+followed it and shipped a "Gal / Fill to full" menu where every other module
+has the Top off checkbox.
+
+## Same data, same control — look before building (Pavan, 2026-10-13)
+
+**Before building any field, table or column, find where the same data
+already lives in a built module and reuse its control, columns, order and
+words.** A fuel order line is the 3PL Delivery Order's line table (Top off ·
+Asset · Product · Qty (gal)); a delivery window is the `TimeWindowSlider`; a
+recurring order is the "Recurring order" checkbox with Frequency beside it.
+**A PRD's or reference's wording does not replace the app's term** ("fill to
+full" in a PRD is Top off here). A new pattern is only right when no module
+has the data yet — and then it is named in the reply as new, so it can be
+ruled on, never shipped silently.
 
 ## Record sheets — one summary card, one activity card, everywhere (Pavan, 2026-10-07)
 

@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Calendar } from "@/components/ui/calendar";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -1477,9 +1477,9 @@ export function ServiceOrderSheet({
               <StatusChip tone={WORK_STATUS_TONE["Parts pending"]}>Parts pending</StatusChip>
             )}
             {draft.priority !== "Normal" && (
-              <Badge variant={draft.priority === "Urgent" ? "destructive" : "secondary"}>
+              <Pill kind={draft.priority === "Urgent" ? "critical" : "neutral"}>
                 {draft.priority}
-              </Badge>
+              </Pill>
             )}
             {saveState !== "idle" && (
               <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />

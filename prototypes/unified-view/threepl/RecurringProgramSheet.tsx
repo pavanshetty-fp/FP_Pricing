@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, Info, MapPinOff, Pencil, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -621,9 +621,9 @@ export function RecurringProgramSheet({
       >
         <div className="flex flex-wrap gap-2">
           {dates.map((k) => (
-            <Badge key={k} variant="secondary" className="tabular-nums">
+            <Pill key={k} className="tabular-nums">
               {fmtKey(k)}
-            </Badge>
+            </Pill>
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">

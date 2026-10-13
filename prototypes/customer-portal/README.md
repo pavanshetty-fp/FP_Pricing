@@ -99,7 +99,7 @@ Notifications are the top bar's bell, not a page.
 - **The customer keeps ship-tos and assets — no tenant approval.** The
   tenant reads them to take orders, so the customer must keep them right.
 - **Tabs** on the view row's switch: Ship-tos · Assets · Service requests
-  (placeholder: leaks, damage, parts — built later). All lists use
+  (for now: no views or toolbar, only the tab switch, an illustration, "Coming soon" (large, system serif) and three "What to expect" cards — report an issue, follow it to the fix, driver reports ready to raise; leaks, damage, parts — built later). All lists use
   `PortalList` (the Unified View list as one piece).
 - **Every asset has its own latitude/longitude** (where it stands inside the
   ship-to), a ship-to, type, product, size, Rented (checkbox; "Rented" pill

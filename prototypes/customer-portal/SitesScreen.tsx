@@ -1,17 +1,15 @@
 import * as React from "react";
-import { Database, History, MapPin, Wrench } from "lucide-react";
+import { Camera, Database, History, ListChecks, MapPin, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 import { cn } from "@/lib/utils";
-import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
 import { OverflowList, TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
-import { useSavedViews } from "../unified-view/useSavedViews";
 import { DATE_FMT } from "../unified-view/data";
-import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, printKey, type Asset, type ShipTo } from "./orders";
+import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, TENANT, printKey, type Asset, type ShipTo } from "./orders";
 import { createdOf, lastDeliveryFor, useShipTos } from "./sites";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog } from "./activityLog";
@@ -432,30 +430,115 @@ export function SitesScreen({
   );
 }
 
-/** SERVICE REQUESTS — the tab exists; the list comes later (Pavan, 2026-10-13). */
+/*
+  SERVICE REQUESTS — COMING SOON (Pavan, 2026-10-13): no views, no toolbar,
+  just an illustration and "Coming soon". The tab switch stays, in its own
+  place, so the reader can step back to Ship-tos or Assets.
+*/
 function ServiceRequestsTab({
   segment,
 }: {
   segment: { segments: typeof TABS; segmentValue: string; onSegmentChange: (k: string) => void };
 }) {
-  const views = useSavedViews({
-    current: {},
-    defaultState: {},
-    keyOf: () => "",
-    apply: () => {},
-  });
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <FuelOrdersViewBar {...views} {...segment} />
-      <Empty className="h-full">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Wrench />
-          </EmptyMedia>
-          <EmptyTitle>Service requests</EmptyTitle>
-          <EmptyDescription>Not built yet.</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <div className="flex h-12 shrink-0 items-end justify-end border-b border-border">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={segment.segmentValue}
+          onValueChange={(next) => next && segment.onSegmentChange(next)}
+          aria-label="Sites and assets"
+          className="mb-2.5 h-7"
+        >
+          {segment.segments.map((seg) => (
+            <ToggleGroupItem key={seg.key} value={seg.key} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              {seg.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
+        <div className="flex flex-col items-center gap-4">
+          <ServiceIllustration />
+          {/* BIG AND SERIF (Pavan, 2026-10-13) — the DS has no serif face,
+              so the system's (New York / Georgia). */}
+          <h2 className="font-serif text-5xl font-medium tracking-tight text-foreground">Coming soon</h2>
+        </div>
+        <section aria-label="What to expect" className="flex w-full max-w-3xl flex-col items-center gap-4">
+          <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">What to expect</h3>
+          <ul className="grid w-full gap-3 sm:grid-cols-3">
+            {SERVICE_PREVIEW.map((it) => (
+              <li key={it.title} className="flex flex-col gap-2 rounded-xl border border-border bg-fp-surface-1b p-4">
+                <span className="flex size-8 items-center justify-center rounded-full bg-brand/10 text-brand [&_svg]:size-4">
+                  {it.icon}
+                </span>
+                <span className="text-sm font-semibold text-foreground">{it.title}</span>
+                <span className="text-sm text-muted-foreground">{it.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </div>
+  );
+}
+
+/* WHAT SERVICE REQUESTS WILL DO — three points (Pavan, 2026-10-13). */
+const SERVICE_PREVIEW = [
+  {
+    icon: <Camera />,
+    title: "Report an issue in a few taps",
+    text: "Leaks, water in a tank, damaged parts — pick the asset, describe it, add photos.",
+  },
+  {
+    icon: <ListChecks />,
+    title: "Follow it to the fix",
+    text: `See when ${TENANT} picks it up, schedules the visit and closes it.`,
+  },
+  {
+    icon: <Truck />,
+    title: "Driver reports, ready to raise",
+    text: "What drivers note at delivery turns into a request with one press.",
+  },
+];
+
+/* A TANK ON ITS STAND, a wrench crossing it and a spark — DS tokens only,
+   so it follows the theme. Decorative. */
+function ServiceIllustration() {
+  const jaw = React.useId();
+  return (
+    <svg viewBox="0 0 240 180" className="h-44 w-60" aria-hidden>
+      <ellipse cx="120" cy="160" rx="92" ry="9" className="fill-muted" />
+      <circle cx="120" cy="88" r="70" className="fill-brand/8" />
+      {/* the stand */}
+      <path d="M74 140 L82 118 M166 140 L158 118" strokeWidth="5" strokeLinecap="round" className="stroke-muted-foreground/60" />
+      <path d="M66 142 H174" strokeWidth="5" strokeLinecap="round" className="stroke-muted-foreground/60" />
+      {/* the tank */}
+      <rect x="60" y="62" width="120" height="60" rx="30" className="fill-fp-surface-1b stroke-foreground/70" strokeWidth="3" />
+      <path d="M90 62 V122 M150 62 V122" strokeWidth="2" className="stroke-foreground/20" />
+      <rect x="112" y="50" width="16" height="12" rx="3" className="fill-fp-surface-1b stroke-foreground/70" strokeWidth="3" />
+      {/* its level */}
+      <rect x="98" y="80" width="44" height="24" rx="5" className="fill-muted" />
+      <rect x="98" y="92" width="44" height="12" rx="5" className="fill-brand/70" />
+      {/* the wrench — an open jaw cut from its round head (a mask), the
+          handle running down and left across the tank's end */}
+      <defs>
+        <mask id={jaw}>
+          <rect x="-30" y="-30" width="140" height="60" fill="white" />
+          <rect x="-24" y="-5" width="16" height="10" fill="black" />
+        </mask>
+      </defs>
+      <g transform="translate(204 52) rotate(135)" mask={`url(#${jaw})`}>
+        <circle cx="0" cy="0" r="14" className="fill-foreground/80" />
+        <rect x="6" y="-5.5" width="66" height="11" rx="5.5" className="fill-foreground/80" />
+        <circle cx="64" cy="0" r="2.5" className="fill-fp-surface-1b" />
+      </g>
+      {/* the spark */}
+      <path d="M44 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z" className="fill-brand" />
+      <circle cx="202" cy="120" r="4" className="fill-brand/60" />
+      <circle cx="34" cy="104" r="3" className="fill-muted-foreground/40" />
+    </svg>
   );
 }

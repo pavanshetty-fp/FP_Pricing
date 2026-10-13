@@ -7,6 +7,7 @@ import {
   bannerSoftAction,
 } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 const MSG =
@@ -26,6 +27,39 @@ const SOFTS = [
   { status: "caution" as const, title: "3 sites below reorder level" },
   { status: "warning" as const, title: "2 deliveries missed their window" },
   { status: "success" as const, title: "18 orders invoiced this morning" },
+];
+
+/* THE BANNER WITH INTERACTION — several kinds, stepped ‹ 1 of N ›; the
+   title filters, the count pill opens the items, snooze and ✕ on the right.
+   Sample kinds only. */
+const ALERTS: BannerAlert[] = [
+  {
+    id: "tanks",
+    status: "warning",
+    tag: "Needs action",
+    title: "2 tanks are nearly empty with no order placed",
+    count: 2,
+    items: [
+      { id: "t1", title: "Tank B2 · North Yard", detail: "14% full" },
+      { id: "t2", title: "Light Tower L-3 · Depot 2", detail: "Empty" },
+    ],
+  },
+  {
+    id: "quotes",
+    status: "caution",
+    tag: "Needs action",
+    title: "3 quotes are waiting for you to accept",
+    count: 3,
+    onApply: () => {},
+  },
+  {
+    id: "late",
+    status: "caution",
+    tag: "At risk",
+    title: "1 delivery is at risk of being late",
+    count: 1,
+    onApply: () => {},
+  },
 ];
 
 const INLINES = [
@@ -171,6 +205,16 @@ export function BannersDemo() {
             </button>
           )}
         </Stack>
+      </Stack>
+
+      {/* Banner with interaction — AlertBanner (2026-10-13) */}
+      <Stack space="title">
+        <SectionHeading as="h3" title="Banner with interaction" />
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Several kinds of alert, one at a time. Title filters; the count pill
+          opens the items; ‹ 1 of N ›, snooze (with Custom) and ✕ on the right.
+        </p>
+        <AlertBanner alerts={ALERTS} onSnooze={() => {}} onDismiss={() => {}} />
       </Stack>
 
       {/* Type 2 — Inline alert */}

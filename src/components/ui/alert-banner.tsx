@@ -1,0 +1,325 @@
+import * as React from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, TriangleAlert, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { PILL_SHAPE, pillColorClass, type PillKind } from "@/components/ui/pill";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  BANNER_SNOOZE_OPTIONS,
+  calloutVariants,
+  inlineAccent,
+  type BannerStatus,
+} from "@/components/ui/banner";
+
+/*
+  THE ALERT BANNER (Pavan, 2026-10-13, after the Lovable customer portal) —
+  the soft BannerCallout grown to carry SEVERAL KINDS of alert at once.
+
+  ONE KIND AT A TIME, with ‹ 1 of 3 › to step through them — the same
+  stepper as the sheet's Pending strip. Each kind is one line: on the left
+  its tag with the icon in it ("Needs action"), what it is, then the count
+  in a pill with the chevron that opens its list; on the right its action,
+  the stepper, snooze, and ✕ last. The banner takes the kind's status, so a red kind and an amber one
+  look like what they are.
+
+  THE BANNER IS A FILTER. Pressing the line applies the narrowing it
+  describes (the Sales "Show orders" rule, carried by the words themselves);
+  pressing one of its items in Details narrows to that item.
+
+  DETAILS opens the kind's items, each with its own detail and action, and
+  folds back with Collapse. Snooze is `BANNER_SNOOZE_OPTIONS`, everywhere.
+*/
+
+export interface BannerAlertItem {
+  id: string;
+  title: string;
+  detail?: string;
+  action?: React.ReactNode;
+  /** Narrow the list to this item. */
+  onApply?: () => void;
+}
+
+export interface BannerAlert {
+  id: string;
+  status: BannerStatus;
+  /** A short tag before the title — "Needs action". */
+  tag?: string;
+  title: string;
+  detail?: string;
+  count?: number;
+  /** Narrow the list to what this alert is about. */
+  onApply?: () => void;
+  action?: React.ReactNode;
+  items?: BannerAlertItem[];
+}
+
+const TAG_KIND: Record<BannerStatus, PillKind> = {
+  warning: "critical",
+  caution: "caution",
+  info: "info",
+  success: "success",
+};
+
+const ICON_BTN =
+  "flex size-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-4";
+
+/**
+ * The standard "Remind me later" — a clock, a tooltip, the snooze menu, and
+ * a CUSTOM duration (Pavan, 2026-10-13): hours and minutes from now.
+ */
+export function BannerSnooze({ onSnooze }: { onSnooze: (ms: number) => void }) {
+  const [custom, setCustom] = React.useState(false);
+  const wantsCustom = React.useRef(false);
+  /* A DURATION, hours and minutes (Pavan, 2026-10-13 — no calendar). */
+  const [hours, setHours] = React.useState("1");
+  const [minutes, setMinutes] = React.useState("0");
+  const ms = ((Number(hours) || 0) * 60 + (Number(minutes) || 0)) * 60_000;
+  const digits = (v: string, max: number) => {
+    const n = v.replace(/[^0-9]/g, "").slice(0, 3);
+    return n === "" ? "" : String(Math.min(max, Number(n)));
+  };
+  return (
+    <TooltipProvider>
+      <Popover open={custom} onOpenChange={setCustom}>
+        <DropdownMenu>
+          {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE — the only order that
+              composes; the popover hangs off the same clock. */}
+          <PopoverAnchor asChild>
+            <span className="flex">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" aria-label="Remind me later" className={ICON_BTN}>
+                      <Clock />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Remind me later</TooltipContent>
+              </Tooltip>
+            </span>
+          </PopoverAnchor>
+          <DropdownMenuContent
+            align="end"
+            /* CUSTOM OPENS ONCE THE MENU HAS CLOSED — an open menu holds
+               focus, and handing it back would close the popover at once
+               (the Quote sheet's Add charge rule). */
+            onCloseAutoFocus={(e) => {
+              if (!wantsCustom.current) return;
+              e.preventDefault();
+              wantsCustom.current = false;
+              setCustom(true);
+            }}
+          >
+            {BANNER_SNOOZE_OPTIONS.map((o) => (
+              <DropdownMenuItem key={o.label} onSelect={() => onSnooze(o.ms)}>
+                {o.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => (wantsCustom.current = true)}>Custom…</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <PopoverContent align="end" className="w-auto p-3">
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+              Hours
+              <Input
+                inputMode="numeric"
+                aria-label="Hours"
+                value={hours}
+                onChange={(e) => setHours(digits(e.target.value, 168))}
+                className="h-8 w-16 tabular-nums"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+              Minutes
+              <Input
+                inputMode="numeric"
+                aria-label="Minutes"
+                value={minutes}
+                onChange={(e) => setMinutes(digits(e.target.value, 59))}
+                className="h-8 w-16 tabular-nums"
+              />
+            </label>
+            <Button
+              size="sm"
+              disabled={ms <= 0}
+              onClick={() => {
+                onSnooze(ms);
+                setCustom(false);
+              }}
+            >
+              Snooze
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
+  );
+}
+
+/* PRESSABLE WITHOUT AN UNDERLINE (Pavan, 2026-10-13) — the pointer and a
+   slight fade on hover say it acts. */
+const PRESSABLE =
+  "cursor-pointer rounded-sm text-left outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50";
+
+export function AlertBanner({
+  alerts,
+  onSnooze,
+  onDismiss,
+  className,
+}: {
+  alerts: BannerAlert[];
+  onSnooze?: (id: string, ms: number) => void;
+  onDismiss?: (id: string) => void;
+  className?: string;
+}) {
+  const [at, setAt] = React.useState(0);
+  const [open, setOpen] = React.useState(false);
+  const i = Math.min(at, Math.max(alerts.length - 1, 0));
+  React.useEffect(() => {
+    if (at > alerts.length - 1) setAt(Math.max(alerts.length - 1, 0));
+  }, [at, alerts.length]);
+  if (alerts.length === 0) return null;
+  const a = alerts[i];
+  const hasItems = Boolean(a.items && a.items.length > 0);
+  const go = (n: number) => {
+    setAt(n);
+    setOpen(false);
+  };
+  const chevron =
+    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
+
+  return (
+    <div
+      role="status"
+      data-status={a.status}
+      className={cn(calloutVariants({ status: a.status, variant: "soft" }), "flex-col items-stretch gap-0 p-0", className)}
+    >
+      <div className="flex min-h-11 items-center gap-2.5 px-3 py-1.5">
+        {/* THE ICON RIDES IN THE TAG (Pavan, 2026-10-13); alone only when
+            there is no tag. */}
+        {a.tag ? (
+          /* THE PILL's SHAPE AND COLOUR, laid out as a row — the DS Pill
+             wraps its children in one truncating span. */
+          <span
+            className={cn(
+              PILL_SHAPE,
+              pillColorClass(TAG_KIND[a.status]),
+              "h-6 gap-1.5 px-2 text-[11px] font-medium tracking-wide uppercase [&_svg]:size-3.5 [&_svg]:shrink-0"
+            )}
+          >
+            <TriangleAlert />
+            {a.tag}
+          </span>
+        ) : (
+          <span className={cn("shrink-0 [&_svg]:size-4", inlineAccent({ status: a.status }))}>
+            <TriangleAlert />
+          </span>
+        )}
+        {/* LEFT — what it is, and Details right beside it (Pavan,
+            2026-10-13): opening the list belongs to the words it expands. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <p className="flex min-w-0 items-center gap-x-2 overflow-hidden py-1 text-sm leading-normal">
+            {a.onApply ? (
+              <button
+                type="button"
+                onClick={a.onApply}
+                className={cn(PRESSABLE, "min-w-0 truncate font-medium text-foreground")}
+              >
+                {a.title}
+              </button>
+            ) : (
+              <span className="min-w-0 truncate font-medium text-foreground">{a.title}</span>
+            )}
+            {/* THE DETAIL GIVES WAY FIRST — the title is what has to be read. */}
+            {a.detail && <span className="min-w-0 shrink-[2] truncate text-muted-foreground">{a.detail}</span>}
+          </p>
+          {/* THE COUNT IN A PILL — with the chevron that opens
+              the list beside it when there is one (Pavan, 2026-10-13). */}
+          {(a.count != null || hasItems) && (
+            <>
+              {hasItems ? (
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-label={open ? "Collapse" : "Show details"}
+                  onClick={() => setOpen((o) => !o)}
+                  className={cn(
+                    PILL_SHAPE,
+                    pillColorClass(TAG_KIND[a.status]),
+                    "h-6 gap-1 px-2 tabular-nums outline-none transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring/50"
+                  )}
+                >
+                  {a.count ?? a.items!.length}
+                  <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+                </button>
+              ) : (
+                <span className={cn(PILL_SHAPE, pillColorClass(TAG_KIND[a.status]), "h-6 px-2 tabular-nums")}>
+                  {a.count}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+        {/* RIGHT — the action, snooze, the stepper, and ✕ LAST: dismissing
+            is the way out, so it sits at the edge (Pavan, 2026-10-13). */}
+        {a.action && <div className="flex shrink-0 items-center gap-2">{a.action}</div>}
+        {/* ONE KIND AT A TIME — the Pending strip's stepper. */}
+        {alerts.length > 1 && (
+          <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+            <button type="button" aria-label="Previous alert" disabled={i === 0} onClick={() => go(i - 1)} className={chevron}>
+              <ChevronLeft className="size-3.5" />
+            </button>
+            {i + 1} of {alerts.length}
+            <button
+              type="button"
+              aria-label="Next alert"
+              disabled={i >= alerts.length - 1}
+              onClick={() => go(i + 1)}
+              className={chevron}
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </span>
+        )}
+        {/* SNOOZE BESIDE THE STEPPER (Pavan, 2026-10-13). */}
+        {onSnooze && <BannerSnooze onSnooze={(ms) => onSnooze(a.id, ms)} />}
+        {onDismiss && (
+          <button type="button" aria-label="Dismiss" onClick={() => onDismiss(a.id)} className={ICON_BTN}>
+            <X />
+          </button>
+        )}
+      </div>
+
+      {open && a.items && (
+        <ul className="divide-y divide-current/10 border-t border-current/10 px-3">
+          {a.items.map((it) => (
+            <li key={it.id} className="flex min-h-11 items-center gap-3 py-1.5 pl-6.5 text-sm">
+              <span className="flex min-w-0 flex-1 items-center gap-x-2">
+                {it.onApply ? (
+                  <button type="button" onClick={it.onApply} className={cn(PRESSABLE, "shrink-0 text-foreground")}>
+                    {it.title}
+                  </button>
+                ) : (
+                  <span className="shrink-0 text-foreground">{it.title}</span>
+                )}
+                {it.detail && <span className="min-w-0 truncate text-muted-foreground">{it.detail}</span>}
+              </span>
+              {it.action && <span className="flex shrink-0 items-center gap-2">{it.action}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

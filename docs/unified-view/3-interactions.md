@@ -181,3 +181,17 @@ On a list page the alert banner ("2 urgent orders overdue for dispatch")
 comes directly under the view-tabs row and ABOVE the toolbar — search,
 Filters, Group By, date, view switch — so what needs attention is read before
 the tools to act on it.
+
+
+## The alert banner — the DS banner with interaction (Pavan, 2026-10-13)
+
+**Promoted to the DS and final:** `AlertBanner` — anatomy, order and colour in
+`docs/ds/interactions/2-rules.md` §7a, the two banner types in
+`docs/ds/ui/7-variants.md` §6. Not repeated here.
+
+**The binding in this app:** a list page shows its alerts as one
+`AlertBanner` under the view row, above the toolbar; each kind's title applies
+that list's own facets (and widens the date range when the kind is not about
+the dates on screen). Sales Orders' overdue banner uses `BannerSnooze`; the
+Customer Portal's Orders page runs six kinds (empty tanks, action needed,
+invoices past due, partial deliveries, quotes to accept, at risk of late).

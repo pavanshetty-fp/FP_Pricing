@@ -88,22 +88,59 @@ export const statusRank = (s: RequestStatus) => REQUEST_STATUSES.indexOf(s);
 
 /* ---------------------------------------------------- ship-tos & assets --- */
 
+/*
+  SHIP-TOS AND ASSETS (Pavan, 2026-10-13) — the CUSTOMER keeps these: they
+  add and edit them directly, no tenant approval; the tenant reads them to
+  take orders. Every asset has its own coordinates, so where it stands inside
+  the ship-to is known. An asset is the customer's own or RENTED. A tank
+  level exists only where a tank monitor is fitted (estimating the others
+  from usage is for later).
+
+  One live list, mutated in place by the sites store below, so Orders reads
+  new ship-tos and assets the moment they are added. INVENTED seed.
+*/
+export const ASSET_TYPES = ["Tank", "Tote", "Generator", "Reefer truck", "Light tower", "Reservoir"];
+export type ActiveStatus = "Active" | "Inactive";
+
 export interface Asset {
   id: string;
   name: string;
+  /** The customer's own identifier for it. */
+  code: string;
+  type: string;
   product: string;
   /** Gallons. */
   capacity: number;
-  /** Last reading, % full — monitored tanks. INVENTED. */
+  rented: boolean;
+  monitor: boolean;
+  monitorId: string;
+  /** Last monitor reading, % full — only when `monitor`. */
   level: number;
+  lat: number | null;
+  lng: number | null;
+  status: ActiveStatus;
+  notes: string;
+  audit?: ActivityEntry[];
 }
 
 export interface ShipTo {
+  id: string;
   name: string;
-  /** Where it is — for the map. INVENTED, around Houston. */
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
   lat: number;
   lng: number;
+  contactName: string;
+  contactPhone: string;
+  /** Minutes from midnight — when deliveries can be made. */
+  hoursStart: number;
+  hoursEnd: number;
+  accessNotes: string;
+  status: ActiveStatus;
   assets: Asset[];
+  audit?: ActivityEntry[];
 }
 
 export const PRODUCTS = [
@@ -136,43 +173,112 @@ export const inLine = (r: { lines: { product: string }[] }, scope: LineScope) =>
 /** The tenant's terminal — where the trucks leave from. INVENTED. */
 export const TERMINAL = { name: `${"Lone Star Fuels"} terminal`, lat: 29.88, lng: -95.06 };
 
+const asset = (
+  id: string,
+  name: string,
+  type: string,
+  product: string,
+  capacity: number,
+  at: [number, number],
+  o: { rented?: boolean; monitor?: string; level?: number } = {}
+): Asset => ({
+  id,
+  name,
+  code: `CL-${id.toUpperCase().replace("-", "")}`,
+  type,
+  product,
+  capacity,
+  rented: o.rented ?? false,
+  monitor: Boolean(o.monitor),
+  monitorId: o.monitor ?? "",
+  level: o.level ?? 0,
+  lat: at[0],
+  lng: at[1],
+  status: "Active",
+  notes: "",
+});
+
 export const SHIP_TOS: ShipTo[] = [
   {
+    id: "st-a",
     name: "Cardinal Hub A",
+    street: "2410 Navigation Blvd",
+    city: "Houston",
+    state: "Texas",
+    zip: "77003",
     lat: 29.78,
     lng: -95.38,
+    contactName: "Rosa Delgado",
+    contactPhone: "(713) 555-0142",
+    hoursStart: 5 * 60,
+    hoursEnd: 19 * 60,
+    accessNotes: "Gate code 4471. Tanks behind building 2.",
+    status: "Active",
     assets: [
-      { id: "a-1", name: "Tank A1", product: "Diesel", capacity: 10000, level: 64 },
-      { id: "a-2", name: "Tank A2", product: "Diesel", capacity: 10000, level: 31 },
-      { id: "a-3", name: "DEF Tote 1", product: "DEF", capacity: 330, level: 40 },
-      { id: "a-4", name: "Generator G-12", product: "Diesel", capacity: 500, level: 55 },
-      { id: "a-5", name: "Hydraulic Reservoir H-2", product: "Hydraulic Oil AW-46", capacity: 275, level: 61 },
+      asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64 }),
+      asset("a-2", "Tank A2", "Tank", "Diesel", 10000, [29.7805, -95.3804], { monitor: "TM8K2A92", level: 31 }),
+      asset("a-3", "DEF Tote 1", "Tote", "DEF", 330, [29.7801, -95.3799], { rented: true }),
+      asset("a-4", "Generator G-12", "Generator", "Diesel", 500, [29.7797, -95.3811]),
+      asset("a-5", "Hydraulic Reservoir H-2", "Reservoir", "Hydraulic Oil AW-46", 275, [29.7799, -95.3802]),
     ],
   },
   {
+    id: "st-b",
     name: "Cardinal Hub B",
+    street: "11800 W Little York Rd",
+    city: "Houston",
+    state: "Texas",
+    zip: "77041",
     lat: 29.96,
     lng: -95.56,
+    contactName: "Mike Turner",
+    contactPhone: "(281) 555-0187",
+    hoursStart: 6 * 60,
+    hoursEnd: 20 * 60,
+    accessNotes: "Check in at the guard house.",
+    status: "Active",
     assets: [
-      { id: "b-1", name: "Tank B1", product: "Diesel", capacity: 12000, level: 72 },
-      { id: "b-2", name: "Tank B2", product: "Unleaded 87", capacity: 8000, level: 18 },
-      { id: "b-3", name: "Reefer Truck R-7", product: "Dyed Diesel", capacity: 150, level: 14 },
+      asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72 }),
+      asset("b-2", "Tank B2", "Tank", "Unleaded 87", 8000, [29.9606, -95.5601], { monitor: "TM3P7B12", level: 18 }),
+      asset("b-3", "Reefer Truck R-7", "Reefer truck", "Dyed Diesel", 150, [29.9598, -95.5609], { rented: true, monitor: "TL9R7X03", level: 14 }),
     ],
   },
   {
+    id: "st-c",
     name: "Cardinal Overflow",
+    street: "8901 Clinton Dr",
+    city: "Houston",
+    state: "Texas",
+    zip: "77029",
     lat: 29.64,
     lng: -95.22,
+    contactName: "Dee Park",
+    contactPhone: "(713) 555-0119",
+    hoursStart: 6 * 60,
+    hoursEnd: 18 * 60,
+    accessNotes: "",
+    status: "Active",
     assets: [
-      { id: "c-1", name: "Tank O1", product: "Dyed Diesel", capacity: 6000, level: 22 },
-      { id: "c-2", name: "Propane Tank P1", product: "Propane", capacity: 1000, level: 47 },
-      { id: "c-3", name: "Light Tower L-3", product: "Diesel", capacity: 60, level: 0 },
+      asset("c-1", "Tank O1", "Tank", "Dyed Diesel", 6000, [29.6403, -95.2204], { monitor: "TM5C2O01", level: 22 }),
+      asset("c-2", "Propane Tank P1", "Tank", "Propane", 1000, [29.6398, -95.2197], { rented: true }),
+      asset("c-3", "Light Tower L-3", "Light tower", "Diesel", 60, [29.6407, -95.2211], { rented: true, monitor: "TL4L3T07", level: 0 }),
     ],
   },
 ];
 
+/* THE SEED'S HISTORY — each record was set up some weeks ago. INVENTED. */
+{
+  const at = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  for (const st of SHIP_TOS) {
+    st.audit = [{ at, by: PORTAL_ACTOR, changes: ["Ship-to created"] }];
+    for (const a of st.assets) a.audit = [{ at, by: PORTAL_ACTOR, changes: ["Asset added"] }];
+  }
+}
+
 export const assetById = (id: string): Asset | undefined =>
   SHIP_TOS.flatMap((s) => s.assets).find((a) => a.id === id);
+export const shipToOfAsset = (id: string): ShipTo | undefined =>
+  SHIP_TOS.find((s) => s.assets.some((a) => a.id === id));
 
 /* ---------------------------------------------------------- the request --- */
 
@@ -666,13 +772,13 @@ export function todayStats(rows: OrderRequest[]) {
 
 /*
   THE LAST SEVEN DAYS (Pavan, 2026-10-13 — the tiles' trend and change).
-  Delivered orders and gallons for each of the seven days before today,
+  Orders and gallons requested for each of the seven days before today,
   oldest first; [0] is the same weekday last week, which today is compared
   with. INVENTED.
 */
 export const PAST_WEEK = {
-  orders: [2, 6, 7, 5, 8, 6, 7],
-  gallons: [11500, 21800, 24500, 17600, 27100, 20400, 23900],
+  orders: [7, 9, 8, 6, 10, 8, 9],
+  gallons: [24900, 28100, 26400, 21800, 31200, 25500, 27300],
 };
 
 /* ------------------------------------------------------------- tanks ----- */
@@ -694,7 +800,7 @@ export function lowTanksWithoutOrder(all: OrderRequest[]) {
   );
   return SHIP_TOS.flatMap((s) =>
     s.assets
-      .filter((a) => a.level <= LOW_LEVEL && !open.has(a.id))
+      .filter((a) => a.monitor && a.status === "Active" && a.level <= LOW_LEVEL && !open.has(a.id))
       .map((a) => ({ asset: a, shipTo: s.name }))
   );
 }
@@ -915,6 +1021,13 @@ export function duplicateRequest(id: string): OrderRequest | null {
   );
   emit();
   return requests.find((x) => x.id === r.id)!;
+}
+
+/** A ship-to renamed — its requests follow it, so none loses its site. */
+export function renameShipToInRequests(from: string, to: string) {
+  if (from === to) return;
+  requests = requests.map((r) => (r.shipTo === from ? { ...r, shipTo: to } : r));
+  emit();
 }
 
 /** Drop an untouched new draft, closed unfilled. */

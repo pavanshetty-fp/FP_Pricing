@@ -62,7 +62,9 @@ import {
   type RequestSort,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
-import { LowTankBanner, MapHoverCard, OverviewCards } from "./overview";
+import { MapHoverCard, OverviewCards } from "./overview";
+import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
+import { bannerSoftAction } from "@/components/ui/banner";
 import { TodaySheet } from "./TodaySheet";
 
 /**
@@ -118,7 +120,16 @@ const DEFAULT_STATE: ViewState = {
   facets: [],
 };
 
-export function OrdersScreen() {
+/* WHICH HAND-OFF HAS BEEN ANSWERED — outside the component, so a remount
+   on the way back does not make a second draft (the Quotes rule). */
+let answeredPrefill: number | null = null;
+
+export function OrdersScreen({
+  prefill,
+}: {
+  /** An order started elsewhere (Sites & Assets): its ship-to and tanks. */
+  prefill?: { shipTo: string; assetIds: string[]; n: number } | null;
+} = {}) {
   const rows = useRequests();
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
@@ -200,6 +211,32 @@ export function OrdersScreen() {
     setOpenId(r.id);
     setPage(1);
   };
+
+  /* AN ORDER HANDED OVER — a draft for that ship-to, each tank on a line
+     with the product last ordered for it. Top off when it came from a
+     monitored tank's own sheet; otherwise one blank line. */
+  React.useEffect(() => {
+    if (!prefill || prefill.n === answeredPrefill) return;
+    answeredPrefill = prefill.n;
+    const r = createRequest();
+    updateRequest(r.id, {
+      shipTo: prefill.shipTo,
+      lines: prefill.assetIds.length
+        ? prefill.assetIds.map((id) => {
+            const a = assetById(id);
+            return {
+              assetId: id,
+              product: lastProductFor(id, rows) ?? a?.product ?? "",
+              topOff: true,
+              gal: 0,
+            };
+          })
+        : r.lines,
+    });
+    setCreatingId(r.id);
+    setOpenId(r.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.n]);
 
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
@@ -310,6 +347,132 @@ export function OrdersScreen() {
         return null;
     }
   };
+
+  /* ---- THE ALERTS (Pavan, 2026-10-13) — every kind that needs the
+     customer's eye, most serious first; each one, pressed, narrows the list
+     to what it counts (on every date, unless it is about today). ---- */
+  const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(new Set());
+  const [snoozed, setSnoozed] = React.useState<Record<string, number>>({});
+  React.useEffect(() => {
+    const next = Object.values(snoozed).filter((t) => t > Date.now());
+    if (next.length === 0) return;
+    const t = window.setTimeout(() => setSnoozed((p) => ({ ...p })), Math.min(...next) - Date.now());
+    return () => window.clearTimeout(t);
+  }, [snoozed]);
+  const everyDate = (): DateRange => {
+    const dated = rows.map((r) => r.date).filter(Boolean).sort();
+    const at = (k: string) => {
+      const [y, m, d] = k.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    };
+    return dated.length ? { from: at(dated[0]), to: at(dated[dated.length - 1]) } : { from: today, to: today };
+  };
+  const narrowTo = (facetIds: string[], when: "today" | "any", text = "") => {
+    setFacetSel(new Set(facetIds));
+    setRange(when === "today" ? { from: today, to: today } : everyDate());
+    setSearch(text);
+    setColQuery("");
+    setColFilters({});
+    setColFiltersOpen(false);
+    setLine("All");
+    setPage(1);
+  };
+  const orderFor = (shipTo: string, assetIds: string[]) => {
+    const r = createRequest();
+    updateRequest(r.id, {
+      shipTo,
+      lines: assetIds.map((id) => ({
+        assetId: id,
+        product: lastProductFor(id, rows) ?? assetById(id)?.product ?? "",
+        topOff: true,
+        gal: 0,
+      })),
+    });
+    setCreatingId(r.id);
+    setOpenId(r.id);
+    setPage(1);
+  };
+  const reqItems = (list: OrderRequest[], detail: (r: OrderRequest) => string) =>
+    list.map((r) => ({
+      id: r.id,
+      title: `${r.requestNo} · ${r.shipTo}`,
+      detail: detail(r),
+      onApply: () => narrowTo([], "any", r.requestNo),
+    }));
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const flagged = (kind: string) => rows.filter((r) => r.flags.some((f) => f.kind === kind));
+  const flagDetail = (kind: string) => (r: OrderRequest) => r.flags.find((f) => f.kind === kind)?.detail ?? "";
+  const tanks = lowTanksWithoutOrder(rows);
+  const actionNeeded = rows.filter((r) => r.status === "Action needed");
+  const pastDue = flagged("Invoice past due");
+  const partial = rows.filter((r) => r.status === "Partial delivery");
+  const quotes = rows.filter((r) => r.status === "Quote sent");
+  const late = flagged("At risk of being late");
+  const allAlerts: BannerAlert[] = [
+    tanks.length > 0 && {
+      id: "tanks",
+      status: "warning" as const,
+      tag: "Needs action",
+      title: `${plural(tanks.length, "tank is", "tanks are")} nearly empty with no order placed`,
+      count: tanks.length,
+      items: tanks.map((t) => ({
+        id: t.asset.id,
+        title: `${t.asset.name} · ${t.shipTo}`,
+        detail: t.asset.level <= 3 ? "Empty" : `${t.asset.level}% full`,
+        action: (
+          <Button variant="outline" size="sm" className={bannerSoftAction} onClick={() => orderFor(t.shipTo, [t.asset.id])}>
+            Create order
+          </Button>
+        ),
+      })),
+    },
+    actionNeeded.length > 0 && {
+      id: "action",
+      status: "warning" as const,
+      tag: "Needs action",
+      title: `${plural(actionNeeded.length, "request needs", "requests need")} your answer`,
+      count: actionNeeded.length,
+      onApply: () => narrowTo(["status:Action needed"], "any"),
+      items: reqItems(actionNeeded, (r) => r.flags[0]?.detail ?? "Lone Star Fuels asked for more information"),
+    },
+    pastDue.length > 0 && {
+      id: "pastDue",
+      status: "warning" as const,
+      tag: "Overdue",
+      title: `${plural(pastDue.length, "invoice is", "invoices are")} past due`,
+      count: pastDue.length,
+      onApply: () => narrowTo(["flags:Invoice past due"], "any"),
+      items: reqItems(pastDue, flagDetail("Invoice past due")),
+    },
+    partial.length > 0 && {
+      id: "partial",
+      status: "warning" as const,
+      tag: "Exception",
+      title: `${plural(partial.length, "delivery was", "deliveries were")} only partly made`,
+      count: partial.length,
+      onApply: () => narrowTo(["status:Partial delivery"], "any"),
+      items: reqItems(partial, (r) => r.flags[0]?.detail ?? ""),
+    },
+    quotes.length > 0 && {
+      id: "quotes",
+      status: "caution" as const,
+      tag: "Needs action",
+      title: `${plural(quotes.length, "quote is", "quotes are")} waiting for you to accept`,
+      count: quotes.length,
+      onApply: () => narrowTo(["status:Quote sent"], "any"),
+      items: reqItems(quotes, (r) => (r.date ? `Requested for ${printKey(r.date)}` : "")),
+    },
+    late.length > 0 && {
+      id: "late",
+      status: "caution" as const,
+      tag: "At risk",
+      title: `${plural(late.length, "delivery is", "deliveries are")} at risk of being late`,
+      count: late.length,
+      onApply: () => narrowTo(["flags:At risk of being late"], "any"),
+      items: reqItems(late, flagDetail("At risk of being late")),
+    },
+  ].filter(Boolean) as BannerAlert[];
+  const alerts = allAlerts.filter((a) => !dismissed.has(a.id) && !((snoozed[a.id] ?? 0) > Date.now()));
 
   const nothing = sorted.length === 0 && !(view === "table" && colFiltersOpen);
 
@@ -464,29 +627,17 @@ export function OrdersScreen() {
       />
       </div>
 
-      {/* THE CRITICAL BANNER — where a list's banner sits: under the view
-          row, above the toolbar. */}
-      <div className="mt-4 shrink-0 empty:hidden">
-        <LowTankBanner
-          tanks={lowTanksWithoutOrder(rows)}
-          onOrder={(shipTo, assets) => {
-            const r = createRequest();
-            updateRequest(r.id, {
-              shipTo,
-              lines: assets.map((a) => ({
-                assetId: a.id,
-                product: lastProductFor(a.id, rows) ?? a.product,
-                topOff: true,
-                gal: 0,
-              })),
-            });
-            setCreatingId(r.id);
-            setOpenId(r.id);
-            setPage(1);
-          }}
+      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
+          pressing an alert applies the filter it describes. Where a list's
+          banner sits: under the view row, above the toolbar. */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
         />
-      </div>
-
+      )}
 
       <div className="mt-4 shrink-0">
         <ListToolbar

@@ -1,16 +1,10 @@
 import * as React from "react";
-import { CalendarOff, Clock, SearchX } from "lucide-react";
+import { CalendarOff, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { BannerSnooze } from "@/components/ui/alert-banner";
 import {
   Empty,
   EmptyContent,
@@ -164,15 +158,8 @@ const TOGGLE_COLUMNS = SALES_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
   label: c.label,
 }));
 
-/** How long "remind me later" puts the alert away for. */
-const HOUR_MS = 60 * 60 * 1000;
-const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
-  { label: "1 hour", ms: HOUR_MS },
-  { label: "2 hours", ms: 2 * HOUR_MS },
-  { label: "4 hours", ms: 4 * HOUR_MS },
-  { label: "8 hours", ms: 8 * HOUR_MS },
-  { label: "Tomorrow, same time", ms: 24 * HOUR_MS },
-];
+/* "REMIND ME LATER" IS THE DS's NOW — `BannerSnooze`, the standard set
+   (promoted from here, Pavan, 2026-10-13). */
 
 /* EACH STAGE'S LANE COLOUR lives with the stages now — `stageLaneColor`
    in salesSettings.ts, so an added stage has one (Pavan, 2026-10-07). */
@@ -1340,30 +1327,7 @@ export function SalesOrdersScreen({
               >
                 Show orders
               </Button>
-              {/* TOOLTIP OUTSIDE, MENU TRIGGER INSIDE — see the old Fuel Orders
-                  screen: only this order composes. */}
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="Remind me later">
-                        <Clock />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Remind me later</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {SNOOZE_OPTIONS.map((o) => (
-                    <DropdownMenuItem
-                      key={o.label}
-                      onSelect={() => setSnoozedUntil(Date.now() + o.ms)}
-                    >
-                      {o.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <BannerSnooze onSnooze={(ms) => setSnoozedUntil(Date.now() + ms)} />
             </>
           }
           onDismiss={() => setAlertDismissed(true)}

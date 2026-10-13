@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 type BannerStatus = "info" | "caution" | "warning" | "success";
 
-const calloutVariants = cva(
+export const calloutVariants = cva(
   // THE RIM IS ALWAYS DRAWN, and is transparent in light on the solid variant.
   // A border that appears only in one theme changes the box's height between
   // them; one that is always there and only sometimes coloured does not.
@@ -59,7 +59,15 @@ const calloutVariants = cva(
       // from the inline one beside it.
       { variant: "soft", status: "info", class: "border-fp-banner-accent-info/30 bg-fp-banner-accent-info/10" },
       { variant: "soft", status: "caution", class: "border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10" },
-      { variant: "soft", status: "warning", class: "border-fp-banner-accent-warning/30 bg-fp-banner-accent-warning/10" },
+      // WARNING IS HALF AS LOUD IN LIGHT (Pavan, 2026-10-13): a /10 red wash
+      // read as an alarm on white; /5 with a /20 rim still parts it from the
+      // page. Dark keeps /10 · /30 — on near-black, /5 vanishes.
+      {
+        variant: "soft",
+        status: "warning",
+        class:
+          "border-fp-banner-accent-warning/20 bg-fp-banner-accent-warning/5 dark:border-fp-banner-accent-warning/30 dark:bg-fp-banner-accent-warning/10",
+      },
       { variant: "soft", status: "success", class: "border-fp-banner-accent-success/30 bg-fp-banner-accent-success/10" },
     ],
     defaultVariants: { status: "info", variant: "solid" },
@@ -80,6 +88,19 @@ const calloutVariants = cva(
  * are. Exported so every soft banner's action matches without each call site
  * re-deriving it.
  */
+/**
+ * HOW LONG "REMIND ME LATER" PUTS AN ALERT AWAY — one set, every banner
+ * (Pavan, 2026-10-13: the Sales Orders set is the standard).
+ */
+const HOUR_MS = 60 * 60 * 1000;
+export const BANNER_SNOOZE_OPTIONS: { label: string; ms: number }[] = [
+  { label: "1 hour", ms: HOUR_MS },
+  { label: "2 hours", ms: 2 * HOUR_MS },
+  { label: "4 hours", ms: 4 * HOUR_MS },
+  { label: "8 hours", ms: 8 * HOUR_MS },
+  { label: "Tomorrow, same time", ms: 24 * HOUR_MS },
+];
+
 export const bannerSoftAction =
   "bg-fp-surface-1b text-foreground hover:bg-fp-surface-1b/85 dark:bg-fp-surface-base dark:hover:bg-fp-surface-base/80";
 
@@ -196,7 +217,7 @@ function BannerCallout({
   );
 }
 
-const inlineAccent = cva("", {
+export const inlineAccent = cva("", {
   variants: {
     status: {
       default: "text-foreground",

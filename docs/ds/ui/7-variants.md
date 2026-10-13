@@ -290,6 +290,16 @@ that picks between them: *what is being added, and does it have to be chosen?*
 mean opposite things, which is exactly why a dashed box round an empty table is
 forbidden — it invites a click that does nothing.
 
+## 6. The banner — two (Pavan, 2026-10-13, final)
+
+| | Component | For |
+|---|---|---|
+| **B1** | **banner without interaction** — `BannerCallout` (solid · soft) and `BannerInline` | **saying one thing.** A message, at most one action or a ✕. Nothing in it narrows anything |
+| **B2** | **banner with interaction** — `AlertBanner` (`src/components/ui/alert-banner.tsx`) | **alerts the reader acts on, possibly several kinds at once.** Every part below is part of it; none is optional decoration |
+
+**The question: does pressing the banner do something to the page?** If yes,
+it is B2 and it carries the whole anatomy — interactions/2-rules.md §7.
+
 ---
 
 ## Adding a variant

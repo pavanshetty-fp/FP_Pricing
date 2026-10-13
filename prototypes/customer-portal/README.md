@@ -19,7 +19,7 @@ them through to invoice. The tenant's side is a separate unit, not built yet.
 ## Navigation (Pavan, 2026-10-13)
 
 Dashboard (landing) · Orders · Invoices · Sites & Assets · Reports · Team &
-Access. Only **Orders** is built; the rest are empty on purpose — built page
+Access. **Orders** and **Sites & Assets** are built; the rest are empty on purpose — built page
 by page. No account switcher (sales reps order from their own apps).
 Notifications are the top bar's bell, not a page.
 
@@ -56,14 +56,37 @@ Notifications are the top bar's bell, not a page.
   details, press = sheet). Flags column = plain text coloured red / amber /
   plain by level. Documents column = count + list on press. Tanks, Product
   and Quantity cells open the line breakdown on press, ordered per column.
-- **Critical banner** (Sales' warning banner): tanks ≤ 20% with no live
-  request; "Create order" makes a Top-off draft for that ship-to.
+- **Alerts** = the DS banner with interaction (`AlertBanner`), six kinds:
+  empty tanks (each with Create order), action needed, invoices past due,
+  partial deliveries, quotes to accept, at risk of late. Each title applies
+  its filter.
 - **Overview** — ONE read-only card above everything, two tiles ruled apart
-  (after Pavan's "New subscriptions" reference): Today's orders "3 of 8
-  orders delivered" and Gallons delivered today "12,700 of 27,800 gal",
-  each with its change on the same weekday last week and a 7-day trend line.
+  (after Pavan's "New subscriptions" reference): Today's orders (8) and
+  Gallons to be delivered today (27,800), each with its change on the same
+  weekday last week and a 7-day trend line.
   One round ↗ icon opens **Today's deliveries** (orders split, delivery
   schedule with Now line and live trucks + ETA, gallons by product).
+
+## Sites & Assets — decisions not to re-open (Pavan, 2026-10-13)
+
+- **The customer keeps ship-tos and assets — no tenant approval.** The
+  tenant reads them to take orders, so the customer must keep them right.
+- **Tabs** on the view row's switch: Ship-tos · Assets · Service requests
+  (placeholder: leaks, damage, parts — built later). All lists use
+  `PortalList` (the Unified View list as one piece).
+- **Every asset has its own latitude/longitude** (where it stands inside the
+  ship-to), a ship-to, type, product, size, Rented (checkbox; "Rented" pill
+  in the list and header), and a tank monitor (checkbox + ID).
+- **Tank level only where a monitor is fitted**; otherwise "No monitor".
+  Estimating from usage and history is for later.
+- **Ship-to sheet** holds its assets as an editable table (name, type,
+  product, size, lat, lng, rented). Create takes the act; edits autosave.
+- **Deactivate** (⋯) is refused while orders are on their way. **Create
+  order** (⋯) on a ship-to or asset opens Orders on a new draft for it (an
+  asset's tank on a Top off line).
+- One live list (`SHIP_TOS`, edited in place by `sites.ts`), so Orders and
+  the map see new records at once; renaming a ship-to renames it on its
+  requests.
 
 ## Open
 

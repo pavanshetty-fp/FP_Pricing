@@ -1,18 +1,10 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, ArrowUpRight, TriangleAlert, Truck } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Truck } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 import { Button } from "@/components/ui/button";
-import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  EMPTY_LEVEL,
   REQUEST_STATUS_TONE,
   assetById,
   lineQty,
@@ -20,15 +12,15 @@ import {
   windowText,
   todayStats,
   PAST_WEEK,
-  type Asset,
   type OrderRequest,
 } from "./orders";
 
 /*
   THE OVERVIEW (Pavan, 2026-10-13) — ONE card, two tiles ruled apart, after
-  his "New subscriptions" reference: the figure read against its whole
-  ("3 of 8 orders delivered"), its change on the same weekday last week, and
-  a seven-day trend line on the right. Read-only; the one control is the
+  his "New subscriptions" reference: today's total — orders, and gallons to
+  be delivered — its change on the same weekday last week, and a seven-day
+  trend line on the right. How much is already delivered is in the details
+  sheet, not here (Pavan, 2026-10-13). Read-only; the one control is the
   open icon in the corner, which brings up today's details.
 */
 
@@ -107,9 +99,8 @@ function Change({ now, then }: { now: number; then: number }) {
 
 function Tile({
   title,
-  done,
-  of,
-  noun,
+  value,
+  unit,
   then,
   thenLabel,
   trend,
@@ -118,9 +109,8 @@ function Tile({
   format,
 }: {
   title: string;
-  done: number;
-  of: number;
-  noun: string;
+  value: number;
+  unit: string;
   then: number;
   thenLabel: string;
   trend: number[];
@@ -133,11 +123,9 @@ function Tile({
       <div className="flex min-w-0 flex-col gap-1">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-3xl font-semibold tabular-nums text-foreground">{format(done)}</span>
-          <span className="text-sm text-muted-foreground">
-            of {format(of)} {noun}
-          </span>
-          <Change now={done} then={then} />
+          <span className="text-3xl font-semibold tabular-nums text-foreground">{format(value)}</span>
+          <span className="text-sm text-muted-foreground">{unit}</span>
+          <Change now={value} then={then} />
         </p>
         <p className="text-xs text-muted-foreground">compared to {thenLabel}</p>
       </div>
@@ -167,24 +155,22 @@ export function OverviewCards({
     <div className="relative flex shrink-0 flex-col divide-y divide-border rounded-xl border border-border bg-fp-surface-1b md:flex-row md:divide-x md:divide-y-0">
       <Tile
         title="Today’s orders"
-        done={st.delivered}
-        of={st.due}
-        noun={st.due === 1 ? "order delivered" : "orders delivered"}
+        value={st.due}
+        unit={st.due === 1 ? "order" : "orders"}
         then={PAST_WEEK.orders[0]}
         thenLabel={thenLabel}
-        trend={[...PAST_WEEK.orders.slice(1), st.delivered]}
+        trend={[...PAST_WEEK.orders.slice(1), st.due]}
         trendLabels={labels}
         hue="violet"
         format={(n) => n.toLocaleString()}
       />
       <Tile
-        title="Gallons delivered today"
-        done={st.galDelivered}
-        of={st.galRequested}
-        noun="gal delivered"
+        title="Gallons to be delivered today"
+        value={st.galRequested}
+        unit="gal"
         then={PAST_WEEK.gallons[0]}
         thenLabel={thenLabel}
-        trend={[...PAST_WEEK.gallons.slice(1), st.galDelivered]}
+        trend={[...PAST_WEEK.gallons.slice(1), st.galRequested]}
         trendLabels={labels}
         hue="orange"
         format={(n) => n.toLocaleString()}
@@ -201,68 +187,6 @@ export function OverviewCards({
         <ArrowUpRight />
       </Button>
     </div>
-  );
-}
-
-/*
-  THE CRITICAL BANNER (Pavan, 2026-10-13) — the list's banner (the Sales
-  "overdue for dispatch" one), for a tank nearly empty or empty that nobody
-  has ordered for. Its action makes that order: a Draft for the ship-to,
-  each low tank on a Top off line.
-*/
-export function LowTankBanner({
-  tanks,
-  onOrder,
-}: {
-  tanks: { asset: Asset; shipTo: string }[];
-  onOrder: (shipTo: string, assets: Asset[]) => void;
-}) {
-  if (tanks.length === 0) return null;
-  const byShipTo = new Map<string, Asset[]>();
-  for (const t of tanks) byShipTo.set(t.shipTo, [...(byShipTo.get(t.shipTo) ?? []), t.asset]);
-  const level = (a: Asset) => (a.level <= EMPTY_LEVEL ? "empty" : `${a.level}%`);
-  const n = tanks.length;
-  return (
-    <BannerCallout
-      status="warning"
-      variant="soft"
-      className="shrink-0"
-      title={`${n} ${n === 1 ? "tank is" : "tanks are"} nearly empty with no order placed`}
-      icon={<TriangleAlert />}
-      action={
-        byShipTo.size === 1 ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className={bannerSoftAction}
-            onClick={() => {
-              const [[shipTo, assets]] = [...byShipTo];
-              onOrder(shipTo, assets);
-            }}
-          >
-            Create order
-          </Button>
-        ) : (
-          /* ONE REQUEST PER SHIP-TO, so the order is made for one of them. */
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={bannerSoftAction}>
-                Create order
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-56">
-              {[...byShipTo].map(([shipTo, assets]) => (
-                <DropdownMenuItem key={shipTo} onSelect={() => onOrder(shipTo, assets)}>
-                  {shipTo} · {assets.map((a) => a.name).join(", ")}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      }
-    >
-      {tanks.map((t) => `${t.asset.name}, ${t.shipTo} (${level(t.asset)})`).join(" · ")}
-    </BannerCallout>
   );
 }
 

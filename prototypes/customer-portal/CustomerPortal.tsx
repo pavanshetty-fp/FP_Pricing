@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ModuleSidebar } from "../unified-view/ModuleSidebar";
 import { OrdersScreen } from "./OrdersScreen";
+import { SitesScreen } from "./SitesScreen";
 
 /*
   CUSTOMER PORTAL (Pavan, 2026-10-13) — the CUSTOMER's side of the portal:
@@ -29,7 +30,7 @@ import { OrdersScreen } from "./OrdersScreen";
   No account switcher (Pavan, 2026-10-13): sales reps order on a customer's
   behalf from their own apps. Notifications are the top bar's bell, not a page.
 
-  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Orders.
+  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Orders, Sites & Assets.
 */
 
 const MODULE = { key: "portal", name: "Customer Portal", icon: <Store /> };
@@ -60,6 +61,7 @@ function readStoredPage(): string {
 
 export function CustomerPortal() {
   const [page, setPage] = React.useState(readStoredPage);
+  const [prefill, setPrefill] = React.useState<{ shipTo: string; assetIds: string[]; n: number } | null>(null);
   const go = (key: string) => {
     setPage(key);
     try {
@@ -105,7 +107,20 @@ export function CustomerPortal() {
         headerAction={<ThemeToggle />}
       >
         {/* A page is empty until it is designed. */}
-        {page === "orders" ? <OrdersScreen /> : <div className="flex-1" />}
+        {page === "orders" ? (
+          <OrdersScreen prefill={prefill} />
+        ) : page === "sites-assets" ? (
+          <SitesScreen
+            onCreateOrder={(shipTo, assetIds) => {
+              /* CREATE ORDER FROM A SITE OR TANK — the Orders page opens on
+                 a new draft for it. */
+              setPrefill({ shipTo, assetIds, n: Date.now() });
+              go("orders");
+            }}
+          />
+        ) : (
+          <div className="flex-1" />
+        )}
       </AppShell>
     </TooltipProvider>
   );

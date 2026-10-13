@@ -3258,8 +3258,51 @@ it, which is often the next thing someone wanted.
 
 ## 7. Banners & notes
 
-- **Action/reminder banner**: pending-work summary + CTA ("49 pending · Show All").
-- **Dismissible info note**: contextual, closeable.
+**Two banners, and the question is whether pressing it does something**
+(ui/7-variants.md §6):
+
+- **Banner without interaction (B1)** — `BannerCallout` / `BannerInline`. Says
+  one thing: an action/reminder summary with at most one CTA ("49 pending ·
+  Show All"), or a dismissible info note.
+
+### 7a. The banner with interaction (B2) — FINAL (Pavan, 2026-10-13)
+
+`AlertBanner`, the soft callout grown for alerts the reader acts on. All of
+these are its components; a banner that acts on the page has all of them.
+
+**Left, in this order**
+1. **Tag pill with the icon INSIDE it** — "⚠ NEEDS ACTION", "OVERDUE", "AT
+   RISK"; the pill wears the alert's kind. The icon stands alone only when an
+   alert has no tag.
+2. **The title** — what it is, in a sentence. **Pressable, with no
+   underline** (pointer + a slight fade on hover). **Pressing it applies the
+   filter it describes** — its statuses, flags and the date range it is
+   about — onto the list's own filters, so the chips show it and Clear all
+   undoes it.
+3. **Detail** (optional) — muted, gives way first when space runs out.
+4. **Count pill** — the number in a pill of the alert's kind, **with the
+   chevron inside it** when the alert has items. No divider before it, and
+   no "Details" word. Pressing it opens the items; the chevron flips.
+
+**Right, in this order**
+5. **The alert's own action** (optional) — `bannerSoftAction` button.
+6. **‹ 1 of N ›** — one KIND of alert at a time, most serious first; the
+   banner takes the shown kind's status colour. Present only when N > 1.
+7. **Snooze** — the clock, "Remind me later": `BANNER_SNOOZE_OPTIONS`
+   (1 h · 2 h · 4 h · 8 h · Tomorrow, same time) **plus Custom…, which asks
+   for hours and minutes** (no calendar). One set, every module.
+8. **✕ dismiss — always the LAST thing on the right.**
+
+**Expanded:** under the line, one row per item — its title (pressable: narrows
+the list to that item), its detail, its own action. The count pill folds it.
+
+**Colour:** soft fill and rim are alphas of the status's inline accent.
+**Warning is half as loud in light** — a /5 wash with a /20 rim (dark keeps
+/10 · /30). **Placement on a list page:** under the view row, above the
+toolbar (Unified View 3-interactions).
+
+**Not a B2:** a banner with no filter, no items and no stepping is a B1 —
+don't dress a one-line message in the B2 parts.
 
 ## 7b. A dead control says why on the press
 

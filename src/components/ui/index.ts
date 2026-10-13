@@ -35,7 +35,9 @@ export { Textarea } from "./textarea";
 export { RadioGroup, RadioGroupItem } from "./radio-group";
 export { Slider } from "./slider";
 export { Alert, AlertTitle, AlertDescription, alertVariants } from "./alert";
-export { BannerCallout, BannerInline } from "./banner";
+export { BannerCallout, BannerInline, BANNER_SNOOZE_OPTIONS } from "./banner";
+export { AlertBanner, BannerSnooze } from "./alert-banner";
+export type { BannerAlert, BannerAlertItem } from "./alert-banner";
 export type { BannerStatus } from "./banner";
 export {
   Accordion,

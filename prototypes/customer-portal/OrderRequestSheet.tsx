@@ -285,8 +285,9 @@ function LinesTable({
   );
 }
 
-/** The request's documents — a read-only list table (ui §10f shell). */
-function DocumentsTable({ docs }: { docs: RequestDoc[] }) {
+/** The request's documents — a read-only list table (ui §10f shell). Shared:
+    the invoice dispute lists its proof with it too. */
+export function DocumentsTable({ docs }: { docs: RequestDoc[] }) {
   if (docs.length === 0)
     return <p className="px-4 py-3 text-sm text-muted-foreground">No documents yet.</p>;
   return (

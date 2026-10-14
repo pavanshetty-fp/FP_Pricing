@@ -654,8 +654,13 @@
 
      ONE STEP QUIETER (Pavan, 2026-10-05): card-1 stood out too much once
      tables lost their card band in stepped forms. card-2 is the subtle step;
-     it shares its value with row hover, which only ever lands on body rows. */
-  --fp-table-header: var(--fp-card-2);
+     it shares its value with row hover, which only ever lands on body rows.
+
+     LIGHTER STILL (Pavan, 2026-10-14): #fafafa, after the Profound "All
+     data" table — tried on the portal's Orders, then made the header for
+     every table. Row hover keeps card-2, so the header and a hovered row
+     now differ. Dark is unchanged. */
+  --fp-table-header: #fafafa;
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content

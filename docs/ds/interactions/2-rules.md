@@ -443,6 +443,11 @@ these are its components; a banner that acts on the page has all of them.
    for hours and minutes** (no calendar). One set, every module.
 8. **✕ dismiss — always the LAST thing on the right.**
 
+**Clear filter (Pavan, 2026-10-14):** once a title (or an item) has narrowed
+the list, that alert's line shows **✕ Clear filter** beside its count. It
+puts the list back to its default state; the banner stays until its own ✕.
+It goes away by itself if the filter is changed by hand.
+
 **Expanded:** under the line, one row per item — its title (pressable: narrows
 the list to that item), its detail, its own action. The count pill folds it.
 

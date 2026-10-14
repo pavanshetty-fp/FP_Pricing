@@ -104,6 +104,12 @@ export interface TablePaginationProps {
    * the note on the root element.
    */
   className?: string;
+  /**
+   * A QUIETER ROWS-PER-PAGE (Pavan, 2026-10-14 — on trial on the Customer
+   * Portal's Orders): white, smaller type, narrower. Becomes the default
+   * once he has seen it.
+   */
+  subtleSize?: boolean;
 }
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50, 100];
@@ -121,6 +127,7 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
   className,
+  subtleSize = false,
 }: TablePaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -191,8 +198,10 @@ export function TablePagination({
                   isActive={item === page}
                   onClick={go(item)}
                   className={
+                    /* THE TABLE HEADER'S COLOUR (Pavan, 2026-10-14) — the
+                       selected page wears the same quiet fill as the header. */
                     item === page
-                      ? "border-fp-outline-2 bg-fp-surface-1a"
+                      ? "border-fp-outline-2 bg-fp-table-header"
                       : undefined
                   }
                 >
@@ -223,13 +232,18 @@ export function TablePagination({
         <SelectTrigger
           size="sm"
           aria-label="Rows per page"
-          className="w-[72px] rounded-lg border-fp-outline-2 bg-fp-surface-1a"
+          className={cn(
+            "border-fp-outline-2",
+            subtleSize
+              ? "h-7 w-[58px] gap-1 rounded-sm bg-fp-surface-1b px-2 text-xs data-[size=sm]:h-7 [&_svg]:size-3.5"
+              : "w-[72px] rounded-lg bg-fp-surface-1a"
+          )}
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className={subtleSize ? "min-w-[58px]" : undefined}>
           {pageSizeOptions.map((opt) => (
-            <SelectItem key={opt} value={String(opt)}>
+            <SelectItem key={opt} value={String(opt)} className={subtleSize ? "text-xs" : undefined}>
               {opt}
             </SelectItem>
           ))}

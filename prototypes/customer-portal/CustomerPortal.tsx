@@ -17,6 +17,7 @@ import { ModuleSidebar } from "../unified-view/ModuleSidebar";
 import { OrdersScreen } from "./OrdersScreen";
 import { SitesScreen } from "./SitesScreen";
 import { DashboardScreen } from "./DashboardScreen";
+import { InvoicesScreen } from "./InvoicesScreen";
 
 /*
   CUSTOMER PORTAL (Pavan, 2026-10-13) — the CUSTOMER's side of the portal:
@@ -31,7 +32,7 @@ import { DashboardScreen } from "./DashboardScreen";
   No account switcher (Pavan, 2026-10-13): sales reps order on a customer's
   behalf from their own apps. Notifications are the top bar's bell, not a page.
 
-  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Dashboard, Orders, Sites & Assets.
+  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Dashboard, Orders, Invoices, Sites & Assets.
 */
 
 const MODULE = { key: "portal", name: "Customer Portal", icon: <Store /> };
@@ -110,6 +111,8 @@ export function CustomerPortal() {
         {/* A page is empty until it is designed. */}
         {page === "dashboard" ? (
           <DashboardScreen />
+        ) : page === "invoices" ? (
+          <InvoicesScreen />
         ) : page === "orders" ? (
           <OrdersScreen prefill={prefill} />
         ) : page === "sites-assets" ? (

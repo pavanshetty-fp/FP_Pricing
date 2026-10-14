@@ -75,7 +75,7 @@ export function StageTrack({
                    in light and the reverse in dark. */
                 <span
                   className={cn(
-                    "flex h-8 items-center rounded-full border-2 border-foreground bg-fp-surface-1b px-3.5 text-sm font-semibold whitespace-nowrap text-foreground shadow-sm",
+                    "flex h-8 items-center rounded-full border-2 border-foreground bg-fp-surface-1b px-3.5 text-sm font-semibold whitespace-nowrap text-foreground",
                     moved &&
                       "animate-in fade-in-0 zoom-in-75 delay-300 duration-300 fill-mode-backwards motion-reduce:animate-none"
                   )}

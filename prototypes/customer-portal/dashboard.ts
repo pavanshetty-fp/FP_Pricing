@@ -1,5 +1,6 @@
 import { startOfDay } from "../unified-view/data";
 import { PRODUCTS, MARKET_PRICE, CUSTOMER_DIFF } from "./orders";
+import { INVOICES, OPEN, totalOf } from "./invoices";
 
 /*
   THE DASHBOARD'S DATA (Pavan, 2026-10-13) — how the tenant has been
@@ -190,21 +191,16 @@ export interface OpenInvoice {
   disputed: boolean;
 }
 
-const dayKey = (offset: number) => {
-  const d = startOfDay(new Date());
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
 
-/** Invoices not yet paid — the live requests' invoice numbers, older ones INVENTED. */
-export const OPEN_INVOICES: OpenInvoice[] = [
-  { invoiceNo: "INV-5412", requestNo: "REQ-1111", shipTo: "Cardinal Overflow", amount: 3_960, due: dayKey(-6), disputed: false },
-  { invoiceNo: "INV-5414", requestNo: "REQ-1109", shipTo: "Cardinal Hub B", amount: 23_520, due: dayKey(-2), disputed: true },
-  { invoiceNo: "INV-5413", requestNo: "REQ-1110", shipTo: "Cardinal Hub A", amount: 13_050, due: dayKey(3), disputed: false },
-  { invoiceNo: "INV-5391", requestNo: "REQ-1094", shipTo: "Cardinal Hub A", amount: 18_400, due: dayKey(5), disputed: false },
-  { invoiceNo: "INV-5385", requestNo: "REQ-1089", shipTo: "Cardinal Hub B", amount: 9_870, due: dayKey(12), disputed: false },
-  { invoiceNo: "INV-5360", requestNo: "REQ-1071", shipTo: "Cardinal Overflow", amount: 6_240, due: dayKey(-34), disputed: false },
-];
+/** Invoices not yet paid — read from the one invoice store (invoices.ts). */
+export const OPEN_INVOICES: OpenInvoice[] = INVOICES.filter((i) => OPEN.includes(i.status)).map((i) => ({
+  invoiceNo: i.invoiceNo,
+  requestNo: i.requestNo,
+  shipTo: i.shipTo,
+  amount: totalOf(i),
+  due: i.due,
+  disputed: i.status === "Payment disputed",
+}));
 
 /* -------------------------------------------------------- driver notes --- */
 

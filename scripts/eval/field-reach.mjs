@@ -92,6 +92,27 @@ const RECORDS = [
     ],
   },
   {
+    type: "Invoice",
+    source: `${PORTAL}/invoices.ts`,
+    skipAll: {},
+    surfaces: [
+      {
+        file: `${PORTAL}/InvoiceSheet.tsx`,
+        what: "invoice sheet",
+        skip: { lines: "read through chargesOf() — each line is a Fuel row of Charges" },
+      },
+      {
+        file: `${PORTAL}/InvoicesScreen.tsx`,
+        what: "Invoices list",
+        skip: {
+          lines: "the charges are the invoice's own sheet",
+          paidOn: "the status says it is paid; the date is on the sheet",
+          dispute: "the status says Payment disputed; reason, notes and proof are on the sheet",
+        },
+      },
+    ],
+  },
+  {
     type: "ShipTo",
     source: `${PORTAL}/orders.ts`,
     skipAll: {},

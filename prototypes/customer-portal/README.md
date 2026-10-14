@@ -96,6 +96,35 @@ Notifications are the top bar's bell, not a page.
   days TABLE; a row opens the order). History, notes, invoices, credit are INVENTED
   (`dashboard.ts`).
 
+## Invoices (Pavan, 2026-10-14)
+
+After the Lovable reference's invoice page
+(unified-ui-revamped.lovable.app/customer-portal?sec=invoices), in our DS.
+
+- **Overview** — one read-only card, four tiles: Outstanding · Overdue · Paid
+  (last 90 days) · Terms (Net 15; credit limit where the tenant gives
+  credit).
+- **Alerts** — `AlertBanner` under the toolbar: overdue · payment disputed ·
+  due this week; a title filters the list to that status, an item opens
+  the invoice.
+- **List** — Invoice · Issued · Due (with "N days overdue / In N days") ·
+  Order · Ship-to (bill-to under it) · Amount · Status · **Download** (one
+  icon, highlighted only under the pointer; never opens the row).
+- **NO PAY.** The portal takes no payments yet; the STATUS says where an
+  invoice stands: Received · Payment due · Overdue · Paid (awaiting the
+  tenant's confirmation) · Payment confirmed · Payment disputed.
+- **Sheet** — a row opens it: Summary (order, bill to, ship-to, issued,
+  due, amount due / paid on) and Charges (fuel per product @ the customer's
+  price, fees, tax, total); Download invoice in the header and the footer.
+- **Payment disputed** adds three sections to the sheet (Pavan,
+  2026-10-14): **Payment dispute** (raised by + when, invoiced, what the
+  customer says, the difference in red, the reason) · **Notes** (both sides,
+  oldest first, each with name, company pill and time; a box + Add note) ·
+  **Documents** (the Orders documents table + Add document, for proof). The
+  dispute banner's items show the reason.
+- **One store** (`invoices.ts`, `chargesOf`) — the dashboard's Open invoices
+  reads it too. Data INVENTED.
+
 ## Sites & Assets — decisions not to re-open (Pavan, 2026-10-13)
 
 - **Breakdowns = the Unified View's (Pavan, 2026-10-14):** every "+N"

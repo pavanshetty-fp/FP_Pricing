@@ -1,0 +1,284 @@
+import * as React from "react";
+import { toast } from "sonner";
+import { Download } from "lucide-react";
+import { Pill } from "@/components/ui/pill";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { StatusChip } from "@/components/ui/status-chip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { cn } from "@/lib/utils";
+import { RecordSheet } from "../unified-view/RecordSheet";
+import { HangingAdd } from "../unified-view/HangingAdd";
+import { DocumentsTable } from "./OrderRequestSheet";
+import { ACCOUNT, printKey } from "./orders";
+import {
+  FEES_PER_GAL,
+  INVOICE_STATUS_TONE,
+  ISSUER,
+  SETTLED,
+  TAX_RATE,
+  addDisputeDocuments,
+  addDisputeNote,
+  chargesOf,
+  daysFrom,
+  type Dispute,
+  type Invoice,
+} from "./invoices";
+
+/*
+  THE INVOICE SHEET (Pavan, 2026-10-14) — the reference's invoice panel in
+  our record sheet, read-only: what it is for (order, bill to, ship-to,
+  dates, status), then the charges line by line to the total. No payment
+  form — the portal does not take payments yet; Download invoice is the act.
+*/
+
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const rate = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 3, maximumFractionDigits: 4 });
+
+const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/*
+  THE DISPUTE (Pavan, 2026-10-14) — what is disputed and why, the notes both
+  sides have added (newest last, as a conversation reads), a box to add one,
+  and the documents offered as proof with Add document — the Orders
+  documents table, so the same data wears the same control.
+*/
+function DisputeSections({ invoice, dispute, total }: { invoice: Invoice; dispute: Dispute; total: number }) {
+  const [draft, setDraft] = React.useState("");
+  const fileInput = React.useRef<HTMLInputElement>(null);
+  const diff = dispute.claimed !== null ? total - dispute.claimed : null;
+  return (
+    <>
+      <SheetSection title="Payment dispute">
+        <div className="grid grid-cols-4 gap-4">
+          <Fact label="Raised by">
+            <span>{dispute.raisedBy}</span>
+            <span className="text-xs text-muted-foreground">{WHEN.format(new Date(dispute.raisedAt))}</span>
+          </Fact>
+          <Fact label="Invoiced">
+            <span className="tabular-nums">{usd.format(total)}</span>
+          </Fact>
+          <Fact label="You say">
+            <span className="tabular-nums">{dispute.claimed !== null ? usd.format(dispute.claimed) : "—"}</span>
+          </Fact>
+          <Fact label="Difference">
+            <span className="font-semibold tabular-nums text-status-failed">{diff !== null ? usd.format(diff) : "—"}</span>
+          </Fact>
+        </div>
+        <SheetField label="Reason">
+          <p className="text-sm text-foreground">{dispute.reason}</p>
+        </SheetField>
+      </SheetSection>
+
+      <SheetSection title="Notes">
+        <ol className="flex flex-col gap-4">
+          {dispute.notes.map((n) => (
+            <li key={n.id} className="flex gap-3">
+              <span
+                aria-hidden
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                  n.side === "customer" ? "bg-muted text-foreground" : "bg-brand/10 text-brand"
+                )}
+              >
+                {n.by
+                  .split(" ")
+                  .map((w) => w[0])
+                  .slice(0, 2)
+                  .join("")}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="flex flex-wrap items-center gap-x-2 text-sm">
+                  <span className="font-medium text-foreground">{n.by}</span>
+                  <Pill>{n.side === "customer" ? ACCOUNT : ISSUER}</Pill>
+                  <span className="text-xs text-muted-foreground">{WHEN.format(new Date(n.at))}</span>
+                </p>
+                <p className="text-sm whitespace-pre-line text-foreground">{n.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <Textarea
+            aria-label="Add a note"
+            placeholder={`Add a note for ${ISSUER}`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="min-h-20"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              disabled={!draft.trim()}
+              onClick={() => {
+                addDisputeNote(invoice.invoiceNo, draft.trim());
+                setDraft("");
+              }}
+            >
+              Add note
+            </Button>
+          </div>
+        </div>
+      </SheetSection>
+
+      <SheetSection
+        title="Documents"
+        flush
+        hanging={<HangingAdd label="Add document" onClick={() => fileInput.current?.click()} />}
+      >
+        <DocumentsTable docs={dispute.documents} />
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = [...(e.target.files ?? [])];
+            e.target.value = "";
+            if (files.length === 0) return;
+            addDisputeDocuments(invoice.invoiceNo, files);
+            toast.success(files.length === 1 ? `${files[0].name} added` : `${files.length} documents added`);
+          }}
+        />
+      </SheetSection>
+    </>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <SheetField label={label}>
+      <div className="flex min-h-9 flex-col justify-center text-sm text-foreground">{children}</div>
+    </SheetField>
+  );
+}
+
+export function InvoiceSheet({
+  invoice,
+  open,
+  onOpenChange,
+  onDownload,
+}: {
+  invoice: Invoice | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDownload: (inv: Invoice) => void;
+}) {
+  if (!invoice) return null;
+  const c = chargesOf(invoice);
+  const d = daysFrom(invoice.due);
+  const settled = SETTLED.includes(invoice.status);
+  return (
+    <RecordSheet
+      size="wide"
+      open={open}
+      onOpenChange={onOpenChange}
+      mode="edit"
+      editTitle={invoice.invoiceNo}
+      createTitle=""
+      createAction=""
+      showCancel={false}
+      onSubmit={() => {}}
+      headerAside={
+        <StatusChip tone={INVOICE_STATUS_TONE[invoice.status]} variant="text">
+          {invoice.status}
+        </StatusChip>
+      }
+      headerActions={
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Download invoice" onClick={() => onDownload(invoice)}>
+              <Download />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download invoice</TooltipContent>
+        </Tooltip>
+      }
+      footerPrimary={
+        <Button onClick={() => onDownload(invoice)}>
+          <Download />
+          Download invoice
+        </Button>
+      }
+    >
+      <div className="flex min-w-0 flex-col gap-10">
+        <SheetSection title="Summary">
+          <div className="grid grid-cols-3 gap-4">
+            <Fact label="Order">{invoice.requestNo}</Fact>
+            <Fact label="Bill to">{invoice.billTo}</Fact>
+            <Fact label="Ship-to">{invoice.shipTo}</Fact>
+            <Fact label="Issued">
+              <span>{printKey(invoice.issued)}</span>
+              <span className="text-xs text-muted-foreground">by {ISSUER}</span>
+            </Fact>
+            <Fact label="Due">
+              <span>{printKey(invoice.due)}</span>
+              {!settled && (
+                <span className={cn("text-xs", d < 0 ? "text-status-failed" : "text-muted-foreground")}>
+                  {d < 0 ? `${-d} ${d === -1 ? "day" : "days"} overdue` : d === 0 ? "Due today" : `In ${d} ${d === 1 ? "day" : "days"}`}
+                </span>
+              )}
+            </Fact>
+            {/* THE STATUS IS IN THE HEADER — this slot says what it means. */}
+            {settled ? (
+              <Fact label="Paid on">{invoice.paidOn ? printKey(invoice.paidOn) : "—"}</Fact>
+            ) : (
+              <Fact label="Amount due">
+                <span className="font-semibold tabular-nums">{usd.format(c.total)}</span>
+              </Fact>
+            )}
+          </div>
+        </SheetSection>
+
+        {invoice.dispute && <DisputeSections invoice={invoice} dispute={invoice.dispute} total={c.total} />}
+
+        <SheetSection title="Charges" flush>
+          <table className="w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col />
+              <col className="w-[40%]" />
+              <col className="w-[140px]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border bg-fp-table-header text-left text-xs font-medium text-muted-foreground">
+                <th className="px-4 py-2.5 font-medium">Item</th>
+                <th className="px-3 py-2.5 font-medium">Basis</th>
+                <th className="px-4 py-2.5 text-right font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.fuel.map((l) => (
+                <tr key={l.product} className="h-11 border-b border-border">
+                  <td className="px-4 text-foreground">Fuel · {l.product}</td>
+                  <td className="px-3 tabular-nums text-muted-foreground">
+                    {l.gal.toLocaleString()} gal @ {rate.format(l.rate)}
+                  </td>
+                  <td className="px-4 text-right tabular-nums text-foreground">{usd.format(l.amount)}</td>
+                </tr>
+              ))}
+              <tr className="h-11 border-b border-border">
+                <td className="px-4 text-foreground">Fees (delivery, environmental)</td>
+                <td className="px-3 tabular-nums text-muted-foreground">
+                  {c.gal.toLocaleString()} gal @ {rate.format(FEES_PER_GAL)}
+                </td>
+                <td className="px-4 text-right tabular-nums text-foreground">{usd.format(c.fees)}</td>
+              </tr>
+              <tr className="h-11 border-b border-border">
+                <td className="px-4 text-foreground">Tax (federal + state excise)</td>
+                <td className="px-3 tabular-nums text-muted-foreground">{Math.round(TAX_RATE * 100)}%</td>
+                <td className="px-4 text-right tabular-nums text-foreground">{usd.format(c.tax)}</td>
+              </tr>
+              <tr className="h-12">
+                <td className="px-4 font-semibold text-foreground" colSpan={2}>
+                  {settled ? "Total paid" : "Total due"}
+                </td>
+                <td className="px-4 text-right font-semibold tabular-nums text-foreground">{usd.format(c.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SheetSection>
+      </div>
+    </RecordSheet>
+  );
+}

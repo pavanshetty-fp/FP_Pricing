@@ -360,7 +360,7 @@ export function RuleRecommendations({
                           <col className="w-[84px]" />
                         </colgroup>
                         <thead>
-                          <tr className="border-b border-fp-outline-1 bg-fp-card-2">
+                          <tr className="border-b border-fp-outline-1 bg-fp-table-header">
                             <th className="px-2.5 py-2 text-left">
                               <TableRequiredLabel>Customer</TableRequiredLabel>
                             </th>

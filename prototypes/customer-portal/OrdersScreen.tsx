@@ -25,7 +25,7 @@ import { ListTable, TwoLineCell } from "../unified-view/ListTable";
 import { OrderMapView, type MapOrder } from "../unified-view/OrderMapView";
 import { BrokerBoard, type BoardLane, type LaneColor } from "../unified-view/threepl/BrokerBoard";
 import { DateRangeFilter, type DateRange } from "../unified-view/threepl/DateRangeFilter";
-import { dateKeyOf, startOfDay } from "../unified-view/data";
+import { dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 import { AssetsCell, DocumentsCell, FlagsCell, ProductsCell, QuantityCell } from "./cells";
 import { useSavedViews } from "../unified-view/useSavedViews";
@@ -367,6 +367,7 @@ export function OrdersScreen({
     };
     return dated.length ? { from: at(dated[0]), to: at(dated[dated.length - 1]) } : { from: today, to: today };
   };
+  const [applied, setApplied] = React.useState<{ id: string; key: string | null } | null>(null);
   const narrowTo = (facetIds: string[], when: "today" | "any", text = "") => {
     setFacetSel(new Set(facetIds));
     setRange(when === "today" ? { from: today, to: today } : everyDate());
@@ -472,7 +473,22 @@ export function OrdersScreen({
       items: reqItems(late, flagDetail("At risk of being late")),
     },
   ].filter(Boolean) as BannerAlert[];
-  const alerts = allAlerts.filter((a) => !dismissed.has(a.id) && !((snoozed[a.id] ?? 0) > Date.now()));
+  /* WHICH ALERT'S FILTER IS ON (Pavan, 2026-10-14) — the list's state as the
+     press left it. Changing the filter by hand ends it; "Clear filter" on the
+     banner puts the list back to its default (today, nothing narrowed). */
+  const stateKey = JSON.stringify([[...facetSel].sort(), search, range]);
+  const alertsApplied = allAlerts.map((a) => ({
+    ...a,
+    onApply: a.onApply && (() => (a.onApply!(), setApplied({ id: a.id, key: null }))),
+    items: a.items?.map((it) => ({
+      ...it,
+      onApply: it.onApply && (() => (it.onApply!(), setApplied({ id: a.id, key: null }))),
+    })),
+  }));
+  React.useEffect(() => {
+    if (applied && applied.key === null) setApplied({ ...applied, key: stateKey });
+  }, [applied, stateKey]);
+  const alerts = alertsApplied.filter((a) => !dismissed.has(a.id) && !((snoozed[a.id] ?? 0) > Date.now()));
 
   const nothing = sorted.length === 0 && !(view === "table" && colFiltersOpen);
 
@@ -744,6 +760,11 @@ export function OrdersScreen({
           alerts={alerts}
           onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
           onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+          appliedId={applied && applied.key === stateKey ? applied.id : null}
+          onClearApplied={() => {
+            narrowTo([], "today");
+            setApplied(null);
+          }}
         />
       )}
 
@@ -866,14 +887,27 @@ export function OrdersScreen({
       />
 
       {/* A BOARD AND A MAP ARE NOT PAGED — they get a total that says its
-          scope (2-layouts §9). */}
+          scope (2-layouts §9), worded and weighted as on 3PL and Sales: the
+          count in medium, then lanes and the date range muted; nothing when
+          there is nothing. */}
       {view !== "table" ? (
-        <p className="mt-4 shrink-0 text-sm text-muted-foreground">
-          {sorted.length} {sorted.length === 1 ? "order" : "orders"}
-        </p>
+        sorted.length > 0 ? (
+          <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
+            <span className="font-medium text-foreground">
+              {sorted.length.toLocaleString()} {sorted.length === 1 ? "order" : "orders"}
+            </span>
+            <span className="text-muted-foreground">
+              across {boardLanes.filter((l) => l.cards.length > 0).length} of {boardLanes.length} lanes ·{" "}
+              {dateKeyOf(range.from) === dateKeyOf(range.to)
+                ? formatFullDate(range.from)
+                : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`}
+            </span>
+          </div>
+        ) : null
       ) : (
       <div className="mt-4 shrink-0">
         <TablePagination
+          subtleSize
           page={page}
           pageSize={pageSize}
           total={sorted.length}

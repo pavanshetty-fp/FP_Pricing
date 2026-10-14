@@ -103,6 +103,14 @@ mistakes, and Checks derive from these.
 - **Nothing in the shell casts a shadow** — not the rail, not the drawer, not the
   content layer. `shadow-fp-surface` is for things that genuinely float *over*
   content: a hovered card, a popover.
+- **Controls cast no shadow either (Pavan, 2026-10-14)** — inputs, search,
+  textareas, select triggers, outline buttons, toggles and segment groups,
+  checkboxes, radios, switches, tabs, slider handles, pagination. Their
+  border is the edge.
+  Shadows stay only on what floats: menus, popovers, hover cards, select
+  lists, dialogs, sheets, toasts, and controls laid over a map.
+- **The selected page in pagination wears the table header's fill**
+  (`bg-fp-table-header`), so the footer and the header match.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
   `ux/2-rules` H2, since it's a composition rule; the surface tokens live here.*
 

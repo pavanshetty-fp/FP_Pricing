@@ -565,7 +565,7 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
             <button
               type="button"
               onClick={() => onOpen(r.id)}
-              className="flex h-full w-full flex-col gap-1.5 rounded-lg border border-border bg-fp-surface-1b p-3 text-left shadow-xs transition-colors hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="flex h-full w-full flex-col gap-1.5 rounded-lg border border-border bg-fp-surface-1b p-3 text-left transition-colors hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               <span className={cn("text-sm font-semibold", LEVEL_TEXT[a.level])}>{a.action}</span>
               <span className="text-sm text-muted-foreground">{a.why}</span>

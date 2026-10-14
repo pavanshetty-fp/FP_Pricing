@@ -176,11 +176,20 @@ export function AlertBanner({
   alerts,
   onSnooze,
   onDismiss,
+  appliedId,
+  onClearApplied,
   className,
 }: {
   alerts: BannerAlert[];
   onSnooze?: (id: string, ms: number) => void;
   onDismiss?: (id: string) => void;
+  /**
+   * The alert whose filter the list is showing now. Its line gains "Clear
+   * filter", which puts the list back to its default — the banner stays
+   * until ✕ (Pavan, 2026-10-14).
+   */
+  appliedId?: string | null;
+  onClearApplied?: () => void;
   className?: string;
 }) {
   const [at, setAt] = React.useState(0);
@@ -269,6 +278,19 @@ export function AlertBanner({
                 </span>
               )}
             </>
+          )}
+          {/* THE WAY BACK FROM ITS FILTER — only while this alert's filter
+              is on; the banner itself stays. */}
+          {onClearApplied && appliedId === a.id && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onClearApplied}
+            >
+              <X className="size-3.5" />
+              Clear filter
+            </Button>
           )}
         </div>
         {/* RIGHT — the action, snooze, the stepper, and ✕ LAST: dismissing

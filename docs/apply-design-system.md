@@ -157,7 +157,7 @@ popover.
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
 | `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
-| `bg-fp-table-header` | `#f4f5f8` | `#1b1f25` | table header row — `--fp-card-2`, the subtle step (Pavan, 2026-10-05: card-1 stood out too much). **A `tfoot` total takes no fill** — its top rule and weight carry it; a pinned totals band takes the sheet's own `bg-popover` |
+| `bg-fp-table-header` | `#fafafa` | `#1b1f25` | table header row — its own value in light since 2026-10-14 (Pavan, after the Profound "All data" table); dark stays `--fp-card-2`. **Row hover keeps `--fp-row-hover` (`#f4f5f8`)** — the two no longer share a value. **A `tfoot` total takes no fill** — its top rule and weight carry it; a pinned totals band takes the sheet's own `bg-popover` |
 | `bg-fp-viz-1…8` | blue `#2a78d6` · orange `#eb6834` · aqua `#1baf7a` · yellow `#eda100` · magenta `#e87ba4` · green `#008300` · violet `#4a3aa7` · red `#e34948` | `#3987e5` · `#d95926` · `#199e70` · `#c98500` · `#d55181` · `#008300` · `#9085e9` · `#e66767` | **dashboard chart palette** (2026-10-05) — fixed order, never cycled; validated (six checks) on #ffffff / #161a20: adjacent CVD ΔE ≥ 8.4, normal ≥ 19.3. Light slots 3–5 are under 3:1, so charts using them always show names and values. The old `--chart-1…5` failed the validator and is no longer used by a chart |
 | `text-status-success` | `#15803d` | `#22c55e` | success |
 | `text-status-success-foreground` | `#ffffff` | `#052e16` | the ink on a green FILL — not the same as the ink on a green dot |
@@ -307,6 +307,14 @@ mistakes, and Checks derive from these.
 - **Nothing in the shell casts a shadow** — not the rail, not the drawer, not the
   content layer. `shadow-fp-surface` is for things that genuinely float *over*
   content: a hovered card, a popover.
+- **Controls cast no shadow either (Pavan, 2026-10-14)** — inputs, search,
+  textareas, select triggers, outline buttons, toggles and segment groups,
+  checkboxes, radios, switches, tabs, slider handles, pagination. Their
+  border is the edge.
+  Shadows stay only on what floats: menus, popovers, hover cards, select
+  lists, dialogs, sheets, toasts, and controls laid over a map.
+- **The selected page in pagination wears the table header's fill**
+  (`bg-fp-table-header`), so the footer and the header match.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
   `ux/2-rules` H2, since it's a composition rule; the surface tokens live here.*
 
@@ -3292,6 +3300,11 @@ these are its components; a banner that acts on the page has all of them.
    (1 h · 2 h · 4 h · 8 h · Tomorrow, same time) **plus Custom…, which asks
    for hours and minutes** (no calendar). One set, every module.
 8. **✕ dismiss — always the LAST thing on the right.**
+
+**Clear filter (Pavan, 2026-10-14):** once a title (or an item) has narrowed
+the list, that alert's line shows **✕ Clear filter** beside its count. It
+puts the list back to its default state; the banner stays until its own ✕.
+It goes away by itself if the filter is changed by hand.
 
 **Expanded:** under the line, one row per item — its title (pressable: narrows
 the list to that item), its detail, its own action. The count pill folds it.

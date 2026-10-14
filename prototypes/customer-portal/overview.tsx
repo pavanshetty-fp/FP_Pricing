@@ -152,7 +152,11 @@ export function OverviewCards({
   const labels = [6, 5, 4, 3, 2, 1].map((b) => WEEKDAY.format(day(b))).concat("Today");
   const thenLabel = `last ${WEEKDAY.format(day(7))}`;
   return (
-    <div className="relative flex shrink-0 flex-col divide-y divide-border rounded-xl border border-border bg-fp-surface-1b md:flex-row md:divide-x md:divide-y-0">
+    <div className="relative shrink-0 rounded-xl border border-border bg-fp-surface-1b">
+      {/* THE RULE IS BETWEEN THE TWO TILES ONLY — the corner button sat in
+          the same divided row and drew a second line along the card's right
+          edge (Pavan, 2026-10-14). */}
+      <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
       <Tile
         title="Today’s orders"
         value={st.due}
@@ -175,6 +179,7 @@ export function OverviewCards({
         hue="orange"
         format={(n) => n.toLocaleString()}
       />
+      </div>
       {/* THE ONE CONTROL — opens today's details (Pavan, 2026-10-13). */}
       <Button
         variant="outline"

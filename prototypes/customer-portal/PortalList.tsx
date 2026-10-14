@@ -73,8 +73,20 @@ export interface PortalListProps<R, K extends string> {
   noun: string;
   nounOne: string;
   searchPlaceholder: string;
-  ctaLabel: string;
-  onCreate: () => void;
+  /** Omit both for a list the customer does not create in (Invoices). */
+  ctaLabel?: string;
+  onCreate?: () => void;
+  /** Above the view row — a page's overview cards (Orders' layout). */
+  above?: React.ReactNode;
+  /** Under the toolbar, right above the table — the alert banner. */
+  banner?: React.ReactNode;
+  /**
+   * Sets the facet filter from outside — a banner title applies its filter.
+   * Ids are `facet:value`; `n` changes on every press.
+   */
+  applyFacets?: { ids: string[]; n: number };
+  /** Reports the facet filter as it changes — a banner knows its filter is on. */
+  onFacetsChange?: (ids: string[]) => void;
   onOpen: (r: R) => void;
   openLabel: (r: R) => string;
   emptyIcon: React.ReactNode;
@@ -99,6 +111,10 @@ export function PortalList<R, K extends string>({
   searchPlaceholder,
   ctaLabel,
   onCreate,
+  above,
+  banner,
+  applyFacets,
+  onFacetsChange,
   onOpen,
   openLabel,
   emptyIcon,
@@ -135,6 +151,16 @@ export function PortalList<R, K extends string>({
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
+  React.useEffect(() => {
+    if (!applyFacets) return;
+    setFacetSel(new Set(applyFacets.ids));
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyFacets?.n]);
+  React.useEffect(() => {
+    onFacetsChange?.([...facetSel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facetSel]);
   const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
@@ -265,6 +291,7 @@ export function PortalList<R, K extends string>({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {above && <div className="mb-8 shrink-0">{above}</div>}
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel={ctaLabel}
@@ -341,6 +368,8 @@ export function PortalList<R, K extends string>({
         </FilterChips>
       </div>
 
+      {banner && <div className="mt-4 shrink-0">{banner}</div>}
+
       <div className="relative mt-4 min-h-0 flex-1">
         {nothing ? (
           <Empty className="h-full">
@@ -351,7 +380,7 @@ export function PortalList<R, K extends string>({
                 <EmptyDescription>{`${rows.length} ${noun} in all. Clear the search or a filter to see them.`}</EmptyDescription>
               )}
             </EmptyHeader>
-            <EmptyContent>
+            {(narrowed || ctaLabel) && <EmptyContent>
               <Button
                 variant="outline"
                 size="sm"
@@ -361,13 +390,13 @@ export function PortalList<R, K extends string>({
                     setColQuery("");
                     setColFilters({});
                     setFacetSel(new Set());
-                  } else onCreate();
+                  } else onCreate?.();
                   setPage(1);
                 }}
               >
                 {narrowed ? "Clear all" : ctaLabel}
               </Button>
-            </EmptyContent>
+            </EmptyContent>}
           </Empty>
         ) : (
           <ListTable

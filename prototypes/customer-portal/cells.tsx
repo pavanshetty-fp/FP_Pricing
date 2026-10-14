@@ -162,7 +162,7 @@ export function ShipToAssetsCell({ s }: { s: ShipTo }) {
       rows={s.assets.map((a) => ({
         label: a.name,
         sub: a.products.join(", ") || "No product",
-        value: `${gal(a.capacity)} capacity`,
+        value: a.capacity > 0 ? `${gal(a.capacity)} capacity` : "No tank",
       }))}
     />
   );
@@ -178,7 +178,7 @@ export function ShipToProductsCell({ s }: { s: ShipTo }) {
       label="products"
       rows={[...groups].map(([product, assets]) => ({
         label: product,
-        sub: assets.map((a) => `${a.name} (${gal(a.capacity)} capacity)`).join(" · "),
+        sub: assets.map((a) => (a.capacity > 0 ? `${a.name} (${gal(a.capacity)} capacity)` : a.name)).join(" · "),
       }))}
     />
   );

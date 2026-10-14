@@ -36,7 +36,7 @@ import { searchPlaces } from "./geo";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog, shipToLog } from "./activityLog";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
-import { ASSET_TYPES, PRODUCT_CATEGORIES, productsIn, type Asset, type ShipTo } from "./orders";
+import { ASSET_TYPES, PRODUCT_CATEGORIES, productsIn, sizeRequired, type Asset, type ShipTo } from "./orders";
 import {
   blankAsset,
   blankShipTo,
@@ -482,7 +482,7 @@ export function ShipToSheet({
   ].filter(Boolean) as PendingItem[];
   const assetsPending: PendingItem[] = [
     draft.assets.some(
-      (a) => !a.name.trim() || !a.code.trim() || !a.type || a.categories.length === 0 || a.products.length === 0 || a.capacity <= 0
+      (a) => !a.name.trim() || !a.code.trim() || !a.type || a.categories.length === 0 || a.products.length === 0 || (sizeRequired(a.type) && a.capacity <= 0)
     ) && {
       key: "assets",
       label: "Complete each asset's name, unique ID, type, categories, products and size",

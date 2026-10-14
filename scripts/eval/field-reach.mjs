@@ -113,6 +113,24 @@ const RECORDS = [
     ],
   },
   {
+    type: "PortalUser",
+    source: `${PORTAL}/users.ts`,
+    skipAll: {},
+    surfaces: [
+      { file: `${PORTAL}/UserSheet.tsx`, what: "user sheet" },
+      {
+        file: `${PORTAL}/TeamScreen.tsx`,
+        what: "Team & Access list",
+        skip: {
+          firstName: "shown joined with the last name, through fullName()",
+          lastName: "shown joined with the first name, through fullName()",
+          jobTitle: "on the user's sheet — the list leads with name and email",
+          invitedAt: "on the sheet, beside the invitation status",
+        },
+      },
+    ],
+  },
+  {
     type: "ShipTo",
     source: `${PORTAL}/orders.ts`,
     skipAll: {},

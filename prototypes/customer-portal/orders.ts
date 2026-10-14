@@ -99,7 +99,14 @@ export const statusRank = (s: RequestStatus) => REQUEST_STATUSES.indexOf(s);
   One live list, mutated in place by the sites store below, so Orders reads
   new ship-tos and assets the moment they are added. INVENTED seed.
 */
-export const ASSET_TYPES = ["Tank", "Tote", "Generator", "Reefer truck", "Light tower", "Reservoir"];
+/* ASSET TYPES — the FleetPanda portal's categories (TANK · CARD_LOCK_PUMP ·
+   GENERATOR · EQUIPMENT, demo data 2026-10-14) plus the kinds this
+   prototype already had. */
+export const ASSET_TYPES = ["Tank", "Card lock pump", "Generator", "Equipment", "Tote", "Reefer truck", "Light tower", "Reservoir"];
+/* SIZE IS OPTIONAL FOR THESE (Pavan, 2026-10-14) — a pump or a piece of
+   equipment has no tank of its own; the real data keeps their size at 0. */
+export const SIZE_OPTIONAL = ["Card lock pump", "Equipment"];
+export const sizeRequired = (type: string) => !SIZE_OPTIONAL.includes(type);
 export type ActiveStatus = "Active" | "Inactive";
 
 export interface Asset {
@@ -290,6 +297,8 @@ export const SHIP_TOS: ShipTo[] = [
       asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72, rfid: "E2801160600417" }),
       asset("b-2", "Tank B2", "Tank", "Unleaded 87", 8000, [29.9606, -95.5601], { monitor: "TM3P7B12", level: 18 }),
       asset("b-3", "Reefer Truck R-7", "Reefer truck", "Dyed Diesel", 150, [29.9598, -95.5609], { rented: true, monitor: "TL9R7X03", level: 14 }),
+      /* A PUMP HAS NO TANK — size left at 0, as in the real data. */
+      asset("b-4", "Card Lock Pump 2", "Card lock pump", "Diesel", 0, [29.9600, -95.5612]),
     ],
   },
   {

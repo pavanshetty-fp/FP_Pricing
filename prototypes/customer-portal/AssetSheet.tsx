@@ -24,6 +24,7 @@ import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import {
   ASSET_TYPES,
+  sizeRequired,
   PRODUCT_CATEGORIES,
   printKey,
   productsIn,
@@ -161,7 +162,7 @@ export function AssetSheet({
     !draft.name.trim() && { key: "name", label: "Enter the display name", target: "asset-details" },
     !draft.code.trim() && { key: "code", label: "Enter the unique ID", target: "asset-details" },
     !draft.type && { key: "type", label: "Choose a type", target: "asset-details" },
-    draft.capacity <= 0 && { key: "cap", label: "Enter its size in gallons", target: "asset-details" },
+    sizeRequired(draft.type) && draft.capacity <= 0 && { key: "cap", label: "Enter its size in gallons", target: "asset-details" },
     draft.categories.length === 0 && {
       key: "cats",
       label: "Choose its product categories",
@@ -347,7 +348,7 @@ export function AssetSheet({
                   placeholder="Select type"
                 />
               </SheetField>
-              <SheetField label="Size (gal)" required>
+              <SheetField label="Size (gal)" required={sizeRequired(draft.type)}>
                 <Input
                   inputMode="numeric"
                   value={draft.capacity ? String(draft.capacity) : ""}

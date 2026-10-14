@@ -18,6 +18,7 @@ import { OrdersScreen } from "./OrdersScreen";
 import { SitesScreen } from "./SitesScreen";
 import { DashboardScreen } from "./DashboardScreen";
 import { InvoicesScreen } from "./InvoicesScreen";
+import { TeamScreen } from "./TeamScreen";
 
 /*
   CUSTOMER PORTAL (Pavan, 2026-10-13) — the CUSTOMER's side of the portal:
@@ -32,7 +33,7 @@ import { InvoicesScreen } from "./InvoicesScreen";
   No account switcher (Pavan, 2026-10-13): sales reps order on a customer's
   behalf from their own apps. Notifications are the top bar's bell, not a page.
 
-  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Dashboard, Orders, Invoices, Sites & Assets.
+  PAGES ARE EMPTY ON PURPOSE — built page by page. Built: Dashboard, Orders, Invoices, Sites & Assets, Team & Access.
 */
 
 const MODULE = { key: "portal", name: "Customer Portal", icon: <Store /> };
@@ -111,6 +112,8 @@ export function CustomerPortal() {
         {/* A page is empty until it is designed. */}
         {page === "dashboard" ? (
           <DashboardScreen />
+        ) : page === "team-access" ? (
+          <TeamScreen />
         ) : page === "invoices" ? (
           <InvoicesScreen />
         ) : page === "orders" ? (

@@ -68,8 +68,8 @@ so it is counted.
 
 Registered today: **Asset** (asset sheet · ship-to step 2 table · Assets
 list · the Ship-tos list's two breakdowns) and **ShipTo** (ship-to sheet ·
-Ship-tos list) and **Invoice** (invoice sheet · Invoices list), Customer
-Portal.
+Ship-tos list) **Invoice** (invoice sheet · Invoices list) and **PortalUser** (user
+sheet · Team & Access list), Customer Portal.
 
 ## Consistency across modules
 

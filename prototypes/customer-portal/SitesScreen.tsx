@@ -349,7 +349,8 @@ export function SitesScreen({
               case "product":
                 return <ValuesCell values={a.products} label="products" />;
               case "capacity":
-                return <span className="text-sm tabular-nums">{a.capacity.toLocaleString()}</span>;
+                /* NO TANK, NO SIZE — a pump or equipment shows a dash. */
+                return a.capacity > 0 ? <span className="text-sm tabular-nums">{a.capacity.toLocaleString()}</span> : muted;
               case "ownership":
                 /* RENTED IS LABELLED (Pavan, 2026-10-13). */
                 return a.rented ? <Pill>Rented</Pill> : <span className="text-sm">Owned</span>;

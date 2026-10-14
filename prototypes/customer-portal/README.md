@@ -125,6 +125,26 @@ After the Lovable reference's invoice page
 - **One store** (`invoices.ts`, `chargesOf`) — the dashboard's Open invoices
   reads it too. Data INVENTED.
 
+## Team & Access (Pavan, 2026-10-14)
+
+From the FleetPanda portal's user record (structure only, invented people).
+
+- **List** — Name (email under) · Role · Phone · Invite Status (Active /
+  Pending) · Last Login (how long ago, the time under; "Never") ·
+  Deactivated (the date, or —). Facets: role, invite status, account.
+- **Invite user** = the create sheet: first / last name, email, phone, job
+  title, role; the act is **Send invite** → the user exists at once,
+  Pending.
+- **A user's sheet** — details autosave (email fixed once invited); Access
+  facts: invitation (+ when sent), last login, deactivated. ⋯ **Resend
+  invite** (pending only) · **Deactivate / Reactivate** (not yourself).
+- **Roles** Manager · Buyer · Viewer — only "manager" is in the real data;
+  Buyer and Viewer are INVENTED until the real list is known.
+- **No account switcher** (Pavan, 2026-10-14) — a user here belongs to this
+  account, although real users can hold several.
+- **Products stay mandatory** on assets (Pavan, 2026-10-14), although most
+  real assets have none.
+
 ## Sites & Assets — decisions not to re-open (Pavan, 2026-10-13)
 
 - **Breakdowns = the Unified View's (Pavan, 2026-10-14):** every "+N"
@@ -157,6 +177,13 @@ After the Lovable reference's invoice page
 - **Tabs** on the view row's switch: Ship-tos · Assets · Service requests
   (for now: no views or toolbar, only the tab switch, an illustration, "Coming soon" (large, system serif) and three "What to expect" cards — report an issue, follow it to the fix, driver reports ready to raise; leaks, damage, parts — built later). All lists use
   `PortalList` (the Unified View list as one piece).
+- **Real-data alignment (Pavan, 2026-10-14)** — FleetPanda portal shapes
+  pasted from the demo account; structure only, values invented. Asset
+  types gain **Card lock pump** and **Equipment**; **size is optional for
+  those two** (no tank — shown as "—" / "No tank"). Customer changes need
+  **no supplier approval** (the real product has one — we keep ours). **No
+  account switcher** for now, although real users can hold several
+  accounts. Orders, dashboard and invoice data could not be pulled.
 - **Every asset has its own latitude/longitude** (where it stands inside the
   ship-to), a ship-to, type, product, size, Rented (checkbox; "Rented" pill
   in the list and header), and a tank monitor (checkbox + ID).

@@ -641,6 +641,9 @@ export function ShipToSheet({
               <SheetField label="Name" required className="col-span-2">
                 <Input value={draft.name} placeholder="e.g. Cardinal Hub C" onChange={(e) => set("name", e.target.value)} />
               </SheetField>
+              <SheetField label="Default PO #">
+                <Input value={draft.poNumber} placeholder="e.g. PO-77000" onChange={(e) => set("poNumber", e.target.value)} />
+              </SheetField>
               <SheetField label="Contact name">
                 <Input value={draft.contactName} onChange={(e) => set("contactName", e.target.value)} />
               </SheetField>
@@ -743,7 +746,7 @@ export function ShipToSheet({
               onChange={(a, b) => setDraft((d) => (d ? { ...d, hoursStart: a, hoursEnd: b } : d))}
               aria-label="Delivery hours"
             />
-            <SheetField label="Access notes">
+            <SheetField label="Delivery instructions">
               <Textarea
                 value={draft.accessNotes}
                 onChange={(e) => set("accessNotes", e.target.value)}

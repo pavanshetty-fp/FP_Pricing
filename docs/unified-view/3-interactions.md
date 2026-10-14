@@ -95,7 +95,10 @@ text and presses nothing.
   dashed rule, rows, optional total) above the cell. Where the whole cell is
   the figure — a quantity, a document count, a flag — the figure opens it.
   Rows may carry a sub-line (an asset's products) and a value (its capacity,
-  a line's quantity). The click stays in the cell: it never also opens the
+  a line's quantity). Where the breakdown is grouped, the card holds a small
+  TABLE instead — a header row, then a quiet band per group (`table` on
+  `BreakdownCard`; first use: a ship-to's products → Asset · Type ·
+  Capacity). The click stays in the cell: it never also opens the
   row. Parts: `OverflowList`, `OverflowChip`, `BreakdownPopover`
   (`prototypes/unified-view/BreakdownCard.tsx`). The Customer Portal uses the
   same parts — the Unified View is the source of truth.

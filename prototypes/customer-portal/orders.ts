@@ -154,7 +154,11 @@ export interface ShipTo {
   /** Minutes from midnight — when deliveries can be made. */
   hoursStart: number;
   hoursEnd: number;
+  /** Delivery instructions for the driver — the real product's
+      "deliveryInstructions" (gate codes, PPE, where to park, photos). */
   accessNotes: string;
+  /** The PO number orders to this ship-to start with — optional. */
+  poNumber: string;
   /** Geofence radius round the pin, MILES — null for none. */
   geofence: number | null;
   status: ActiveStatus;
@@ -261,7 +265,9 @@ export const SHIP_TOS: ShipTo[] = [
     contactPhone: "(713) 555-0142",
     hoursStart: 5 * 60,
     hoursEnd: 19 * 60,
-    accessNotes: "Gate code 4471. Tanks behind building 2.",
+    accessNotes:
+      "Gate code 4471, weekdays 6 AM–6 PM only. Tanks are behind building 2 — park on the east apron, not in the loading lanes. Photo each gauge before and after.",
+    poNumber: "PO-77000",
     geofence: 0.1,
     status: "Active",
     assets: [
@@ -290,7 +296,9 @@ export const SHIP_TOS: ShipTo[] = [
     contactPhone: "(281) 555-0187",
     hoursStart: 6 * 60,
     hoursEnd: 20 * 60,
-    accessNotes: "Check in at the guard house.",
+    accessNotes:
+      "Check in at the guard house and leave your licence there. Hi-vis vest past the yellow line. Signature required, printed name too.",
+    poNumber: "",
     geofence: 0.15,
     status: "Active",
     assets: [
@@ -315,6 +323,7 @@ export const SHIP_TOS: ShipTo[] = [
     hoursStart: 6 * 60,
     hoursEnd: 18 * 60,
     accessNotes: "",
+    poNumber: "",
     geofence: null,
     status: "Active",
     assets: [

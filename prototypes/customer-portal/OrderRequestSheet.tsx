@@ -606,7 +606,13 @@ export function OrderRequestSheet({
                       const kept = d.lines.filter((l) =>
                         next?.assets.some((a) => a.id === l.assetId)
                       );
-                      return { ...d, shipTo: v, lines: kept.length ? kept : [blankLine()] };
+                      /* THE SHIP-TO'S DEFAULT PO fills an empty PO #. */
+                      return {
+                        ...d,
+                        shipTo: v,
+                        po: d.po.trim() ? d.po : (next?.poNumber ?? ""),
+                        lines: kept.length ? kept : [blankLine()],
+                      };
                     })
                   }
                   options={SHIP_TOS.map((s) => s.name)}

@@ -10,7 +10,7 @@ import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { DATE_FMT } from "../unified-view/data";
 import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, TENANT, printKey, type Asset, type ShipTo } from "./orders";
-import { createdOf, lastDeliveryFor, useShipTos } from "./sites";
+import { createdOf, lastDeliveryFor, lastDeliveryToShipTo, nextDeliveryToShipTo, useShipTos } from "./sites";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog } from "./activityLog";
 import { PortalList } from "./PortalList";
@@ -46,7 +46,7 @@ const coords = (lat: number | null, lng: number | null) =>
 
 /* ------------------------------------------------------------ ship-tos --- */
 
-type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "access" | "geofence" | "location" | "status" | "actions";
+type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "lastDelivery" | "nextDelivery" | "po" | "access" | "geofence" | "location" | "status" | "actions";
 const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "name", label: "Ship-to", width: 180, sortable: true },
   { key: "address", label: "Address", width: 240, sortable: true },
@@ -54,7 +54,10 @@ const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "products", label: "Products", width: 180, sortable: true },
   { key: "contact", label: "Contact", width: 180, sortable: true },
   { key: "hours", label: "Delivery hours", width: 170, sortable: true },
-  { key: "access", label: "Access notes", width: 220, sortable: true },
+  { key: "lastDelivery", label: "Last Delivery", width: 140, sortable: true },
+  { key: "nextDelivery", label: "Next Delivery", width: 140, sortable: true },
+  { key: "po", label: "Default PO #", width: 130, sortable: true },
+  { key: "access", label: "Delivery Instructions", width: 260, sortable: true },
   { key: "geofence", label: "Geofence", width: 120, sortable: true },
   { key: "location", label: "Location", width: 170, sortable: true },
   { key: "status", label: "Status", width: 120, sortable: true },
@@ -74,6 +77,16 @@ const shipToText = (s: ShipTo, k: SK): string => {
       return `${s.contactName} ${s.contactPhone}`.trim();
     case "hours":
       return `${formatMinutes(s.hoursStart)} – ${formatMinutes(s.hoursEnd)}`;
+    case "lastDelivery": {
+      const d = lastDeliveryToShipTo(s.name);
+      return d ? printKey(d) : "";
+    }
+    case "nextDelivery": {
+      const d = nextDeliveryToShipTo(s.name);
+      return d ? printKey(d) : "";
+    }
+    case "po":
+      return s.poNumber;
     case "access":
       return s.accessNotes;
     case "geofence":
@@ -228,7 +241,7 @@ export function SitesScreen({
           rows={shipTos}
           columns={SHIP_TO_COLUMNS}
           /* HIDDEN UNTIL ASKED FOR, so Status is on screen (2-layouts §5). */
-          defaultHidden={["access", "geofence", "location"]}
+          defaultHidden={["po", "access", "geofence", "location"]}
           rowId={(s) => s.id}
           text={shipToText}
           sortValue={(s, k) => (k === "assets" ? s.assets.length : k === "hours" ? s.hoursStart : undefined)}
@@ -247,6 +260,16 @@ export function SitesScreen({
                 return s.contactName ? <TwoLineCell title={s.contactName} description={s.contactPhone} /> : muted;
               case "hours":
                 return <span className="text-sm">{shipToText(s, "hours")}</span>;
+              case "lastDelivery": {
+                const d = lastDeliveryToShipTo(s.name);
+                return d ? <span className="text-sm">{printKey(d)}</span> : muted;
+              }
+              case "nextDelivery": {
+                const d = nextDeliveryToShipTo(s.name);
+                return d ? <span className="text-sm">{printKey(d)}</span> : muted;
+              }
+              case "po":
+                return s.poNumber ? <span className="text-sm tabular-nums">{s.poNumber}</span> : muted;
               case "access":
                 return s.accessNotes ? <span className="truncate text-sm" title={s.accessNotes}>{s.accessNotes}</span> : muted;
               case "geofence":

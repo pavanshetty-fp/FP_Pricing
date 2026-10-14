@@ -2,7 +2,7 @@ import { FileText } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
 import { DATE_FMT } from "../unified-view/data";
-import { BreakdownPopover } from "../unified-view/BreakdownCard";
+import { BreakdownPopover, OverflowChip } from "../unified-view/BreakdownCard";
 import { OverflowList } from "../unified-view/ListTable";
 import {
   type Asset,
@@ -155,16 +155,38 @@ const gal = (n: number) => `${n.toLocaleString()} gal`;
 
 export function ShipToAssetsCell({ s }: { s: ShipTo }) {
   if (s.assets.length === 0) return dash;
+  /* A TABLE, as the Products box (Pavan, 2026-10-14): Asset · Type ·
+     Products · Capacity. */
+  const [first, ...rest] = s.assets;
   return (
-    <OverflowList
-      values={s.assets.map((a) => a.name)}
-      label="assets"
-      rows={s.assets.map((a) => ({
-        label: a.name,
-        sub: a.products.join(", ") || "No product",
-        value: a.capacity > 0 ? `${gal(a.capacity)} capacity` : "No tank",
-      }))}
-    />
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate text-sm text-foreground">{first.name}</span>
+      {rest.length > 0 && (
+        <OverflowChip
+          count={rest.length}
+          label={`Show all ${s.assets.length} assets`}
+          width={500}
+          card={{
+            title: `All assets (${s.assets.length})`,
+            rows: [],
+            table: {
+              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Products" }, { label: "Capacity", align: "right" }],
+              groups: [
+                {
+                  label: "",
+                  rows: s.assets.map((a) => [
+                    a.name,
+                    a.type,
+                    a.products.join(", ") || "No product",
+                    a.capacity > 0 ? gal(a.capacity) : "No tank",
+                  ]),
+                },
+              ],
+            },
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -172,15 +194,31 @@ export function ShipToProductsCell({ s }: { s: ShipTo }) {
   const groups = new Map<string, Asset[]>();
   for (const a of s.assets) for (const p of a.products) groups.set(p, [...(groups.get(p) ?? []), a]);
   if (groups.size === 0) return dash;
+  /* GROUPED BY PRODUCT, AS A TABLE (Pavan, 2026-10-14): under each product,
+     its assets — type and capacity. */
+  const [first, ...rest] = [...groups.keys()];
   return (
-    <OverflowList
-      values={[...groups.keys()]}
-      label="products"
-      rows={[...groups].map(([product, assets]) => ({
-        label: product,
-        sub: assets.map((a) => (a.capacity > 0 ? `${a.name} (${gal(a.capacity)} capacity)` : a.name)).join(" · "),
-      }))}
-    />
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate text-sm text-foreground">{first}</span>
+      {rest.length > 0 && (
+        <OverflowChip
+          count={rest.length}
+          label={`Show all ${groups.size} products`}
+          width={420}
+          card={{
+            title: `All products (${groups.size})`,
+            rows: [],
+            table: {
+              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Capacity", align: "right" }],
+              groups: [...groups].map(([product, assets]) => ({
+                label: product,
+                rows: assets.map((a) => [a.name, a.type, a.capacity > 0 ? gal(a.capacity) : "No tank"]),
+              })),
+            },
+          }}
+        />
+      )}
+    </div>
   );
 }
 

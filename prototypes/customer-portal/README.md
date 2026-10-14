@@ -150,9 +150,9 @@ From the FleetPanda portal's user record (structure only, invented people).
 - **Breakdowns = the Unified View's (Pavan, 2026-10-14):** every "+N"
   chip (or the figure, where the cell is one — quantity, documents, flags)
   opens the shared `BreakdownCard` on click, above the cell — Orders and
-  Sites & Assets alike. Ship-to Assets: each asset with its products and
-  "N gal capacity"; Products: each product with its assets and their
-  capacity. **Capacity is always ONE asset's**; Orders keep Quantity. Seed:
+  Sites & Assets alike. Ship-to Assets: a TABLE — Asset · Type · Products ·
+  Capacity; Products: a TABLE grouped by product — Asset · Type ·
+  Capacity under each (BreakdownCard `table`, 2026-10-14). **Capacity is always ONE asset's**; Orders keep Quantity. Seed:
   Tank A2 takes five products.
 - **TWO STEPS, create and detail alike (Pavan, 2026-10-14)** — the DS
   `SheetSteps` strip under the header.
@@ -184,6 +184,11 @@ From the FleetPanda portal's user record (structure only, invented people).
   **no supplier approval** (the real product has one — we keep ours). **No
   account switcher** for now, although real users can hold several
   accounts. Orders, dashboard and invoice data could not be pulled.
+- **Ship-to, from the real record (2026-10-14):** "Access notes" is now
+  **Delivery instructions** (the real field — gate codes, PPE, parking,
+  photos); a **Default PO #** per ship-to fills an empty PO # on a new
+  order; the Ship-tos list shows **Last delivery** and **Next delivery**
+  (derived from the requests) and hides Default PO # until asked for.
 - **Every asset has its own latitude/longitude** (where it stands inside the
   ship-to), a ship-to, type, product, size, Rented (checkbox; "Rented" pill
   in the list and header), and a tank monitor (checkbox + ID).

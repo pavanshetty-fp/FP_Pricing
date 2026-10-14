@@ -34,18 +34,75 @@ export interface BreakdownRow {
   sub?: string;
 }
 
+/**
+ * A GROUPED TABLE instead of rows (Pavan, 2026-10-14 — a ship-to's products,
+ * each with its assets, their type and capacity). Same card: title, dashed
+ * rule, the card's own type sizes; a header row, then a band per group.
+ */
+export interface BreakdownTable {
+  columns: { label: string; align?: "left" | "right" }[];
+  groups: { label: string; rows: string[][] }[];
+}
+
 export interface BreakdownCardProps {
   title: string;
   rows: BreakdownRow[];
+  table?: BreakdownTable;
   /** Renders the dashed rule + bold total row. Omit to end after the rows. */
   total?: { label: string; value: string };
 }
 
-export function BreakdownCard({ title, rows, total }: BreakdownCardProps) {
+export function BreakdownCard({ title, rows, table, total }: BreakdownCardProps) {
   return (
     <div className="flex w-full flex-col gap-4">
       <h4 className="text-base font-semibold">{title}</h4>
       <div className="border-t border-dashed border-border" />
+
+      {table && (
+        <table className="w-full table-fixed text-sm">
+          <thead>
+            <tr className="text-xs text-muted-foreground">
+              {table.columns.map((c) => (
+                <th key={c.label} className={cn("pb-1.5 font-medium", c.align === "right" ? "text-right" : "text-left")}>
+                  {c.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          {table.groups.map((g) => (
+            <tbody key={g.label}>
+              {/* THE GROUP — its name on a quiet band across the table; an
+                  unnamed group (a plain table) has no band. */}
+              {g.label && <tr>
+                <td colSpan={table.columns.length} className="pt-2">
+                  <span className="block rounded-sm bg-fp-table-header px-2 py-1 text-xs font-semibold text-foreground">
+                    {g.label}
+                  </span>
+                </td>
+              </tr>}
+              {g.rows.map((r, i) => (
+                <tr key={i} className="text-muted-foreground">
+                  {r.map((cell, j) => (
+                    <td
+                      key={j}
+                      /* THE NAME TRUNCATES; the rest wrap, so a list of
+                         products is read whole. */
+                      className={cn(
+                        "py-1 pr-2 align-top",
+                        j === 0 ? "truncate pl-2 text-foreground" : "break-words",
+                        table.columns[j]?.align === "right" && "text-right tabular-nums"
+                      )}
+                      title={cell}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      )}
 
       <div className="flex flex-col gap-1">
         {rows.map((row, i) => (

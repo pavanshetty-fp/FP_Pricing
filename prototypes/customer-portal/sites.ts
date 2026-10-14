@@ -5,6 +5,7 @@ import {
   PORTAL_ACTOR,
   SHIP_TOS,
   allRequests,
+  todayKey,
   categoryOf,
   renameShipToInRequests,
   type ActiveStatus,
@@ -93,6 +94,7 @@ export function blankShipTo(): ShipToDraft {
     hoursStart: 6 * 60,
     hoursEnd: 18 * 60,
     accessNotes: "",
+    poNumber: "",
     geofence: null,
     status: "Active",
     assets: [],
@@ -197,6 +199,24 @@ export function openOrdersForShipTo(name: string): number {
   return allRequests().filter(
     (r) => LIVE.includes(r.status) && !DELIVERED.includes(r.status) && r.shipTo === name
   ).length;
+}
+
+/* A SHIP-TO'S LAST AND NEXT DELIVERY (the real product shows both) —
+   derived from the requests, never stored. */
+export function lastDeliveryToShipTo(name: string): string | null {
+  const d = allRequests()
+    .filter((r) => r.shipTo === name && DELIVERED.includes(r.status) && r.date)
+    .map((r) => r.date)
+    .sort();
+  return d.length ? d[d.length - 1] : null;
+}
+export function nextDeliveryToShipTo(name: string): string | null {
+  const today = todayKey();
+  const d = allRequests()
+    .filter((r) => r.shipTo === name && LIVE.includes(r.status) && !DELIVERED.includes(r.status) && r.date >= today)
+    .map((r) => r.date)
+    .sort();
+  return d.length ? d[0] : null;
 }
 
 /** The last request delivered to this asset, if any. */

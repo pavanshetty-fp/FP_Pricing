@@ -104,12 +104,6 @@ export interface TablePaginationProps {
    * the note on the root element.
    */
   className?: string;
-  /**
-   * A QUIETER ROWS-PER-PAGE (Pavan, 2026-10-14 — on trial on the Customer
-   * Portal's Orders): white, smaller type, narrower. Becomes the default
-   * once he has seen it.
-   */
-  subtleSize?: boolean;
 }
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50, 100];
@@ -127,7 +121,6 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
   className,
-  subtleSize = false,
 }: TablePaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -232,18 +225,16 @@ export function TablePagination({
         <SelectTrigger
           size="sm"
           aria-label="Rows per page"
-          className={cn(
-            "border-fp-outline-2",
-            subtleSize
-              ? "h-7 w-[58px] gap-1 rounded-sm bg-fp-surface-1b px-2 text-xs data-[size=sm]:h-7 [&_svg]:size-3.5"
-              : "w-[72px] rounded-lg bg-fp-surface-1a"
-          )}
+          /* A QUIET ROWS-PER-PAGE (Pavan, 2026-10-14 — tried on the portal's
+             Orders, then everywhere): white, 12px type, 58px wide, 28px tall,
+             6px corners. */
+          className="h-7 w-[58px] gap-1 rounded-sm border-fp-outline-2 bg-fp-surface-1b px-2 text-xs data-[size=sm]:h-7 [&_svg]:size-3.5"
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className={subtleSize ? "min-w-[58px]" : undefined}>
+        <SelectContent className="min-w-[58px]">
           {pageSizeOptions.map((opt) => (
-            <SelectItem key={opt} value={String(opt)} className={subtleSize ? "text-xs" : undefined}>
+            <SelectItem key={opt} value={String(opt)} className="text-xs">
               {opt}
             </SelectItem>
           ))}

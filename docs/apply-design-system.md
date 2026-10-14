@@ -315,6 +315,8 @@ mistakes, and Checks derive from these.
   lists, dialogs, sheets, toasts, and controls laid over a map.
 - **The selected page in pagination wears the table header's fill**
   (`bg-fp-table-header`), so the footer and the header match.
+- **Rows per page is quiet** (2026-10-14): white, 12px type, 58 × 28px,
+  6px corners — every table, every module.
 - **Elevation steps once per level** (`surface-1b → card → fp-card-1`) — *canonical in
   `ux/2-rules` H2, since it's a composition rule; the surface tokens live here.*
 

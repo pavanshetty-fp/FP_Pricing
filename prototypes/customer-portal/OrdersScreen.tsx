@@ -907,7 +907,6 @@ export function OrdersScreen({
       ) : (
       <div className="mt-4 shrink-0">
         <TablePagination
-          subtleSize
           page={page}
           pageSize={pageSize}
           total={sorted.length}

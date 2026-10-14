@@ -2283,6 +2283,29 @@ bespoke summary block or activity list. **A section's free text (notes) is its
 own unit, outside the section's table but inside the same group** — under the
 table, same heading. Applies without being asked.
 
+## Tables — one row is always there (Pavan, 2026-10-14)
+
+A table in a form or sheet never shows an empty-state message in place of
+its rows. With nothing in it, it still holds **one row**:
+
+- **Editable table** (assets, lines): a blank row, ready to type into. It
+  becomes a record only once something is entered — until then it is not
+  checked by the pending strip and not saved, and it has no remove or log.
+- **Documents table**: the empty row IS the upload — "Upload a document",
+  pressing anywhere on it opens the file picker. Where the reader cannot
+  upload, the row says what will arrive (3PL: "A BOL arrives when…").
+
+## Documents — the format icon beside every file (Pavan, 2026-10-14)
+
+Every uploaded file's name has its **format icon** on the left —
+`FileTypeIcon` (`src/components/ui/file-type-icon.tsx`): a document outline
+with a tag that names the format (PDF, PNG, SVG, JPG, DOC, XLS, CSV…). The
+tag's colour groups the family (PDF red · images violet · documents blue ·
+sheets green · archives orange · other ink); its text carries the format, so
+colour is never the only cue. One documents table everywhere —
+`prototypes/unified-view/DocumentsTable.tsx`: Document (icon + name) · Added
+· By · download. **No Kind column** — the format icon says what it is.
+
 ## Tables — full width, checkboxes, delete on hover (Pavan, 2026-10-07)
 
 - **A table takes the FULL content width.** No `max-w-*` cap on a page or

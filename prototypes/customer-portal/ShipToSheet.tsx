@@ -90,21 +90,28 @@ const draftOf = (s: ShipTo): ShipToDraft => {
   the asset's own sheet. Notes and status are there too.
 */
 function AssetsTable({
-  rows,
+  rows: real,
+  blank,
   focusRow,
   onChange,
   onLog,
 }: {
   rows: AssetDraft[];
+  /**
+   * ONE ROW IS ALWAYS THERE (Pavan, 2026-10-14) — with no assets the table
+   * shows this blank row; typing in it makes it the first asset. It is not
+   * an asset until then, so it is not checked or saved.
+   */
+  blank: AssetDraft;
   focusRow?: number;
   onChange: (next: AssetDraft[]) => void;
   /** Opens a row's activity log (Pavan, 2026-10-13). */
   onLog: (i: number) => void;
 }) {
+  const ghost = real.length === 0;
+  const rows = ghost ? [blank] : real;
   const update = (i: number, p: Partial<AssetDraft>) =>
     onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
-  if (rows.length === 0)
-    return <p className="px-4 py-3 text-sm text-muted-foreground">No assets at this ship-to yet.</p>;
   const head = (label: string, required = false, align: "left" | "right" | "center" = "left") => (
     <th className={cn("px-3 py-2.5 whitespace-nowrap", align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left")}>
       <TableRequiredLabel required={required}>{label}</TableRequiredLabel>
@@ -264,6 +271,7 @@ function AssetsTable({
                 </td>
                 {/* THE ROW'S HISTORY, on its own sheet over this one. */}
                 <td className="px-1.5">
+                  {!ghost && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -274,14 +282,15 @@ function AssetsTable({
                     <History />
                     Log
                   </Button>
+                  )}
                 </td>
                 <td className="relative p-0 text-center">
-                  <TableRowRemove
+                  {!ghost && <TableRowRemove
                     aria-label={`Remove ${name}`}
                     /* AN ASSET WITH AN ORDER ON ITS WAY STAYS. */
                     disabled={Boolean(r.id && openOrdersForAsset(r.id) > 0)}
                     onRemove={() => onChange(rows.filter((_, j) => j !== i))}
-                  />
+                  />}
                 </td>
               </tr>
             );
@@ -770,6 +779,7 @@ export function ShipToSheet({
           >
             <AssetsTable
               rows={draft.assets}
+              blank={{ ...blankAsset(), lat: located ? draft.lat : null, lng: located ? draft.lng : null }}
               focusRow={focusRow}
               onChange={(rows) => set("assets", rows)}
               onLog={setLogFor}

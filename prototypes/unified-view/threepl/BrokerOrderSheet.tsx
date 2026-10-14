@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
+import { DocumentsTable } from "../DocumentsTable";
 import { BannerCallout } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -6914,65 +6915,10 @@ export function BrokerOrderSheet({
             made of; a paragraph in a padded card says only that there are
             none, and it makes the section change shape the moment one
             arrives. */}
-        <div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-fp-table-header">
-                {["Kind", "Document", "Added", "By"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <th className="w-10 px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {draft.documents.length === 0 && (
-                <tr className="h-11">
-                  <td
-                    colSpan={5}
-                    className="px-3 text-sm text-muted-foreground"
-                  >
-                    Nothing yet. A BOL arrives when the order is assigned; the
-                    ticket and the invoice follow the delivery.
-                  </td>
-                </tr>
-              )}
-              {draft.documents.map((doc) => (
-                <tr
-                  key={doc.id}
-                  className="border-b border-border last:border-0"
-                >
-                  <td className="px-3 py-2.5">
-                    <Pill>
-                      {doc.kind}
-                    </Pill>
-                  </td>
-                  <td className="px-3 py-2.5 text-foreground">{doc.name}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">
-                    {doc.addedOn}
-                  </td>
-                  <td className="px-3 py-2.5 text-muted-foreground">
-                    {doc.addedBy}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Download ${doc.name}`}
-                      className="text-muted-foreground"
-                    >
-                      <Download />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DocumentsTable
+          rows={draft.documents.map((d) => ({ id: d.id, kind: d.kind, name: d.name, added: d.addedOn, by: d.addedBy }))}
+          emptyText="Nothing yet. A BOL arrives when the order is assigned; the ticket and the invoice follow the delivery."
+        />
       </SheetSection>
 
       </div>

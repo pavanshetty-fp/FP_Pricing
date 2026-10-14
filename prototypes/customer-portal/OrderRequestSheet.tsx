@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { DocumentsTable, type DocumentRow } from "../unified-view/DocumentsTable";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
@@ -285,43 +286,9 @@ function LinesTable({
   );
 }
 
-/** The request's documents — a read-only list table (ui §10f shell). Shared:
-    the invoice dispute lists its proof with it too. */
-export function DocumentsTable({ docs }: { docs: RequestDoc[] }) {
-  if (docs.length === 0)
-    return <p className="px-4 py-3 text-sm text-muted-foreground">No documents yet.</p>;
-  return (
-    <table className="w-full table-fixed border-collapse">
-      <colgroup>
-        <col className="w-[44%]" />
-        <col className="w-[20%]" />
-        <col className="w-[20%]" />
-        <col />
-      </colgroup>
-      <thead>
-        <tr className="border-b border-border bg-fp-table-header">
-          {["Name", "Type", "Added by", "Date"].map((h) => (
-            <th key={h} className="px-3 py-2.5 text-left">
-              <TableRequiredLabel>{h}</TableRequiredLabel>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {docs.map((d) => (
-          <tr key={d.id} className="h-11 border-b border-border last:border-b-0">
-            <td className="truncate px-3 text-sm text-foreground">{d.name}</td>
-            <td className="truncate px-3 text-sm text-foreground">{d.kind}</td>
-            <td className="truncate px-3 text-sm text-foreground">{d.by}</td>
-            <td className="truncate px-3 text-sm text-foreground">
-              {DATE_FMT.format(new Date(d.at))}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+/** The portal's files as the shared documents table's rows. */
+export const documentRows = (docs: RequestDoc[]): DocumentRow[] =>
+  docs.map((d) => ({ id: d.id, kind: d.kind, name: d.name, added: DATE_FMT.format(new Date(d.at)), by: d.by }));
 
 const AS_OF_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -757,7 +724,11 @@ export function OrderRequestSheet({
             <HangingAdd label="Add document" onClick={() => fileInput.current?.click()} />
           }
         >
-          <DocumentsTable docs={request.documents} />
+          <DocumentsTable
+            rows={documentRows(request.documents)}
+            onAdd={() => fileInput.current?.click()}
+            onDownload={(d) => toast.success(`${d.name} downloaded`)}
+          />
           <input
             ref={fileInput}
             type="file"

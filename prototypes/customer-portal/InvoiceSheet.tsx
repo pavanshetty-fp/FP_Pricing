@@ -10,7 +10,8 @@ import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
-import { DocumentsTable } from "./OrderRequestSheet";
+import { DocumentsTable } from "../unified-view/DocumentsTable";
+import { documentRows } from "./OrderRequestSheet";
 import { ACCOUNT, printKey } from "./orders";
 import {
   FEES_PER_GAL,
@@ -127,7 +128,11 @@ function DisputeSections({ invoice, dispute, total }: { invoice: Invoice; disput
         flush
         hanging={<HangingAdd label="Add document" onClick={() => fileInput.current?.click()} />}
       >
-        <DocumentsTable docs={dispute.documents} />
+        <DocumentsTable
+          rows={documentRows(dispute.documents)}
+          onAdd={() => fileInput.current?.click()}
+          onDownload={(d) => toast.success(`${d.name} downloaded`)}
+        />
         <input
           ref={fileInput}
           type="file"

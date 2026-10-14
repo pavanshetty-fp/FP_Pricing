@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
+import { OverflowChip } from "../BreakdownCard";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -456,7 +457,21 @@ function DeliveryRow({ d }: { d: Delivery }) {
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate">{first}</span>
           {/* "+N" IS A PILL (Pavan, 2026-10-09) — the same overflow chip Sales shows. */}
-          {more > 0 && <Pill className="tabular-nums">+{more}</Pill>}
+          {/* THE CHIP OPENS THE LINES, on click (Pavan, 2026-10-14). */}
+          {more > 0 && (
+            <OverflowChip
+              count={more}
+              label={`Show all ${d.lines.length} lines`}
+              card={{
+                title: `All products (${d.lines.length})`,
+                rows: d.lines.map((l) => ({
+                  label: l.product,
+                  sub: l.asset || undefined,
+                  value: l.topOff ? "Top off" : `${(l.gal ?? 0).toLocaleString()} gal`,
+                })),
+              }}
+            />
+          )}
         </span>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-foreground">

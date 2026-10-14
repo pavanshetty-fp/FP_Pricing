@@ -59,7 +59,9 @@ Notifications are the top bar's bell, not a page.
 - **Alerts** = the DS banner with interaction (`AlertBanner`), six kinds:
   empty tanks (each with Create order), action needed, invoices past due,
   partial deliveries, quotes to accept, at risk of late. Each title applies
-  its filter.
+  its filter. **Placed BELOW the toolbar, search and filter chips**, right above
+  the list (Pavan, 2026-10-14) — unlike the Unified View rule (above the
+  toolbar).
 - **Overview** — ONE read-only card above everything, two tiles ruled apart
   (after Pavan's "New subscriptions" reference): Today's orders (8) and
   Gallons to be delivered today (27,800), each with its change on the same
@@ -95,6 +97,31 @@ Notifications are the top bar's bell, not a page.
   (`dashboard.ts`).
 
 ## Sites & Assets — decisions not to re-open (Pavan, 2026-10-13)
+
+- **Breakdowns = the Unified View's (Pavan, 2026-10-14):** every "+N"
+  chip (or the figure, where the cell is one — quantity, documents, flags)
+  opens the shared `BreakdownCard` on click, above the cell — Orders and
+  Sites & Assets alike. Ship-to Assets: each asset with its products and
+  "N gal capacity"; Products: each product with its assets and their
+  capacity. **Capacity is always ONE asset's**; Orders keep Quantity. Seed:
+  Tank A2 takes five products.
+- **TWO STEPS, create and detail alike (Pavan, 2026-10-14)** — the DS
+  `SheetSteps` strip under the header.
+  - **Ship-to:** 1 Ship-to details (details · address + map · delivery) →
+    2 Assets (the assets table — a new row is a new asset, mapped here; **Map
+    existing assets** ticks assets at other ship-tos and MOVES them here, with
+    their history; an "Asset locations" map to drag each pin).
+  - The step-2 asset table carries EVERY asset field the asset sheet
+    creates (unique ID, RFID, ERP ID, type, categories, products, size,
+    monitor + ID, lat/lng, rented) and scrolls sideways — eval `field-reach`.
+    The Ship-tos list gained Access notes + Geofence columns (hidden by
+    default) for the same reason.
+  - **Asset:** 1 Asset details (details · tank monitor · notes) → 2 Ship-to &
+    location (ship-to picker with **+ New ship-to**, which opens the ship-to
+    sheet over this one and comes back chosen; lat/lng + map).
+  - Create: step 2 opens once step 1 is complete ("Next: …" raises the
+    pending strip otherwise); Back on step 2; the create act is on step 2.
+    Detail: both steps open, autosave, no footer.
 
 - **The customer keeps ship-tos and assets — no tenant approval.** The
   tenant reads them to take orders, so the customer must keep them right.

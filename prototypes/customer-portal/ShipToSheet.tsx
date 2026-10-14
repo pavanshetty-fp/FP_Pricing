@@ -1,13 +1,16 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, ClipboardPlus, History, MoreHorizontal, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, Link2, MoreHorizontal, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChip } from "@/components/ui/status-chip";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { SheetField, SheetSection, SheetSteps } from "@/components/side-sheet/parts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MultiSelectList } from "@/components/ui/multi-select-list";
 import {
   TableCellInput,
   TableCellMultiSelect,
@@ -32,8 +35,8 @@ import { LocationMap } from "./LocationMap";
 import { searchPlaces } from "./geo";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog, shipToLog } from "./activityLog";
-import { type PendingItem } from "../unified-view/PendingStrip";
-import { ASSET_TYPES, productsIn, type ShipTo } from "./orders";
+import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
+import { ASSET_TYPES, PRODUCT_CATEGORIES, productsIn, type Asset, type ShipTo } from "./orders";
 import {
   blankAsset,
   blankShipTo,
@@ -44,6 +47,7 @@ import {
   updateShipTo,
   type AssetDraft,
   type ShipToDraft,
+  useShipTos,
 } from "./sites";
 
 /*
@@ -77,7 +81,14 @@ const draftOf = (s: ShipTo): ShipToDraft => {
   };
 };
 
-/** The ship-to's assets, editable in place. */
+/*
+  THE SHIP-TO'S ASSETS, editable in place — a new row IS a new asset, so the
+  table carries every field the asset sheet creates (Pavan, 2026-10-14: the
+  same data on every screen that makes or shows it — eval "field reach").
+  Too many columns for the sheet, so it scrolls sideways with the Asset
+  column held. Created by and Last filled are facts, not inputs: they are on
+  the asset's own sheet. Notes and status are there too.
+*/
 function AssetsTable({
   rows,
   focusRow,
@@ -94,136 +105,264 @@ function AssetsTable({
     onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
   if (rows.length === 0)
     return <p className="px-4 py-3 text-sm text-muted-foreground">No assets at this ship-to yet.</p>;
+  const head = (label: string, required = false, align: "left" | "right" | "center" = "left") => (
+    <th className={cn("px-3 py-2.5 whitespace-nowrap", align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left")}>
+      <TableRequiredLabel required={required}>{label}</TableRequiredLabel>
+    </th>
+  );
   return (
-    <table className="w-full table-fixed border-collapse">
-      <colgroup>
-        <col className="w-[19%]" />
-        <col className="w-[13%]" />
-        <col className="w-[15%]" />
-        <col className="w-[10%]" />
-        <col className="w-[11%]" />
-        <col className="w-[11%]" />
-        <col className="w-[92px]" />
-        <col className="w-[104px]" />
-        <col className="w-[52px]" />
-      </colgroup>
-      <thead>
-        <tr className="border-b border-border bg-fp-table-header">
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Asset</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Type</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel required>Products</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Size (gal)</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Latitude</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-right"><TableRequiredLabel required>Longitude</TableRequiredLabel></th>
-          {/* A NAMED CHECKBOX COLUMN — interactions T5. */}
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel>Rented</TableRequiredLabel></th>
-          <th className="px-3 py-2.5 text-left"><TableRequiredLabel>Activity log</TableRequiredLabel></th>
-          <th aria-hidden />
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => {
-          const name = r.name || `asset ${i + 1}`;
-          return (
-            <tr key={r.id ?? `new-${i}`} className="group/row h-11 border-b border-border last:border-b-0">
-              <td className="relative p-0">
-                <TableCellInput
-                  value={r.name}
-                  placeholder="Enter name"
-                  autoFocus={i === focusRow}
-                  aria-label={`Name of ${name}`}
-                  onChange={(v) => update(i, { name: v })}
-                />
-              </td>
-              <td className="relative p-0">
-                <TableCellSelect
-                  value={r.type}
-                  options={ASSET_TYPES}
-                  placeholder="Select type"
-                  aria-label={`Type of ${name}`}
-                  onChange={(v) => update(i, { type: v })}
-                />
-              </td>
-              <td className="relative p-0">
-                {/* SEVERAL PRODUCTS, as on the asset sheet — same data, same
-                    control; its categories follow the products picked here. */}
-                <TableCellMultiSelect
-                  values={r.products}
-                  options={productsIn(r.categories)}
-                  placeholder="Select products"
-                  unitLabel="product"
-                  aria-label={`Products of ${name}`}
-                  onChange={(v) => update(i, { products: v })}
-                />
-              </td>
-              <td className="relative p-0">
-                <TableCellInput
-                  numeric
-                  value={r.capacity ? String(r.capacity) : ""}
-                  placeholder="0"
-                  aria-label={`Size of ${name}`}
-                  onChange={(v) => update(i, { capacity: num(v) ?? 0 })}
-                />
-              </td>
-              <td className="relative p-0">
-                <TableCellInput
-                  numeric
-                  value={r.lat === null ? "" : String(r.lat)}
-                  placeholder="—"
-                  aria-label={`Latitude of ${name}`}
-                  onChange={(v) => update(i, { lat: num(v) })}
-                />
-              </td>
-              <td className="relative p-0">
-                <TableCellInput
-                  numeric
-                  value={r.lng === null ? "" : String(r.lng)}
-                  placeholder="—"
-                  aria-label={`Longitude of ${name}`}
-                  onChange={(v) => update(i, { lng: num(v) })}
-                />
-              </td>
-              {/* RENTED IS SET WHEN THE ASSET IS ADDED (Pavan, 2026-10-13) —
-                  a saved asset shows it, read-only, as the Assets list does. */}
-              <td className="px-3">
-                {r.id ? (
-                  r.rented ? <Pill>Rented</Pill> : <span className="text-sm">Owned</span>
-                ) : (
-                  <Checkbox
-                    checked={r.rented}
-                    onCheckedChange={(c) => update(i, { rented: c === true })}
-                    aria-label={`${name} is rented`}
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1680px] table-fixed border-collapse">
+        <colgroup>
+          <col className="w-[180px]" />
+          <col className="w-[120px]" />
+          <col className="w-[150px]" />
+          <col className="w-[120px]" />
+          <col className="w-[120px]" />
+          <col className="w-[150px]" />
+          <col className="w-[150px]" />
+          <col className="w-[100px]" />
+          <col className="w-[100px]" />
+          <col className="w-[130px]" />
+          <col className="w-[110px]" />
+          <col className="w-[110px]" />
+          <col className="w-[92px]" />
+          <col className="w-[104px]" />
+          <col className="w-[52px]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border bg-fp-table-header">
+            {head("Asset", true)}
+            {head("Unique ID", true)}
+            {head("RFID code")}
+            {head("ERP ID")}
+            {head("Type", true)}
+            {head("Categories", true)}
+            {head("Products", true)}
+            {head("Size (gal)", true, "right")}
+            {/* A NAMED CHECKBOX COLUMN — interactions T5. */}
+            {head("Monitor", false, "center")}
+            {head("Monitor ID")}
+            {head("Latitude", true, "right")}
+            {head("Longitude", true, "right")}
+            {head("Rented")}
+            {head("Activity log")}
+            <th aria-hidden />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const name = r.name || `asset ${i + 1}`;
+            return (
+              <tr key={r.id ?? `new-${i}`} className="group/row h-11 border-b border-border last:border-b-0">
+                <td className="relative sticky left-0 z-10 bg-fp-surface-1b p-0">
+                  <TableCellInput
+                    value={r.name}
+                    placeholder="Enter name"
+                    autoFocus={i === focusRow}
+                    aria-label={`Name of ${name}`}
+                    onChange={(v) => update(i, { name: v })}
                   />
-                )}
-              </td>
-              {/* THE ROW'S HISTORY, on its own sheet over this one. */}
-              <td className="px-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  aria-label={`Activity log of ${name}`}
-                  onClick={() => onLog(i)}
-                >
-                  <History />
-                  Log
-                </Button>
-              </td>
-              <td className="relative p-0 text-center">
-                <TableRowRemove
-                  aria-label={`Remove ${name}`}
-                  /* AN ASSET WITH AN ORDER ON ITS WAY STAYS. */
-                  disabled={Boolean(r.id && openOrdersForAsset(r.id) > 0)}
-                  onRemove={() => onChange(rows.filter((_, j) => j !== i))}
-                />
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput value={r.code} placeholder="e.g. CL-A3" aria-label={`Unique ID of ${name}`} onChange={(v) => update(i, { code: v })} />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput value={r.rfid} placeholder="—" aria-label={`RFID code of ${name}`} onChange={(v) => update(i, { rfid: v.toUpperCase() })} />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput value={r.erpId} placeholder="—" aria-label={`ERP ID of ${name}`} onChange={(v) => update(i, { erpId: v })} />
+                </td>
+                <td className="relative p-0">
+                  <TableCellSelect
+                    value={r.type}
+                    options={ASSET_TYPES}
+                    placeholder="Select type"
+                    aria-label={`Type of ${name}`}
+                    onChange={(v) => update(i, { type: v })}
+                  />
+                </td>
+                <td className="relative p-0">
+                  {/* CATEGORIES NARROW THE PRODUCTS — as on the asset sheet. */}
+                  <TableCellMultiSelect
+                    values={r.categories}
+                    options={[...PRODUCT_CATEGORIES]}
+                    placeholder="Select"
+                    unitLabel="category"
+                    aria-label={`Product categories of ${name}`}
+                    onChange={(v) => {
+                      const ok = productsIn(v);
+                      update(i, { categories: v, products: r.products.filter((p) => ok.includes(p)) });
+                    }}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <TableCellMultiSelect
+                    values={r.products}
+                    options={productsIn(r.categories)}
+                    placeholder="Select"
+                    unitLabel="product"
+                    aria-label={`Products of ${name}`}
+                    onChange={(v) => update(i, { products: v })}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput
+                    numeric
+                    value={r.capacity ? String(r.capacity) : ""}
+                    placeholder="0"
+                    aria-label={`Size of ${name}`}
+                    onChange={(v) => update(i, { capacity: num(v) ?? 0 })}
+                  />
+                </td>
+                <td className="px-3 text-center">
+                  <Checkbox
+                    checked={r.monitor}
+                    onCheckedChange={(c) => update(i, { monitor: c === true, monitorId: c === true ? r.monitorId : "" })}
+                    aria-label={`${name} has a tank monitor`}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput
+                    value={r.monitorId}
+                    placeholder={r.monitor ? "Enter ID" : "—"}
+                    disabled={!r.monitor}
+                    aria-label={`Tank monitor ID of ${name}`}
+                    onChange={(v) => update(i, { monitorId: v.toUpperCase() })}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput
+                    numeric
+                    value={r.lat === null ? "" : String(r.lat)}
+                    placeholder="—"
+                    aria-label={`Latitude of ${name}`}
+                    onChange={(v) => update(i, { lat: num(v) })}
+                  />
+                </td>
+                <td className="relative p-0">
+                  <TableCellInput
+                    numeric
+                    value={r.lng === null ? "" : String(r.lng)}
+                    placeholder="—"
+                    aria-label={`Longitude of ${name}`}
+                    onChange={(v) => update(i, { lng: num(v) })}
+                  />
+                </td>
+                {/* RENTED IS SET WHEN THE ASSET IS ADDED (Pavan, 2026-10-13) —
+                    a saved asset shows it, read-only, as the Assets list does. */}
+                <td className="px-3">
+                  {r.id ? (
+                    r.rented ? <Pill>Rented</Pill> : <span className="text-sm">Owned</span>
+                  ) : (
+                    <Checkbox
+                      checked={r.rented}
+                      onCheckedChange={(c) => update(i, { rented: c === true })}
+                      aria-label={`${name} is rented`}
+                    />
+                  )}
+                </td>
+                {/* THE ROW'S HISTORY, on its own sheet over this one. */}
+                <td className="px-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    aria-label={`Activity log of ${name}`}
+                    onClick={() => onLog(i)}
+                  >
+                    <History />
+                    Log
+                  </Button>
+                </td>
+                <td className="relative p-0 text-center">
+                  <TableRowRemove
+                    aria-label={`Remove ${name}`}
+                    /* AN ASSET WITH AN ORDER ON ITS WAY STAYS. */
+                    disabled={Boolean(r.id && openOrdersForAsset(r.id) > 0)}
+                    onRemove={() => onChange(rows.filter((_, j) => j !== i))}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
+
+/*
+  MAP EXISTING ASSETS (Pavan, 2026-10-14) — tick assets that stand at other
+  ship-tos and add them here; saving moves them. Ticks are a draft until Add.
+*/
+function MapExisting({
+  options,
+  onAdd,
+}: {
+  options: { a: Asset; from: ShipTo }[];
+  onAdd: (rows: AssetDraft[]) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [picked, setPicked] = React.useState<string[]>([]);
+  const label = (o: { a: Asset; from: ShipTo }) => `${o.a.name} · ${o.from.name}`;
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setPicked([]);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" disabled={options.length === 0}>
+          <Link2 />
+          Map existing assets
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <MultiSelectList
+          options={options.map(label)}
+          value={picked}
+          onChange={setPicked}
+          placeholder="Search assets…"
+          empty="No asset found."
+          searchable
+        />
+        <div className="flex justify-end gap-2 border-t border-border p-2">
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={picked.length === 0}
+            onClick={() => {
+              onAdd(
+                options
+                  .filter((o) => picked.includes(label(o)))
+                  .map((o) => {
+                    const { audit: _a, level: _l, ...rest } = o.a;
+                    void _a;
+                    void _l;
+                    return rest;
+                  })
+              );
+              setOpen(false);
+              setPicked([]);
+            }}
+          >
+            Add {picked.length || ""}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* THE TWO STEPS (Pavan, 2026-10-14) — the ship-to itself, then the assets
+   mapped to it. Create walks them in order; an existing ship-to opens on
+   step 1 and either step is a press away. */
+type Step = "details" | "assets";
 
 export function ShipToSheet({
   shipTo,
@@ -231,13 +370,22 @@ export function ShipToSheet({
   creating,
   onOpenChange,
   onCreateOrder,
+  onCreated,
+  level,
 }: {
   shipTo: ShipTo | null;
   open: boolean;
   creating: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateOrder: (shipTo: string, assetIds: string[]) => void;
+  onCreateOrder?: (shipTo: string, assetIds: string[]) => void;
+  /** Hands the new ship-to back — the asset sheet's "New ship-to" picks it. */
+  onCreated?: (s: ShipTo) => void;
+  /** 2 when opened over another sheet. */
+  level?: 1 | 2;
 }) {
+  const shipTos = useShipTos();
+  const [step, setStep] = React.useState<Step>("details");
+  const [raised, setRaised] = React.useState(false);
   const [draft, setDraft] = React.useState<ShipToDraft | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | undefined>();
   const typed = React.useRef(false);
@@ -256,6 +404,8 @@ export function ShipToSheet({
     lastSaved.current = JSON.stringify(d);
     setDraft(d);
     setFocusRow(undefined);
+    setStep("details");
+    setRaised(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, key]);
 
@@ -308,7 +458,7 @@ export function ShipToSheet({
     set(k, v);
   };
 
-  const pending: PendingItem[] = [
+  const detailsPending: PendingItem[] = [
     !draft.name.trim() && { key: "name", label: "Enter the ship-to's name", target: "st-details" },
     (!draft.street.trim() || !draft.city.trim() || !draft.state.trim() || !draft.zip.trim()) && {
       key: "addr",
@@ -320,10 +470,18 @@ export function ShipToSheet({
       label: "Find the ship-to on the map",
       target: "st-address",
     },
-
-    draft.assets.some((a) => !a.name.trim() || !a.type || a.products.length === 0 || a.capacity <= 0) && {
+  ].filter(Boolean) as PendingItem[];
+  const assetsPending: PendingItem[] = [
+    draft.assets.some(
+      (a) => !a.name.trim() || !a.code.trim() || !a.type || a.categories.length === 0 || a.products.length === 0 || a.capacity <= 0
+    ) && {
       key: "assets",
-      label: "Complete each asset's name, type, product and size",
+      label: "Complete each asset's name, unique ID, type, categories, products and size",
+      target: "st-assets",
+    },
+    draft.assets.some((a) => a.monitor && !a.monitorId.trim()) && {
+      key: "assetMon",
+      label: "Enter each fitted tank monitor's ID",
       target: "st-assets",
     },
     draft.assets.some((a) => a.lat === null || a.lng === null) && {
@@ -332,6 +490,23 @@ export function ShipToSheet({
       target: "st-assets",
     },
   ].filter(Boolean) as PendingItem[];
+
+  /* STEP 2 OPENS ONCE STEP 1 IS DONE — on create; an existing ship-to has
+     both. */
+  const toAssets = () => {
+    if (creating && detailsPending.length > 0) {
+      setRaised(true);
+      return;
+    }
+    setRaised(false);
+    setStep("assets");
+  };
+  const located = Number.isFinite(draft.lat) && Number.isFinite(draft.lng);
+  /* ASSETS AT OTHER SHIP-TOS — what "Map existing assets" offers. */
+  const here = new Set(draft.assets.map((a) => a.id).filter(Boolean));
+  const elsewhere = shipTos
+    .filter((x) => x.id !== shipTo?.id)
+    .flatMap((x) => x.assets.filter((a) => a.status === "Active" && !here.has(a.id)).map((a) => ({ a, from: x })));
 
   const active = draft.status === "Active";
   const toggleStatus = () => {
@@ -361,8 +536,41 @@ export function ShipToSheet({
       createTitle="Create Ship-to"
       createAction="Create ship-to"
       showCancel={false}
-      pending={creating ? pending : undefined}
-      footerPrimary={creating ? undefined : null}
+      level={level}
+      pending={creating && step === "assets" ? assetsPending : undefined}
+      footerPrimary={
+        !creating ? null : step === "details" ? (
+          <Button onClick={toAssets}>
+            Next: assets
+            <ArrowRight />
+          </Button>
+        ) : undefined
+      }
+      footerAside={
+        creating && step === "assets" ? (
+          <Button variant="ghost" onClick={() => setStep("details")}>
+            <ArrowLeft />
+            Back
+          </Button>
+        ) : undefined
+      }
+      footerBanner={
+        creating && step === "details" && raised ? <PendingStrip tone="caution" pending={detailsPending} /> : undefined
+      }
+      steps={
+        <SheetSteps
+          steps={[
+            { value: "details", label: "Ship-to details" },
+            {
+              value: "assets",
+              label: "Assets",
+              disabledReason: creating && detailsPending.length > 0 ? "Finish the ship-to details first" : undefined,
+            },
+          ]}
+          value={step}
+          onValueChange={(v) => (v === "assets" ? toAssets() : setStep("details"))}
+        />
+      }
       headerAside={
         <span className="flex items-center gap-2">
           {!creating && (
@@ -394,8 +602,8 @@ export function ShipToSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              {active && (
-                <DropdownMenuItem onSelect={() => onCreateOrder(shipTo.name, [])}>
+              {active && onCreateOrder && (
+                <DropdownMenuItem onSelect={() => onCreateOrder?.(shipTo.name, [])}>
                   <ClipboardPlus />
                   Create order
                 </DropdownMenuItem>
@@ -411,11 +619,13 @@ export function ShipToSheet({
       onSubmit={() => {
         const s = createShipTo(draft);
         toast.success(`${s.name} created`);
+        onCreated?.(s);
       }}
     >
       {/* ONE COLUMN — no summary card for a ship-to (Pavan, 2026-10-13); its
           history is the activity icon in the header. */}
       <div className="grid items-start gap-6">
+        {step === "details" ? (
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="st-details" title="Details">
             <div className="grid grid-cols-2 gap-4">
@@ -494,7 +704,7 @@ export function ShipToSheet({
                 className="h-80 lg:h-auto lg:min-h-80"
                 location={Number.isFinite(draft.lat) && Number.isFinite(draft.lng) ? { lat: draft.lat, lng: draft.lng } : null}
                 geofence={draft.geofence ? draft.geofence * 1609.34 : null}
-                assets={draft.assets.map((x, i) => ({ key: String(i), name: x.name, lat: x.lat, lng: x.lng }))}
+                assets={draft.assets.map((x, i) => ({ key: String(i), name: x.name, lat: x.lat, lng: x.lng, fixed: true }))}
                 onConfirm={(p) => {
                   typed.current = false;
                   setDraft((d) =>
@@ -511,12 +721,7 @@ export function ShipToSheet({
                       : d
                   );
                 }}
-                onAssetMove={(key, lat, lng) =>
-                  set(
-                    "assets",
-                    draft.assets.map((x, i) => (String(i) === key ? { ...x, lat, lng } : x))
-                  )
-                }
+                onAssetMove={() => {}}
               />
             </div>
           </SheetSection>
@@ -538,18 +743,26 @@ export function ShipToSheet({
             </SheetField>
           </SheetSection>
 
+        </div>
+        ) : (
+        /* STEP 2 — THE ASSETS MAPPED TO THIS SHIP-TO. A new row is a new
+           asset, mapped here as it is made; "Map existing assets" brings
+           assets from other ship-tos (they move here). The map below places
+           each one inside the site. */
+        <div className="flex min-w-0 flex-col gap-10">
           <SheetSection
             id="st-assets"
             title="Assets"
             flush
+            action={<MapExisting options={elsewhere} onAdd={(picked) => set("assets", [...draft.assets, ...picked])} />}
             hanging={
               <HangingAdd
-                label="Add asset"
+                label="New asset"
                 onClick={() => {
                   setFocusRow(draft.assets.length);
                   set("assets", [
                     ...draft.assets,
-                    { ...blankAsset(), lat: Number.isFinite(draft.lat) ? draft.lat : null, lng: Number.isFinite(draft.lng) ? draft.lng : null },
+                    { ...blankAsset(), lat: located ? draft.lat : null, lng: located ? draft.lng : null },
                   ]);
                 }}
               />
@@ -562,8 +775,24 @@ export function ShipToSheet({
               onLog={setLogFor}
             />
           </SheetSection>
-        </div>
 
+          <SheetSection id="st-asset-map" title="Asset locations">
+            <LocationMap
+              className="h-96"
+              location={located ? { lat: draft.lat, lng: draft.lng } : null}
+              geofence={draft.geofence ? draft.geofence * 1609.34 : null}
+              assets={draft.assets.map((x, i) => ({ key: String(i), name: x.name, lat: x.lat, lng: x.lng }))}
+              onPress={() => {}}
+              onAssetMove={(key, lat, lng) =>
+                set(
+                  "assets",
+                  draft.assets.map((x, i) => (String(i) === key ? { ...x, lat, lng } : x))
+                )
+              }
+            />
+          </SheetSection>
+        </div>
+        )}
       </div>
     </RecordSheet>
     <ActivityLogSheet

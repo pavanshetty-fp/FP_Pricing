@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, ClipboardPlus, History, MoreHorizontal, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
@@ -10,7 +10,7 @@ import { Pill } from "@/components/ui/pill";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { SheetField, SheetSection, SheetSteps } from "@/components/side-sheet/parts";
 import { MultiSelect } from "@/components/form-layout/MultiSelect";
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ import {
 import { DATE_FMT } from "../unified-view/data";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
-import { type PendingItem } from "../unified-view/PendingStrip";
+import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import {
   ASSET_TYPES,
   PRODUCT_CATEGORIES,
@@ -43,6 +43,7 @@ import {
 } from "./sites";
 import { LocationMap } from "./LocationMap";
 import { ActivityLogSheet } from "./ActivityLogSheet";
+import { ShipToSheet } from "./ShipToSheet";
 import { assetLog } from "./activityLog";
 
 /*
@@ -106,6 +107,12 @@ export function AssetSheet({
   const [draft, setDraft] = React.useState<AssetDraft | null>(null);
   const [siteId, setSiteId] = React.useState("");
   const [showLog, setShowLog] = React.useState(false);
+  /* THE TWO STEPS (Pavan, 2026-10-14) — the asset, then the ship-to it is
+     mapped to and where it stands there. A new ship-to can be made from step
+     2 without leaving. */
+  const [step, setStep] = React.useState<"details" | "location">("details");
+  const [raised, setRaised] = React.useState(false);
+  const [newShipTo, setNewShipTo] = React.useState(false);
   const lastSaved = React.useRef<string | null>(null);
   const key = creating ? "new" : (asset?.id ?? null);
   React.useEffect(() => {
@@ -121,6 +128,8 @@ export function AssetSheet({
     lastSaved.current = JSON.stringify([d, sid]);
     setDraft(d);
     setSiteId(sid);
+    setStep("details");
+    setRaised(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, key]);
 
@@ -148,7 +157,7 @@ export function AssetSheet({
     setDraft((d) => (d ? { ...d, [k]: v } : d));
   const site = shipTos.find((s) => s.id === siteId);
 
-  const pending: PendingItem[] = [
+  const detailsPending: PendingItem[] = [
     !draft.name.trim() && { key: "name", label: "Enter the display name", target: "asset-details" },
     !draft.code.trim() && { key: "code", label: "Enter the unique ID", target: "asset-details" },
     !draft.type && { key: "type", label: "Choose a type", target: "asset-details" },
@@ -159,18 +168,28 @@ export function AssetSheet({
       target: "asset-details",
     },
     draft.products.length === 0 && { key: "products", label: "Choose its products", target: "asset-details" },
-    !siteId && { key: "site", label: "Choose a ship-to", target: "asset-location" },
-    (draft.lat === null || draft.lng === null) && {
-      key: "geo",
-      label: "Place it on the map",
-      target: "asset-location",
-    },
     draft.monitor && !draft.monitorId.trim() && {
       key: "mon",
       label: "Enter the tank monitor ID",
       target: "asset-monitor",
     },
   ].filter(Boolean) as PendingItem[];
+  const locationPending: PendingItem[] = [
+    !siteId && { key: "site", label: "Choose a ship-to", target: "asset-location" },
+    (draft.lat === null || draft.lng === null) && {
+      key: "geo",
+      label: "Place it on the map",
+      target: "asset-location",
+    },
+  ].filter(Boolean) as PendingItem[];
+  const toLocation = () => {
+    if (creating && detailsPending.length > 0) {
+      setRaised(true);
+      return;
+    }
+    setRaised(false);
+    setStep("location");
+  };
 
   const active = draft.status === "Active";
   const toggleStatus = () => {
@@ -214,8 +233,40 @@ export function AssetSheet({
         createTitle="Create Asset"
         createAction="Create asset"
         showCancel={false}
-        pending={creating ? pending : undefined}
-        footerPrimary={creating ? undefined : null}
+        pending={creating && step === "location" ? locationPending : undefined}
+        footerPrimary={
+          !creating ? null : step === "details" ? (
+            <Button onClick={toLocation}>
+              Next: ship-to
+              <ArrowRight />
+            </Button>
+          ) : undefined
+        }
+        footerAside={
+          creating && step === "location" ? (
+            <Button variant="ghost" onClick={() => setStep("details")}>
+              <ArrowLeft />
+              Back
+            </Button>
+          ) : undefined
+        }
+        footerBanner={
+          creating && step === "details" && raised ? <PendingStrip tone="caution" pending={detailsPending} /> : undefined
+        }
+        steps={
+          <SheetSteps
+            steps={[
+              { value: "details", label: "Asset details" },
+              {
+                value: "location",
+                label: "Ship-to & location",
+                disabledReason: creating && detailsPending.length > 0 ? "Finish the asset details first" : undefined,
+              },
+            ]}
+            value={step}
+            onValueChange={(v) => (v === "location" ? toLocation() : setStep("details"))}
+          />
+        }
         headerAside={
           <span className="flex items-center gap-2">
             {!creating && (
@@ -267,6 +318,7 @@ export function AssetSheet({
           toast.success(`${a.name} created`);
         }}
       >
+        {step === "details" ? (
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="asset-details" title="Details">
             <div className="grid grid-cols-2 gap-4">
@@ -363,12 +415,63 @@ export function AssetSheet({
             </div>
           </SheetSection>
 
+          <SheetSection id="asset-monitor" title="Tank monitor">
+            <div className="grid grid-cols-2 items-end gap-4">
+              <SheetField>
+                <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
+                  <Checkbox
+                    checked={draft.monitor}
+                    onCheckedChange={(v) => {
+                      const on = v === true;
+                      setDraft((d) => (d ? { ...d, monitor: on, monitorId: on ? d.monitorId : "" } : d));
+                    }}
+                  />
+                  Tank monitor fitted
+                </label>
+              </SheetField>
+              {draft.monitor && (
+                <SheetField label="Monitor ID" required>
+                  <Input
+                    value={draft.monitorId}
+                    placeholder="e.g. TM8K2A93"
+                    onChange={(e) => set("monitorId", e.target.value.toUpperCase())}
+                  />
+                </SheetField>
+              )}
+            </div>
+          </SheetSection>
+
+          <SheetSection title="Notes">
+            <Textarea
+              aria-label="Notes"
+              value={draft.notes}
+              onChange={(e) => set("notes", e.target.value)}
+              className="min-h-24"
+            />
+          </SheetSection>
+        </div>
+        ) : (
+        <div className="flex min-w-0 flex-col gap-10">
           {/* THE SHIP-TO AND ITS MAP, side by side — the ship-to sheet's
               address template, with a ship-to picker for the address. */}
           <SheetSection id="asset-location" title="Location">
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="flex flex-col gap-4">
-                <SheetField label="Ship-to" required>
+                {/* A NEW SHIP-TO WITHOUT LEAVING (Pavan, 2026-10-14) — it
+                    opens over this sheet and comes back chosen. */}
+                <SheetField
+                  label={
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span>
+                        Ship-to<span className="text-destructive"> *</span>
+                      </span>
+                      <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setNewShipTo(true)}>
+                        <Plus />
+                        New ship-to
+                      </Button>
+                    </span>
+                  }
+                >
                   <Combobox
                     className="w-full"
                     value={site?.name ?? ""}
@@ -412,42 +515,17 @@ export function AssetSheet({
             </div>
           </SheetSection>
 
-          <SheetSection id="asset-monitor" title="Tank monitor">
-            <div className="grid grid-cols-2 items-end gap-4">
-              <SheetField>
-                <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
-                  <Checkbox
-                    checked={draft.monitor}
-                    onCheckedChange={(v) => {
-                      const on = v === true;
-                      setDraft((d) => (d ? { ...d, monitor: on, monitorId: on ? d.monitorId : "" } : d));
-                    }}
-                  />
-                  Tank monitor fitted
-                </label>
-              </SheetField>
-              {draft.monitor && (
-                <SheetField label="Monitor ID" required>
-                  <Input
-                    value={draft.monitorId}
-                    placeholder="e.g. TM8K2A93"
-                    onChange={(e) => set("monitorId", e.target.value.toUpperCase())}
-                  />
-                </SheetField>
-              )}
-            </div>
-          </SheetSection>
-
-          <SheetSection title="Notes">
-            <Textarea
-              aria-label="Notes"
-              value={draft.notes}
-              onChange={(e) => set("notes", e.target.value)}
-              className="min-h-24"
-            />
-          </SheetSection>
         </div>
+        )}
       </RecordSheet>
+      <ShipToSheet
+        level={2}
+        shipTo={null}
+        open={newShipTo}
+        creating
+        onOpenChange={setNewShipTo}
+        onCreated={(st) => setSiteId(st.id)}
+      />
       <ActivityLogSheet
         open={showLog && Boolean(asset)}
         onOpenChange={setShowLog}

@@ -2,12 +2,7 @@ import * as React from "react";
 import { Pill } from "@/components/ui/pill";
 import { type CodeDiscTone } from "@/components/ui/code-disc";
 import { type StatusTone } from "@/components/ui/status-chip";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { BreakdownCard } from "./BreakdownCard";
+import { BreakdownPopover, OverflowChip } from "./BreakdownCard";
 import type {
   FuelOrderStatus,
   OrderTypeCode,
@@ -136,25 +131,13 @@ export function ProductCell({ products }: { products: ProductQty[] }) {
       </span>
 
       {hidden > 0 && (
-        <HoverCard openDelay={120} closeDelay={80}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Show all ${products.length} products`}
-              className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Pill className="cursor-pointer tabular-nums">
-                +{hidden}
-              </Pill>
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent align="start" side="top" className="w-[260px]">
-            <BreakdownCard
-              title={`All products (${products.length})`}
-              rows={products.map((p) => ({ label: p.name }))}
-            />
-          </HoverCardContent>
-        </HoverCard>
+        /* ON CLICK, the shared way (Pavan, 2026-10-14). */
+        <OverflowChip
+          count={hidden}
+          label={`Show all ${products.length} products`}
+          width={260}
+          card={{ title: `All products (${products.length})`, rows: products.map((p) => ({ label: p.name })) }}
+        />
       )}
 
       {/* Measurement only — never painted, never hit-tested, out of the a11y tree. */}
@@ -236,25 +219,12 @@ export function TagsCell({ tags }: { tags: string[] }) {
       ))}
 
       {hidden > 0 && (
-        <HoverCard openDelay={120} closeDelay={80}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Show all ${tags.length} tags`}
-              className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Pill className="cursor-pointer tabular-nums">
-                +{hidden}
-              </Pill>
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent align="start" side="top" className="w-[220px]">
-            <BreakdownCard
-              title={`All tags (${tags.length})`}
-              rows={tags.map((t) => ({ label: t }))}
-            />
-          </HoverCardContent>
-        </HoverCard>
+        <OverflowChip
+          count={hidden}
+          label={`Show all ${tags.length} tags`}
+          width={220}
+          card={{ title: `All tags (${tags.length})`, rows: tags.map((t) => ({ label: t })) }}
+        />
       )}
 
       {/* Measurement only — never painted, never hit-tested. */}
@@ -295,41 +265,26 @@ export function QtyCell({ products, total }: { products: ProductQty[]; total: nu
     );
   }
 
+  /* THE WHOLE CELL IS THE FIGURE, so the figure is what opens it — on
+     click, the shared way (Pavan, 2026-10-14). The underline stays on the
+     number alone. */
   return (
-    <HoverCard openDelay={120} closeDelay={80}>
-      {/*
-        Bare `asChild` trigger rather than `variant="link"`. That variant puts
-        `hover:underline` on the trigger itself, and CSS text-decoration set on
-        an ancestor is drawn across all inline descendants — a child cannot
-        cancel it — so the "gal" unit got underlined too. Underlining the number
-        span directly off `group-hover` keeps the rule on the value alone.
-
-        The trigger still covers number + unit so the hover target stays
-        comfortable; only the ink moved. Affordances from the DS link variant
-        (cursor, radius, underline-offset, focus ring) are carried over by hand.
-      */}
-      <HoverCardTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${amount} ${unit} across ${products.length} products`}
-          className="group/qty cursor-pointer rounded-sm text-sm text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
+    <BreakdownPopover
+      className="group/qty rounded-sm text-sm text-foreground"
+      label={`${amount} ${unit} across ${products.length} products`}
+      card={{
+        title: "Quantity by product",
+        rows: products.map((p) => ({ label: p.name, value: QTY_FMT.format(p.gal) })),
+        total: { label: "Total", value: QTY_FMT.format(total) },
+      }}
+      trigger={
+        <>
           <span className="font-medium tabular-nums underline-offset-4 group-hover/qty:underline group-focus-visible/qty:underline">
             {amount}
           </span>{" "}
           <span className="text-xs text-muted-foreground">{unit}</span>
-        </button>
-      </HoverCardTrigger>
-      <HoverCardContent align="start" side="top" className="w-[280px]">
-        <BreakdownCard
-          title="Quantity by product"
-          rows={products.map((p) => ({
-            label: p.name,
-            value: QTY_FMT.format(p.gal),
-          }))}
-          total={{ label: "Total", value: QTY_FMT.format(total) }}
-        />
-      </HoverCardContent>
-    </HoverCard>
+        </>
+      }
+    />
   );
 }

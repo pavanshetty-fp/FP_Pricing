@@ -1,16 +1,11 @@
 import * as React from "react";
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+import { OverflowChip, type BreakdownRow } from "./BreakdownCard";
 import {
   GroupHeaderRow,
   TableColumnHeader,
@@ -525,17 +520,20 @@ export function TwoLineCell({
 }
 
 /**
- * First value plus a `+N` for the rest, the remainder behind a hover card. The
- * same idiom the Fuel Orders Product and Tags cells use, except the visible
- * count is fixed at one rather than measured — for these columns the COUNT is
- * the information and the first value is only an anchor.
+ * First value plus a `+N` chip for the rest. The chip opens the shared
+ * breakdown card ON CLICK (Pavan, 2026-10-14 — one way everywhere; was a
+ * hover list). The count is the information here; the first value is only
+ * an anchor. Rows may carry a sub-line and a figure (`rows`).
  */
 export function OverflowList({
   values,
   label,
+  rows,
 }: {
   values: string[];
   label: string;
+  /** Richer rows for the card — default: one per value. */
+  rows?: BreakdownRow[];
 }) {
   if (values.length === 0) {
     return <span className="text-sm text-muted-foreground">—</span>;
@@ -545,28 +543,16 @@ export function OverflowList({
     <div className="flex min-w-0 items-center gap-1.5">
       <span className="truncate text-sm text-foreground">{first}</span>
       {rest.length > 0 && (
-        <HoverCard openDelay={80}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Show all ${values.length} ${label}`}
-              className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <Pill className="tabular-nums">
-                +{rest.length}
-              </Pill>
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent align="start" className="w-auto max-w-72 p-2">
-            <div className="flex flex-col gap-1">
-              {values.map((v) => (
-                <span key={v} className="text-sm text-foreground">
-                  {v}
-                </span>
-              ))}
-            </div>
-          </HoverCardContent>
-        </HoverCard>
+        <OverflowChip
+          count={rest.length}
+          label={`Show all ${values.length} ${label}`}
+          /* WIDER WHEN ROWS CARRY DETAIL — a sub-line and a figure. */
+          width={rows ? 360 : undefined}
+          card={{
+            title: `All ${label} (${values.length})`,
+            rows: rows ?? values.map((v) => ({ label: v })),
+          }}
+        />
       )}
     </div>
   );

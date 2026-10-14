@@ -627,18 +627,6 @@ export function OrdersScreen({
       />
       </div>
 
-      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
-          pressing an alert applies the filter it describes. Where a list's
-          banner sits: under the view row, above the toolbar. */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={alerts}
-          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
-        />
-      )}
-
       <div className="mt-4 shrink-0">
         <ListToolbar
           searchValue={search}
@@ -745,6 +733,19 @@ export function OrdersScreen({
           </div>
         )}
       </div>
+
+      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
+          pressing an alert applies the filter it describes. In the portal it
+          sits BELOW the toolbar, search and filter chips, right above the
+          list (Pavan, 2026-10-14). */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+        />
+      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

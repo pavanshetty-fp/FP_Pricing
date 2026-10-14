@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
+import { OverflowChip } from "../BreakdownCard";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -368,24 +369,21 @@ function ruleColumnText(r: RecurringRule, key: string): string {
  * table's Products cell makes — a cell that stacked four terminals would set
  * the row height for every row in the table.
  */
-function LoadField({ values, empty }: { values: string[]; empty: string }) {
+/* "+N" OPENS THE REST, on click — the shared chip and card (Pavan,
+   2026-10-14: one way everywhere). */
+function LoadField({ values, empty, label = "values" }: { values: string[]; empty: string; label?: string }) {
   const unique = [...new Set(values)];
   if (unique.length === 0)
     return <span className="text-sm text-muted-foreground/70">{empty}</span>;
   return (
-    <span className="flex min-w-0 items-baseline gap-1.5">
+    <span className="flex min-w-0 items-center gap-1.5">
       <span className="truncate text-sm text-foreground">{unique[0]}</span>
       {unique.length > 1 && (
-        <Tooltip>
-          {/* PLAIN TEXT STAYS PLAIN (Pavan, 2026-10-09) — only a product's
-              "+N" is a pill. */}
-          <TooltipTrigger asChild>
-            <span className="shrink-0 cursor-default text-xs text-muted-foreground">
-              +{unique.length - 1}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{unique.slice(1).join(", ")}</TooltipContent>
-        </Tooltip>
+        <OverflowChip
+          count={unique.length - 1}
+          label={`Show all ${unique.length} ${label}`}
+          card={{ title: `All ${label} (${unique.length})`, rows: unique.map((v) => ({ label: v })) }}
+        />
       )}
     </span>
   );
@@ -781,13 +779,13 @@ export function RecurringRulesScreen({
         /* NOT MANDATORY. "Any" is the rule's real answer; an em-dash would
            read as a field somebody forgot. */
         return r.assets.length > 0 ? (
-          <LoadField values={r.assets} empty="Any" />
+          <LoadField values={r.assets} empty="Any" label="assets" />
         ) : (
           <span className="text-sm text-muted-foreground">Any</span>
         );
       case "products":
         return (
-          <LoadField values={r.lines.map((l) => l.product)} empty={DASH} />
+          <LoadField values={r.lines.map((l) => l.product)} empty={DASH} label="products" />
         );
       case "qty": {
         const gal = ruleGallons(r);
@@ -832,6 +830,7 @@ export function RecurringRulesScreen({
         return (
           <LoadField
             values={r.loadOrder?.map((l) => l.terminal) ?? []}
+            label="terminals"
             empty="Partner supplies"
           />
         );
@@ -839,6 +838,7 @@ export function RecurringRulesScreen({
         return (
           <LoadField
             values={r.loadOrder?.map((l) => l.supplier) ?? []}
+            label="suppliers"
             empty={DASH}
           />
         );
@@ -846,6 +846,7 @@ export function RecurringRulesScreen({
         return (
           <LoadField
             values={r.loadOrder?.map((l) => l.loadingAccount) ?? []}
+            label="accounts"
             empty={DASH}
           />
         );

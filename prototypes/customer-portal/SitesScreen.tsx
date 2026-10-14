@@ -6,7 +6,7 @@ import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 import { cn } from "@/lib/utils";
-import { OverflowList, TwoLineCell, type ListColumn } from "../unified-view/ListTable";
+import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { DATE_FMT } from "../unified-view/data";
 import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, TENANT, printKey, type Asset, type ShipTo } from "./orders";
@@ -14,6 +14,7 @@ import { createdOf, lastDeliveryFor, useShipTos } from "./sites";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog } from "./activityLog";
 import { PortalList } from "./PortalList";
+import { ShipToAssetsCell, ShipToProductsCell, ValuesCell } from "./cells";
 import { ShipToSheet } from "./ShipToSheet";
 import { AssetSheet } from "./AssetSheet";
 
@@ -45,13 +46,16 @@ const coords = (lat: number | null, lng: number | null) =>
 
 /* ------------------------------------------------------------ ship-tos --- */
 
-type SK = "name" | "address" | "assets" | "contact" | "hours" | "location" | "status" | "actions";
+type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "access" | "geofence" | "location" | "status" | "actions";
 const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "name", label: "Ship-to", width: 180, sortable: true },
   { key: "address", label: "Address", width: 240, sortable: true },
-  { key: "assets", label: "Assets", width: 220, sortable: true },
+  { key: "assets", label: "Assets", width: 200, sortable: true },
+  { key: "products", label: "Products", width: 180, sortable: true },
   { key: "contact", label: "Contact", width: 180, sortable: true },
   { key: "hours", label: "Delivery hours", width: 170, sortable: true },
+  { key: "access", label: "Access notes", width: 220, sortable: true },
+  { key: "geofence", label: "Geofence", width: 120, sortable: true },
   { key: "location", label: "Location", width: 170, sortable: true },
   { key: "status", label: "Status", width: 120, sortable: true },
   { key: "actions", label: "", width: 44 },
@@ -64,10 +68,16 @@ const shipToText = (s: ShipTo, k: SK): string => {
       return `${s.street}, ${s.city}, ${s.state} ${s.zip}`;
     case "assets":
       return s.assets.map((a) => a.name).join(", ");
+    case "products":
+      return Array.from(new Set(s.assets.flatMap((a) => a.products))).join(", ");
     case "contact":
       return `${s.contactName} ${s.contactPhone}`.trim();
     case "hours":
       return `${formatMinutes(s.hoursStart)} – ${formatMinutes(s.hoursEnd)}`;
+    case "access":
+      return s.accessNotes;
+    case "geofence":
+      return s.geofence === null ? "" : `${s.geofence.toFixed(2)} mi`;
     case "location":
       return coords(s.lat, s.lng);
     case "status":
@@ -218,7 +228,7 @@ export function SitesScreen({
           rows={shipTos}
           columns={SHIP_TO_COLUMNS}
           /* HIDDEN UNTIL ASKED FOR, so Status is on screen (2-layouts §5). */
-          defaultHidden={["location"]}
+          defaultHidden={["access", "geofence", "location"]}
           rowId={(s) => s.id}
           text={shipToText}
           sortValue={(s, k) => (k === "assets" ? s.assets.length : k === "hours" ? s.hoursStart : undefined)}
@@ -228,12 +238,19 @@ export function SitesScreen({
                 return <span className="text-sm font-medium text-foreground">{s.name}</span>;
               case "address":
                 return <TwoLineCell title={s.street} description={`${s.city}, ${s.state} ${s.zip}`} />;
+              /* THE ORDERS BREAKDOWN, on press (Pavan, 2026-10-14). */
               case "assets":
-                return <OverflowList values={s.assets.map((a) => a.name)} label="assets" />;
+                return <ShipToAssetsCell s={s} />;
+              case "products":
+                return <ShipToProductsCell s={s} />;
               case "contact":
                 return s.contactName ? <TwoLineCell title={s.contactName} description={s.contactPhone} /> : muted;
               case "hours":
                 return <span className="text-sm">{shipToText(s, "hours")}</span>;
+              case "access":
+                return s.accessNotes ? <span className="truncate text-sm" title={s.accessNotes}>{s.accessNotes}</span> : muted;
+              case "geofence":
+                return s.geofence === null ? muted : <span className="text-sm tabular-nums">{s.geofence.toFixed(2)} mi</span>;
               case "location":
                 return coords(s.lat, s.lng) ? (
                   <span className="text-sm tabular-nums">{coords(s.lat, s.lng)}</span>
@@ -299,7 +316,7 @@ export function SitesScreen({
               case "erpId":
                 return a.erpId ? <span className="text-sm tabular-nums">{a.erpId}</span> : muted;
               case "categories":
-                return <OverflowList values={a.categories} label="categories" />;
+                return <ValuesCell values={a.categories} label="product categories" />;
               case "created": {
                 const c = createdOf(a);
                 return c ? <TwoLineCell title={c.by} description={DATE_FMT.format(new Date(c.at))} /> : muted;
@@ -330,7 +347,7 @@ export function SitesScreen({
               case "shipTo":
                 return <span className="truncate text-sm">{r.shipTo.name}</span>;
               case "product":
-                return <OverflowList values={a.products} label="products" />;
+                return <ValuesCell values={a.products} label="products" />;
               case "capacity":
                 return <span className="text-sm tabular-nums">{a.capacity.toLocaleString()}</span>;
               case "ownership":

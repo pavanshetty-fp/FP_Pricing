@@ -218,7 +218,7 @@ const asset = (
   product: string,
   capacity: number,
   at: [number, number],
-  o: { rented?: boolean; monitor?: string; level?: number; rfid?: string } = {}
+  o: { rented?: boolean; monitor?: string; level?: number; rfid?: string; products?: string[] } = {}
 ): Asset => ({
   id,
   name,
@@ -226,8 +226,8 @@ const asset = (
   rfid: o.rfid ?? "",
   erpId: `ERP-${40100 + id.charCodeAt(0) * 10 + Number(id.slice(2))}`,
   type,
-  categories: [CATEGORY_OF[product]],
-  products: [product],
+  categories: Array.from(new Set((o.products ?? [product]).map((p) => CATEGORY_OF[p]))),
+  products: o.products ?? [product],
   product,
   capacity,
   rented: o.rented ?? false,
@@ -259,7 +259,12 @@ export const SHIP_TOS: ShipTo[] = [
     status: "Active",
     assets: [
       asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64, rfid: "E2801160600002" }),
-      asset("a-2", "Tank A2", "Tank", "Diesel", 10000, [29.7805, -95.3804], { monitor: "TM8K2A92", level: 31 }),
+      asset("a-2", "Tank A2", "Tank", "Diesel", 10000, [29.7805, -95.3804], {
+        monitor: "TM8K2A92",
+        level: 31,
+        /* A MULTI-PRODUCT TANK — five products it can take (Pavan, 2026-10-14). */
+        products: ["Diesel", "Dyed Diesel", "Unleaded 87", "Jet A", "Avgas 100LL"],
+      }),
       asset("a-3", "DEF Tote 1", "Tote", "DEF", 330, [29.7801, -95.3799], { rented: true }),
       asset("a-4", "Generator G-12", "Generator", "Diesel", 500, [29.7797, -95.3811]),
       asset("a-5", "Hydraulic Reservoir H-2", "Reservoir", "Hydraulic Oil AW-46", 275, [29.7799, -95.3802]),

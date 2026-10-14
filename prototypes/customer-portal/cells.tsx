@@ -1,10 +1,12 @@
-import * as React from "react";
 import { FileText } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { DATE_FMT } from "../unified-view/data";
+import { BreakdownPopover } from "../unified-view/BreakdownCard";
+import { OverflowList } from "../unified-view/ListTable";
 import {
+  type Asset,
+  type ShipTo,
   assetById,
   lineQty,
   quantityOf,
@@ -15,94 +17,28 @@ import {
 } from "./orders";
 
 /*
-  THE LINE BREAKDOWN, FROM ANY OF ITS COLUMNS (Pavan, 2026-10-13). A request
-  with two tanks prints one total; pressing the Tanks & assets, Product or
-  Quantity cell opens the same facts — which tank, which product, how many
-  gallons — ordered by the column it was opened from:
+  THE LINE BREAKDOWN — the Unified View's way, which is the source of truth
+  (Pavan, 2026-10-14): the "+N" CHIP opens the shared BreakdownCard on CLICK,
+  above the cell; where the whole cell is the figure (a quantity, a count),
+  the figure opens it. Rows carry a sub-line where there is more to say.
 
-    Tanks & assets  each tank → its product and quantity
-    Product         each product → its total, then its tanks
-    Quantity        the total → each line's quantity, tank and product
-
-  ON PRESS, not hover — touch cannot hover (interactions §3b).
+    Tanks & assets  each tank → its product, and the quantity
+    Product         each product → its tanks, and the quantity
+    Quantity        each line → its tank and product, and the total
 */
 
-const TRIGGER =
-  "flex min-w-0 max-w-full items-center gap-1.5 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
-
 const assetName = (l: RequestLine) => assetById(l.assetId)?.name ?? "No tank";
-
-function Breakdown({
-  trigger,
-  label,
-  align = "start",
-  children,
-}: {
-  trigger: React.ReactNode;
-  label: string;
-  align?: "start" | "end";
-  children: React.ReactNode;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" aria-label={label} className={TRIGGER}>
-          {trigger}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align={align} className="w-72 p-0">
-        {children}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** One row of a breakdown: what leads, what follows, a figure at the end. */
-function Row({ lead, sub, value }: { lead: string; sub?: string; value?: string }) {
-  return (
-    <li className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate text-sm text-foreground">{lead}</span>
-        {sub && <span className="truncate text-xs text-muted-foreground">{sub}</span>}
-      </span>
-      {value && <span className="shrink-0 text-sm tabular-nums text-foreground">{value}</span>}
-    </li>
-  );
-}
-
-const Head = ({ title, value }: { title: string; value?: string }) => (
-  <div className="flex items-baseline justify-between gap-3 border-b border-border bg-fp-table-header px-3 py-2">
-    <span className="text-xs font-medium text-muted-foreground">{title}</span>
-    {value && <span className="text-xs font-medium tabular-nums text-foreground">{value}</span>}
-  </div>
-);
-
-/** First value, then "+N" as a pill — the OverflowList's face. */
-function Face({ values }: { values: string[] }) {
-  const [first, ...rest] = values;
-  return (
-    <>
-      <span className="truncate text-sm text-foreground">{first}</span>
-      {rest.length > 0 && <Pill className="shrink-0 tabular-nums">+{rest.length}</Pill>}
-    </>
-  );
-}
+const dash = <span className="text-sm text-muted-foreground">—</span>;
 
 export function AssetsCell({ r }: { r: OrderRequest }) {
   const lines = r.lines.filter((l) => l.assetId || l.product);
-  if (lines.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+  if (lines.length === 0) return dash;
   return (
-    <Breakdown
-      label={`Show tanks and assets of ${r.requestNo}`}
-      trigger={<Face values={lines.map(assetName)} />}
-    >
-      <Head title="Tank / asset" value="Quantity" />
-      <ul className="divide-y divide-border">
-        {lines.map((l, i) => (
-          <Row key={i} lead={assetName(l)} sub={l.product || "No product"} value={lineQty(l)} />
-        ))}
-      </ul>
-    </Breakdown>
+    <OverflowList
+      values={lines.map(assetName)}
+      label="tanks and assets"
+      rows={lines.map((l) => ({ label: assetName(l), sub: l.product || "No product", value: lineQty(l) }))}
+    />
   );
 }
 
@@ -112,48 +48,40 @@ export function ProductsCell({ r }: { r: OrderRequest }) {
     if (!l.product) continue;
     groups.set(l.product, [...(groups.get(l.product) ?? []), l]);
   }
-  if (groups.size === 0) return <span className="text-sm text-muted-foreground">—</span>;
+  if (groups.size === 0) return dash;
   return (
-    <Breakdown
-      label={`Show products of ${r.requestNo}`}
-      trigger={<Face values={[...groups.keys()]} />}
-    >
-      {[...groups].map(([product, lines]) => (
-        <div key={product}>
-          <Head title={product} value={quantityText(lines) ? `${quantityText(lines)} gal` : undefined} />
-          <ul className="divide-y divide-border">
-            {lines.map((l, i) => (
-              <Row key={i} lead={assetName(l)} value={lineQty(l)} />
-            ))}
-          </ul>
-        </div>
-      ))}
-    </Breakdown>
+    <OverflowList
+      values={[...groups.keys()]}
+      label="products"
+      rows={[...groups].map(([product, lines]) => ({
+        label: product,
+        sub: lines.map(assetName).join(", "),
+        value: quantityText(lines) || undefined,
+      }))}
+    />
   );
 }
 
 export function QuantityCell({ r }: { r: OrderRequest }) {
   const text = quantityText(r.lines);
-  if (!text) return <span className="text-sm text-muted-foreground">—</span>;
+  if (!text) return dash;
   const { gal } = quantityOf(r.lines);
+  const face = <span className="truncate text-sm tabular-nums text-foreground">{text}</span>;
+  /* ONE LINE HAS NOTHING TO BREAK DOWN — plain text, no dead trigger. */
+  if (r.lines.length < 2) return <div className="flex justify-end">{face}</div>;
   return (
     <div className="flex justify-end">
-      <Breakdown
+      <BreakdownPopover
         align="end"
+        className="rounded-sm"
         label={`Show quantity breakdown of ${r.requestNo}`}
-        trigger={<span className="truncate text-sm tabular-nums text-foreground">{text}</span>}
-      >
-        <Head title="Total" value={gal > 0 ? `${gal.toLocaleString()} gal` : "Top off"} />
-        <ul className="divide-y divide-border">
-          {r.lines.map((l, i) => (
-            <Row
-              key={i}
-              lead={lineQty(l)}
-              sub={`${assetName(l)} · ${l.product || "No product"}`}
-            />
-          ))}
-        </ul>
-      </Breakdown>
+        trigger={face}
+        card={{
+          title: "Quantity by tank",
+          rows: r.lines.map((l) => ({ label: assetName(l), sub: l.product || "No product", value: lineQty(l) })),
+          total: { label: "Total", value: gal > 0 ? `${gal.toLocaleString()} gal` : "Top off" },
+        }}
+      />
     </div>
   );
 }
@@ -174,28 +102,19 @@ export function FlagsCell({ r }: { r: OrderRequest }) {
   const order: FlagLevel[] = ["critical", "warning", "info"];
   const flags = [...r.flags].sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level));
   const [first, ...rest] = flags;
+  /* THE FLAG IS THE CELL, so the flag opens it — its detail lives in the card. */
   return (
-    <Breakdown
+    <BreakdownPopover
+      className="flex min-w-0 max-w-full items-center gap-1.5 rounded-md text-left"
       label={`Show flags of ${r.requestNo}`}
       trigger={
         <>
           <span className={cn("truncate text-sm", FLAG_TEXT[first.level])}>{first.kind}</span>
-          {rest.length > 0 && (
-            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">+{rest.length}</span>
-          )}
+          {rest.length > 0 && <Pill className="shrink-0 tabular-nums">+{rest.length}</Pill>}
         </>
       }
-    >
-      <Head title="Flags" />
-      <ul className="divide-y divide-border">
-        {flags.map((f, i) => (
-          <li key={i} className="flex flex-col gap-0.5 px-3 py-2">
-            <span className={cn("text-sm font-medium", FLAG_TEXT[f.level])}>{f.kind}</span>
-            <span className="text-sm text-foreground">{f.detail}</span>
-          </li>
-        ))}
-      </ul>
-    </Breakdown>
+      card={{ title: `Flags (${flags.length})`, rows: flags.map((f) => ({ label: f.kind, sub: f.detail })) }}
+    />
   );
 }
 
@@ -203,25 +122,69 @@ export function DocumentsCell({ r }: { r: OrderRequest }) {
   const n = r.documents.length;
   if (n === 0) return <span className="text-sm text-muted-foreground">—</span>;
   return (
-    <Breakdown
+    <BreakdownPopover
+      className="flex items-center gap-1.5 rounded-md"
       label={`Show documents of ${r.requestNo}`}
+      width={320}
       trigger={
         <>
           <FileText className="size-4 shrink-0 text-muted-foreground" />
           <span className="text-sm text-foreground">{n === 1 ? "1 document" : `${n} documents`}</span>
         </>
       }
-    >
-      <Head title="Documents" />
-      <ul className="divide-y divide-border">
-        {r.documents.map((d) => (
-          <Row
-            key={d.id}
-            lead={d.name}
-            sub={`${d.kind} · ${d.by} · ${DATE_FMT.format(new Date(d.at))}`}
-          />
-        ))}
-      </ul>
-    </Breakdown>
+      card={{
+        title: `Documents (${n})`,
+        rows: r.documents.map((d) => ({ label: d.name, sub: `${d.kind} · ${d.by} · ${DATE_FMT.format(new Date(d.at))}` })),
+      }}
+    />
   );
+}
+
+/* ------------------------------------------------- sites & assets --- */
+
+/*
+  THE SAME BREAKDOWN ON SITES & ASSETS (Pavan, 2026-10-14) — the "+N" chip
+  opens the shared card on click. CAPACITY, not quantity: how much ONE asset
+  holds — always an asset's, never summed for a ship-to or a product. Orders
+  keep Quantity: that is what was requested.
+
+    Assets     each asset → its products, and its capacity
+    Products   each product → the assets that take it, each with its capacity
+*/
+const gal = (n: number) => `${n.toLocaleString()} gal`;
+
+export function ShipToAssetsCell({ s }: { s: ShipTo }) {
+  if (s.assets.length === 0) return dash;
+  return (
+    <OverflowList
+      values={s.assets.map((a) => a.name)}
+      label="assets"
+      rows={s.assets.map((a) => ({
+        label: a.name,
+        sub: a.products.join(", ") || "No product",
+        value: `${gal(a.capacity)} capacity`,
+      }))}
+    />
+  );
+}
+
+export function ShipToProductsCell({ s }: { s: ShipTo }) {
+  const groups = new Map<string, Asset[]>();
+  for (const a of s.assets) for (const p of a.products) groups.set(p, [...(groups.get(p) ?? []), a]);
+  if (groups.size === 0) return dash;
+  return (
+    <OverflowList
+      values={[...groups.keys()]}
+      label="products"
+      rows={[...groups].map(([product, assets]) => ({
+        label: product,
+        sub: assets.map((a) => `${a.name} (${gal(a.capacity)} capacity)`).join(" · "),
+      }))}
+    />
+  );
+}
+
+/** A list of values behind "+N" — the asset's products or categories. */
+export function ValuesCell({ values, label }: { values: string[]; label: string }) {
+  return <OverflowList values={values} label={label} />;
 }

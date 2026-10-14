@@ -248,7 +248,7 @@ export function customerConfig(
           );
         }
         case "shipTos":
-          return <OverflowList values={shipToNames(c)} label="ship-to" />;
+          return <OverflowList values={shipToNames(c)} label="ship-tos" />;
         case "terms":
           return <span className="text-sm">{c.paymentTerms}</span>;
         case "status":
@@ -530,7 +530,7 @@ export function vendorConfig(
             </div>
           );
         case "lines":
-          return <OverflowList values={v.businessLines} label="line" />;
+          return <OverflowList values={v.businessLines} label="business lines" />;
         case "erpId":
           return v.erpVendorId ? <span className="text-sm tabular-nums">{v.erpVendorId}</span> : <Muted />;
         case "address":
@@ -546,14 +546,14 @@ export function vendorConfig(
             />
           );
         case "serviceArea":
-          return <OverflowList values={v.serviceStates} label="state" />;
+          return <OverflowList values={v.serviceStates} label="service states" />;
         case "products":
           return (
             <OverflowList
               values={v.supportedProductIds
                 .map((id) => BROKER_PRODUCTS.find((p) => p.id === id)?.name ?? "")
                 .filter(Boolean)}
-              label="product"
+              label="products"
             />
           );
         case "status":

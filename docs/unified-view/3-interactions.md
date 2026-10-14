@@ -89,6 +89,16 @@ text and presses nothing.
 - **Row actions appear on hover and on focus**, never on hover alone.
 - **Hover is not a way to see data.** On a board of forty cards a hover card
   fires on the way past; anything worth reading is a press.
+- **"+N" overflow opens on CLICK, the same way everywhere (Pavan,
+  2026-10-14).** A cell with more values than it shows wears a "+N" chip;
+  clicking the CHIP opens the shared `BreakdownCard` (title with the count,
+  dashed rule, rows, optional total) above the cell. Where the whole cell is
+  the figure — a quantity, a document count, a flag — the figure opens it.
+  Rows may carry a sub-line (an asset's products) and a value (its capacity,
+  a line's quantity). The click stays in the cell: it never also opens the
+  row. Parts: `OverflowList`, `OverflowChip`, `BreakdownPopover`
+  (`prototypes/unified-view/BreakdownCard.tsx`). The Customer Portal uses the
+  same parts — the Unified View is the source of truth.
 - **The brand colour is not a hover state.** It is CTA fills, the active tab,
   the brand mark, and the search-match highlight at 25%.
 

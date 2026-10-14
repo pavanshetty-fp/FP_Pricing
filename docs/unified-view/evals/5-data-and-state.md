@@ -44,6 +44,32 @@ lie about the record behind it.
 - [ ] **L2** A seeded value drawn from a random stream is drawn unconditionally
       — a short-circuit shifts every value after it and reshuffles the fixture.
 
+## Field reach (Pavan, 2026-10-14)
+
+New data reaches every screen of its record — it should go without saying,
+so it is counted.
+
+- [ ] **L1** `[script]` `field-reach` — every field of a registered record
+      type appears on every screen that CREATES, EDITS or LISTS that record
+      (a sheet, an inline create table, a list), unless that screen skips the
+      field **with a written reason** in `scripts/eval/field-reach.mjs`. The
+      skip list is the decision record.
+- [ ] **L2** `[read]` A field that only appears as a READ (e.g. used to filter
+      options) passes the script but is not shown. When a field is added,
+      open each registered screen and confirm it can be seen and, where the
+      screen makes the record, set.
+- [ ] **L2** `[read]` A new screen of a registered record, or a new record
+      type, is added to the registry in the same change — an unregistered
+      screen is not checked.
+
+- [ ] **L1** `[script]` NESTED too — a record shown inside another's screen
+      (a ship-to's Assets / Products breakdowns) carries the fields
+      its registry entry lists in `only` (asset name, products, capacity).
+
+Registered today: **Asset** (asset sheet · ship-to step 2 table · Assets
+list · the Ship-tos list's two breakdowns) and **ShipTo** (ship-to sheet ·
+Ship-tos list), Customer Portal.
+
 ## Consistency across modules
 
 - [ ] **L2** The same kind of table has the same columns, order and widths in

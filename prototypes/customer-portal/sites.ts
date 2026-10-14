@@ -99,12 +99,29 @@ export function blankShipTo(): ShipToDraft {
   };
 }
 
+/*
+  MAPPING AN EXISTING ASSET MOVES IT (Pavan, 2026-10-14 — step 2 of a
+  ship-to maps assets to it). An asset stands at one ship-to, so a draft row
+  that carries the id of an asset somewhere else takes it from there, with its
+  reading and its history, and logs the move.
+*/
+function claim(d: AssetDraft, toId: string, toName: string): Asset {
+  const from = SHIP_TOS.find((x) => x.id !== toId && x.assets.some((a) => a.id === d.id));
+  if (!from || !d.id) return toAsset(d, SHIP_TOS.find((x) => x.id === toId)?.assets.find((a) => a.id === d.id));
+  const prev = from.assets.find((a) => a.id === d.id)!;
+  from.assets = from.assets.filter((a) => a.id !== d.id);
+  from.audit = log(from.audit, `${prev.name} moved to ${toName}`);
+  const a = toAsset(d, prev);
+  return { ...a, audit: log(a.audit, `Moved from ${from.name} to ${toName}`) };
+}
+
 export function createShipTo(d: ShipToDraft): ShipTo {
   const at = new Date().toISOString();
+  const id = newId("st");
   const s: ShipTo = {
     ...d,
-    id: newId("st"),
-    assets: d.assets.map((a) => toAsset(a)),
+    id,
+    assets: d.assets.map((a) => claim(a, id, d.name)),
     audit: [{ at, by: PORTAL_ACTOR, changes: ["Ship-to created"] }],
   };
   SHIP_TOS.unshift(s);
@@ -121,7 +138,7 @@ export function updateShipTo(id: string, d: ShipToDraft, change?: string) {
   SHIP_TOS[i] = {
     ...prev,
     ...d,
-    assets: d.assets.map((a) => toAsset(a, prev.assets.find((x) => x.id === a.id))),
+    assets: d.assets.map((a) => claim(a, id, d.name)),
     audit: change ? log(prev.audit, change) : prev.audit,
   };
   emit();

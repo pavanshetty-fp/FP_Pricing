@@ -2,6 +2,9 @@ import * as React from "react";
 import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Repeat } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SheetSectionNote } from "@/components/side-sheet/parts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { DATE_FMT, startOfDay } from "../unified-view/data";
@@ -87,20 +90,35 @@ const VIZ = {
 /* ------------------------------------------------------------ pieces --- */
 
 function Card({
+  bare,
   title,
+  note,
   aside,
   children,
   className,
 }: {
   title: string;
+  /** An explainer behind an ⓘ beside the title — opens on click. */
+  note?: React.ReactNode;
   aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** No frame — a part of a shared card, set apart by a divider. */
+  bare?: boolean;
 }) {
   return (
-    <section className={cn("flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-fp-surface-1b p-4", className)}>
+    <section
+      className={cn(
+        "flex min-w-0 flex-col gap-4 p-4",
+        !bare && "rounded-xl border border-border bg-fp-surface-1b",
+        className
+      )}
+    >
       <header className="flex min-h-7 items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <span className="flex items-center gap-1.5">
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          {note && <SheetSectionNote label={`About ${title}`}>{note}</SheetSectionNote>}
+        </span>
         {aside}
       </header>
       {children}
@@ -233,9 +251,12 @@ function WeekBars({
   format = num,
   extra,
   fill,
+  limit,
 }: {
   weeks: Week[];
   series: BarSeries[];
+  /** A threshold drawn across the plot — a credit limit. */
+  limit?: { value: number; label: string };
   height?: number;
   /** Take the height the card leaves it (at least `height`). */
   fill?: boolean;
@@ -252,7 +273,7 @@ function WeekBars({
   const plotW = Math.max(0, W - padL);
   const plotH = height - padB - padT;
   const totals = weeks.map((w) => series.reduce((a, s) => a + s.value(w), 0));
-  const max = niceMax(Math.max(...totals, 1));
+  const max = niceMax(Math.max(...totals, limit?.value ?? 0, 1));
   const slot = weeks.length ? plotW / weeks.length : 0;
   const bw = Math.min(28, slot * 0.56);
   const y = (v: number) => padT + plotH - (v / max) * plotH;
@@ -275,6 +296,15 @@ function WeekBars({
               </text>
             </g>
           ))}
+          {/* THE LIMIT — a strong dashed rule with its name at the right end. */}
+          {limit && (
+            <g>
+              <line x1={padL} x2={W} y1={y(limit.value)} y2={y(limit.value)} className="stroke-foreground" strokeWidth={1.5} strokeDasharray="6 4" />
+              <text x={W} y={y(limit.value) - 6} textAnchor="end" className="fill-foreground text-[11px] font-medium">
+                {limit.label}
+              </text>
+            </g>
+          )}
           {weeks.map((w, i) => {
             const cx = padL + slot * i + slot / 2;
             let acc = 0;
@@ -335,13 +365,17 @@ function WeekLines({
   series,
   height = 168,
   format,
+  fill,
 }: {
   weeks: Week[];
   series: BarSeries[];
   height?: number;
   format: (n: number) => string;
+  /** Take the height the card leaves it (at least `height`). */
+  fill?: boolean;
 }) {
-  const [ref, W] = useWidth<HTMLDivElement>();
+  const [ref, W, H] = useWidth<HTMLDivElement>();
+  if (fill && H > height) height = H;
   const [hover, setHover] = React.useState<number | null>(null);
   const padL = 48;
   const padB = 22;
@@ -356,12 +390,17 @@ function WeekLines({
   const ticks = [lo, (lo + hi) / 2, hi];
   const every = weeks.length > 8 ? 2 : 1;
   return (
-    <div ref={ref} className="relative w-full" style={{ height }} onMouseLeave={() => setHover(null)}>
+    <div
+      ref={ref}
+      className={cn("relative w-full", fill && "min-h-0 flex-1")}
+      style={fill ? { minHeight: height } : { height }}
+      onMouseLeave={() => setHover(null)}
+    >
       {W > 0 && (
         <svg
           width={W}
           height={height}
-          className="block"
+          className="absolute inset-x-0 top-0 block"
           role="img"
           aria-label={series.map((s) => s.label).join(" and ") + " by week"}
           onMouseMove={(e) => {
@@ -463,13 +502,27 @@ function Headlines({ now, before, n }: { now: Week[]; before: Week[]; n: number 
       {tiles.map((t) => (
         <section key={t.title} className="flex min-w-0 flex-col gap-1 px-4 py-3">
           <h3 className="text-sm font-medium text-foreground">{t.title}</h3>
+          {/* THE EXPLAINER IS BEHIND THE NUMBER (Pavan, 2026-10-14) — no line
+              under it; the figure changes under the pointer, a click shows it. */}
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-3xl font-semibold tabular-nums text-foreground">{t.value}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`About ${t.title}`}
+                  /* NO UNDERLINE (Pavan, 2026-10-14) — the figure softens under
+                     the pointer, as the alert banner's pressable titles do. */
+                  className="cursor-pointer rounded-sm text-3xl font-semibold tabular-nums text-foreground outline-none transition-opacity hover:opacity-60 focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:opacity-60"
+                >
+                  {t.value}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 text-xs leading-relaxed">
+                {t.note[0].toUpperCase() + t.note.slice(1)}. Compared with the {n} weeks before.
+              </PopoverContent>
+            </Popover>
             {t.unit && <span className="text-sm text-muted-foreground">{t.unit}</span>}
             {t.change}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t.note} · vs the {n} weeks before
           </p>
         </section>
       ))}
@@ -657,7 +710,10 @@ function RequestsChart({ weeks }: { weeks: Week[] }) {
       <Legend
         items={series.map((s) => ({ hue: VIZ[s.hue].bg, label: s.label, value: num(tot(s.value)) }))}
       />
+      {/* FILLS THE CARD — beside Empty-tank reports, both axes sit on the
+          cards' foot (Pavan, 2026-10-14). */}
       <WeekBars
+        fill
         weeks={weeks}
         series={series}
         extra={(w) => [{ label: "Cancelled", value: num(w.cancelled) }]}
@@ -672,6 +728,9 @@ function EmptyChart({ weeks }: { weeks: Week[] }) {
   return (
     <Card
       title="Empty-tank reports by week"
+      /* THE EXPLAINER ON CLICK (Pavan, 2026-10-14) — not a line under the
+         title. */
+      note={`${total} ${total === 1 ? "time" : "times"} in these weeks, from drivers’ notes. The goal is 0.`}
       aside={
         since !== null && (
           <span className="text-sm text-muted-foreground">
@@ -680,10 +739,7 @@ function EmptyChart({ weeks }: { weeks: Week[] }) {
         )
       }
     >
-      <p className="text-xs text-muted-foreground">
-        {total} {total === 1 ? "time" : "times"} in these weeks, from drivers’ notes. The goal is 0.
-      </p>
-      <WeekBars weeks={weeks} series={[{ key: "empty", label: "Found empty", hue: 1, value: (w) => w.foundEmpty }]} />
+      <WeekBars fill weeks={weeks} series={[{ key: "empty", label: "Found empty", hue: 1, value: (w) => w.foundEmpty }]} />
     </Card>
   );
 }
@@ -712,7 +768,10 @@ function InvoicesCard({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
   const all = total(inv);
   return (
     <Card title="Open invoices" aside={<span className="text-sm font-semibold tabular-nums text-foreground">{usd.format(all)}</span>}>
-      <dl className="grid grid-cols-3 gap-3">
+      {/* THE FIGURES ROW — the same height as Credit's beside it, figures on
+          the bottom, so the two cards' numbers and bars line up (Pavan,
+          2026-10-14). */}
+      <dl className="grid h-16 grid-cols-3 items-end gap-3">
         {[
           { label: "Overdue", xs: overdue, cls: "text-status-failed" },
           { label: "Due in 7 days", xs: week, cls: "text-foreground" },
@@ -722,7 +781,7 @@ function InvoicesCard({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
             <dt className="text-xs text-muted-foreground">
               {b.label} · {b.xs.length}
             </dt>
-            <dd className={cn("text-lg font-semibold tabular-nums", b.cls)}>{usd.format(total(b.xs))}</dd>
+            <dd className={cn("text-lg leading-none font-semibold tabular-nums", b.cls)}>{usd.format(total(b.xs))}</dd>
           </div>
         ))}
       </dl>
@@ -784,13 +843,14 @@ function CreditCard({ weeks }: { weeks: Week[] }) {
         </span>
       }
     >
-      <p className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-3xl font-semibold tabular-nums text-foreground">{usd.format(available)}</span>
-        <span className="text-sm text-muted-foreground">available this week</span>
+      <p className="flex h-16 flex-wrap items-end gap-x-2">
+        <span className="text-3xl leading-none font-semibold tabular-nums text-foreground">{usd.format(available)}</span>
+        <span className="text-sm leading-none text-muted-foreground">available this week</span>
       </p>
       <div className="flex flex-col gap-2">
         {/* PART TO WHOLE — the track is the limit. */}
-        <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-muted" role="img" aria-label="Credit used, committed and available">
+        {/* THE SAME BAR AS THE INVOICE AGING — 10px, 2px gaps, rounded ends. */}
+        <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-muted" role="img" aria-label="Credit used, committed and available">
           {parts.map((p) => (
             <span
               key={p.key}
@@ -806,19 +866,16 @@ function CreditCard({ weeks }: { weeks: Week[] }) {
             { hue: "bg-muted", label: "Available", value: usd.format(available) },
           ]}
         />
-        <p className="text-xs text-muted-foreground">
-          Committed = accepted quotes and placed orders not yet invoiced.
-        </p>
       </div>
       {/* THE CHART TAKES THE REST OF THE CARD — it sits beside Open invoices,
           which is taller (Pavan, 2026-10-13). */}
       <div className="flex min-h-0 flex-1 flex-col gap-2">
-        <h3 className="text-xs font-medium text-muted-foreground">Credit used per week, of {usd.format(limit)}</h3>
         <WeekBars
           fill
           weeks={weeks}
           height={160}
           series={[{ key: "used", label: "Credit used", hue: 1, value: (w) => w.creditUsed }]}
+          limit={{ value: limit, label: `Credit limit ${usd.format(limit)}` }}
           format={(n) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : usd.format(n))}
           extra={(w) => [{ label: "Of the limit", value: `${Math.round((w.creditUsed / limit) * 100)}%` }]}
         />
@@ -876,13 +933,26 @@ function ProductsCard({ now, before, n }: { now: Week[]; before: Week[]; n: numb
   the market's (red), week by week. The point is to show the value of
   ordering through the tenant.
 */
-function SavingsCard({ weeks, product, n }: { weeks: Week[]; product: string; n: number }) {
+function SavingsCard({
+  weeks,
+  before,
+  product,
+  n,
+  bare,
+}: {
+  weeks: Week[];
+  before: Week[];
+  product: string;
+  n: number;
+  bare?: boolean;
+}) {
   const saved = savings(weeks, product);
   const all = savings(weeks);
+  const allBefore = savings(before);
   const avg = (k: "paid" | "market") =>
     weeks.reduce((a, w) => a + (w.prices[product]?.[k] ?? 0), 0) / Math.max(1, weeks.length);
   return (
-    <Card title="Saved vs market">
+    <Card bare={bare} title="Saved vs market">
       <dl className="flex flex-1 flex-col gap-4">
         <div className="flex flex-col gap-0.5">
           <dt className="text-xs text-muted-foreground">
@@ -912,9 +982,24 @@ function SavingsCard({ weeks, product, n }: { weeks: Week[]; product: string; n:
             </dd>
           </div>
         </div>
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-3">
-          <dt className="text-xs text-muted-foreground">All products · last {n} weeks</dt>
-          <dd className="text-base font-semibold tabular-nums text-foreground">{usd.format(all)}</dd>
+        {/* ALL PRODUCTS — the figure first, its label under it, and on the
+            right the change on the weeks before; its hover says from what
+            (Pavan, 2026-10-14). No other words. */}
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
+          <div className="flex flex-col gap-0.5">
+            <dd className="text-base font-semibold tabular-nums text-foreground">{usd.format(all)}</dd>
+            <dt className="text-xs text-muted-foreground">All products · last {n} weeks</dt>
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">
+                <Change now={all} then={allBefore} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {usd.format(allBefore)} saved in the {n} weeks before
+            </TooltipContent>
+          </Tooltip>
         </div>
       </dl>
     </Card>
@@ -925,13 +1010,15 @@ function PriceCard({
   weeks,
   product,
   onProduct,
+  bare,
 }: {
   weeks: Week[];
   product: string;
   onProduct: (p: string) => void;
+  bare?: boolean;
 }) {
   return (
-    <Card title="Price vs market">
+    <Card bare={bare} title="Price vs market">
       <ToggleGroup
         type="single"
         variant="outline"
@@ -954,6 +1041,7 @@ function PriceCard({
         ]}
       />
       <WeekLines
+        fill
         weeks={weeks}
         format={(v) => usd3.format(v)}
         series={[
@@ -1076,12 +1164,13 @@ export function DashboardScreen() {
       <ActionBanner rows={rows} onOpen={setOpenId} />
 
       <Section title="Products & pricing">
-        {/* THE TENANT CHOOSES WHETHER MARKET PRICES ARE SHOWN. A small card on
-            the left — saved against market — the chart on the right. */}
+        {/* THE TENANT CHOOSES WHETHER MARKET PRICES ARE SHOWN. ONE CARD, TWO
+            PARTS RULED APART (Pavan, 2026-10-14) — as the Delivery
+            performance headlines: saved against market, then the chart. */}
         {SHOW_MARKET_PRICE && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            <SavingsCard weeks={now} product={product} n={range} />
-            <PriceCard weeks={now} product={product} onProduct={setProduct} />
+          <div className="grid divide-y divide-border rounded-xl border border-border bg-fp-surface-1b lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
+            <SavingsCard bare weeks={now} before={before} product={product} n={range} />
+            <PriceCard bare weeks={now} product={product} onProduct={setProduct} />
           </div>
         )}
         <ProductsCard now={now} before={before} n={range} />

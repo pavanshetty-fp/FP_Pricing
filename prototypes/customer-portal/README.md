@@ -86,8 +86,9 @@ Notifications are the top bar's bell, not a page.
   Requests by week · Empty-tank reports by week) · **Needs your action** — a
   wide, lightly decorative banner, COLLAPSED by default; opened, every item
   is a tile titled with the ACTION required · Products & pricing (small
-  "Saved vs market" card left, for the chosen product and weeks + all
-  products; "Price vs market" right with a tab per product — your price
+  "Saved vs market" part left, for the chosen product and weeks + all
+  products; "Price vs market" right — ONE card, the two parts ruled apart
+  (2026-10-14) with a tab per product — your price
   GREEN solid, market RED dashed (dash = the second cue the validator asks
   for: protan ΔE 7.2 in light) · Volume by product) · Asset health (Driver
   reports TABLE: asset, ship-to, issue, driver, date, order — no
@@ -95,6 +96,13 @@ Notifications are the top bar's bell, not a page.
   invoices · Credit, its chart filling the card's height) · Schedule (Next 7
   days TABLE; a row opens the order). History, notes, invoices, credit are INVENTED
   (`dashboard.ts`).
+
+- **No explainer lines on the dashboard (Pavan, 2026-10-14):** a headline
+  figure softens on hover (no underline) and opens its explanation on
+  click; a
+  chart's explainer is an ⓘ beside its title (`note` on Card). Credit's
+  chart has no caption — a strong dashed **Credit limit** line says it;
+  usage is on hover.
 
 ## Invoices (Pavan, 2026-10-14)
 

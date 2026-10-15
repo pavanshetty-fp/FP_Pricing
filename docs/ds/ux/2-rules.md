@@ -350,6 +350,15 @@ bespoke summary block or activity list. **A section's free text (notes) is its
 own unit, outside the section's table but inside the same group** — under the
 table, same heading. Applies without being asked.
 
+## Side by side, lined up (Pavan, 2026-10-14)
+
+Cards that sit in one row are the same height, and what repeats across them
+lines up: a chart in each fills its card, so every **x-axis sits on the
+cards' foot** whatever stands above it (a legend in one, none in the
+other); figure rows share a height with their figures on the bottom; bars
+that mean the same kind of thing share a height and a top. Check it by
+measuring, not by eye.
+
 ## Tables — one row is always there (Pavan, 2026-10-14)
 
 A table in a form or sheet never shows an empty-state message in place of

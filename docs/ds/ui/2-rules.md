@@ -742,11 +742,11 @@ shape it is about to take.
   centred on one of its corners), grouped 2 × 2 so they meet as half discs,
   full circles and loose quarters; no empty cells. Seeded — the same every
   time.
-- **Colour:** two very light greys only — the foreground at 7% and 4%.
+- **Colour:** two very light greys only — the foreground at 5% and 3%.
   Never a hue.
-- **Size:** one scale (2.1). Do not resize it per card.
+- **Size:** one scale (2.7). Do not resize it per card.
 - **Placement:** the last child of the card's flex column, `flex-1`; it
-  fades in from the top. Whole tiles start at the **bottom-left**; the top
+  fades in from the top — clear in the top eighth, full only at the bottom. Whole tiles start at the **bottom-left**; the top
   and right may cut. Bleed it to the card's edges (`-mx-4 -mb-4` in a 16px
   card) so it meets the bottom, the left and any divider on the right, and
   round the corner it sits in with the card.

@@ -16,12 +16,12 @@ import { cn } from "@/lib/utils";
   square grid where every cell is a QUARTER DISC — the circle's centre at one
   of its four corners — grouped so quarters meet as half discs and full
   circles; no cell left empty. TWO very light
-  greys (the foreground at 7% and 4%), fading in from the top. Seeded, so it
+  greys (the foreground at 5% and 3%), fading in from the top. Seeded, so it
   is the same every time. Decoration only.
 */
 const QUARTER_N = 8;
 /** The one size — Pavan, 2026-10-15. */
-const QUIET_SCALE = 2.1;
+const QUIET_SCALE = 2.7;
 const QUARTER_S = 16;
 
 function quarterTiles(): { d: string; o: number }[] {
@@ -45,7 +45,7 @@ function quarterTiles(): { d: string; o: number }[] {
     ][corner];
   };
   const out: { d: string; o: number }[] = [];
-  const tone = () => (rand() < 0.5 ? 0.07 : 0.04);
+  const tone = () => (rand() < 0.5 ? 0.05 : 0.03);
   /*
     EVERY CELL FILLED, IN 2 × 2 GROUPS (Pavan, 2026-10-15 — "a lot of
     gaps"): each group is a full circle, two half discs (facing up/down or
@@ -112,8 +112,10 @@ export function QuietPattern({ className }: { className?: string }) {
       aria-hidden
       className={cn("pointer-events-none overflow-hidden text-foreground", className)}
       style={{
-        maskImage: "linear-gradient(to bottom, transparent, currentColor 60%)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent, currentColor 60%)",
+        /* HOW HIGH IT REACHES (Pavan, 2026-10-15): clear in the top eighth,
+           building to full at the very bottom. */
+        maskImage: "linear-gradient(to bottom, transparent 12%, currentColor 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent 12%, currentColor 100%)",
       }}
     >
       <svg className="size-full">

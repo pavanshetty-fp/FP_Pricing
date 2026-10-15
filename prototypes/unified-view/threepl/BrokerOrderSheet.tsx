@@ -102,7 +102,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { BLINK_MS, PendingStrip, attend, blinkGroup } from "../PendingStrip";
 import { HangingAdd } from "../HangingAdd";
 import { ActivityCard, RailCard, RailRow, SummaryCard } from "../SheetCards";
@@ -4243,9 +4243,18 @@ export function BrokerOrderSheet({
          plus a gap, and the pricing tables at the foot of it run to eight
          columns — at anything narrower their headers wrap onto two lines and
          stop lining up with the figures under them. */
-      /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
-         no rail, so it takes the creation floor (756) instead of filling. */
-      size={inCreation ? "xwide" : "xxwide"}
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15 — "too wide"): the vendors
+         table is the widest (check · vendor · address · products · TLC ·
+         status · act · bin); products = Top off · asset · product · qty ·
+         bin. The 340 rail beside them once the order exists, unchanged. */
+      fit={{
+        tables: [
+          [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, 132, 96, CELL.bin],
+          [CELL.flag, CELL.name, CELL.name, CELL.number, CELL.bin],
+          [CELL.pick, CELL.name, CELL.number, CELL.bin],
+        ],
+        rail: !inCreation,
+      }}
       open={open}
       onOpenChange={requestClose}
       /* NO STEP COLUMN (Pavan, 2026-10-06) — archived in
@@ -5207,11 +5216,13 @@ export function BrokerOrderSheet({
                 its `overflow-hidden` clips these corners for us. */}
             <div>
               <table className="w-full table-fixed border-collapse">
+                {/* NARROW BY DESIGN (Pavan, 2026-10-15): Top off is a tick,
+                    names are short, a quantity is six digits. */}
                 <colgroup>
-                  <col className="w-[92px]" />
-                  <col className="w-[34%]" />
-                  <col className="w-[30%]" />
+                  <col className="w-[72px]" />
                   <col />
+                  <col />
+                  <col className="w-[110px]" />
                   <col className="w-[52px]" />
                 </colgroup>
                 <thead>
@@ -5290,6 +5301,32 @@ export function BrokerOrderSheet({
                                 rental: known?.rental ?? false,
                               });
                             }}
+                            /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a
+                               blank row, the first fills it, each other gets
+                               its own line. */
+                            multiple={
+                              line.asset
+                                ? undefined
+                                : {
+                                    onApply: (names) =>
+                                      setDraft((d) => {
+                                        if (!d) return d;
+                                        const lineOf = (name: string) => {
+                                          const known = siteAssets.find((a) => a.name === name);
+                                          return {
+                                            ...line,
+                                            charges: defaultLineCharges(),
+                                            asset: name,
+                                            product: known?.product ?? line.product,
+                                            rental: known?.rental ?? false,
+                                          };
+                                        };
+                                        const lines = [...d.lines];
+                                        lines.splice(i, 1, ...names.map(lineOf));
+                                        return { ...d, lines };
+                                      }),
+                                  }
+                            }
                           />
                         </td>
                         <td className="relative p-0">
@@ -5870,11 +5907,13 @@ export function BrokerOrderSheet({
                 <table className="w-full table-fixed border-collapse">
                   <colgroup>
                     <col className="w-[44px]" />
-                    {/* Vendor wider, address narrower (2026-10-05). */}
-                    <col className="w-[32%]" />
-                    <col className="w-[14%]" />
+                    {/* FIXED, THE VENDOR TAKES THE REST (Pavan, 2026-10-15) —
+                        the sheet is now as wide as this table, so no column
+                        may be a share that shrinks to nothing. */}
                     <col />
-                    <col className="w-[150px]" />
+                    <col className="w-[160px]" />
+                    <col className="w-[160px]" />
+                    <col className="w-[110px]" />
                     {/* 132, not 148: the status lost its dot and the 14px it
                         stood in, and Products is the column that pays for
                         every fixed one beside it. */}

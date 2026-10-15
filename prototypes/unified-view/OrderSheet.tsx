@@ -660,10 +660,8 @@ export function OrderSheet({
   return (
     <>
       <RecordSheet
-        /* THE RAIL ONCE IT EXISTS (Pavan, 2026-10-07) — 3PL's BrokerOrderSheet:
-           two columns fill the screen; while creating there is no rail, so it
-           keeps the creation floor. */
-        size={creating ? "narrow" : "xxwide"}
+        /* AN INTENSE FORM — FULL, creating and after (Pavan, 2026-10-15). */
+        size="full"
         open={open}
         onOpenChange={requestClose}
         mode={creating ? "create" : "edit"}

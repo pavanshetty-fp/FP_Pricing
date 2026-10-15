@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 import { Combobox } from "@/components/ui/combobox";
 import {
   DropdownMenu,
@@ -333,6 +333,31 @@ function TargetEditor({
                             rental: known?.rental ?? false,
                           });
                         }}
+                        /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f). */
+                        multiple={
+                          line.asset
+                            ? undefined
+                            : {
+                                onApply: (names) => {
+                                  const lines = [...target.lines];
+                                  lines.splice(
+                                    i,
+                                    1,
+                                    ...names.map((name) => {
+                                      const known = siteAssets.find((a) => a.name === name);
+                                      return {
+                                        ...blankLine(products),
+                                        topOff: line.topOff,
+                                        asset: name,
+                                        product: known && products.includes(known.product) ? known.product : line.product,
+                                        rental: known?.rental ?? false,
+                                      };
+                                    })
+                                  );
+                                  onChange({ ...target, lines });
+                                },
+                              }
+                        }
                       />
                     </td>
                     <td className="relative p-0">
@@ -686,7 +711,27 @@ export function RecurringProgramCreate({
 
   return (
     <RecordSheet
-      size="xwide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15), per step. Step 1: partners
+         = check, partner name, base pick, covers pick, sites in range, safety
+         status; loading accounts = account name, terminals, suppliers,
+         products (picks), bin. Step 2: lines = Top off, asset name, product
+         pick, qty, bin; conflicts = rule name, frequency (days ≈ pick),
+         assets · products text, window date, action (≈ number). */
+      fit={
+        step === 1
+          ? {
+              tables: [
+                [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, CELL.status],
+                [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.bin],
+              ],
+            }
+          : {
+              tables: [
+                [CELL.flag, CELL.name, CELL.pick, CELL.number, CELL.bin],
+                [CELL.name, CELL.pick, CELL.text, CELL.date, CELL.number],
+              ],
+            }
+      }
       open={open}
       onOpenChange={onOpenChange}
       mode="create"

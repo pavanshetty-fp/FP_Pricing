@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip } from "@/components/ui/status-chip";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { PendingStrip } from "./PendingStrip";
 import { formatFullDate } from "./data";
 import {
@@ -403,7 +403,11 @@ export function AssetOrderSheet({
     <RecordSheet
       /* THE RAIL ONCE IT EXISTS (Pavan, 2026-10-07) — 3PL's BrokerOrderSheet:
          two columns fill the screen; while creating there is no rail. */
-      size={creating ? "narrow" : "xxwide"}
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): no table. Creating = fields
+         only, so the form's 600. Once it exists the 340 rail sits beside the
+         fields; the fields keep the form's two-across grid (two text widths)
+         rather than being squeezed to fit 600. */
+      {...(creating ? { size: "form" as const } : { fit: { tables: [[CELL.text, CELL.text]], rail: true } })}
       open={open}
       onOpenChange={requestClose}
       mode={mode}

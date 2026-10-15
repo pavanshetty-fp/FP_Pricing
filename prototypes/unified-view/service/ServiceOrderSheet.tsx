@@ -1453,9 +1453,8 @@ export function ServiceOrderSheet({
          and at `wide` that came straight out of columns already at their
          minimum — a parts table whose Amount column wraps is a table nobody
          can add up by eye. */
-      /* TWO COLUMNS ONLY ONCE IT EXISTS — while it is being created there is
-         no rail, so it takes the creation floor (756) instead of filling. */
-      size={newVisit ? "narrow" : "xxwide"}
+      /* AN INTENSE FORM — FULL, creating and after (Pavan, 2026-10-15). */
+      size="full"
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -2041,6 +2040,28 @@ export function ServiceOrderSheet({
                         assetType: a?.type ?? "",
                       });
                     }}
+                    /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a blank
+                       row; each asset keeps this row's work types. */
+                    multiple={
+                      row.assetName
+                        ? undefined
+                        : {
+                            onApply: (names) =>
+                              setDraft((x) => {
+                                if (!x) return x;
+                                const assets = [...x.assets];
+                                assets.splice(
+                                  i,
+                                  1,
+                                  ...names.map((v) => {
+                                    const a = siteAssets.find((s) => s.name === v);
+                                    return { ...row, assetId: a?.id ?? "", assetName: v, assetType: a?.type ?? "" };
+                                  })
+                                );
+                                return syncPrimaryAsset({ ...x, assets });
+                              }),
+                          }
+                    }
                   />
                 </td>
                 <td className="relative p-0">

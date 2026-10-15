@@ -18,10 +18,12 @@ them through to invoice. The tenant's side is a separate unit, not built yet.
 
 ## Navigation (Pavan, 2026-10-13)
 
-Dashboard (landing) · Orders · Invoices · Sites & Assets · Reports · Team &
-Access. **Orders** and **Sites & Assets** are built; the rest are empty on purpose — built page
+Dashboard (landing) · Orders (with Order Requests · Recurring Orders hanging under it on tree bars,
+as 3PL's Orders) · Invoices · Sites & Assets ·
+Reports (empty on purpose) · Team & Access. **Orders** and **Sites & Assets** are built; the rest are empty on purpose — built page
 by page. No account switcher (sales reps order from their own apps).
-Notifications are the top bar's bell, not a page.
+Notifications are the top bar's bell, not a page; events also arrive as
+one-line toasts with View (`notifications.ts`, simulated).
 
 ## Orders — decisions not to re-open
 
@@ -250,9 +252,35 @@ From the FleetPanda portal's user record (structure only, invented people).
   the map see new records at once; renaming a ship-to renames it on its
   requests.
 
+## PRD cross-check decisions (Pavan, 2026-10-15)
+
+- **Critical alerts** = "Attention required"; no separate widget.
+- **Duplicate order** = reorder; nothing else.
+- **Quote:** Accept quote + ⋯ (Request change · Decline quote), both ask for
+  a note. Accept → Scheduled; Request change → In review; Decline → Quote
+  declined. The quote's lines, fees, tax and total show in the action sheet
+  and the order sheet (`requestActions.tsx`).
+- **Action needed:** the customer sends what they can — a note and files; on
+  a credit hold, the payment made OFFLINE (paid on, amount, reference,
+  proof). No payment in the portal; the tenant releases the hold. Once sent:
+  "Sent to Lone Star Fuels · waiting for their reply".
+- **Partial delivery:** "Partly delivered" in the order sheet, the
+  action sheet and the Orders banner, each with **Order the rest** — a new
+  draft for the undelivered gallons.
+- **Trip events** in the order sheet's rail: loaded (BOL), departed, ETA
+  changed, arriving in 30 min, arrived, unloading, delivered.
+- **Recurring Orders** = 3PL's format, under Orders beside Order Requests: one row per series, opens onto its
+  deliveries (first = the request, then the next month's dates, each
+  skippable); ⋯ pause / resume / end / open.
+- **Assets pick several at once** in the order form: tick, Apply — the first
+  fills the row, each other gets its own row (the DS cell's `multiple`).
+- **Invoice ↔ order** numbers are links both ways.
+- **Statement** is a tab inside Invoices.
+- **Service requests** stay coming soon.
+
 ## Open
 
 - Should "summary card on the right while creating" apply to all modules?
-- Statements — a tab in Invoices?
+- Invoice dispute raised by the customer — outcome and flow being discussed.
 - Duplicate-order warning on submit (PRD FR-23) not built.
 - Overview compares with last week's full day; should be same time of day.

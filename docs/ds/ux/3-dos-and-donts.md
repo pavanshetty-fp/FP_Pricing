@@ -30,5 +30,5 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't put a Save, an Update or a Cancel on an autosaving sheet.** (S1)
 - **Don't label a primary with a state** — "Waiting on partners" asks the reader to press a fact. (S2)
 - **Don't park a permanent clause beside a disabled primary** — the reason belongs to the press. (S2)
-- **Don't let a sheet take `xxwide` for being long** — it is for being split. (S3)
+- **Don't size a sheet for more than it holds** — a two-column table gets a two-column sheet (`fit`); `full` is for the intense forms. (S3)
 - **Don't name a strip item after a field** — "Choose a customer", not "Customer". (S4)

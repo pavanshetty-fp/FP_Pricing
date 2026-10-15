@@ -34,8 +34,7 @@ export function ActivityLogSheet({
   return (
     <RecordSheet
       level={2}
-      size="narrow"
-      fill={false}
+      size="form"
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"

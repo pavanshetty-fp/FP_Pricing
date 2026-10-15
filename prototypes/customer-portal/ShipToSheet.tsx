@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -542,7 +542,20 @@ export function ShipToSheet({
   return (
     <>
     <RecordSheet
-      size="xxwide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15), per step. Ship-to details =
+         no table; the address fields and the map sit in two EQUAL halves and
+         the map needs ~420, so each half is 420. Assets = fifteen columns —
+         the sheet shows the first seven (asset, unique ID, RFID, ERP ID,
+         type, categories, size) and THE REST SCROLLS SIDEWAYS, the asset
+         pinned (Pavan: "keep it sideways scroll"). */
+      fit={
+        step === "details"
+          ? { tables: [[420, 420]] }
+          : { tables: [[CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.pick, CELL.pick, CELL.number]] }
+      }
+      /* AN EXISTING SHIP-TO IS DATA-INTENSIVE — 1200 at least (Pavan,
+         2026-10-15); creating keeps the widths above. */
+      {...(!creating ? { size: "data" as const } : {})}
       open={open}
       onOpenChange={onOpenChange}
       mode={creating ? "create" : "edit"}

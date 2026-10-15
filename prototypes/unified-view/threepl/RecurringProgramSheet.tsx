@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 
 import { ScheduleCell } from "./ScheduleCell";
 import type { SeriesStatus } from "./recurring";
@@ -467,7 +467,14 @@ export function RecurringProgramSheet({
 
   return (
     <RecordSheet
-      size="xxwide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): lanes = customer name,
+         ship-to, tanks (picks), window date, partner / customer / margin
+         prices, lane status. */
+      fit={{
+        tables: [
+          [CELL.name, CELL.pick, CELL.pick, CELL.date, CELL.number, CELL.number, CELL.number, CELL.status],
+        ],
+      }}
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"

@@ -48,6 +48,8 @@ interface Page {
   sub: string | null;
   label: string;
   icon: React.ReactNode;
+  /** A NESTED page's own pages, drawn under it as a tree (`nested`). */
+  children?: Page[];
 }
 interface Section {
   heading?: string;
@@ -58,6 +60,7 @@ interface Section {
 function sectionsFor(
   items: NavItem[],
   subNav: Record<string, NavGroup[]>,
+  nested: string[] = [],
 ): Section[] {
   const out: Section[] = [];
   let loose: Page[] = [];
@@ -73,6 +76,20 @@ function sectionsFor(
         sub: null,
         label: item.label,
         icon: item.icon,
+      });
+      continue;
+    }
+    /* A NESTED PAGE STAYS A PAGE, its pages under it (Customer Portal,
+       Pavan 2026-10-15) — not a heading. */
+    if (nested.includes(item.key)) {
+      loose.push({
+        area: item.key,
+        sub: null,
+        label: item.label,
+        icon: item.icon,
+        children: groups.flatMap((g) =>
+          g.items.map((s) => ({ area: item.key, sub: s.key, label: s.label, icon: s.icon })),
+        ),
       });
       continue;
     }
@@ -119,6 +136,7 @@ export function ModuleSidebar({
   onModuleChange,
   onLoadingChange,
   onNavigate,
+  nested,
 }: {
   modules: SidebarModule[];
   moduleNav: Record<string, NavItem[]>;
@@ -132,6 +150,9 @@ export function ModuleSidebar({
       The page shows its loading state meanwhile (Pavan, 2026-10-10). */
   onLoadingChange?: (key: string | null) => void;
   onNavigate: (area: string, sub: string | null) => void;
+  /** Areas whose sub-pages hang under the page as a tree instead of turning
+      it into a heading. Default none — 3PL's headings stay. */
+  nested?: string[];
 }) {
   const [collapsed, setCollapsed] = React.useState(() => {
     try {
@@ -151,7 +172,7 @@ export function ModuleSidebar({
     });
   };
 
-  const sections = sectionsFor(moduleNav[activeModule] ?? [], subNav);
+  const sections = sectionsFor(moduleNav[activeModule] ?? [], subNav, nested);
 
   /*
     SWITCHING MODULES IS THREE STEPS, ONE AFTER ANOTHER (Pavan, 2026-10-07):
@@ -300,7 +321,7 @@ export function ModuleSidebar({
                   className="my-1 h-px w-5 shrink-0 bg-fp-shell-guide"
                 />
               )}
-              {sec.pages.map((p) =>
+              {sec.pages.flatMap((p) => [p, ...(p.children ?? [])]).map((p) =>
                 tip(
                   p.label,
                   <button
@@ -406,7 +427,7 @@ export function ModuleSidebar({
                   )}
                   {(() => {
                     const own =
-                      m.key === view.mounted ? sectionsFor(moduleNav[m.key] ?? [], subNav) : [];
+                      m.key === view.mounted ? sectionsFor(moduleNav[m.key] ?? [], subNav, nested) : [];
                     if (own.length === 0) return null;
                     const unfolded = view.unfolded === m.key;
                     return (
@@ -437,6 +458,7 @@ export function ModuleSidebar({
                             </span>
                           )}
                           {sec.pages.map((p) => {
+                            const row = (p: Page, child = false) => {
                             const on = isActive(p);
                             return (
                               <button
@@ -450,11 +472,37 @@ export function ModuleSidebar({
                                     ? /* THE MARKER sits ON the guide line, beside the page. */
                                       "bg-fp-shell-selected font-medium text-sidebar-foreground before:absolute before:inset-y-1 before:-left-[11px] before:w-0.5 before:rounded-full before:bg-fp-shell-marker"
                                     : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
+                                  /* A tree page's mark is its bar, not the guide's. */
+                                  child && "before:hidden",
                                 )}
                               >
                                 <span className="flex shrink-0">{p.icon}</span>
                                 <span className="truncate">{p.label}</span>
                               </button>
+                            );
+                            };
+                            if (!p.children) return row(p);
+                            /* THE TREE — a vertical bar down from the page, a
+                               short horizontal one into each of its pages. */
+                            return (
+                              <React.Fragment key={`${p.area}:tree`}>
+                                {row(p)}
+                                <div className="flex flex-col gap-0.5 pl-6">
+                                  {p.children.map((c, k) => (
+                                    <div key={c.sub} className="relative pl-3">
+                                      <span
+                                        aria-hidden
+                                        className={cn(
+                                          "absolute -top-0.5 -left-1.5 w-px bg-fp-shell-guide",
+                                          k === p.children!.length - 1 ? "h-[calc(50%+2px)]" : "-bottom-0.5",
+                                        )}
+                                      />
+                                      <span aria-hidden className="absolute top-1/2 -left-1.5 h-px w-[18px] bg-fp-shell-guide" />
+                                      {row(c, true)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </React.Fragment>
                             );
                           })}
                         </div>

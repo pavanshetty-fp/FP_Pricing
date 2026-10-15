@@ -1393,6 +1393,11 @@ export function DashboardScreen() {
           setActionId(null);
           setOpenId(id);
         }}
+        onCreated={(id) => {
+          setActionId(null);
+          setCreatingId(id);
+          setOpenId(id);
+        }}
       />
       <OrderRequestSheet
         request={rows.find((r) => r.id === openId) ?? null}

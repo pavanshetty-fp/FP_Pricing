@@ -511,9 +511,33 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
 - **A hanging add's label is singular** — "Add product", "Add fee". Each press
   adds one row.
 
+### Picking several makes rows
+
+Pavan, 2026-10-15 — after the order form's asset cell made the customer open
+the list once per tank.
+
+- **Where a row IS the thing picked** — an asset or tank on an order, a
+  peripheral, a partner, a product line — the picker takes **several at
+  once**: checkboxes, a footer with the count and **Apply**. The first pick
+  fills the row it was opened from; **each other pick becomes its own row**,
+  right under it, in the order picked. `multiple` on `TableCellSelect` /
+  `TableCellCombobox` is the only way.
+- **Only from a BLANK row.** On a row that already names one, the question is
+  "which one instead" — a single pick that swaps it.
+- **What is already on another row shows ticked and locked**, not hidden —
+  the list keeps its length, and a reader looking for it finds it is there.
+- **A new row starts like the row it came from** — the same defaults, its own
+  facts filled from the pick (an asset's product).
+- **Where several values belong IN ONE CELL** — work types, product
+  categories, tags — the cell stays one cell (`TableCellMultiSelect`). Rows
+  are made only when each pick is a row of its own.
+- **The checkbox is the DS checkbox, its tick in `primary-foreground`.** A
+  list row mutes bare icons; the tick names its colour so it never goes grey
+  on the filled box.
+
 **Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
 rows and focuses nothing, a remove with no subject, a remove that does not
-ask, a local cell control.
+ask, a local cell control, a row picker without `multiple`.
 
 ### There is no "last band" alternative to the hanging add
 

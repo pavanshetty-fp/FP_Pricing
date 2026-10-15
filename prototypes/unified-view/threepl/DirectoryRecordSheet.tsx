@@ -66,6 +66,9 @@ export interface RecordReadSection {
   /** Count on the heading note — "6 locations". Omit where none applies. */
   count?: number;
   note?: string;
+  /** Its table's columns as `CELL` widths — the sheet is as wide as the
+      widest section's table (Pavan, 2026-10-15: each record its own width). */
+  columns?: number[];
   render: () => React.ReactNode;
 }
 
@@ -325,11 +328,16 @@ export function DirectoryRecordSheet<T>({
     }
   };
 
+  const data = readSections.length > 0;
   return (
     <RecordSheet
-      /* TABLES, so `wide`. The DS's own rule: at 560 a related-records table
-         has to be scrolled sideways to be read. */
-      size="wide"
+      /* WIDTH FROM ITS TABLES, PER RECORD (Pavan, 2026-10-15): each read
+         section names its table's columns; the widest decides. A create (no
+         read sections) is a form, 600. */
+      /* AN EXISTING RECORD IS DATA-INTENSIVE (Pavan, 2026-10-15 — "cramped"):
+         1200 at least, fields three across. A create stays a 600 form. */
+      {...(readSections.length > 0 ? { size: "data" as const } : {})}
+      fit={{ tables: readSections.map((r) => r.columns ?? []) }}
       open={open}
       onOpenChange={(o) => {
         if (!o) onClose?.(errorCount === 0 ? draft : null);
@@ -386,9 +394,9 @@ export function DirectoryRecordSheet<T>({
           title={s.title}
           note={s.note ? <SheetSectionNote>{s.note}</SheetSectionNote> : undefined}
         >
-          {/* Two up. A sheet at `wide` fits a pair of fields comfortably and
-              three would put a metre between a label and its control. */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* THREE UP ON A RECORD (the data width, 1200 — Pavan, 2026-10-15),
+              two up while creating (600). */}
+          <div className={cn("grid gap-4", data ? "grid-cols-3" : "grid-cols-2")}>
             {s.fields.map((f) =>
               /*
                 A TOGGLE IS NOT A FIELD WITH A CONTROL UNDER IT.
@@ -409,7 +417,7 @@ export function DirectoryRecordSheet<T>({
               f.kind === "switch" || f.kind === "checkbox" ? (
                 <div
                   key={f.key}
-                  className="col-span-2 flex items-start justify-between gap-4"
+                  className="col-span-full flex items-start justify-between gap-4"
                 >
                   <div className="flex min-w-0 flex-col gap-1">
                     <label
@@ -452,7 +460,7 @@ export function DirectoryRecordSheet<T>({
                   label={f.label}
                   required={f.required}
                   description={showError(f.key) ? undefined : f.description}
-                  className={f.wide ? "col-span-2" : undefined}
+                  className={f.wide ? "col-span-full" : undefined}
                 >
                   {control(f)}
                   {showError(f.key) && (
@@ -521,7 +529,7 @@ export function ReadField({
   const empty =
     value === null || value === undefined || value === "" || value === DASH || value === "N/A";
   return (
-    <div className={cn(wide && "col-span-2")}>
+    <div className={cn(wide && "col-span-full")}>
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd
         className={cn(
@@ -536,8 +544,12 @@ export function ReadField({
 }
 
 export function ReadGrid({ children }: { children: React.ReactNode }) {
-  return <dl className="grid grid-cols-2 gap-x-6 gap-y-4">{children}</dl>;
+  /* Three across — the record's data width (Pavan, 2026-10-15). */
+  return <dl className="grid grid-cols-3 gap-x-6 gap-y-4">{children}</dl>;
 }
+
+/** The widest related-records table any directory record shows (a customer's
+ *  assets) — what `DirectoryRecordSheet` sizes itself by. */
 
 /** A related-records table that says something useful when it is empty. */
 export function SheetTable<T>({
@@ -841,8 +853,7 @@ export function EditDrawer({
   return (
     <RecordSheet
       level={2}
-      size="narrow"
-      fill={false}
+      size="form"
       stepNav={false}
       open={open}
       onOpenChange={onOpenChange}

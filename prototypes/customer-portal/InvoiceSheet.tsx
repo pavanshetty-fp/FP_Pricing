@@ -8,7 +8,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
-import { RecordSheet } from "../unified-view/RecordSheet";
+import { CELL, RecordSheet } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { DocumentsTable } from "../unified-view/DocumentsTable";
 import { documentRows } from "./OrderRequestSheet";
@@ -164,11 +164,14 @@ export function InvoiceSheet({
   open,
   onOpenChange,
   onDownload,
+  orderLink,
 }: {
   invoice: Invoice | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDownload: (inv: Invoice) => void;
+  /** The order number as a link, when it can open (PRD FR-10). */
+  orderLink?: (requestNo: string) => React.ReactNode;
 }) {
   if (!invoice) return null;
   const c = chargesOf(invoice);
@@ -176,7 +179,15 @@ export function InvoiceSheet({
   const settled = SETTLED.includes(invoice.status);
   return (
     <RecordSheet
-      size="wide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): charges = item name, basis
+         ("gal @ rate", text), amount; dispute documents = document name, added
+         date, by (pick), menu. Charges is the widest. */
+      fit={{
+        tables: [
+          [CELL.name, CELL.text, CELL.number],
+          ...(invoice.dispute ? [[CELL.name, CELL.date, CELL.pick, CELL.bin]] : []),
+        ],
+      }}
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"
@@ -210,7 +221,7 @@ export function InvoiceSheet({
       <div className="flex min-w-0 flex-col gap-10">
         <SheetSection title="Summary">
           <div className="grid grid-cols-3 gap-4">
-            <Fact label="Order">{invoice.requestNo}</Fact>
+            <Fact label="Order">{orderLink ? orderLink(invoice.requestNo) : invoice.requestNo}</Fact>
             <Fact label="Bill to">{invoice.billTo}</Fact>
             <Fact label="Ship-to">{invoice.shipTo}</Fact>
             <Fact label="Issued">

@@ -7,10 +7,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { cn } from "@/lib/utils";
 import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
-import { printKey } from "./orders";
+import { printKey, useRequests } from "./orders";
+import { RecordLink, usePortalNav } from "./nav";
 import { CREDIT } from "./dashboard";
 import { PortalList } from "./PortalList";
 import { InvoiceSheet } from "./InvoiceSheet";
+import { StatementView } from "./StatementView";
 import {
   INVOICE_STATUSES,
   INVOICE_STATUS_TONE,
@@ -117,9 +119,28 @@ function Overview() {
   );
 }
 
-export function InvoicesScreen() {
+export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: number } | null } = {}) {
   const rows = useInvoices();
+  const nav = usePortalNav();
+  const requests = useRequests();
   const [openNo, setOpenNo] = React.useState<string | null>(null);
+  /* TWO TABS (Pavan, 2026-10-15): the invoices, and the statement. */
+  const [tab, setTab] = React.useState("invoices");
+  const TABS = [
+    { key: "invoices", label: "Invoices" },
+    { key: "statement", label: "Statement" },
+  ];
+  /* OPENED FROM A LINK — the invoice behind an order. */
+  React.useEffect(() => {
+    if (focus) setOpenNo(focus.invoiceNo);
+  }, [focus?.n]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* THE ORDER, AS A LINK when it is still on the Orders page (PRD FR-10). */
+  const orderCell = (no: string) =>
+    requests.some((r) => r.requestNo === no) ? (
+      <RecordLink label={no} onOpen={() => nav.openOrder(no)} />
+    ) : (
+      <span className="text-sm tabular-nums">{no}</span>
+    );
   const [applied, setApplied] = React.useState<{ ids: string[]; n: number } | undefined>();
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
   const [snoozed, setSnoozed] = React.useState<Record<string, number>>({});
@@ -186,7 +207,18 @@ export function InvoicesScreen() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {tab === "statement" ? (
+        <>
+          <div className="mb-8 shrink-0">
+            <Overview />
+          </div>
+          <StatementView invoices={rows} segments={TABS} segmentValue={tab} onSegmentChange={setTab} />
+        </>
+      ) : (
       <PortalList<Invoice, IK>
+        segments={TABS}
+        segmentValue={tab}
+        onSegmentChange={setTab}
         above={<Overview />}
         banner={
           alerts.length > 0 ? (
@@ -228,7 +260,7 @@ export function InvoicesScreen() {
               );
             }
             case "order":
-              return <span className="text-sm tabular-nums">{i.requestNo}</span>;
+              return orderCell(i.requestNo);
             case "shipTo":
               return <TwoLineCell title={i.shipTo} description={i.billTo} />;
             case "amount":
@@ -280,11 +312,13 @@ export function InvoicesScreen() {
         openLabel={(i) => `Open invoice ${i.invoiceNo}`}
         emptyIcon={<ReceiptText />}
       />
+      )}
       <InvoiceSheet
         invoice={rows.find((i) => i.invoiceNo === openNo) ?? null}
         open={openNo !== null}
         onOpenChange={(o) => !o && setOpenNo(null)}
         onDownload={download}
+        orderLink={orderCell}
       />
     </div>
   );

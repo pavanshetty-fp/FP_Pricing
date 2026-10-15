@@ -715,9 +715,33 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
 - **A hanging add's label is singular** — "Add product", "Add fee". Each press
   adds one row.
 
+### Picking several makes rows
+
+Pavan, 2026-10-15 — after the order form's asset cell made the customer open
+the list once per tank.
+
+- **Where a row IS the thing picked** — an asset or tank on an order, a
+  peripheral, a partner, a product line — the picker takes **several at
+  once**: checkboxes, a footer with the count and **Apply**. The first pick
+  fills the row it was opened from; **each other pick becomes its own row**,
+  right under it, in the order picked. `multiple` on `TableCellSelect` /
+  `TableCellCombobox` is the only way.
+- **Only from a BLANK row.** On a row that already names one, the question is
+  "which one instead" — a single pick that swaps it.
+- **What is already on another row shows ticked and locked**, not hidden —
+  the list keeps its length, and a reader looking for it finds it is there.
+- **A new row starts like the row it came from** — the same defaults, its own
+  facts filled from the pick (an asset's product).
+- **Where several values belong IN ONE CELL** — work types, product
+  categories, tags — the cell stays one cell (`TableCellMultiSelect`). Rows
+  are made only when each pick is a row of its own.
+- **The checkbox is the DS checkbox, its tick in `primary-foreground`.** A
+  list row mutes bare icons; the tick names its colour so it never goes grey
+  on the filled box.
+
 **Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
 rows and focuses nothing, a remove with no subject, a remove that does not
-ask, a local cell control.
+ask, a local cell control, a row picker without `multiple`.
 
 ### There is no "last band" alternative to the hanging add
 
@@ -2001,22 +2025,23 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     the person knows whether it is a mistake. Blocking here is the system
     overruling a judgement it does not have the information to make.
   (Both promoted from Unified View, 2026-09-22.)
-- **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
-  of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
-  columns have to be scrolled to be read. `xwide` is **1120px**, for a step whose
-  tables run past six columns. These are the **most** a sheet may take, not a
-  width to grow into — a form that eats a wide monitor turns two-column pairs
-  into a hunt across the screen and leaves nothing of the list it came from.
+- **The width follows the content** (Pavan, 2026-10-15 — replaces the fixed
+  560 / 864 / 1120 caps). A form of fields is **600**. A sheet carrying tables is
+  as wide as its widest table's columns at a comfortable width (`CELL`), plus
+  padding, plus the rail beside it — never under 600. Only the intense forms
+  (Service Order, Sales Order / Quote, the portal's Order Request) are
+  **full**; the 3PL Delivery Order fits its tables plus its rail. A
+  DATA-INTENSIVE record's detail (many fields, several related tables) is
+  **data** — 1200, fields three across — so it reads easily. A sheet sized
+  for more than it holds reads as empty.
+  DS ui/7-variants §1.
 - **The gap is 56px and it is the one constant.** Every size clamps to
   `100vw − 56px`, so no sheet reaches the edge and none overflows a small
   screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
   drawer.
-- **A creation sheet is at least 756px** (Pavan, 2026-10-05 — replaces the
-  2026-09-25 "fills to `100vw − 56px`") — creating a rule, an order, a
-  customer, anything keeps its own size but never below 756, clamped to
-  `100vw − 56px`. It carries **no right rail** (Summary · Associated records ·
-  Activity) until the record exists. An export or a partner's quote borrows
-  create mode without making anything and keeps its cap.
+- **A creation sheet has no right rail** (Summary · Associated records ·
+  Activity) until the record exists. Its width follows the same content rule
+  — the 756 floor is gone (Pavan, 2026-10-15).
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while
@@ -2026,20 +2051,9 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
-- **`xxwide` FILLS — `100vw − 56px`, no cap — and it exists for exactly one
-  shape: a step that is TWO COLUMNS** — what you fill in on the left, what that
-  makes on the right. A sheet does not get this size for being long; it gets it
-  for being split.
-  - **Why this one is not capped.** Its width was never a chosen number. The
-    rail is fixed at 340px plus a 24px gap; everything else the viewport has
-    belongs to the tables, which at `xwide` were already at their minimum. A
-    fixed 1440 left a strip of the list showing on a wide screen and the sheet
-    read as having stopped short of something. Changed from 1440 on 2026-09-21.
-  - **The cap argument does not apply to it.** What a cap protects is a FORM —
-    label-to-control pairs stretched across a monitor. A two-column step has no
-    such pairs to stretch: the left is tables, the right is a fixed rail.
-  - Below the fold-back width the step is one column again and stops needing
-    any of this.
+- **`full` FILLS — `100vw − 56px`, no cap** — for the intense forms only, and
+  for any sheet while its step column shows. The rail is fixed at 340px plus a
+  24px gap; everything else belongs to the form.
 - **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
   type into it?** Editable sections go left, in the sequence you fill them.
   What the record HAS BECOME goes right — derived, read-only, true whether or
@@ -2713,7 +2727,7 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't put a Save, an Update or a Cancel on an autosaving sheet.** (S1)
 - **Don't label a primary with a state** — "Waiting on partners" asks the reader to press a fact. (S2)
 - **Don't park a permanent clause beside a disabled primary** — the reason belongs to the press. (S2)
-- **Don't let a sheet take `xxwide` for being long** — it is for being split. (S3)
+- **Don't size a sheet for more than it holds** — a two-column table gets a two-column sheet (`fit`); `full` is for the intense forms. (S3)
 - **Don't name a strip item after a field** — "Choose a customer", not "Customer". (S4)
 
 
@@ -2743,7 +2757,7 @@ renders these as visual pairs.)
 - **Silent draft (S1)** — ❌ keeping a draft with nothing on screen saying so · ✅ `DraftStatusChip`: nothing before the first keystroke, then saving, then saved.
 - **Primary's label (S2)** — ❌ "Waiting on partners" on a button · ✅ the act on the button, the waiting in the strip.
 - **Dead primary (S2)** — ❌ a clause parked permanently beside it · ✅ disabled, with one imperative sentence on the press.
-- **Width (S3)** — ❌ `xxwide` because the sheet is long · ✅ `xxwide` because the step is two columns; width is per step.
+- **Width (S3)** — ❌ a fixed wide sheet around a two-column table · ✅ `fit` from the table's columns; `full` only for the intense forms; width is per step.
 - **Column mixing (S3)** — ❌ a computed total sitting among the fields that produce it · ✅ editable left, derived right, so the reader can tell them apart.
 - **Strip item (S4)** — ❌ "Customer", with no way to reach it · ✅ "Choose a customer", pressable, scrolling to the section and blinking it once.
 
@@ -2781,9 +2795,9 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] A draft record's footer may show *Save as Draft* as the outline secondary left of the commit act; nowhere else is there a Save. (Forms)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
 - [ ] A two-column sheet keeps everything editable left and everything derived right, with the 340px rail sticky. (S3)
-- [ ] Sheet width matches the shape (560 / 864 / 1120 · `xxwide` fills) and is chosen per step. (S3)
+- [ ] Sheet width follows the content: `form` 600 · `fit` from the tables' columns · `full` only for the intense forms; per step. (S3)
 - [ ] Every sheet and nested drawer clamps to `100vw − 56px`. (S3)
-- [ ] Every CREATION sheet is at least 756px (clamped to `100vw − 56px`) and has no right rail.
+- [ ] Every CREATION sheet has no right rail; its width follows the same content rule (no 756 floor).
 - [ ] The strip above the footer shows one outstanding item at a time, under a fixed subject, and each item reaches its section. (S4)
 
 

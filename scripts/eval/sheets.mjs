@@ -18,12 +18,15 @@ export const name = "sheets";
 export const segment = "2-layouts";
 export const rule = "docs/ds/ui/7-variants.md — the side sheet";
 
-const SCAN = ["prototypes/unified-view"];
-const SIZES = ["compact", "narrow", "wide", "xwide", "xxwide"];
+const SCAN = ["prototypes/unified-view", "prototypes/customer-portal"];
+const SIZES = ["compact", "form", "data", "full"];
 
 /** The options a sheet may take, and how to spot each one. */
 const OPTIONS = {
   size: /<RecordSheet[\s\S]{0,2000}?\bsize="([a-z]+)"/,
+  fit: /<RecordSheet[\s\S]{0,3000}?\bfit=/,
+  /* A TABLE INSIDE THE SHEET — from the sheet's own tag on. */
+  table: /<RecordSheet[\s\S]*?<(?:table|ProductTable|DocumentsTable|ListTable|LoadOrderTable)\b/,
   level2: /^\s*level=\{2\}/m,
   steps: /^\s*steps=/m,
   rail: /lg:grid-cols-\[minmax\(0,1fr\)_340px\]/,
@@ -44,7 +47,8 @@ export function census() {
     const row = { file: rel(file) };
     for (const [key, re] of Object.entries(OPTIONS)) {
       const m = src.match(re);
-      row[key] = key === "size" ? (m ? m[1] : "narrow (default)") : Boolean(m);
+      /* A BUTTON'S size="sm" further down is not the sheet's width. */
+      row[key] = key === "size" ? (m && !["sm", "lg", "icon", "xs"].includes(m[1]) ? m[1] : "form (default)") : Boolean(m);
     }
     rows.push(row);
   }
@@ -64,7 +68,15 @@ export function check() {
         'ux §Side-sheet anatomy — "Cancel comes off"'));
     }
 
-    /* A WIDTH OFF THE SET. Five names, and a sixth is a decision nobody took
+    /* A TABLE WITH NO `fit` (Pavan, 2026-10-15) — a sheet carrying tables is
+       as wide as its widest table's columns; only the intense forms fill. */
+    if (row.table && !row.fit && row.size !== "full") {
+      out.push(finding("L1", row.file, null,
+        "sheet carries a table but takes a fixed width — pass `fit` from its columns (CELL)",
+        "DS ui/7-variants §1 — the width follows the content"));
+    }
+
+    /* A WIDTH OFF THE SET. Three names, and a fourth is a decision nobody took
        in the open. */
     const size = row.size.replace(" (default)", "");
     if (!SIZES.includes(size)) {

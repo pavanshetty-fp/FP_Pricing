@@ -22,7 +22,7 @@ renders these as visual pairs.)
 - **Silent draft (S1)** — ❌ keeping a draft with nothing on screen saying so · ✅ `DraftStatusChip`: nothing before the first keystroke, then saving, then saved.
 - **Primary's label (S2)** — ❌ "Waiting on partners" on a button · ✅ the act on the button, the waiting in the strip.
 - **Dead primary (S2)** — ❌ a clause parked permanently beside it · ✅ disabled, with one imperative sentence on the press.
-- **Width (S3)** — ❌ `xxwide` because the sheet is long · ✅ `xxwide` because the step is two columns; width is per step.
+- **Width (S3)** — ❌ a fixed wide sheet around a two-column table · ✅ `fit` from the table's columns; `full` only for the intense forms; width is per step.
 - **Column mixing (S3)** — ❌ a computed total sitting among the fields that produce it · ✅ editable left, derived right, so the reader can tell them apart.
 - **Strip item (S4)** — ❌ "Customer", with no way to reach it · ✅ "Choose a customer", pressable, scrolling to the section and blinking it once.
 

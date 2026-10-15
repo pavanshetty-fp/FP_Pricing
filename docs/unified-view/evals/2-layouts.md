@@ -117,13 +117,13 @@ Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
 
 ## The side sheet
 
-- [ ] **L2** Width matches the shape: 560 stacked fields · 864 tables · 1120
-      wide tables · `xxwide` fills for two columns. Per step, not per sheet.
+- [ ] **L1** Width follows the content: `form` 600 · `fit` from the widest
+      table's `CELL` columns (+ rail) · `full` only for the intense forms.
+      `npm run eval` → `sheets`: a sheet with a table and no `fit`. Per step.
 - [ ] **L1** Every sheet and nested drawer clamps to `100vw − 56px` — one
       number, no 60s left anywhere.
-- [ ] **L2** Every CREATION sheet (a rule, an order, a customer…) is at least
-      756px (clamped to `100vw − 56px`) with no right rail. DS ui/7-variants §1
-      "A creation sheet is at least 756px".
+- [ ] **L2** Every CREATION sheet has no right rail (the 756 floor is gone,
+      2026-10-15). DS ui/7-variants §1.
 - [ ] **L2** At 1900 the two-column step leaves exactly 56px and no strip of
       the list behind it; at 760 it folds to one column with no sideways
       scroll.

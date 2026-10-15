@@ -50,7 +50,7 @@ export function AttachSheet({
 
   return (
     <RecordSheet
-      size="narrow"
+      size="form"
       level={2}
       open={open}
       onOpenChange={onOpenChange}

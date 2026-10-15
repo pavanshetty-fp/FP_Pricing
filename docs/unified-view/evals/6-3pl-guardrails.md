@@ -63,7 +63,7 @@ adopt them too.
 | G25 | **A dead primary says why on press** — stays pressable, the pending strip names the gap and pressing scrolls to it. | `BrokerOrderSheet.tsx:4477` (`PendingStrip`), `:4495` | L1 | `parity-sheets`: a first-level `RecordSheet` with `canSubmit` and no `footerPrimary` (the default primary is `disabled` and cannot say why). |
 | G26 | **⋯ header menu** for acts ON the record (Cancel order, Delete) — not in the footer. | `BrokerOrderSheet.tsx:4376` | L2 | Read: does the record have a cancel/delete act, and is it in `headerMenu`? |
 | G27 | **No step column.** | `RecordSheet.tsx:374` (`stepColumn = false`); README "Shell…" (2026-10-06) | L1 | `parity-sheets`: `stepColumn` passed true. |
-| G28 | **Creation floor 756px for the whole create visit**, even after it flips to edit. Export and a partner's quote opt out. | `RecordSheet.tsx:387-392` | L1 | `parity-sheets`: a sheet titled Create/New/Add with `fill={false}`. |
+| G28 | **Width follows the content** (2026-10-15, replaced the 756 creation floor): `form` 600 · `fit` from tables · `full` for the intense forms. | `RecordSheet.tsx` `fitWidth` | L1 | `sheets`: a sheet with a table and no `fit`. |
 | G29 | **Summary = `SheetCards` `SummaryCard`** (the Quotation summary shell). | `BrokerOrderSheet.tsx:6571` | L1 | `parity-sheets`: a `RailCard` titled "…Summary…". |
 | G30 | **Activity = `SheetCards` `ActivityCard`** (timeline: mark, what changed, who · when). | `BrokerOrderSheet.tsx:6780` | L1 | `parity-sheets`: `<ActivitySection>` or a `RailCard` titled "Activity". |
 | G31 | **A rail for existing records** (340px, sticky, read-only: summary, related, activity, notes). | `BrokerOrderSheet.tsx:4574` | L2 | Read: does an existing record with a lifecycle have the rail? |

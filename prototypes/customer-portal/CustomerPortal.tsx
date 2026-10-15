@@ -7,9 +7,12 @@ import {
   ReceiptText,
   Store,
   UsersRound,
+  Repeat,
 } from "lucide-react";
+import { RecurringScreen } from "./RecurringScreen";
+import { useEventToasts } from "./notifications";
 import { AppShell } from "@/components/app-shell";
-import type { NavItem } from "@/components/navigation-drawer";
+import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
 import { ThemeToggle } from "@/components/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +21,7 @@ import { OrdersScreen } from "./OrdersScreen";
 import { SitesScreen } from "./SitesScreen";
 import { DashboardScreen } from "./DashboardScreen";
 import { InvoicesScreen } from "./InvoicesScreen";
+import { PortalNavContext } from "./nav";
 import { TeamScreen } from "./TeamScreen";
 
 /*
@@ -51,12 +55,28 @@ const NAV: NavItem[] = [
   { key: "team-access", label: "Team & Access", icon: <UsersRound /> },
 ];
 
+/* ORDERS HOLDS TWO PAGES (Pavan, 2026-10-15) — the requests, and the
+   standing orders one row per series (3PL's Recurring Orders) — as 3PL's
+   Orders holds Delivery and Recurring Orders. */
+const SUB_NAV: Record<string, NavGroup[]> = {
+  orders: [
+    {
+      items: [
+        { key: "orders", label: "Order Requests", icon: <ClipboardList /> },
+        { key: "recurring", label: "Recurring Orders", icon: <Repeat /> },
+      ],
+    },
+  ],
+};
+const SUB_PAGES = SUB_NAV.orders[0].items;
+const areaOf = (page: string) => (SUB_PAGES.some((i) => i.key === page) ? "orders" : page);
+
 const PAGE_KEY = "fp-portal-page";
 
 function readStoredPage(): string {
   try {
     const saved = localStorage.getItem(PAGE_KEY);
-    return saved && NAV.some((i) => i.key === saved) ? saved : NAV[0].key;
+    return saved && (NAV.some((i) => i.key === saved) || SUB_PAGES.some((i) => i.key === saved)) ? saved : NAV[0].key;
   } catch {
     return NAV[0].key;
   }
@@ -65,6 +85,9 @@ function readStoredPage(): string {
 export function CustomerPortal() {
   const [page, setPage] = React.useState(readStoredPage);
   const [prefill, setPrefill] = React.useState<{ shipTo: string; assetIds: string[]; n: number } | null>(null);
+  /* A RECORD TO OPEN ON ARRIVAL — set by a link on another page. */
+  const [focusOrder, setFocusOrder] = React.useState<{ requestNo: string; n: number } | null>(null);
+  const [focusInvoice, setFocusInvoice] = React.useState<{ invoiceNo: string; n: number } | null>(null);
   const go = (key: string) => {
     setPage(key);
     try {
@@ -73,9 +96,19 @@ export function CustomerPortal() {
       // Storage blocked — the page still changes for this visit.
     }
   };
-  const active = NAV.find((i) => i.key === page) ?? NAV[0];
+  const active = SUB_PAGES.find((i) => i.key === page) ?? NAV.find((i) => i.key === page) ?? NAV[0];
+  const openOrder = (requestNo: string) => {
+    setFocusOrder({ requestNo, n: Date.now() });
+    go("orders");
+  };
+  const openInvoice = (invoiceNo: string) => {
+    setFocusInvoice({ invoiceNo, n: Date.now() });
+    go("invoices");
+  };
+  useEventToasts(openOrder, openInvoice);
 
   return (
+    <PortalNavContext.Provider value={{ openOrder, openInvoice }}>
     <TooltipProvider>
       <AppShell
         title={
@@ -99,12 +132,13 @@ export function CustomerPortal() {
           <ModuleSidebar
             modules={[MODULE]}
             moduleNav={{ [MODULE.key]: NAV }}
-            subNav={{}}
+            subNav={SUB_NAV}
+            nested={["orders"]}
             activeModule={MODULE.key}
-            activeArea={page}
-            activeSub={null}
+            activeArea={areaOf(page)}
+            activeSub={areaOf(page) === "orders" ? page : null}
             onModuleChange={() => {}}
-            onNavigate={(area) => go(area)}
+            onNavigate={(area, sub) => go(sub ?? (area === "orders" ? "orders" : area))}
           />
         }
         headerAction={<ThemeToggle />}
@@ -115,9 +149,11 @@ export function CustomerPortal() {
         ) : page === "team-access" ? (
           <TeamScreen />
         ) : page === "invoices" ? (
-          <InvoicesScreen />
+          <InvoicesScreen focus={focusInvoice} />
         ) : page === "orders" ? (
-          <OrdersScreen prefill={prefill} />
+          <OrdersScreen prefill={prefill} focus={focusOrder} />
+        ) : page === "recurring" ? (
+          <RecurringScreen />
         ) : page === "sites-assets" ? (
           <SitesScreen
             onCreateOrder={(shipTo, assetIds) => {
@@ -132,5 +168,6 @@ export function CustomerPortal() {
         )}
       </AppShell>
     </TooltipProvider>
+    </PortalNavContext.Provider>
   );
 }

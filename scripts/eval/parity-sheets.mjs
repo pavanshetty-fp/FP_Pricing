@@ -18,7 +18,7 @@
     G25 a first-level sheet whose primary can be dead (canSubmit) replaces the
         default primary — the default is `disabled`, which cannot say why;
     G27 no step column (stepColumn);
-    G28 a CREATE sheet never opts out of the 756 floor (fill={false});
+    G28 the retired `fill` prop (756 creation floor, gone 2026-10-15) is not passed;
     G29 a summary in the rail is SheetCards' SummaryCard, not a RailCard;
     G30 a record's history is SheetCards' ActivityCard, not a local list.
 
@@ -77,10 +77,9 @@ export function check() {
         add(file, t.line, "step column switched on (stepColumn) — off in every module since 2026-10-07", "G27");
       }
 
-      /* ── G28 · a create sheet keeps the 756 floor ────────────────── */
-      const createTitle = String(p.get("createTitle") ?? "");
-      if (String(p.get("fill") ?? "") === "{false}" && /^\{?[`"]?(?:Create|New|Add)\b/.test(createTitle)) {
-        add(file, t.line, `creation sheet "${createTitle.replace(/[{}`"]/g, "")}" opts out of the 756 floor (fill={false})`, "G28");
+      /* ── G28 · the 756 floor is gone; width follows content ──────── */
+      if (p.has("fill")) {
+        add(file, t.line, "`fill` passed — the 756 creation floor is gone (2026-10-15); width follows content", "G28");
       }
     }
 

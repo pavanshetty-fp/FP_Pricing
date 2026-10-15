@@ -32,51 +32,84 @@ import { PendingStrip, attend, type PendingItem } from "./PendingStrip";
  * DS FOLLOW-UP: nothing here is screen-specific. This belongs beside
  * `side-sheet/` in the DS, with the order sheet moved onto it too.
  */
+/**
+ * A COLUMN'S COMFORTABLE WIDTH, by what it holds (Pavan, 2026-10-15). A
+ * table-led sheet adds these up to find its width; one number per kind, so
+ * the same column is the same width in every sheet.
+ */
+export const CELL = {
+  /* TIGHTENED (Pavan, 2026-10-15): asset and product names are short, a
+     quantity is at most six digits — the columns, and so the sheet, are only
+     as wide as that. */
+  /** A row's select checkbox, an expand chevron. */
+  check: 44,
+  /** "Top off" and other labelled checkboxes. */
+  flag: 72,
+  /** The row's own thing — an asset, a product, a partner, a document. */
+  name: 200,
+  /** A pick from a short list — type, unit, condition, terminal. */
+  pick: 160,
+  /** A quantity or an amount, with its unit — six digits. */
+  number: 110,
+  date: 140,
+  status: 140,
+  /** Free text — a fault, a note. */
+  text: 240,
+  /** The row bin / a row menu. */
+  bin: 52,
+} as const;
+
+export interface SheetFit {
+  /** Each table's columns, as `CELL` widths; the widest table decides. */
+  tables: number[][];
+  /** The 340px right rail (summary · activity) beside the tables. */
+  rail?: boolean;
+}
+
+/** BODY PADDING (16 + 16) AND THE TABLE BOX'S BORDERS. */
+const FIT_PAD = 34;
+const RAIL = 340 + 24;
+export const FORM_WIDTH = 600;
+export const DATA_WIDTH = 1200;
+/** A data-intensive sheet's field grid — three across, at 1200. */
+export const DATA_FIELDS = "grid grid-cols-3 gap-4";
+
+/** The width a table-led sheet takes — never under the form's 600. */
+export function fitWidth(fit: SheetFit): number {
+  const widest = Math.max(0, ...fit.tables.map((t) => t.reduce((n, w) => n + w, 0)));
+  return Math.max(FORM_WIDTH, widest + FIT_PAD + (fit.rail ? RAIL : 0));
+}
+
 export interface RecordSheetProps {
   /**
-   * `narrow` is the DS's 560px side sheet — right for a form of stacked fields.
-   * `wide` is for a sheet carrying TABLES — at 560 their columns had to be
-   * scrolled sideways to be read, and a table you scroll to read is a table you
-   * cannot compare rows in.
+   * THE WIDTH FOLLOWS WHAT IS IN THE SHEET (Pavan, 2026-10-15 — replaces the
+   * fixed 560 / 864 / 1120 tiers and the 756 creation floor). A sheet sized
+   * for more than it holds reads as empty.
    *
-   * `xwide` is 1120px, for a step whose tables run to eight columns. IT IS PER
-   * STEP, NOT PER SHEET: a sheet is only as wide as what is currently in it, so
-   * a form of stacked fields does not inherit the width its pricing tables
-   * needed, and nobody reads a two-column form with a metre between a label and
-   * its control. The same rule `BulkEditDialog` follows when its summary step
-   * goes from `default` to `lg`.
+   *   `form`     600 — fields and text, no table. The default.
+   *   `compact`  510 — CONTROLS rather than a form (a facet list).
+   *   `data`     1200 at least — a DATA-INTENSIVE record's detail: many
+   *              fields and several related-records tables (a 3PL customer,
+   *              vendor, product, rental asset). Fields go three across
+   *              (`DATA_FIELDS`); with `fit`, the wider of the two. Pavan,
+   *              2026-10-15: "cramped … should have more width so that
+   *              information can be easily consumed".
+   *   `full`     the viewport less the gap — Service Order, Sales Order /
+   *              Quote, the portal's Order Request. (The 3PL Delivery Order
+   *              fits its tables — Pavan, 2026-10-15.)
    *
-   * `xxwide` is 1440px, and exists for exactly one shape: a step that is TWO
-   * COLUMNS — tables on the left, a fixed rail on the right. The rail costs the
-   * tables 320px plus a gap, and at 1120 that came straight out of columns that
-   * were already at their minimum. A sheet does not get this size for being
-   * long; it gets it for being split.
+   * A sheet that carries TABLES passes `fit` instead, and is as wide as its
+   * widest table's columns at a comfortable width (`CELL`), plus the body's
+   * padding, plus the 340px rail and its gap when it has one — never under
+   * 600. Per step: a stepped sheet passes the tables of the step on show.
    *
-   * THE GAP IS 56px AND IT IS THE ONE CONSTANT. Every size is clamped to
-   * `100vw - 56px`, so no sheet can ever reach the edge and none can overflow
-   * a small screen. A sheet opened OVER another one takes that gap TWICE —
-   * see `level`.
-   *
-   * THE FOUR NARROWER SIZES ARE CAPPED rather than filling: the cap is the
-   * most a sheet may take, not the width it should be, and the clamp only
-   * bites on a narrow screen.
-   *
-   * `xxwide` IS THE EXCEPTION — it fills. Changed 2026-09-21. Its width was
-   * never a chosen number: it is tables beside a fixed 320px rail, so the rail
-   * is constant and everything else the viewport has belongs to the tables. At
-   * a fixed 1440 a wide screen showed a strip of the list behind it and the
-   * sheet read as having stopped short of something.
+   * THE GAP IS 56px AND IT IS THE ONE CONSTANT. Every width is clamped to
+   * `100vw - 56px`, so no sheet reaches the edge or overflows a small screen.
+   * A sheet opened OVER another one takes that gap TWICE — see `level`.
    */
-  size?: "compact" | "narrow" | "medium" | "wide" | "xwide" | "xxwide";
-  /**
-   * A CREATION SHEET IS AT LEAST 756px (Pavan, 2026-10-05 — replaces the
-   * 2026-09-25 rule that it filled the screen). Creating a rule, an order, a
-   * customer — anything — keeps its own `size`, but never narrower than 756;
-   * still clamped to `100vw − 56px`. Defaults to `mode === "create"`. Pass
-   * `false` for a sheet that borrows create mode without making anything (an
-   * export, a partner's quote).
-   */
-  fill?: boolean;
+  size?: "compact" | "form" | "data" | "full";
+  /** Width from the sheet's tables — see `size` and `fitWidth`. */
+  fit?: SheetFit;
   /**
    * HOW DEEP IN THE STACK THIS SHEET IS. `2` is a sheet opened OVER another
    * one — the invitation over an order, a partner's quote over an order.
@@ -362,8 +395,8 @@ export function DraftStatusChip({
 }
 
 export function RecordSheet({
-  size = "narrow",
-  fill,
+  size = "form",
+  fit,
   level = 1,
   open,
   onOpenChange,
@@ -395,17 +428,15 @@ export function RecordSheet({
   const [navOn, setNavOn] = React.useState(false);
   const navShown = stepped && navOn;
   /* FULL WIDTH WHILE THE STEP COLUMN SHOWS (Pavan, 2026-10-05). */
-  const fills = size === "xxwide" || navShown;
-  /* THE CREATION FLOOR — 756px, whatever `size` asks for below it — FOR THE
-     WHOLE VISIT that started as a create (Pavan, 2026-10-07). A create-then-
-     autosave sheet flips to edit the moment Create is pressed; it must not
-     shrink under the reader's hands. Reset when the sheet closes. */
-  const [createVisit, setCreateVisit] = React.useState(false);
-  React.useEffect(() => {
-    if (!open) setCreateVisit(false);
-    else if (creating) setCreateVisit(true);
-  }, [open, creating]);
-  const floor = fill ?? (creating || createVisit);
+  const fills = size === "full" || navShown;
+  const width =
+    size === "data"
+      ? Math.max(DATA_WIDTH, fit ? fitWidth(fit) : 0)
+      : fit
+        ? fitWidth(fit)
+        : size === "compact"
+          ? 510
+          : FORM_WIDTH;
   /* WHY (Pavan, 2026-10-07). A dead primary says why on press (G25): the
      strip is raised by the press, not shown up front, and drops on close. */
   const [pendingRaised, setPendingRaised] = React.useState(false);
@@ -426,36 +457,18 @@ export function RecordSheet({
            second-level sheet takes 112 — the constant, twice — and the strip
            of the sheet beneath it is what says it is second. */
         style={
-          { "--fp-sheet-gap": level === 2 ? "112px" : "56px" } as React.CSSProperties
+          {
+            "--fp-sheet-gap": level === 2 ? "112px" : "56px",
+            "--fp-sheet-w": `${width}px`,
+          } as React.CSSProperties
         }
         className={cn(
           "gap-0 p-0",
           fills
-            ? /* THE TWO-COLUMN STEP FILLS. It is the one shape whose width is
-                 not a number somebody chose — tables on the left and a fixed
-                 rail on the right, and every pixel the viewport has goes to
-                 the tables. Capped at 1440 it left a strip of list showing on
-                 a wide screen and made the sheet look like it had stopped
-                 short of something. The gap is the only constant. */
+            ? /* FULL — the intense forms, and any sheet showing its step column. */
               "w-[calc(100vw-var(--fp-sheet-gap))] sm:max-w-[calc(100vw-var(--fp-sheet-gap))]"
-            : size === "xwide"
-            ? "w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(1120px,calc(100vw-var(--fp-sheet-gap)))]"
-            : size === "wide"
-              ? "w-[min(864px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(864px,calc(100vw-var(--fp-sheet-gap)))]"
-              : floor
-                ? /* A CREATION SHEET NEVER DROPS BELOW 756 (Pavan, 2026-10-05). */
-                  "w-[min(756px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(756px,calc(100vw-var(--fp-sheet-gap)))]"
-              : size === "medium"
-                ? /* 600 — a read-first sheet that explains one thing and hands
-                     on (Pavan, 2026-10-15: the portal's "needs your action"). */
-                  "w-[min(600px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(600px,calc(100vw-var(--fp-sheet-gap)))]"
-              : size === "compact"
-                ? /* 510 — between the DS narrow and nothing. For a sheet that
-                     is CONTROLS rather than a form: a facet list has a natural
-                     width of its own, and the 560 a two-column form needs left
-                     it swimming. */
-                  "w-[min(510px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(510px,calc(100vw-var(--fp-sheet-gap)))]"
-                : "w-[min(560px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(560px,calc(100vw-var(--fp-sheet-gap)))]"
+            : /* THE CONTENT'S WIDTH, clamped by the gap (`--fp-sheet-w`). */
+              "w-[min(var(--fp-sheet-w),calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(100vw-var(--fp-sheet-gap)))]"
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">

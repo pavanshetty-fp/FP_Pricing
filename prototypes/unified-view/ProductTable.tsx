@@ -156,6 +156,20 @@ export function ProductTable<L extends ProductLine = ProductLine>({
                     autoFocus={i === focusRow}
                     aria-label={`Product for row ${i + 1}`}
                     onChange={(v) => update(i, { name: v })}
+                    /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a blank
+                       row; each new row starts as this one, named. */
+                    multiple={
+                      line.name
+                        ? undefined
+                        : {
+                            taken: lines.map((l) => l.name).filter(Boolean),
+                            onApply: (names) => {
+                              const next = [...lines];
+                              next.splice(i, 1, ...names.map((name) => ({ ...line, name })));
+                              onChange(next);
+                            },
+                          }
+                    }
                   />
                 </td>
                 <td className="relative p-0">

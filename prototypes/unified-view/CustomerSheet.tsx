@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import * as React from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,9 @@ export function CustomerSheet({
 
   return (
     <RecordSheet
+      /* A RECORD IS DATA-INTENSIVE — 1200, fields three across; creating is
+         a 600 form (Pavan, 2026-10-15). */
+      size={creating ? "form" : "data"}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
@@ -174,7 +178,7 @@ export function CustomerSheet({
       }}
     >
       <SheetSection title="Customer Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className={cn("grid gap-4", creating ? "grid-cols-2" : "grid-cols-3")}>
           <SheetField label="Customer Name">
             <Input
               value={draft.name}
@@ -298,7 +302,7 @@ export function CustomerSheet({
           />
         </SheetField>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className={cn("grid gap-4", creating ? "grid-cols-2" : "grid-cols-3")}>
           <SheetField label="Email">
             <Input
               type="email"

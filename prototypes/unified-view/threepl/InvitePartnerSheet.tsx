@@ -266,9 +266,9 @@ export function InvitePartnerSheet({
 
   return (
     <RecordSheet
-      /* TWO COLUMNS — compose and preview — which is the one shape `xxwide`
-         exists for. */
-      size="xxwide"
+      /* WIDTH FROM ITS CONTENT (Pavan, 2026-10-15): compose and preview side
+         by side — two panes of 420, as a form beside a map. */
+      fit={{ tables: [[420, 420]] }}
       /* OVER THE ORDER SHEET — see `level` on `RecordSheet`. */
       level={2}
       open={open}

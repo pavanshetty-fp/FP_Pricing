@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 import { DATE_FMT, MONEY, dateKeyOf, startOfDay } from "../data";
 import { BROKER_STATUS_TONE } from "./orders";
 import { VENDORS } from "./vendors";
@@ -460,7 +460,17 @@ export function RecurringRuleSheet({
 
   return (
     <RecordSheet
-      size="xwide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): lines = product pick, asset
+         name, quantity; load order = product, terminal, supplier, loading
+         account (picks); deliveries = date, order # (name), state and status,
+         what changed (text). Deliveries is the widest. */
+      fit={{
+        tables: [
+          [CELL.pick, CELL.name, CELL.number],
+          [CELL.pick, CELL.pick, CELL.pick, CELL.pick],
+          [CELL.date, CELL.name, CELL.status, CELL.status, CELL.text],
+        ],
+      }}
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"

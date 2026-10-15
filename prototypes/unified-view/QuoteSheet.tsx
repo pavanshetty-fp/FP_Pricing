@@ -730,7 +730,8 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
   return (
     <>
       <RecordSheet
-        size="xxwide"
+        /* AN INTENSE FORM — FULL (Pavan, 2026-10-15). */
+        size="full"
         open={open}
         onOpenChange={(o) => (o ? onOpenChange(o) : close())}
         mode={creating ? "create" : "edit"}
@@ -901,8 +902,9 @@ function QuoteEmailSheet({
   return (
     <RecordSheet
       level={2}
-      size="wide"
-      fill={false}
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): no table — an email
+         (to, subject, message) — so the form's 600. */
+      size="form"
       open={open}
       onOpenChange={onOpenChange}
       mode="create"

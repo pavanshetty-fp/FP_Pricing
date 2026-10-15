@@ -395,6 +395,19 @@ export interface OrderRequest {
   trip?: Trip;
   /** Once the tenant has invoiced it. */
   invoiceNo?: string;
+  /** A partial delivery: the gallons that did not arrive. */
+  undeliveredGal?: number;
+  /**
+   * WHAT THE CUSTOMER SENT BACK on an "Action needed" (Pavan, 2026-10-15 —
+   * PRD FR-25): a note, files, and for a credit hold the payment they made
+   * offline. The tenant reads it and releases the hold.
+   */
+  customerReply?: {
+    at: string;
+    note: string;
+    files: string[];
+    payment?: { paidOn: string; amount: string; reference: string };
+  };
   updatedAt: string;
   audit?: ActivityEntry[];
 }
@@ -608,6 +621,8 @@ export const SEED_REQUESTS: OrderRequest[] = SEED.map(
             }
           : undefined,
       documents: seedDocs(status, i, at),
+      /* THE PARTIAL DROP'S SHORTFALL — the driver's note says 2,400 gal. */
+      undeliveredGal: status === "Partial delivery" ? 2400 : undefined,
       invoiceNo:
         status === "Invoiced" || status === "Invoice disputed" || status === "Paid"
           ? `INV-${5400 + i}`
@@ -1106,4 +1121,29 @@ export function renameShipToInRequests(from: string, to: string) {
 export function discardRequest(id: string) {
   requests = requests.filter((r) => r.id !== id);
   emit();
+}
+
+/*
+  ORDER THE REST (Pavan, 2026-10-15 — PRD FR-28): a new request for the
+  gallons a partial delivery left, to the same ship-to and tanks, split over
+  its lines in proportion; the date is left to choose.
+*/
+export function orderTheRest(id: string): OrderRequest | null {
+  const src = requests.find((r) => r.id === id);
+  if (!src || !src.undeliveredGal) return null;
+  const r = duplicateRequest(id);
+  if (!r) return null;
+  const asked = src.lines.reduce((t, l) => t + (l.topOff ? 0 : l.gal), 0) || 1;
+  updateRequest(r.id, {
+    recurring: false,
+    frequency: "",
+    lines: src.lines.map((l) => ({ ...l, topOff: false, gal: Math.round((src.undeliveredGal! * (l.gal || asked)) / asked) })),
+    instructions: `The rest of ${src.requestNo} (${src.undeliveredGal.toLocaleString()} gal not delivered).`,
+  });
+  const at = new Date().toISOString();
+  requests = requests.map((x) =>
+    x.id === r.id ? { ...x, audit: [{ at, by: PORTAL_ACTOR, changes: [`The rest of ${src.requestNo}`] }] } : x
+  );
+  emit();
+  return requests.find((x) => x.id === r.id)!;
 }

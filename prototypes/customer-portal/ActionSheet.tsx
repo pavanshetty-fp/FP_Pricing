@@ -4,6 +4,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../unified-view/RecordSheet";
 import { RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel } from "./requestActions";
 import {
   REQUEST_STATUS_TONE,
   TENANT,
@@ -41,12 +42,15 @@ export function ActionSheet({
   open,
   onOpenChange,
   onViewOrder,
+  onCreated,
 }: {
   request: OrderRequest | null;
   action: NeededAction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onViewOrder: (id: string) => void;
+  /** "Order the rest" made a new draft — open it. */
+  onCreated: (id: string) => void;
 }) {
   if (!request || !action) return null;
   const r = request;
@@ -56,7 +60,7 @@ export function ActionSheet({
 
   return (
     <RecordSheet
-      size="medium"
+      size="form"
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"
@@ -71,10 +75,14 @@ export function ActionSheet({
         </StatusChip>
       }
       footerPrimary={
-        <Button onClick={() => onViewOrder(r.id)}>
-          View order details
-          <ArrowRight />
-        </Button>
+        <span className="flex items-center gap-3">
+          <Button variant={r.status === "Quote sent" || r.undeliveredGal ? "outline" : "default"} onClick={() => onViewOrder(r.id)}>
+            View order details
+            <ArrowRight />
+          </Button>
+          <QuoteActions r={r} />
+          <OrderRestButton r={r} onCreated={onCreated} />
+        </span>
       }
     >
       <div className="flex flex-col gap-4">
@@ -104,8 +112,14 @@ export function ActionSheet({
           )}
 
           {action.kind === "quote" && est.high > 0 && (
+            <div className="border-t border-border pt-2">
+              <QuoteLines r={r} />
+            </div>
+          )}
+
+          {action.kind === "partial" && r.undeliveredGal && (
             <dl className="flex flex-col border-t border-border pt-2">
-              <RailRow variant="total" label="Estimated cost" value={`${usd.format(est.low)} – ${usd.format(est.high)}`} />
+              <RailRow variant="total" label="Not delivered" value={`${r.undeliveredGal.toLocaleString()} gal`} />
             </dl>
           )}
 
@@ -117,6 +131,14 @@ export function ActionSheet({
             </dl>
           )}
         </SummaryCard>
+
+        {/* WHAT THE CUSTOMER CAN SEND BACK — no payment here; they pay
+            offline and say so, and the supplier releases the hold. */}
+        {(action.kind === "credit" || action.kind === "answer") && r.status === "Action needed" && (
+          <SummaryCard title={`Reply to ${TENANT}`}>
+            <ReplyPanel r={r} credit={action.kind === "credit"} />
+          </SummaryCard>
+        )}
 
         {/* THE ORDER, IN SHORT — what it is about; the rest is one press away. */}
         <SummaryCard title="The order">

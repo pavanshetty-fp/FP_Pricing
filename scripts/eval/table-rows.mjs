@@ -14,7 +14,12 @@
     · a row's remove names its subject — never "Remove row N" / "line N";
     · no local `Cell*` control in the app — the cells are the DS `TableCell*`;
     · a row's remove asks first — it is `TableRowRemove` (✕ / ✓), never a
-      bare bin `Button` labelled "Remove …" (Pavan, 2026-09-23).
+      bare bin `Button` labelled "Remove …" (Pavan, 2026-09-23);
+    · a cell that picks the ROW's own thing — asset, tank, peripheral,
+      vendor, partner, or a product that is the row — takes `multiple`, so
+      several picks make several rows (Pavan, 2026-10-15). Recognised by its
+      aria-label; a pick that is a row's attribute ("Product for line") is
+      not one.
 
   WHAT IT DOES NOT DO. Whether the RIGHT cell takes focus, whether a table may
   be emptied, and what a new row starts with are readings (L2), listed in the
@@ -27,7 +32,7 @@ export const name = "table-rows";
 export const segment = "3-interactions";
 export const rule = 'docs/ds/ui/2-rules.md §10f "Rows"';
 
-const SCAN = ["prototypes/unified-view"];
+const SCAN = ["prototypes/unified-view", "prototypes/customer-portal"];
 const SKIP = /(TechnicianApp|TechnicianMobile)\.tsx$/;
 
 export function check() {
@@ -37,7 +42,10 @@ export function check() {
     const src = read(file);
     const lines = src.split("\n");
 
-    const firstAdd = lines.findIndex((l) => /<HangingAdd\b/.test(l) && !isComment(l));
+    /* AN ADD THAT OPENS THE FILE PICKER makes no typed row — nothing to focus. */
+    const firstAdd = lines.findIndex(
+      (l) => /<HangingAdd\b/.test(l) && !isComment(l) && !/\.click\(\)/.test(l),
+    );
     if (firstAdd >= 0 && !/autoFocus/.test(src)) {
       out.push(
         finding("L1", rel(file), firstAdd + 1,
@@ -55,6 +63,19 @@ export function check() {
       if (/aria-label=\{`Remove /.test(line) && /<Button\b/.test(lines.slice(Math.max(0, i - 4), i).join("\n"))) {
         out.push(finding("L1", rel(file), i + 1,
           "a row bin that removes on one click — use TableRowRemove, which asks ✕ / ✓", rule));
+      }
+      /* A ROW PICKER WITHOUT `multiple` — §"Picking several makes rows". */
+      if (/aria-label=\{`(?:Asset|Tank|Peripheral|Vendor|Partner) |aria-label=\{`Product for row /.test(line)) {
+        let a = i;
+        while (a > 0 && a > i - 25 && !/<TableCell(?:Select|Combobox)\b/.test(lines[a])) a--;
+        if (/<TableCell(?:Select|Combobox)\b/.test(lines[a])) {
+          let b = i;
+          while (b < lines.length - 1 && b < i + 80 && !/^\s*\/>/.test(lines[b])) b++;
+          if (!/\bmultiple=/.test(lines.slice(a, b + 1).join("\n"))) {
+            out.push(finding("L1", rel(file), i + 1,
+              "a row picker that takes one — pass `multiple` so several picks make several rows", rule));
+          }
+        }
       }
       if (/^\s*(?:export )?function Cell(?:Select|Number|Input|Combobox|MultiSelect)\b/.test(line)) {
         out.push(finding("L1", rel(file), i + 1,

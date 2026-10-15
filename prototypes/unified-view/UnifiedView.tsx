@@ -813,6 +813,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
               modules={only ? APP_MODULES.filter((m) => m.key === only) : APP_MODULES}
               moduleNav={MODULE_NAV}
               subNav={SUB_NAV}
+              /* SUB-PAGES HANG UNDER THEIR PAGE ON TREE BARS (Pavan,
+                 2026-10-15 — the portal's Orders, everywhere). */
+              nested={Object.keys(SUB_NAV)}
               activeModule={moduleKey}
               activeArea={accountTitle ? "" : navKey}
               activeSub={subKey}

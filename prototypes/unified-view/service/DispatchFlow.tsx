@@ -359,7 +359,9 @@ export function TechnicianEmailSheet({
 
   return (
     <RecordSheet
-      size="xxwide"
+      /* WIDTH FROM ITS CONTENT (Pavan, 2026-10-15): the email beside its
+         attachment cards — two panes of 420. */
+      fit={{ tables: [[420, 420]] }}
       level={2}
       open={open}
       onOpenChange={onOpenChange}
@@ -561,12 +563,13 @@ export function InvoiceSummarySheet({
 
   return (
     <RecordSheet
-      size="wide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): no table — bill-to facts,
+         lists, label-and-amount charge rows, attachments — so the form's 600. */
+      size="form"
       level={2}
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"
-      fill={false}
       editTitle={`${partial ? "Partial invoice" : "Invoice"} · ${order.orderNo}`}
       createTitle=""
       createAction=""

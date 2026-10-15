@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { TableCellInput } from "@/components/form-layout";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChip } from "@/components/ui/status-chip";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 import { DATE_FMT, dateKeyOf, startOfDay } from "../data";
 import { BROKER_STATUS_TONE, type OrderLine } from "./orders";
 import { VENDORS } from "./vendors";
@@ -151,7 +151,9 @@ export function RecurringDeliverySheet({
 
   return (
     <RecordSheet
-      size="wide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): lines table = product pick,
+         asset name, quantity, Top off. */
+      fit={{ tables: [[CELL.pick, CELL.name, CELL.number, CELL.flag]] }}
       /* IT OPENS OVER THE RULE SHEET, so it takes the gap twice. At level 1 it
          covered the rule sheet exactly and read as the SAME sheet having
          changed its contents — the 56px strip of the sheet underneath is the

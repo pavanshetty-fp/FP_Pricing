@@ -66,22 +66,23 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     the person knows whether it is a mistake. Blocking here is the system
     overruling a judgement it does not have the information to make.
   (Both promoted from Unified View, 2026-09-22.)
-- **Two widths, both capped.** `narrow` is the DS's 560px sheet — right for a form
-  of stacked fields. `wide` is **864px**, for a sheet carrying TABLES: at 560 their
-  columns have to be scrolled to be read. `xwide` is **1120px**, for a step whose
-  tables run past six columns. These are the **most** a sheet may take, not a
-  width to grow into — a form that eats a wide monitor turns two-column pairs
-  into a hunt across the screen and leaves nothing of the list it came from.
+- **The width follows the content** (Pavan, 2026-10-15 — replaces the fixed
+  560 / 864 / 1120 caps). A form of fields is **600**. A sheet carrying tables is
+  as wide as its widest table's columns at a comfortable width (`CELL`), plus
+  padding, plus the rail beside it — never under 600. Only the intense forms
+  (Service Order, Sales Order / Quote, the portal's Order Request) are
+  **full**; the 3PL Delivery Order fits its tables plus its rail. A
+  DATA-INTENSIVE record's detail (many fields, several related tables) is
+  **data** — 1200, fields three across — so it reads easily. A sheet sized
+  for more than it holds reads as empty.
+  DS ui/7-variants §1.
 - **The gap is 56px and it is the one constant.** Every size clamps to
   `100vw − 56px`, so no sheet reaches the edge and none overflows a small
   screen. Changed from 60 on 2026-09-21; one number, every sheet, every nested
   drawer.
-- **A creation sheet is at least 756px** (Pavan, 2026-10-05 — replaces the
-  2026-09-25 "fills to `100vw − 56px`") — creating a rule, an order, a
-  customer, anything keeps its own size but never below 756, clamped to
-  `100vw − 56px`. It carries **no right rail** (Summary · Associated records ·
-  Activity) until the record exists. An export or a partner's quote borrows
-  create mode without making anything and keeps its cap.
+- **A creation sheet has no right rail** (Summary · Associated records ·
+  Activity) until the record exists. Its width follows the same content rule
+  — the 756 floor is gone (Pavan, 2026-10-15).
 - **Width is per STEP, not per sheet.** A sheet is only as wide as what is
   currently in it: a form of stacked fields must not inherit the width its
   pricing tables needed. `BulkEditDialog` already does this — `default` while
@@ -91,20 +92,9 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   have slipped; a heading too long for its column is a column that is too
   narrow, so `TableRequiredLabel` never wraps and the fix belongs in the
   colgroup.
-- **`xxwide` FILLS — `100vw − 56px`, no cap — and it exists for exactly one
-  shape: a step that is TWO COLUMNS** — what you fill in on the left, what that
-  makes on the right. A sheet does not get this size for being long; it gets it
-  for being split.
-  - **Why this one is not capped.** Its width was never a chosen number. The
-    rail is fixed at 340px plus a 24px gap; everything else the viewport has
-    belongs to the tables, which at `xwide` were already at their minimum. A
-    fixed 1440 left a strip of the list showing on a wide screen and the sheet
-    read as having stopped short of something. Changed from 1440 on 2026-09-21.
-  - **The cap argument does not apply to it.** What a cap protects is a FORM —
-    label-to-control pairs stretched across a monitor. A two-column step has no
-    such pairs to stretch: the left is tables, the right is a fixed rail.
-  - Below the fold-back width the step is one column again and stops needing
-    any of this.
+- **`full` FILLS — `100vw − 56px`, no cap** — for the intense forms only, and
+  for any sheet while its step column shows. The rail is fixed at 340px plus a
+  24px gap; everything else belongs to the form.
 - **THE TWO-COLUMN SHEET, AND THE ONE RULE THAT DECIDES A CARD'S SIDE: can you
   type into it?** Editable sections go left, in the sequence you fill them.
   What the record HAS BECOME goes right — derived, read-only, true whether or

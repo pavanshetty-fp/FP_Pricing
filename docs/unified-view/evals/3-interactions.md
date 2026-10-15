@@ -34,6 +34,15 @@ Against `../3-interactions.md` and `docs/ds/interactions/2-rules.md`.
       `table-rows`.
 - [ ] **L1** Every row remove names its subject. Same check.
 - [ ] **L1** Every row remove asks ✕ / ✓ first (`TableRowRemove`). Same check.
+- [ ] **L1** A cell that picks the row's own thing (asset, tank, peripheral,
+      vendor, partner, a product that is the row) takes `multiple`: tick
+      several, Apply, one row each. Same check (by aria-label).
+- [ ] **L2** …and only from a blank row; a filled row swaps its one value;
+      picks already on other rows show ticked and locked; several values that
+      belong in ONE cell stay in one cell (`TableCellMultiSelect`). A new
+      picker the label check cannot recognise is read against DS §10f
+      "Picking several makes rows" — in Unified View, Service Work and the
+      Customer Portal alike.
 - [ ] **L2** The cursor lands on the right cell — the first one the reader
       has to answer, not a disabled one.
 - [ ] **L2** A table the record cannot do without keeps no bin on its last

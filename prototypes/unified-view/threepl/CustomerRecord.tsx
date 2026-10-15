@@ -1,3 +1,4 @@
+import { CELL } from "../RecordSheet";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -125,6 +126,8 @@ export function customerReadSections(
     },
     {
       key: "contacts",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.pick, CELL.text],
       title: "Contacts",
       count: c.contacts.length,
       render: () => (
@@ -156,6 +159,8 @@ export function customerReadSections(
     },
     {
       key: "shiptos",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.text, CELL.flag, CELL.status],
       title: "Ship-to Locations",
       count: sites.length,
       render: () => (
@@ -206,6 +211,8 @@ export function customerReadSections(
     },
     {
       key: "orders",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.pick, CELL.pick, CELL.name, CELL.date, CELL.status],
       title: "Orders",
       note: `${orders.length} all time · ${recurring.length} recurring`,
       render: () => (
@@ -233,6 +240,8 @@ export function customerReadSections(
     },
     {
       key: "assets",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.pick, CELL.name, CELL.date, CELL.number],
       title: "Rental Assets",
       count: assets.length,
       render: () => (

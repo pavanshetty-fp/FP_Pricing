@@ -260,7 +260,7 @@ job that ran a day late can show both.
 
 ## 7. The side sheet
 
-Two columns at `xxwide` when the record has both halves; one column otherwise.
+Two columns (form + 340px rail) when the record has both halves; one column otherwise.
 
 ```
 ┌ header: title · status · draft chip · close ─────────────────┐
@@ -282,11 +282,11 @@ derived, read-only, true whether or not anyone is looking.
 **The rail stays put while the form scrolls.** It answers questions the reader
 has while looking at any part of the form.
 
-**Widths:** `narrow` 560 (stacked fields) · `wide` 864 (tables) · `xwide` 1120
-(tables past six columns) · `xxwide` fills to `100vw − 56px` (two columns). **Per step, not per
-sheet.** **A creation sheet is at least 756px, never filling** (Pavan, 2026-10-05;
-replaces the 2026-09-25 fill rule), and has **no rail** until the record
-exists — the order sheets take the 756 floor while creating.
+**Widths follow the content** (Pavan, 2026-10-15): `form` 600 (fields) · `fit`
+(the widest table's columns at `CELL` widths, + the rail) · `full` for the
+intense forms (Service Order, Sales Order / Quote, portal Order Request); the
+3PL Delivery Order fits its tables + rail. **Per step, not per sheet.** A creation sheet has **no rail**
+until the record exists. DS ui/7-variants §1.
 
 **A SHEET OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so `100vw − 112px`
 (Pavan, 2026-09-22). The 56px is what tells a reader a sheet is over

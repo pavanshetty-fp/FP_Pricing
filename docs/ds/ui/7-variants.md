@@ -20,38 +20,48 @@ nobody chose, it says so.
 
 ## 1. The side sheet
 
-### Width — five, and the choice is per STEP
+### Width — the content decides (Pavan, 2026-10-15)
 
-| | Width | For | Count |
-|---|---|---|---|
-| **W1** | `compact` 510 | CONTROLS rather than a form — a facet list has a natural width and 560 left it swimming | 1 |
-| **W2** | `narrow` 560 | a form of stacked fields. The DS's own sheet | 3 |
-| **W3** | `wide` 864 | a sheet carrying TABLES — at 560 their columns must be scrolled to be read | 4 |
-| **W4** | `xwide` 1120 | a step whose tables run past six columns | 2 |
-| **W5** | `xxwide` fills | **one shape only: a step that is TWO COLUMNS** — tables left, fixed rail right | 4 |
+Replaces the five fixed widths (510 · 560 · 864 · 1120 · fill) and the 756
+creation floor. A sheet sized for more than it holds reads as empty.
 
-**The question: what is in this STEP?** Not what is in the sheet. A form of
-stacked fields does not inherit the width its pricing tables needed.
+| | Width | For |
+|---|---|---|
+| **Form** | `size="form"` **600** — the default | fields and text, no table. Creating and editing alike |
+| **Fit** | `fit={{ tables, rail }}` — **the widest table's columns at a comfortable width** + 34 (body padding, the box's borders) + 364 if the 340px rail sits beside it; never under 600 | a sheet carrying TABLES |
+| **Full** | `size="full"` — `100vw − 56px` | **the intense forms only**: Service Order · Sales Order / Quote · the portal's Order Request — creating and after. The 3PL Delivery Order FITS its tables (Pavan, 2026-10-15: "too wide") |
+| **Data** | `size="data"` — **1200** at least (with `fit`, the wider) — **fields three across** (`DATA_FIELDS`) | **a data-intensive record's detail** — many fields and several related-records tables: 3PL customer · vendor · product · rental asset; Sales customer · asset; the portal's asset · ship-to. Existing records only; creating one is a 600 form. Pavan, 2026-10-15: "cramped … more width so information can be easily consumed" |
+| **Compact** | `size="compact"` 510 | CONTROLS rather than a form — a facet list |
 
-**W1–W4 are caps; W5 fills.** A cap protects a FORM — label-to-control pairs
-stretched across a monitor. A two-column step has no such pairs: the left is
-tables and the right is a fixed 340px rail, so every pixel the viewport has
-belongs to the tables.
+**A comfortable column is one number per kind** (`CELL` in `RecordSheet`,
+tightened 2026-10-15 — asset and product names are short, a quantity is six
+digits): check 44 · flag (Top off) 72 · name (the row's own thing) 200 · pick
+(a short list) 160 · number (qty, amount) 110 · date 140 · status 140 · text
+240 · bin 52. **The table's own colgroup uses the same numbers**, fixed, with
+the row's name taking what is left — a percentage column shrinks to nothing
+once the sheet is only as wide as the table. The same column is the same width in every sheet. A table of two
+columns makes a sheet as wide as those two columns need, not 864.
 
-**All five clamp to `100vw − 56px`.** One number, every sheet.
+**The rail keeps its 340 + 24** — the sheet adds it; nothing in the rail
+changes. **No minimum beyond 600, no maximum beyond the clamp.** A table too
+wide to show whole (the portal ship-to's fifteen asset columns) shows its
+first columns and **scrolls sideways**, the name pinned. **A record that
+reads several tables** (the 3PL directory) is as wide as ITS widest — each
+section names its columns (`RecordReadSection.columns`).
 
-**A CREATION SHEET IS AT LEAST 756px (Pavan, 2026-10-05 — replaces the
-2026-09-25 rule that it filled the screen).** Creating a rule, an order, a
-customer, anything: the sheet keeps its own size but never drops below 756,
-still clamped to `100vw − 56px` (112 at level 2). A create sheet has **no
-right rail** (Summary · Associated records · Activity), so a two-column sheet
-takes the 756 floor while it is being created and becomes two columns once the
-record exists. In code: `RecordSheet`'s `fill` (defaults to `mode ===
-"create"`) now sets the floor; an export or a partner's quote passes
-`fill={false}`. **The floor holds for the whole visit that began as a create**
-(Pavan, 2026-10-07): a create-then-autosave sheet that turns into the saved
-record when Create is pressed stays at least 756 until it is closed — it never
-shrinks to 560 under the reader. Every module, through `RecordSheet`.
+**Two panes side by side** — a form beside a map, an email beside its
+preview — count as a table of two 420 columns (874). **A rail beside fields
+with no table** counts the fields as two `text` columns.
+
+**The question is still: what is in this STEP?** A stepped sheet passes the
+tables of the step on show.
+
+**Every width clamps to `100vw − 56px`** (112 at level 2). One number, every
+sheet. **The step column still makes a sheet full** while it shows.
+
+**Checked, not remembered.** `npm run eval` → `sheets`: a `RecordSheet` that
+carries a table (a `<table`, `ProductTable`, `DocumentsTable`, `ListTable`)
+but neither passes `fit` nor is one of the full forms.
 
 ### Navigation — one panel (Unified View, Pavan, 2026-10-06)
 
@@ -59,9 +69,11 @@ The Unified View's navigation is ONE left panel (`ModuleSidebar`), after the
 Lovable "unified UI" reference's menu (structure only — colours and type are
 the DS's sidebar tokens). Every module is a row (icon · name · chevron); the
 module you are in is open, tinted `bg-sidebar-accent`, and under it are its
-pages: loose pages first, then each area that has pages of its own as a small
-uppercase heading (10px, tracked, muted) over those pages — no second
-drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
+pages: loose pages first; **an area that has pages of its own stays a page, its
+pages hanging under it on tree bars** (Pavan, 2026-10-15 — the portal's
+Orders, then everywhere): a vertical bar down from the area's icon and a short
+horizontal bar into each page; pressing the area opens its first page
+(`ModuleSidebar` `nested`). No second drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
 AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
 of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
 edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
@@ -97,8 +109,7 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
 - **Three columns: steps · form · cards.** A 224px step column on the left,
   the form as ONE long scroll in the middle, and the record's rail (Summary,
   Associated records, Activity) on the right where it has one. **The sheet
-  fills (`100vw − 56px`) whenever the step column shows** — this supersedes the
-  756 creation floor for stepped forms.
+  fills (`100vw − 56px`) whenever the step column shows.**
 - **Steps come from the page, not a list.** Every top-level `SheetSection` is
   a step named by its title; `FormStep label="…"` groups several sections under
   one name (Create Delivery Order: Order details · Contacts · Schedule ·

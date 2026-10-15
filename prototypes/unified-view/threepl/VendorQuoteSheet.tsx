@@ -8,7 +8,7 @@ import {
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
 import { FileUpload } from "@/components/form-layout/FileUpload";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 import {
   billableGal,
   quoteLineTotal,
@@ -136,16 +136,14 @@ export function VendorQuoteSheet({
 
   return (
     <RecordSheet
-      /* WIDE, BECAUSE IT IS A TABLE. Six columns of figures at the DS narrow
-         would have to be scrolled sideways to be read, and a table you scroll
-         to read is one you cannot compare rows in. */
-      size="wide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): pricing table = asset name,
+         product pick, four figures (req. gal, rate, adds, TLC). */
+      fit={{ tables: [[CELL.name, CELL.pick, CELL.number, CELL.number, CELL.number, CELL.number]] }}
       /* OVER THE ORDER SHEET — see `level` on `RecordSheet`. */
       level={2}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
-      fill={false}
       editTitle={`${vendorName} · Pricing`}
       createTitle={`${vendorName} · Pricing`}
       createAction="Accept"

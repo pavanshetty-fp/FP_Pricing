@@ -1,3 +1,4 @@
+import { CELL } from "../RecordSheet";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -165,6 +166,8 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
     },
     {
       key: "contacts",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.pick, CELL.text],
       title: "Contacts",
       count: v.contacts.length,
       render: () => (
@@ -196,6 +199,8 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
     },
     {
       key: "rates",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.number, CELL.number, CELL.number],
       title: "Rate card",
       count: v.rateCard.length,
       render: () => (
@@ -242,6 +247,8 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
     },
     {
       key: "products",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.pick, CELL.pick],
       title: "Supported products",
       count: products.length,
       render: () => (
@@ -260,6 +267,8 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
     },
     {
       key: "assignments",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.pick, CELL.name, CELL.date, CELL.status],
       title: "Assignments",
       note: `${live.length} live · ${history.length} closed`,
       render: () => (

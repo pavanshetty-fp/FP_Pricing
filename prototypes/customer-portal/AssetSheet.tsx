@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
@@ -226,7 +227,13 @@ export function AssetSheet({
   return (
     <>
       <RecordSheet
-        size="xxwide"
+        /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): no table. Asset details =
+           fields, so the form's 600. Ship-to & location = fields and the map
+           in two EQUAL halves; the map needs ~420, so each half is 420. */
+        {...(step === "location" ? { fit: { tables: [[420, 420]] } } : { size: "form" as const })}
+        /* AN EXISTING ASSET IS DATA-INTENSIVE — 1200, fields three across
+           (Pavan, 2026-10-15). Creating keeps the widths above. */
+        {...(!creating ? { size: "data" as const } : {})}
         open={open}
         onOpenChange={onOpenChange}
         mode={creating ? "create" : "edit"}
@@ -322,7 +329,7 @@ export function AssetSheet({
         {step === "details" ? (
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="asset-details" title="Details">
-            <div className="grid grid-cols-2 gap-4">
+            <div className={cn("grid gap-4", creating ? "grid-cols-2" : "grid-cols-3")}>
               <SheetField label="Display name" required>
                 <Input value={draft.name} placeholder="e.g. Tank A3" onChange={(e) => set("name", e.target.value)} />
               </SheetField>

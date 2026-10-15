@@ -1,3 +1,4 @@
+import { CELL } from "../RecordSheet";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   AttachmentTable,
@@ -108,6 +109,8 @@ export function productReadSections(
     },
     {
       key: "vendors",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.text, CELL.flag, CELL.status],
       title: "Vendors who can fulfil this",
       count: vendors.length,
       render: () => (
@@ -140,6 +143,8 @@ export function productReadSections(
     },
     {
       key: "customers",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.name, CELL.pick, CELL.pick, CELL.pick],
       title: "Eligible accounts",
       count: allowed.length,
       note: p.availableToAllCustomers ? "Available to all customers" : "Restricted list",
@@ -160,6 +165,8 @@ export function productReadSections(
     },
     {
       key: "usage",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.pick, CELL.name, CELL.date, CELL.number, CELL.status],
       title: "Order usage",
       note: `${orders.length} orders · ${recurring.length} recurring`,
       render: () => (

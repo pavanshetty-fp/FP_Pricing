@@ -25,10 +25,13 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current transition-none"
       >
+        {/* `text-current` NAMES THE COLOUR, so a parent that tints bare
+            icons (a list row mutes every svg without a text- class) cannot
+            turn the tick grey on the filled box. */}
         {checked === "indeterminate" ? (
-          <MinusIcon className="size-3.5" />
+          <MinusIcon className="size-3.5 text-current" />
         ) : (
-          <CheckIcon className="size-3.5" />
+          <CheckIcon className="size-3.5 text-current" />
         )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>

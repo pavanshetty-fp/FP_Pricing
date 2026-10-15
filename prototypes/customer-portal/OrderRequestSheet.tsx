@@ -34,9 +34,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
 import { DocumentsTable, type DocumentRow } from "../unified-view/DocumentsTable";
+import { RecordLink, usePortalNav } from "./nav";
+import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import {
   FREQUENCIES,
@@ -216,22 +219,39 @@ function LinesTable({
                   value={asset?.name ?? ""}
                   /* ONE ASSET, ONE LINE — those already on the request are
                      not offered again. */
-                  options={assets
-                    .filter((a) => a.id === l.assetId || !lines.some((x) => x.assetId === a.id))
-                    .map((a) => a.name)}
+                  options={
+                    /* A filled row offers only what is free; a blank row's
+                       multi-pick lists all, those on other rows ticked. */
+                    l.assetId
+                      ? assets.filter((a) => a.id === l.assetId || !lines.some((x) => x.assetId === a.id)).map((a) => a.name)
+                      : assets.map((a) => a.name)
+                  }
                   placeholder={shipTo ? "Select asset" : "Select a ship-to first"}
                   disabled={!shipTo}
                   autoFocus={i === focusRow && Boolean(shipTo)}
                   aria-label={`Asset for line ${i + 1}`}
                   onChange={(v) => {
                     const a = assets.find((x) => x.name === v);
-                    /* THE PRODUCT LAST ORDERED FOR IT, else its own
-                       (Pavan, 2026-10-13) — the customer can change it. */
-                    if (a)
-                      update(i, {
-                        assetId: a.id,
-                        product: lastProductFor(a.id, allRequests()) ?? a.product,
-                      });
+                    if (a) update(i, { assetId: a.id, product: lastProductFor(a.id, allRequests()) ?? a.product });
+                  }}
+                  /* SEVERAL AT ONCE, FROM A BLANK ROW (Pavan, 2026-10-15; DS
+                     ui §10f) — tick, Apply: the first fills this row, each
+                     other gets its own. A filled row swaps its one asset. */
+                  multiple={l.assetId ? undefined : {
+                    taken: lines.map((x) => assets.find((a) => a.id === x.assetId)?.name ?? "").filter(Boolean),
+                    onApply: (names) => {
+                      /* THE PRODUCT LAST ORDERED FOR IT, else its own
+                         (Pavan, 2026-10-13) — the customer can change it. */
+                      const lineOf = (n: string): Partial<RequestLine> | null => {
+                        const a = assets.find((x) => x.name === n);
+                        return a ? { assetId: a.id, product: lastProductFor(a.id, allRequests()) ?? a.product } : null;
+                      };
+                      const [first, ...rest] = names.map(lineOf).filter(Boolean) as Partial<RequestLine>[];
+                      if (!first) return;
+                      const next = lines.map((x, j) => (j === i ? { ...x, ...first } : x));
+                      next.splice(i + 1, 0, ...rest.map((p) => ({ ...blankLine(), ...p })));
+                      onChange(next);
+                    },
                   }}
                 />
               </td>
@@ -304,6 +324,12 @@ const range = (low: number, high: number) => `${MONEY(low)} – ${MONEY(high)}`;
  * basis — market price and the customer's pricing — opens on hover. The note
  * says plainly that it is an estimate and not the final price.
  */
+/* THE INVOICE, AS A LINK — it opens on the Invoices page (PRD FR-10). */
+function InvoiceLink({ no }: { no: string }) {
+  const nav = usePortalNav();
+  return INVOICES.some((i) => i.invoiceNo === no) ? <RecordLink label={no} onOpen={() => nav.openInvoice(no)} /> : <>{no}</>;
+}
+
 function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?: string }) {
   const est = estimate(lines);
   const qty = quantityOf(lines);
@@ -370,7 +396,7 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
         <>
           <div aria-hidden className="border-t border-border" />
           <dl className="flex flex-col">
-            <RailRow variant="line" label="Invoice" value={invoiceNo} />
+            <RailRow variant="line" label="Invoice" value={<InvoiceLink no={invoiceNo} />} />
           </dl>
         </>
       )}
@@ -500,7 +526,8 @@ export function OrderRequestSheet({
     onOpenChange(false);
   };
 
-  const footerPrimary = locked ? null : (
+  /* WHAT WAITS ON THE CUSTOMER — the quote's answer is the footer's act. */
+  const footerPrimary = locked ? (request.status === "Quote sent" ? <QuoteActions r={request} /> : null) : (
     <div className="flex items-center gap-3">
       <Button
         variant="outline"
@@ -522,7 +549,8 @@ export function OrderRequestSheet({
   return (
     <>
     <RecordSheet
-      size="xxwide"
+      /* AN INTENSE FORM — FULL (Pavan, 2026-10-15). */
+      size="full"
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(o) : close())}
       mode={creating ? "create" : "edit"}
@@ -591,6 +619,34 @@ export function OrderRequestSheet({
     >
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-10">
+        {/* WHAT THE REQUEST WAITS ON — first, above the order (Pavan, 2026-10-15). */}
+        {!creating && request.status === "Quote sent" && (
+          <SheetSection title={`Quote from ${TENANT}`}>
+            <QuoteLines r={request} />
+          </SheetSection>
+        )}
+        {!creating && request.status === "Action needed" && (
+          <SheetSection title="Action needed">
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-foreground">
+                {request.flags.find((f) => f.kind === "Credit hold")?.detail ??
+                  `${TENANT} needs more from you before it can schedule.`}
+              </p>
+              <ReplyPanel r={request} credit={request.flags.some((f) => f.kind === "Credit hold")} />
+            </div>
+          </SheetSection>
+        )}
+        {!creating && request.undeliveredGal ? (
+          <SheetSection title="Partly delivered">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-foreground">
+                {request.undeliveredGal.toLocaleString()} gal did not arrive
+                {request.flags.find((f) => f.kind === "Driver note") ? ` · ${request.flags.find((f) => f.kind === "Driver note")!.detail}` : ""}
+              </p>
+              <OrderRestButton r={request} variant="outline" onCreated={onDuplicate} />
+            </div>
+          </SheetSection>
+        ) : null}
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-10">
           <SheetSection id={SECTION_DELIVERY} title="Delivery">
             <div className="grid grid-cols-2 gap-4">
@@ -771,6 +827,11 @@ export function OrderRequestSheet({
             activity card once the request exists. */}
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
           <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} />
+          {!creating && ["Out for delivery", "Partial delivery", "Delivered", "Invoiced", "Paid"].includes(request.status) && (
+            <SummaryCard title="Trip">
+              <TripTimeline r={request} />
+            </SummaryCard>
+          )}
           {!creating && <ActivityCard entries={request.audit} />}
         </aside>
       </div>

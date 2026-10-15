@@ -114,7 +114,7 @@ export function UserSheet({
 
   return (
     <RecordSheet
-      size="wide"
+      size="form"
       open={open}
       onOpenChange={onOpenChange}
       mode={creating ? "create" : "edit"}

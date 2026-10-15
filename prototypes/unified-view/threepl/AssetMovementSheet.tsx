@@ -43,7 +43,7 @@ import {
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
 import { HangingAdd } from "../HangingAdd";
-import { RecordSheet } from "../RecordSheet";
+import { CELL, RecordSheet } from "../RecordSheet";
 import type { PendingItem } from "../PendingStrip";
 import { useOrderFormFields } from "./orderFormFields";
 import {
@@ -1009,7 +1009,16 @@ export function AssetMovementSheet({
 
   return (
     <RecordSheet
-      size="wide"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): peripherals = peripheral
+         name, serial, condition, ownership (picks), bin; custom items = item
+         name, qty, unit pick, bin. Peripherals is the wider. Sized for both
+         whether or not they are switched on, so the sheet does not jump. */
+      fit={{
+        tables: [
+          [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.bin],
+          [CELL.name, CELL.number, CELL.pick, CELL.bin],
+        ],
+      }}
       open={open}
       onOpenChange={requestClose}
       /* No step column — see the order sheet. The gear goes to the header. */
@@ -1523,6 +1532,19 @@ export function AssetMovementSheet({
                           autoFocus={i === focusPeripheral}
                           aria-label={`Peripheral ${i + 1}`}
                           onChange={(v) => setPeripheral(i, { name: v })}
+                          /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f). */
+                          multiple={
+                            p.name
+                              ? undefined
+                              : {
+                                  onApply: (names) =>
+                                    setDraft((d) => {
+                                      const peripherals = [...d.peripherals];
+                                      peripherals.splice(i, 1, ...names.map((name) => ({ ...blankPeripheral(), name })));
+                                      return { ...d, peripherals };
+                                    }),
+                                }
+                          }
                         />
                       </td>
                       <td className="relative p-0">

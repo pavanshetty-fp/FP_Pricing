@@ -1,3 +1,4 @@
+import { CELL } from "../RecordSheet";
 import { AlertTriangle } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -187,6 +188,8 @@ export function assetReadSections(
     },
     {
       key: "orders",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.pick, CELL.name, CELL.pick, CELL.date, CELL.status],
       title: "Linked orders",
       note: `${orders.length} orders · ${recurring.length} recurring`,
       render: () => (
@@ -214,6 +217,8 @@ export function assetReadSections(
     },
     {
       key: "billing",
+      /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
+      columns: [CELL.pick, CELL.pick, CELL.number],
       title: "Billing history",
       render: () => {
         /* Derived from the rental period rather than stored: one row per

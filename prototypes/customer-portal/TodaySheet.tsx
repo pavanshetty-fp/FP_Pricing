@@ -247,8 +247,9 @@ export function TodaySheet({
   const st = todayStats(rows);
   return (
     <RecordSheet
-      size="wide"
-      fill={false}
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): no table — counts, a
+         schedule timeline and product bars — so the form's 600. */
+      size="form"
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"

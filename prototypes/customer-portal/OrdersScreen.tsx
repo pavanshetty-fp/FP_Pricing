@@ -60,6 +60,7 @@ import {
   type OrderRequest,
   type RequestColumnKey,
   type RequestSort,
+  orderTheRest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { MapHoverCard, OverviewCards } from "./overview";
@@ -126,12 +127,22 @@ let answeredPrefill: number | null = null;
 
 export function OrdersScreen({
   prefill,
+  focus,
 }: {
   /** An order started elsewhere (Sites & Assets): its ship-to and tanks. */
   prefill?: { shipTo: string; assetIds: string[]; n: number } | null;
+  /** An order to open on arrival — a link from an invoice. */
+  focus?: { requestNo: string; n: number } | null;
 } = {}) {
   const rows = useRequests();
   const [openId, setOpenId] = React.useState<string | null>(null);
+  /* OPENED FROM A LINK — the order behind an invoice. */
+  React.useEffect(() => {
+    if (!focus) return;
+    const r = rows.find((x) => x.requestNo === focus.requestNo);
+    if (r) setOpenId(r.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.n]);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<RequestSort | null>(null);
@@ -452,7 +463,25 @@ export function OrdersScreen({
       title: `${plural(partial.length, "delivery was", "deliveries were")} only partly made`,
       count: partial.length,
       onApply: () => narrowTo(["status:Partial delivery"], "any"),
-      items: reqItems(partial, (r) => r.flags[0]?.detail ?? ""),
+      /* ORDER THE REST, from the banner (Pavan, 2026-10-15). */
+      items: reqItems(partial, (r) => r.flags[0]?.detail ?? "").map((it, i) => ({
+        ...it,
+        action: partial[i].undeliveredGal ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className={bannerSoftAction}
+            onClick={() => {
+              const n = orderTheRest(partial[i].id);
+              if (!n) return;
+              setCreatingId(n.id);
+              setOpenId(n.id);
+            }}
+          >
+            Order the rest
+          </Button>
+        ) : undefined,
+      })),
     },
     quotes.length > 0 && {
       id: "quotes",
@@ -624,7 +653,11 @@ export function OrdersScreen({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE OVERVIEW SITS ABOVE EVERYTHING (Pavan, 2026-10-13) — the
           view row, the banner and the tools come after it. */}
-      <OverviewCards rows={rows} onDetails={() => setTodayOpen(true)} />
+      {/* 20px UNDER THE TITLE (Pavan, 2026-10-15) — the header's 12 and the
+          body's padding, less 14. Everything below moves up with it. */}
+      <div className="-mt-3.5 shrink-0">
+        <OverviewCards rows={rows} onDetails={() => setTodayOpen(true)} />
+      </div>
       <TodaySheet rows={rows} open={todayOpen} onOpenChange={setTodayOpen} />
 
       {/* AIR BETWEEN THE OVERVIEW AND THE CONTROLS (Pavan, 2026-10-13). */}

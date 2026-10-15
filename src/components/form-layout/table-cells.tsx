@@ -172,11 +172,15 @@ export function TableCellSelect({
           <CommandList>
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>
-              {options.map((opt) => (
+              {options.map((opt) => {
+                const used = Boolean(multiple?.taken?.includes(opt)) && opt !== value;
+                return (
                 <CommandItem
                   key={opt}
                   value={opt}
+                  disabled={used}
                   onSelect={() => {
+                    if (used) return;
                     if (multiple) {
                       toggle(opt);
                       return;
@@ -187,7 +191,7 @@ export function TableCellSelect({
                 >
                   {multiple && (
                     <Checkbox
-                      checked={picked.includes(opt)}
+                      checked={used || picked.includes(opt)}
                       /* The row is the control; the box reports it. */
                       tabIndex={-1}
                       aria-hidden
@@ -196,7 +200,8 @@ export function TableCellSelect({
                   )}
                   {opt}
                 </CommandItem>
-              ))}
+                );
+              })}
             </CommandGroup>
           </CommandList>
           {multiple && (
@@ -510,6 +515,16 @@ export interface TableCellComboboxProps {
    */
   autoFocus?: boolean;
   "aria-label"?: string;
+  /**
+   * PICK SEVERAL, ONE ROW EACH — `TableCellSelect`'s `multiple`, for a cell
+   * you can also type into. Checkboxes, a footer with Apply; a typed name is
+   * ticked like any other. The caller fills this row with the first and adds a
+   * row per extra (DS ui §10f "Picking several makes rows"). Pass it only on a
+   * BLANK row: on a filled one the question is "which one instead".
+   */
+  multiple?: {
+    onApply: (picked: string[]) => void;
+  };
 }
 
 /**
@@ -532,9 +547,17 @@ export function TableCellCombobox({
   onChange,
   "aria-label": ariaLabel,
   autoFocus,
+  multiple,
 }: TableCellComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  /* NOTHING IS WRITTEN UNTIL APPLY — as in TableCellSelect. */
+  const [picked, setPicked] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    if (!open) setPicked([]);
+  }, [open]);
+  const toggle = (v: string) =>
+    setPicked((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
 
   const matches = options.filter((o) =>
     o.toLowerCase().includes(query.trim().toLowerCase())
@@ -545,10 +568,17 @@ export function TableCellCombobox({
     !options.some((o) => o.toLowerCase() === query.trim().toLowerCase());
 
   const choose = (v: string) => {
+    if (multiple && v) {
+      toggle(v);
+      setQuery("");
+      return;
+    }
     onChange(v);
     setQuery("");
     setOpen(false);
   };
+  /* Typed names the reader ticked — not in `options`, so listed on their own. */
+  const pickedNew = picked.filter((p) => !options.includes(p));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -592,7 +622,17 @@ export function TableCellCombobox({
                 </CommandItem>
               </CommandGroup>
             )}
-            {clearLabel && !query.trim() && (
+            {multiple && pickedNew.length > 0 && !query.trim() && (
+              <CommandGroup>
+                {pickedNew.map((o) => (
+                  <CommandItem key={o} value={o} onSelect={() => toggle(o)}>
+                    <Checkbox checked tabIndex={-1} aria-hidden className="pointer-events-none" />
+                    <span className="flex-1 truncate">{o}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {clearLabel && !multiple && !query.trim() && (
               <CommandGroup>
                 <CommandItem value="__clear__" onSelect={() => choose("")}>
                   <span className="flex-1 truncate text-muted-foreground">{clearLabel}</span>
@@ -611,8 +651,17 @@ export function TableCellCombobox({
                       disabled={used}
                       onSelect={() => !used && choose(o)}
                     >
+                      {multiple && (
+                        /* Already on another row: ticked and locked. */
+                        <Checkbox
+                          checked={used || picked.includes(o)}
+                          tabIndex={-1}
+                          aria-hidden
+                          className="pointer-events-none"
+                        />
+                      )}
                       <span className="flex-1 truncate">{o}</span>
-                      {(used || o === value) && (
+                      {!multiple && (used || o === value) && (
                         <Check className="size-4 shrink-0" />
                       )}
                     </CommandItem>
@@ -624,6 +673,24 @@ export function TableCellCombobox({
               {creatable ? "Type a name to add it." : "No matches."}
             </CommandEmpty>
           </CommandList>
+          {multiple && (
+            <div className="flex items-center justify-between gap-2 border-t border-border p-1 pl-2.5">
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {picked.length} selected
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={picked.length === 0}
+                onClick={() => {
+                  multiple.onApply(picked);
+                  setOpen(false);
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

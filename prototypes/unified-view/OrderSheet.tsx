@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { HangingAdd } from "./HangingAdd";
 import { ProductTable } from "./ProductTable";
 import { TokenMultiSelect } from "./TokenMultiSelect";
@@ -660,8 +660,9 @@ export function OrderSheet({
   return (
     <>
       <RecordSheet
-        /* AN INTENSE FORM — FULL, creating and after (Pavan, 2026-10-15). */
-        size="full"
+        /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15 — like the Delivery
+           Order): products = product · qty · bin; the rail once it exists. */
+        fit={{ tables: [[CELL.name, CELL.number, CELL.bin]], rail: !creating }}
         open={open}
         onOpenChange={requestClose}
         mode={creating ? "create" : "edit"}

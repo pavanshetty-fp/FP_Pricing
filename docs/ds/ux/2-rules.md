@@ -69,9 +69,10 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
 - **The width follows the content** (Pavan, 2026-10-15 — replaces the fixed
   560 / 864 / 1120 caps). A form of fields is **600**. A sheet carrying tables is
   as wide as its widest table's columns at a comfortable width (`CELL`), plus
-  padding, plus the rail beside it — never under 600. Only the intense forms
-  (Service Order, Sales Order / Quote, the portal's Order Request) are
-  **full**; the 3PL Delivery Order fits its tables plus its rail. A
+  padding, plus the rail beside it — never under 600. Every order sheet —
+  3PL Delivery Order, Service Order, Sales Order / Quote, the portal's Order
+  Request — fits its tables plus its rail; the form side never drops below a
+  600 form's. A
   DATA-INTENSIVE record's detail (many fields, several related tables) is
   **data** — 1200, fields three across — so it reads easily. A sheet sized
   for more than it holds reads as empty.

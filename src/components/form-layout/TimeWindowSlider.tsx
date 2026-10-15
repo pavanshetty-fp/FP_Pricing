@@ -110,19 +110,22 @@ export function TimeWindowSlider({
       {/* THE VALUE IS READ, not inferred from where the handles sit. A slider
           whose value can only be estimated is one people distrust for anything
           precise — so it is printed, next to the name of the thing it sets. */}
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="flex min-w-0 items-baseline gap-2">
+      {/* THE WINDOW NEVER TRUNCATES (2026-10-15 — sheets now fit their
+          content, so a half-width field is ~280px). The span note is the one
+          that gives way: it truncates first. */}
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <span className="flex shrink-0 items-baseline gap-2">
           {label && (
             <span className="text-sm font-medium whitespace-nowrap text-foreground">
               {label}
               {required && <span className="text-destructive"> *</span>}
             </span>
           )}
-          <span className="truncate text-sm tabular-nums text-foreground">
+          <span className="text-sm whitespace-nowrap tabular-nums text-foreground">
             {formatWindow(start, end)}
           </span>
         </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate text-xs text-muted-foreground">
           {formatSpan(start, end)}
         </span>
       </div>

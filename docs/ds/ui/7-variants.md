@@ -29,7 +29,7 @@ creation floor. A sheet sized for more than it holds reads as empty.
 |---|---|---|
 | **Form** | `size="form"` **600** — the default | fields and text, no table. Creating and editing alike |
 | **Fit** | `fit={{ tables, rail }}` — **the widest table's columns at a comfortable width** + 34 (body padding, the box's borders) + 364 if the 340px rail sits beside it; never under 600 | a sheet carrying TABLES |
-| **Full** | `size="full"` — `100vw − 56px` | **the intense forms only**: Service Order · Sales Order / Quote · the portal's Order Request — creating and after. The 3PL Delivery Order FITS its tables (Pavan, 2026-10-15: "too wide") |
+| **Full** | `size="full"` — `100vw − 56px` | **no form uses it now** — every order sheet (3PL Delivery Order, Service Order, Sales Order / Quote, the portal's Order Request) FITS its tables plus its rail (Pavan, 2026-10-15). Only a sheet showing its step column fills |
 | **Data** | `size="data"` — **1200** at least (with `fit`, the wider) — **fields three across** (`DATA_FIELDS`) | **a data-intensive record's detail** — many fields and several related-records tables: 3PL customer · vendor · product · rental asset; Sales customer · asset; the portal's asset · ship-to. Existing records only; creating one is a 600 form. Pavan, 2026-10-15: "cramped … more width so information can be easily consumed" |
 | **Compact** | `size="compact"` 510 | CONTROLS rather than a form — a facet list |
 
@@ -43,7 +43,8 @@ once the sheet is only as wide as the table. The same column is the same width i
 columns makes a sheet as wide as those two columns need, not 864.
 
 **The rail keeps its 340 + 24** — the sheet adds it; nothing in the rail
-changes. **No minimum beyond 600, no maximum beyond the clamp.** A table too
+changes. **The form side is never narrower than a 600 form's** (566 inside
+the padding): small tables beside a rail still leave the fields two across. **No minimum beyond 600, no maximum beyond the clamp.** A table too
 wide to show whole (the portal ship-to's fifteen asset columns) shows its
 first columns and **scrolls sideways**, the name pinned. **A record that
 reads several tables** (the 3PL directory) is as wide as ITS widest — each

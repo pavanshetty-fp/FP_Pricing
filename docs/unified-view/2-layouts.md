@@ -283,9 +283,9 @@ derived, read-only, true whether or not anyone is looking.
 has while looking at any part of the form.
 
 **Widths follow the content** (Pavan, 2026-10-15): `form` 600 (fields) · `fit`
-(the widest table's columns at `CELL` widths, + the rail) · `full` for the
-intense forms (Service Order, Sales Order / Quote, portal Order Request); the
-3PL Delivery Order fits its tables + rail. **Per step, not per sheet.** A creation sheet has **no rail**
+(the widest table's columns at `CELL` widths, + the rail) · every order
+sheet (Delivery Order, Service Order, Sales Order / Quote, portal Order
+Request) fits its tables + rail; `full` only while a step column shows. **Per step, not per sheet.** A creation sheet has **no rail**
 until the record exists. DS ui/7-variants §1.
 
 **A SHEET OVER A SHEET TAKES THE GAP TWICE** — `level={2}`, so `100vw − 112px`

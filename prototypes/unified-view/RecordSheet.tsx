@@ -74,10 +74,14 @@ export const DATA_WIDTH = 1200;
 /** A data-intensive sheet's field grid — three across, at 1200. */
 export const DATA_FIELDS = "grid grid-cols-3 gap-4";
 
-/** The width a table-led sheet takes — never under the form's 600. */
+/**
+ * The width a table-led sheet takes. THE FORM SIDE IS NEVER NARROWER THAN A
+ * 600 FORM'S (Pavan, 2026-10-15): beside a rail, small tables still leave the
+ * fields two across at a readable width; the rail adds its own 364.
+ */
 export function fitWidth(fit: SheetFit): number {
   const widest = Math.max(0, ...fit.tables.map((t) => t.reduce((n, w) => n + w, 0)));
-  return Math.max(FORM_WIDTH, widest + FIT_PAD + (fit.rail ? RAIL : 0));
+  return Math.max(FORM_WIDTH - FIT_PAD, widest) + FIT_PAD + (fit.rail ? RAIL : 0);
 }
 
 export interface RecordSheetProps {
@@ -94,9 +98,9 @@ export interface RecordSheetProps {
    *              (`DATA_FIELDS`); with `fit`, the wider of the two. Pavan,
    *              2026-10-15: "cramped … should have more width so that
    *              information can be easily consumed".
-   *   `full`     the viewport less the gap — Service Order, Sales Order /
-   *              Quote, the portal's Order Request. (The 3PL Delivery Order
-   *              fits its tables — Pavan, 2026-10-15.)
+   *   `full`     the viewport less the gap — no form uses it now: every
+   *              order sheet fits its tables (Pavan, 2026-10-15). Kept for a
+   *              sheet showing its step column.
    *
    * A sheet that carries TABLES passes `fit` instead, and is as wide as its
    * widest table's columns at a comfortable width (`CELL`), plus the body's

@@ -21,7 +21,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { ProductTable } from "./ProductTable";
 import { HangingAdd } from "./HangingAdd";
 import { PendingStrip, type PendingItem } from "./PendingStrip";
@@ -730,8 +730,16 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
   return (
     <>
       <RecordSheet
-        /* AN INTENSE FORM — FULL (Pavan, 2026-10-15). */
-        size="full"
+        /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15 — like the Delivery
+           Order): products = product · qty · base $/gal · bin; pricing =
+           charge · value · bin. The rail beside. */
+        fit={{
+          tables: [
+            [CELL.name, CELL.number, CELL.number, CELL.bin],
+            [CELL.name, CELL.number, CELL.bin],
+          ],
+          rail: true,
+        }}
         open={open}
         onOpenChange={(o) => (o ? onOpenChange(o) : close())}
         mode={creating ? "create" : "edit"}

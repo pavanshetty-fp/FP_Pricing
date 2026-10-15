@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
 import { DocumentsTable, type DocumentRow } from "../unified-view/DocumentsTable";
 import { RecordLink, usePortalNav } from "./nav";
 import { INVOICES } from "./invoices";
@@ -177,11 +177,12 @@ function LinesTable({
   const started = lines.some((l) => l.topOff || l.gal > 0);
   return (
     <table className="w-full table-fixed border-collapse">
+      {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order. */}
       <colgroup>
-        <col className="w-[92px]" />
-        <col className="w-[34%]" />
-        <col className="w-[30%]" />
+        <col className="w-[72px]" />
         <col />
+        <col />
+        <col className="w-[110px]" />
         <col className="w-[52px]" />
       </colgroup>
       <thead>
@@ -549,8 +550,16 @@ export function OrderRequestSheet({
   return (
     <>
     <RecordSheet
-      /* AN INTENSE FORM — FULL (Pavan, 2026-10-15). */
-      size="full"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15 — like the Delivery
+         Order): tanks & assets = Top off · asset · product · qty · bin;
+         documents = document · added · by · bin. The summary rail beside. */
+      fit={{
+        tables: [
+          [CELL.flag, CELL.name, CELL.name, CELL.number, CELL.bin],
+          [CELL.name, CELL.date, CELL.pick, CELL.bin],
+        ],
+        rail: true,
+      }}
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(o) : close())}
       mode={creating ? "create" : "edit"}

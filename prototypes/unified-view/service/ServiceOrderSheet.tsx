@@ -50,7 +50,7 @@ import {
   SheetSection,
   SheetSectionNote,
 } from "@/components/side-sheet/parts";
-import { RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
+import { CELL, RecordSheet, DraftStatusChip, useDraftSaveState } from "../RecordSheet";
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
@@ -1453,8 +1453,16 @@ export function ServiceOrderSheet({
          and at `wide` that came straight out of columns already at their
          minimum — a parts table whose Amount column wraps is a table nobody
          can add up by eye. */
-      /* AN INTENSE FORM — FULL, creating and after (Pavan, 2026-10-15). */
-      size="full"
+      /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15 — like the Delivery Order):
+         assets = work type · asset · description · bin; parts = part · qty ·
+         fitted · unit · amount · bin. The rail once it exists. */
+      fit={{
+        tables: [
+          [CELL.pick, CELL.name, CELL.text, CELL.bin],
+          [CELL.name, 84, 84, 120, CELL.number, CELL.bin],
+        ],
+        rail: !newVisit,
+      }}
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}

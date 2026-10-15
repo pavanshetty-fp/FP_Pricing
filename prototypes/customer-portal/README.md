@@ -160,8 +160,9 @@ From the FleetPanda portal's user record (structure only, invented people).
 - **A user's sheet** — details autosave (email fixed once invited); Access
   facts: invitation (+ when sent), last login, deactivated. ⋯ **Resend
   invite** (pending only) · **Deactivate / Reactivate** (not yourself).
-- **Roles** Manager · Buyer · Viewer — only "manager" is in the real data;
-  Buyer and Viewer are INVENTED until the real list is known.
+- **Roles** Manager · Admin 1 · Admin 2 (Pavan, 2026-10-15, for now) — all
+  three have FULL ACCESS until roles and responsibilities are worked out
+  (later); only "manager" is in the real data.
 - **No account switcher** (Pavan, 2026-10-14) — a user here belongs to this
   account, although real users can hold several.
 - **Products stay mandatory** on assets (Pavan, 2026-10-14), although most
@@ -206,6 +207,8 @@ From the FleetPanda portal's user record (structure only, invented people).
   **no supplier approval** (the real product has one — we keep ours). **No
   account switcher** for now, although real users can hold several
   accounts. Orders, dashboard and invoice data could not be pulled.
+- **Street is optional once the map pin is placed** (Pavan, 2026-10-15) —
+  city, state and ZIP stay required.
 - **Ship-to, from the real record (2026-10-14):** "Access notes" is now
   **Delivery instructions** (the real field — gate codes, PPE, parking,
   photos); a **Default PO #** per ship-to fills an empty PO # on a new

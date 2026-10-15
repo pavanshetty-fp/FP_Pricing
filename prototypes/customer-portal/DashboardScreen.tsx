@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Clock, FileText, Lock, MessageCircleQuestion, PackageMinus, Repeat, Scale } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
-import { pillColorClass } from "@/components/ui/pill";
+import { Pill, pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetSectionNote } from "@/components/side-sheet/parts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -709,6 +709,15 @@ function ActionTile({ r, a, onOpen }: { r: OrderRequest; a: NeededAction; onOpen
       </span>
     </span>
   );
+  const many = (label: string, values: string[]) => (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex min-w-0 items-center gap-1.5" title={values.join(", ")}>
+        <span className="truncate text-sm text-foreground">{values[0] ?? "—"}</span>
+        {values.length > 1 && <Pill className="h-5 shrink-0 px-2 tabular-nums">+{values.length - 1}</Pill>}
+      </span>
+    </span>
+  );
   return (
     <button
       type="button"
@@ -736,8 +745,9 @@ function ActionTile({ r, a, onOpen }: { r: OrderRequest; a: NeededAction; onOpen
       </span>
       <span className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border p-3">
         {fact("Ship-to", r.shipTo || "—")}
-        {fact("Asset", assets.join(", ") || "—")}
-        {fact("Product", products.join(", ") || "—")}
+        {/* MORE THAN ONE → THE FIRST AND "+N" (Pavan, 2026-10-15). */}
+        {many("Asset", assets)}
+        {many("Product", products)}
         {fact("Total gallons", qty ? `${qty} gal` : "—")}
         {/* THE COUNTDOWN AT THE RIGHT EDGE, on the date's line (Pavan,
             2026-10-15). */}
@@ -1161,7 +1171,11 @@ function SavingsCard({
             (Pavan, 2026-10-14). No other words. */}
         <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
           <div className="flex flex-col gap-0.5">
-            <dd className="text-base font-semibold tabular-nums text-foreground">{usd.format(all)}</dd>
+            {/* THE FIGURE IN THE RECOMMENDATIONS VIOLET (Pavan, 2026-10-15) —
+                the violet pill's ink, readable in both themes. No box. */}
+            <dd className="text-base font-semibold tabular-nums text-[color-mix(in_oklab,var(--color-fp-lane-violet)_70%,var(--foreground))]">
+              {usd.format(all)}
+            </dd>
             <dt className="text-xs text-muted-foreground">All products · last {n} weeks</dt>
           </div>
           <Tooltip>

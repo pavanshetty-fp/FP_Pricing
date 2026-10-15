@@ -469,7 +469,12 @@ export function ShipToSheet({
 
   const detailsPending: PendingItem[] = [
     !draft.name.trim() && { key: "name", label: "Enter the ship-to's name", target: "st-details" },
-    (!draft.street.trim() || !draft.city.trim() || !draft.state.trim() || !draft.zip.trim()) && {
+    /* THE STREET MAY BE EMPTY ONCE THE PIN IS PLACED (Pavan, 2026-10-15) —
+       some real sites have no street; the pin is where the driver goes. */
+    ((!draft.street.trim() && !(Number.isFinite(draft.lat) && Number.isFinite(draft.lng))) ||
+      !draft.city.trim() ||
+      !draft.state.trim() ||
+      !draft.zip.trim()) && {
       key: "addr",
       label: "Complete the address",
       target: "st-address",
@@ -664,7 +669,7 @@ export function ShipToSheet({
           <SheetSection id="st-address" title="Address">
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="flex flex-col gap-4">
-                <SheetField label="Street" required>
+                <SheetField label="Street" required={!(Number.isFinite(draft.lat) && Number.isFinite(draft.lng))}>
                   <Input value={draft.street} onChange={(e) => typeAddress("street", e.target.value)} />
                 </SheetField>
                 <SheetField label="City" required>

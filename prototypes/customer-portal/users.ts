@@ -12,12 +12,12 @@ import { PORTAL_ACTOR } from "./orders";
   or Pending (invited, not yet signed in). DEACTIVATED is a date, separate
   from it — a deactivated user keeps their history.
 
-  ROLES: the real data only shows "manager"; Buyer and Viewer are INVENTED
-  until the real list is known. INVENTED people throughout, except the
+  ROLES (Pavan, 2026-10-15): Manager · Admin 1 · Admin 2, for now — the
+  real data only shows "manager"; what Admin 1 and 2 may do is not set yet. INVENTED people throughout, except the
   prototype's own signed-in user.
 */
 
-export const PORTAL_ROLES = ["Manager", "Buyer", "Viewer"] as const;
+export const PORTAL_ROLES = ["Manager", "Admin 1", "Admin 2"] as const;
 export type PortalRole = (typeof PORTAL_ROLES)[number];
 export type InvitationStatus = "Active" | "Pending";
 
@@ -42,12 +42,12 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 
 const USERS: PortalUser[] = [
   { id: "u-1", firstName: "Pavan", lastName: "Shetty", jobTitle: "Fleet manager", email: "pavan@cardinal-logistics.example", phone: "(713) 555-0101", role: "Manager", invitationStatus: "Active", lastLoginAt: hoursAgo(0.2), deactivatedAt: null, invitedAt: hoursAgo(24 * 120) },
-  { id: "u-2", firstName: "Rosa", lastName: "Delgado", jobTitle: "Site lead, Hub A", email: "rosa@cardinal-logistics.example", phone: "(713) 555-0142", role: "Buyer", invitationStatus: "Active", lastLoginAt: hoursAgo(5), deactivatedAt: null, invitedAt: hoursAgo(24 * 90) },
-  { id: "u-3", firstName: "Mike", lastName: "Turner", jobTitle: "Site lead, Hub B", email: "mike@cardinal-logistics.example", phone: "(281) 555-0187", role: "Buyer", invitationStatus: "Active", lastLoginAt: hoursAgo(30), deactivatedAt: null, invitedAt: hoursAgo(24 * 88) },
+  { id: "u-2", firstName: "Rosa", lastName: "Delgado", jobTitle: "Site lead, Hub A", email: "rosa@cardinal-logistics.example", phone: "(713) 555-0142", role: "Admin 1", invitationStatus: "Active", lastLoginAt: hoursAgo(5), deactivatedAt: null, invitedAt: hoursAgo(24 * 90) },
+  { id: "u-3", firstName: "Mike", lastName: "Turner", jobTitle: "Site lead, Hub B", email: "mike@cardinal-logistics.example", phone: "(281) 555-0187", role: "Admin 1", invitationStatus: "Active", lastLoginAt: hoursAgo(30), deactivatedAt: null, invitedAt: hoursAgo(24 * 88) },
   { id: "u-4", firstName: "Dee", lastName: "Park", jobTitle: "Operations", email: "dee@cardinal-logistics.example", phone: "(713) 555-0119", role: "Manager", invitationStatus: "Active", lastLoginAt: hoursAgo(24 * 6), deactivatedAt: null, invitedAt: hoursAgo(24 * 80) },
-  { id: "u-5", firstName: "Grace", lastName: "Liu", jobTitle: "Accounts payable", email: "grace@cardinal-logistics.example", phone: "(713) 555-0166", role: "Viewer", invitationStatus: "Active", lastLoginAt: hoursAgo(24 * 2), deactivatedAt: null, invitedAt: hoursAgo(24 * 60) },
-  { id: "u-6", firstName: "Omar", lastName: "Haddad", jobTitle: "Night supervisor", email: "omar@cardinal-logistics.example", phone: "(832) 555-0174", role: "Buyer", invitationStatus: "Pending", lastLoginAt: null, deactivatedAt: null, invitedAt: hoursAgo(26) },
-  { id: "u-7", firstName: "Tom", lastName: "Becker", jobTitle: "Former site lead", email: "tom@cardinal-logistics.example", phone: "(281) 555-0133", role: "Buyer", invitationStatus: "Active", lastLoginAt: hoursAgo(24 * 41), deactivatedAt: hoursAgo(24 * 35), invitedAt: hoursAgo(24 * 200) },
+  { id: "u-5", firstName: "Grace", lastName: "Liu", jobTitle: "Accounts payable", email: "grace@cardinal-logistics.example", phone: "(713) 555-0166", role: "Admin 2", invitationStatus: "Active", lastLoginAt: hoursAgo(24 * 2), deactivatedAt: null, invitedAt: hoursAgo(24 * 60) },
+  { id: "u-6", firstName: "Omar", lastName: "Haddad", jobTitle: "Night supervisor", email: "omar@cardinal-logistics.example", phone: "(832) 555-0174", role: "Admin 1", invitationStatus: "Pending", lastLoginAt: null, deactivatedAt: null, invitedAt: hoursAgo(26) },
+  { id: "u-7", firstName: "Tom", lastName: "Becker", jobTitle: "Former site lead", email: "tom@cardinal-logistics.example", phone: "(281) 555-0133", role: "Admin 1", invitationStatus: "Active", lastLoginAt: hoursAgo(24 * 41), deactivatedAt: hoursAgo(24 * 35), invitedAt: hoursAgo(24 * 200) },
 ];
 
 /** The signed-in user — the prototype's actor. */
@@ -72,7 +72,7 @@ export function useUsers(): PortalUser[] {
 }
 
 export type UserDraft = Pick<PortalUser, "firstName" | "lastName" | "jobTitle" | "email" | "phone" | "role">;
-export const blankUser = (): UserDraft => ({ firstName: "", lastName: "", jobTitle: "", email: "", phone: "", role: "Buyer" });
+export const blankUser = (): UserDraft => ({ firstName: "", lastName: "", jobTitle: "", email: "", phone: "", role: "Admin 1" });
 
 /** Invite — the user exists at once, Pending until they sign in. */
 export function inviteUser(d: UserDraft): PortalUser {

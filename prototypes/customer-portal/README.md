@@ -97,7 +97,14 @@ Notifications are the top bar's bell, not a page.
   days TABLE; a row opens the order). History, notes, invoices, credit are INVENTED
   (`dashboard.ts`).
 
-- **Needs your action → an action sheet first (Pavan, 2026-10-15):** a
+- **Attention required cards (Pavan, 2026-10-15)** — company-card layout:
+  violet icon tile · "REQ-1120: Credit on hold" · a ≤6-word line · the
+  act as a pill on the right (Clear dues · Accept quote · Confirm site ·
+  Reorder · Settle invoice · Reply); a rule; Ship-to · Asset · Product ·
+  Total gallons; a lighter rule; Planned date with the countdown ("1 more
+  day left", red ≤ 2 days) at the bottom right — a delivered order shows
+  "Delivered" and no countdown.
+- **Attention required (was "Needs your action") → an action sheet first (Pavan, 2026-10-15):** a
   tile opens a 600px sheet (`ActionSheet`, RecordSheet size `medium`) in
   the Request summary card's dress — what is needed and why, plus the
   facts for that action (credit hold: the overdue invoices and the

@@ -1,6 +1,7 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Repeat } from "lucide-react";
+import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Clock, FileText, Lock, MessageCircleQuestion, PackageMinus, Repeat, Scale } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
+import { pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetSectionNote } from "@/components/side-sheet/parts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,7 +9,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { DATE_FMT, startOfDay } from "../unified-view/data";
+import { kindTone } from "../unified-view/statusKind";
 import {
+  DELIVERED,
   REQUEST_STATUS_TONE,
   TENANT,
   YET_TO_DELIVER,
@@ -582,6 +585,180 @@ function actionOf(r: OrderRequest): NeededAction | null {
 }
 
 /*
+  THE TRACE (Pavan, 2026-10-15) — while "Attention required" is collapsed, a
+  red stroke a sixth of the card's width runs ONE lap of the outline, fast
+  (~1.6 s), from the top centre back to it, and is gone — every 12 seconds. It is a comet: darkest at the
+  head, fading toward the tail (pieces of falling opacity). It runs along
+  the inner side of the card's border; still for reduced motion.
+*/
+const TRACE_EVERY = 12000;
+const TRACE_LAP = 1900;
+const TRACE_PIECES = 10;
+
+function TraceStroke() {
+  const box = React.useRef<SVGSVGElement>(null);
+  const pieces = React.useRef<(SVGRectElement | null)[]>([]);
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
+  React.useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  /* JUST INSIDE THE BORDER — the card clips at its padding edge (its glow
+     needs that), so the trace runs along the inner side of the outline. */
+  const R = 13;
+  const inset = 0.75;
+  const w = Math.max(0, size.w - inset * 2);
+  const h = Math.max(0, size.h - inset * 2);
+  /* THE PERIMETER OF A ROUNDED RECT — straight sides plus one full circle. */
+  const perim = 2 * (w + h - 4 * R) + 2 * Math.PI * R;
+  const piece = size.w / 6 / TRACE_PIECES;
+  React.useEffect(() => {
+    if (!perim || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const lapEnd = TRACE_LAP / TRACE_EVERY;
+    /* EACH PIECE trails the one before it by its own length; all start
+       behind the start line and end one lap later, then vanish. */
+    const anims = pieces.current.map((el, k) => {
+      if (!el) return null;
+      /* FROM THE TOP CENTRE, BACK TO IT (Pavan, 2026-10-15) — the rect's
+         path starts after the top-left corner, so the centre is half the
+         top edge less the corner further on. */
+      const from = -(w / 2 - R) + k * piece;
+      /* SMOOTH IN AND OUT (Pavan, 2026-10-15) — the lap eases (slow off
+         the centre, quick round, slow back into it) and the comet fades in
+         over its first stretch and out over its last, so it neither pops
+         on nor snaps off. Sampled into keyframes over the lap; still and
+         invisible for the rest of the 12 seconds. */
+      const STEPS = 24;
+      const ease = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2;
+      const fade = (t: number) => Math.min(1, t / 0.15, (1 - t) / 0.15);
+      const frames: Keyframe[] = Array.from({ length: STEPS + 1 }, (_, i) => {
+        const t = i / STEPS;
+        return { strokeDashoffset: from - perim * ease(t), opacity: Math.max(0, fade(t)), offset: t * lapEnd };
+      });
+      frames.push({ strokeDashoffset: from - perim, opacity: 0, offset: 1 });
+      return el.animate(frames, { duration: TRACE_EVERY, iterations: Infinity, easing: "linear" });
+    });
+    return () => anims.forEach((a) => a?.cancel());
+  }, [perim, piece, w]);
+  return (
+    <svg ref={box} aria-hidden className="pointer-events-none absolute inset-0 size-full">
+      {perim > 0 &&
+        Array.from({ length: TRACE_PIECES }, (_, k) => (
+          <rect
+            key={k}
+            ref={(el) => {
+              pieces.current[k] = el;
+            }}
+            x={inset}
+            y={inset}
+            width={w}
+            height={h}
+            rx={R}
+            fill="none"
+            className="stroke-fp-lane-red"
+            /* DARK AT THE HEAD, LIGHT AT THE TAIL. */
+            strokeOpacity={1 - (k / TRACE_PIECES) * 0.9}
+            strokeWidth={1.5}
+            strokeDasharray={`${piece + 0.5} ${perim - piece - 0.5}`}
+            opacity={0}
+          />
+        ))}
+    </svg>
+  );
+}
+
+/*
+  THE ACTION TILE — TRIAL ON ONE KIND (Pavan, 2026-10-15), after his
+  company-card reference: on top an icon tile, the PROBLEM in 1–3 words and
+  one line of at most six words; at the right the act as a pill ("Clear
+  dues"). The request number leads the title. A rule; then the order — ship-to,
+  asset, product, total gallons — and the planned date with how many days
+  are left, to nudge the customer to act.
+*/
+/* EVERY KIND'S FACE — the problem in 1–3 words, a line of at most six, the
+   act on the pill (Pavan, 2026-10-15). */
+const ACTION_FACE: Record<ActionKind, { icon: React.ReactNode; problem: string; line: string; pill: string }> = {
+  credit: { icon: <Lock />, problem: "Credit on hold", line: "Pay overdue balance to release order", pill: "Clear dues" },
+  answer: { icon: <MessageCircleQuestion />, problem: "Supplier question", line: `Answer ${TENANT} to continue`, pill: "Reply" },
+  quote: { icon: <FileText />, problem: "Quote waiting", line: "Accept or decline the new quote", pill: "Accept quote" },
+  dispute: { icon: <Scale />, problem: "Invoice disputed", line: "Settle the disputed invoice amount", pill: "Settle invoice" },
+  partial: { icon: <PackageMinus />, problem: "Partly delivered", line: "Reorder the gallons not delivered", pill: "Reorder" },
+  late: { icon: <Clock />, problem: "Running late", line: "Confirm the site can wait", pill: "Confirm site" },
+};
+
+function ActionTile({ r, a, onOpen }: { r: OrderRequest; a: NeededAction; onOpen: () => void }) {
+  const face = ACTION_FACE[a.kind];
+  const lines = r.lines.filter((l) => l.assetId || l.product);
+  const assets = Array.from(new Set(lines.map((l) => assetById(l.assetId)?.name ?? "No tank")));
+  const products = Array.from(new Set(lines.map((l) => l.product).filter(Boolean)));
+  const qty = quantityText(r.lines);
+  /* HOW LONG UNTIL IT IS DUE — a nudge to act (Pavan, 2026-10-15). */
+  const d = r.date ? Math.round(((dateOfKey(r.date)?.getTime() ?? 0) - startOfDay(new Date()).getTime()) / 86_400_000) : null;
+  /* A DELIVERED ORDER HAS NO COUNTDOWN — its date is when it came. */
+  const delivered = DELIVERED.includes(r.status);
+  const left =
+    d === null || delivered ? "" : d > 1 ? `${d} more days left` : d === 1 ? "1 more day left" : d === 0 ? "Due today" : `${-d} ${d === -1 ? "day" : "days"} late`;
+  const fact = (label: string, value: string) => (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="truncate text-sm text-foreground" title={value}>
+        {value}
+      </span>
+    </span>
+  );
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex h-full w-full flex-col rounded-xl border border-border bg-fp-surface-1b text-left transition-colors hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
+      <span className="flex items-start gap-3 p-3">
+        {/* THE ICON WEARS THE VIOLET PILL'S COLOURS (Pavan, 2026-10-15 — after
+            his reference card): calm, not an alarm; the pill carries urgency. */}
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg [&_svg]:size-5", pillColorClass("neutral", "violet"))}>
+          {face.icon}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          {/* THE REQUEST LEADS THE TITLE — "REQ-1120: Credit on hold" (Pavan,
+              2026-10-15). */}
+          <span className="text-base font-semibold text-foreground">
+            {r.requestNo}: {face.problem}
+          </span>
+          <span className="text-sm text-muted-foreground">{face.line}</span>
+        </span>
+        {/* THE PILL SAYS THE ACT. */}
+        <StatusChip tone={kindTone(a.level === "critical" ? "critical" : "caution")} variant="text">
+          {face.pill}
+        </StatusChip>
+      </span>
+      <span className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border p-3">
+        {fact("Ship-to", r.shipTo || "—")}
+        {fact("Asset", assets.join(", ") || "—")}
+        {fact("Product", products.join(", ") || "—")}
+        {fact("Total gallons", qty ? `${qty} gal` : "—")}
+        {/* THE COUNTDOWN AT THE RIGHT EDGE, on the date's line (Pavan,
+            2026-10-15). */}
+        {/* A LIGHTER RULE INSIDE THE CARD (Pavan, 2026-10-15). */}
+        <span className="col-span-2 flex items-end justify-between gap-3 border-t border-border/50 pt-2.5">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">{delivered ? "Delivered" : "Planned date"}</span>
+            <span className="truncate text-sm text-foreground">{r.date ? `${printKey(r.date)}, ${windowText(r)}` : "No date"}</span>
+          </span>
+          {left && (
+            <span className={cn("shrink-0 text-xs font-medium leading-5", d !== null && d <= 2 ? "text-status-failed" : "text-status-processing")}>
+              {left}
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/*
   NEEDS YOUR ACTION — a wide banner, not a card (Pavan, 2026-10-13): every
   item shows at once, each a tile that opens its order. Lightly decorative:
   the warning wash and a soft glow in the corner.
@@ -598,13 +775,14 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
   if (items.length === 0) return null;
   return (
     <section
-      aria-label="Needs your action"
+      aria-label="Attention required"
       className="relative isolate shrink-0 overflow-hidden rounded-xl border border-status-processing/20 bg-status-processing/5 p-4"
     >
       <span
         aria-hidden
         className="pointer-events-none absolute -top-24 -right-16 -z-10 size-72 rounded-full bg-status-processing/10 blur-3xl"
       />
+      {!open && <TraceStroke />}
       <button
         type="button"
         aria-expanded={open}
@@ -614,7 +792,7 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
         <span className="flex size-8 items-center justify-center rounded-full bg-status-processing/15 text-status-processing [&_svg]:size-4">
           <BellRing />
         </span>
-        <span className="text-base font-semibold text-foreground">Needs your action</span>
+        <span className="text-base font-semibold text-foreground">Attention required</span>
         <span className="rounded-full bg-status-processing/15 px-2 py-0.5 text-xs font-medium tabular-nums text-status-processing">
           {items.length}
         </span>
@@ -626,22 +804,7 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
       <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {items.map(({ r, a }) => (
           <li key={r.id}>
-            <button
-              type="button"
-              onClick={() => onOpen(r.id)}
-              className="flex h-full w-full flex-col gap-1.5 rounded-lg border border-border bg-fp-surface-1b p-3 text-left transition-colors hover:border-fp-outline-2 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-            >
-              <span className={cn("text-sm font-semibold", LEVEL_TEXT[a.level])}>{a.action}</span>
-              <span className="text-sm text-muted-foreground">{a.why}</span>
-              <span className="mt-auto flex items-center justify-between gap-3 pt-1">
-                <span className="truncate text-xs text-muted-foreground">
-                  {r.requestNo} · {r.shipTo} · {r.date ? printKey(r.date) : "No date"}
-                </span>
-                <StatusChip tone={REQUEST_STATUS_TONE[r.status]} variant="text">
-                  {r.status}
-                </StatusChip>
-              </span>
-            </button>
+            <ActionTile r={r} a={a} onOpen={() => onOpen(r.id)} />
           </li>
         ))}
       </ul>

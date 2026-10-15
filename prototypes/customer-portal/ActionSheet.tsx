@@ -18,7 +18,7 @@ import type { NeededAction } from "./DashboardScreen";
 
 /*
   WHAT NEEDS THE CUSTOMER — FIRST, ON ITS OWN (Pavan, 2026-10-15). A tile in
-  the dashboard's "Needs your action" opens THIS, not the order: a 600px
+  the dashboard's "Attention required" opens THIS, not the order: a 600px
   sheet that says what is needed and why, in the Request summary card's
   dress, with the facts that matter to that action. One act: "View order
   details" hands on to the order sheet.
@@ -79,7 +79,7 @@ export function ActionSheet({
     >
       <div className="flex flex-col gap-4">
         {/* THE ACTION — the Request summary card's treatment. */}
-        <SummaryCard title="Needs your action">
+        <SummaryCard title="Attention required">
           <div className="flex flex-col gap-1.5">
             <p className={cn("text-base font-semibold", LEVEL_TEXT[action.level])}>{action.action}</p>
             <p className="text-sm text-foreground">{action.why}</p>

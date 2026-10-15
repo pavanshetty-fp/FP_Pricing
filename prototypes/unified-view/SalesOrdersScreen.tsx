@@ -3,8 +3,7 @@ import { CalendarOff, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { BannerCallout, bannerSoftAction } from "@/components/ui/banner";
-import { BannerSnooze } from "@/components/ui/alert-banner";
+import { AlertBanner } from "@/components/ui/alert-banner";
 import {
   Empty,
   EmptyContent,
@@ -1306,30 +1305,32 @@ export function SalesOrdersScreen({
 
       {/* THE BANNER SITS ABOVE THE CONTROLS (Pavan, 2026-10-11) — what
           needs attention is read before the tools to act on it. */}
+      {/* THE DS ALERT BANNER (Pavan, 2026-10-15) — the count in the tag, and
+          its filter as "View details" beside the words, which becomes
+          "Clear filter" while the overdue filter is on. */}
       {alertVisible && (
-        <BannerCallout
-          status="warning"
-          variant="soft"
+        <AlertBanner
           className="mt-4 shrink-0"
-          /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
-          title={`${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`}
-          action={
-            <>
-              {/* SHOW ORDERS IS THE FILTER — exactly the set the banner counts. */}
-              <Button
-                variant="outline"
-                size="sm"
-                className={bannerSoftAction}
-                onClick={() => {
-                  setOverdueOnly(true);
-                  setPage(1);
-                }}
-              >
-                Show orders
-              </Button>
-              <BannerSnooze onSnooze={(ms) => setSnoozedUntil(Date.now() + ms)} />
-            </>
-          }
+          alerts={[
+            {
+              id: "overdue",
+              status: "warning",
+              tag: "Overdue",
+              /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
+              title: `${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`,
+              count: overdue.length,
+              onApply: () => {
+                setOverdueOnly(true);
+                setPage(1);
+              },
+            },
+          ]}
+          appliedId={overdueOnly ? "overdue" : null}
+          onClearApplied={() => {
+            setOverdueOnly(false);
+            setPage(1);
+          }}
+          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
           onDismiss={() => setAlertDismissed(true)}
         />
       )}

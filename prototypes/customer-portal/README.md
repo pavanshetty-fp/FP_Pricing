@@ -97,6 +97,13 @@ Notifications are the top bar's bell, not a page.
   days TABLE; a row opens the order). History, notes, invoices, credit are INVENTED
   (`dashboard.ts`).
 
+- **Needs your action → an action sheet first (Pavan, 2026-10-15):** a
+  tile opens a 600px sheet (`ActionSheet`, RecordSheet size `medium`) in
+  the Request summary card's dress — what is needed and why, plus the
+  facts for that action (credit hold: the overdue invoices and the
+  balance; quote: the estimate; dispute: the invoice, reason and amount),
+  then "The order" in short. One act: **View order details** → the full
+  order sheet.
 - **No explainer lines on the dashboard (Pavan, 2026-10-14):** a headline
   figure softens on hover (no underline) and opens its explanation on
   click; a

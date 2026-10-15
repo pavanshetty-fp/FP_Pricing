@@ -67,7 +67,7 @@ export interface RecordSheetProps {
    * a fixed 1440 a wide screen showed a strip of the list behind it and the
    * sheet read as having stopped short of something.
    */
-  size?: "compact" | "narrow" | "wide" | "xwide" | "xxwide";
+  size?: "compact" | "narrow" | "medium" | "wide" | "xwide" | "xxwide";
   /**
    * A CREATION SHEET IS AT LEAST 756px (Pavan, 2026-10-05 — replaces the
    * 2026-09-25 rule that it filled the screen). Creating a rule, an order, a
@@ -445,6 +445,10 @@ export function RecordSheet({
               : floor
                 ? /* A CREATION SHEET NEVER DROPS BELOW 756 (Pavan, 2026-10-05). */
                   "w-[min(756px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(756px,calc(100vw-var(--fp-sheet-gap)))]"
+              : size === "medium"
+                ? /* 600 — a read-first sheet that explains one thing and hands
+                     on (Pavan, 2026-10-15: the portal's "needs your action"). */
+                  "w-[min(600px,calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(600px,calc(100vw-var(--fp-sheet-gap)))]"
               : size === "compact"
                 ? /* 510 — between the DS narrow and nothing. For a sheet that
                      is CONTROLS rather than a form: a facet list has a natural

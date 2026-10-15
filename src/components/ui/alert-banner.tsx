@@ -178,6 +178,7 @@ export function AlertBanner({
   onDismiss,
   appliedId,
   onClearApplied,
+  ctaMode = true,
   className,
 }: {
   alerts: BannerAlert[];
@@ -190,6 +191,16 @@ export function AlertBanner({
    */
   appliedId?: string | null;
   onClearApplied?: () => void;
+  /**
+   * THE STANDARD SINCE 2026-10-15 (Pavan — tried on Invoices, then
+   * everywhere): an alert that FILTERS carries its count INSIDE the tag
+   * pill, has no count/chevron pill and no item list, and its filter is a
+   * ghost CTA beside the words — "View details" (dotted underline), which
+   * becomes "✕ Clear filter" while its filter is on. An alert with no
+   * filter (only items, each with its own act) keeps the count pill and
+   * its list. `ctaMode={false}` restores the old anatomy.
+   */
+  ctaMode?: boolean;
   className?: string;
 }) {
   const [at, setAt] = React.useState(0);
@@ -201,6 +212,8 @@ export function AlertBanner({
   if (alerts.length === 0) return null;
   const a = alerts[i];
   const hasItems = Boolean(a.items && a.items.length > 0);
+  /* THIS ALERT WEARS THE CTA ANATOMY — only when it has a filter to apply. */
+  const cta = ctaMode && Boolean(a.onApply);
   const go = (n: number) => {
     setAt(n);
     setOpen(false);
@@ -229,6 +242,12 @@ export function AlertBanner({
           >
             <TriangleAlert />
             {a.tag}
+            {/* THE COUNT IN THE TAG — a pill inside the pill (ctaMode). */}
+            {cta && a.count != null && (
+              <span className="-mr-1 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-background/80 px-1 text-[10px] font-semibold tabular-nums tracking-normal">
+                {a.count}
+              </span>
+            )}
           </span>
         ) : (
           <span className={cn("shrink-0 [&_svg]:size-4", inlineAccent({ status: a.status }))}>
@@ -239,7 +258,7 @@ export function AlertBanner({
             2026-10-13): opening the list belongs to the words it expands. */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <p className="flex min-w-0 items-center gap-x-2 overflow-hidden py-1 text-sm leading-normal">
-            {a.onApply ? (
+            {a.onApply && !cta ? (
               <button
                 type="button"
                 onClick={a.onApply}
@@ -255,7 +274,7 @@ export function AlertBanner({
           </p>
           {/* THE COUNT IN A PILL — with the chevron that opens
               the list beside it when there is one (Pavan, 2026-10-13). */}
-          {(a.count != null || hasItems) && (
+          {!cta && (a.count != null || hasItems) && (
             <>
               {hasItems ? (
                 <button
@@ -281,7 +300,25 @@ export function AlertBanner({
           )}
           {/* THE WAY BACK FROM ITS FILTER — only while this alert's filter
               is on; the banner itself stays. */}
-          {onClearApplied && appliedId === a.id && (
+          {/* THE FILTER AS A GHOST CTA BESIDE THE WORDS (ctaMode, Pavan,
+              2026-10-15) — View details, then Clear filter. */}
+          {cta && a.onApply && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 shrink-0 gap-1 px-2 text-xs font-medium text-foreground hover:bg-foreground/5"
+              onClick={appliedId === a.id && onClearApplied ? onClearApplied : a.onApply}
+            >
+              {appliedId === a.id && <X className="size-3.5" />}
+              {appliedId === a.id ? (
+                "Clear filter"
+              ) : (
+                /* DOTTED UNDERLINE — says it acts (Pavan, 2026-10-15). */
+                <span className="underline decoration-current/50 decoration-dotted underline-offset-4">View details</span>
+              )}
+            </Button>
+          )}
+          {!cta && onClearApplied && appliedId === a.id && (
             <Button
               variant="ghost"
               size="sm"
@@ -296,6 +333,7 @@ export function AlertBanner({
         {/* RIGHT — the action, snooze, the stepper, and ✕ LAST: dismissing
             is the way out, so it sits at the edge (Pavan, 2026-10-13). */}
         {a.action && <div className="flex shrink-0 items-center gap-2">{a.action}</div>}
+
         {/* ONE KIND AT A TIME — the Pending strip's stepper. */}
         {alerts.length > 1 && (
           <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">

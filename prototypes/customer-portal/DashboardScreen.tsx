@@ -23,6 +23,7 @@ import {
   type OrderRequest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
+import { ActionSheet } from "./ActionSheet";
 import {
   CREDIT,
   DEFAULT_RANGE,
@@ -543,30 +544,40 @@ const LEVEL_TEXT: Record<NoteLevel, string> = {
   itself, not the state ("Waiting on you" said nothing); the line under it
   says why, from the request's own flag where it has one.
 */
-function actionOf(r: OrderRequest): { action: string; why: string; level: NoteLevel } | null {
+export type ActionKind = "credit" | "answer" | "quote" | "dispute" | "partial" | "late";
+export interface NeededAction {
+  kind: ActionKind;
+  action: string;
+  why: string;
+  level: NoteLevel;
+}
+
+function actionOf(r: OrderRequest): NeededAction | null {
   const flag = (k: string) => r.flags.find((f) => f.kind === k);
   const hold = flag("Credit hold");
   if (r.status === "Action needed")
     return hold
-      ? { action: "Clear your balance to release this order", why: hold.detail, level: "critical" }
-      : { action: `Answer ${TENANT}’s question`, why: `${TENANT} needs more from you before it can schedule.`, level: "critical" };
+      ? { kind: "credit", action: "Clear your balance to release this order", why: hold.detail, level: "critical" }
+      : { kind: "answer", action: `Answer ${TENANT}’s question`, why: `${TENANT} needs more from you before it can schedule.`, level: "critical" };
   if (r.status === "Quote sent")
-    return { action: "Accept or decline the quote", why: `${TENANT} has priced this request; it is not scheduled until you accept.`, level: "warning" };
+    return { kind: "quote", action: "Accept or decline the quote", why: `${TENANT} has priced this request; it is not scheduled until you accept.`, level: "warning" };
   if (r.status === "Invoice disputed")
     return {
+      kind: "dispute",
       action: `Settle the disputed invoice with ${TENANT}`,
       why: flag("Invoice past due")?.detail ?? "The invoice is on hold until the dispute is settled.",
       level: "warning",
     };
   if (r.status === "Partial delivery")
     return {
+      kind: "partial",
       action: "Reorder the gallons not delivered",
       why: flag("Driver note")?.detail ?? "Part of this order was not delivered.",
       level: "warning",
     };
   const late = flag("At risk of being late");
-  if (late) return { action: "Confirm the site can take a later delivery", why: late.detail, level: "warning" };
-  if (hold) return { action: "Clear your balance to release this order", why: hold.detail, level: "critical" };
+  if (late) return { kind: "late", action: "Confirm the site can take a later delivery", why: late.detail, level: "warning" };
+  if (hold) return { kind: "credit", action: "Clear your balance to release this order", why: hold.detail, level: "critical" };
   return null;
 }
 
@@ -1124,6 +1135,8 @@ export function DashboardScreen() {
   const { now, before } = periods(range);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
+  const [actionId, setActionId] = React.useState<string | null>(null);
+  const actionReq = rows.find((r) => r.id === actionId) ?? null;
   const [product, setProduct] = React.useState<string>(PRICED_PRODUCTS[0]);
   const from = now[0];
   const to = now[now.length - 1];
@@ -1161,7 +1174,9 @@ export function DashboardScreen() {
       </Section>
 
       {/* BELOW PERFORMANCE, COLLAPSED (Pavan, 2026-10-13). */}
-      <ActionBanner rows={rows} onOpen={setOpenId} />
+      {/* A TILE OPENS WHAT IS NEEDED FIRST (Pavan, 2026-10-15); the order is
+          one press further. */}
+      <ActionBanner rows={rows} onOpen={setActionId} />
 
       <Section title="Products & pricing">
         {/* THE TENANT CHOOSES WHETHER MARKET PRICES ARE SHOWN. ONE CARD, TWO
@@ -1192,6 +1207,16 @@ export function DashboardScreen() {
         <ComingUp rows={rows} onOpen={setOpenId} />
       </Section>
 
+      <ActionSheet
+        request={actionReq}
+        action={actionReq ? actionOf(actionReq) : null}
+        open={actionId !== null}
+        onOpenChange={(o) => !o && setActionId(null)}
+        onViewOrder={(id) => {
+          setActionId(null);
+          setOpenId(id);
+        }}
+      />
       <OrderRequestSheet
         request={rows.find((r) => r.id === openId) ?? null}
         open={openId !== null}

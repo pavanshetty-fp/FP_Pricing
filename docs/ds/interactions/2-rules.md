@@ -443,10 +443,20 @@ these are its components; a banner that acts on the page has all of them.
    for hours and minutes** (no calendar). One set, every module.
 8. **✕ dismiss — always the LAST thing on the right.**
 
-**Clear filter (Pavan, 2026-10-14):** once a title (or an item) has narrowed
-the list, that alert's line shows **✕ Clear filter** beside its count. It
-puts the list back to its default state; the banner stays until its own ✕.
-It goes away by itself if the filter is changed by hand.
+**An alert that FILTERS — the standard since 2026-10-15 (Pavan; tried on
+the portal's Invoices, then every module):**
+- **The count rides inside the tag pill** ("⚠ OVERDUE 2"); no separate count
+  pill, no chevron, no item list.
+- **The title is plain text**, not pressable.
+- **"View details"** — a ghost button with a dotted underline, right after
+  the title and detail — applies the filter. While that filter is on it
+  reads **"✕ Clear filter"** in the same place: back to the list's default;
+  the banner stays until its own ✕. It reverts by itself if the filter is
+  changed by hand.
+- An alert with **no filter** (only items, each with its own act — the
+  portal's empty tanks) keeps the count pill with its chevron and the list
+  below. Items 2–4 above describe that case.
+- Live in: portal Orders, portal Invoices, Sales Orders (overdue).
 
 **Expanded:** under the line, one row per item — its title (pressable: narrows
 the list to that item), its detail, its own action. The count pill folds it.

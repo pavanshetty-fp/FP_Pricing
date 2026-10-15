@@ -66,6 +66,15 @@ export interface SheetFit {
   rail?: boolean;
 }
 
+/**
+ * THE SHEET UNDERNEATH, for a sheet opened over it (Pavan, 2026-10-15). Now
+ * that widths follow content, two sheets can be the same width, and the top
+ * one would cover the other exactly — reading as the SAME sheet having
+ * changed. A level-2 sheet is therefore never wider than the one beneath it
+ * less the 56px gap, so a strip of it always shows.
+ */
+const ParentSheetWidth = React.createContext<number | null>(null);
+
 /** BODY PADDING (16 + 16) AND THE TABLE BOX'S BORDERS. */
 const FIT_PAD = 34;
 const RAIL = 340 + 24;
@@ -433,7 +442,8 @@ export function RecordSheet({
   const navShown = stepped && navOn;
   /* FULL WIDTH WHILE THE STEP COLUMN SHOWS (Pavan, 2026-10-05). */
   const fills = size === "full" || navShown;
-  const width =
+  const parentWidth = React.useContext(ParentSheetWidth);
+  const own =
     size === "data"
       ? Math.max(DATA_WIDTH, fit ? fitWidth(fit) : 0)
       : fit
@@ -441,6 +451,7 @@ export function RecordSheet({
         : size === "compact"
           ? 510
           : FORM_WIDTH;
+  const width = level === 2 && parentWidth !== null ? Math.min(own, parentWidth - 56) : own;
   /* WHY (Pavan, 2026-10-07). A dead primary says why on press (G25): the
      strip is raised by the press, not shown up front, and drops on close. */
   const [pendingRaised, setPendingRaised] = React.useState(false);
@@ -510,12 +521,12 @@ export function RecordSheet({
             stepsAction={stepsAction}
             hideColumn={!stepColumn}
           >
-            {children}
+            <ParentSheetWidth.Provider value={fills ? 99999 : width}>{children}</ParentSheetWidth.Provider>
           </SteppedFormBody>
         ) : (
           <FormStepsContext.Provider value={false}>
             <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
-              {children}
+              <ParentSheetWidth.Provider value={fills ? 99999 : width}>{children}</ParentSheetWidth.Provider>
             </div>
           </FormStepsContext.Provider>
         )}

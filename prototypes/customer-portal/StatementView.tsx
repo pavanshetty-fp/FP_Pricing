@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { DATE_FMT } from "../unified-view/data";
 import { ACCOUNT, TENANT, printKey } from "./orders";
 import { PRICES_AS_OF } from "./orders";
-import { OPEN, daysFrom, totalOf, type Invoice } from "./invoices";
+import { OPEN, amountDue, daysFrom, totalOf, type Invoice } from "./invoices";
 
 /*
   STATEMENT & BALANCE (Pavan, 2026-10-15 — PRD FR-09, a tab inside
@@ -46,12 +46,18 @@ export function StatementView({
       lines.push({ date: i.issued, doc: i.invoiceNo, what: `Invoice · ${i.requestNo} · ${i.shipTo}`, charge: totalOf(i), payment: 0 });
     if (i.status === "Payment confirmed" && i.paidOn && inPeriod(i.paidOn))
       lines.push({ date: i.paidOn, doc: i.invoiceNo, what: "Payment received", charge: 0, payment: totalOf(i) });
+    /* A CREDIT NOTE FROM A DISPUTE IS ITS OWN ROW (Pavan, 2026-10-15). */
+    const o = i.dispute?.outcome;
+    if (o?.credit && o.creditNoteNo) {
+      const k = o.at.slice(0, 10);
+      if (inPeriod(k)) lines.push({ date: k, doc: o.creditNoteNo, what: `Credit note · ${i.invoiceNo} dispute`, charge: 0, payment: o.credit });
+    }
   }
   lines.sort((a, b) => a.date.localeCompare(b.date) || b.charge - a.charge);
   const charges = lines.reduce((t, l) => t + l.charge, 0);
   const payments = lines.reduce((t, l) => t + l.payment, 0);
   /* THE CLOSING BALANCE IS WHAT IS STILL OPEN; the opening follows from it. */
-  const closing = invoices.filter((i) => OPEN.includes(i.status) || i.status === "Paid").reduce((t, i) => t + totalOf(i), 0);
+  const closing = invoices.filter((i) => OPEN.includes(i.status) || i.status === "Paid").reduce((t, i) => t + amountDue(i), 0);
   /* ROUNDED TO THE CENT — no "-$0.00". */
   const opening = Math.round((closing - charges + payments) * 100) / 100 || 0;
   let running = opening;

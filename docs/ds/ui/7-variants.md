@@ -50,6 +50,11 @@ first columns and **scrolls sideways**, the name pinned. **A record that
 reads several tables** (the 3PL directory) is as wide as ITS widest — each
 section names its columns (`RecordReadSection.columns`).
 
+**A sheet over a sheet** (`level={2}`, rendered inside the sheet beneath)
+is never wider than that sheet less 56px, so a strip of it always shows —
+two sheets of the same content width would otherwise read as one sheet that
+changed.
+
 **Two panes side by side** — a form beside a map, an email beside its
 preview — count as a table of two 420 columns (874). **A rail beside fields
 with no table** counts the fields as two `text` columns.

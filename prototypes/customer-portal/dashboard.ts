@@ -158,6 +158,12 @@ export function savings(ws: Week[], product?: string) {
   );
 }
 
+/** What the gallons cost, $ — at the customer's price or at market, on one product (or all). */
+export function spend(ws: Week[], at: "paid" | "market", product?: string) {
+  const ps = product ? [product] : PRICED_PRODUCTS;
+  return sum(ws, (w) => ps.reduce((a, p) => a + (w.prices[p] ? w.prices[p][at] * (w.byProduct[p] ?? 0) : 0), 0));
+}
+
 /** The tenant chooses whether its customers see market prices (Pavan, 2026-10-13). INVENTED: on. */
 export const SHOW_MARKET_PRICE = true;
 
@@ -199,7 +205,7 @@ export const OPEN_INVOICES: OpenInvoice[] = INVOICES.filter((i) => OPEN.includes
   shipTo: i.shipTo,
   amount: totalOf(i),
   due: i.due,
-  disputed: i.status === "Payment disputed",
+  disputed: i.status === "Payment disputed" || i.status === "Invoice disputed",
 }));
 
 /* -------------------------------------------------------- driver notes --- */

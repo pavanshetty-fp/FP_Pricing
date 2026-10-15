@@ -277,10 +277,23 @@ From the FleetPanda portal's user record (structure only, invented people).
 - **Invoice ↔ order** numbers are links both ways.
 - **Statement** is a tab inside Invoices.
 - **Service requests** stay coming soon.
+- **Customer invoice dispute** (recommended flow): invoice ⋯ → Dispute
+  invoice (a sheet over the invoice) — what is wrong (Price · Quantity · Fees
+  or tax → credit note; Details → corrected invoice; Not delivered → cancel),
+  the lines in question with what each should be, a required note, proof.
+  Status **Invoice disputed** (invoice and order); the due date is paused,
+  never "overdue"; one open dispute per invoice. The tenant answers Accepted
+  / Partly accepted (credit note, its own Statement row, amount due less the
+  credit) / Rejected (one more reply, then Close dispute). "Payment disputed"
+  stays for the tenant's payment mismatch.
+- **Products & pricing:** "All products" tab (spend vs the same gallons at
+  market), saving shown with "vs. market price" and its % of the market cost beside it; averages just above the rule.
+- **Attention required shine:** a red diagonal band sweeps left to right on
+  the outline only, ~1.9 s, every 6 s.
 
 ## Open
 
 - Should "summary card on the right while creating" apply to all modules?
-- Invoice dispute raised by the customer — outcome and flow being discussed.
+- Customer dispute rules still open: time limit · whether the disputed amount stops counting toward credit · who may dispute · paid invoices · whole vs part due date paused (built: open invoices, all roles, whole due date paused).
 - Duplicate-order warning on submit (PRD FR-23) not built.
 - Overview compares with last week's full day; should be same time of day.

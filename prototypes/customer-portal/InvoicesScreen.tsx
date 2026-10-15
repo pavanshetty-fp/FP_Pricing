@@ -19,6 +19,8 @@ import {
   SETTLED,
   TERMS,
   daysFrom,
+  amountDue,
+  inQuestion,
   invoiceSummary,
   totalOf,
   useInvoices,
@@ -63,6 +65,8 @@ const COLUMNS: ListColumn<IK>[] = [
 
 const dueNote = (i: Invoice) => {
   if (SETTLED.includes(i.status)) return "";
+  /* AN OPEN DISPUTE PAUSES THE DUE DATE — never "overdue" while it lasts. */
+  if (i.status === "Invoice disputed") return "Paused · disputed";
   const d = daysFrom(i.due);
   return d < 0 ? `${-d} ${d === -1 ? "day" : "days"} overdue` : d === 0 ? "Due today" : `In ${d} ${d === 1 ? "day" : "days"}`;
 };
@@ -148,7 +152,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
   const filterTo = (status: string) => setApplied({ ids: [`status:${status}`], n: Date.now() });
   /* WHICH ALERT'S FILTER IS ON — the list's filter is exactly its status. */
   const [facets, setFacets] = React.useState<string[]>([]);
-  const ALERT_STATUS: Record<string, string> = { overdue: "Overdue", disputed: "Payment disputed", due: "Payment due" };
+  const ALERT_STATUS: Record<string, string> = { overdue: "Overdue", disputed: "Invoice disputed", due: "Payment due" };
   const appliedId =
     facets.length === 1 ? (Object.keys(ALERT_STATUS).find((k) => facets[0] === `status:${ALERT_STATUS[k]}`) ?? null) : null;
 
@@ -162,7 +166,8 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
       onApply: () => setOpenNo(i.invoiceNo),
     }));
   const overdue = by("Overdue");
-  const disputed = by("Payment disputed");
+  /* BOTH DISPUTES — the customer's and the tenant's. */
+  const disputed = [...by("Invoice disputed"), ...by("Payment disputed")];
   const dueSoon = by("Payment due");
   const sum = (xs: Invoice[]) => usd0.format(xs.reduce((t, i) => t + totalOf(i), 0));
   const alerts = (
@@ -181,13 +186,13 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
         id: "disputed",
         status: "warning" as const,
         tag: "Disputed",
-        title: `${plural(disputed.length, "payment is", "payments are")} disputed`,
-        detail: sum(disputed),
+        title: `${plural(disputed.length, "invoice is", "invoices are")} disputed`,
+        detail: usd0.format(disputed.reduce((t, i) => t + inQuestion(i), 0)),
         count: disputed.length,
-        onApply: () => filterTo("Payment disputed"),
+        onApply: () => filterTo("Invoice disputed"),
         items: disputed.map((i) => ({
           id: i.invoiceNo,
-          title: `${i.invoiceNo} · ${usd.format(totalOf(i))}`,
+          title: `${i.invoiceNo} · ${usd.format(inQuestion(i))} in question`,
           detail: i.dispute?.reason ?? i.shipTo,
           onApply: () => setOpenNo(i.invoiceNo),
         })),
@@ -251,7 +256,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
               return note ? (
                 <span className="flex min-w-0 flex-col">
                   <span className="text-sm text-foreground">{printKey(i.due)}</span>
-                  <span className={cn("text-xs", daysFrom(i.due) < 0 ? "text-status-failed" : "text-muted-foreground")}>
+                  <span className={cn("text-xs", daysFrom(i.due) < 0 && i.status !== "Invoice disputed" ? "text-status-failed" : "text-muted-foreground")}>
                     {note}
                   </span>
                 </span>
@@ -264,12 +269,18 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
             case "shipTo":
               return <TwoLineCell title={i.shipTo} description={i.billTo} />;
             case "amount":
-              return <span className="text-sm tabular-nums text-foreground">{usd.format(totalOf(i))}</span>;
+              return <span className="text-sm tabular-nums text-foreground">{usd.format(amountDue(i))}</span>;
             case "status":
               return (
-                <StatusChip tone={INVOICE_STATUS_TONE[i.status]} variant="text">
-                  {i.status}
-                </StatusChip>
+                <span className="flex flex-col items-start gap-0.5">
+                  <StatusChip tone={INVOICE_STATUS_TONE[i.status]} variant="text">
+                    {i.status}
+                  </StatusChip>
+                  {/* WHAT IS IN QUESTION, under a customer's open dispute. */}
+                  {i.status === "Invoice disputed" && (
+                    <span className="text-xs tabular-nums text-muted-foreground">{usd.format(inQuestion(i))} in question</span>
+                  )}
+                </span>
               );
             case "download":
               /* ONE ICON — highlighted only under the pointer; the press

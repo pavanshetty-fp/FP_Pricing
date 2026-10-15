@@ -1,7 +1,7 @@
 import * as React from "react";
 import { startOfDay } from "../unified-view/data";
 import { statusTones } from "../unified-view/statusKind";
-import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, dateOfKey, type RequestDoc } from "./orders";
+import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests, dateOfKey, updateRequest, type RequestDoc } from "./orders";
 
 /*
   INVOICES (Pavan, 2026-10-14) — after the Lovable reference's invoice page
@@ -18,6 +18,8 @@ import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, dateOfKey, 
     Paid               the customer says it is paid; the tenant has not confirmed
     Payment confirmed  the tenant has the money
     Payment disputed   the payment does not match — the two sides disagree
+    Invoice disputed   the CUSTOMER says the invoice is wrong (Pavan,
+                       2026-10-15) — see "THE CUSTOMER'S DISPUTE" below
 
   The last column is DOWNLOAD INVOICE — one icon.
 
@@ -32,6 +34,7 @@ export const INVOICE_STATUSES = [
   "Paid",
   "Payment confirmed",
   "Payment disputed",
+  "Invoice disputed",
 ] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
@@ -44,10 +47,12 @@ export const INVOICE_STATUS_TONE = statusTones<InvoiceStatus>({
   Paid: "info",
   "Payment confirmed": "success",
   "Payment disputed": "critical",
+  /* Waiting on the tenant's answer. */
+  "Invoice disputed": "caution",
 });
 
 /** Still the customer's to pay (or to settle). */
-export const OPEN: InvoiceStatus[] = ["Received", "Payment due", "Overdue", "Payment disputed"];
+export const OPEN: InvoiceStatus[] = ["Received", "Payment due", "Overdue", "Payment disputed", "Invoice disputed"];
 export const SETTLED: InvoiceStatus[] = ["Paid", "Payment confirmed"];
 
 /** The customer's payment terms — days from issue to due. */
@@ -73,8 +78,59 @@ export interface DisputeNote {
   at: string;
   text: string;
 }
+/*
+  THE CUSTOMER'S DISPUTE (Pavan, 2026-10-15 — the recommended flow). The
+  customer says WHAT is wrong, and that decides what they are asking for:
+
+    Price · Quantity · Fees or tax   a credit note for the difference
+    Details (PO, ship-to)            a corrected invoice, same amount
+    Not delivered                    the invoice cancelled
+
+  They tick the lines that are wrong and say what each should be; a note is
+  required, proof optional. The invoice goes to "Invoice disputed" — no
+  longer counted overdue while open — and its order too. One open dispute
+  per invoice; more goes into its thread. The tenant answers Accepted ·
+  Partly accepted · Rejected: an accepted one comes with a credit note (its
+  own row on the Statement) and closes; a rejected one takes ONE more reply
+  from the customer, then they close it. Closed, the invoice goes back to
+  its due-date status, less any credit. INVENTED where seeded.
+*/
+export const DISPUTE_REASONS = [
+  { kind: "Price", asks: "Credit note" },
+  { kind: "Quantity", asks: "Credit note" },
+  { kind: "Fees or tax", asks: "Credit note" },
+  { kind: "Details (PO, ship-to)", asks: "Corrected invoice" },
+  { kind: "Not delivered", asks: "Cancel the invoice" },
+] as const;
+export type DisputeKind = (typeof DISPUTE_REASONS)[number]["kind"];
+export const asksFor = (k: DisputeKind) => DISPUTE_REASONS.find((r) => r.kind === k)!.asks;
+/** Whether the kind is about money — the lines table asks for amounts. */
+export const aboutAmounts = (k: DisputeKind) => k !== "Details (PO, ship-to)";
+
+export interface DisputedLine {
+  key: string;
+  label: string;
+  charged: number;
+  expected: number;
+}
+export type DisputeResult = "Accepted" | "Partly accepted" | "Rejected";
+export interface DisputeOutcome {
+  result: DisputeResult;
+  at: string;
+  by: string;
+  note: string;
+  /** Credited, $ — with its credit note. */
+  credit?: number;
+  creditNoteNo?: string;
+}
+
 export interface Dispute {
   reason: string;
+  /** The customer's dispute — what is wrong, and the lines in question. */
+  kind?: DisputeKind;
+  lines?: DisputedLine[];
+  outcome?: DisputeOutcome;
+  closedAt?: string;
   /** What the customer says is the right amount, $. */
   claimed: number | null;
   raisedBy: string;
@@ -95,7 +151,7 @@ export interface Invoice {
   lines: InvoiceLine[];
   /** When it was paid — Paid and Payment confirmed only. */
   paidOn?: string;
-  /** Payment disputed only. */
+  /** Payment or Invoice disputed — kept once closed, for its history. */
   dispute?: Dispute;
 }
 
@@ -136,12 +192,12 @@ export const daysFrom = (key: string) => {
 type Seed = [no: number, req: number, shipTo: string, issuedAgo: number, status: InvoiceStatus, lines: InvoiceLine[], paidAgo?: number];
 const SEED: Seed[] = [
   [5415, 1108, "Cardinal Hub A", 14, "Paid", [{ product: "Diesel", gal: 4800 }], 1],
-  [5414, 1109, "Cardinal Hub B", 17, "Payment disputed", [{ product: "Diesel", gal: 7000 }]],
+  [5414, 1109, "Cardinal Hub B", 17, "Invoice disputed", [{ product: "Diesel", gal: 7000 }]],
   [5413, 1110, "Cardinal Hub A", 12, "Payment due", [{ product: "Diesel", gal: 3900 }]],
   [5412, 1111, "Cardinal Overflow", 21, "Overdue", [{ product: "Dyed Diesel", gal: 1150 }, { product: "Diesel", gal: 45 }]],
   [5391, 1094, "Cardinal Hub A", 10, "Payment due", [{ product: "Diesel", gal: 4100 }, { product: "DEF", gal: 280 }]],
   [5385, 1089, "Cardinal Hub B", 3, "Received", [{ product: "Unleaded 87", gal: 2900 }]],
-  [5376, 1083, "Cardinal Hub A", 1, "Received", [{ product: "Jet A", gal: 2200 }, { product: "Avgas 100LL", gal: 600 }]],
+  [5376, 1083, "Cardinal Hub A", 1, "Invoice disputed", [{ product: "Jet A", gal: 2200 }, { product: "Avgas 100LL", gal: 600 }]],
   [5360, 1071, "Cardinal Overflow", 49, "Overdue", [{ product: "Propane", gal: 2600 }]],
   [5340, 1060, "Cardinal Hub A", 40, "Payment confirmed", [{ product: "Diesel", gal: 5200 }], 27],
   [5322, 1052, "Cardinal Hub B", 55, "Payment confirmed", [{ product: "Diesel", gal: 6100 }, { product: "Unleaded 87", gal: 1500 }], 41],
@@ -167,8 +223,11 @@ export const INVOICES: Invoice[] = SEED.map(([no, req, shipTo, ago, status, line
   const inv = INVOICES.find((i) => i.invoiceNo === "INV-5414");
   if (inv) {
     const charged = totalOf(inv);
+    const fuel = chargesOf(inv).fuel[0];
     inv.dispute = {
       reason: "Billed for 7,000 gal; the delivery ticket shows 6,400 gal delivered.",
+      kind: "Quantity",
+      lines: [{ key: "fuel:Diesel", label: "Fuel · Diesel", charged: fuel.amount, expected: Math.round(fuel.rate * 6400 * 100) / 100 }],
       claimed: Math.round((charged * 6400) / 7000 * 100) / 100,
       raisedBy: PORTAL_ACTOR,
       raisedAt: hoursAgo(70),
@@ -199,6 +258,60 @@ export const INVOICES: Invoice[] = SEED.map(([no, req, shipTo, ago, status, line
         { id: "dd-1", name: "Delivery ticket T-4414.pdf", kind: "Delivery ticket", by: PORTAL_ACTOR, at: hoursAgo(70) },
         { id: "dd-2", name: "Meter reading Truck 22.jpg", kind: "Photo", by: TENANT, at: hoursAgo(20) },
       ],
+    };
+  }
+}
+
+/* TWO MORE, TO SHOW HOW ONE ENDS — INV-5391 partly accepted, credited and
+   closed; INV-5376 rejected, waiting on the customer's one reply. INVENTED. */
+{
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const a = INVOICES.find((i) => i.invoiceNo === "INV-5391");
+  if (a) {
+    const c = chargesOf(a);
+    const def = c.fuel.find((l) => l.product === "DEF")!;
+    a.dispute = {
+      reason: "DEF was billed at the wrong rate — our contract rate is $2.650.",
+      kind: "Price",
+      lines: [{ key: "fuel:DEF", label: "Fuel · DEF", charged: def.amount, expected: Math.round(2.65 * def.gal * 100) / 100 }],
+      claimed: null,
+      raisedBy: PORTAL_ACTOR,
+      raisedAt: hoursAgo(150),
+      notes: [
+        { id: "dn-a1", by: PORTAL_ACTOR, side: "customer", at: hoursAgo(150), text: "DEF was billed at the wrong rate — our contract rate is $2.650." },
+      ],
+      documents: [{ id: "dd-a1", name: "DEF contract 2026.pdf", kind: "Other", by: PORTAL_ACTOR, at: hoursAgo(150) }],
+      outcome: {
+        result: "Partly accepted",
+        at: hoursAgo(100),
+        by: "Maria Chen",
+        note: "The contract rate applies from September 1; the first 80 gal were before it.",
+        credit: 98.4,
+        creditNoteNo: "CN-5391",
+      },
+      closedAt: hoursAgo(100),
+    };
+  }
+  const b = INVOICES.find((i) => i.invoiceNo === "INV-5376");
+  if (b) {
+    const c = chargesOf(b);
+    b.dispute = {
+      reason: "Fees charged on Avgas, which our agreement exempts.",
+      kind: "Fees or tax",
+      lines: [{ key: "fees", label: "Fees (delivery, environmental)", charged: c.fees, expected: Math.round(2200 * FEES_PER_GAL * 100) / 100 }],
+      claimed: null,
+      raisedBy: PORTAL_ACTOR,
+      raisedAt: hoursAgo(20),
+      notes: [
+        { id: "dn-b1", by: PORTAL_ACTOR, side: "customer", at: hoursAgo(20), text: "Fees charged on Avgas, which our agreement exempts." },
+      ],
+      documents: [],
+      outcome: {
+        result: "Rejected",
+        at: hoursAgo(4),
+        by: "Maria Chen",
+        note: "The exemption covers Jet A only; Avgas carries the delivery fee.",
+      },
     };
   }
 }
@@ -257,9 +370,83 @@ export function addDisputeDocuments(no: string, files: { name: string; type: str
   }));
 }
 
+/** What is in question, $ — the lines' differences; all of it if not delivered. */
+export function inQuestion(inv: Invoice): number {
+  const d = inv.dispute;
+  if (!d?.lines) return d?.claimed !== null && d?.claimed !== undefined ? totalOf(inv) - d.claimed : 0;
+  if (d.kind === "Not delivered") return totalOf(inv);
+  return round2(d.lines.reduce((t, l) => t + Math.max(0, l.charged - l.expected), 0));
+}
+
+/** What is left to pay — the total less any credit a dispute brought. */
+export const amountDue = (inv: Invoice) => round2(totalOf(inv) - (inv.dispute?.outcome?.credit ?? 0));
+
+/** An open dispute: raised, not closed. */
+export const disputeOpen = (inv: Invoice) => Boolean(inv.dispute && !inv.dispute.closedAt);
+
+/** The status an invoice goes back to — by its due date. */
+const dueStatus = (inv: Invoice): InvoiceStatus =>
+  daysFrom(inv.due) < 0 ? "Overdue" : daysFrom(inv.due) <= 7 ? "Payment due" : "Received";
+
+/** The order behind an invoice follows it. */
+function orderTo(requestNo: string, status: "Invoice disputed" | "Invoiced", change: string) {
+  const r = allRequests().find((x) => x.requestNo === requestNo);
+  if (r) updateRequest(r.id, { status }, change);
+}
+
+/** The customer disputes an invoice. */
+export function raiseDispute(
+  no: string,
+  input: { kind: DisputeKind; lines: DisputedLine[]; note: string; files: { name: string; type: string }[] }
+) {
+  const i = INVOICES.findIndex((x) => x.invoiceNo === no);
+  if (i < 0) return;
+  const at = new Date().toISOString();
+  const inv = INVOICES[i];
+  INVOICES[i] = {
+    ...inv,
+    status: "Invoice disputed",
+    dispute: {
+      reason: input.note,
+      kind: input.kind,
+      lines: input.lines,
+      claimed: null,
+      raisedBy: PORTAL_ACTOR,
+      raisedAt: at,
+      notes: [{ id: `dn-${Date.now()}`, by: PORTAL_ACTOR, side: "customer", at, text: input.note }],
+      documents: input.files.map((f, k) => ({
+        id: `dd-${Date.now()}-${k}`,
+        name: f.name,
+        kind: (f.type.startsWith("image/") ? "Photo" : "Other") as RequestDoc["kind"],
+        by: PORTAL_ACTOR,
+        at,
+      })),
+    },
+  };
+  orderTo(inv.requestNo, "Invoice disputed", `Invoice ${no} disputed · ${input.kind}`);
+  emit();
+}
+
+/** The customer closes a dispute the tenant has answered. */
+export function closeDispute(no: string) {
+  const i = INVOICES.findIndex((x) => x.invoiceNo === no);
+  const inv = INVOICES[i];
+  if (i < 0 || !inv.dispute) return;
+  INVOICES[i] = { ...inv, status: dueStatus(inv), dispute: { ...inv.dispute, closedAt: new Date().toISOString() } };
+  orderTo(inv.requestNo, "Invoiced", `Dispute on ${no} closed`);
+  emit();
+}
+
+/** A rejected dispute takes ONE more reply from the customer. */
+export function canReply(d: Dispute) {
+  if (d.closedAt) return false;
+  if (d.outcome?.result !== "Rejected") return true;
+  return !d.notes.some((n) => n.side === "customer" && n.at > d.outcome!.at);
+}
+
 /** The overview's four figures. */
 export function invoiceSummary(list: Invoice[] = INVOICES) {
-  const sum = (xs: Invoice[]) => xs.reduce((t, i) => t + totalOf(i), 0);
+  const sum = (xs: Invoice[]) => xs.reduce((t, i) => t + amountDue(i), 0);
   const open = list.filter((i) => OPEN.includes(i.status));
   const overdue = list.filter((i) => i.status === "Overdue");
   const paid90 = list.filter((i) => SETTLED.includes(i.status) && i.paidOn && daysFrom(i.paidOn) >= -90);

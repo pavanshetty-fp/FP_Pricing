@@ -3,9 +3,9 @@ import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Clock, FileTex
 import { StatusChip } from "@/components/ui/status-chip";
 import { Pill, pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { QuietPattern } from "@/components/ui/quiet-pattern";
 import { SheetSectionNote } from "@/components/side-sheet/parts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { DATE_FMT, startOfDay } from "../unified-view/data";
@@ -40,6 +40,7 @@ import {
   periods,
   productTotals,
   savings,
+  spend,
   type NoteLevel,
   type RangeWeeks,
   type Week,
@@ -167,9 +168,22 @@ function Legend({ items }: { items: { hue: string; label: string; value?: string
 }
 
 /** Change against the period before. `goodWhenDown` for counts the customer wants low. */
-function Change({ now, then, goodWhenDown, points }: { now: number; then: number; goodWhenDown?: boolean; points?: boolean }) {
-  const d = points ? now - then : then ? ((now - then) / then) * 100 : 0;
-  const shown = points ? Math.abs(d).toFixed(1) : String(Math.abs(Math.round(d)));
+function Change({
+  now,
+  then,
+  goodWhenDown,
+  points,
+  pct,
+}: {
+  now: number;
+  then: number;
+  goodWhenDown?: boolean;
+  points?: boolean;
+  /** A percentage already worked out — shown to one decimal. */
+  pct?: number;
+}) {
+  const d = pct ?? (points ? now - then : then ? ((now - then) / then) * 100 : 0);
+  const shown = points || pct !== undefined ? Math.abs(d).toFixed(1) : String(Math.abs(Math.round(d)));
   if (shown === "0" || shown === "0.0") return <span className="text-sm text-muted-foreground">No change</span>;
   const up = d > 0;
   const good = goodWhenDown ? !up : up;
@@ -585,88 +599,50 @@ function actionOf(r: OrderRequest): NeededAction | null {
 }
 
 /*
-  THE TRACE (Pavan, 2026-10-15) — while "Attention required" is collapsed, a
-  red stroke a sixth of the card's width runs ONE lap of the outline, fast
-  (~1.6 s), from the top centre back to it, and is gone — every 12 seconds. It is a comet: darkest at the
-  head, fading toward the tail (pieces of falling opacity). It runs along
-  the inner side of the card's border; still for reduced motion.
+  THE SHINE (Pavan, 2026-10-15 — replaces the comet that ran the outline):
+  while "Attention required" is collapsed, a red diagonal band sweeps LEFT
+  TO RIGHT across the card — seen ONLY on its outline, never on the
+  background — taking the comet's ~1.9 s, every 6 seconds. The outline is a
+  ring masked out of a full-size layer just inside the border; the band
+  moves inside it. Still for reduced motion.
 */
-const TRACE_EVERY = 12000;
+const TRACE_EVERY = 6000;
 const TRACE_LAP = 1900;
-const TRACE_PIECES = 10;
 
 function TraceStroke() {
-  const box = React.useRef<SVGSVGElement>(null);
-  const pieces = React.useRef<(SVGRectElement | null)[]>([]);
-  const [size, setSize] = React.useState({ w: 0, h: 0 });
-  React.useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  /* JUST INSIDE THE BORDER — the card clips at its padding edge (its glow
-     needs that), so the trace runs along the inner side of the outline. */
-  const R = 13;
-  const inset = 0.75;
-  const w = Math.max(0, size.w - inset * 2);
-  const h = Math.max(0, size.h - inset * 2);
-  /* THE PERIMETER OF A ROUNDED RECT — straight sides plus one full circle. */
-  const perim = 2 * (w + h - 4 * R) + 2 * Math.PI * R;
-  const piece = size.w / 6 / TRACE_PIECES;
+  const band = React.useRef<HTMLSpanElement>(null);
   React.useEffect(() => {
-    if (!perim || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const lapEnd = TRACE_LAP / TRACE_EVERY;
-    /* EACH PIECE trails the one before it by its own length; all start
-       behind the start line and end one lap later, then vanish. */
-    const anims = pieces.current.map((el, k) => {
-      if (!el) return null;
-      /* FROM THE TOP CENTRE, BACK TO IT (Pavan, 2026-10-15) — the rect's
-         path starts after the top-left corner, so the centre is half the
-         top edge less the corner further on. */
-      const from = -(w / 2 - R) + k * piece;
-      /* SMOOTH IN AND OUT (Pavan, 2026-10-15) — the lap eases (slow off
-         the centre, quick round, slow back into it) and the comet fades in
-         over its first stretch and out over its last, so it neither pops
-         on nor snaps off. Sampled into keyframes over the lap; still and
-         invisible for the rest of the 12 seconds. */
-      const STEPS = 24;
-      const ease = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2;
-      const fade = (t: number) => Math.min(1, t / 0.15, (1 - t) / 0.15);
-      const frames: Keyframe[] = Array.from({ length: STEPS + 1 }, (_, i) => {
-        const t = i / STEPS;
-        return { strokeDashoffset: from - perim * ease(t), opacity: Math.max(0, fade(t)), offset: t * lapEnd };
+    const el = band.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const run = () =>
+      el.animate([{ left: "-35%" }, { left: "105%" }], {
+        duration: TRACE_LAP,
+        easing: "cubic-bezier(0.45, 0, 0.55, 1)",
       });
-      frames.push({ strokeDashoffset: from - perim, opacity: 0, offset: 1 });
-      return el.animate(frames, { duration: TRACE_EVERY, iterations: Infinity, easing: "linear" });
-    });
-    return () => anims.forEach((a) => a?.cancel());
-  }, [perim, piece, w]);
+    const first = window.setTimeout(run, 1200);
+    const every = window.setInterval(run, TRACE_EVERY);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, []);
   return (
-    <svg ref={box} aria-hidden className="pointer-events-none absolute inset-0 size-full">
-      {perim > 0 &&
-        Array.from({ length: TRACE_PIECES }, (_, k) => (
-          <rect
-            key={k}
-            ref={(el) => {
-              pieces.current[k] = el;
-            }}
-            x={inset}
-            y={inset}
-            width={w}
-            height={h}
-            rx={R}
-            fill="none"
-            className="stroke-fp-lane-red"
-            /* DARK AT THE HEAD, LIGHT AT THE TAIL. */
-            strokeOpacity={1 - (k / TRACE_PIECES) * 0.9}
-            strokeWidth={1.5}
-            strokeDasharray={`${piece + 0.5} ${perim - piece - 0.5}`}
-            opacity={0}
-          />
-        ))}
-    </svg>
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] p-[1.5px]"
+      style={{
+        /* THE RING — the layer less its content box: only the outline shows. */
+        mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+        maskComposite: "exclude",
+        WebkitMaskComposite: "xor",
+      }}
+    >
+      <span
+        ref={band}
+        className="absolute inset-y-0 w-[5%] -skew-x-[24deg] bg-[linear-gradient(90deg,transparent,var(--color-fp-lane-red),transparent)]"
+        style={{ left: "-35%" }}
+      />
+    </span>
   );
 }
 
@@ -1117,24 +1093,27 @@ function ProductsCard({ now, before, n }: { now: Week[]; before: Week[]; n: numb
   the market's (red), week by week. The point is to show the value of
   ordering through the tenant.
 */
+/* THE OVERALL TAB (Pavan, 2026-10-15) — every priced product at once: what
+   the customer spent against what the same gallons cost at market. */
+const ALL = "All products";
+
 function SavingsCard({
   weeks,
-  before,
   product,
   n,
   bare,
 }: {
   weeks: Week[];
-  before: Week[];
   product: string;
   n: number;
   bare?: boolean;
 }) {
-  const saved = savings(weeks, product);
-  const all = savings(weeks);
-  const allBefore = savings(before);
-  const avg = (k: "paid" | "market") =>
-    weeks.reduce((a, w) => a + (w.prices[product]?.[k] ?? 0), 0) / Math.max(1, weeks.length);
+  const one = product === ALL ? undefined : product;
+  const saved = savings(weeks, one);
+  const atMarket = spend(weeks, "market", one);
+  /* A GALLON-WEIGHTED AVERAGE — on "All products", across them. */
+  const gal = weeks.reduce((a, w) => a + (one ? (w.byProduct[one] ?? 0) : PRICED_PRODUCTS.reduce((t, p) => t + (w.byProduct[p] ?? 0), 0)), 0);
+  const avg = (k: "paid" | "market") => spend(weeks, k, one) / Math.max(1, gal);
   return (
     <Card bare={bare} title="Saved vs market">
       <dl className="flex flex-1 flex-col gap-4">
@@ -1142,9 +1121,18 @@ function SavingsCard({
           <dt className="text-xs text-muted-foreground">
             {product} · last {n} weeks
           </dt>
-          <dd className="text-4xl font-semibold tabular-nums text-status-success">{usd.format(saved)}</dd>
+          {/* THE SAVING, "vs. market price" beside it, and what share of the
+              market cost it is (Pavan, 2026-10-15). */}
+          <dd className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-4xl font-semibold tabular-nums text-status-success">{usd.format(saved)}</span>
+            <span className="text-sm text-muted-foreground">vs. market price</span>
+            {/* UP OR DOWN, SAID BY THE ARROW — the dashboard's change marker
+                (Pavan, 2026-10-15): your spend against the market's. */}
+            {atMarket > 0 && <Change now={atMarket} then={atMarket - saved} points={false} pct={(saved / atMarket) * 100} />}
+          </dd>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        {/* THE AVERAGES 32px UNDER THE SAVING (Pavan, 2026-10-15). */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-0.5">
             <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span aria-hidden className={cn("size-2 rounded-[2px]", VIZ[6].bg)} />
@@ -1166,29 +1154,14 @@ function SavingsCard({
             </dd>
           </div>
         </div>
-        {/* ALL PRODUCTS — the figure first, its label under it, and on the
-            right the change on the weeks before; its hover says from what
-            (Pavan, 2026-10-14). No other words. */}
-        <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
-          <div className="flex flex-col gap-0.5">
-            {/* THE FIGURE IN THE RECOMMENDATIONS VIOLET (Pavan, 2026-10-15) —
-                the violet pill's ink, readable in both themes. No box. */}
-            <dd className="text-base font-semibold tabular-nums text-[color-mix(in_oklab,var(--color-fp-lane-violet)_70%,var(--foreground))]">
-              {usd.format(all)}
-            </dd>
-            <dt className="text-xs text-muted-foreground">All products · last {n} weeks</dt>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-default">
-                <Change now={all} then={allBefore} />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {usd.format(allBefore)} saved in the {n} weeks before
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        {/* THE REST OF THE CARD — a quiet outline lattice, fading in from the
+            top (Pavan, 2026-10-15: "very subtle … geometric"). No rule, no
+            bottom line. */}
+        {/* TO THE CARD'S EDGES (Pavan, 2026-10-15) — out of the 16px padding
+            on the left, bottom and right (up to the divider); whole tiles
+            start at the bottom-left, the top and right may cut. The bottom-
+            left corner is the shared card's, so it rounds with it. */}
+        <QuietPattern className="-mx-4 -mb-4 min-h-16 flex-1 rounded-bl-[11px]" />
       </dl>
     </Card>
   );
@@ -1216,27 +1189,51 @@ function PriceCard({
         aria-label="Product"
         className="flex w-fit flex-wrap"
       >
-        {PRICED_PRODUCTS.map((p) => (
+        {[ALL, ...PRICED_PRODUCTS].map((p) => (
           <ToggleGroupItem key={p} value={p} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
             {p}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <Legend
-        items={[
-          { hue: VIZ[6].bg, label: "Your price", line: "solid" },
-          { hue: VIZ[8].bg, label: "Market price", line: "dashed" },
-        ]}
-      />
-      <WeekLines
-        fill
-        weeks={weeks}
-        format={(v) => usd3.format(v)}
-        series={[
-          { key: "paid", label: "Your price", hue: 6, value: (w) => w.prices[product]?.paid ?? 0 },
-          { key: "market", label: "Market price", hue: 8, dashed: true, value: (w) => w.prices[product]?.market ?? 0 },
-        ]}
-      />
+      {product === ALL ? (
+        /* OVERALL — each week's spend against the same gallons at market;
+           the gap between the lines is what was saved. */
+        <>
+          <Legend
+            items={[
+              { hue: VIZ[6].bg, label: "You paid", line: "solid" },
+              { hue: VIZ[8].bg, label: "At market", line: "dashed" },
+            ]}
+          />
+          <WeekLines
+            fill
+            weeks={weeks}
+            format={(v) => usd.format(v)}
+            series={[
+              { key: "paid", label: "You paid", hue: 6, value: (w) => spend([w], "paid") },
+              { key: "market", label: "At market", hue: 8, dashed: true, value: (w) => spend([w], "market") },
+            ]}
+          />
+        </>
+      ) : (
+        <>
+          <Legend
+            items={[
+              { hue: VIZ[6].bg, label: "Your price", line: "solid" },
+              { hue: VIZ[8].bg, label: "Market price", line: "dashed" },
+            ]}
+          />
+          <WeekLines
+            fill
+            weeks={weeks}
+            format={(v) => usd3.format(v)}
+            series={[
+              { key: "paid", label: "Your price", hue: 6, value: (w) => w.prices[product]?.paid ?? 0 },
+              { key: "market", label: "Market price", hue: 8, dashed: true, value: (w) => w.prices[product]?.market ?? 0 },
+            ]}
+          />
+        </>
+      )}
     </Card>
   );
 }
@@ -1314,7 +1311,7 @@ export function DashboardScreen() {
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
   const [actionId, setActionId] = React.useState<string | null>(null);
   const actionReq = rows.find((r) => r.id === actionId) ?? null;
-  const [product, setProduct] = React.useState<string>(PRICED_PRODUCTS[0]);
+  const [product, setProduct] = React.useState<string>(ALL);
   const from = now[0];
   const to = now[now.length - 1];
 
@@ -1361,7 +1358,7 @@ export function DashboardScreen() {
             performance headlines: saved against market, then the chart. */}
         {SHOW_MARKET_PRICE && (
           <div className="grid divide-y divide-border rounded-xl border border-border bg-fp-surface-1b lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
-            <SavingsCard bare weeks={now} before={before} product={product} n={range} />
+            <SavingsCard bare weeks={now} product={product} n={range} />
             <PriceCard bare weeks={now} product={product} onProduct={setProduct} />
           </div>
         )}

@@ -731,3 +731,23 @@ sweeping left to right across it (`.fp-shimmer`, 1.4s, off with reduced
 motion) — never a pulse. A loading PAGE is its parts as skeletons in their own
 places (title, tabs, toolbar, table header and rows), so it arrives in the
 shape it is about to take.
+
+## 11d. The quiet pattern (Pavan, 2026-10-15)
+
+**One decorative pattern, everywhere** — `QuietPattern`
+(`src/components/ui/quiet-pattern.tsx`), for an empty stretch of a card
+(first used under the portal dashboard's "Saved vs market" figures).
+
+- **What it is:** a square grid of quarter discs (each cell's circle
+  centred on one of its corners), grouped 2 × 2 so they meet as half discs,
+  full circles and loose quarters; no empty cells. Seeded — the same every
+  time.
+- **Colour:** two very light greys only — the foreground at 7% and 4%.
+  Never a hue.
+- **Size:** one scale (2.1). Do not resize it per card.
+- **Placement:** the last child of the card's flex column, `flex-1`; it
+  fades in from the top. Whole tiles start at the **bottom-left**; the top
+  and right may cut. Bleed it to the card's edges (`-mx-4 -mb-4` in a 16px
+  card) so it meets the bottom, the left and any divider on the right, and
+  round the corner it sits in with the card.
+- **Decoration only** — `aria-hidden`, no pointer events, never behind text.

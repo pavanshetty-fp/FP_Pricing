@@ -29,6 +29,9 @@ function events(): Event[] {
   if (inv) out.push({ text: `Invoice ${inv.invoiceNo} ready`, open: { invoice: inv.invoiceNo } });
   const done = rs.find((r) => r.status === "Delivered");
   if (done) out.push({ text: `${done.requestNo} delivered · ticket ready`, open: { order: done.requestNo } });
+  /* THE TENANT ANSWERED A DISPUTE (Pavan, 2026-10-15). */
+  const answered = INVOICES.find((i) => i.dispute?.outcome && !i.dispute.closedAt);
+  if (answered) out.push({ text: `${TENANT} answered the dispute on ${answered.invoiceNo}`, open: { invoice: answered.invoiceNo } });
   const asked = rs.find((r) => r.status === "Action needed");
   if (asked) out.push({ text: `${TENANT} needs your answer on ${asked.requestNo}`, open: { order: asked.requestNo } });
   return out;

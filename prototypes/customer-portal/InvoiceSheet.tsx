@@ -1,11 +1,19 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, Flag, MoreHorizontal } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { kindTone } from "../unified-view/statusKind";
+import { DisputeSheet } from "./DisputeSheet";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
@@ -21,8 +29,14 @@ import {
   TAX_RATE,
   addDisputeDocuments,
   addDisputeNote,
+  amountDue,
+  asksFor,
+  canReply,
   chargesOf,
+  closeDispute,
   daysFrom,
+  disputeOpen,
+  inQuestion,
   type Dispute,
   type Invoice,
 } from "./invoices";
@@ -51,26 +65,93 @@ function DisputeSections({ invoice, dispute, total }: { invoice: Invoice; disput
   const diff = dispute.claimed !== null ? total - dispute.claimed : null;
   return (
     <>
-      <SheetSection title="Payment dispute">
-        <div className="grid grid-cols-4 gap-4">
-          <Fact label="Raised by">
-            <span>{dispute.raisedBy}</span>
-            <span className="text-xs text-muted-foreground">{WHEN.format(new Date(dispute.raisedAt))}</span>
-          </Fact>
-          <Fact label="Invoiced">
-            <span className="tabular-nums">{usd.format(total)}</span>
-          </Fact>
-          <Fact label="You say">
-            <span className="tabular-nums">{dispute.claimed !== null ? usd.format(dispute.claimed) : "—"}</span>
-          </Fact>
-          <Fact label="Difference">
-            <span className="font-semibold tabular-nums text-status-failed">{diff !== null ? usd.format(diff) : "—"}</span>
-          </Fact>
-        </div>
-        <SheetField label="Reason">
-          <p className="text-sm text-foreground">{dispute.reason}</p>
-        </SheetField>
-      </SheetSection>
+      {dispute.kind ? (
+        /* THE CUSTOMER'S DISPUTE (Pavan, 2026-10-15) — what is wrong, what
+           they asked for, the lines in question, and the tenant's answer. */
+        <SheetSection title="Invoice dispute">
+          <div className="grid grid-cols-4 gap-4">
+            <Fact label="Raised by">
+              <span>{dispute.raisedBy}</span>
+              <span className="text-xs text-muted-foreground">{WHEN.format(new Date(dispute.raisedAt))}</span>
+            </Fact>
+            <Fact label="What is wrong">{dispute.kind}</Fact>
+            <Fact label="Asking for">{asksFor(dispute.kind)}</Fact>
+            <Fact label="In question">
+              <span className="font-semibold tabular-nums">{usd.format(inQuestion(invoice))}</span>
+            </Fact>
+          </div>
+          {dispute.lines && dispute.lines.length > 0 && (
+            <dl className="flex flex-col rounded-lg border border-border">
+              {dispute.lines.map((l) => (
+                <div key={l.key} className="flex h-10 items-center justify-between gap-4 border-b border-border px-3 text-sm last:border-b-0">
+                  <dt className="truncate text-foreground">{l.label}</dt>
+                  <dd className="shrink-0 tabular-nums text-muted-foreground">
+                    {usd.format(l.charged)} → <span className="text-foreground">{usd.format(l.expected)}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {dispute.outcome && (
+            <div className="flex flex-col gap-1.5 rounded-lg bg-fp-table-header p-3 text-sm">
+              <span className="flex flex-wrap items-center gap-2">
+                <StatusChip
+                  tone={kindTone(dispute.outcome.result === "Rejected" ? "neutral" : "success")}
+                  variant="soft"
+                >
+                  {dispute.outcome.result}
+                </StatusChip>
+                <span className="text-xs text-muted-foreground">
+                  {dispute.outcome.by} · {WHEN.format(new Date(dispute.outcome.at))}
+                </span>
+              </span>
+              <span className="text-foreground">{dispute.outcome.note}</span>
+              {dispute.outcome.credit !== undefined && (
+                <span className="tabular-nums text-foreground">
+                  Credit note {dispute.outcome.creditNoteNo} · {usd.format(dispute.outcome.credit)}
+                </span>
+              )}
+              {dispute.closedAt ? (
+                <span className="text-xs text-muted-foreground">Closed {WHEN.format(new Date(dispute.closedAt))}</span>
+              ) : (
+                <span className="flex justify-end pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      closeDispute(invoice.invoiceNo);
+                      toast.success(`Dispute on ${invoice.invoiceNo} closed`);
+                    }}
+                  >
+                    Close dispute
+                  </Button>
+                </span>
+              )}
+            </div>
+          )}
+        </SheetSection>
+      ) : (
+        <SheetSection title="Payment dispute">
+          <div className="grid grid-cols-4 gap-4">
+            <Fact label="Raised by">
+              <span>{dispute.raisedBy}</span>
+              <span className="text-xs text-muted-foreground">{WHEN.format(new Date(dispute.raisedAt))}</span>
+            </Fact>
+            <Fact label="Invoiced">
+              <span className="tabular-nums">{usd.format(total)}</span>
+            </Fact>
+            <Fact label="You say">
+              <span className="tabular-nums">{dispute.claimed !== null ? usd.format(dispute.claimed) : "—"}</span>
+            </Fact>
+            <Fact label="Difference">
+              <span className="font-semibold tabular-nums text-status-failed">{diff !== null ? usd.format(diff) : "—"}</span>
+            </Fact>
+          </div>
+          <SheetField label="Reason">
+            <p className="text-sm text-foreground">{dispute.reason}</p>
+          </SheetField>
+        </SheetSection>
+      )}
 
       <SheetSection title="Notes">
         <ol className="flex flex-col gap-4">
@@ -100,6 +181,8 @@ function DisputeSections({ invoice, dispute, total }: { invoice: Invoice; disput
             </li>
           ))}
         </ol>
+        {/* A REJECTED DISPUTE TAKES ONE MORE REPLY; a closed one none. */}
+        {canReply(dispute) && (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           <Textarea
             aria-label="Add a note"
@@ -117,10 +200,11 @@ function DisputeSections({ invoice, dispute, total }: { invoice: Invoice; disput
                 setDraft("");
               }}
             >
-              Add note
+              {dispute.outcome?.result === "Rejected" ? "Send reply" : "Add note"}
             </Button>
           </div>
         </div>
+        )}
       </SheetSection>
 
       <SheetSection
@@ -159,6 +243,8 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
+const settled_ = (i: Invoice) => SETTLED.includes(i.status);
+
 export function InvoiceSheet({
   invoice,
   open,
@@ -173,11 +259,15 @@ export function InvoiceSheet({
   /** The order number as a link, when it can open (PRD FR-10). */
   orderLink?: (requestNo: string) => React.ReactNode;
 }) {
+  const [disputing, setDisputing] = React.useState(false);
   if (!invoice) return null;
   const c = chargesOf(invoice);
+  /* ONE OPEN DISPUTE PER INVOICE; a settled invoice is not disputed here. */
+  const canDispute = !settled_(invoice) && !disputeOpen(invoice) && invoice.status !== "Payment disputed";
   const d = daysFrom(invoice.due);
   const settled = SETTLED.includes(invoice.status);
   return (
+    <>
     <RecordSheet
       /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): charges = item name, basis
          ("gal @ rate", text), amount; dispute documents = document name, added
@@ -200,6 +290,23 @@ export function InvoiceSheet({
         <StatusChip tone={INVOICE_STATUS_TONE[invoice.status]} variant="text">
           {invoice.status}
         </StatusChip>
+      }
+      headerMenu={
+        canDispute ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More invoice actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onSelect={() => setDisputing(true)}>
+                <Flag />
+                Dispute invoice
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined
       }
       headerActions={
         <Tooltip>
@@ -230,7 +337,9 @@ export function InvoiceSheet({
             </Fact>
             <Fact label="Due">
               <span>{printKey(invoice.due)}</span>
-              {!settled && (
+              {invoice.status === "Invoice disputed" ? (
+                <span className="text-xs text-muted-foreground">Paused · disputed</span>
+              ) : !settled && (
                 <span className={cn("text-xs", d < 0 ? "text-status-failed" : "text-muted-foreground")}>
                   {d < 0 ? `${-d} ${d === -1 ? "day" : "days"} overdue` : d === 0 ? "Due today" : `In ${d} ${d === 1 ? "day" : "days"}`}
                 </span>
@@ -241,7 +350,12 @@ export function InvoiceSheet({
               <Fact label="Paid on">{invoice.paidOn ? printKey(invoice.paidOn) : "—"}</Fact>
             ) : (
               <Fact label="Amount due">
-                <span className="font-semibold tabular-nums">{usd.format(c.total)}</span>
+                <span className="font-semibold tabular-nums">{usd.format(amountDue(invoice))}</span>
+                {invoice.dispute?.outcome?.credit !== undefined && (
+                  <span className="text-xs text-muted-foreground">
+                    after credit note {invoice.dispute.outcome.creditNoteNo}
+                  </span>
+                )}
               </Fact>
             )}
           </div>
@@ -295,6 +409,9 @@ export function InvoiceSheet({
           </table>
         </SheetSection>
       </div>
+      {/* INSIDE THE SHEET, so it knows the width beneath it (a strip shows). */}
+      <DisputeSheet invoice={invoice} open={disputing} onOpenChange={setDisputing} />
     </RecordSheet>
+    </>
   );
 }

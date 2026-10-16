@@ -24,7 +24,7 @@ export function StageTrack({
   disabledReason,
   compact,
   tone = "brand",
-  variant = "track",
+  variant = "rings",
 }: {
   stages: Stage[];
   current: string;
@@ -45,7 +45,9 @@ export function StageTrack({
    * stepper reference; tried on Create recurring rule): done a green disc with
    * a white tick and a green name, the current step a blue ring and a blue
    * name, the rest grey rings; the line blue up to the current step, grey on.
-   * Spread evenly, each step centred in an equal column.
+   * Spread evenly, each step centred in an equal column. THE DEFAULT, for a
+   * record's detail track and a form's steps alike, every module (Pavan,
+   * 2026-10-16). `track` keeps the older dots-and-pill look.
    */
   variant?: "track" | "rings";
   /** Why a step cannot be opened yet — dimmed, said on hover, not pressable. */

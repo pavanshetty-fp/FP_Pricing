@@ -40,6 +40,7 @@ import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import { RulePill } from "./cells";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import {
@@ -395,19 +396,31 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
         {qty.topOff > 0 && <RailRow variant="line" label="Top off" value={qty.topOff} />}
         <RailRow
           variant="total"
-          label="Estimated cost"
+          label={
+            /* AN ESTIMATE, NOT THE FINAL PRICE (Pavan, 2026-10-13) — said on
+               hover of the info icon beside the label (2026-10-16). */
+            <span className="inline-flex items-center gap-1.5">
+              Estimated cost
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="How the cost is estimated"
+                    className="inline-flex rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">
+                  Estimated from the market price and pricing set by {TENANT} as of{" "}
+                  {AS_OF_FMT.format(PRICES_AS_OF)}. This is not the final price; {TENANT} confirms it in the quote.
+                </TooltipContent>
+              </Tooltip>
+            </span>
+          }
           value={est.high > 0 ? range(est.low, est.high) : "—"}
         />
       </dl>
-      {/* SAID OUTRIGHT (Pavan, 2026-10-13): an estimate, not the final price. */}
-      <p className="flex gap-2 text-xs text-muted-foreground">
-        <Info className="mt-px size-3.5 shrink-0" />
-        <span>
-          Estimated from the market price and pricing set by {TENANT} as of{" "}
-          {AS_OF_FMT.format(PRICES_AS_OF)}. This is not the final price; {TENANT} confirms it in
-          the quote.
-        </span>
-      </p>
       {/* INVOICES SHOW ON THE REQUEST TOO (Pavan, 2026-10-13). */}
       {invoiceNo && (
         <>

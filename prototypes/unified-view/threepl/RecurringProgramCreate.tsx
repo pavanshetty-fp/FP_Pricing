@@ -49,6 +49,8 @@ import {
   RuleFrequencyPicker,
   blankFrequency,
   toSchedule,
+  NextDeliveries,
+  nextHits,
   type RuleFrequency,
 } from "./RuleFrequency";
 import {
@@ -888,7 +890,11 @@ export function RecurringProgramCreate({
          footer and outside the scroll, so the reason the act is dead is
          visible whenever the act is. */
       footerBanner={
-        <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
+        <div className="flex flex-col gap-2.5">
+          {/* PINNED ABOVE CREATE (Pavan, 2026-10-16 — as the portal's rule). */}
+          <NextDeliveries keys={nextHits(draft.frequency)} />
+          <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
+        </div>
       }
       /* THE DS STEPS — the same track as a record's stage (Pavan,
          2026-10-16). */

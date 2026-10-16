@@ -4591,7 +4591,7 @@ export function BrokerOrderSheet({
       {!inCreation && (
         <div
           data-form-sticky
-          className="sticky -top-4 z-10 -mt-4 -mb-4 border-b border-border bg-popover pt-4 pb-3"
+          className="sticky -top-4 z-10 -mt-4 -mb-4 bg-popover pt-4 pb-3"
         >
           <StageTrack stages={ORDER_STAGES} current={stageOf(heldStage ?? draft.status)} />
         </div>

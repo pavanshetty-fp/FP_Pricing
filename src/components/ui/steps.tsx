@@ -50,7 +50,8 @@ export function Steps({
   /** The current step's colour — see `StageTrack`. A create form's steps are
       NEUTRAL by default (Pavan, 2026-10-16): green done, black in progress. */
   tone?: "brand" | "accent" | "neutral";
-  /** `rings` — see `StageTrack`. */
+  /** `rings` — see `StageTrack`. THE DEFAULT for every create form, in every
+      module (Pavan, 2026-10-16 — the recurring rule's look, everywhere). */
   variant?: "track" | "rings";
 }) {
   /* ONE LOOK FOR STEPS AND STAGES (Pavan, 2026-10-16): a form's steps are the
@@ -61,7 +62,7 @@ export function Steps({
     <StageTrack
       compact
       tone={tone ?? "neutral"}
-      variant={variant}
+      variant={variant ?? "rings"}
       className={className}
       stages={steps.map((s) => ({ key: s.value, label: s.label }))}
       current={value}

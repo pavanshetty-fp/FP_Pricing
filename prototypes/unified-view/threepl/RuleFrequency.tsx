@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { selectTriggerClasses } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { dateKeyOf } from "../data";
+import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "../data";
 import type { Schedule } from "./recurring";
 
 /*
@@ -974,6 +974,53 @@ export function RuleFrequencyPicker({
               <Trash2 />
             </Button>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * THE NEXT DELIVERIES A FREQUENCY MAKES — from today, up to its end date.
+ * Shared by every Create recurring rule (3PL, Customer Portal).
+ */
+export function nextHits(f: RuleFrequency, count = 4, from = startOfDay(new Date())): string[] {
+  const sched = toSchedule(f);
+  const end = f.endKey ? new Date(`${f.endKey}T00:00`) : null;
+  const out: string[] = [];
+  for (let i = 0; i < 400 && out.length < count; i++) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    if (end && d > end) break;
+    if (sched.hits(d)) out.push(dateKeyOf(d));
+  }
+  return out;
+}
+
+/**
+ * NEXT 4 DELIVERIES — the strip pinned above a rule form's Create button
+ * (Pavan, 2026-10-16), so what the rule will make is always in view.
+ */
+export function NextDeliveries({ keys }: { keys: string[] }) {
+  const today = startOfDay(new Date());
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-foreground">Next 4 deliveries</span>
+      <div className="grid grid-cols-4 gap-2">
+        {keys.length === 0 ? (
+          <span className="col-span-4 text-sm text-muted-foreground">—</span>
+        ) : (
+          keys.map((k) => {
+            const d = new Date(`${k}T00:00`);
+            return (
+              <div key={k} className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-1.5">
+                <span className="text-sm text-foreground">{DATE_FMT.format(d)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {relativeLabel(Math.round((d.getTime() - today.getTime()) / 86_400_000), d)}
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

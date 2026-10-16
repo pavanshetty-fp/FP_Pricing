@@ -2233,8 +2233,10 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   Every stepped create form (the DS `Steps` / `SheetSteps`) draws the same
   `StageTrack` as an order's detail page — done green with a white tick on a
   green line, the current step a BLACK-rimmed pill (green is done, black is
-  in progress — Pavan, 2026-10-16; the record's own track keeps the brand pill), the rest
-  hollow — only COMPACT (the steps 48px apart, box to box, so it reads evenly
+  in progress — Pavan, 2026-10-16), the rest
+  hollow — drawn as RINGS by default, on create forms AND on a record's
+  detail track, every module (Pavan, 2026-10-16 — the recurring rule's look;
+  no rule under the track) — only COMPACT (the steps 48px apart, box to box, so it reads evenly
   whichever step is the wide pill) and PRESSABLE. **A stepped create form is
   ONE vertical scroll** (Pavan, 2026-10-16): every step's section is on the
   page, the track marks the one at the top of the view, pressing a step

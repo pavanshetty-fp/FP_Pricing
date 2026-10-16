@@ -10,10 +10,10 @@ import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
-import { RuleFrequencyPicker } from "../unified-view/threepl/RuleFrequency";
+import { NextDeliveries, RuleFrequencyPicker } from "../unified-view/threepl/RuleFrequency";
 import { LinesTable } from "./OrderRequestSheet";
 import { SHIP_TOS, blankLine, todayKey } from "./orders";
-import { LEAD_DAYS, blankRule, ruleDayLabel, runDates, saveRule, type PortalRule } from "./portalRules";
+import { LEAD_DAYS, blankRule, runDates, saveRule, type PortalRule } from "./portalRules";
 
 /*
   CREATE (OR EDIT) A RECURRING RULE (Pavan, 2026-10-16) — one scroll, three
@@ -122,24 +122,7 @@ export function RuleSheet({
       footerBanner={
         <div className="flex flex-col gap-2.5">
           {/* THE NEXT FOUR IT WILL MAKE — always in view, above the button. */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">Next 4 deliveries</span>
-            <div className="grid grid-cols-4 gap-2">
-              {next.length === 0 ? (
-                <span className="col-span-4 text-sm text-muted-foreground">—</span>
-              ) : (
-                next.map((d) => {
-                  const l = ruleDayLabel(d.key);
-                  return (
-                    <div key={d.key} className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-1.5">
-                      <span className="text-sm text-foreground">{l.title}</span>
-                      <span className="text-xs text-muted-foreground">{l.description}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+          <NextDeliveries keys={next.map((d) => d.key)} />
           <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
         </div>
       }

@@ -608,7 +608,7 @@ function CyclePart({
   });
   if (part === "settings")
     return (
-      <div className="grid grid-cols-2 content-start gap-4">
+      <div className="grid grid-cols-2 content-start gap-6">
         <Row label="Cycle length">
           <Select
             value={String(weeks.length)}
@@ -794,11 +794,13 @@ export function RuleFrequencyPicker({
           )}
         </div>
 
-      <div className="flex w-[340px] min-w-0 flex-col gap-4">
+      {/* THE REST OF THE ROW, FILLED (Pavan, 2026-10-16 — DS ui "A row of
+          fields fills its row"): the two fields share it equally, 24px apart. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
       {cycle ? (
         <CyclePart part="settings" value={value} onChange={onChange} />
       ) : (
-      <div className="grid grid-cols-2 content-start gap-4">
+      <div className="grid grid-cols-2 content-start gap-6">
         <Row label="Repeat">
           <Select
             value={value.repeat}

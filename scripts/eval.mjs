@@ -47,10 +47,11 @@ import * as parityTables from "./eval/parity-tables.mjs";
 import * as parityShell from "./eval/parity-shell.mjs";
 /* FIELD REACH (2026-10-14) — new data reaches every screen of its record. */
 import * as fieldReach from "./eval/field-reach.mjs";
+import * as fieldsFill from "./eval/fields-fill.mjs";
 
 const CHECKS = [
   tokens, boxedTables, sheets, microcopy, statusKinds, tableRows,
-  parityLists, paritySheets, parityTables, parityShell, fieldReach,
+  parityLists, paritySheets, parityTables, parityShell, fieldReach, fieldsFill,
 ];
 const RESULTS = join(ROOT, "docs/unified-view/evals/results");
 

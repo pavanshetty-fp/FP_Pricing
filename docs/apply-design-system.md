@@ -818,6 +818,28 @@ the header sticks on its CELLS** — `sticky top-0` on the first header row, and
 group words and the column words read as one crowded block instead of a heading
 over its columns.
 
+## 10e. A row of fields fills its row (Pavan, 2026-10-16)
+
+**Fields that sit side by side SHARE the width they are in.** A row of two
+selects is a two-column grid of `1fr` (or two `flex-1`); a column of fields
+beside something else takes `flex-1` of what is left. Never a fixed pixel
+width on a container that holds fields — the sheet grows, the fixed column
+does not, and two narrow fields sit beside empty space (the recurring rule's
+Repeat / Times a day, 2026-10-16).
+
+- **Equal shares** unless a field's content says otherwise; **24px** between
+  fields in one row (16px only in a dense table-like grid).
+- **The row ends where its container ends** — the last field's right edge is
+  the container's right padding.
+- **A fixed width is allowed only for a control with a natural size** — a
+  date, a time, a search box the DS sizes — and it says so in a comment
+  carrying `FIXED WIDTH` and why.
+- **When a sheet's width changes, every row in it is re-read** at the new
+  width before the change is done.
+
+**Checked, not remembered.** `npm run eval` → `fields-fill`: a container with
+a fixed pixel width that holds fields and no `FIXED WIDTH` note.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

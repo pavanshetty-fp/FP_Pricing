@@ -115,6 +115,14 @@ Against `docs/ds/ui/2-rules.md` §10f — **the boxed table unit**.
 - [ ] **L2** Only a card with something outstanding carries an alert.
 - [ ] **L2** The board shows a total, and the total states its window.
 
+## Rows of fields (DS ui §10e)
+
+- [ ] **L1** No fixed-width container holds fields without a `FIXED WIDTH`
+      note. `npm run eval` → `fields-fill`.
+- [ ] **L2** Every row of fields ends at its container's right padding, its
+      fields in equal shares, 24px apart — read at the sheet's ACTUAL width,
+      after any change to that width.
+
 ## The side sheet
 
 - [ ] **L1** Width follows the content: `form` 600 · `fit` from the widest

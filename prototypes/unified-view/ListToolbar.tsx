@@ -350,6 +350,8 @@ export function ListToolbar<K extends string>({
           somebody actually narrows — pick the book, then find the row. */}
       <div className="flex items-center gap-3">
         {quickFilters}
+        {/* FIXED WIDTH — the list search box is the DS's 320px, the same on
+            every list; it is not a row of fields. */}
         <div className="relative w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

@@ -45,7 +45,8 @@ export function check() {
     const firstAdd = lines.findIndex(
       (l) => /<HangingAdd\b/.test(l) && !isComment(l) && !/\.click\(\)/.test(l),
     );
-    if (firstAdd >= 0 && !/autoFocus/.test(src)) {
+    /* A SHARED TABLE takes the new row's index (`focusRow=`) and focuses it itself. */
+    if (firstAdd >= 0 && !/autoFocus|focusRow=/.test(src)) {
       out.push(
         finding("L1", rel(file), firstAdd + 1,
           "rows are added here but nothing takes focus — pass autoFocus to the new row's first cell",

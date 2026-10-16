@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText, Repeat } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
 import { DATE_FMT } from "../unified-view/data";
@@ -225,4 +225,15 @@ export function ShipToProductsCell({ s }: { s: ShipTo }) {
 /** A list of values behind "+N" — the asset's products or categories. */
 export function ValuesCell({ values, label }: { values: string[]; label: string }) {
   return <OverflowList values={values} label={label} />;
+}
+
+/** MADE BY A RULE (Pavan, 2026-10-16) — the rule's number, on the order it
+    made, in the Repeats column and the order sheet's header. */
+export function RulePill({ ruleNo }: { ruleNo: string }) {
+  return (
+    <Pill color="purple" className="shrink-0">
+      <Repeat className="size-3" />
+      {ruleNo}
+    </Pill>
+  );
 }

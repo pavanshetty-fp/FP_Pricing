@@ -269,17 +269,26 @@ From the FleetPanda portal's user record (structure only, invented people).
   draft for the undelivered gallons.
 - **Trip events** in the order sheet's rail: loaded (BOL), departed, ETA
   changed, arriving in 30 min, arrived, unloading, delivered.
-- **Recurring Orders** = 3PL's format, under Orders beside Order Requests: one row per series, opens onto its
-  deliveries (first = the request, then the next month's dates, each
-  skippable); ⋯ pause / resume / end / open.
-- **Recurring Orders has the full list toolkit** (Pavan, 2026-10-16 — like
-  3PL's): saved views, line-of-service segment, **Create Rule** (a new
-  recurring order request), **Recommendations** beside Filters (from the
-  account's own delivery history; "Review and Create Rule" pre-fills ship-to,
-  tanks, quantities, frequency and next date), search, filters (series ·
-  ship-to · frequency), search by column, column settings, export. A row
-  opens the series sheet: schedule, deliveries with Skip, ⋯ Pause / Resume /
-  End / Open request.
+- **Recurring Orders = the customer's rules** (Pavan, 2026-10-16 — "set it
+  once"). One row per rule: name, ship-to, products, qty, schedule, next
+  delivery, orders made, status (Active · Paused · Ended). Full list toolkit:
+  saved views, line of service, **Create Rule**, **Recommendations** beside
+  Filters ("Review and Create Rule" opens the rule form filled in), search,
+  filters (status · ship-to), search by column, column settings, export.
+- **The rule form** (one scroll, rings steps): name + one ship-to; frequency
+  (the 3PL picker — days, dates, daily, custom cycle, end date); starts, ends
+  after N deliveries, delivery window, the next 4 deliveries; tanks/products/
+  qty (multi-pick assets); instructions; make each order N days before (3 · 5
+  · 7 · 14); weekend or holiday (deliver anyway · skip · next working day);
+  PO (one standing PO · each order asks); reminders.
+- **The rule makes its orders** — each a **Draft** order request N days ahead,
+  marked with a violet "R-xxxx" pill (Repeats column + order sheet header,
+  where the Recurring checkbox is hidden). The customer sends it to the
+  supplier from there; the supplier approves nothing about the rule. Editing
+  a rule changes only orders not yet made; made orders are their own records.
+- **The rule's page**: its settings, its orders (made, with links; upcoming,
+  each skippable), history; ⋯ Edit · Pause / Resume · End. Tank monitors are
+  out of scope until Pavan raises them.
 - **Assets pick several at once** in the order form: tick, Apply — the first
   fills the row, each other gets its own row (the DS cell's `multiple`).
 - **Invoice ↔ order** numbers are links both ways.

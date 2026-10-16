@@ -27,7 +27,7 @@ import { BrokerBoard, type BoardLane, type LaneColor } from "../unified-view/thr
 import { DateRangeFilter, type DateRange } from "../unified-view/threepl/DateRangeFilter";
 import { dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
-import { AssetsCell, DocumentsCell, FlagsCell, ProductsCell, QuantityCell } from "./cells";
+import { AssetsCell, DocumentsCell, FlagsCell, ProductsCell, QuantityCell, RulePill } from "./cells";
 import { useSavedViews } from "../unified-view/useSavedViews";
 import { DATE_FMT } from "../unified-view/data";
 import {
@@ -283,7 +283,7 @@ export function OrdersScreen({
             "product",
             r.lines.map((l) => l.product)
           ) &&
-          pass("repeats", [r.recurring ? "Recurring" : "One-time"]) &&
+          pass("repeats", [r.recurring || r.ruleId ? "Recurring" : "One-time"]) &&
         pass(
             "flags",
             r.flags.map((f) => f.kind)
@@ -336,7 +336,7 @@ export function OrdersScreen({
       case "date":
         return r.date ? <TwoLineCell title={printKey(r.date)} description={windowText(r)} /> : muted;
       case "repeats":
-        return r.recurring ? <span className="text-sm">{r.frequency}</span> : muted;
+        return r.ruleNo ? <RulePill ruleNo={r.ruleNo} /> : r.recurring ? <span className="text-sm">{r.frequency}</span> : muted;
       case "po":
         return r.po ? <span className="text-sm">{r.po}</span> : muted;
       case "status":

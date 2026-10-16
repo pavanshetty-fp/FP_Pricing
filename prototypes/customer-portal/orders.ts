@@ -397,6 +397,10 @@ export interface OrderRequest {
   invoiceNo?: string;
   /** A partial delivery: the gallons that did not arrive. */
   undeliveredGal?: number;
+  /** MADE BY A RULE (Pavan, 2026-10-16) — which one; the order is its own
+      record from then on. */
+  ruleId?: string;
+  ruleNo?: string;
   /**
    * WHAT THE CUSTOMER SENT BACK on an "Action needed" (Pavan, 2026-10-15 —
    * PRD FR-25): a note, files, and for a credit hold the payment they made
@@ -1078,6 +1082,19 @@ export function createRequest(recurring = false): OrderRequest {
   emit();
   return r;
 }
+
+/** Requests a rule made — added once each (their id is rule + date). */
+export function insertRequests(made: OrderRequest[]) {
+  const have = new Set(requests.map((r) => r.id));
+  const fresh = made.filter((r) => !have.has(r.id));
+  if (fresh.length === 0) return;
+  requests = [...fresh, ...requests];
+  emit();
+}
+
+/** The next request number, for a rule's orders. */
+export const nextRequestNo = () =>
+  Math.max(FIRST_REQUEST_NO - 1, ...requests.map((r) => Number(r.requestNo.slice(4)))) + 1;
 
 /** Every request, as it is now — for reads outside React. */
 export const allRequests = () => requests;

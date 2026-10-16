@@ -39,6 +39,7 @@ import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { RulePill } from "./cells";
 import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import {
@@ -111,7 +112,7 @@ const draftOf = (r: OrderRequest): Draft => ({
 const SECTION_DELIVERY = "portal-request-delivery";
 const SECTION_LINES = "portal-request-lines";
 
-function DateButton({
+export function DateButton({
   value,
   onChange,
   placeholder,
@@ -159,7 +160,7 @@ function DateButton({
  * filled and the quantity cell shuts; the typed number is kept for unticking
  * and never counted (T3). Asset is optional, as on 3PL.
  */
-function LinesTable({
+export function LinesTable({
   lines,
   shipTo,
   focusRow,
@@ -569,11 +570,10 @@ export function OrderRequestSheet({
       createAction="Submit request"
       showCancel={false}
       headerAside={
-        <DraftStatusChip
-          tone={REQUEST_STATUS_TONE[request.status]}
-          label={request.status}
-          saveState={saveState}
-        />
+        <span className="flex items-center gap-2">
+          <DraftStatusChip tone={REQUEST_STATUS_TONE[request.status]} label={request.status} saveState={saveState} />
+          {request.ruleNo && <RulePill ruleNo={request.ruleNo} />}
+        </span>
       }
       headerMenu={
         creating ? undefined : (
@@ -711,46 +711,49 @@ export function OrderRequestSheet({
                 onChange={(a, b) => setDraft((d) => ({ ...d, windowStart: a, windowEnd: b }))}
               />
             </div>
-            <div className="grid grid-cols-2 items-end gap-4">
-              <SheetField>
-                <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
-                  <Checkbox
-                    checked={draft.recurring}
-                    onCheckedChange={(v) => {
-                      const on = v === true;
-                      setDraft((d) => ({
-                        ...d,
-                        recurring: on,
-                        frequency: on ? d.frequency || FREQUENCIES[2] : d.frequency,
-                      }));
-                    }}
-                  />
-                  Recurring order
-                </label>
-              </SheetField>
-              {draft.recurring && (
-                <SheetField label="Frequency" required>
-                  <Combobox
-                    className="w-full"
-                    value={draft.frequency}
-                    onValueChange={(v) => set("frequency", v)}
-                    options={FREQUENCIES}
-                    placeholder="Select frequency"
-                  />
+            {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
+            {!request.ruleNo && (
+              <div className="grid grid-cols-2 items-end gap-4">
+                <SheetField>
+                  <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
+                    <Checkbox
+                      checked={draft.recurring}
+                      onCheckedChange={(v) => {
+                        const on = v === true;
+                        setDraft((d) => ({
+                          ...d,
+                          recurring: on,
+                          frequency: on ? d.frequency || FREQUENCIES[2] : d.frequency,
+                        }));
+                      }}
+                    />
+                    Recurring order
+                  </label>
                 </SheetField>
-              )}
-              {draft.recurring && (
-                <SheetField label="End date" className="col-start-2">
-                  <DateButton
-                    label="End date"
-                    value={draft.endDate}
-                    onChange={(k) => set("endDate", k)}
-                    placeholder="No end date"
-                    from={dateOfKey(draft.date) ?? today}
-                  />
-                </SheetField>
-              )}
-            </div>
+                {draft.recurring && (
+                  <SheetField label="Frequency" required>
+                    <Combobox
+                      className="w-full"
+                      value={draft.frequency}
+                      onValueChange={(v) => set("frequency", v)}
+                      options={FREQUENCIES}
+                      placeholder="Select frequency"
+                    />
+                  </SheetField>
+                )}
+                {draft.recurring && (
+                  <SheetField label="End date" className="col-start-2">
+                    <DateButton
+                      label="End date"
+                      value={draft.endDate}
+                      onChange={(k) => set("endDate", k)}
+                      placeholder="No end date"
+                      from={dateOfKey(draft.date) ?? today}
+                    />
+                  </SheetField>
+                )}
+              </div>
+            )}
           </SheetSection>
 
           <SheetSection

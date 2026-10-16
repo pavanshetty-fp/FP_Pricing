@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { Ban, MoreHorizontal, Pause, Pencil, Play, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   DropdownMenu,
@@ -24,61 +23,71 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
+import { ActivityCard } from "../unified-view/SheetCards";
 import { DATE_FMT } from "../unified-view/data";
 import { kindTone, statusTones } from "../unified-view/statusKind";
 import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { OverflowChip } from "../unified-view/BreakdownCard";
 import { ScheduleCell } from "../unified-view/threepl/ScheduleCell";
 import {
-  FREQUENCIES,
   LINE_SCOPES,
   REQUEST_STATUS_TONE,
   SHIP_TOS,
   allRequests,
   assetById,
-  createRequest,
   inLine,
   lastProductFor,
-  updateRequest,
   useRequests,
+  windowText,
   type LineScope,
   type OrderRequest,
+  type RequestLine,
 } from "./orders";
-import { PortalList } from "./PortalList";
-import { OrderRequestSheet } from "./OrderRequestSheet";
-import { RecurringRecommendations, nextRun, type PortalRecommendation } from "./RecurringRecommendations";
 import { usePortalNav } from "./nav";
-import { SERIES_STATUSES, buildSeries, endSeries, setPaused, toggleSkip, useSeriesOverrides, type Series, type SeriesStatus } from "./recurring";
+import { PortalList } from "./PortalList";
+import { RuleSheet } from "./RuleSheet";
+import { RecurringRecommendations, nextRun, type PortalRecommendation } from "./RecurringRecommendations";
+import {
+  RULE_STATUSES,
+  blankRule,
+  ruleDayLabel,
+  runDates,
+  scheduleOfRule,
+  setRuleStatus,
+  toggleRuleSkip,
+  useRules,
+  type PortalRule,
+  type RuleStatus,
+} from "./portalRules";
 
 /*
-  RECURRING ORDERS (Pavan, 2026-10-15 — "the same format as 3PL recurring
-  orders"): one row per series — request, ship-to, products, schedule as
-  day letters, next delivery, how many are coming, the series' state — and
-  THE 3PL LIST'S CONTROLS TOO (Pavan, 2026-10-16): saved views, the line-of-
-  service segment, Create Rule, Recommendations beside Filters, search,
-  filters, search by column, column settings — the portal's own list
-  (`PortalList`). A row opens the series in a sheet: its deliveries (the
-  first is the request itself, the rest the dates coming in the next month,
-  each skippable) and, from ⋯, pause, resume, end, or open the request.
+  RECURRING ORDERS — THE CUSTOMER'S RULES (Pavan, 2026-10-16). One row per
+  rule, with the 3PL list's whole toolkit (saved views, line of service,
+  Create Rule, Recommendations beside Filters, search, filters, search by
+  column, column settings). A rule makes its orders itself — each a Draft in
+  Order Requests that the customer sends on. A row opens the rule: what it
+  is, the orders it has made, the dates coming (skippable), its history;
+  ⋯ edits (future orders only), pauses, resumes, ends.
 */
 
-const SERIES_TONE = statusTones<SeriesStatus>({ Active: "info", Paused: "caution", Ended: "neutral" });
+const RULE_TONE = statusTones<RuleStatus>({ Active: "info", Paused: "caution", Ended: "neutral" });
 
-const galOf = (r: OrderRequest) => r.lines.reduce((t, l) => t + (l.gal || 0), 0);
+const galOf = (lines: RequestLine[]) => lines.reduce((t, l) => t + (l.gal || 0), 0);
+const qtyText = (lines: RequestLine[]) => (galOf(lines) ? galOf(lines).toLocaleString() : "Top off");
 
-function Products({ r }: { r: OrderRequest }) {
-  const first = r.lines[0];
-  const more = r.lines.length - 1;
+function Products({ lines }: { lines: RequestLine[] }) {
+  const named = lines.filter((l) => l.product);
+  const more = named.length - 1;
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-sm">
-      <span className="truncate">{first ? `${first.product}` : "—"}</span>
+      <span className="truncate">{named[0]?.product ?? "—"}</span>
       {more > 0 && (
         <OverflowChip
           count={more}
-          label={`Show all ${r.lines.length} lines`}
+          label={`Show all ${named.length} lines`}
           card={{
-            title: `All products (${r.lines.length})`,
-            rows: r.lines.map((l) => ({
+            title: `All products (${named.length})`,
+            rows: named.map((l) => ({
               label: l.product,
               sub: assetById(l.assetId)?.name,
               value: l.topOff ? "Top off" : `${l.gal.toLocaleString()} gal`,
@@ -90,194 +99,238 @@ function Products({ r }: { r: OrderRequest }) {
   );
 }
 
-type RK = "request" | "shipTo" | "products" | "qty" | "schedule" | "next" | "upcoming" | "status";
+type RK = "rule" | "shipTo" | "products" | "qty" | "schedule" | "next" | "made" | "status";
 const LIST_COLUMNS: ListColumn<RK>[] = [
-  { key: "request", label: "Request # / Created", width: 170, sortable: true },
-  { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
-  { key: "products", label: "Products", width: 220, sortable: true },
+  { key: "rule", label: "Rule", width: 240, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 160, sortable: true },
+  { key: "products", label: "Products", width: 200, sortable: true },
   { key: "qty", label: "Qty (gal)", width: 110, sortable: true, align: "right" },
   { key: "schedule", label: "Schedule", width: 190, sortable: true },
   { key: "next", label: "Next Delivery", width: 160, sortable: true },
-  { key: "upcoming", label: "Upcoming", width: 110, sortable: true, align: "right" },
-  { key: "status", label: "Series", width: 120, sortable: true },
+  { key: "made", label: "Orders Made", width: 120, sortable: true, align: "right" },
+  { key: "status", label: "Status", width: 120, sortable: true },
 ];
 
-const createdOn = (r: OrderRequest) => (r.audit?.at(-1) ? DATE_FMT.format(new Date(r.audit.at(-1)!.at)) : "");
-const upcomingOf = (s: Series) => (s.status === "Active" ? s.deliveries.filter((d) => !d.request && !d.skipped).length : 0);
+const nextOf = (r: PortalRule) => (r.status === "Active" ? runDates(r, 120).find((d) => !d.skipped) : undefined);
 
-/* THE SERIES, OPENED — its schedule, its deliveries, and from ⋯ what can be
-   done to it. */
-function SeriesSheet({ s, open, onOpenChange }: { s: Series | null; open: boolean; onOpenChange: (o: boolean) => void }) {
+const Fact = ({ children }: { children: React.ReactNode }) => (
+  <span className="flex min-h-9 items-center text-sm text-foreground">{children}</span>
+);
+
+/* THE RULE, OPENED. */
+function RuleDetail({
+  rule,
+  made,
+  open,
+  onOpenChange,
+  onEdit,
+}: {
+  rule: PortalRule | null;
+  made: OrderRequest[];
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onEdit: () => void;
+}) {
   const nav = usePortalNav();
   const [ending, setEnding] = React.useState(false);
-  if (!s) return null;
-  const r = s.request;
-  const next = s.deliveries.find((x) => x.dateKey === s.nextKey);
+  if (!rule) return null;
+  const madeDates = new Set(made.map((m) => m.date));
+  const coming = rule.status === "Ended" ? [] : runDates(rule, 31).filter((d) => !madeDates.has(d.key));
+  const ends = rule.frequency.endKey
+    ? DATE_FMT.format(new Date(`${rule.frequency.endKey}T00:00`))
+    : rule.endAfter
+      ? `After ${rule.endAfter} deliveries`
+      : "No end";
   return (
     <>
       <RecordSheet
-        /* WIDTH FROM ITS TABLE — request, date, products, qty, status, act. */
-        fit={{ tables: [[CELL.name, CELL.date, CELL.name, CELL.number, CELL.status, CELL.number]] }}
+        /* WIDTH FROM ITS TABLE — request, date, products, qty, status, act — and the history rail. */
+        fit={{ tables: [[CELL.name, CELL.date, CELL.name, CELL.number, CELL.status, CELL.number]], rail: true }}
         open={open}
         onOpenChange={onOpenChange}
         mode="edit"
-        editTitle={`Recurring · ${r.requestNo}`}
+        editTitle={`${rule.ruleNo} · ${rule.name}`}
         createTitle=""
         createAction=""
         showCancel={false}
         onSubmit={() => {}}
         footerPrimary={null}
         headerAside={
-          <StatusChip tone={SERIES_TONE[s.status]} variant="text">
-            {s.status}
+          <StatusChip tone={RULE_TONE[rule.status]} variant="text">
+            {rule.status}
           </StatusChip>
         }
         headerMenu={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={`More actions for ${r.requestNo}`}>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onSelect={() => nav.openOrder(r.requestNo)}>
-                <Pencil />
-                Open request
-              </DropdownMenuItem>
-              {s.status !== "Ended" && (
+          rule.status === "Ended" ? undefined : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label={`More actions for ${rule.ruleNo}`}>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onSelect={onEdit}>
+                  <Pencil />
+                  Edit rule
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => {
-                    setPaused(s.id, s.status === "Active");
-                    toast.success(`${r.requestNo} ${s.status === "Active" ? "paused" : "resumed"}`);
+                    setRuleStatus(rule.id, rule.status === "Active" ? "Paused" : "Active");
+                    toast.success(`${rule.ruleNo} ${rule.status === "Active" ? "paused" : "resumed"}`);
                   }}
                 >
-                  {s.status === "Active" ? <Pause /> : <Play />}
-                  {s.status === "Active" ? "Pause series" : "Resume series"}
+                  {rule.status === "Active" ? <Pause /> : <Play />}
+                  {rule.status === "Active" ? "Pause rule" : "Resume rule"}
                 </DropdownMenuItem>
-              )}
-              {s.status !== "Ended" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setEnding(true)}>
-                    <Ban />
-                    End series
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setEnding(true)}>
+                  <Ban />
+                  End rule
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
         }
       >
-        <div className="flex min-w-0 flex-col gap-10">
-          <SheetSection title="Schedule">
-            <div className="grid grid-cols-3 gap-6">
-              <SheetField label="Ship-to">
-                <span className="flex min-h-9 items-center text-sm text-foreground">{r.shipTo}</span>
-              </SheetField>
-              <SheetField label="Runs on">
-                <ScheduleCell schedule={s.schedule} roomy />
-              </SheetField>
-              <SheetField label="Next delivery">
-                <span className="flex min-h-9 flex-col justify-center text-sm text-foreground">
-                  {next ? next.date.title : "—"}
-                  {next && <span className="text-xs text-muted-foreground">{next.date.description}</span>}
-                </span>
-              </SheetField>
-            </div>
-          </SheetSection>
-          <SheetSection title="Deliveries" flush>
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-fp-table-header">
-                  {["Request #", "Planned Date", "Products", "Qty (gal)", "Status", ""].map((h, i) => (
-                    <th
-                      key={i}
-                      className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {s.deliveries.map((d) => (
-                  <tr key={d.key} className="h-12 border-b border-border last:border-b-0">
-                    <td className="whitespace-nowrap px-3">
-                      <span className="flex items-center gap-2">
-                        {d.request ? (
-                          <button
-                            type="button"
-                            className="tabular-nums text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 hover:decoration-solid"
-                            onClick={() => nav.openOrder(d.request!.requestNo)}
-                          >
-                            {d.request.requestNo}
-                          </button>
-                        ) : (
-                          <span className="text-muted-foreground">Not made yet</span>
-                        )}
-                        {d.request && <Pill className="shrink-0">First delivery</Pill>}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-3">
-                      <span className={cn("flex flex-col leading-tight", d.skipped && "line-through decoration-muted-foreground/60")}>
-                        <span className="text-foreground">{d.date.title}</span>
-                        <span className="text-xs text-muted-foreground">{d.date.description}</span>
-                      </span>
-                    </td>
-                    <td className="px-3 text-muted-foreground">
-                      <Products r={r} />
-                    </td>
-                    <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">
-                      {galOf(r) ? galOf(r).toLocaleString() : "Top off"}
-                    </td>
-                    <td className="whitespace-nowrap px-3">
-                      {d.request ? (
-                        <StatusChip tone={REQUEST_STATUS_TONE[d.request.status]} variant="soft">
-                          {d.request.status}
-                        </StatusChip>
-                      ) : (
-                        <StatusChip tone={kindTone(d.skipped || s.status !== "Active" ? "neutral" : "info")} variant="soft">
-                          {d.skipped ? "Skipped" : s.status === "Paused" ? "Paused" : "Upcoming"}
-                        </StatusChip>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 text-right">
-                      {!d.request && s.status === "Active" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            toggleSkip(s.id, d.dateKey);
-                            toast.success(d.skipped ? `${d.date.title} back on` : `${d.date.title} skipped`);
-                          }}
-                        >
-                          {d.skipped ? "Undo skip" : "Skip"}
-                        </Button>
-                      )}
-                    </td>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="flex min-w-0 flex-col gap-10">
+            <SheetSection title="Rule">
+              <div className="grid grid-cols-3 gap-6">
+                <SheetField label="Ship-to">
+                  <Fact>{rule.shipTo}</Fact>
+                </SheetField>
+                <SheetField label="Runs on">
+                  <ScheduleCell schedule={scheduleOfRule(rule)} roomy />
+                </SheetField>
+                <SheetField label="Delivery window">
+                  <Fact>{windowText(rule)}</Fact>
+                </SheetField>
+                <SheetField label="Starts">
+                  <Fact>{DATE_FMT.format(new Date(`${rule.startKey}T00:00`))}</Fact>
+                </SheetField>
+                <SheetField label="Ends">
+                  <Fact>{ends}</Fact>
+                </SheetField>
+                <SheetField label="Make each order">
+                  <Fact>{rule.leadDays} days before</Fact>
+                </SheetField>
+                <SheetField label="PO">
+                  <Fact>{rule.po.mode === "standing" ? rule.po.number || "—" : "Each order asks"}</Fact>
+                </SheetField>
+                <SheetField label="Reminders">
+                  <Fact>{rule.remind ? "On" : "Off"}</Fact>
+                </SheetField>
+              </div>
+            </SheetSection>
+
+            <SheetSection title="Orders" flush>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-fp-table-header">
+                    {["Request #", "Planned Date", "Products", "Qty (gal)", "Status", ""].map((h, i) => (
+                      <th
+                        key={i}
+                        className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </SheetSection>
+                </thead>
+                <tbody>
+                  {[...made]
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((m) => {
+                      const l = ruleDayLabel(m.date);
+                      return (
+                        <tr key={m.id} className="h-12 border-b border-border last:border-b-0">
+                          <td className="whitespace-nowrap px-3">
+                            <button
+                              type="button"
+                              className="tabular-nums text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 hover:decoration-solid"
+                              onClick={() => nav.openOrder(m.requestNo)}
+                            >
+                              {m.requestNo}
+                            </button>
+                          </td>
+                          <td className="whitespace-nowrap px-3">
+                            <TwoLineCell title={l.title} description={l.description} />
+                          </td>
+                          <td className="px-3 text-muted-foreground">
+                            <Products lines={m.lines} />
+                          </td>
+                          <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">{qtyText(m.lines)}</td>
+                          <td className="whitespace-nowrap px-3">
+                            <StatusChip tone={REQUEST_STATUS_TONE[m.status]} variant="soft">
+                              {m.status}
+                            </StatusChip>
+                          </td>
+                          <td />
+                        </tr>
+                      );
+                    })}
+                  {coming.map((d) => {
+                    const l = ruleDayLabel(d.key);
+                    return (
+                      <tr key={d.key} className="h-12 border-b border-border last:border-b-0">
+                        <td className="whitespace-nowrap px-3 text-muted-foreground">Not made yet</td>
+                        <td className="whitespace-nowrap px-3">
+                          <span className={cn("flex flex-col leading-tight", d.skipped && "line-through decoration-muted-foreground/60")}>
+                            <span className="text-foreground">{l.title}</span>
+                            <span className="text-xs text-muted-foreground">{l.description}</span>
+                          </span>
+                        </td>
+                        <td className="px-3 text-muted-foreground">
+                          <Products lines={rule.lines} />
+                        </td>
+                        <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">{qtyText(rule.lines)}</td>
+                        <td className="whitespace-nowrap px-3">
+                          <StatusChip tone={kindTone(d.skipped || rule.status !== "Active" ? "neutral" : "info")} variant="soft">
+                            {d.skipped ? "Skipped" : rule.status === "Paused" ? "Paused" : "Upcoming"}
+                          </StatusChip>
+                        </td>
+                        <td className="whitespace-nowrap px-3 text-right">
+                          {rule.status === "Active" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                toggleRuleSkip(rule.id, d.key);
+                                toast.success(d.skipped ? `${l.title} back on` : `${l.title} skipped`);
+                              }}
+                            >
+                              {d.skipped ? "Undo skip" : "Skip"}
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </SheetSection>
+          </div>
+          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            <ActivityCard entries={rule.audit} />
+          </aside>
         </div>
       </RecordSheet>
       <AlertDialog open={ending} onOpenChange={setEnding}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End {r.requestNo}'s series?</AlertDialogTitle>
+            <AlertDialogTitle>End {rule.ruleNo}?</AlertDialogTitle>
             <AlertDialogDescription>No more orders are made from it. Orders already made stay.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Back</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                endSeries(s.id);
-                toast.success(`${r.requestNo} series ended`);
+                setRuleStatus(rule.id, "Ended");
+                toast.success(`${rule.ruleNo} ended`);
                 setEnding(false);
               }}
             >
-              End series
+              End rule
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -287,129 +340,133 @@ function SeriesSheet({ s, open, onOpenChange }: { s: Series | null; open: boolea
 }
 
 export function RecurringScreen() {
-  const all = useRequests();
-  const ov = useSeriesOverrides();
+  const rules = useRules();
+  const requests = useRequests();
   const [line, setLine] = React.useState<LineScope>("All");
   const [openId, setOpenId] = React.useState<string | null>(null);
-  /* A NEW RULE IS A RECURRING ORDER REQUEST — the order sheet, recurring on. */
-  const [draftId, setDraftId] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState<{ rule: PortalRule | null; seed?: Partial<PortalRule> } | null>(null);
 
-  const series = React.useMemo(
-    () =>
-      all
-        .filter((r) => r.recurring && r.status !== "Draft" && inLine(r, line))
-        .map((r) => buildSeries(r, ov[r.id])),
-    [all, ov, line]
-  );
-  const createRule = (rec?: PortalRecommendation) => {
-    const r = createRequest(true);
-    if (rec)
-      updateRequest(r.id, {
+  const rows = rules.filter((r) => inLine(r, line));
+  const madeBy = (id: string) => requests.filter((q) => q.ruleId === id);
+  const opened = rules.find((r) => r.id === openId) ?? null;
+
+  /* A RECOMMENDATION, AS A NEW RULE — filled in, for the customer to check. */
+  const fromRecommendation = (rec: PortalRecommendation) => {
+    const base = blankRule();
+    const start = nextRun(rec);
+    const lines = rec.lines.map((l) => ({
+      assetId: l.assetId,
+      product: lastProductFor(l.assetId, allRequests()) ?? assetById(l.assetId)?.product ?? "",
+      topOff: false,
+      gal: l.gal,
+    }));
+    setForm({
+      rule: null,
+      seed: {
+        name: `${rec.shipTo} · ${lines.map((l) => l.product).filter(Boolean).join(" + ")}`,
         shipTo: rec.shipTo,
-        frequency: rec.frequency,
-        date: nextRun(rec),
-        lines: rec.lines.map((l) => ({
-          assetId: l.assetId,
-          product: lastProductFor(l.assetId, allRequests()) ?? assetById(l.assetId)?.product ?? "",
-          topOff: false,
-          gal: l.gal,
-        })),
-      });
-    setDraftId(r.id);
+        startKey: start,
+        frequency:
+          rec.frequency === "Every 2 weeks"
+            ? { ...base.frequency, days: [rec.weekday], repeat: "cycle", cycleWeeks: [[rec.weekday], []], cycleStartKey: start }
+            : { ...base.frequency, days: [rec.weekday], repeat: "weekly" },
+        lines,
+      },
+    });
   };
 
-  const text = (s: Series, k: RK): string => {
-    const r = s.request;
+  const text = (r: PortalRule, k: RK): string => {
     switch (k) {
-      case "request":
-        return `${r.requestNo} ${createdOn(r)}`;
+      case "rule":
+        return `${r.name} ${r.ruleNo}`;
       case "shipTo":
         return r.shipTo;
       case "products":
         return r.lines.map((l) => l.product).join(", ");
       case "qty":
-        return String(galOf(r));
+        return String(galOf(r.lines));
       case "schedule":
-        return s.schedule.label;
-      case "next":
-        return s.deliveries.find((d) => d.dateKey === s.nextKey)?.date.title ?? "";
-      case "upcoming":
-        return String(upcomingOf(s));
+        return scheduleOfRule(r).label;
+      case "next": {
+        const n = nextOf(r);
+        return n ? ruleDayLabel(n.key).title : "";
+      }
+      case "made":
+        return String(madeBy(r.id).length);
       case "status":
-        return s.status;
+        return r.status;
     }
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <PortalList<Series, RK>
-        rows={series}
+      <PortalList<PortalRule, RK>
+        rows={rows}
         columns={LIST_COLUMNS}
-        rowId={(s) => s.id}
+        rowId={(r) => r.id}
         text={text}
-        sortValue={(s, k) =>
-          k === "qty" ? galOf(s.request) : k === "upcoming" ? upcomingOf(s) : k === "next" ? (s.nextKey ?? "9999") : undefined
+        sortValue={(r, k) =>
+          k === "qty" ? galOf(r.lines) : k === "made" ? madeBy(r.id).length : k === "next" ? (nextOf(r)?.key ?? "9999") : undefined
         }
-        renderCell={(s, k) => {
-          const r = s.request;
+        renderCell={(r, k) => {
           switch (k) {
-            case "request":
-              return <TwoLineCell title={r.requestNo} description={createdOn(r)} />;
+            case "rule":
+              return <TwoLineCell title={r.name} description={r.ruleNo} />;
             case "shipTo":
               return <span className="truncate text-sm">{r.shipTo}</span>;
             case "products":
-              return <Products r={r} />;
+              return <Products lines={r.lines} />;
             case "qty":
-              return <span className="text-sm tabular-nums">{galOf(r) ? galOf(r).toLocaleString() : "Top off"}</span>;
+              return <span className="text-sm tabular-nums">{qtyText(r.lines)}</span>;
             case "schedule":
-              return <ScheduleCell schedule={s.schedule} roomy />;
+              return <ScheduleCell schedule={scheduleOfRule(r)} roomy />;
             case "next": {
-              const d = s.deliveries.find((x) => x.dateKey === s.nextKey);
-              return d ? <TwoLineCell title={d.date.title} description={d.date.description} /> : <span className="text-sm text-muted-foreground">—</span>;
+              const n = nextOf(r);
+              if (!n) return <span className="text-sm text-muted-foreground">—</span>;
+              const l = ruleDayLabel(n.key);
+              return <TwoLineCell title={l.title} description={l.description} />;
             }
-            case "upcoming":
-              return <span className="text-sm tabular-nums">{upcomingOf(s)}</span>;
+            case "made":
+              return <span className="text-sm tabular-nums">{madeBy(r.id).length}</span>;
             case "status":
               return (
-                <StatusChip tone={SERIES_TONE[s.status]} variant="text">
-                  {s.status}
+                <StatusChip tone={RULE_TONE[r.status]} variant="text">
+                  {r.status}
                 </StatusChip>
               );
           }
         }}
         facets={[
-          { key: "status", label: "Series", options: [...SERIES_STATUSES] },
+          { key: "status", label: "Status", options: [...RULE_STATUSES] },
           { key: "shipTo", label: "Ship-to", options: SHIP_TOS.map((x) => x.name) },
-          { key: "frequency", label: "Frequency", options: [...FREQUENCIES] },
         ]}
-        facetValues={(s, f) =>
-          f === "status" ? [s.status] : f === "shipTo" ? [s.request.shipTo] : f === "frequency" ? [s.request.frequency] : []
-        }
-        storageKey="portal-recurring"
-        noun="recurring orders"
-        nounOne="recurring order"
-        searchPlaceholder="Search requests, ship-tos, products…"
+        facetValues={(r, f) => (f === "status" ? [r.status] : f === "shipTo" ? [r.shipTo] : [])}
+        storageKey="portal-recurring-rules"
+        noun="rules"
+        nounOne="rule"
+        searchPlaceholder="Search rules, ship-tos, products…"
         ctaLabel="Create Rule"
-        onCreate={() => createRule()}
-        afterFilters={<RecurringRecommendations onCreate={createRule} />}
+        onCreate={() => setForm({ rule: null })}
+        afterFilters={<RecurringRecommendations onCreate={fromRecommendation} />}
         segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
         segmentValue={line}
         onSegmentChange={(v) => setLine(v as LineScope)}
-        onOpen={(s) => setOpenId(s.id)}
-        openLabel={(s) => `Open the series ${s.request.requestNo}`}
+        onOpen={(r) => setOpenId(r.id)}
+        openLabel={(r) => `Open rule ${r.ruleNo}`}
         emptyIcon={<Repeat />}
       />
-      <SeriesSheet
-        s={series.find((x) => x.id === openId) ?? null}
-        open={openId !== null}
+      <RuleDetail
+        rule={opened}
+        made={openId ? madeBy(openId) : []}
+        open={opened !== null && form === null}
         onOpenChange={(o) => !o && setOpenId(null)}
+        onEdit={() => setForm({ rule: opened })}
       />
-      <OrderRequestSheet
-        request={all.find((r) => r.id === draftId) ?? null}
-        open={draftId !== null}
-        creating
-        onOpenChange={(o) => !o && setDraftId(null)}
-        onDuplicate={(id) => setDraftId(id)}
+      <RuleSheet
+        rule={form?.rule ?? null}
+        seed={form?.seed ?? null}
+        open={form !== null}
+        onOpenChange={(o) => !o && setForm(null)}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { Check, Loader2, X } from "lucide-react";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import type { PillColor } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
+import { QuietPattern } from "@/components/ui/quiet-pattern";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SteppedFormBody } from "@/components/side-sheet/form-steps";
@@ -64,6 +65,57 @@ export interface SheetFit {
   tables: number[][];
   /** The 340px right rail (summary · activity) beside the tables. */
   rail?: boolean;
+}
+
+/*
+  THE PATTERN UNDER A SHORT FORM (Pavan, 2026-10-16). When what the sheet
+  holds takes HALF the visible height or less, the DS quiet pattern fills
+  the rest — to the body's left, right and bottom edges. Taller than that,
+  there is no pattern and no space kept for it. Measured live, so a form
+  that grows as it is filled loses the pattern when it passes half.
+*/
+const BODY_GAP = 40;
+const BODY_PAD = 16;
+function SheetPattern() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [shown, setShown] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    const body = el?.parentElement;
+    if (!el || !body) return;
+    const measure = () => {
+      const visible = body.clientHeight;
+      if (!visible) return;
+      const top = el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+      /* Where the content ends — the pattern's own gap taken out. */
+      const content = top - BODY_PAD - (el.dataset.shown === "true" ? BODY_GAP : 0);
+      setShown(content <= visible / 2);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(body);
+    for (const c of Array.from(body.children)) if (c !== el) ro.observe(c);
+    const mo = new MutationObserver(() => {
+      for (const c of Array.from(body.children)) if (c !== el) ro.observe(c);
+      measure();
+    });
+    mo.observe(body, { childList: true });
+    measure();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, []);
+  return (
+    <div
+      ref={ref}
+      data-shown={shown}
+      aria-hidden
+      /* Hidden, it takes no room: zero height, and the gap above cancelled. */
+      className={cn(shown ? "-mx-4 -mb-4 flex min-h-24 flex-1" : "-mt-10 h-0 overflow-hidden")}
+    >
+      {shown && <QuietPattern className="flex-1" />}
+    </div>
+  );
 }
 
 /**
@@ -522,11 +574,13 @@ export function RecordSheet({
             hideColumn={!stepColumn}
           >
             <ParentSheetWidth.Provider value={fills ? 99999 : width}>{children}</ParentSheetWidth.Provider>
+            <SheetPattern />
           </SteppedFormBody>
         ) : (
           <FormStepsContext.Provider value={false}>
             <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
               <ParentSheetWidth.Provider value={fills ? 99999 : width}>{children}</ParentSheetWidth.Provider>
+            <SheetPattern />
             </div>
           </FormStepsContext.Provider>
         )}

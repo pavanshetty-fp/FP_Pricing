@@ -92,7 +92,7 @@ fills the clicked row left to right (3s — a module takes 3–5s to load,
 2026-10-09 — CSS keyframe), with the PAGE in its loading state meanwhile — the title,
 view tabs, toolbar and table rows as shimmering skeletons in their own places
 (`ModuleSkeleton`, Pavan 2026-10-10) — and with "Loading data for this module." in small muted
-text right under it, flush left with the row, same group, no box; when it arrives the module switches and the three steps run. **The three steps, in
+text right under it, flush left with the row, same group, no box; when it arrives the module switches and the three steps run. **While it loads, every other module is disabled** (Pavan, 2026-10-16) — the rows go faint and do not respond, the module being left and its pages included — until the chosen one has unfolded. **The three steps, in
 order** (Pavan, 2026-10-07): the open module FOLDS its pages (200ms), then the
 rows MOVE — the chosen module glides to the top, the old one back to its place
 (260ms, FLIP) — then the chosen module UNFOLDS (240ms). One curve,

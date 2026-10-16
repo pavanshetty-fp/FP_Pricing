@@ -250,6 +250,6 @@ what decides whether a new screen should reuse it.
 | `RailCard` / `RailRow` | molecule | a read-only card in a sheet's right-hand rail |
 | `PendingStrip` (+ `attend`) | molecule | what the footer's act is waiting on, one item at a time — pressable, and it takes you to the section. **Shared by every sheet that has one.** |
 | `StageBar` | molecule | where the record is in its life, under the sheet header (chevrons — no longer on order detail pages) |
-| `StageTrack` | molecule | the order detail page's stage: dots on a line, the current stage an outlined pill with its name; pinned at the top of the form column |
+| `StageTrack` | molecule | the order detail page's stage: dots on a line — passed stages green with a white tick on a green line, the current stage a brand-outlined pill with its name; pinned at the top of the form column |
 | `FormStepsNav` / `FormStep` / `SteppedFormBody` | organism | the stepped form — step column, long scroll, pending at the foot (`components/side-sheet/form-steps.tsx`) |
 | `OrderMapView` | organism | the map alternate of a list whose records have a place |

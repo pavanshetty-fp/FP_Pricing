@@ -750,4 +750,10 @@ shape it is about to take.
   and right may cut. Bleed it to the card's edges (`-mx-4 -mb-4` in a 16px
   card) so it meets the bottom, the left and any divider on the right, and
   round the corner it sits in with the card.
+- **In a form — only when the form is short** (Pavan, 2026-10-16): when what
+  a sheet holds takes **half the visible height or less**, the pattern fills
+  the rest, to the body's left, right and bottom edges. Taller than that,
+  no pattern and no space kept for it. `RecordSheet` does this itself
+  (measured live — a form that grows past half loses it); never place it in
+  a sheet by hand.
 - **Decoration only** — `aria-hidden`, no pointer events, never behind text.

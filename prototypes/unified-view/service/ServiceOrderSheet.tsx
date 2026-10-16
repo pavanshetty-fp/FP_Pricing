@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { QuietPattern } from "@/components/ui/quiet-pattern";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -2666,12 +2665,6 @@ export function ServiceOrderSheet({
         </aside>
 
         )}      </div>
-
-      {/* THE QUIET PATTERN UNDER A SHORT CREATE FORM (Pavan, 2026-10-15 —
-          trying the DS pattern here): it fills what the form leaves, to the
-          sheet's left, right and bottom edges, whole tiles from the
-          bottom-left. */}
-      {newVisit && <QuietPattern className="-mx-4 -mb-4 min-h-24 flex-1" />}
 
       {/* THE FIELD APP, OVER THE SHEET. It opens from the handover act and the
           sheet stays behind it, because the dispatcher watching a job go out is

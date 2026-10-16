@@ -7,9 +7,10 @@ import type { Stage } from "@/components/ui/stage-bar";
   StageTrack — where a record IS in its lifecycle, as dots on a line (Pavan,
   2026-10-05; replaces the chevron `StageBar` on order detail pages).
 
-  Same statement as the stage bar, drawn quieter: stages behind are filled dots
-  on a filled line, stages ahead are hollow on a faint one, and the stage the
-  record is in swells into an outlined pill carrying its name. Every other stage's
+  Same statement as the stage bar, drawn quieter: stages behind are GREEN
+  dots with a white tick on a GREEN line, stages ahead are hollow on a faint
+  one, and the stage the record is in swells into a BRAND-outlined pill
+  carrying its name (Pavan, 2026-10-16 — done is green, in progress the brand colour). Every other stage's
   name sits under its dot.
 
   THE LINE ONLY, as with `StageBar`: cancelled, blocked and the like are not
@@ -56,7 +57,7 @@ export function StageTrack({
         <span aria-hidden className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-border" />
         <span
           aria-hidden
-          className="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 bg-foreground transition-[width] duration-500 ease-out motion-reduce:transition-none"
+          className="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 bg-status-success transition-[width] duration-500 ease-out motion-reduce:transition-none"
           style={{ width: `${at > 0 ? pos(at) : 0}%` }}
         />
         {stages.map((s, i) => {
@@ -70,12 +71,12 @@ export function StageTrack({
               style={{ left: `${pos(i)}%` }}
             >
               {here ? (
-                /* THE CURRENT MARK — neutral (Pavan, 2026-10-05): the content
-                   layer with a foreground rim, so white with a black outline
-                   in light and the reverse in dark. */
+                /* THE CURRENT MARK — IN PROGRESS, IN THE BRAND COLOUR (Pavan,
+                   2026-10-16): a very light brand wash (10%, opaque over the line), a brand rim and
+                   label. */
                 <span
                   className={cn(
-                    "flex h-8 items-center rounded-full border-2 border-foreground bg-fp-surface-1b px-3.5 text-sm font-semibold whitespace-nowrap text-foreground",
+                    "flex h-8 items-center rounded-full border-2 border-brand bg-[color-mix(in_oklab,var(--color-brand)_10%,var(--color-fp-surface-1b))] px-3.5 text-sm font-semibold whitespace-nowrap text-brand",
                     moved &&
                       "animate-in fade-in-0 zoom-in-75 delay-300 duration-300 fill-mode-backwards motion-reduce:animate-none"
                   )}
@@ -84,10 +85,11 @@ export function StageTrack({
                 </span>
               ) : (
                 done ? (
-                  /* A STAGE PASSED CARRIES A TICK (Pavan, 2026-10-05). */
+                  /* A STAGE PASSED CARRIES A TICK (Pavan, 2026-10-05) — DONE,
+                     SO GREEN with a white tick (Pavan, 2026-10-16). */
                   <span
                     className={cn(
-                      "flex size-4 items-center justify-center rounded-full bg-foreground text-background",
+                      "flex size-4 items-center justify-center rounded-full bg-status-success text-status-success-foreground",
                       moved && i === at - 1 && "animate-in zoom-in-50 duration-300 motion-reduce:animate-none"
                     )}
                   >

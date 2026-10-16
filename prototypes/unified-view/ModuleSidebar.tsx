@@ -213,6 +213,10 @@ export function ModuleSidebar({
     },
     []
   );
+  /* A MODULE IS LOADING (Pavan, 2026-10-16) — from the press until it has
+     unfolded, the OTHER modules are disabled, so nothing suggests another
+     can be picked meanwhile. */
+  const busy = progress !== null || view.unfolded !== activeModule;
   const rowRefs = React.useRef(new Map<string, HTMLLIElement>());
   const fromTops = React.useRef<Map<string, number> | null>(null);
   const timers = React.useRef<number[]>([]);
@@ -349,8 +353,9 @@ export function ModuleSidebar({
                 <button
                   type="button"
                   aria-label={m.name}
+                  disabled={busy}
                   onClick={() => onModuleChange(m.key)}
-                  className={iconBtn(false)}
+                  className={cn(iconBtn(false), busy && "pointer-events-none opacity-40")}
                 >
                   {m.icon}
                 </button>,
@@ -399,12 +404,15 @@ export function ModuleSidebar({
                   <button
                     type="button"
                     aria-expanded={open}
+                    disabled={busy && progress !== m.key}
                     onClick={() => !open && pick(m.key)}
                     className={cn(
                       "relative flex h-10 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
-                      open
-                        ? "font-medium text-sidebar-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
+                      busy && progress !== m.key && !(progress === null && open)
+                        ? "cursor-not-allowed text-sidebar-foreground/35"
+                        : open
+                          ? "font-medium text-sidebar-foreground"
+                            : "text-sidebar-foreground/80 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
                     )}
                   >
                     <span className="flex shrink-0">{m.icon}</span>
@@ -446,7 +454,13 @@ export function ModuleSidebar({
                       }}
                     >
                     <div className="min-h-0 overflow-hidden">
-                    <div className="mt-1 mb-2 ml-5 flex flex-col gap-2 border-l border-fp-shell-guide pl-2.5">
+                    <div
+                      className={cn(
+                        "mt-1 mb-2 ml-5 flex flex-col gap-2 border-l border-fp-shell-guide pl-2.5",
+                        /* The module being left — its pages wait too. */
+                        progress !== null && "pointer-events-none opacity-40",
+                      )}
+                    >
                       {own.map((sec, i) => (
                         <div
                           key={sec.heading ?? `loose-${i}`}

@@ -983,6 +983,22 @@ before it was written down. The component is `Pill` (`ui/pill.tsx`).
   after the last chip**, `text-sm` muted with an underline on hover — never
   pushed to the far end of the row.
 
+### Red is only for a warning (Pavan, 2026-10-16)
+
+Red — a pill, a disc, a lane strip, a word — means **something is wrong or
+about to be** (Urgent, Late, Overdue, Unpaid, Blocked, Over SLA). A TYPE, a
+category, a lane that is just a place, Cancelled: never red. A categorical
+colour that would land on red takes another hue (the rose type disc's pill is
+pink; Service's Pump replace is green; Service's Cancelled lane is grey).
+
+### A table's Type column is a pill (Pavan, 2026-10-16)
+
+Every list's **Type** column shows the type's FULL WORD in a pill of its
+colour — the Sales orders table's treatment — in 3PL Delivery Orders, Service
+Work and wherever else a table lists a type. The round code disc (D, EM, M…)
+stays only on BOARD CARDS, where space is a letter; its hue carries over to the
+pill (`discTonePill`), so a type is the same colour on the card and in the row.
+
 ## 11c. Skeletons shimmer (Pavan, 2026-10-10)
 
 A loading block is the DS `Skeleton`: the `bg-accent` block with a light

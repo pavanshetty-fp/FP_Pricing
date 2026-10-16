@@ -70,3 +70,23 @@ export function CodeDisc({
     </TooltipProvider>
   );
 }
+
+/**
+ * A TYPE AS A PILL (Pavan, 2026-10-16 — the Sales orders table's Type pill,
+ * everywhere a TABLE shows a type). The disc's hue, carried over, so a type
+ * keeps its colour between the board card's disc and the table's pill.
+ */
+export const discTonePill = (tone: CodeDiscTone): import("@/components/ui/pill").PillColor =>
+  (
+    {
+      "pastel-slate": "grey",
+      /* NOT RED (Pavan, 2026-10-16): red is for a warning, and a type is not
+         one — the rose disc's pill is pink. */
+      "pastel-rose": "pink",
+      "pastel-violet": "violet",
+      "pastel-blue": "blue",
+      "pastel-amber": "orange",
+      "pastel-teal": "cyan",
+      "pastel-green": "green",
+    } as Record<string, import("@/components/ui/pill").PillColor>
+  )[tone] ?? "grey";

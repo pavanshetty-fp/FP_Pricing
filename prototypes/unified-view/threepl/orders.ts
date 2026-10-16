@@ -1026,7 +1026,7 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
      exactly where "show me these together" is asked most. See `sortValue` for
      what each one sorts BY, which is the part that is worth deciding. */
   { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 70, sortable: true },
+  { key: "type", label: "Type", width: 165, sortable: true },
   { key: "customer", label: "Customer", width: 230, sortable: true },
   { key: "shipTo", label: "Ship To", width: 190, sortable: true },
   { key: "date", label: "Planned Date", width: 165, sortable: true },

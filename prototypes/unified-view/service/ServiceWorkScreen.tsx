@@ -2,7 +2,7 @@ import * as React from "react";
 import { Wrench, SearchX, CalendarOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { CodeDisc } from "@/components/ui/code-disc";
+import { discTonePill } from "@/components/ui/code-disc";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -102,7 +102,7 @@ type Col =
    read as one product. Every column sorts, for the reason `orders.ts` gives. */
 const COLUMNS: ListColumn<Col>[] = [
   { key: "order", label: "Service Order #", width: 150, sortable: true },
-  { key: "type", label: "Type", width: 70, sortable: true },
+  { key: "type", label: "Type", width: 140, sortable: true },
   { key: "customer", label: "Customer", width: 200, sortable: true },
   { key: "shipTo", label: "Site", width: 180, sortable: true },
   { key: "asset", label: "Asset", width: 180, sortable: true },
@@ -1117,13 +1117,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       case "type":
         if (!WORK_TYPE_CODE[r.workType])
           return <span className="text-muted-foreground">—</span>;
-        return (
-          <CodeDisc
-            code={WORK_TYPE_CODE[r.workType].text}
-            label={r.workType}
-            tone={WORK_TYPE_CODE[r.workType].tone}
-          />
-        );
+        /* THE SALES ORDERS PILL (Pavan, 2026-10-16). */
+        return <Pill color={discTonePill(WORK_TYPE_CODE[r.workType].tone)}>{r.workType}</Pill>;
       case "customer":
         return r.customer;
       case "shipTo":

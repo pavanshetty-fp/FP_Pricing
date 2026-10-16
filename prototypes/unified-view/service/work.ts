@@ -262,7 +262,8 @@ export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {
   "Payment received": "purple",
   "Payment delayed": "purple",
   Unpaid: "purple",
-  Cancelled: "red",
+  /* CANCELLED IS NOT RED (DS ui §10b) — a terminal non-event, grey. */
+  Cancelled: "grey",
 };
 
 /* ------------------------------------------------------- what and how much */
@@ -371,7 +372,8 @@ export const TASK_KIND_LABEL: Record<TaskKind, string> = {
 export const WORK_TYPE_CODE: Record<string, { text: string; tone: CodeDiscTone }> = {
   "Leak check": { text: "LC", tone: "pastel-blue" },
   "Hose swap": { text: "HS", tone: "pastel-teal" },
-  "Pump replace": { text: "PR", tone: "pastel-rose" },
+  /* NOT ROSE — a type is not a warning (Pavan, 2026-10-16). */
+  "Pump replace": { text: "PR", tone: "pastel-green" },
   "Nozzle replace": { text: "NR", tone: "pastel-amber" },
   "Monitor install": { text: "MI", tone: "pastel-violet" },
   "Tank swap": { text: "TS", tone: "pastel-slate" },

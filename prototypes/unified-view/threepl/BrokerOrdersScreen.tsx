@@ -49,7 +49,7 @@ import {
   type BoardLane,
 } from "./BrokerBoard";
 import { OrderMapView } from "../OrderMapView";
-import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
+import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 import {
   AssetMovementSheet,
@@ -1952,9 +1952,11 @@ export function BrokerOrdersScreen({
          second red "!" disc; it is a row-level fact, not a kind of order, and
          two discs in one cell made the type harder to read than having no
          column at all. It stays on the board card badge and in the sheet. */
+      /* THE SALES ORDERS PILL (Pavan, 2026-10-16): the type's full word in a
+         pill of its colour — the disc stays on the board card. */
       case "type": {
         const c = laneCardCode(row);
-        return <CodeDisc code={c.text} label={c.label} tone={c.tone} />;
+        return <Pill color={discTonePill(c.tone)}>{c.label}</Pill>;
       }
       case "customer":
         return <TwoLineCell {...row.customer} q={f} />;

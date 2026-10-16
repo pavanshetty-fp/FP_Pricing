@@ -58,7 +58,8 @@ const COLOR_PILL: Record<PillColor, string> = {
   green: "bg-fp-lane-green/12 text-[color-mix(in_oklab,var(--color-fp-lane-green)_60%,var(--foreground))]",
   cyan: "bg-fp-lane-cyan/12 text-[color-mix(in_oklab,var(--color-fp-lane-cyan)_60%,var(--foreground))]",
   purple: "bg-fp-lane-purple/12 text-[color-mix(in_oklab,var(--color-fp-lane-purple)_70%,var(--foreground))]",
-  violet: "bg-fp-lane-violet/12 text-[color-mix(in_oklab,var(--color-fp-lane-violet)_70%,var(--foreground))]",
+  /* THE ACCENT (2026-10-16) — the violet pill is the accent's soft wash and ink. */
+  violet: "bg-accent-violet-soft text-accent-violet-ink",
   pink: "bg-fp-lane-pink/12 text-[color-mix(in_oklab,var(--color-fp-lane-pink)_70%,var(--foreground))]",
   orange: "bg-fp-lane-orange/15 text-[color-mix(in_oklab,var(--color-fp-lane-orange)_60%,var(--foreground))]",
   red: "bg-fp-lane-red/12 text-[color-mix(in_oklab,var(--color-fp-lane-red)_70%,var(--foreground))]",

@@ -135,6 +135,8 @@ popover.
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
 | `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the product mark, the focus ring, and light's selection hue |
+| `bg-accent-violet` · `text-accent-violet-foreground` | `#8b5cf6` · `#ffffff` | same | **the accent** (2026-10-16) — the system's second colour: it HIGHLIGHTS (picked days/dates of a schedule, recommendations, what needs attention). Not `--accent`, which is the grey hover |
+| `bg-accent-violet-soft` · `text-accent-violet-ink` | violet 12% wash · violet 70% into the foreground | same recipe | the accent quietly — a pill (`color="violet"`), a tint behind a figure |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
 | `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
 | `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
@@ -720,9 +722,11 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
 Pavan, 2026-10-15 — after the order form's asset cell made the customer open
 the list once per tank.
 
-- **Where a row IS the thing picked** — an asset or tank on an order, a
-  peripheral, a partner, a product line — the picker takes **several at
-  once**: checkboxes, a footer with the count and **Apply**. The first pick
+- **IN ANY TABLE THAT ADDS ROWS, the picker that names the row takes
+  several at once** (Pavan, 2026-10-16 — said three times; now absolute):
+  an asset or tank, a peripheral, a partner, a product line, a loading
+  account, a part, a fee, an event — whatever the table lists. Checkboxes,
+  a footer with the count and **Apply**. The first pick
   fills the row it was opened from; **each other pick becomes its own row**,
   right under it, in the order picked. `multiple` on `TableCellSelect` /
   `TableCellCombobox` is the only way.
@@ -739,9 +743,14 @@ the list once per tank.
   list row mutes bare icons; the tick names its colour so it never goes grey
   on the filled box.
 
+- **Every other picker in such a table is a value INSIDE a row** (a line's
+  product, its loading account, a condition, a unit) and says so in a
+  comment carrying `ONE VALUE` and why. There is no third kind.
+
 **Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
 rows and focuses nothing, a remove with no subject, a remove that does not
-ask, a local cell control, a row picker without `multiple`.
+ask, a local cell control, and **any picker in a row-adding table with
+neither `multiple` nor a `ONE VALUE` note** — whatever its label.
 
 ### There is no "last band" alternative to the hanging add
 
@@ -808,6 +817,30 @@ the header sticks on its CELLS** — `sticky top-0` on the first header row, and
 **A two-tier header also needs the line between the tiers.** Without it the
 group words and the column words read as one crowded block instead of a heading
 over its columns.
+
+## 10c. The accent — violet (Pavan, 2026-10-16)
+
+**The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,
+`accent-violet-foreground` (white), `accent-violet-soft` (12% wash),
+`accent-violet-ink` (readable text). It is the second colour after the brand,
+and the two never trade jobs:
+
+- **The brand (orange) says "you chose this"** — selection (`--selected`),
+  focus, the product mark, the current step of a record.
+- **The accent (violet) HIGHLIGHTS** — it marks what the reader should notice:
+  - **a schedule's days and dates**: every frequency picker marks a picked
+    day, date or month with the solid accent and white text, AND every
+    schedule shown in a list (`ScheduleCell`, the recurring orders and rules
+    tables, the portal's Recurring Orders) lights its days the same way — the
+    form and the list say it identically;
+  - recommendations (the 3PL rule recommendations' border and counts);
+  - what needs the customer (the portal's Attention required tiles, via the
+    `violet` pill).
+- **One violet.** `fp-lane-violet` and the `violet` pill map to the accent;
+  never a second violet hex. `fp-lane-purple` (#6366f1) is an indigo LANE
+  colour, not the accent.
+- **`--accent` is not the accent.** It is shadcn's name for the grey hover and
+  keeps that job.
 
 ## 10b. The DS ships hues; the application binds meaning
 
@@ -1139,7 +1172,7 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 - **Pastel code disc** — a 22px pastel circle carrying a 12px initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(Both pastel pairs were chosen in the repo and measure AAA; extending the set is a one-line change per pair — measure the pair before adding it. See `00-meta/token-provenance.md`.)*
 - **Bulk-attribute edit** — never a popover that commits on click. Three tiers by cardinality (scalar → single input; one-value-per-row → searchable select; a collection per row → multi-select), each opening a **dialog**, each taking the same two-step shape via `BulkEditDialog` (`components/bulk-edit/`): (1) picker, header leading with **scope + count**, primary gated until a value is picked; (2) per-row **before/after** preview, title becomes "View Summary", footer becomes `Go back` / `Confirm`; (3) commit → **toast**. Destructive replaces arm before they commit. **Why both steps earn their keep:** the operator must see the state that *already exists* on the target before piling onto it — `StandingItems` surfaces that standing state in step 1, `BeforeAfterTable` shows the delta in step 2. Collapsing to one step removes the only chance to notice you are about to replace something. `before` renders muted + `line-through` so a row reads as a replacement, with an em-dash fallback so "had nothing" and "had something" stay distinct. The dialog always reopens on step 1 — reopening mid-flow would offer a Confirm for a value the operator can no longer see. Body scrolls at `max-h-[55vh]`; header and footer stay put. **Inner panels use `bg-fp-surface-1b`, not `bg-fp-card-1`** — measured against the dialog's own `bg-background`, card-1 is only [6,3,6] away in light (near-invisible) while surface-1b is [16,16,20] light / [19,24,32] dark.
 - **Faceted filter panel** — facet side-menu + options pane. **The search field is per-facet and opt-in** (`Facet.searchable`): a facet gets one when its option list *cannot be taken in at once*, and does not when the list is short enough to scan — on a two-option facet a search field can only ever filter to one of the two, and it pushes the options down for nothing. Use an **explicit flag, not a length threshold**: a threshold silently changes a facet's affordance as its options grow or shrink, so the same facet gains and loses a control without anyone deciding. When the field is absent the option list needs its own `pt-2`, or it starts flush against the panel edge; placeholder reads `Search {facet}…`, matching the DS's `Search…` convention. Switching facets clears the query — carrying it over lets a term typed on a searchable facet silently filter a facet with no field to clear it in.
-- **Selection is a hue, hover is a grey.** They are different meanings and must never share a token: `--accent` means *the pointer is here*, `--selected` means *this is the one*. Before the split they both resolved to `--accent` on the toggle group, so a hovered segment and the selected one were pixel-identical — and the grey they shared measured 1.14:1 on the content layer, so neither read. Selection is a tint of a DIFFERENT colour, which the eye finds instantly at a luminance where it cannot find a tint of the same one. **Light takes the brand** (`#fee8d9` fill, `#a33f00` label — a darkened brand, because `#fa6400` on its own tint is only 2.56); **dark takes grey** (`--fp-card-1`, white label), because any orange dark enough to sit quietly on a near-black ground has gone brown by the time it gets there, and dark has far more room between `#11161d` and `#2a2f37` than light has between `#ffffff` and any grey. Bound by: `Toggle`/`ToggleGroup` `data-[state=on]`, `Tabs` active trigger and underline, `--sidebar-accent`, `--fp-row-selected`.
+- **Selection is a hue, hover is a grey — EXCEPT SEGMENT CONTROLS, which are greyscale** (Pavan, 2026-10-16: every segment control, every module). A selected segment (`Toggle`/`ToggleGroup` `data-[state=on]`) is a soft grey fill (`bg-muted`), a darker rim (`foreground/25`) and body ink; on the default `Tabs` track (itself grey) the selected tab is white with that rim. No brand, no accent. `--selected` (the brand tint) still marks a chosen ROW, the underline tabs and the sidebar's current item. Before the split hover and chosen both resolved to `--accent` and were pixel-identical; they still differ — hover is the darker `--accent` grey, chosen is the rimmed one.
 - **Table row states** — hover and selected are their own tokens, `--fp-row-hover` / `--fp-row-selected`, **not** `--accent`. A row state is a full-width wash *behind* content, so it must sit far quieter than a control fill: borrowing `--accent` gave light-mode rows a `[53,46,36]` step off `#ffffff` when selected and `[26,23,18]` on hover — a control-emphasis value doing a background's job. The tokens keep an ordered, subtle progression off the content layer — light `hover [11,10,7] -> selected [22,19,14]`, dark `[7,7,7] -> [15,15,15]` — with selected always the stronger of the two. Anything that mirrors a row wash (a sticky column overlay, an expanded-parent tint, the `tfoot` band) binds the same two tokens, or it drifts out of step with the row it belongs to.
 - **Editable table cell** — the trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`); hover/open paint `bg-accent` across the entire cell, no inset outline; two-line cell = title over description.
 - **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behaviour: `interactions/6-execute`.)*
@@ -2140,6 +2173,18 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     ladder rather than a column. Every cell carries `data-blink="<name>"` and
     they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
     2026-09-22.)
+- **A FORM'S STEPS AND A RECORD'S STAGE LOOK THE SAME (Pavan, 2026-10-16).**
+  Every stepped create form (the DS `Steps` / `SheetSteps`) draws the same
+  `StageTrack` as an order's detail page — done green with a white tick on a
+  green line, the current step a BLACK-rimmed pill (green is done, black is
+  in progress — Pavan, 2026-10-16; the record's own track keeps the brand pill), the rest
+  hollow — only COMPACT (the steps 48px apart, box to box, so it reads evenly
+  whichever step is the wide pill) and PRESSABLE. **A stepped create form is
+  ONE vertical scroll** (Pavan, 2026-10-16): every step's section is on the
+  page, the track marks the one at the top of the view, pressing a step
+  scrolls to it, nothing is gated — fill in any order; the create act is live
+  once the required fields are, and the pending strip says what is missing.
+  A detail page's track stays read-only and spread end to end.
 - **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
   `StageTrack`: evenly spaced dots end to end on one line — a passed stage a
   16px GREEN disc with a WHITE tick on a GREEN travelled line, a stage ahead

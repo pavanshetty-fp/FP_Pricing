@@ -61,9 +61,10 @@ export function ScheduleCell({
   emphasis?: boolean;
 }) {
   if (emphasis) roomy = true;
-  const lit = emphasis
-    ? "bg-fp-banner-accent-info/15 text-fp-banner-accent-info"
-    : "bg-foreground/10 text-foreground";
+  /* A LIT DAY IS THE ACCENT (Pavan, 2026-10-16) — the same violet the
+     frequency picker marks a picked day with, so the list and the form say
+     the same thing the same way (DS ui/2-rules "The accent"). */
+  const lit = "bg-accent-violet text-accent-violet-foreground";
   /* A CUSTOM CYCLE IS ONE ROW PER WEEK (Pavan, 2026-10-06), each led by
      its week — W1, W2 — so the shape still compares down the column. */
   if (schedule.cycle) {

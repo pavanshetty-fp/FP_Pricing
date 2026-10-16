@@ -257,6 +257,7 @@ function LinesTable({
                 />
               </td>
               <td className="relative p-0">
+                {/* ONE VALUE — the product going into this line's asset, not a row of its own (DS ui §10f). */}
                 <TableCellSelect
                   value={l.product}
                   options={PRODUCTS}

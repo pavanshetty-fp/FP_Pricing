@@ -561,7 +561,9 @@ export function RecordSheet({
         {/* ACROSS THE SHEET only without a step column; with one, the band
             starts where the form starts (Pavan, 2026-10-05). */}
         {steps && !navShown && (
-          <div className="shrink-0 border-b border-border px-4">{steps}</div>
+          /* NO RULE UNDER THE STEPS (Pavan, 2026-10-16) — the strip keeps the
+             sheet's own white, and the form scrolls under it. */
+          <div className="shrink-0 bg-background px-4">{steps}</div>
         )}
 
         {stepped ? (

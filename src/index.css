@@ -310,6 +310,13 @@
   /* FleetPanda-only tokens */
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  /* THE ACCENT — violet (Pavan, 2026-10-16). Not "accent" (that is the grey
+     hover, shadcn's name): `accent-violet`. Solid, the ink on it, a soft
+     wash, and a readable text ink. */
+  --color-accent-violet: var(--accent-violet);
+  --color-accent-violet-foreground: var(--accent-violet-foreground);
+  --color-accent-violet-soft: var(--accent-violet-soft);
+  --color-accent-violet-ink: var(--accent-violet-ink);
   --color-drawer: var(--drawer);
   --color-rail: var(--rail);
   --color-fp-shell-ground: var(--fp-shell-ground);
@@ -384,7 +391,8 @@
   --color-fp-lane-green: #22c55e;
   --color-fp-lane-cyan: #06b6d4;
   --color-fp-lane-purple: #6366f1;
-  --color-fp-lane-violet: #8b5cf6;
+  /* MAPPED TO THE ACCENT (2026-10-16) — one violet in the system. */
+  --color-fp-lane-violet: var(--accent-violet);
   --color-fp-lane-pink: #d946ef;
   --color-fp-lane-orange: #f59e0b;
   --color-fp-lane-red: #f43f5e;
@@ -758,6 +766,15 @@
   --sidebar-ring: #6b7280; /* base/sidebar-ring -> gray/500 */
   --brand: #fa6400;
   --brand-foreground: #ffffff;
+  /* THE ACCENT, VIOLET (Pavan, 2026-10-16) — the system's second colour
+     after the brand. The brand says "you chose this" (--selected); the
+     accent HIGHLIGHTS: picked days and dates of a schedule, recommendations,
+     what needs attention. Constant across themes, like the brand: white on
+     #8b5cf6 is 4.23:1 (bold UI text). DS ui/2-rules "The accent". */
+  --accent-violet: #8b5cf6;
+  --accent-violet-foreground: #ffffff;
+  --accent-violet-soft: color-mix(in oklab, #8b5cf6 12%, transparent);
+  --accent-violet-ink: color-mix(in oklab, #8b5cf6 70%, var(--foreground));
   /* PASTEL PAIRS — a light fill with a dark same-hue foreground, declared once
      and NOT overridden in `.dark`: a categorical hue that changed with the
      theme would change identity, which is what a categorical scale must not do.

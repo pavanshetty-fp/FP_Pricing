@@ -516,9 +516,11 @@ View. The shape above was holding; the BEHAVIOUR had drifted, table by table.
 Pavan, 2026-10-15 — after the order form's asset cell made the customer open
 the list once per tank.
 
-- **Where a row IS the thing picked** — an asset or tank on an order, a
-  peripheral, a partner, a product line — the picker takes **several at
-  once**: checkboxes, a footer with the count and **Apply**. The first pick
+- **IN ANY TABLE THAT ADDS ROWS, the picker that names the row takes
+  several at once** (Pavan, 2026-10-16 — said three times; now absolute):
+  an asset or tank, a peripheral, a partner, a product line, a loading
+  account, a part, a fee, an event — whatever the table lists. Checkboxes,
+  a footer with the count and **Apply**. The first pick
   fills the row it was opened from; **each other pick becomes its own row**,
   right under it, in the order picked. `multiple` on `TableCellSelect` /
   `TableCellCombobox` is the only way.
@@ -535,9 +537,14 @@ the list once per tank.
   list row mutes bare icons; the tick names its colour so it never goes grey
   on the filled box.
 
+- **Every other picker in such a table is a value INSIDE a row** (a line's
+  product, its loading account, a condition, a unit) and says so in a
+  comment carrying `ONE VALUE` and why. There is no third kind.
+
 **Checked, not remembered.** `npm run eval` → `table-rows`: a file that adds
 rows and focuses nothing, a remove with no subject, a remove that does not
-ask, a local cell control, a row picker without `multiple`.
+ask, a local cell control, and **any picker in a row-adding table with
+neither `multiple` nor a `ONE VALUE` note** — whatever its label.
 
 ### There is no "last band" alternative to the hanging add
 
@@ -604,6 +611,30 @@ the header sticks on its CELLS** — `sticky top-0` on the first header row, and
 **A two-tier header also needs the line between the tiers.** Without it the
 group words and the column words read as one crowded block instead of a heading
 over its columns.
+
+## 10c. The accent — violet (Pavan, 2026-10-16)
+
+**The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,
+`accent-violet-foreground` (white), `accent-violet-soft` (12% wash),
+`accent-violet-ink` (readable text). It is the second colour after the brand,
+and the two never trade jobs:
+
+- **The brand (orange) says "you chose this"** — selection (`--selected`),
+  focus, the product mark, the current step of a record.
+- **The accent (violet) HIGHLIGHTS** — it marks what the reader should notice:
+  - **a schedule's days and dates**: every frequency picker marks a picked
+    day, date or month with the solid accent and white text, AND every
+    schedule shown in a list (`ScheduleCell`, the recurring orders and rules
+    tables, the portal's Recurring Orders) lights its days the same way — the
+    form and the list say it identically;
+  - recommendations (the 3PL rule recommendations' border and counts);
+  - what needs the customer (the portal's Attention required tiles, via the
+    `violet` pill).
+- **One violet.** `fp-lane-violet` and the `violet` pill map to the accent;
+  never a second violet hex. `fp-lane-purple` (#6366f1) is an indigo LANE
+  colour, not the accent.
+- **`--accent` is not the accent.** It is shadcn's name for the grey hover and
+  keeps that job.
 
 ## 10b. The DS ships hues; the application binds meaning
 

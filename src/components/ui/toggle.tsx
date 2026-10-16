@@ -14,18 +14,19 @@ import { cn } from "@/lib/utils"
   neither read at all.
 
   Three steps now, and they cannot collide: rest is bare, hover is the grey
-  that means "the pointer is here", and on is the blue that means "this is the
-  one". The `on` rules carry `hover:` twins so that hovering the selected
-  segment does not drop it back to grey.
+  that means "the pointer is here", and on is GREYSCALE — a soft grey fill, a
+  darker rim, body ink (Pavan, 2026-10-16: every segment control, every
+  module; no brand, no accent). The `on` rules carry `hover:` twins so that
+  hovering the selected segment does not change it.
 */
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,box-shadow] outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-selected data-[state=on]:text-selected-foreground data-[state=on]:hover:bg-selected data-[state=on]:hover:text-selected-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,box-shadow] outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-muted data-[state=on]:text-foreground data-[state=on]:hover:bg-muted data-[state=on]:hover:text-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-transparent",
         outline:
-          "border border-input bg-transparent data-[state=on]:border-selected-border",
+          "border border-input bg-transparent data-[state=on]:border-foreground/25",
       },
       size: {
         default: "h-9 min-w-9 px-2",

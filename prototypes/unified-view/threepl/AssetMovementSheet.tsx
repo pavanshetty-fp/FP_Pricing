@@ -1556,6 +1556,7 @@ export function AssetMovementSheet({
                         />
                       </td>
                       <td className="relative p-0">
+                        {/* ONE VALUE — the peripheral's condition, not a row of its own (DS ui §10f). */}
                         <TableCellSelect
                           value={p.condition}
                           options={CONDITIONS}
@@ -1565,6 +1566,7 @@ export function AssetMovementSheet({
                         />
                       </td>
                       <td className="relative p-0">
+                        {/* ONE VALUE — the peripheral's ownership, not a row of its own (DS ui §10f). */}
                         <TableCellSelect
                           value={p.ownership}
                           options={OWNERSHIP}
@@ -1704,6 +1706,7 @@ export function AssetMovementSheet({
                         />
                       </td>
                       <td className="relative p-0">
+                        {/* ONE VALUE — the item's unit, not a row of its own (DS ui §10f). */}
                         <TableCellSelect
                           value={it.unit}
                           options={UNITS}

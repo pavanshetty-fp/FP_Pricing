@@ -285,8 +285,9 @@ function CustomRecurrenceDialog({
                     }
                     className={cn(
                       "size-9 rounded-full text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      /* A PICKED DAY IS THE ACCENT (DS ui/2-rules). */
                       on
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-accent-violet text-accent-violet-foreground"
                         : "bg-muted text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -4099,12 +4100,28 @@ export function BrokerOrderSheet({
                     options={[...ORDER_FEE_TYPES]}
                     aria-label={`Type for row ${i + 1}`}
                     onChange={(v) => setFee(i, { type: v as OrderFeeType })}
+                    /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a row not
+                       yet filled in: one fee row per type picked. */
+                    multiple={
+                      f.label || f.amount
+                        ? undefined
+                        : {
+                            onApply: (types) =>
+                              setDraft((d) => {
+                                if (!d) return d;
+                                const fees = [...d.orderFees];
+                                fees.splice(i, 1, ...types.map((t) => ({ ...f, type: t as OrderFeeType })));
+                                return { ...d, orderFees: fees };
+                              }),
+                          }
+                    }
                   />
                 </td>
                 {/* PICK IT OR TYPE IT. The list is what the business already
                     charges; the field stays open because no list foresees
                     every customer's arrangement. */}
                 <td className="relative p-0">
+                  {/* ONE VALUE — the fee's label, under its type, not a row of its own (DS ui §10f). */}
                   <TableCellCombobox
                     value={f.label}
                     options={ORDER_FEE_LABELS}
@@ -5330,6 +5347,7 @@ export function BrokerOrderSheet({
                           />
                         </td>
                         <td className="relative p-0">
+                          {/* ONE VALUE — the product going into this line's asset, not a row of its own (DS ui §10f). */}
                           <TableCellSelect
                             value={line.product}
                             options={[...PRODUCTS]}

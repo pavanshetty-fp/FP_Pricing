@@ -181,6 +181,7 @@ function AssetsTable({
                   <TableCellInput value={r.erpId} placeholder="—" aria-label={`ERP ID of ${name}`} onChange={(v) => update(i, { erpId: v })} />
                 </td>
                 <td className="relative p-0">
+                  {/* ONE VALUE — the asset's type, not a row of its own (DS ui §10f). */}
                   <TableCellSelect
                     value={r.type}
                     options={ASSET_TYPES}

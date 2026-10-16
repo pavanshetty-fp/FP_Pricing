@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDown, Eye, Plus, Trash2, Undo2 } from "lucide-react";
+import { ChevronDown, Eye, Plus, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CELL, RecordSheet } from "../RecordSheet";
+import { SheetSteps } from "@/components/side-sheet/parts";
 import { Combobox } from "@/components/ui/combobox";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ import {
   suppliersOf,
   terminalsOf,
   defaultLineCharges,
+  type LoadingAccount,
   type OrderLine,
 } from "./orders";
 import { VENDORS } from "./vendors";
@@ -131,7 +133,8 @@ export function blankProgramDraft(): ProgramDraft {
     products: [],
     winterProducts: [],
     frequency: blankFrequency(),
-    loadOrder: true,
+    /* OFF UNTIL ASKED FOR (Pavan, 2026-10-16). */
+    loadOrder: false,
     loadRows: [],
     startKey: dateKeyOf(startOfDay(new Date())),
     signatureOnDelivery: false,
@@ -179,11 +182,16 @@ function Card({
         hanging && "rounded-bl-none"
       )}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-fp-outline-1 px-4 py-3">
+      <header
+        className={cn(
+          "flex items-center justify-between gap-3 px-4 py-3",
+          children ? "border-b border-fp-outline-1" : undefined
+        )}
+      >
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         {aside}
       </header>
-      <div className={flush ? undefined : "p-4"}>{children}</div>
+      {children ? <div className={flush ? undefined : "p-4"}>{children}</div> : null}
     </section>
   );
   return hanging ? (
@@ -222,12 +230,19 @@ const blankLine = (products: string[]): OrderLine => ({
 function TargetEditor({
   target,
   products,
+  accounts,
   onChange,
 }: {
   target: ProgramTarget;
   products: string[];
+  /** The rule's loading accounts, when it creates load orders — each line
+      then picks its account and supplier (Pavan, 2026-10-16). */
+  accounts: LoadingAccount[] | null;
   onChange: (next: ProgramTarget) => void;
 }) {
+  const loads = accounts !== null && accounts.length > 0;
+  const allTop = target.lines.length > 0 && target.lines.every((l) => l.topOff);
+  const someTop = target.lines.some((l) => l.topOff);
   const site = siteByName(target.shipTo);
   const siteAssets = site?.assets ?? [];
   /* The site's tanks that take one of the rule's products come first. */
@@ -262,26 +277,58 @@ function TargetEditor({
           className="overflow-hidden rounded-md rounded-bl-none border border-fp-outline-1"
         >
           <table className="w-full table-fixed border-collapse">
+            {/* TOP OFF LAST, NEXT TO THE QUANTITY IT REPLACES (Pavan,
+                2026-10-16). */}
             <colgroup>
-              <col className="w-[92px]" />
-              <col className="w-[34%]" />
-              <col className="w-[30%]" />
+              <col className={loads ? "w-[22%]" : "w-[34%]"} />
+              <col className={loads ? "w-[18%]" : "w-[30%]"} />
+              {loads && <col className="w-[18%]" />}
+              {loads && <col className="w-[16%]" />}
               <col />
+              <col className="w-[104px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border bg-fp-table-header">
-                <th className="px-3 py-2.5 text-left">
-                  <TableRequiredLabel>Top off</TableRequiredLabel>
-                </th>
                 <th className="px-3 py-2.5 text-left">
                   <TableRequiredLabel>Asset</TableRequiredLabel>
                 </th>
                 <th className="px-3 py-2.5 text-left">
                   <TableRequiredLabel required>Product</TableRequiredLabel>
                 </th>
+                {loads && (
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Loading account</TableRequiredLabel>
+                  </th>
+                )}
+                {loads && (
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Supplier</TableRequiredLabel>
+                  </th>
+                )}
                 <th className="px-3 py-2.5 text-right">
                   <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+                </th>
+                {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under
+                    this one (Pavan, 2026-10-16). */}
+                <th className="px-3 py-2.5">
+                  <span className="flex items-center justify-between gap-2">
+                    <TableRequiredLabel>Top off</TableRequiredLabel>
+                    <Checkbox
+                      checked={allTop ? true : someTop ? "indeterminate" : false}
+                      aria-label="Top off every line"
+                      onCheckedChange={(c) =>
+                        onChange({
+                          ...target,
+                          lines: target.lines.map((l) => ({
+                            ...l,
+                            topOff: c === true,
+                            gal: c === true ? null : l.gal,
+                          })),
+                        })
+                      }
+                    />
+                  </span>
                 </th>
                 <th aria-hidden />
               </tr>
@@ -294,18 +341,6 @@ function TargetEditor({
                     key={i}
                     className="group/row h-11 border-b border-border last:border-b-0"
                   >
-                    <td className="px-3">
-                      <Checkbox
-                        checked={Boolean(line.topOff)}
-                        onCheckedChange={(c) =>
-                          setLine(i, {
-                            topOff: c === true,
-                            gal: c === true ? null : line.gal,
-                          })
-                        }
-                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                      />
-                    </td>
                     <td className="relative p-0">
                       {asset?.rental && (
                         <span className="pointer-events-none absolute top-1/2 right-8 z-10 -translate-y-1/2">
@@ -361,6 +396,7 @@ function TargetEditor({
                       />
                     </td>
                     <td className="relative p-0">
+                      {/* ONE VALUE — the product going into this line's asset, not a row of its own (DS ui §10f). */}
                       <TableCellSelect
                         value={line.product}
                         options={products}
@@ -369,6 +405,41 @@ function TargetEditor({
                         onChange={(v) => setLine(i, { product: v })}
                       />
                     </td>
+                    {loads && (() => {
+                      /* THE ACCOUNTS THAT CARRY THIS LINE'S PRODUCT, then
+                         that account's suppliers. */
+                      const fit = accounts!.filter((a) => !line.product || a.products.includes(line.product));
+                      const acc = accounts!.find((a) => a.name === line.loadingAccount);
+                      return (
+                        <>
+                          <td className="relative p-0">
+                            {/* ONE VALUE — the account this line loads on, not a row of its own (DS ui §10f). */}
+                            <TableCellSelect
+                              value={line.loadingAccount ?? ""}
+                              options={fit.map((a) => a.name)}
+                              placeholder={fit.length ? "Select account" : "No account carries it"}
+                              disabled={fit.length === 0}
+                              aria-label={`Loading account for ${line.asset || `line ${i + 1}`}`}
+                              onChange={(v) => {
+                                const a = accounts!.find((x) => x.name === v);
+                                setLine(i, { loadingAccount: v, supplier: a ? suppliersOf(a)[0] : undefined });
+                              }}
+                            />
+                          </td>
+                          <td className="relative p-0">
+                            {/* ONE VALUE — the supplier this line loads from, not a row of its own (DS ui §10f). */}
+                            <TableCellSelect
+                              value={line.supplier ?? ""}
+                              options={acc ? suppliersOf(acc) : []}
+                              placeholder={acc ? "Select supplier" : "Account first"}
+                              disabled={!acc}
+                              aria-label={`Supplier for ${line.asset || `line ${i + 1}`}`}
+                              onChange={(v) => setLine(i, { supplier: v })}
+                            />
+                          </td>
+                        </>
+                      );
+                    })()}
                     <td className="relative p-0">
                       <TableCellInput
                         value={
@@ -385,6 +456,20 @@ function TargetEditor({
                           })
                         }
                       />
+                    </td>
+                    <td className="px-3">
+                      <span className="flex justify-end">
+                      <Checkbox
+                        checked={Boolean(line.topOff)}
+                        onCheckedChange={(c) =>
+                          setLine(i, {
+                            topOff: c === true,
+                            gal: c === true ? null : line.gal,
+                          })
+                        }
+                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                      />
+                      </span>
                     </td>
                     <td className="relative p-0 text-center">
                       <TableRowRemove
@@ -446,7 +531,45 @@ export function RecurringProgramCreate({
   } | null;
 }) {
   const editing = initial !== null;
-  const [step, setStep] = React.useState<1 | 2>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3>(1);
+  /*
+    ONE SCROLL, THE STEPS FOLLOW IT (Pavan, 2026-10-16). The three sections
+    sit one under another; the track marks the one at the top of the view,
+    and pressing a step scrolls to it. Nothing is gated — fill in any order.
+  */
+  const goTo = (n: 1 | 2 | 3) => {
+    setStep(n);
+    document.getElementById(`rule-step-${n}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  React.useEffect(() => {
+    if (!open) return;
+    let body: HTMLElement | null = null;
+    const spy = () => {
+      if (!body) return;
+      /* A section is current once its top has reached the top of the view.
+         The last one is at least a view tall, so every section can get
+         there. */
+      const top = body.getBoundingClientRect().top + 24;
+      let at: 1 | 2 | 3 = 1;
+      for (const n of [1, 2, 3] as const) {
+        const el = document.getElementById(`rule-step-${n}`);
+        if (el && el.getBoundingClientRect().top <= top) at = n;
+      }
+      setStep(at);
+    };
+    /* The sheet mounts its body a frame after it opens. */
+    const t = window.setTimeout(() => {
+      body = document.getElementById("rule-step-1")?.closest<HTMLElement>(".overflow-auto") ?? null;
+      const last = document.getElementById("rule-step-3");
+      if (body && last) last.style.minHeight = `${body.clientHeight - 32}px`;
+      body?.addEventListener("scroll", spy, { passive: true });
+      spy();
+    }, 50);
+    return () => {
+      window.clearTimeout(t);
+      body?.removeEventListener("scroll", spy);
+    };
+  }, [open]);
   const [draft, setDraft] = React.useState<ProgramDraft>(blankProgramDraft);
   /* MARK AS WINTER BLEND (Pavan, 2026-09-25). On, the product chips above
      become pickable and the picked ones get a blue outline. Starts on when
@@ -587,10 +710,11 @@ export function RecurringProgramCreate({
   /* THE LOADING ACCOUNT IS OPTIONAL (Pavan, 2026-10-01). A rule can be
      created without one; a blank row is simply not saved. */
 
-  const stepOneDone =
-    (firstParty || draft.vendorIds.length > 0) &&
-    draft.products.length > 0 &&
-    daysPicked;
+  /* THREE STEPS (Pavan, 2026-10-16): the rule and its frequency · partners,
+     products and the load order · ship-tos and assets. */
+  const stepOneDone = daysPicked;
+  const stepTwoDone =
+    stepOneDone && (firstParty || draft.vendorIds.length > 0) && draft.products.length > 0;
 
   const pending = [
     {
@@ -673,7 +797,7 @@ export function RecurringProgramCreate({
   /* Step 2 never opens on nothing: the first tab is there, blank — or, for a
      rule started from a recommendation, one tab per ship-to it fits. */
   React.useEffect(() => {
-    if (step === 2 && draft.targets.length === 0 && seedSites.current) {
+    if (stepTwoDone && draft.targets.length === 0 && seedSites.current) {
       const seeded = seedSites.current;
       seedSites.current = null;
       const tabs = seeded.map(({ customer, shipTo }, i) => {
@@ -691,9 +815,9 @@ export function RecurringProgramCreate({
       setTabId(tabs[0]?.id ?? null);
       return;
     }
-    if (step === 2 && draft.targets.length === 0) addTab();
+    if (stepTwoDone && draft.targets.length === 0) addTab();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, draft.targets.length]);
+  }, [stepTwoDone, draft.targets.length]);
   const activeTarget =
     draft.targets.find((t) => t.id === tabId) ?? draft.targets[0] ?? null;
   const setTarget = (id: string, patch: Partial<ProgramTarget>) =>
@@ -717,21 +841,20 @@ export function RecurringProgramCreate({
          products (picks), bin. Step 2: lines = Top off, asset name, product
          pick, qty, bin; conflicts = rule name, frequency (days ≈ pick),
          assets · products text, window date, action (≈ number). */
-      fit={
-        step === 1
-          ? {
-              tables: [
-                [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, CELL.status],
-                [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.bin],
-              ],
-            }
-          : {
-              tables: [
-                [CELL.flag, CELL.name, CELL.pick, CELL.number, CELL.bin],
-                [CELL.name, CELL.pick, CELL.text, CELL.date, CELL.number],
-              ],
-            }
-      }
+      /* ONE SCROLL, SO THE WIDEST OF EVERYTHING (Pavan, 2026-10-16): the
+         frequency unit; partners; loading accounts; the ship-to lines (with
+         the load-order columns when on); conflicts. */
+      fit={{
+        tables: [
+          [360 + 60 + 340 + 32],
+          [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, CELL.status],
+          [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.bin],
+          draft.loadOrder
+            ? [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.number, 104, CELL.bin]
+            : [CELL.name, CELL.pick, CELL.number, 104, CELL.bin],
+          [CELL.name, CELL.pick, CELL.text, CELL.date, CELL.number],
+        ],
+      }}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
@@ -741,19 +864,13 @@ export function RecurringProgramCreate({
       showCancel={false}
       canSubmit={canCreate}
       onSubmit={() => onCreate(draft)}
+      /* ONE ACT (Pavan, 2026-10-16): fill the sections in any order; Create
+         is live once what is required is there, and the pending strip says
+         what is not. */
       footerPrimary={
-        step === 1 ? (
-          /* STEP TWO IS UNREACHABLE, NOT EMPTY. The partner decides which
-             sites exist and the product decides which tanks matter, so there
-             is genuinely nothing to show until both are answered. */
-          <Button disabled={!stepOneDone} onClick={() => setStep(2)}>
-            Next — ship-tos and assets
-          </Button>
-        ) : (
-          <Button disabled={!canCreate} onClick={() => { onCreate(draft); onOpenChange(false); }}>
-            {editing ? "Save rule" : "Create rule"}
-          </Button>
-        )
+        <Button disabled={!canCreate} onClick={() => { onCreate(draft); onOpenChange(false); }}>
+          {editing ? "Save rule" : "Create rule"}
+        </Button>
       }
       /* SIGNATURE LIVES IN THE BOTTOM BAR. It is a property of every delivery
          rather than a question about the rule, and a card of its own for one
@@ -773,47 +890,22 @@ export function RecurringProgramCreate({
       footerBanner={
         <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
       }
+      /* THE DS STEPS — the same track as a record's stage (Pavan,
+         2026-10-16). */
       steps={
-        <div className="flex items-center gap-1 py-2">
-          {(
-            [
-              [1, "Common details"],
-              [2, "Ship-tos and assets"],
-            ] as const
-          ).map(([n, label]) => (
-            <button
-              key={n}
-              type="button"
-              disabled={n === 2 && !stepOneDone}
-              onClick={() => setStep(n)}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-                step === n
-                  ? "bg-chip text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-                n === 2 && !stepOneDone && "pointer-events-none opacity-50"
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-5 items-center justify-center rounded-full text-xs tabular-nums",
-                  n === 1 && stepOneDone
-                    ? "bg-status-success text-status-foreground"
-                    : step === n
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-fp-card-1 text-muted-foreground"
-                )}
-              >
-                {n === 1 && stepOneDone ? <Check className="size-3" /> : n}
-              </span>
-              {label}
-            </button>
-          ))}
-        </div>
-      }
+        <SheetSteps
+          /* THE RINGS STEPPER (Pavan, 2026-10-16 — after a reference). */
+          variant="rings"
+          steps={[
+            { value: "1", label: "Rule and frequency" },
+            { value: "2", label: "Partners and products" },
+            { value: "3", label: "Ship-tos and assets" },
+          ]}
+          value={String(step)}
+          onValueChange={(v) => goTo(Number(v) as 1 | 2 | 3)}
+        />      }
     >
-      {step === 1 ? (
-        <>
+      <section id="rule-step-1" className="flex scroll-mt-4 flex-col gap-10">
           {/* THE RULE ITSELF — what it is called, who runs it, and how often.
               These three come first because every one of them changes what
               the rest of the form asks: the job type decides whether there is
@@ -886,7 +978,8 @@ export function RecurringProgramCreate({
               onChange={(f) => set("frequency", f)}
             />
           </Card>
-
+      </section>
+      <section id="rule-step-2" className="flex scroll-mt-4 flex-col gap-10">
           {!firstParty && (
             <Card
               title="The partners"
@@ -1041,22 +1134,15 @@ export function RecurringProgramCreate({
               }
             />
 
-            {/* THE INSTRUCTION, ONLY WHILE THE CHIPS ARE A PICKER (Pavan,
-                2026-10-01) — with the toggle on, a chip click means something
-                new, and nothing else on screen says so. */}
-            {winterOn && draft.products.length > 0 && (
-              <p className="px-4 pb-4 text-xs text-muted-foreground">
-                Click on all products that you want to be considered as winter
-                blends.
-              </p>
-            )}
-
             {/* WINTER BLEND IS MAPPED PER PRODUCT, not per rule — one rule
                 can carry diesel and unleaded and only one takes an additive.
                 The toggle turns the chips above into the picker. */}
             {draft.products.length > 0 && (
-              <div className="border-t border-fp-outline-1 p-4">
+              <div className="flex flex-col gap-1 border-t border-fp-outline-1 p-4">
+                {/* THE WORD, THEN THE SWITCH; the instruction right under it,
+                    only while the chips are a picker (Pavan, 2026-10-16). */}
                 <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+                  Mark as winter blend
                   <Switch
                     checked={winterOn}
                     onCheckedChange={(on) => {
@@ -1065,8 +1151,13 @@ export function RecurringProgramCreate({
                       if (!on) set("winterProducts", []);
                     }}
                   />
-                  Mark as winter blend
                 </label>
+                {winterOn && (
+                  <p className="text-xs text-muted-foreground">
+                    Click on all products that you want to be considered as winter
+                    blends.
+                  </p>
+                )}
               </div>
             )}
           </Card>
@@ -1077,7 +1168,28 @@ export function RecurringProgramCreate({
               order's per-product table: a rule is drawn up by account. */}
           <Card
             title="Load order"
-            flush={draft.loadOrder && draft.products.length > 0}
+            /* AN OPTION, OFFERED LIKE "ADD PRODUCTS" (Pavan, 2026-10-16): off,
+               the card holds one "Create load order" act; on, the loading
+               accounts, and a bin here takes the load order away again. */
+            flush
+            aside={
+              draft.loadOrder ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Remove the load order"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDraft((d) => ({ ...d, loadOrder: false, loadRows: [] }))}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove the load order</TooltipContent>
+                </Tooltip>
+              ) : undefined
+            }
             hanging={
               /* NOTHING LEFT TO ADD, OR A BLANK ROW ALREADY — no add. */
               draft.loadOrder &&
@@ -1094,11 +1206,25 @@ export function RecurringProgramCreate({
               ) : undefined
             }
           >
-            {/* NO "WE BUY THE PRODUCT" TICK (Pavan, 2026-09-25) — a rule
-                always carries a load order. */}
+            {!draft.loadOrder && (
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    loadOrder: true,
+                    loadRows: d.loadRows.length === 0 ? [{ loadingAccount: "" }] : d.loadRows,
+                  }))
+                }
+                className="flex min-h-11 w-full items-center justify-center gap-1 px-4 py-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-fp-surface-1a focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+              >
+                <Plus className="size-4" />
+                Create load order
+              </button>
+            )}
             {draft.loadOrder &&
               (draft.products.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="p-4 text-sm text-muted-foreground">
                   Choose a product first.
                 </p>
               ) : (
@@ -1149,11 +1275,26 @@ export function RecurringProgramCreate({
                             <td className="relative h-11 p-0">
                               <TableCellSelect
                                 value={row.loadingAccount}
-                                options={offer}
+                                options={row.loadingAccount ? offer : LOADING_ACCOUNTS.map((a) => a.name)}
                                 placeholder="Account"
                                 autoFocus={newLoadRow === i}
                                 aria-label={`Loading account ${i + 1}`}
                                 onChange={(v) => setLoadAccount(i, v)}
+                                /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) —
+                                   from a blank row; accounts on other rows
+                                   show ticked and locked. */
+                                multiple={
+                                  row.loadingAccount
+                                    ? undefined
+                                    : {
+                                        taken: [...taken],
+                                        onApply: (names) => {
+                                          const next = [...loadRows];
+                                          next.splice(i, 1, ...names.map((n) => ({ loadingAccount: n })));
+                                          set("loadRows", next);
+                                        },
+                                      }
+                                }
                               />
                             </td>
                             {/* READ-ONLY: what the account loads from, every
@@ -1225,28 +1366,19 @@ export function RecurringProgramCreate({
               ))}
           </Card>
 
-        </>
-      ) : (
-        <>
-          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-fp-outline-1 bg-fp-surface-1b px-3 py-2.5 text-sm">
-            <span className="text-foreground">{partnerLabel}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-foreground">
-              {draft.products.join(" + ")}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-foreground">{schedule.label}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setStep(1)}
-            >
-              Change
-            </Button>
-          </div>
-
-          <Card title={`Ship-tos — ${draft.targets.filter((t) => t.shipTo).length}`} flush>
+      </section>
+      <section id="rule-step-3" className="flex scroll-mt-4 flex-col gap-10">
+          {!stepTwoDone ? (
+            /* NOTHING TO PLACE YET — the partners decide which ship-tos
+               exist, the products which tanks matter. Said, not blocked. */
+            <p className="py-2 text-sm text-muted-foreground">
+              Choose partners and products above to add ship-tos.
+            </p>
+          ) : (
+          <>
+          {/* ONE BOX ROUND THE SHIP-TOS AND ALL UNDER EACH, NO HEADER (Pavan,
+              2026-10-16). */}
+          <div className="shrink-0 overflow-hidden rounded-md border border-fp-outline-1">
             <div className="flex items-center gap-1 border-b border-fp-outline-1 px-2 pt-2">
               <Tabs
                 value={activeTarget?.id ?? ""}
@@ -1274,7 +1406,7 @@ export function RecurringProgramCreate({
 
             {activeTarget && (
               <div className="flex flex-col gap-4 p-4">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto] items-start gap-4">
                   <Field label="Customer">
                     <Combobox
                       value={activeTarget.customer.title}
@@ -1332,72 +1464,55 @@ export function RecurringProgramCreate({
                       }}
                     />
                   </Field>
+                  {/* THE DELIVERY WINDOW, PER SHIP-TO (Pavan, 2026-10-01) — IN THE TOP ROW,
+                      ITS LAST COLUMN (Pavan, 2026-10-16) — the
+                      same slider the Delivery Order uses. An overlap with
+                      another rule at this ship-to is said here, as it is
+                      picked, and again in Conflicts below. */}
+                  {(() => {
+                    const w =
+                      parseWindow(`${activeTarget.window.start} – ${activeTarget.window.end}`) ??
+                      [8 * 60, 12 * 60];
+                    return (
+                      <div className="flex flex-col gap-1.5">
+                        <TimeWindowSlider
+                          label="Delivery Window"
+                          required
+                          disabled={!activeTarget.shipTo}
+                          start={w[0]}
+                          end={w[1]}
+                          onChange={(a, b) =>
+                            setTarget(activeTarget.id, {
+                              window: { start: formatMinutes(a), end: formatMinutes(b) },
+                            })
+                          }
+                          aria-label="Delivery window"
+                        />
+                        {/* NO OVERLAP NOTE HERE — Conflicts below says it
+                            (Pavan, 2026-10-16). */}
+                      </div>
+                    );
+                  })()}
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="mb-1.5 shrink-0 text-muted-foreground hover:text-destructive"
+                    className="mt-6 shrink-0 text-muted-foreground hover:text-destructive"
                     aria-label="Remove this ship-to"
                     onClick={() => removeTab(activeTarget.id)}
                   >
                     <Trash2 />
                   </Button>
                 </div>
-                {/* THE DELIVERY WINDOW, PER SHIP-TO (Pavan, 2026-10-01) — the
-                    same slider the Delivery Order uses. An overlap with
-                    another rule at this ship-to is said here, as it is
-                    picked, and again in Conflicts below. */}
-                {(() => {
-                  const w =
-                    parseWindow(`${activeTarget.window.start} – ${activeTarget.window.end}`) ??
-                    [8 * 60, 12 * 60];
-                  const overlaps = activeTarget.shipTo
-                    ? clashesFor(
-                        activeTarget.shipTo,
-                        {
-                          assets: [],
-                          window: activeTarget.window,
-                          schedule,
-                          startKey: draft.startKey,
-                          endKey: draft.frequency.endKey,
-                          skip: activeTarget.skip,
-                        },
-                        "new",
-                        all
-                      ).filter((c) => c.window)
-                    : [];
-                  return (
-                    <div className="flex flex-col gap-1.5">
-                      <TimeWindowSlider
-                        label="Delivery Window"
-                        required
-                        disabled={!activeTarget.shipTo}
-                        start={w[0]}
-                        end={w[1]}
-                        onChange={(a, b) =>
-                          setTarget(activeTarget.id, {
-                            window: { start: formatMinutes(a), end: formatMinutes(b) },
-                          })
-                        }
-                        aria-label="Delivery window"
-                      />
-                      {overlaps.length > 0 && (
-                        <span className="text-xs text-fp-banner-accent-caution">
-                          Overlaps{" "}
-                          {overlaps
-                            .map(
-                              (c) =>
-                                `${c.program.programNo} (${c.window!.start} – ${c.window!.end})`
-                            )
-                            .join(", ")}{" "}
-                          at this ship-to.
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
                 <TargetEditor
                   target={activeTarget}
                   products={draft.products}
+                  accounts={
+                    draft.loadOrder
+                      ? loadRows
+                          .map((r) => LOADING_ACCOUNTS.find((a) => a.name === r.loadingAccount))
+                          .filter((a): a is LoadingAccount => Boolean(a))
+                      : null
+                  }
                   onChange={(next) => setTarget(activeTarget.id, next)}
                 />
                 {(() => {
@@ -1755,7 +1870,7 @@ export function RecurringProgramCreate({
                 })()}
               </div>
             )}
-          </Card>
+          </div>
 
           {/* WHAT HAPPENS ON CREATE, SAID BEFORE THE PRESS. A rule that
               quietly started asking a partner for prices would be a surprise
@@ -1766,8 +1881,9 @@ export function RecurringProgramCreate({
             has quoted and accepted each one.
             Lanes go live individually.
           </p>
-        </>
-      )}
+          </>
+          )}
+      </section>
     </RecordSheet>
   );
 }

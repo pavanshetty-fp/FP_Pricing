@@ -155,6 +155,18 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
     ladder rather than a column. Every cell carries `data-blink="<name>"` and
     they flash together — `blinkGroup`, `.fp-attention-fill`. (Added
     2026-09-22.)
+- **A FORM'S STEPS AND A RECORD'S STAGE LOOK THE SAME (Pavan, 2026-10-16).**
+  Every stepped create form (the DS `Steps` / `SheetSteps`) draws the same
+  `StageTrack` as an order's detail page — done green with a white tick on a
+  green line, the current step a BLACK-rimmed pill (green is done, black is
+  in progress — Pavan, 2026-10-16; the record's own track keeps the brand pill), the rest
+  hollow — only COMPACT (the steps 48px apart, box to box, so it reads evenly
+  whichever step is the wide pill) and PRESSABLE. **A stepped create form is
+  ONE vertical scroll** (Pavan, 2026-10-16): every step's section is on the
+  page, the track marks the one at the top of the view, pressing a step
+  scrolls to it, nothing is gated — fill in any order; the create act is live
+  once the required fields are, and the pending strip says what is missing.
+  A detail page's track stays read-only and spread end to end.
 - **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
   `StageTrack`: evenly spaced dots end to end on one line — a passed stage a
   16px GREEN disc with a WHITE tick on a GREEN travelled line, a stage ahead

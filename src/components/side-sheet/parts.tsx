@@ -492,17 +492,23 @@ export function SheetSteps({
   steps,
   value,
   onValueChange,
+  tone,
+  variant,
 }: {
   steps: StepItem[];
   value: string;
   onValueChange: (next: string) => void;
+  tone?: "brand" | "accent" | "neutral";
+  variant?: "track" | "rings";
 }) {
   return (
     <Steps
+      tone={tone}
+      variant={variant}
       steps={steps}
       value={value}
       onValueChange={onValueChange}
-      className="h-14 max-w-lg"
+      className="my-2.5"
     />
   );
 }

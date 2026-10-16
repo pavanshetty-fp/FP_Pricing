@@ -330,6 +330,7 @@ function LineTable({
   focusRow,
   showFitted,
   nameOptions,
+  onPickMany,
   noTotal,
 }: {
   /** No total row — a list that is not billed (parts not available). */
@@ -339,6 +340,8 @@ function LineTable({
    * standard fees. Picking a listed name brings its amount; it stays editable.
    */
   nameOptions?: { name: string; amount: number }[];
+  /** Several names picked on a blank row — one row each. */
+  onPickMany?: (i: number, names: string[]) => void;
   rows: (PartLine | FeeLine)[];
   onChange: (i: number, patch: Record<string, unknown>) => void;
   onRemove: (i: number) => void;
@@ -429,6 +432,15 @@ function LineTable({
                       placeholder={namePlaceholder}
                       autoFocus={i === focusRow}
                       aria-label={`${nameLabel} for row ${i + 1}`}
+                      /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a
+                         blank row. */
+                      multiple={
+                        onPickMany && !r.name
+                          ? {
+                              onApply: (names) => onPickMany(i, names),
+                            }
+                          : undefined
+                      }
                       onChange={(v) => {
                         /* A LISTED NAME BRINGS ITS PRICE — a part's unit cost, a
                            fee's amount. Either stays editable. */
@@ -849,6 +861,28 @@ export function ServiceOrderSheet({
         : d
     );
   };
+  /* SEVERAL PICKED AT ONCE, ONE ROW EACH (DS ui §10f "Picking several makes
+     rows") — the first fills row i, the rest follow it, each with its listed
+     price. */
+  const pickMany = (
+    field: "parts" | "fees" | "extraCharges" | "unavailableParts",
+    i: number,
+    names: string[],
+    book: { name: string; amount: number }[]
+  ) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const rows = [...((d[field] ?? []) as (PartLine | FeeLine)[])];
+      const base = rows[i];
+      const made = names.map((n) => {
+        const listed = book.find((f) => f.name === n);
+        return "cost" in base
+          ? { ...base, name: n, cost: listed?.amount ?? (base as PartLine).cost }
+          : { ...base, name: n, amount: listed?.amount ?? (base as FeeLine).amount };
+      });
+      rows.splice(i, 1, ...made);
+      return { ...d, [field]: rows };
+    });
   const removeLine = (field: "parts" | "fees" | "extraCharges" | "unavailableParts", i: number) =>
     setDraft((d) =>
       d
@@ -2274,6 +2308,7 @@ export function ServiceOrderSheet({
           emptyLabel="No parts on this job."
           total={partsSum}
           onChange={(i, p) => setLine("parts", i, p)}
+          onPickMany={(i, names) => pickMany("parts", i, names, PART_OPTIONS)}
           onRemove={(i) => removeLine("parts", i)}
             focusRow={justAdded?.table === "parts" ? justAdded.i : undefined}
           showFitted={draft.visits.some((v) => v.endedAt)}
@@ -2304,6 +2339,7 @@ export function ServiceOrderSheet({
             emptyLabel="Nothing missing."
             total={0}
             onChange={(i, p) => setLine("unavailableParts", i, p)}
+          onPickMany={(i, names) => pickMany("unavailableParts", i, names, PART_OPTIONS)}
             onRemove={(i) => removeLine("unavailableParts", i)}
             focusRow={justAdded?.table === "unavailableParts" ? justAdded.i : undefined}
           />
@@ -2336,6 +2372,7 @@ export function ServiceOrderSheet({
           emptyLabel="No fees on this job."
           total={feesSum}
           onChange={(i, p) => setLine("fees", i, p)}
+          onPickMany={(i, names) => pickMany("fees", i, names, FEE_BOOK)}
           onRemove={(i) => removeLine("fees", i)}
             focusRow={justAdded?.table === "fees" ? justAdded.i : undefined}
         />

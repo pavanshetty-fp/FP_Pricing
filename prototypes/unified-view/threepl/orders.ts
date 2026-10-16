@@ -195,6 +195,10 @@ export interface OrderLine {
   topOff: boolean;
   /** The asset belongs to the broker, not the customer — badged on the row. */
   rental?: boolean;
+  /** A recurring rule's load order, per line (Pavan, 2026-10-16): which
+   *  loading account and supplier this tank's product is loaded on. */
+  loadingAccount?: string;
+  supplier?: string;
   /**
    * What actually went in. Null until the delivery says — and EDITABLE while a
    * quote is being reviewed, because both sides of the margin are computed from

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { selectTriggerClasses } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { dateKeyOf } from "../data";
 import type { Schedule } from "./recurring";
 
@@ -294,12 +294,15 @@ export function toSchedule(f: RuleFrequency): Schedule {
 function DayBadges({
   value,
   onChange,
+  stretch,
 }: {
   value: number[];
   onChange: (next: number[]) => void;
+  /** Fill the row — the frequency unit is wider (Pavan, 2026-10-16). */
+  stretch?: boolean;
 }) {
   return (
-    <div className="flex gap-1">
+    <div className={cn("flex gap-1", stretch && "w-full")}>
       {WEEKDAYS.map((d, i) => {
         const on = value.includes(i);
         return (
@@ -314,9 +317,10 @@ function DayBadges({
               )
             }
             className={cn(
-              "flex size-8 items-center justify-center rounded-md text-sm font-medium transition-colors",
+              "flex h-8 items-center justify-center rounded-md text-sm font-medium transition-colors",
+              stretch ? "min-w-8 flex-1" : "w-8",
               on
-                ? "bg-primary text-primary-foreground"
+                ? "bg-accent-violet text-accent-violet-foreground"
                 : "bg-fp-card-1 text-muted-foreground hover:text-foreground"
             )}
           >
@@ -517,7 +521,7 @@ function DatePart({
                 className={cn(
                   "flex h-12 w-10 flex-col items-center justify-center gap-0.5 rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                   on
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-accent-violet text-accent-violet-foreground"
                     : "bg-fp-card-1 text-foreground hover:bg-accent",
                   past && "cursor-not-allowed opacity-40 hover:bg-fp-card-1"
                 )}
@@ -525,7 +529,7 @@ function DatePart({
                 <span
                   className={cn(
                     "text-[10px] font-normal",
-                    on ? "text-primary-foreground/80" : "text-muted-foreground"
+                    on ? "text-accent-violet-foreground/80" : "text-muted-foreground"
                   )}
                 >
                   {WEEKDAYS[d.getDay()].letter}
@@ -581,9 +585,13 @@ function withRepeat(value: RuleFrequency, repeat: Repeat): RuleFrequency {
 function CyclePart({
   value,
   onChange,
+  part,
 }: {
   value: RuleFrequency;
   onChange: (next: RuleFrequency) => void;
+  /* IN THREE PLACES (Pavan, 2026-10-16): the weeks where the day badges
+     are, the settings where Repeat is, the preview under both. */
+  part: "weeks" | "settings" | "preview";
 }) {
   const weeks = value.cycleWeeks ?? [value.days, []];
   const startKey = value.cycleStartKey ?? dateKeyOf(weekStart(new Date()));
@@ -598,25 +606,9 @@ function CyclePart({
       days: ds.length === 0 ? "No delivery" : ds.map((x) => WEEKDAYS[x].name.slice(0, 3)).join(", "),
     };
   });
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-4">
-        <Row label="Repeat">
-          <Select
-            value="cycle"
-            onValueChange={(v) => onChange(withRepeat(value, v as Repeat))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-              <SelectItem value="cycle">Custom cycle</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
+  if (part === "settings")
+    return (
+      <div className="grid grid-cols-2 content-start gap-4">
         <Row label="Cycle length">
           <Select
             value={String(weeks.length)}
@@ -648,38 +640,40 @@ function CyclePart({
           />
         </Row>
       </div>
+    );
+  if (part === "weeks")
+    return (
       <div className="flex flex-col gap-2">
         {weeks.map((w, i) => (
-          <div key={i} className="flex items-center gap-4">
+          <div key={i} className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-sm font-medium text-foreground">
               Week {i + 1}
             </span>
             <DayBadges
+              stretch
               value={w}
               onChange={(next) => setWeeks(weeks.map((x, j) => (j === i ? next : x)))}
             />
-            {w.length === 0 && (
-              <span className="text-xs text-muted-foreground">No delivery</span>
-            )}
           </div>
         ))}
         {weeks.every((w) => w.length === 0) && (
           <p className="text-xs text-status-failed">Pick at least one day.</p>
         )}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">Next 4 weeks</span>
-        <div className="grid grid-cols-4 gap-2">
-          {preview.map((p) => (
-            <div
-              key={p.label}
-              className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-2"
-            >
-              <span className="text-xs text-muted-foreground">Week of {p.label}</span>
-              <span className="truncate text-sm text-foreground">{p.days}</span>
-            </div>
-          ))}
-        </div>
+    );
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-foreground">Next 4 weeks</span>
+      <div className="grid grid-cols-4 gap-2">
+        {preview.map((p) => (
+          <div
+            key={p.label}
+            className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-2"
+          >
+            <span className="text-xs text-muted-foreground">Week of {p.label}</span>
+            <span className="truncate text-sm text-foreground">{p.days}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -702,97 +696,109 @@ export function RuleFrequencyPicker({
   const beforeDaily = React.useRef<number[]>(value.days);
 
   const days = value.dayMode === "daily" ? [0, 1, 2, 3, 4, 5, 6] : value.days;
+  const cycle = value.repeat === "cycle";
 
   return (
     <div className="flex flex-col gap-5">
-      {/* DAYS OR DATE (Pavan, 2026-10-01). Two different ways of saying when,
-          so two tabs rather than a "same date" option among the weeks — a
-          date answer made the day badges above it meaningless. */}
-      <Tabs
+      {/* DAYS OR DATE (Pavan, 2026-10-01) — THE DS SEGMENT CONTROL (Pavan,
+          2026-10-16), the one the lists use for All / Fuel / Lubricants. */}
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
         value={value.basis ?? "days"}
-        onValueChange={(v) => set("basis", v as FrequencyBasis)}
+        onValueChange={(v) => v && set("basis", v as FrequencyBasis)}
+        aria-label="Days or date"
+        className="h-7 w-fit"
       >
-        <TabsList>
-          {/* BLACK AND WHITE, NOT THE SELECTION ORANGE (Pavan, 2026-10-06) —
-              the day chips beside it are monochrome too. */}
-          {(["days", "date"] as const).map((k) => (
-            <TabsTrigger
-              key={k}
-              value={k}
-              className="data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-border dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground"
-            >
-              {k === "days" ? "Days" : "Date"}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+        {(["days", "date"] as const).map((k) => (
+          <ToggleGroupItem
+            key={k}
+            value={k}
+            /* Greyscale — the DS segment control's own selection. */
+            className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium"
+          >
+            {k === "days" ? "Days" : "Date"}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
 
       {(value.basis ?? "days") === "date" ? (
         <DatePart value={value} onChange={onChange} />
-      ) : value.repeat === "cycle" ? (
-        <CyclePart value={value} onChange={onChange} />
       ) : (
       <>
-      {/* ONE LINE: the days on the left, a divider, then Repeat and its
-          continuation (Pavan, 2026-09-25). There was room on the right, and
-          two rows made one question read as two. The end date stays below. */}
-      {/* 60px between the days and Repeat, no divider (Pavan, 2026-09-25).
-          Repeat and its continuation sit 16px apart, each filling its half. */}
-      <div className="flex items-stretch gap-15">
-      {(
-        <div className="flex shrink-0 flex-col gap-3">
-          {/* THE BADGES ARE THE ANSWER, and Daily is a shortcut over them
-              rather than a second way of answering. Touching a day while all
-              seven are lit takes that day out, which is what "not daily any
-              more" means — so the switch follows the badges and never has to
-              be turned off by hand. */}
-          {/* LABELLED LIKE THE FIELDS BESIDE IT (Pavan, 2026-09-25), so the
-              badges start on the same line as the Repeat select. */}
-          <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">
-            Select day/s
-          </span>
-          <DayBadges
-            value={days}
-            onChange={(next) => {
-              if (value.dayMode === "daily") beforeDaily.current = next;
-              onChange({
-                ...value,
-                dayMode: next.length === 7 ? "daily" : "specific",
-                days: next,
-              });
-            }}
-          />
+      {/* THE DAYS UNIT WIDER, REPEAT NARROWER (Pavan, 2026-10-16). A custom
+          cycle swaps its week rows into the same place, and its settings
+          into Repeat's — on and off look the same, only the content moves. */}
+      <div className="flex items-start gap-15">
+        <div className="flex w-[360px] shrink-0 flex-col gap-3">
+          {cycle ? (
+            <CyclePart part="weeks" value={value} onChange={onChange} />
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-foreground">Select day/s</span>
+              <DayBadges
+                stretch
+                value={days}
+                onChange={(next) => {
+                  if (value.dayMode === "daily") beforeDaily.current = next;
+                  onChange({
+                    ...value,
+                    dayMode: next.length === 7 ? "daily" : "specific",
+                    days: next,
+                  });
+                }}
+              />
+            </div>
+          )}
+          {/* DAILY AND CUSTOM CYCLE, SIDE BY SIDE — the word, then its switch
+              (Pavan, 2026-10-16). Daily means nothing inside a cycle. */}
+          <div className="flex items-center gap-6">
+            <label
+              className={cn(
+                "flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground",
+                cycle && "cursor-not-allowed opacity-50"
+              )}
+            >
+              Daily
+              <Switch
+                checked={!cycle && value.dayMode === "daily"}
+                disabled={cycle}
+                onCheckedChange={(on) => {
+                  if (on) beforeDaily.current = value.days;
+                  const back = beforeDaily.current;
+                  onChange({
+                    ...value,
+                    dayMode: on ? "daily" : "specific",
+                    days: on
+                      ? [0, 1, 2, 3, 4, 5, 6]
+                      : back.length > 0 && back.length < 7
+                        ? back
+                        : [],
+                  });
+                }}
+              />
+            </label>
+            <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+              Custom cycle
+              <Switch
+                checked={cycle}
+                onCheckedChange={(on) =>
+                  onChange(on ? withRepeat(value, "cycle") : { ...value, repeat: "weekly" })
+                }
+              />
+            </label>
           </div>
-          <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
-            <Switch
-              checked={value.dayMode === "daily"}
-              onCheckedChange={(on) => {
-                if (on) beforeDaily.current = value.days;
-                const back = beforeDaily.current;
-                onChange({
-                  ...value,
-                  dayMode: on ? "daily" : "specific",
-                  days: on
-                    ? [0, 1, 2, 3, 4, 5, 6]
-                    : back.length > 0 && back.length < 7
-                      ? back
-                      : [],
-                });
-              }}
-            />
-            Daily
-          </label>
-          {value.dayMode === "specific" && value.days.length === 0 && (
-            <p className="text-xs text-status-failed">
-              Pick at least one day.
-            </p>
+          {!cycle && value.dayMode === "specific" && value.days.length === 0 && (
+            <p className="text-xs text-status-failed">Pick at least one day.</p>
           )}
         </div>
-      )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] content-start gap-4">
+      <div className="flex w-[340px] min-w-0 flex-col gap-4">
+      {cycle ? (
+        <CyclePart part="settings" value={value} onChange={onChange} />
+      ) : (
+      <div className="grid grid-cols-2 content-start gap-4">
         <Row label="Repeat">
           <Select
             value={value.repeat}
@@ -805,11 +811,9 @@ export function RuleFrequencyPicker({
               <SelectItem value="weekly">Weekly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
               <SelectItem value="yearly">Yearly</SelectItem>
-              <SelectItem value="cycle">Custom cycle</SelectItem>
             </SelectContent>
           </Select>
         </Row>
-
         {value.repeat === "weekly" && (
           <Row label="Times a day">
             <Select
@@ -864,6 +868,7 @@ export function RuleFrequencyPicker({
           </Row>
         )}
       </div>
+      )}
       {/* WEEKLY, MORE THAN ONCE — a time per drop, under Repeat so it reads
           as part of it (Pavan, 2026-09-25). Two deliveries on one day
           is a real arrangement and the day badges cannot say it. */}
@@ -893,6 +898,8 @@ export function RuleFrequencyPicker({
       </div>
       </div>
 
+      {cycle && <CyclePart part="preview" value={value} onChange={onChange} />}
+
       {value.repeat === "yearly" && value.yearlyMode === "specificMonths" && (
         <div className="flex flex-wrap gap-1.5">
           {MONTHS.map((m, i) => {
@@ -913,7 +920,7 @@ export function RuleFrequencyPicker({
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   on
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-accent-violet text-accent-violet-foreground"
                     : "bg-fp-card-1 text-muted-foreground hover:text-foreground"
                 )}
               >

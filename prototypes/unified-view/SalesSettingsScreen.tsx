@@ -403,6 +403,7 @@ function FormFieldsTable({
                   />
                 </td>
                 <td className="relative p-0">
+                  {/* ONE VALUE — the field's section — a value of this row, not a row of its own (DS ui §10f). */}
                   <TableCellCombobox
                     value={f.section}
                     options={sections}
@@ -414,6 +415,7 @@ function FormFieldsTable({
                   />
                 </td>
                 <td className="relative p-0">
+                  {/* ONE VALUE — the field's type — a value of this row, not a row of its own (DS ui §10f). */}
                   <TableCellSelect
                     value={f.type}
                     /* A LOCKED FIELD'S TYPE IS THE RECORD'S — shown, not
@@ -795,6 +797,23 @@ function NotificationsTable({ rules }: { rules: NotificationRule[] }) {
                   options={[r.event, ...unused.map((e) => e.event)]}
                   autoFocus={focusKey === r.key}
                   aria-label={`Event ${r.event}`}
+                  /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — the first takes
+                     this row's place, each other is a row of its own with the
+                     same channels. */
+                  multiple={{
+                    onApply: (names) =>
+                      setRules((prev) => {
+                        const at = prev.findIndex((x) => x.key === r.key);
+                        const made = names
+                          .map((n) => NOTIFICATION_EVENTS.find((e) => e.event === n))
+                          .filter((e): e is (typeof NOTIFICATION_EVENTS)[number] => Boolean(e))
+                          .map((e) => ({ ...r, key: e.key, event: e.event }));
+                        if (made.length === 0) return prev;
+                        const next = [...prev];
+                        next.splice(at, 1, ...made);
+                        return next;
+                      }),
+                  }}
                   onChange={(v) => {
                     const e = NOTIFICATION_EVENTS.find((x) => x.event === v);
                     if (e && e.key !== r.key) patch(r.key, { key: e.key, event: e.event });
@@ -845,6 +864,7 @@ function PreferencesTable({ cfg }: { cfg: SalesSettings }) {
       label: "Time zone",
       cell: true,
       value: (
+        /* ONE VALUE — a setting, not a table row (DS ui §10f). */
         <TableCellSelect
           value={cfg.timeZone}
           options={[...TIME_ZONES]}
@@ -858,6 +878,7 @@ function PreferencesTable({ cfg }: { cfg: SalesSettings }) {
       label: "Primary unit",
       cell: true,
       value: (
+        /* ONE VALUE — a setting, not a table row (DS ui §10f). */
         <TableCellSelect
           value={cfg.unit}
           options={[...UNITS]}

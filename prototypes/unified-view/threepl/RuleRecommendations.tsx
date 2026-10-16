@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { CELL, fitWidth } from "../RecordSheet";
 import { TableRequiredLabel } from "@/components/form-layout";
 import { BannerCallout } from "@/components/ui/banner";
 import { blankFrequency, toSchedule, type RuleFrequency } from "./RuleFrequency";
@@ -227,8 +228,8 @@ function AiSparkle({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" aria-hidden className={className}>
       <defs>
         <linearGradient id={id} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="color-mix(in oklab, var(--color-fp-lane-violet) 55%, white)" />
-          <stop offset="0.5" stopColor="var(--color-fp-lane-violet)" />
+          <stop offset="0" stopColor="color-mix(in oklab, var(--color-accent-violet) 55%, white)" />
+          <stop offset="0.5" stopColor="var(--color-accent-violet)" />
           <stop offset="1" stopColor="var(--fp-viz-7)" />
         </linearGradient>
       </defs>
@@ -260,7 +261,7 @@ export function RuleRecommendations({
           buttonVariant === "ghost"
             ? "-my-1 text-muted-foreground"
             : /* THE OUTLINE IN THE SPARKLE'S VIOLET (Pavan, 2026-10-06). */
-              "border-fp-lane-violet dark:border-fp-lane-violet"
+              "border-accent-violet"
         }
         onClick={() => setOpen(true)}
       >
@@ -268,7 +269,7 @@ export function RuleRecommendations({
         Recommendations
         {/* A LIGHT WASH OF THE SPARKLE'S VIOLET; the count in the body ink
             (Pavan, 2026-10-07). */}
-        <span className="rounded-sm bg-fp-lane-violet/15 px-1.5 text-xs font-medium tabular-nums text-foreground">
+        <span className="rounded-sm bg-accent-violet-soft px-1.5 text-xs font-medium tabular-nums text-foreground">
           {RECOMMENDATIONS.length}
         </span>
       </Button>
@@ -276,7 +277,12 @@ export function RuleRecommendations({
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="z-[60] w-[calc(100vw-56px)] gap-0 p-0 sm:max-w-[calc(100vw-56px)]"
+          /* SNUG, NOT FULL (Pavan, 2026-10-16): as wide as a card's ship-to
+             table at comfortable widths — customer, ship-to, products,
+             total — plus the card's and the list's padding; a sheet over a
+             sheet, so never wider than the screen less two gaps. */
+          className="z-[60] w-[min(var(--fp-rec-w),calc(100vw-112px))] gap-0 p-0 sm:max-w-[min(var(--fp-rec-w),calc(100vw-112px))]"
+          style={{ "--fp-rec-w": `${fitWidth({ tables: [[CELL.name, CELL.name, CELL.name, CELL.number]] }) + 24}px` } as React.CSSProperties}
         >
           <div className="flex items-start justify-between gap-4 border-b border-border p-4">
             <div className="flex min-w-0 flex-col gap-0.5">

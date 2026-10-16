@@ -232,8 +232,12 @@ export function ValuesCell({ values, label }: { values: string[]; label: string 
 export function RulePill({ ruleNo }: { ruleNo: string }) {
   return (
     <Pill color="purple" className="shrink-0">
-      <Repeat className="size-3" />
-      {ruleNo}
+      {/* ICON AND NUMBER ON ONE LINE — the pill's text span is a block, so
+          the pair rides in its own inline row. */}
+      <span className="inline-flex items-center gap-1">
+        <Repeat className="size-3 shrink-0" />
+        {ruleNo}
+      </span>
     </Pill>
   );
 }

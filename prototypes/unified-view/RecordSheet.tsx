@@ -46,6 +46,8 @@ export const CELL = {
   check: 44,
   /** "Top off" and other labelled checkboxes. */
   flag: 72,
+  /** Top off — its label and the select-all, after the quantity (DS ui §10i). */
+  topOff: 104,
   /** The row's own thing — an asset, a product, a partner, a document. */
   name: 200,
   /** A pick from a short list — type, unit, condition, terminal. */

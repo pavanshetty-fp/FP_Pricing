@@ -11,32 +11,26 @@ import { CELL, RecordSheet } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { RuleFrequencyPicker } from "../unified-view/threepl/RuleFrequency";
-import { DateButton, LinesTable } from "./OrderRequestSheet";
-import { SHIP_TOS, blankLine, dateOfKey, todayKey } from "./orders";
-import {
-  LEAD_DAYS,
-  OFF_DAYS,
-  blankRule,
-  ruleDayLabel,
-  runDates,
-  saveRule,
-  type OffDays,
-  type PortalRule,
-} from "./portalRules";
+import { LinesTable } from "./OrderRequestSheet";
+import { SHIP_TOS, blankLine, todayKey } from "./orders";
+import { LEAD_DAYS, blankRule, ruleDayLabel, runDates, saveRule, type PortalRule } from "./portalRules";
 
 /*
   CREATE (OR EDIT) A RECURRING RULE (Pavan, 2026-10-16) — one scroll, three
   sections, the rings stepper following it, as 3PL's Create recurring rule:
 
-    1 Rule and schedule   name, the ship-to (one per rule), the 3PL frequency
-                          picker, start, end after N deliveries, the window,
-                          and the next four deliveries it will make
+    1 Rule and schedule   name (its number, editable — as 3PL), the ship-to
+                          (one per rule), the 3PL frequency picker (its end
+                          date is the end), the window
     2 What to deliver     the tanks table (multi-pick), instructions
-    3 How orders are made lead days, weekends and holidays, the PO, reminders
+    3 How orders are made lead days, the PO, reminders
 
-  Nothing is gated: fill in any order; Create rule is live once the name, the
-  ship-to, a day and a product are there. Editing changes only dates whose
-  orders are not yet made.
+  NO START DATE, NO "END AFTER N" (Pavan, 2026-10-16): a new rule starts
+  today, so its first delivery is the first day the frequency hits; the end
+  is the frequency's end date. THE NEXT 4 DELIVERIES sit in the sticky strip
+  above Create rule. Nothing is gated: Create rule is live once the ship-to,
+  a day and a product are there. Editing changes only dates whose orders are
+  not yet made.
 */
 
 const SECTIONS = ["Rule and schedule", "What to deliver", "How orders are made"] as const;
@@ -106,7 +100,6 @@ export function RuleSheet({
         ? (draft.frequency.cycleWeeks ?? []).some((w) => w.length > 0)
         : draft.frequency.dayMode === "daily" || draft.frequency.days.length > 0;
   const pending: PendingItem[] = [
-    !draft.name.trim() && { key: "name", label: "Name the rule", target: "prule-step-1" },
     !draft.shipTo && { key: "ship", label: "Choose the ship-to", target: "prule-step-1" },
     !daysPicked && { key: "days", label: "Pick the days", target: "prule-step-1" },
     !draft.lines.some((l) => l.product) && { key: "lines", label: "Add a tank and its product", target: "prule-step-2" },
@@ -117,7 +110,7 @@ export function RuleSheet({
   return (
     <RecordSheet
       /* WIDTH FROM ITS CONTENT — the frequency unit is the widest thing. */
-      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.flag, CELL.name, CELL.name, CELL.number, CELL.bin]] }}
+      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin]] }}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
@@ -126,9 +119,35 @@ export function RuleSheet({
       createAction={editing ? "Save rule" : "Create rule"}
       showCancel={false}
       pending={pending}
-      footerBanner={<PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />}
+      footerBanner={
+        <div className="flex flex-col gap-2.5">
+          {/* THE NEXT FOUR IT WILL MAKE — always in view, above the button. */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">Next 4 deliveries</span>
+            <div className="grid grid-cols-4 gap-2">
+              {next.length === 0 ? (
+                <span className="col-span-4 text-sm text-muted-foreground">—</span>
+              ) : (
+                next.map((d) => {
+                  const l = ruleDayLabel(d.key);
+                  return (
+                    <div key={d.key} className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-1.5">
+                      <span className="text-sm text-foreground">{l.title}</span>
+                      <span className="text-xs text-muted-foreground">{l.description}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <PendingStrip pending={pending} clearLabel={editing ? "Ready to save" : "Ready to create"} />
+        </div>
+      }
       onSubmit={() => {
-        saveRule({ ...draft, name: draft.name.trim() }, !editing);
+        saveRule(
+          { ...draft, name: draft.name.trim() || draft.ruleNo, startKey: editing ? draft.startKey : todayKey() },
+          !editing
+        );
         toast.success(editing ? `${draft.ruleNo} saved` : `${draft.ruleNo} created — its orders arrive as drafts`);
         onOpenChange(false);
       }}
@@ -144,8 +163,8 @@ export function RuleSheet({
       <section id="prule-step-1" className="flex scroll-mt-4 flex-col gap-10">
         <SheetSection title="The rule">
           <div className="grid grid-cols-2 gap-6">
-            <SheetField label="Rule name" required>
-              <Input value={draft.name} placeholder="e.g. Hub A weekly diesel" onChange={(e) => set("name", e.target.value)} />
+            <SheetField label="Rule name">
+              <Input value={draft.name} placeholder={draft.ruleNo} onChange={(e) => set("name", e.target.value)} />
             </SheetField>
             <SheetField label="Ship-to" required>
               <Combobox
@@ -172,37 +191,6 @@ export function RuleSheet({
 
         <SheetSection title="Frequency">
           <RuleFrequencyPicker value={draft.frequency} onChange={(f) => set("frequency", f)} />
-        </SheetSection>
-
-        <SheetSection title="Runs">
-          <div className="grid grid-cols-2 gap-6">
-            <SheetField label="Starts" required>
-              <DateButton
-                label="Starts"
-                value={draft.startKey}
-                onChange={(k) => set("startKey", k)}
-                placeholder="Select date"
-                from={dateOfKey(todayKey()) ?? new Date()}
-              />
-            </SheetField>
-            <SheetField label="Ends after">
-              <div className="relative">
-                <Input
-                  inputMode="numeric"
-                  value={draft.endAfter ?? ""}
-                  placeholder="—"
-                  onChange={(e) => {
-                    const n = Number(e.target.value.replace(/[^0-9]/g, ""));
-                    set("endAfter", n > 0 ? n : null);
-                  }}
-                  className="pr-20"
-                />
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
-                  deliveries
-                </span>
-              </div>
-            </SheetField>
-          </div>
           <TimeWindowSlider
             label="Delivery window"
             required
@@ -210,26 +198,8 @@ export function RuleSheet({
             end={draft.windowEnd}
             onChange={(a, b) => setDraft((d) => ({ ...d, windowStart: a, windowEnd: b }))}
           />
-          {/* THE NEXT FOUR IT WILL MAKE — said before it is saved. */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">Next 4 deliveries</span>
-            <div className="grid grid-cols-4 gap-2">
-              {next.length === 0 ? (
-                <span className="col-span-4 text-sm text-muted-foreground">Pick the days to see them.</span>
-              ) : (
-                next.map((d) => {
-                  const l = ruleDayLabel(d.key);
-                  return (
-                    <div key={d.key} className="flex flex-col rounded-md border border-fp-outline-1 px-3 py-2">
-                      <span className="text-sm text-foreground">{l.title}</span>
-                      <span className="text-xs text-muted-foreground">{l.description}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
         </SheetSection>
+
       </section>
 
       <section id="prule-step-2" className="flex scroll-mt-4 flex-col gap-10">
@@ -274,18 +244,6 @@ export function RuleSheet({
                 options={LEAD_DAYS.map((n) => `${n} days before`)}
                 searchThreshold={99}
                 onValueChange={(v) => v && set("leadDays", Number(v.split(" ")[0]))}
-              />
-            </SheetField>
-            <SheetField label="On a weekend or holiday">
-              <Combobox
-                className="w-full"
-                value={OFF_DAYS.find((o) => o.value === draft.offDays)!.label}
-                options={OFF_DAYS.map((o) => o.label)}
-                searchThreshold={99}
-                onValueChange={(v) => {
-                  const o = OFF_DAYS.find((x) => x.label === v);
-                  if (o) set("offDays", o.value as OffDays);
-                }}
               />
             </SheetField>
             <SheetField label="PO number">

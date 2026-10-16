@@ -4267,7 +4267,7 @@ export function BrokerOrderSheet({
       fit={{
         tables: [
           [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, 132, 96, CELL.bin],
-          [CELL.flag, CELL.name, CELL.name, CELL.number, CELL.bin],
+          [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin],
           [CELL.pick, CELL.name, CELL.number, CELL.bin],
         ],
         rail: !inCreation,
@@ -5233,24 +5233,18 @@ export function BrokerOrderSheet({
                 its `overflow-hidden` clips these corners for us. */}
             <div>
               <table className="w-full table-fixed border-collapse">
-                {/* NARROW BY DESIGN (Pavan, 2026-10-15): Top off is a tick,
-                    names are short, a quantity is six digits. */}
+                {/* NARROW BY DESIGN (Pavan, 2026-10-15): names are short, a
+                    quantity is six digits. TOP OFF LAST, NEXT TO THE QUANTITY
+                    IT REPLACES (Pavan, 2026-10-16 — DS ui §10i). */}
                 <colgroup>
-                  <col className="w-[72px]" />
                   <col />
                   <col />
                   <col className="w-[110px]" />
+                  <col className="w-[104px]" />
                   <col className="w-[52px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-table-header">
-                    {/* THE COLUMN IS NAMED, so the tick means one thing on its
-                        own. Unlabelled, it needed a switch below the table to
-                        say what it was for, and the same tick then meant
-                        different things depending on that switch. */}
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Top off</TableRequiredLabel>
-                    </th>
                     {/* NOT REQUIRED. A line can name a product and a quantity
                         with no asset — bulk into a tank that is not on our
                         books, or a drop the driver identifies on arrival. The
@@ -5264,6 +5258,25 @@ export function BrokerOrderSheet({
                     <th className="px-3 py-2.5 text-right">
                       <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                     </th>
+                    {/* THE COLUMN IS NAMED, so the tick means one thing on its
+                        own. Its select-all sits beside the label; every row's
+                        tick is right-aligned under it. */}
+                    <th className="px-3 py-2.5">
+                      <span className="flex items-center justify-between gap-2">
+                        <TableRequiredLabel>Top off</TableRequiredLabel>
+                        <Checkbox
+                          checked={
+                            draft.lines.length > 0 && draft.lines.every((l) => l.topOff)
+                              ? true
+                              : draft.lines.some((l) => l.topOff)
+                                ? "indeterminate"
+                                : false
+                          }
+                          aria-label="Top off every line"
+                          onCheckedChange={(c) => draft.lines.forEach((_, i) => setTopOff(i, c === true))}
+                        />
+                      </span>
+                    </th>
                     <th aria-hidden />
                   </tr>
                 </thead>
@@ -5275,15 +5288,6 @@ export function BrokerOrderSheet({
                         key={i}
                         className="group/row h-11 border-b border-border last:border-b-0"
                       >
-                        {/* Checked = fill it. Unchecked = type a number. One
-                            control, so a row cannot claim both at once. */}
-                        <td className="px-3">
-                          <Checkbox
-                            checked={Boolean(line.topOff)}
-                            onCheckedChange={(c) => setTopOff(i, c === true)}
-                            aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                          />
-                        </td>
                         {/* THE RENTAL BADGE BELONGS TO THE ASSET. It says the
                             TANK is ours on hire, not that the fuel is — sat on
                             the product cell it read as a rental product, which
@@ -5376,6 +5380,17 @@ export function BrokerOrderSheet({
                             }
                           />
                         </td>
+                        {/* Checked = fill it. Unchecked = type a number. One
+                            control, so a row cannot claim both at once. */}
+                        <td className="px-3">
+                          <span className="flex justify-end">
+                            <Checkbox
+                              checked={Boolean(line.topOff)}
+                              onCheckedChange={(c) => setTopOff(i, c === true)}
+                              aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                            />
+                          </span>
+                        </td>
                         <td className="relative p-0 text-center">
                           <TableRowRemove
                             aria-label={`Remove ${line.asset || `asset line ${i + 1}`}`}
@@ -5400,7 +5415,7 @@ export function BrokerOrderSheet({
                   <tfoot>
                     <tr className="h-11 border-t border-border">
                       <td
-                        colSpan={3}
+                        colSpan={2}
                         className="px-3 text-right text-sm text-muted-foreground"
                       >
                         Total
@@ -5410,6 +5425,7 @@ export function BrokerOrderSheet({
                           ? "Top-off"
                           : `${gal.toLocaleString()} gal`}
                       </td>
+                      <td aria-hidden />
                       <td aria-hidden />
                     </tr>
                   </tfoot>
@@ -6433,7 +6449,7 @@ export function BrokerOrderSheet({
               if (!q) return null;
               return (
                 <SheetField label="Vendor cost">
-                  {/* ONE MONEY HELPER — DS ui §10g. It was a hand-rolled
+                  {/* ONE MONEY HELPER — DS ui §10i. It was a hand-rolled
                       `$` and a `toLocaleString`, which is how `$147` and
                       `$147.00` ended up on two screens. */}
                   <p className="text-sm tabular-nums text-foreground">

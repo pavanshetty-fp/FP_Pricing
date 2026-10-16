@@ -136,11 +136,7 @@ function RuleDetail({
   if (!rule) return null;
   const madeDates = new Set(made.map((m) => m.date));
   const coming = rule.status === "Ended" ? [] : runDates(rule, 31).filter((d) => !madeDates.has(d.key));
-  const ends = rule.frequency.endKey
-    ? DATE_FMT.format(new Date(`${rule.frequency.endKey}T00:00`))
-    : rule.endAfter
-      ? `After ${rule.endAfter} deliveries`
-      : "No end";
+  const ends = rule.frequency.endKey ? DATE_FMT.format(new Date(`${rule.frequency.endKey}T00:00`)) : "No end";
   return (
     <>
       <RecordSheet
@@ -149,7 +145,7 @@ function RuleDetail({
         open={open}
         onOpenChange={onOpenChange}
         mode="edit"
-        editTitle={`${rule.ruleNo} · ${rule.name}`}
+        editTitle={rule.name === rule.ruleNo ? rule.ruleNo : `${rule.ruleNo} · ${rule.name}`}
         createTitle=""
         createAction=""
         showCancel={false}
@@ -363,9 +359,7 @@ export function RecurringScreen() {
     setForm({
       rule: null,
       seed: {
-        name: `${rec.shipTo} · ${lines.map((l) => l.product).filter(Boolean).join(" + ")}`,
         shipTo: rec.shipTo,
-        startKey: start,
         frequency:
           rec.frequency === "Every 2 weeks"
             ? { ...base.frequency, days: [rec.weekday], repeat: "cycle", cycleWeeks: [[rec.weekday], []], cycleStartKey: start }
@@ -411,7 +405,11 @@ export function RecurringScreen() {
         renderCell={(r, k) => {
           switch (k) {
             case "rule":
-              return <TwoLineCell title={r.name} description={r.ruleNo} />;
+              return r.name === r.ruleNo ? (
+                <span className="truncate text-sm">{r.ruleNo}</span>
+              ) : (
+                <TwoLineCell title={r.name} description={r.ruleNo} />
+              );
             case "shipTo":
               return <span className="truncate text-sm">{r.shipTo}</span>;
             case "products":

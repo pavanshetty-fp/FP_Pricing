@@ -17,7 +17,9 @@
       bare bin `Button` labelled "Remove …" (Pavan, 2026-09-23);
     · EVERY picker in a table that adds rows takes `multiple` — several
       picks make several rows — or is marked ONE VALUE with why it is a value
-      inside a row (Pavan, 2026-10-15; tightened 2026-10-16).
+      inside a row (Pavan, 2026-10-15; tightened 2026-10-16);
+    · TOP OFF COMES AFTER QTY — a table header naming Top off before its
+      Qty / Quantity header (§10i, Pavan, 2026-10-16).
 
   WHAT IT DOES NOT DO. Whether the RIGHT cell takes focus, whether a table may
   be emptied, and what a new row starts with are readings (L2), listed in the
@@ -84,6 +86,21 @@ export function check() {
           "a local cell control — use the DS TableCell* component", rule));
       }
     });
+
+    /* TOP OFF NEXT TO THE QUANTITY (§10i): within each <thead>, a Top off
+       header must not come before the Qty one. */
+    const heads = src.split(/<thead\b/).slice(1).map((h) => h.split(/<\/thead>/)[0]);
+    let at = 0;
+    for (const h of heads) {
+      at = src.indexOf(h, at);
+      const top = h.search(/Top off/i);
+      const qty = h.search(/Qty|Quantity/);
+      if (top >= 0 && qty >= 0 && top < qty) {
+        out.push(finding("L1", rel(file), src.slice(0, at + top).split("\n").length,
+          "Top off comes before the quantity — move it to the column after Qty, select-all in its header, ticks right-aligned (§10i)",
+          rule));
+      }
+    }
   }
   return out;
 }

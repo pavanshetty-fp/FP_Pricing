@@ -176,21 +176,21 @@ export function LinesTable({
     onChange(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const total = quantityOf(lines);
   const started = lines.some((l) => l.topOff || l.gal > 0);
+  const allTop = lines.length > 0 && lines.every((l) => l.topOff);
+  const someTop = lines.some((l) => l.topOff);
   return (
     <table className="w-full table-fixed border-collapse">
-      {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order. */}
+      {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order. TOP OFF
+          LAST, NEXT TO THE QUANTITY IT REPLACES (Pavan, 2026-10-16 — DS ui §10i). */}
       <colgroup>
-        <col className="w-[72px]" />
         <col />
         <col />
         <col className="w-[110px]" />
+        <col className="w-[104px]" />
         <col className="w-[52px]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
-          <th className="px-3 py-2.5 text-left">
-            <TableRequiredLabel>Top off</TableRequiredLabel>
-          </th>
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Asset</TableRequiredLabel>
           </th>
@@ -199,6 +199,17 @@ export function LinesTable({
           </th>
           <th className="px-3 py-2.5 text-right">
             <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+          </th>
+          {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
+          <th className="px-3 py-2.5">
+            <span className="flex items-center justify-between gap-2">
+              <TableRequiredLabel>Top off</TableRequiredLabel>
+              <Checkbox
+                checked={allTop ? true : someTop ? "indeterminate" : false}
+                aria-label="Top off every line"
+                onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
+              />
+            </span>
           </th>
           <th aria-hidden />
         </tr>
@@ -209,13 +220,6 @@ export function LinesTable({
           const name = asset?.name || `line ${i + 1}`;
           return (
             <tr key={i} className="group/row h-11 border-b border-border last:border-b-0">
-              <td className="px-3">
-                <Checkbox
-                  checked={l.topOff}
-                  onCheckedChange={(c) => update(i, { topOff: c === true })}
-                  aria-label={`Top off ${name}`}
-                />
-              </td>
               <td className="relative p-0">
                 <TableCellSelect
                   value={asset?.name ?? ""}
@@ -279,6 +283,15 @@ export function LinesTable({
                   onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
                 />
               </td>
+              <td className="px-3">
+                <span className="flex justify-end">
+                  <Checkbox
+                    checked={l.topOff}
+                    onCheckedChange={(c) => update(i, { topOff: c === true })}
+                    aria-label={`Top off ${name}`}
+                  />
+                </span>
+              </td>
               <td className="relative p-0 text-center">
                 {/* A request needs a line, so the last row keeps no bin. */}
                 <TableRowRemove
@@ -295,12 +308,13 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={3} className="px-3 text-right text-sm text-muted-foreground">
+            <td colSpan={2} className="px-3 text-right text-sm text-muted-foreground">
               Total
             </td>
             <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
+            <td aria-hidden />
             <td aria-hidden />
           </tr>
         </tfoot>
@@ -557,7 +571,7 @@ export function OrderRequestSheet({
          documents = document · added · by · bin. The summary rail beside. */
       fit={{
         tables: [
-          [CELL.flag, CELL.name, CELL.name, CELL.number, CELL.bin],
+          [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin],
           [CELL.name, CELL.date, CELL.pick, CELL.bin],
         ],
         rail: true,

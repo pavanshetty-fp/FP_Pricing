@@ -153,7 +153,7 @@ export function RecurringDeliverySheet({
     <RecordSheet
       /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): lines table = product pick,
          asset name, quantity, Top off. */
-      fit={{ tables: [[CELL.pick, CELL.name, CELL.number, CELL.flag]] }}
+      fit={{ tables: [[CELL.pick, CELL.name, CELL.number, CELL.topOff]] }}
       /* IT OPENS OVER THE RULE SHEET, so it takes the gap twice. At level 1 it
          covered the rule sheet exactly and read as the SAME sheet having
          changed its contents — the 56px strip of the sheet underneath is the
@@ -324,8 +324,18 @@ export function RecurringDeliverySheet({
                 <th className="w-[150px] px-3 py-2 text-right text-xs font-medium text-muted-foreground">
                   Quantity (gal)
                 </th>
-                <th className="w-[110px] px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Top off
+                <th className="w-[104px] px-3 py-2 text-xs font-medium text-muted-foreground">
+                  {/* TOP OFF, THEN ITS SELECT-ALL; ticks right-aligned under it (DS ui §10i). */}
+                  <span className="flex items-center justify-between gap-2">
+                    Top off
+                    {editable && (
+                      <Checkbox
+                        checked={lines.length > 0 && lines.every((l) => l.topOff) ? true : lines.some((l) => l.topOff) ? "indeterminate" : false}
+                        aria-label="Top off every line"
+                        onCheckedChange={(v) => onPatch(delivery.dateKey, { lines: lines.map((l) => ({ ...l, topOff: v === true })) })}
+                      />
+                    )}
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -366,19 +376,21 @@ export function RecurringDeliverySheet({
                     )}
                   </td>
                   <td className="px-3 py-2.5">
-                    {editable ? (
-                      <Checkbox
-                        checked={l.topOff}
-                        aria-label={`Top off ${l.product}`}
-                        onCheckedChange={(v) =>
-                          setLine(i, { topOff: v === true })
-                        }
-                      />
-                    ) : l.topOff ? (
-                      <Pill>Yes</Pill>
-                    ) : (
-                      <span className="text-muted-foreground">No</span>
-                    )}
+                    <span className="flex justify-end">
+                      {editable ? (
+                        <Checkbox
+                          checked={l.topOff}
+                          aria-label={`Top off ${l.product}`}
+                          onCheckedChange={(v) =>
+                            setLine(i, { topOff: v === true })
+                          }
+                        />
+                      ) : l.topOff ? (
+                        <Pill>Yes</Pill>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}

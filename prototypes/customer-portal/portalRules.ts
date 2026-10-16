@@ -144,7 +144,8 @@ export function blankRule(): PortalRule {
   return {
     id: `rule-${n}-${Date.now()}`,
     ruleNo: `R-${n}`,
-    name: "",
+    /* ITS NUMBER UNTIL RENAMED — as 3PL's rule (Pavan, 2026-10-16). */
+    name: `R-${n}`,
     shipTo: "",
     frequency: {
       dayMode: "specific",
@@ -274,7 +275,7 @@ export function generate(say = false) {
       ...base,
       id: `rule-${n}`,
       ruleNo: `R-${n}`,
-      name: `${q.shipTo} · ${q.lines.map((l) => l.product).join(" + ")}`,
+      name: `R-${n}`,
       shipTo: q.shipTo,
       frequency,
       startKey: q.date,

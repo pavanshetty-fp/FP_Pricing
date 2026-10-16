@@ -840,6 +840,24 @@ Repeat / Times a day, 2026-10-16).
 **Checked, not remembered.** `npm run eval` → `fields-fill`: a container with
 a fixed pixel width that holds fields and no `FIXED WIDTH` note.
 
+## 10i. Top off sits next to the quantity, right-aligned (Pavan, 2026-10-16)
+
+**Top off is the column AFTER Qty** — it replaces the number, so it sits
+beside it, never first. Every table with a Top off column, every module
+(3PL, Sales, Service, Customer Portal), as 3PL's Create recurring rule:
+
+- **Header:** the label "Top off", then its **select-all checkbox** at the
+  right edge (`justify-between`) — ticked when every line tops off,
+  indeterminate when some do.
+- **Rows:** each tick **right-aligned** (`justify-end`) under the select-all.
+- **Width:** `CELL.topOff` (104) in the sheet's `fit`; the total row's label
+  spans the columns before Qty, the total sits under Qty.
+- Ticking a row shuts its Qty cell ("Top-off"); the typed number is kept for
+  unticking.
+
+**Checked, not remembered.** `npm run eval` → `table-rows`: a Top off header
+that comes before the table's Qty header.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

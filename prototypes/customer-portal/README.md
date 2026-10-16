@@ -272,6 +272,14 @@ From the FleetPanda portal's user record (structure only, invented people).
 - **Recurring Orders** = 3PL's format, under Orders beside Order Requests: one row per series, opens onto its
   deliveries (first = the request, then the next month's dates, each
   skippable); ⋯ pause / resume / end / open.
+- **Recurring Orders has the full list toolkit** (Pavan, 2026-10-16 — like
+  3PL's): saved views, line-of-service segment, **Create Rule** (a new
+  recurring order request), **Recommendations** beside Filters (from the
+  account's own delivery history; "Review and Create Rule" pre-fills ship-to,
+  tanks, quantities, frequency and next date), search, filters (series ·
+  ship-to · frequency), search by column, column settings, export. A row
+  opens the series sheet: schedule, deliveries with Skip, ⋯ Pause / Resume /
+  End / Open request.
 - **Assets pick several at once** in the order form: tick, Apply — the first
   fills the row, each other gets its own row (the DS cell's `multiple`).
 - **Invoice ↔ order** numbers are links both ways.

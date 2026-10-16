@@ -90,6 +90,8 @@ export interface PortalListProps<R, K extends string> {
   onOpen: (r: R) => void;
   openLabel: (r: R) => string;
   emptyIcon: React.ReactNode;
+  /** Beside the Filters button — e.g. Recommendations (3PL's place for it). */
+  afterFilters?: React.ReactNode;
   segments?: { key: string; label: string }[];
   segmentValue?: string;
   onSegmentChange?: (key: string) => void;
@@ -121,6 +123,7 @@ export function PortalList<R, K extends string>({
   segments,
   segmentValue,
   onSegmentChange,
+  afterFilters,
 }: PortalListProps<R, K>) {
   const labelled = columns.filter((c) => c.label);
   const firstKey = labelled[0]?.key ?? "";
@@ -311,6 +314,7 @@ export function PortalList<R, K extends string>({
           }}
           searchPlaceholder={searchPlaceholder}
           filters={filtersControl()}
+          afterFilters={afterFilters}
           columns={toggleColumns}
           hiddenColumns={hidden}
           columnOrder={columnOrder}

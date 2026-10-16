@@ -221,7 +221,7 @@ const spark = (cx: number, cy: number, r: number) => {
  * at the top left, deep at the bottom right. Colours are the board's violet
  * lane and the violet data-viz step.
  */
-function AiSparkle({ className }: { className?: string }) {
+export function AiSparkle({ className }: { className?: string }) {
   /* Colons from useId would need escaping inside url(). */
   const id = `ai-${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (

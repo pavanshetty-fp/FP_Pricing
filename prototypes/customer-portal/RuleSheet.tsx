@@ -12,7 +12,8 @@ import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { NextDeliveries, RuleFrequencyPicker } from "../unified-view/threepl/RuleFrequency";
 import { LinesTable } from "./OrderRequestSheet";
-import { SHIP_TOS, blankLine, todayKey } from "./orders";
+import { SHIP_TOS, blankLine, clampPreferred, todayKey } from "./orders";
+import { PreferredWindows } from "./PreferredWindows";
 import { LEAD_DAYS, blankRule, runDates, saveRule, type PortalRule } from "./portalRules";
 
 /*
@@ -110,7 +111,7 @@ export function RuleSheet({
   return (
     <RecordSheet
       /* WIDTH FROM ITS CONTENT — the frequency unit is the widest thing. */
-      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin]] }}
+      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.pick, CELL.pick, CELL.number, CELL.topOff, CELL.number, CELL.number, CELL.number, CELL.number, CELL.bin]] }}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
@@ -164,6 +165,7 @@ export function RuleSheet({
                       shipTo: v,
                       lines: kept.length ? kept : [blankLine()],
                       po: { ...d.po, number: d.po.number || (s?.poNumber ?? "") },
+                      preferred: d.preferred.length ? d.preferred : clampPreferred(s?.preferred ?? [], d.windowStart, d.windowEnd),
                     };
                   })
                 }
@@ -179,7 +181,15 @@ export function RuleSheet({
             required
             start={draft.windowStart}
             end={draft.windowEnd}
-            onChange={(a, b) => setDraft((d) => ({ ...d, windowStart: a, windowEnd: b }))}
+            onChange={(a, b) =>
+              setDraft((d) => ({ ...d, windowStart: a, windowEnd: b, preferred: clampPreferred(d.preferred, a, b) }))
+            }
+          />
+          <PreferredWindows
+            windowStart={draft.windowStart}
+            windowEnd={draft.windowEnd}
+            value={draft.preferred}
+            onChange={(p) => set("preferred", p)}
           />
         </SheetSection>
 
@@ -202,7 +212,13 @@ export function RuleSheet({
           }
         >
           {draft.shipTo ? (
-            <LinesTable lines={draft.lines} shipTo={draft.shipTo} focusRow={focusRow} onChange={(lines) => set("lines", lines)} />
+            <LinesTable
+              lines={draft.lines}
+              shipTo={draft.shipTo}
+              focusRow={focusRow}
+              onChange={(lines) => set("lines", lines)}
+              deliveryKey={next[0]?.key ?? ""}
+            />
           ) : (
             <p className="p-4 text-sm text-muted-foreground">Choose the ship-to above to add its tanks.</p>
           )}

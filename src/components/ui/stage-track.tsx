@@ -23,7 +23,9 @@ export function StageTrack({
   onStageClick,
   disabledReason,
   compact,
-  tone = "brand",
+  /* VIOLET BY DEFAULT (Pavan, 2026-10-19): the step in progress wears the
+     accent wherever a stepper is drawn. */
+  tone = "accent",
   variant = "rings",
 }: {
   stages: Stage[];
@@ -43,8 +45,9 @@ export function StageTrack({
   /**
    * RINGS — every step a circle, its name under it (Pavan, 2026-10-16, after a
    * stepper reference; tried on Create recurring rule): done a green disc with
-   * a white tick and a green name, the current step a blue ring and a blue
-   * name, the rest grey rings; the line blue up to the current step, grey on.
+   * a white tick and a green name, the current step a VIOLET ring and name
+   * (the accent), the rest grey rings; the line GREEN up to the current step
+   * — confirmed ground — grey on (Pavan, 2026-10-19; was blue).
    * Spread evenly, each step centred in an equal column. THE DEFAULT, for a
    * record's detail track and a form's steps alike, every module (Pavan,
    * 2026-10-16). `track` keeps the older dots-and-pill look.
@@ -145,7 +148,7 @@ export function StageTrack({
     return (
       <div className={cn("relative", className)}>
         <ol aria-label="Steps" className="relative grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
-          {/* The line between the first and the last centre; blue up to the
+          {/* The line between the first and the last centre; green up to the
               current step. */}
           <span
             aria-hidden
@@ -155,7 +158,7 @@ export function StageTrack({
           {at > 0 && (
             <span
               aria-hidden
-              className="absolute top-[11px] h-0.5 bg-fp-lane-blue transition-[width] duration-500 ease-out motion-reduce:transition-none"
+              className="absolute top-[11px] h-0.5 bg-status-success transition-[width] duration-500 ease-out motion-reduce:transition-none"
               style={{ left: centre(0), width: `${(at / n) * 100}%` }}
             />
           )}
@@ -171,7 +174,7 @@ export function StageTrack({
                     done
                       ? "bg-status-success text-status-success-foreground"
                       : here
-                        ? "border-[5px] border-fp-lane-blue bg-fp-surface-1b"
+                        ? "border-[5px] border-accent-violet bg-fp-surface-1b"
                         : "border-[5px] border-fp-outline-2 bg-fp-surface-1b"
                   )}
                 >
@@ -183,7 +186,7 @@ export function StageTrack({
                     done
                       ? "text-status-success"
                       : here
-                        ? "font-medium text-fp-banner-accent-info"
+                        ? "font-medium text-accent-violet-ink"
                         : "text-muted-foreground"
                   )}
                 >

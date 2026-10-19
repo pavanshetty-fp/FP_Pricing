@@ -346,18 +346,35 @@ export function TripTimeline({ r }: { r: OrderRequest }) {
     <ol className="flex flex-col">
       {steps.map((s, i) => (
         <li key={i} className="relative flex gap-3 pb-3 last:pb-0">
+          {/* THE STEPPER'S COLOURS (Pavan, 2026-10-19): done green and the
+              line green up to the step in progress; that step violet (the
+              accent); the rest grey. */}
           {i < steps.length - 1 && (
-            <span aria-hidden className={cn("absolute top-3 bottom-0 left-[5px] w-px", s.done ? "bg-foreground/30" : "bg-border")} />
+            <span
+              aria-hidden
+              className={cn("absolute top-3 bottom-0 left-[5px] w-0.5 -translate-x-[0.5px]", s.done ? "bg-status-success" : "bg-border")}
+            />
           )}
           <span
             aria-hidden
             className={cn(
               "relative mt-1 size-[11px] shrink-0 rounded-full border-2",
-              s.done ? "border-foreground bg-foreground" : i === nextAt ? "border-foreground bg-fp-surface-1b" : "border-border bg-fp-surface-1b"
+              s.done
+                ? "border-status-success bg-status-success"
+                : i === nextAt
+                  ? "border-accent-violet bg-fp-surface-1b"
+                  : "border-border bg-fp-surface-1b"
             )}
           />
           <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-            <span className={cn("text-sm", s.done ? "text-foreground" : "text-muted-foreground")}>{s.what}</span>
+            <span
+              className={cn(
+                "text-sm",
+                s.done ? "text-foreground" : i === nextAt ? "font-medium text-accent-violet-ink" : "text-muted-foreground"
+              )}
+            >
+              {s.what}
+            </span>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{s.done ? hm(s.at) : `~${hm(s.at)}`}</span>
           </span>
         </li>

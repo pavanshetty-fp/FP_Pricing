@@ -63,6 +63,7 @@ import {
   orderTheRest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
+import { OrderTanksLayer } from "./TankLevel";
 import { MapHoverCard, OverviewCards } from "./overview";
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { bannerSoftAction } from "@/components/ui/banner";
@@ -865,6 +866,9 @@ export function OrdersScreen({
                 setCreatingId(null);
                 setOpenId(r.id);
               }}
+              /* EACH ORDER'S TANKS, ONE LAYER DOWN (Pavan, 2026-10-17). */
+              renderExpanded={(r) => <OrderTanksLayer r={r} />}
+              expandLabel={(r, open) => `${open ? "Hide" : "Show"} tanks for ${r.requestNo}`}
               showColumnFilters={colFiltersOpen}
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {

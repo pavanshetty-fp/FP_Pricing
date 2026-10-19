@@ -26,6 +26,8 @@ import {
   type OrderRequest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
+import { BatteryCell, DaysToEmpty, LevelReading } from "./TankLevel";
+import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
 import {
   CREDIT,
@@ -1352,6 +1354,12 @@ export function DashboardScreen() {
           one press further. */}
       <ActionBanner rows={rows} onOpen={setActionId} />
 
+      {/* TANK LEVELS (Pavan, 2026-10-17) — every monitored tank, emptiest
+          first, with its band and the monitor's battery. */}
+      <Section title="Tank levels">
+        <TankLevelsCard />
+      </Section>
+
       <Section title="Products & pricing">
         {/* THE TENANT CHOOSES WHETHER MARKET PRICES ARE SHOWN. ONE CARD, TWO
             PARTS RULED APART (Pavan, 2026-10-14) — as the Delivery
@@ -1411,5 +1419,49 @@ export function DashboardScreen() {
         }}
       />
     </div>
+  );
+}
+
+function TankLevelsCard() {
+  const tanks = SHIP_TOS.flatMap((s) => s.assets.filter((a) => a.monitor && a.status === "Active").map((a) => ({ a, s })))
+    .sort((x, y) => x.a.level - y.a.level);
+  return (
+    <Card
+      title="Monitored tanks"
+      aside={
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {tanks.length} tanks
+        </span>
+      }
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Asset</TableHead>
+            <TableHead>Ship-to</TableHead>
+            <TableHead>Current level</TableHead>
+            <TableHead>Days to empty</TableHead>
+            <TableHead>Battery</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tanks.map(({ a, s }) => (
+            <TableRow key={a.id}>
+              <TableCell className="text-foreground">{a.name}</TableCell>
+              <TableCell className="text-muted-foreground">{s.name}</TableCell>
+              <TableCell>
+                <LevelReading asset={a} />
+              </TableCell>
+              <TableCell>
+                <DaysToEmpty asset={a} />
+              </TableCell>
+              <TableCell>
+                <BatteryCell asset={a} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

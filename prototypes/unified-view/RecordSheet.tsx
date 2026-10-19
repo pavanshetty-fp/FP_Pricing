@@ -48,6 +48,10 @@ export const CELL = {
   flag: 72,
   /** Top off — its label and the select-all, after the quantity (DS ui §10i). */
   topOff: 104,
+  /** A tank's level reading — gauge and % (portal, 2026-10-17). */
+  level: 150,
+  /** A tank monitor's battery. */
+  battery: 100,
   /** The row's own thing — an asset, a product, a partner, a document. */
   name: 200,
   /** A pick from a short list — type, unit, condition, terminal. */

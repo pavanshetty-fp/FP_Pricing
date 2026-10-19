@@ -24,7 +24,8 @@ const SIZES = ["compact", "form", "data", "full"];
 /** The options a sheet may take, and how to spot each one. */
 const OPTIONS = {
   size: /<RecordSheet[\s\S]{0,2000}?\bsize="([a-z]+)"/,
-  fit: /<RecordSheet[\s\S]{0,3000}?\bfit=/,
+  /* `fit=`, or `fit:` inside a spread of props that change by step. */
+  fit: /<RecordSheet[\s\S]{0,3000}?\bfit[=:]/,
   /* A TABLE INSIDE THE SHEET — from the sheet's own tag on. */
   table: /<RecordSheet[\s\S]*?<(?:table|ProductTable|DocumentsTable|ListTable|LoadOrderTable)\b/,
   level2: /^\s*level=\{2\}/m,

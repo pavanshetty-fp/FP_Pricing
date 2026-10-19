@@ -100,15 +100,18 @@ function Products({ lines }: { lines: RequestLine[] }) {
 }
 
 type RK = "rule" | "shipTo" | "products" | "qty" | "schedule" | "next" | "made" | "status";
+/* FIXED TO THEIR LONGEST CONTENT (Pavan, 2026-10-17): a rule is its number
+   or a short name, products are one name and a "+N", a quantity is five
+   digits, orders made a small count, status one short pill. */
 const LIST_COLUMNS: ListColumn<RK>[] = [
-  { key: "rule", label: "Rule", width: 240, sortable: true },
+  { key: "rule", label: "Rule", width: 180, sortable: true },
   { key: "shipTo", label: "Ship-to", width: 160, sortable: true },
-  { key: "products", label: "Products", width: 200, sortable: true },
-  { key: "qty", label: "Qty (gal)", width: 110, sortable: true, align: "right" },
+  { key: "products", label: "Products", width: 150, sortable: true },
+  { key: "qty", label: "Qty (gal)", width: 100, sortable: true, align: "right" },
   { key: "schedule", label: "Schedule", width: 190, sortable: true },
   { key: "next", label: "Next Delivery", width: 160, sortable: true },
   { key: "made", label: "Orders Made", width: 120, sortable: true, align: "right" },
-  { key: "status", label: "Status", width: 120, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
 ];
 
 const nextOf = (r: PortalRule) => (r.status === "Active" ? runDates(r, 120).find((d) => !d.skipped) : undefined);

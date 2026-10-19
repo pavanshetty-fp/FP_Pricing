@@ -61,7 +61,7 @@ export function Steps({
   return (
     <StageTrack
       compact
-      tone={tone ?? "neutral"}
+      tone={tone ?? "accent"}
       variant={variant ?? "rings"}
       className={className}
       stages={steps.map((s) => ({ key: s.value, label: s.label }))}

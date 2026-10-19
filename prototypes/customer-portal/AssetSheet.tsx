@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DATE_FMT } from "../unified-view/data";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import {
   ASSET_TYPES,
@@ -29,9 +29,13 @@ import {
   PRODUCT_CATEGORIES,
   printKey,
   productsIn,
+  REQUEST_STATUS_TONE,
+  useRequests,
   type Asset,
   type ShipTo,
 } from "./orders";
+import { BatteryCell, LevelReading, LineLevel } from "./TankLevel";
+import { usePortalNav } from "./nav";
 import {
   blankAsset,
   createAsset,
@@ -233,7 +237,10 @@ export function AssetSheet({
         {...(step === "location" ? { fit: { tables: [[420, 420]] } } : { size: "form" as const })}
         /* AN EXISTING ASSET IS DATA-INTENSIVE — 1200, fields three across
            (Pavan, 2026-10-15). Creating keeps the widths above. */
-        {...(!creating ? { size: "data" as const } : {})}
+        {...(!creating
+          ? /* …and at least as wide as its order history (Pavan, 2026-10-17). */
+            { size: "data" as const, fit: { tables: [[CELL.name, CELL.date, CELL.name, CELL.number, CELL.level, CELL.status]] } }
+          : {})}
         open={open}
         onOpenChange={onOpenChange}
         mode={creating ? "create" : "edit"}
@@ -447,7 +454,22 @@ export function AssetSheet({
                 </SheetField>
               )}
             </div>
+            {/* THE MONITOR'S READING NOW (Pavan, 2026-10-17). */}
+            {!creating && asset?.monitor && (
+              <div className="grid grid-cols-2 gap-4">
+                <SheetField label="Current level">
+                  <LevelReading asset={asset} className="min-h-9" />
+                </SheetField>
+                <SheetField label="Monitor battery">
+                  <span className="flex min-h-9 items-center">
+                    <BatteryCell asset={asset} />
+                  </span>
+                </SheetField>
+              </div>
+            )}
           </SheetSection>
+
+          {!creating && asset && <AssetOrderHistory asset={asset} />}
 
           <SheetSection title="Notes">
             <Textarea
@@ -542,5 +564,72 @@ export function AssetSheet({
         entries={asset ? assetLog(asset.id) : []}
       />
     </>
+  );
+}
+
+/*
+  ORDER HISTORY (Pavan, 2026-10-17) — this tank's last orders: when, what,
+  how much, and the level it was ordered at and refilled to.
+*/
+function AssetOrderHistory({ asset }: { asset: Asset }) {
+  const nav = usePortalNav();
+  const rows = useRequests()
+    .filter((r) => r.status !== "Draft")
+    .flatMap((r) => r.lines.filter((l) => l.assetId === asset.id).map((l) => ({ r, l })))
+    .sort((x, y) => (y.r.date || "").localeCompare(x.r.date || ""))
+    .slice(0, 10);
+  return (
+    <SheetSection title="Order history" flush>
+      {rows.length === 0 ? (
+        <p className="p-4 text-sm text-muted-foreground">No orders yet.</p>
+      ) : (
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border bg-fp-table-header">
+              {["Request #", "Date", "Product", "Qty (gal)", "Ordered at → refilled to", "Status"].map((h, i) => (
+                <th
+                  key={h}
+                  className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ r, l }, i) => (
+              <tr key={`${r.id}-${i}`} className="h-12 border-b border-border last:border-b-0">
+                <td className="whitespace-nowrap px-3">
+                  <button
+                    type="button"
+                    className="tabular-nums text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 hover:decoration-solid"
+                    onClick={() => nav.openOrder(r.requestNo)}
+                  >
+                    {r.requestNo}
+                  </button>
+                </td>
+                <td className="whitespace-nowrap px-3 text-foreground">{r.date ? printKey(r.date) : "—"}</td>
+                <td className="whitespace-nowrap px-3 text-foreground">{l.product || "—"}</td>
+                <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">
+                  {l.topOff ? "Top off" : l.gal.toLocaleString()}
+                </td>
+                <td className="px-3">
+                  {l.levelAtOrder === undefined ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <LineLevel line={l} />
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3">
+                  <StatusChip tone={REQUEST_STATUS_TONE[r.status]} variant="text">
+                    {r.status}
+                  </StatusChip>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </SheetSection>
   );
 }

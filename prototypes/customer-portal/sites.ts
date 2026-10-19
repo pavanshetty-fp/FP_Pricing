@@ -43,7 +43,7 @@ const log = (audit: ShipTo["audit"], change: string) => [
 let seq = 0;
 const newId = (p: string) => `${p}-new-${Date.now().toString(36)}-${++seq}`;
 
-export type AssetDraft = Omit<Asset, "id" | "audit" | "level"> & { id?: string };
+export type AssetDraft = Omit<Asset, "id" | "audit" | "level" | "battery" | "dailyUse"> & { id?: string };
 export type ShipToDraft = Omit<ShipTo, "id" | "audit" | "assets"> & { assets: AssetDraft[] };
 
 /* ONE PRODUCT LIST — `product` is its first (what an order line starts
@@ -56,6 +56,8 @@ const toAsset = (d: AssetDraft, keep?: Asset): Asset => ({
     : Array.from(new Set(d.products.map(categoryOf).filter(Boolean))),
   id: d.id ?? newId("as"),
   level: keep?.level ?? 0,
+  battery: keep?.battery ?? 100,
+  dailyUse: keep?.dailyUse ?? 0,
   audit: keep?.audit ?? [{ at: new Date().toISOString(), by: PORTAL_ACTOR, changes: ["Asset added"] }],
 });
 

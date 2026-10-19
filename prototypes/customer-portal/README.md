@@ -314,3 +314,42 @@ From the FleetPanda portal's user record (structure only, invented people).
 - Customer dispute rules still open: time limit · whether the disputed amount stops counting toward credit · who may dispute · paid invoices · whole vs part due date paused (built: open invoices, all roles, whole due date paused).
 - Duplicate-order warning on submit (PRD FR-23) not built.
 - Overview compares with last week's full day; should be same time of day.
+
+## Tank monitors & preferred windows (Pavan, 2026-10-17)
+
+- **Monitors are set up outside the portal**; the portal only reads them.
+  10 of 12 seeded assets carry one (a pump and a propane tank don't).
+- **Level bands** (`levelBand`): ≤10 Urgent (red, blinking), <50 Low (red),
+  <80 Moderate (yellow), ≥80 Sufficient (green). Battery under 20% is red.
+- **The cell** (`TankLevel.tsx`): gauge · % · band pill · battery. On the
+  Assets list, a ship-to's assets table, the order form's tanks table, and a
+  new **Tank levels** card on the dashboard (emptiest first).
+- **Order history:** each order line keeps the level when ordered (snapshot on
+  submit, and on rule-made orders) and, once delivered, what it was refilled
+  to. Shown on the order's tanks table ("Level ordered → refilled") and in an
+  **Order history** section on the asset page (last 10).
+- **Preferred windows** (`PreferredWindows.tsx`): none, one or several,
+  half-hour steps, always inside the delivery window (trimmed when it
+  shrinks). Set on an order, on a ship-to (new orders there start with it;
+  Ship-tos list column) and on a recurring rule (its orders inherit them).
+- "Nearly empty" banner now = the Urgent band (≤10%).
+
+- **Level and battery are two columns** wherever tanks are listed (Assets
+  list, ship-to assets, order form, dashboard, Orders' nested tanks).
+- **Orders list rows expand** (DS expandable row, now an opt-in on the shared
+  `ListTable` via `renderExpanded`): each order's tanks — product, qty, level
+  ordered → refilled, tank level now, battery.
+- **Recurring Orders columns are fixed to their longest content:** Rule 180 ·
+  Products 150 · Qty 100 · Orders Made 120 · Status 100.
+- **No band words** (Urgent / Low / Moderate / Sufficient) on any screen —
+  the level is a gauge in the band's colour and the %.
+- **What an order does to the tank** (`orders.ts` tank arithmetic, each asset
+  has a monitor `dailyUse`): in the tank now = level% × capacity; days to
+  empty = now ÷ daily use; left at delivery = now − daily use × days until
+  delivery; **suggested = capacity − left at delivery** (full on the day,
+  sum on hover, press to use); **on fulfilment = (left + ordered) ÷ capacity**.
+- **Order form tanks:** Asset · Product · Qty · Top off · Current level · On
+  fulfilment · Suggested · Days to empty (sent orders: on fulfilment =
+  ordered → refilled %). **Orders' nested layer:** Asset · Product · Qty ·
+  Current level · On fulfilment · Days to empty · Battery. Days to empty also
+  on the Assets list and dashboard card; red when it runs out before delivery.

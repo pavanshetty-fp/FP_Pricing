@@ -131,6 +131,18 @@ export interface ListTableProps<Row, K extends string> {
   groupNoun?: string;
   /** Unit for the summed measure the headers carry, e.g. `gal`. */
   groupUnit?: string;
+  /**
+   * A NESTED LAYER — the DS expandable row (`tables-layout/DataTable`,
+   * Pavan, 2026-10-17). Given, the first column's cell leads with a small
+   * chevron that turns down and opens this content in a full-width row
+   * beneath: pinned to the visible width, WHITE (the content layer), and a
+   * 2px GREEN rail that runs unbroken from the parent row's left edge into
+   * it. The open parent keeps a tint and drops its bottom divider (DS ui
+   * §10j).
+   */
+  renderExpanded?: (row: Row) => React.ReactNode;
+  /** The chevron's label, e.g. `Show tanks for REQ-1115`. */
+  expandLabel?: (row: Row, open: boolean) => string;
 }
 
 export function ListTable<Row, K extends string>({
@@ -161,7 +173,28 @@ export function ListTable<Row, K extends string>({
   columnFilters,
   onColumnFilterChange,
   showColumnFilters = false,
+  renderExpanded,
+  expandLabel,
 }: ListTableProps<Row, K>) {
+  const expandable = Boolean(renderExpanded);
+  const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(() => new Set());
+  const toggleExpand = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  /* THE NESTED LAYER FILLS THE VISIBLE WIDTH, not the scrolled one. */
+  const frame = React.useRef<HTMLDivElement>(null);
+  const [frameWidth, setFrameWidth] = React.useState<number | undefined>();
+  React.useEffect(() => {
+    if (!expandable || !frame.current) return;
+    const el = frame.current;
+    const ro = new ResizeObserver(() => setFrameWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expandable]);
   /* THE PINNED CHEVRON IS THE FRAME, not a column: it is how a row is opened
      and it is stuck to the right edge so it survives a sideways scroll. It
      does not move, and nothing can be dropped past it. */
@@ -188,7 +221,7 @@ export function ListTable<Row, K extends string>({
   const span = visible.length + (selectable ? 1 : 0);
 
   return (
-    <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+    <div ref={frame} className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
       <Table style={{ tableLayout: "fixed" }}>
         <colgroup>
           {selectable && <col style={{ width: "44px" }} />}
@@ -365,9 +398,15 @@ export function ListTable<Row, K extends string>({
                press do two things. `closest` on the real target is how the row
                tells the difference; a text selection dragged across a cell is
                not a click either. */
+            <React.Fragment key={node.id}>
             <TableRow
-              key={node.id}
-              className={cn("group/row h-14", onOpenRow && "cursor-pointer")}
+              className={cn(
+                "group/row h-14",
+                onOpenRow && "cursor-pointer",
+                /* The open parent keeps a tint and drops its divider, so the
+                   rail runs on into its layer (DS). */
+                expanded.has(node.id) && "border-b-0 bg-fp-row-hover hover:bg-fp-row-hover"
+              )}
               data-state={selectedIds?.has(node.id) ? "selected" : undefined}
               onClick={(e) => {
                 if (!onOpenRow) return;
@@ -379,7 +418,7 @@ export function ListTable<Row, K extends string>({
               }}
             >
               {selectable && (
-                <TableCell className="px-3">
+                <TableCell className={cn("px-3", expanded.has(node.id) && "relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70")}>
                   <Checkbox
                     checked={selectedIds!.has(node.id)}
                     onCheckedChange={() => onToggleRow!(node.id)}
@@ -387,11 +426,13 @@ export function ListTable<Row, K extends string>({
                   />
                 </TableCell>
               )}
-              {visible.map((col) => (
+              {visible.map((col, ci) => (
                 <TableCell
                   key={col.key}
                   className={cn(
                     "px-3",
+                    /* THE RAIL STARTS ON THE OPEN PARENT'S FIRST CELL. */
+                    ci === 0 && !selectable && expanded.has(node.id) && "relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
                     col.key === actionsKey &&
@@ -410,6 +451,20 @@ export function ListTable<Row, K extends string>({
                           <ChevronRight />
                         </Button>
                       </div>
+                    ) : expandable && ci === 0 ? (
+                      /* THE CHEVRON LEADS THE FIRST CELL (DS) — not a column. */
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(node.id)}
+                          aria-expanded={expanded.has(node.id)}
+                          aria-label={expandLabel?.(node.row, expanded.has(node.id)) ?? (expanded.has(node.id) ? "Collapse row" : "Expand row")}
+                          className="-ml-1 shrink-0 rounded p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                        >
+                          <ChevronRight className={cn("size-4 transition-transform", expanded.has(node.id) && "rotate-90")} />
+                        </button>
+                        <span className="min-w-0">{renderCell(node.row, col.key)}</span>
+                      </span>
                     ) : (
                       renderCell(node.row, col.key)
                     )}
@@ -417,6 +472,20 @@ export function ListTable<Row, K extends string>({
                 </TableCell>
               ))}
             </TableRow>
+            {expandable && expanded.has(node.id) && (
+              <TableRow className="hover:bg-transparent data-[state=selected]:bg-transparent">
+                {/* THE LAYER IS WHITE (the content layer), end to end, pinned to
+                    the visible width so its columns stay put. Its rail is the
+                    parent's — the same 2px strip at the same left edge, so the
+                    two meet without a step (Pavan, 2026-10-17). */}
+                <TableCell colSpan={span} className="bg-fp-surface-1b p-0">
+                  <div className="sticky left-0 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70" style={{ width: frameWidth }}>
+                    {renderExpanded!(node.row)}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+            </React.Fragment>
               )
             )}
         </TableBody>

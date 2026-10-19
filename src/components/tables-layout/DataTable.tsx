@@ -241,9 +241,9 @@ const currency = new Intl.NumberFormat("en-US", {
 /* ---------------------------------------------------------------------------
  * Nested (expandable) sub-table — read-only example of a child dataset.
  * Treatment (per reference): END-TO-END — the sub-table runs full-bleed inside
- * the parent's row (no inset card, no indent), on a recessed `bg-background`
- * surface (one step below the content layer) with a left accent to tie it to
- * the parent. Generous row rhythm, muted column headers, a two-line
+ * the parent's row (no inset card, no indent), WHITE — the content layer
+ * (Pavan, 2026-10-17; was the recessed `bg-background`) — with a 2px green
+ * rail drawn the same way as the open parent's, so the two meet exactly. Generous row rhythm, muted column headers, a two-line
  * "Effective Duration" cell. The parent row sits on the lighter content-layer
  * surface above with a filled badge, so it stays the more prominent tier.
  * ------------------------------------------------------------------------- */
@@ -280,7 +280,7 @@ function NestedTable({ width }: { width?: number }) {
     // sit comfortably and don't scroll away with the wide parent grid. The td
     // behind it carries the recessed fill end-to-end; this adds the left accent.
     <div
-      className="sticky left-0 border-l-2 border-status-success/70 bg-background"
+      className="sticky left-0 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70"
       style={{ width }}
     >
       <div className="overflow-x-auto">
@@ -734,7 +734,7 @@ function Row({
               // When expanded, carry the green accent up the parent row's left
               // edge so the line runs from the top of this row into the nested
               // detail below as one continuous rail.
-              ci === 0 && expanded && "border-l-2 border-status-success/70"
+              ci === 0 && expanded && "relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70"
             )}
           >
             {col.key === "status" && expandable ? (
@@ -762,7 +762,7 @@ function Row({
         <TableRow className="hover:bg-transparent data-[state=selected]:bg-transparent">
           {/* Recessed surface spans the full row (end-to-end); the inner detail
               is pinned to the visible width so its columns stay comfortable. */}
-          <TableCell colSpan={columns.length} className="bg-background p-0">
+          <TableCell colSpan={columns.length} className="bg-fp-surface-1b p-0">
             <NestedTable width={detailWidth} />
           </TableCell>
         </TableRow>

@@ -36,7 +36,9 @@ import { searchPlaces } from "./geo";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog, shipToLog } from "./activityLog";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
-import { ASSET_TYPES, PRODUCT_CATEGORIES, productsIn, sizeRequired, type Asset, type ShipTo } from "./orders";
+import { ASSET_TYPES, PRODUCT_CATEGORIES, assetById, clampPreferred, productsIn, sizeRequired, type Asset, type ShipTo } from "./orders";
+import { BatteryCell, LevelReading } from "./TankLevel";
+import { PreferredWindows } from "./PreferredWindows";
 import {
   blankAsset,
   blankShipTo,
@@ -119,7 +121,7 @@ function AssetsTable({
   );
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1680px] table-fixed border-collapse">
+      <table className="w-full min-w-[1930px] table-fixed border-collapse">
         <colgroup>
           <col className="w-[180px]" />
           <col className="w-[120px]" />
@@ -131,6 +133,8 @@ function AssetsTable({
           <col className="w-[100px]" />
           <col className="w-[100px]" />
           <col className="w-[130px]" />
+          <col className="w-[150px]" />
+          <col className="w-[100px]" />
           <col className="w-[110px]" />
           <col className="w-[110px]" />
           <col className="w-[92px]" />
@@ -150,6 +154,8 @@ function AssetsTable({
             {/* A NAMED CHECKBOX COLUMN — interactions T5. */}
             {head("Monitor", false, "center")}
             {head("Monitor ID")}
+            {head("Current level")}
+            {head("Battery")}
             {head("Latitude", true, "right")}
             {head("Longitude", true, "right")}
             {head("Rented")}
@@ -238,6 +244,13 @@ function AssetsTable({
                     aria-label={`Tank monitor ID of ${name}`}
                     onChange={(v) => update(i, { monitorId: v.toUpperCase() })}
                   />
+                </td>
+                {/* THE MONITOR'S READING — read-only, from the saved asset. */}
+                <td className="px-3">
+                  {r.id && r.monitor ? <LevelReading asset={assetById(r.id)} /> : <span className="text-sm text-muted-foreground">—</span>}
+                </td>
+                <td className="px-3">
+                  {r.id && r.monitor ? <BatteryCell asset={assetById(r.id)} /> : <span className="text-sm text-muted-foreground">—</span>}
                 </td>
                 <td className="relative p-0">
                   <TableCellInput
@@ -762,9 +775,20 @@ export function ShipToSheet({
               label="Delivery hours"
               start={draft.hoursStart}
               end={draft.hoursEnd}
-              onChange={(a, b) => setDraft((d) => (d ? { ...d, hoursStart: a, hoursEnd: b } : d))}
+              onChange={(a, b) =>
+                setDraft((d) => (d ? { ...d, hoursStart: a, hoursEnd: b, preferred: clampPreferred(d.preferred ?? [], a, b) } : d))
+              }
               aria-label="Delivery hours"
             />
+            {/* NEW ORDERS HERE START WITH THESE (Pavan, 2026-10-17). */}
+            <div className="grid grid-cols-2 gap-6">
+              <PreferredWindows
+                windowStart={draft.hoursStart}
+                windowEnd={draft.hoursEnd}
+                value={draft.preferred ?? []}
+                onChange={(p) => set("preferred", p)}
+              />
+            </div>
             <SheetField label="Delivery instructions">
               <Textarea
                 value={draft.accessNotes}

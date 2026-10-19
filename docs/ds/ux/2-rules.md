@@ -160,7 +160,9 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   `StageTrack` as an order's detail page — done green with a white tick on a
   green line, the current step a BLACK-rimmed pill (green is done, black is
   in progress — Pavan, 2026-10-16), the rest
-  hollow — drawn as RINGS by default, on create forms AND on a record's
+  hollow — drawn as RINGS by default (done: green disc + tick; the LINE
+  GREEN up to the current step; current: a VIOLET ring and name, the accent —
+  Pavan, 2026-10-19), on create forms AND on a record's
   detail track, every module (Pavan, 2026-10-16 — the recurring rule's look;
   no rule under the track) — only COMPACT (the steps 48px apart, box to box, so it reads evenly
   whichever step is the wide pill) and PRESSABLE. **A stepped create form is

@@ -49,7 +49,9 @@ const RECORDS = [
     source: `${PORTAL}/orders.ts`,
     skipAll: {
       product: "derived — the first of `products`",
-      level: "a tank-monitor READING, not an input; tank level is deferred (Pavan, 2026-10-14)",
+      level: "a tank-monitor READING, not an input — shown through <TankLevel asset> (Pavan, 2026-10-17)",
+      battery: "a tank-monitor READING, not an input — shown through <TankLevel asset> (Pavan, 2026-10-17)",
+      dailyUse: "a tank-monitor READING — feeds days to empty and the suggested quantity (Pavan, 2026-10-17)",
     },
     surfaces: [
       { file: `${PORTAL}/AssetSheet.tsx`, what: "asset sheet — create and detail" },

@@ -652,6 +652,28 @@ beside it, never first. Every table with a Top off column, every module
 **Checked, not remembered.** `npm run eval` → `table-rows`: a Top off header
 that comes before the table's Qty header.
 
+## 10j. Nested layers — the expandable row (Pavan, 2026-10-17)
+
+A row that holds a child dataset (an order's tanks, a series' deliveries)
+opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
+`ListTable`'s `renderExpanded`):
+
+- **The chevron leads the first cell** — a small muted `ChevronRight` that
+  turns down when open. Never a column of its own.
+- **The open parent** keeps the row-hover tint and **drops its bottom
+  divider**.
+- **The layer is WHITE** — the content layer (`bg-fp-surface-1b`), end to end
+  across the row, its inner table pinned to the visible width (sticky left)
+  so its columns don't scroll away with a wide parent.
+- **One green rail** — 2px, `status-success/70` — on the open parent's first
+  cell and down the layer's left edge. Both are drawn the SAME way (a
+  `before:` strip at `left-0`), never one as a border and one as a strip: a
+  border in a collapsed table sits half outside the cell and the two lines
+  step by 1px.
+- **Inside:** muted `text-xs` headers, `px-4 py-3.5` cells, rows split by
+  `border-border/60`; the row's own thing in foreground, secondary values
+  muted.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

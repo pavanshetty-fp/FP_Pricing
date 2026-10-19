@@ -5,14 +5,14 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
-import { cn } from "@/lib/utils";
 import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
 import { DATE_FMT } from "../unified-view/data";
-import { ASSET_TYPES, LOW_LEVEL, PRODUCTS, PRODUCT_CATEGORIES, TENANT, printKey, type Asset, type ShipTo } from "./orders";
+import { ASSET_TYPES, PRODUCTS, daysToEmpty, PRODUCT_CATEGORIES, TENANT, printKey, type Asset, type ShipTo } from "./orders";
 import { createdOf, lastDeliveryFor, lastDeliveryToShipTo, nextDeliveryToShipTo, useShipTos } from "./sites";
 import { ActivityLogSheet } from "./ActivityLogSheet";
 import { assetLog } from "./activityLog";
+import { BatteryCell, DaysToEmpty, LevelReading } from "./TankLevel";
 import { PortalList } from "./PortalList";
 import { ShipToAssetsCell, ShipToProductsCell, ValuesCell } from "./cells";
 import { ShipToSheet } from "./ShipToSheet";
@@ -46,7 +46,7 @@ const coords = (lat: number | null, lng: number | null) =>
 
 /* ------------------------------------------------------------ ship-tos --- */
 
-type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "lastDelivery" | "nextDelivery" | "po" | "access" | "geofence" | "location" | "status" | "actions";
+type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "preferred" | "lastDelivery" | "nextDelivery" | "po" | "access" | "geofence" | "location" | "status" | "actions";
 const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "name", label: "Ship-to", width: 180, sortable: true },
   { key: "address", label: "Address", width: 240, sortable: true },
@@ -54,6 +54,7 @@ const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "products", label: "Products", width: 180, sortable: true },
   { key: "contact", label: "Contact", width: 180, sortable: true },
   { key: "hours", label: "Delivery hours", width: 170, sortable: true },
+  { key: "preferred", label: "Preferred windows", width: 190 },
   { key: "lastDelivery", label: "Last Delivery", width: 140, sortable: true },
   { key: "nextDelivery", label: "Next Delivery", width: 140, sortable: true },
   { key: "po", label: "Default PO #", width: 130, sortable: true },
@@ -77,6 +78,8 @@ const shipToText = (s: ShipTo, k: SK): string => {
       return `${s.contactName} ${s.contactPhone}`.trim();
     case "hours":
       return `${formatMinutes(s.hoursStart)} – ${formatMinutes(s.hoursEnd)}`;
+    case "preferred":
+      return (s.preferred ?? []).map((p) => `${formatMinutes(p.start)} – ${formatMinutes(p.end)}`).join(", ");
     case "lastDelivery": {
       const d = lastDeliveryToShipTo(s.name);
       return d ? printKey(d) : "";
@@ -118,6 +121,8 @@ type AK =
   | "ownership"
   | "monitor"
   | "level"
+  | "battery"
+  | "empty"
   | "created"
   | "lastFilled"
   | "log"
@@ -136,7 +141,9 @@ const ASSET_COLUMNS: ListColumn<AK>[] = [
   { key: "capacity", label: "Size (Gal)", width: 100, sortable: true, align: "right" },
   { key: "ownership", label: "Ownership", width: 110, sortable: true },
   { key: "monitor", label: "Tank Monitor", width: 130, sortable: true },
-  { key: "level", label: "Level", width: 130, sortable: true },
+  { key: "level", label: "Current Level", width: 150, sortable: true },
+  { key: "empty", label: "Days to Empty", width: 130, sortable: true },
+  { key: "battery", label: "Battery", width: 100, sortable: true },
   { key: "created", label: "Created By", width: 150, sortable: true },
   { key: "lastFilled", label: "Last Filled", width: 120, sortable: true },
   { key: "log", label: "Activity Log", width: 110 },
@@ -176,6 +183,12 @@ const assetText = ({ asset: a, shipTo: s }: AssetRow, k: AK): string => {
       return a.monitor ? a.monitorId : "No monitor";
     case "level":
       return a.monitor ? `${a.level}%` : "";
+    case "battery":
+      return a.monitor ? `${a.battery}%` : "";
+    case "empty": {
+      const d = daysToEmpty(a);
+      return d === null ? "" : `${d} days`;
+    }
     case "location":
       return coords(a.lat, a.lng);
     case "status":
@@ -184,24 +197,6 @@ const assetText = ({ asset: a, shipTo: s }: AssetRow, k: AK): string => {
       return "";
   }
 };
-
-function LevelCell({ a }: { a: Asset }) {
-  if (!a.monitor) return muted;
-  const low = a.level <= LOW_LEVEL;
-  return (
-    <span className="flex items-center gap-2" title={`${a.level}% full`}>
-      <span aria-hidden className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-        <span
-          className={cn("block h-full rounded-full", low ? "bg-status-failed" : "bg-fp-lane-green")}
-          style={{ width: `${a.level}%` }}
-        />
-      </span>
-      <span className={cn("text-sm tabular-nums", low ? "text-status-failed" : "text-foreground")}>
-        {a.level}%
-      </span>
-    </span>
-  );
-}
 
 /* --------------------------------------------------------------- screen --- */
 
@@ -260,6 +255,8 @@ export function SitesScreen({
                 return s.contactName ? <TwoLineCell title={s.contactName} description={s.contactPhone} /> : muted;
               case "hours":
                 return <span className="text-sm">{shipToText(s, "hours")}</span>;
+              case "preferred":
+                return s.preferred?.length ? <span className="truncate text-sm">{shipToText(s, "preferred")}</span> : muted;
               case "lastDelivery": {
                 const d = lastDeliveryToShipTo(s.name);
                 return d ? <span className="text-sm">{printKey(d)}</span> : muted;
@@ -319,9 +316,11 @@ export function SitesScreen({
           sortValue={(r, k) =>
             k === "capacity"
               ? r.asset.capacity
-              : k === "level"
+              : k === "empty"
+                ? (daysToEmpty(r.asset) ?? 9999)
+              : k === "level" || k === "battery"
                 ? r.asset.monitor
-                  ? r.asset.level
+                  ? r.asset[k]
                   : -1
                 : k === "created"
                   ? (createdOf(r.asset)?.at ?? "")
@@ -384,7 +383,11 @@ export function SitesScreen({
                   <span className="text-sm text-muted-foreground">No monitor</span>
                 );
               case "level":
-                return <LevelCell a={a} />;
+                return <LevelReading asset={a} />;
+              case "battery":
+                return <BatteryCell asset={a} />;
+              case "empty":
+                return <DaysToEmpty asset={a} />;
               case "location":
                 return coords(a.lat, a.lng) ? (
                   <span className="text-sm tabular-nums">{coords(a.lat, a.lng)}</span>

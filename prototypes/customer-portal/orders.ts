@@ -133,6 +133,10 @@ export interface Asset {
   monitorId: string;
   /** Last monitor reading, % full — only when `monitor`. */
   level: number;
+  /** The monitor's battery, % — only when `monitor` (Pavan, 2026-10-17). */
+  battery: number;
+  /** Day-to-day usage, gal/day — the monitor's average (Pavan, 2026-10-17). */
+  dailyUse: number;
   lat: number | null;
   lng: number | null;
   status: ActiveStatus;
@@ -154,6 +158,8 @@ export interface ShipTo {
   /** Minutes from midnight — when deliveries can be made. */
   hoursStart: number;
   hoursEnd: number;
+  /** PREFERRED WINDOWS new orders here start with (Pavan, 2026-10-17). */
+  preferred?: TimeSpan[];
   /** Delivery instructions for the driver — the real product's
       "deliveryInstructions" (gate codes, PPE, where to park, photos). */
   accessNotes: string;
@@ -229,7 +235,7 @@ const asset = (
   product: string,
   capacity: number,
   at: [number, number],
-  o: { rented?: boolean; monitor?: string; level?: number; rfid?: string; products?: string[] } = {}
+  o: { rented?: boolean; monitor?: string; level?: number; battery?: number; use?: number; rfid?: string; products?: string[] } = {}
 ): Asset => ({
   id,
   name,
@@ -245,6 +251,8 @@ const asset = (
   monitor: Boolean(o.monitor),
   monitorId: o.monitor ?? "",
   level: o.level ?? 0,
+  battery: o.battery ?? 0,
+  dailyUse: o.use ?? 0,
   lat: at[0],
   lng: at[1],
   status: "Active",
@@ -265,22 +273,25 @@ export const SHIP_TOS: ShipTo[] = [
     contactPhone: "(713) 555-0142",
     hoursStart: 5 * 60,
     hoursEnd: 19 * 60,
+    preferred: [{ start: 10 * 60, end: 11 * 60 }],
     accessNotes:
       "Gate code 4471, weekdays 6 AM–6 PM only. Tanks are behind building 2 — park on the east apron, not in the loading lanes. Photo each gauge before and after.",
     poNumber: "PO-77000",
     geofence: 0.1,
     status: "Active",
     assets: [
-      asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64, rfid: "E2801160600002" }),
+      asset("a-1", "Tank A1", "Tank", "Diesel", 10000, [29.7803, -95.3806], { monitor: "TM8K2A91", level: 64, battery: 86, use: 900, rfid: "E2801160600002" }),
       asset("a-2", "Tank A2", "Tank", "Diesel", 10000, [29.7805, -95.3804], {
         monitor: "TM8K2A92",
         level: 31,
+        battery: 62,
+        use: 700,
         /* A MULTI-PRODUCT TANK — five products it can take (Pavan, 2026-10-14). */
         products: ["Diesel", "Dyed Diesel", "Unleaded 87", "Jet A", "Avgas 100LL"],
       }),
-      asset("a-3", "DEF Tote 1", "Tote", "DEF", 330, [29.7801, -95.3799], { rented: true }),
-      asset("a-4", "Generator G-12", "Generator", "Diesel", 500, [29.7797, -95.3811]),
-      asset("a-5", "Hydraulic Reservoir H-2", "Reservoir", "Hydraulic Oil AW-46", 275, [29.7799, -95.3802]),
+      asset("a-3", "DEF Tote 1", "Tote", "DEF", 330, [29.7801, -95.3799], { rented: true, monitor: "TT2D1A03", level: 92, battery: 74, use: 25 }),
+      asset("a-4", "Generator G-12", "Generator", "Diesel", 500, [29.7797, -95.3811], { monitor: "TG6G12A4", level: 84, battery: 15, use: 60 }),
+      asset("a-5", "Hydraulic Reservoir H-2", "Reservoir", "Hydraulic Oil AW-46", 275, [29.7799, -95.3802], { monitor: "TR4H2A05", level: 55, battery: 91, use: 12 }),
     ],
   },
   {
@@ -302,9 +313,9 @@ export const SHIP_TOS: ShipTo[] = [
     geofence: 0.15,
     status: "Active",
     assets: [
-      asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72, rfid: "E2801160600417" }),
-      asset("b-2", "Tank B2", "Tank", "Unleaded 87", 8000, [29.9606, -95.5601], { monitor: "TM3P7B12", level: 18 }),
-      asset("b-3", "Reefer Truck R-7", "Reefer truck", "Dyed Diesel", 150, [29.9598, -95.5609], { rented: true, monitor: "TL9R7X03", level: 14 }),
+      asset("b-1", "Tank B1", "Tank", "Diesel", 12000, [29.9602, -95.5604], { monitor: "TM3P7B11", level: 72, battery: 48, use: 1100, rfid: "E2801160600417" }),
+      asset("b-2", "Tank B2", "Tank", "Unleaded 87", 8000, [29.9606, -95.5601], { monitor: "TM3P7B12", level: 18, battery: 79, use: 450 }),
+      asset("b-3", "Reefer Truck R-7", "Reefer truck", "Dyed Diesel", 150, [29.9598, -95.5609], { rented: true, monitor: "TL9R7X03", level: 8, battery: 57, use: 20 }),
       /* A PUMP HAS NO TANK — size left at 0, as in the real data. */
       asset("b-4", "Card Lock Pump 2", "Card lock pump", "Diesel", 0, [29.9600, -95.5612]),
     ],
@@ -327,9 +338,9 @@ export const SHIP_TOS: ShipTo[] = [
     geofence: null,
     status: "Active",
     assets: [
-      asset("c-1", "Tank O1", "Tank", "Dyed Diesel", 6000, [29.6403, -95.2204], { monitor: "TM5C2O01", level: 22 }),
+      asset("c-1", "Tank O1", "Tank", "Dyed Diesel", 6000, [29.6403, -95.2204], { monitor: "TM5C2O01", level: 22, battery: 33, use: 380 }),
       asset("c-2", "Propane Tank P1", "Tank", "Propane", 1000, [29.6398, -95.2197], { rented: true }),
-      asset("c-3", "Light Tower L-3", "Light tower", "Diesel", 60, [29.6407, -95.2211], { rented: true, monitor: "TL4L3T07", level: 0 }),
+      asset("c-3", "Light Tower L-3", "Light tower", "Diesel", 60, [29.6407, -95.2211], { rented: true, monitor: "TL4L3T07", level: 0, battery: 9, use: 8 }),
     ],
   },
 ];
@@ -362,6 +373,16 @@ export interface RequestLine {
   product: string;
   topOff: boolean;
   gal: number;
+  /** THE TANK'S LEVEL WHEN ORDERED, and once delivered what it was refilled
+      to — % full, from its monitor (Pavan, 2026-10-17). */
+  levelAtOrder?: number;
+  levelAfter?: number;
+}
+
+/** A span of the day, minutes from midnight. */
+export interface TimeSpan {
+  start: number;
+  end: number;
 }
 
 export const FREQUENCIES = [
@@ -382,6 +403,9 @@ export interface OrderRequest {
   /** Minutes from midnight. */
   windowStart: number;
   windowEnd: number;
+  /** PREFERRED WINDOWS inside the delivery window — none, one or several
+      (Pavan, 2026-10-17: window 8–2, preferred 10–12). */
+  preferred: TimeSpan[];
   po: string;
   instructions: string;
   recurring: boolean;
@@ -594,20 +618,52 @@ export const SEED_REQUESTS: OrderRequest[] = SEED.map(
   ([status, s, lines, offset, [ws, we], po, recurring, ago], i) => {
     const shipTo = SHIP_TOS[s];
     const at = hoursAgo(ago);
+    /* CREATED DAYS BEFORE ITS REQUESTED DATE (Pavan, 2026-10-18): the
+       requested date is when the customer wants it delivered, so a request
+       is made 2–6 days ahead of it — never after its own latest change. */
+    const lead = 2 + (i % 5);
+    const want = new Date(`${dayKey(offset)}T09:00`).getTime() - lead * 86_400_000;
+    const created = new Date(Math.min(Date.parse(hoursAgo(ago + 2)), want)).toISOString();
     const n = FIRST_REQUEST_NO + SEED.length - 1 - i;
     return {
       id: `req-${n}`,
       requestNo: `REQ-${n}`,
       shipTo: shipTo.name,
-      lines: lines.map(([assetId, topOff, gal]) => ({
-        assetId,
-        product: assetById(assetId)?.product ?? "",
-        topOff,
-        gal,
-      })),
+      lines: lines.map(([assetId, topOff, gal], j) => {
+        const a = assetById(assetId);
+        /* ORDERED LOW, REFILLED HIGH — invented, from the monitor. */
+        const at = a?.monitor && status !== "Draft" ? 8 + ((i * 7 + j * 11) % 28) : undefined;
+        /* Delivered or past it (DELIVERED is declared further down). */
+        const done = ["Partial delivery", "Delivered", "Invoiced", "Invoice disputed", "Paid"].includes(status);
+        return {
+          assetId,
+          product: a?.product ?? "",
+          topOff,
+          gal,
+          levelAtOrder: at,
+          /* REFILLED TO WHAT THE SUM SAYS (Pavan, 2026-10-18): at the
+             request, less the days' use until the delivery, plus what went
+             in — so a delivered order's breakdown adds up. */
+          levelAfter:
+            at !== undefined && done && a
+              ? (() => {
+                  if (topOff) return 100;
+                  const made = dateKeyOf(new Date(created));
+                  const span = Math.max(
+                    0,
+                    Math.round((new Date(`${dayKey(offset)}T00:00`).getTime() - new Date(`${made}T00:00`).getTime()) / 86_400_000)
+                  );
+                  const atGal = Math.round((at / 100) * a.capacity);
+                  const left = atGal - Math.min(atGal, a.dailyUse * span);
+                  return Math.min(100, Math.round(((left + gal) / a.capacity) * 100));
+                })()
+              : undefined,
+        };
+      }),
       date: dayKey(offset),
       windowStart: ws * 60,
       windowEnd: we * 60,
+      preferred: i % 3 === 0 && we - ws >= 4 ? [{ start: (ws + 1) * 60, end: (ws + 3) * 60 }] : [],
       po,
       instructions: "",
       recurring: recurring !== "",
@@ -633,7 +689,7 @@ export const SEED_REQUESTS: OrderRequest[] = SEED.map(
           : undefined,
       updatedAt: at,
       audit: [
-        { at: hoursAgo(ago + 2), by: PORTAL_ACTOR, changes: ["Request created"] },
+        { at: created, by: PORTAL_ACTOR, changes: ["Request created"] },
         ...(status === "Draft"
           ? []
           : [{ at, by: status === "Created" ? PORTAL_ACTOR : TENANT, changes: [`Status: ${status}`] }]),
@@ -874,8 +930,9 @@ export const PAST_WEEK = {
 
 /* ------------------------------------------------------------- tanks ----- */
 
-/** A tank at or under this is nearly empty; at or under EMPTY, empty. INVENTED. */
-export const LOW_LEVEL = 20;
+/** A tank at or under this is nearly empty — the Urgent band (Pavan,
+    2026-10-17); at or under EMPTY, empty. */
+export const LOW_LEVEL = 10;
 export const EMPTY_LEVEL = 3;
 
 /*
@@ -1067,6 +1124,7 @@ export function createRequest(recurring = false): OrderRequest {
     date: "",
     windowStart: 8 * 60,
     windowEnd: 12 * 60,
+    preferred: [],
     po: "",
     instructions: "",
     recurring,
@@ -1113,6 +1171,7 @@ export function duplicateRequest(id: string): OrderRequest | null {
     lines: src.lines.map((l) => ({ ...l })),
     windowStart: src.windowStart,
     windowEnd: src.windowEnd,
+    preferred: src.preferred.map((p) => ({ ...p })),
     instructions: src.instructions,
     recurring: src.recurring,
     frequency: src.frequency,
@@ -1164,3 +1223,54 @@ export function orderTheRest(id: string): OrderRequest | null {
   emit();
   return requests.find((x) => x.id === r.id)!;
 }
+
+/* -------------------------------------------------------- level bands --- */
+
+/*
+  TANK LEVEL BANDS (Pavan, 2026-10-17) — set on the monitor, read here:
+  10% or lower Urgent (red, blinking), under 50 Low (red), under 80 Moderate
+  (yellow), 80 and above Sufficient (green). Batteries under 20% are low.
+*/
+export type LevelBand = "Urgent" | "Low" | "Moderate" | "Sufficient";
+export const levelBand = (pct: number): LevelBand =>
+  pct <= 10 ? "Urgent" : pct < 50 ? "Low" : pct < 80 ? "Moderate" : "Sufficient";
+export const LOW_BATTERY = 20;
+
+/** Preferred windows kept inside the delivery window — trimmed, empties dropped. */
+export const clampPreferred = (p: TimeSpan[], start: number, end: number): TimeSpan[] =>
+  p
+    .map((x) => ({ start: Math.max(start, Math.min(x.start, end)), end: Math.min(end, Math.max(x.end, start)) }))
+    .filter((x) => x.end > x.start);
+
+/* -------------------------------------------------- tank arithmetic ---- */
+
+/*
+  WHAT THE MONITOR TELLS AN ORDER (Pavan, 2026-10-17). From the level, the
+  size and the day-to-day usage:
+
+    in the tank now      = level% × capacity
+    days to empty        = in the tank now ÷ daily use
+    left at delivery     = in the tank now − daily use × days until delivery
+    SUGGESTED            = capacity − left at delivery   (full on the day)
+    after delivery       = (left at delivery + ordered) ÷ capacity
+
+  e.g. 10,000 gal tank at 20% (2,000), 400 gal/day, delivery in 2 days:
+  1,200 left → suggested 8,800; ordering 6,000 makes it 72%.
+*/
+export const galNow = (a: Asset) => Math.round((a.level / 100) * a.capacity);
+export const daysToEmpty = (a: Asset): number | null =>
+  a.monitor && a.dailyUse > 0 ? Math.floor(galNow(a) / a.dailyUse) : null;
+/** Whole days from today to a `YYYY-MM-DD` — 0 for today, unset or past. */
+export const daysUntil = (key: string) => {
+  if (!key) return 0;
+  const d = new Date(`${key}T00:00`);
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((d.getTime() - t.getTime()) / 86_400_000));
+};
+export const galAtDelivery = (a: Asset, days: number) => Math.max(0, galNow(a) - a.dailyUse * days);
+/** Fill to full on the delivery day, to the nearest 10 gal. */
+export const suggestedGal = (a: Asset, days: number) =>
+  Math.max(0, Math.round((a.capacity - galAtDelivery(a, days)) / 10) * 10);
+export const pctAfterDelivery = (a: Asset, days: number, gal: number, topOff: boolean) =>
+  topOff ? 100 : Math.min(100, Math.round(((galAtDelivery(a, days) + gal) / a.capacity) * 100));

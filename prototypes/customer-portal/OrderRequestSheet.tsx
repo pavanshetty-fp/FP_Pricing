@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
 import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Send } from "lucide-react";
@@ -40,6 +41,8 @@ import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import { RulePill } from "./cells";
+import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading, SuggestedGal } from "./TankLevel";
+import { PreferredWindows } from "./PreferredWindows";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
@@ -53,6 +56,8 @@ import {
   allRequests,
   assetById,
   blankLine,
+  clampPreferred,
+  daysUntil,
   cancelRule,
   dateOfKey,
   discardRequest,
@@ -90,6 +95,7 @@ type Draft = Pick<
   | "date"
   | "windowStart"
   | "windowEnd"
+  | "preferred"
   | "po"
   | "instructions"
   | "recurring"
@@ -103,6 +109,7 @@ const draftOf = (r: OrderRequest): Draft => ({
   date: r.date,
   windowStart: r.windowStart,
   windowEnd: r.windowEnd,
+  preferred: r.preferred,
   po: r.po,
   instructions: r.instructions,
   recurring: r.recurring,
@@ -166,12 +173,23 @@ export function LinesTable({
   shipTo,
   focusRow,
   onChange,
+  live = true,
+  deliveryKey = "",
+  request,
 }: {
   lines: RequestLine[];
   shipTo: string;
   focusRow?: number;
   onChange: (next: RequestLine[]) => void;
+  /** The tanks as they are now (a draft, a rule); false once the order is
+      sent — then each line shows its level when ordered and after. */
+  live?: boolean;
+  /** The delivery date — what the suggestion and "on fulfilment" look ahead to. */
+  deliveryKey?: string;
+  /** The sent order — its status says whether "on fulfilment" is done or expected. */
+  request?: OrderRequest;
 }) {
+  const days = daysUntil(deliveryKey);
   const assets = SHIP_TOS.find((s) => s.name === shipTo)?.assets ?? [];
   const update = (i: number, patch: Partial<RequestLine>) =>
     onChange(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
@@ -180,14 +198,24 @@ export function LinesTable({
   const allTop = lines.length > 0 && lines.every((l) => l.topOff);
   const someTop = lines.some((l) => l.topOff);
   return (
-    <table className="w-full table-fixed border-collapse">
+    /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
+       than closing the asset and product cells. */
+    <div className="overflow-x-auto">
+    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[1056px]" : "min-w-[826px]")}>
       {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order. TOP OFF
           LAST, NEXT TO THE QUANTITY IT REPLACES (Pavan, 2026-10-16 — DS ui §10i). */}
+      {/* AFTER TOP OFF, WHAT THE ORDER DOES TO THE TANK (Pavan, 2026-10-17):
+          its level now, the % on fulfilment, and while ordering the suggested
+          quantity (full on the day) and days to empty. */}
       <colgroup>
-        <col />
-        <col />
+        <col className="w-[160px]" />
+        <col className="w-[160px]" />
         <col className="w-[110px]" />
         <col className="w-[104px]" />
+        <col className="w-[120px]" />
+        <col className="w-[120px]" />
+        {live && <col className="w-[120px]" />}
+        {live && <col className="w-[110px]" />}
         <col className="w-[52px]" />
       </colgroup>
       <thead>
@@ -212,6 +240,24 @@ export function LinesTable({
               />
             </span>
           </th>
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>Current level</TableRequiredLabel>
+          </th>
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>
+              <FulfilmentHead />
+            </TableRequiredLabel>
+          </th>
+          {live && (
+            <th className="px-3 py-2.5 text-left">
+              <TableRequiredLabel>Suggested</TableRequiredLabel>
+            </th>
+          )}
+          {live && (
+            <th className="px-3 py-2.5 text-left">
+              <TableRequiredLabel>Days to empty</TableRequiredLabel>
+            </th>
+          )}
           <th aria-hidden />
         </tr>
       </thead>
@@ -293,6 +339,20 @@ export function LinesTable({
                   />
                 </span>
               </td>
+              <td className="px-3">
+                {l.assetId ? <LevelReading asset={asset} /> : <span className="text-sm text-muted-foreground">—</span>}
+              </td>
+              <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
+              {live && (
+                <td className="px-3">
+                  <SuggestedGal asset={asset} days={days} onUse={(gal) => update(i, { gal, topOff: false })} />
+                </td>
+              )}
+              {live && (
+                <td className="px-3">
+                  <DaysToEmpty asset={asset} days={days} />
+                </td>
+              )}
               <td className="relative p-0 text-center">
                 {/* A request needs a line, so the last row keeps no bin. */}
                 <TableRowRemove
@@ -315,12 +375,12 @@ export function LinesTable({
             <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
-            <td aria-hidden />
-            <td aria-hidden />
+            <td aria-hidden colSpan={live ? 6 : 4} />
           </tr>
         </tfoot>
       )}
     </table>
+    </div>
   );
 }
 
@@ -551,7 +611,12 @@ export function OrderRequestSheet({
       return;
     }
     lastSaved.current = JSON.stringify(draft);
-    updateRequest(request.id, { ...draft, status: "Created" }, "Request submitted");
+    /* THE LEVEL WHEN ORDERED — each monitored tank's reading, kept on its line. */
+    const lines = draft.lines.map((l) => {
+      const a = assetById(l.assetId);
+      return a?.monitor ? { ...l, levelAtOrder: a.level } : l;
+    });
+    updateRequest(request.id, { ...draft, lines, status: "Created" }, "Request submitted");
     toast.success(`${request.requestNo} submitted`);
     onOpenChange(false);
   };
@@ -584,7 +649,7 @@ export function OrderRequestSheet({
          documents = document · added · by · bin. The summary rail beside. */
       fit={{
         tables: [
-          [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin],
+          [CELL.pick, CELL.pick, CELL.number, CELL.topOff, CELL.number, CELL.number, CELL.number, CELL.number, CELL.bin],
           [CELL.name, CELL.date, CELL.pick, CELL.bin],
         ],
         rail: true,
@@ -705,6 +770,10 @@ export function OrderRequestSheet({
                         shipTo: v,
                         po: d.po.trim() ? d.po : (next?.poNumber ?? ""),
                         lines: kept.length ? kept : [blankLine()],
+                        /* THE SHIP-TO'S PREFERRED WINDOWS start an order that has none. */
+                        preferred: d.preferred.length
+                          ? d.preferred
+                          : clampPreferred(next?.preferred ?? [], d.windowStart, d.windowEnd),
                       };
                     })
                   }
@@ -735,8 +804,23 @@ export function OrderRequestSheet({
                 required
                 start={draft.windowStart}
                 end={draft.windowEnd}
-                onChange={(a, b) => setDraft((d) => ({ ...d, windowStart: a, windowEnd: b }))}
+                onChange={(a, b) =>
+                  setDraft((d) => ({ ...d, windowStart: a, windowEnd: b, preferred: clampPreferred(d.preferred, a, b) }))
+                }
               />
+              {/* UNDER THE WINDOW THEY SIT INSIDE (Pavan, 2026-10-17); a sent
+                  order with none shows nothing. */}
+              {(!locked || draft.preferred.length > 0) && (
+              <div className="col-start-2">
+                <PreferredWindows
+                  windowStart={draft.windowStart}
+                  windowEnd={draft.windowEnd}
+                  value={draft.preferred}
+                  onChange={(p) => set("preferred", p)}
+                  disabled={locked}
+                />
+              </div>
+              )}
             </div>
             {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
             {!request.ruleNo && (
@@ -804,6 +888,9 @@ export function OrderRequestSheet({
               shipTo={draft.shipTo}
               focusRow={focusRow}
               onChange={(lines) => set("lines", lines)}
+              live={request.status === "Draft"}
+              deliveryKey={draft.date}
+              request={request}
             />
           </SheetSection>
 

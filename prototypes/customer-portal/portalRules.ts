@@ -6,12 +6,14 @@ import type { Schedule } from "../unified-view/threepl/recurring";
 import {
   PORTAL_ACTOR,
   allRequests,
+  assetById,
   dateOfKey,
   insertRequests,
   nextRequestNo,
   updateRequest,
   type OrderRequest,
   type RequestLine,
+  type TimeSpan,
 } from "./orders";
 
 /*
@@ -57,6 +59,8 @@ export interface PortalRule {
   endAfter: number | null;
   windowStart: number;
   windowEnd: number;
+  /** Preferred windows inside the delivery window; its orders inherit them. */
+  preferred: TimeSpan[];
   lines: RequestLine[];
   instructions: string;
   leadDays: number;
@@ -164,6 +168,7 @@ export function blankRule(): PortalRule {
     endAfter: null,
     windowStart: 8 * 60,
     windowEnd: 12 * 60,
+    preferred: [],
     lines: [{ assetId: "", product: "", topOff: false, gal: 0 }],
     instructions: "",
     leadDays: 7,
@@ -225,10 +230,16 @@ export function generate(say = false) {
         id,
         requestNo: `REQ-${no++}`,
         shipTo: r.shipTo,
-        lines: r.lines.filter((l) => l.product).map((l) => ({ ...l })),
+        lines: r.lines
+          .filter((l) => l.product)
+          .map((l) => {
+            const a = assetById(l.assetId);
+            return a?.monitor ? { ...l, levelAtOrder: a.level } : { ...l };
+          }),
         date: d.key,
         windowStart: r.windowStart,
         windowEnd: r.windowEnd,
+        preferred: r.preferred.map((p) => ({ ...p })),
         po: r.po.mode === "standing" ? r.po.number : "",
         instructions: r.instructions,
         recurring: false,
@@ -281,6 +292,7 @@ export function generate(say = false) {
       startKey: q.date,
       windowStart: q.windowStart,
       windowEnd: q.windowEnd,
+      preferred: q.preferred.map((p) => ({ ...p })),
       lines: q.lines.map((l) => ({ ...l })),
       po: { mode: q.po ? "standing" : "each", number: q.po },
       createdAt: q.audit?.[0]?.at ?? new Date().toISOString(),

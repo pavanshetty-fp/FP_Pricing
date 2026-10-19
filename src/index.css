@@ -58,6 +58,27 @@
   }
 }
 
+/* URGENT, BLINKING (Pavan, 2026-10-17 — a tank at 10% or lower): the red
+   pulses softly and keeps pulsing, because the tank is still nearly empty.
+   Held steady for anyone who asked for less motion. */
+@keyframes fp-urgent-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.fp-urgent-blink {
+  animation: fp-urgent-blink 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-urgent-blink {
+    animation: none;
+  }
+}
+
 /* Module-switch progress (Pavan, 2026-10-08) — a thin bar filling its row
    left to right before the switch. A keyframe, not a JS-timed transition, so
    it can never stall half-way. */

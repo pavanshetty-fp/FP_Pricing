@@ -36,6 +36,7 @@ import {
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { TankHealthCard } from "./TankHealth";
+import { OutlineShine } from "@/components/ui/outline-shine";
 import { MetricIcon, TERM_ICONS } from "@/components/ui/term-icons";
 import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
@@ -800,46 +801,6 @@ function actionOf(r: OrderRequest): NeededAction | null {
   ring masked out of a full-size layer just inside the border; the band
   moves inside it. Still for reduced motion.
 */
-const TRACE_EVERY = 6000;
-const TRACE_LAP = 1900;
-
-function TraceStroke() {
-  const band = React.useRef<HTMLSpanElement>(null);
-  React.useEffect(() => {
-    const el = band.current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const run = () =>
-      el.animate([{ left: "-35%" }, { left: "105%" }], {
-        duration: TRACE_LAP,
-        easing: "cubic-bezier(0.45, 0, 0.55, 1)",
-      });
-    const first = window.setTimeout(run, 1200);
-    const every = window.setInterval(run, TRACE_EVERY);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(every);
-    };
-  }, []);
-  return (
-    <span
-      aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] p-[1.5px]"
-      style={{
-        /* THE RING — the layer less its content box: only the outline shows. */
-        mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-        maskComposite: "exclude",
-        WebkitMaskComposite: "xor",
-      }}
-    >
-      <span
-        ref={band}
-        className="absolute inset-y-0 w-[5%] -skew-x-[24deg] bg-[linear-gradient(90deg,transparent,var(--color-fp-lane-red),transparent)]"
-        style={{ left: "-35%" }}
-      />
-    </span>
-  );
-}
-
 /*
   THE ACTION TILE — TRIAL ON ONE KIND (Pavan, 2026-10-15), after his
   company-card reference: on top an icon tile, the PROBLEM in 1–3 words and
@@ -1014,7 +975,7 @@ function ActionBanner({
         aria-hidden
         className="pointer-events-none absolute -top-24 -right-16 -z-10 size-72 rounded-full bg-status-processing/10 blur-3xl"
       />
-      {!open && <TraceStroke />}
+      {!open && <OutlineShine />}
       <button
         type="button"
         aria-expanded={open}
@@ -1659,27 +1620,6 @@ export function DashboardScreen() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-6">
-      {/* THE RANGE — one row above everything it scopes. */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {SHORT.format(from.start)} – {DATE_FMT.format(weekEnd(to))}
-        </p>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={String(range)}
-          onValueChange={(v) => v && setRange(Number(v) as RangeWeeks)}
-          aria-label="Time range"
-          className="h-7"
-        >
-          {RANGES.map((r) => (
-            <ToggleGroupItem key={r} value={String(r)} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
-              Last {r} weeks
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
 
       {/* WHAT NEEDS YOU, FIRST (Anirudh review, 2026-10-17) — delivery
           performance moved to Reports. A tile opens what is needed; the
@@ -1716,7 +1656,32 @@ export function DashboardScreen() {
         />
       </Section>
 
-      <Section title="Spend">
+      {/* THE RANGE SITS ON SPEND, the unit it scopes (Pavan, 2026-10-20). */}
+      <Section
+        title="Spend"
+        aside={
+          <span className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {SHORT.format(from.start)} – {DATE_FMT.format(weekEnd(to))}
+            </span>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={String(range)}
+              onValueChange={(v) => v && setRange(Number(v) as RangeWeeks)}
+              aria-label="Time range"
+              className="h-7"
+            >
+              {RANGES.map((r) => (
+                <ToggleGroupItem key={r} value={String(r)} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+                  Last {r} weeks
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </span>
+        }
+      >
         <SpendCard weeks={now} n={range} />
         <SpendByProductCard weeks={now} n={range} />
       </Section>

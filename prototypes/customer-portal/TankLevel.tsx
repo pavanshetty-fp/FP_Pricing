@@ -1,15 +1,11 @@
-import { ArrowRight, Battery, Info, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning } from "lucide-react";
+import { ArrowRight, Battery, Info, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BreakdownPopover, type BreakdownCardProps } from "../unified-view/BreakdownCard";
 import { dateKeyOf } from "../unified-view/data";
-import { StatusChip } from "@/components/ui/status-chip";
-import { NumberLink } from "./cells";
-import { usePortalNav } from "./nav";
 import {
   DELIVERED,
   LOW_BATTERY,
-  REQUEST_STATUS_TONE,
   assetById,
   daysUntil,
   daysToEmpty,
@@ -18,7 +14,6 @@ import {
   levelBand,
   pctAfterDelivery,
   suggestedGal,
-  todayKey,
   type Asset,
   type LevelBand,
   type OrderRequest,
@@ -178,11 +173,19 @@ const dayFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric"
  * → left that day → plus what is delivered → the %. Once delivered, the
  * monitor's own reading.
  */
+/*
+  THE FORMULA, THEN THE SAME FORMULA IN NUMBERS (Pavan, 2026-10-20) — no
+  line-by-line steps: the formula in words, then the very same expression
+  with this tank's numbers in the same places, and its outcome.
+*/
+const n = (v: number) => Math.round(v).toLocaleString();
+const FORMULA_NOW =
+  "((gallons now − daily use × days to the planned date) + gallons delivered) ÷ tank size";
+
 function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered: boolean, r?: OrderRequest): BreakdownCardProps {
   const fmt = (k: string) => dayFmt.format(new Date(`${k}T00:00`));
-  /* DELIVERED — the day's own numbers: the level when requested, what the
-     tank used until the truck actually came, what went in, and the
-     monitor's reading after. */
+  /* DELIVERED — the same formula from the day it was ordered to the day it
+     came; the monitor's own reading is the outcome. */
   if (delivered && line.levelAfter !== undefined) {
     const createdKey = r?.audit?.[0]?.at ? dateKeyOf(new Date(r.audit[0].at)) : "";
     const span =
@@ -190,67 +193,57 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
         ? Math.max(0, Math.round((new Date(`${dateKey}T00:00`).getTime() - new Date(`${createdKey}T00:00`).getTime()) / 86_400_000))
         : 0;
     const atOrder = line.levelAtOrder !== undefined ? Math.round((line.levelAtOrder / 100) * a.capacity) : null;
-    const used = atOrder !== null ? Math.min(atOrder, a.dailyUse * span) : null;
+    const into = line.topOff ? null : line.gal;
     return {
-      title: `${a.name} — delivered${dateKey ? ` on the planned date, ${fmt(dateKey)}` : ""}`,
+      title: `${a.name} — delivered${dateKey ? ` ${fmt(dateKey)}` : ""}`,
       rows: [
         ...(atOrder !== null
           ? [
               {
-                label: `Order created${createdKey ? ` · ${fmt(createdKey)}` : ""}`,
-                sub: `the tank was at ${line.levelAtOrder}% of ${gal(a.capacity)}`,
-                value: gal(atOrder),
+                label: "This tank",
+                sub: `((${n(atOrder)} − ${n(a.dailyUse)} × ${span}) + ${into === null ? "top off" : n(into)}) ÷ ${n(a.capacity)} = ${line.levelAfter}% · the monitor's reading after delivery`,
               },
-              {
-                label: "Used until the planned date",
-                sub: `${gal(a.dailyUse)}/day × ${span} day${span === 1 ? "" : "s"}${createdKey && dateKey ? ` (${fmt(createdKey)} → ${fmt(dateKey)})` : ""}`,
-                value: `− ${gal(used!)}`,
-              },
-              { label: `Left on ${dateKey ? fmt(dateKey) : "the day"}`, sub: `${Math.round(((atOrder - used!) / a.capacity) * 100)}% of the tank`, value: gal(atOrder - used!) },
             ]
           : []),
-        { label: "Delivered", sub: line.topOff ? "top off — filled to the brim" : "quantity requested", value: line.topOff ? "Top off" : `+ ${gal(line.gal)}` },
-        { label: "Reading after delivery", sub: "the tank monitor's actual level", value: `${line.levelAfter}%` },
       ],
       total: { label: "On fulfilment", value: `${line.levelAfter}%` },
     };
   }
-  /* NOT DELIVERED YET — counted to the planned date the tenant has now; past
-     it and still not delivered, the tank is still emptying: from today. */
+  /* NOT DELIVERED YET — to the planned date the tenant has now; past it and
+     still not delivered, the tank is still emptying: from today. */
   const days = daysUntil(dateKey);
-  const late = Boolean(dateKey) && dateKey < todayKey();
-  const day = dateKey && days > 0 ? fmt(dateKey) : "today";
   const now = galNow(a);
   const left = galAtDelivery(a, days);
-  const used = now - left;
   const into = line.topOff ? a.capacity - left : line.gal;
-  const end = Math.min(a.capacity, left + into);
-  const over = left + into - a.capacity;
+  const raw = now - a.dailyUse * days;
+  const sum = left + into;
+  const end = Math.min(a.capacity, sum);
   const pct = pctAfterDelivery(a, days, line.gal, line.topOff);
+  /* THE TWO THINGS THAT GO WRONG (Pavan, 2026-10-20). */
+  const warnings: string[] = [];
+  if (raw < 0 && a.dailyUse > 0) {
+    const dry = Math.floor(now / a.dailyUse);
+    const on = new Date();
+    on.setHours(0, 0, 0, 0);
+    on.setDate(on.getDate() + dry);
+    warnings.push(
+      `Tank empty — it runs dry ${dry === 0 ? "today" : `on ${dayFmt.format(on)}`}, ${days - dry} ${days - dry === 1 ? "day" : "days"} before the planned date.`
+    );
+  }
+  if (sum > a.capacity)
+    warnings.push(
+      `Tank overload — ${n(sum - a.capacity)} gal won't fit in the ${n(a.capacity)} gal tank. That overage might cause a penalty by the tenant.`
+    );
   return {
-    title: late
-      ? `${a.name} — planned for ${fmt(dateKey)}, not delivered yet`
-      : day === "today"
-        ? `${a.name} — planned for today`
-        : `${a.name} — planned date ${day}`,
+    title: `${a.name} — ${dateKey ? `planned for ${fmt(dateKey)}` : "no planned date yet"}`,
     rows: [
-      { label: `Today · ${dayFmt.format(new Date())}`, sub: `the tank is at ${a.level}% of ${gal(a.capacity)}`, value: gal(now) },
       {
-        label: "Used until the planned date",
-        sub: !dateKey
-          ? "no date yet — counted as today"
-          : late
-            ? "the planned day has passed — counted from today's reading"
-            : days === 0
-              ? "delivery is today"
-              : `${gal(a.dailyUse)}/day × ${days} day${days === 1 ? "" : "s"} (today → ${day})`,
-        value: `− ${gal(used)}`,
+        label: "This tank",
+        sub: `((${n(now)} − ${n(a.dailyUse)} × ${days}) + ${line.topOff ? `${n(into)} (top off)` : n(into)}) ÷ ${n(a.capacity)} = ${n(sum)} ÷ ${n(a.capacity)} = ${pct}%${raw < 0 ? " (empty before it arrives, so it starts from 0)" : ""}${sum > a.capacity ? " (capped at full)" : ""}`,
       },
-      { label: day === "today" ? "Left today" : `Left on ${day}`, sub: `${Math.round((left / a.capacity) * 100)}% of the tank`, value: gal(left) },
-      { label: "Delivered", sub: line.topOff ? "top off — filled to the brim" : "quantity requested", value: `+ ${gal(into)}` },
-      ...(over > 0 ? [{ label: "Does not fit", sub: `the tank holds ${gal(a.capacity)}`, value: `− ${gal(over)}` }] : []),
     ],
     total: { label: "On fulfilment", value: `${pct}% · ${gal(end)}` },
+    warnings,
   };
 }
 
@@ -273,12 +266,20 @@ function FulfilmentFigure({
   return (
     <BreakdownPopover
       label={`How ${pct}% on fulfilment is worked out for ${a.name}`}
-      width={340}
+      width={380}
       card={card}
       className="rounded"
       trigger={
-        <span className="text-sm tabular-nums text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 hover:decoration-solid">
-          {pct}%
+        <span className="inline-flex items-center gap-1">
+          <span
+            className={cn(
+              "text-sm tabular-nums underline decoration-current/50 decoration-dotted underline-offset-4 hover:decoration-solid",
+              card.warnings?.length ? "text-status-failed" : "text-foreground"
+            )}
+          >
+            {pct}%
+          </span>
+          {card.warnings?.length ? <TriangleAlert aria-label="Warning" className="size-3.5 text-status-failed" /> : null}
         </span>
       }
     />
@@ -310,33 +311,8 @@ export function FulfilmentHead({ className }: { className?: string }) {
            5 days out, a 10,000 gal tank at 64% using 900 gal a day — the
            64% is not what the truck finds. */
         card={{
-          title: "On fulfilment — the tank's level once this order is delivered",
-          rows: [
-            {
-              label: "Example",
-              sub: `order created today, ${dayFmt.format(new Date())} · planned date ${dayFmt.format(new Date(Date.now() + 5 * 86_400_000))}, 5 days later · 10,000 gal tank`,
-            },
-            { label: `1 · Today · ${dayFmt.format(new Date())}`, sub: "the tank monitor reads 64% of 10,000 gal", value: "6,400 gal" },
-            {
-              label: "2 · Used until the planned date",
-              sub: "900 gal/day × 5 days — the tank keeps emptying while the order waits",
-              value: "− 4,500 gal",
-            },
-            {
-              label: `3 · Left on ${dayFmt.format(new Date(Date.now() + 5 * 86_400_000))}`,
-              sub: "64% today is only 19% by the planned date",
-              value: "1,900 gal",
-            },
-            { label: "4 · Delivered", sub: "the quantity requested (a top off fills it to the brim)", value: "+ 5,200 gal" },
-            { label: "= On fulfilment", sub: "1,900 + 5,200 = 7,100 gal of 10,000", value: "71%" },
-            { label: "The tenant decides", sub: "the request goes to the tenant; the sum follows what happens to it" },
-            { label: "Planned date moved", sub: "counted to the new planned date instead" },
-            { label: "Planned date passed, not delivered", sub: "the tank is still emptying — counted from today's reading until it arrives" },
-            {
-              label: "Delivered",
-              sub: "the actual numbers: the level when the order was created, used until it arrived, delivered, and the monitor's reading after",
-            },
-          ],
+          title: "Tank levels once delivered",
+          rows: [{ label: "Formula", sub: `On fulfilment = ${FORMULA_NOW}` }],
         }}
       />
     </span>
@@ -386,74 +362,6 @@ export function OrderTanksLayer({ r }: { r: OrderRequest }) {
                 </td>
                 <td className="px-4 py-3.5">
                   <BatteryCell asset={a} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/**
- * A REQUEST'S TANKS, NESTED UNDER ITS ROW (Pavan, 2026-10-19) — where each
- * went: the order the tenant put it on and that order's status, or Pending
- * while it waits; and the tank's level now.
- */
-export function RequestTanksLayer({ r, all }: { r: OrderRequest; all: OrderRequest[] }) {
-  const nav = usePortalNav();
-  const head = ["Asset", "Product", "Qty (gal)", "Order", "Order status", "Current level", "Days to empty"];
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {head.map((h, i) => (
-              <th
-                key={h}
-                className={cn("whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 2 && "text-right")}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {r.lines.map((l, i) => {
-            const a = assetById(l.assetId);
-            const o = l.orderNo ? all.find((x) => x.requestNo === l.orderNo) : undefined;
-            const accepted = r.status === "Accepted" || r.status === "Partly accepted";
-            return (
-              <tr key={i} className="border-t border-border/60">
-                <td className="whitespace-nowrap px-4 py-3.5 text-foreground">{a?.name ?? "No tank"}</td>
-                <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">{l.product || "—"}</td>
-                <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums text-foreground">
-                  {l.topOff ? "Top off" : l.gal.toLocaleString()}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3.5">
-                  {l.orderNo ? (
-                    <NumberLink no={l.orderNo} onOpen={nav.openOrder} />
-                  ) : accepted ? (
-                    <span className="text-muted-foreground">Pending</span>
-                  ) : (
-                    dash
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3.5">
-                  {o ? (
-                    <StatusChip tone={REQUEST_STATUS_TONE[o.status]} variant="text">
-                      {o.status}
-                    </StatusChip>
-                  ) : (
-                    dash
-                  )}
-                </td>
-                <td className="px-4 py-3.5">
-                  <LevelReading asset={a} />
-                </td>
-                <td className="px-4 py-3.5">
-                  <DaysToEmpty asset={a} />
                 </td>
               </tr>
             );

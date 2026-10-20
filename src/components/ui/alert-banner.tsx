@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Clock, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OutlineShine } from "@/components/ui/outline-shine";
 import { Button } from "@/components/ui/button";
 import { PILL_SHAPE, pillColorClass, type PillKind } from "@/components/ui/pill";
 import {
@@ -43,6 +44,10 @@ export interface BannerAlertItem {
   id: string;
   title: string;
   detail?: string;
+  /** RICHER DETAIL than a line of text — the record's own readings, drawn as
+      the app draws them elsewhere (Pavan, 2026-10-20: a tank's level,
+      battery and gallons). Sits after the title, before the action. */
+  facts?: React.ReactNode;
   action?: React.ReactNode;
   /** Narrow the list to this item. */
   onApply?: () => void;
@@ -237,14 +242,21 @@ export function AlertBanner({
             className={cn(
               PILL_SHAPE,
               pillColorClass(TAG_KIND[a.status]),
-              "h-6 gap-1.5 px-2 text-[11px] font-medium tracking-wide uppercase [&_svg]:size-3.5 [&_svg]:shrink-0"
+              "relative h-6 gap-1.5 overflow-hidden px-2 text-[11px] font-medium tracking-wide uppercase [&_svg]:size-3.5 [&_svg]:shrink-0"
             )}
           >
-            <TriangleAlert />
-            {a.tag}
+            {/* A RED BAR THROUGH THE PILL (Pavan, 2026-10-20) — the outline
+                shine's sweep, on the fill, in a deeper red than the pill. */}
+            {/* …ONLY WHILE COLLAPSED (Pavan, 2026-10-20): opened, the list
+                is the attention; closed again, the sweep comes back. */}
+            {a.status === "warning" && !open && (
+              <OutlineShine fill color="color-mix(in oklab, var(--color-fp-lane-red) 30%, transparent)" band="30%" />
+            )}
+            <TriangleAlert className="relative" />
+            <span className="relative">{a.tag}</span>
             {/* THE COUNT IN THE TAG — a pill inside the pill (ctaMode). */}
             {cta && a.count != null && (
-              <span className="-mr-1 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-background/80 px-1 text-[10px] font-semibold tabular-nums tracking-normal">
+              <span className="relative -mr-1 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-background/80 px-1 text-[10px] font-semibold tabular-nums tracking-normal">
                 {a.count}
               </span>
             )}
@@ -362,18 +374,25 @@ export function AlertBanner({
       </div>
 
       {open && a.items && (
-        <ul className="divide-y divide-current/10 border-t border-current/10 px-3">
+        /* THE OPENED ITEMS ON WHITE (Pavan, 2026-10-20) — the content layer
+           inside the banner's own coloured outline. */
+        <ul className="divide-y divide-current/10 rounded-b-[inherit] border-t border-current/10 bg-fp-surface-1b px-3">
           {a.items.map((it) => (
             <li key={it.id} className="flex min-h-11 items-center gap-3 py-1.5 pl-6.5 text-sm">
               <span className="flex min-w-0 flex-1 items-center gap-x-2">
                 {it.onApply ? (
-                  <button type="button" onClick={it.onApply} className={cn(PRESSABLE, "shrink-0 text-foreground")}>
+                  <button type="button" onClick={it.onApply} className={cn(PRESSABLE, "shrink-0 text-foreground", it.facts && "w-44 truncate text-left")}>
                     {it.title}
                   </button>
                 ) : (
-                  <span className="shrink-0 text-foreground">{it.title}</span>
+                  <span className={cn("shrink-0 text-foreground", it.facts && "w-44 truncate")}>{it.title}</span>
                 )}
                 {it.detail && <span className="min-w-0 truncate text-muted-foreground">{it.detail}</span>}
+                {/* SPREAD ACROSS THE BANNER IN EQUAL COLUMNS (Pavan, 2026-10-20)
+                    — each fact left-aligned, lined up from row to row. */}
+                {it.facts && (
+                  <span className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(0,1fr))] items-center gap-x-4">{it.facts}</span>
+                )}
               </span>
               {it.action && <span className="flex shrink-0 items-center gap-2">{it.action}</span>}
             </li>

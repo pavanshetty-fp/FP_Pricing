@@ -34,6 +34,7 @@ import {
   DEFAULT_HIDDEN,
   sentOn,
   isOrder,
+  galNow,
   LIST_STATUSES,
   orderListRows,
   quantityOf,
@@ -69,7 +70,9 @@ import {
   orderTheRest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
-import { OrderTanksLayer, RequestTanksLayer } from "./TankLevel";
+import { BatteryCell, LevelGauge, OrderTanksLayer } from "./TankLevel";
+import { OutlineShine } from "@/components/ui/outline-shine";
+import { cn } from "@/lib/utils";
 import { NumberLink } from "./cells";
 import { usePortalNav } from "./nav";
 import { GroupedListFooter, useGrouping, type GroupDim } from "@/components/tables-layout";
@@ -500,11 +503,29 @@ export function OrdersScreen({
       count: tanks.length,
       items: tanks.map((t) => ({
         id: t.asset.id,
-        title: `${t.asset.name} · ${t.shipTo}`,
-        detail: t.asset.level <= 3 ? "Empty" : `${t.asset.level}% full`,
+        title: t.asset.name,
+        /* THE TANK AS IT IS DRAWN EVERYWHERE (Pavan, 2026-10-20), a column
+           each: where it is, its level bar, the %, the monitor's battery, and
+           the gallons in it out of its size. */
+        facts: (
+          <>
+            <span className="truncate text-sm text-muted-foreground">{t.shipTo}</span>
+            <LevelGauge pct={t.asset.level} className="w-24" />
+            <span className="text-sm tabular-nums text-foreground">{t.asset.level}%</span>
+            <BatteryCell asset={t.asset} />
+            <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+              {galNow(t.asset).toLocaleString()} of {t.asset.capacity.toLocaleString()} gal
+            </span>
+          </>
+        ),
         action: (
-          <Button variant="outline" size="sm" className={bannerSoftAction} onClick={() => orderFor(t.shipTo, [t.asset.id])}>
-            Create order
+          /* A NUDGE ON THE OUTLINE (Pavan, 2026-10-20) — the dashboard's
+             shine, in a light grey and a wider band. */
+          <Button variant="outline" size="sm" className={cn(bannerSoftAction, "relative")} onClick={() => orderFor(t.shipTo, [t.asset.id])}>
+            Create Order Request
+            {/* ON the outline, FULLY WHITE, a 2px ring centred on the 1px
+                border and a wider band — so it reads (Pavan, 2026-10-20). */}
+            <OutlineShine color="var(--color-white)" band="50%" thickness={2} inset={-1.5} />
           </Button>
         ),
       })),
@@ -995,7 +1016,10 @@ export function OrdersScreen({
               groupNoun="row"
               groupUnit="gal"
               /* EACH ORDER'S TANKS, ONE LAYER DOWN (Pavan, 2026-10-17). */
-              renderExpanded={(r) => (r.orderRef ? <OrderTanksLayer r={r} /> : <RequestTanksLayer r={r} all={all} />)}
+              /* ONE SET OF TANK DETAILS ON EVERY ROW (Pavan, 2026-10-20) — a request
+                 not yet on an order shows the same seven columns; its order
+                 is the row's own Orders column. */
+              renderExpanded={(r) => <OrderTanksLayer r={r} />}
               expandLabel={(r, open) => `${open ? "Hide" : "Show"} tanks for ${r.requestNo}`}
               showColumnFilters={colFiltersOpen}
               columnFilters={colFilters}

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { kindTone } from "../unified-view/statusKind";
 import { DisputeSheet } from "./DisputeSheet";
+
+const DISPUTES_ON = false;
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
@@ -263,7 +265,10 @@ export function InvoiceSheet({
   if (!invoice) return null;
   const c = chargesOf(invoice);
   /* ONE OPEN DISPUTE PER INVOICE; a settled invoice is not disputed here. */
-  const canDispute = !settled_(invoice) && !disputeOpen(invoice) && invoice.status !== "Payment disputed";
+  /* DISPUTES ARE HIDDEN FOR NOW (Pavan, 2026-10-20 — not in the product
+     yet, per the Anirudh review). The flow stays built: DISPUTES_ON brings it
+     back. */
+  const canDispute = DISPUTES_ON && !settled_(invoice) && !disputeOpen(invoice) && invoice.status !== "Payment disputed";
   const d = daysFrom(invoice.due);
   const settled = SETTLED.includes(invoice.status);
   return (

@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import { Pill } from "@/components/ui/pill";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,9 +51,12 @@ export interface BreakdownCardProps {
   table?: BreakdownTable;
   /** Renders the dashed rule + bold total row. Omit to end after the rows. */
   total?: { label: string; value: string };
+  /** WARNINGS, after the total (Pavan, 2026-10-20) — red, an alert mark each:
+      what the figure means will go wrong. */
+  warnings?: string[];
 }
 
-export function BreakdownCard({ title, rows, table, total }: BreakdownCardProps) {
+export function BreakdownCard({ title, rows, table, total, warnings }: BreakdownCardProps) {
   return (
     <div className="flex w-full flex-col gap-4">
       <h4 className="text-base font-semibold">{title}</h4>
@@ -136,6 +140,17 @@ export function BreakdownCard({ title, rows, table, total }: BreakdownCardProps)
             <span className="tabular-nums">{total.value}</span>
           </div>
         </>
+      )}
+
+      {warnings && warnings.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {warnings.map((w) => (
+            <li key={w} className="flex items-start gap-2 text-sm text-status-failed">
+              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{w}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

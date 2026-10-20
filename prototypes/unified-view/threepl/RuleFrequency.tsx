@@ -452,7 +452,6 @@ function DatePart({
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayKey = dateKeyOf(today);
   const picked = new Set(value.dates ?? []);
   /* Opens on the month of the first picked date, else this month. */
   const [month, setMonth] = React.useState(() => {
@@ -462,9 +461,8 @@ function DatePart({
       : new Date(today.getFullYear(), today.getMonth(), 1);
   });
   const daysIn = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const atThisMonth =
-    month.getFullYear() === today.getFullYear() &&
-    month.getMonth() === today.getMonth();
+  /* THE MONTH AS A CALENDAR — day 1 under its own weekday. */
+  const lead = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
   const shift = (n: number) =>
     setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
   const toggle = (key: string) => {
@@ -475,8 +473,10 @@ function DatePart({
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1.5">
+    /* THE DAYS UNIT'S SHAPE (Pavan, 2026-10-20) — the dates in the same
+       360px column, Repeat beside them on the right. */
+    <div className="flex items-start gap-15">
+      <div className="flex w-[360px] shrink-0 flex-col gap-1.5">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-medium text-foreground">
             Select date/s
@@ -486,7 +486,6 @@ function DatePart({
               variant="ghost"
               size="icon-sm"
               aria-label="Previous month"
-              disabled={atThisMonth}
               onClick={() => shift(-1)}
             >
               <ChevronLeft />
@@ -504,26 +503,28 @@ function DatePart({
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1">
+        {/* EVERY DATE PICKABLE (Pavan, 2026-10-20) — one already gone this
+            month still comes round again next month. */}
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: lead }, (_, i) => (
+            <span key={`lead-${i}`} aria-hidden />
+          ))}
           {Array.from({ length: daysIn }, (_, i) => {
             const d = new Date(month.getFullYear(), month.getMonth(), i + 1);
             const key = dateKeyOf(d);
             const on = picked.has(key);
-            const past = key < todayKey;
             return (
               <button
                 key={key}
                 type="button"
-                disabled={past}
                 aria-pressed={on}
                 aria-label={d.toDateString()}
                 onClick={() => toggle(key)}
                 className={cn(
-                  "flex h-12 w-10 flex-col items-center justify-center gap-0.5 rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                  "flex h-11 flex-col items-center justify-center gap-0.5 rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                   on
                     ? "bg-accent-violet text-accent-violet-foreground"
-                    : "bg-fp-card-1 text-foreground hover:bg-accent",
-                  past && "cursor-not-allowed opacity-40 hover:bg-fp-card-1"
+                    : "bg-fp-card-1 text-foreground hover:bg-accent"
                 )}
               >
                 <span
@@ -544,23 +545,26 @@ function DatePart({
         )}
       </div>
 
-      <Row label="Repeat">
-        <Select
-          value={String(value.dateRepeat ?? 1)}
-          onValueChange={(v) => onChange({ ...value, dateRepeat: Number(v) })}
-        >
-          <SelectTrigger className="w-62">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DATE_REPEATS.map((r) => (
-              <SelectItem key={r.n} value={String(r.n)}>
-                {r.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Row>
+      {/* REPEAT ON THE RIGHT, as in Days — the row's other half. */}
+      <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-6">
+        <Row label="Repeat">
+          <Select
+            value={String(value.dateRepeat ?? 1)}
+            onValueChange={(v) => onChange({ ...value, dateRepeat: Number(v) })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_REPEATS.map((r) => (
+                <SelectItem key={r.n} value={String(r.n)}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Row>
+      </div>
     </div>
   );
 }

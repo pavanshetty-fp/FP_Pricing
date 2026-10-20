@@ -33,7 +33,6 @@ import {
   windowText,
   type OrderRequest,
   type RequestStatus,
-  roomIn,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { TankHealthCard } from "./TankHealth";
@@ -1619,7 +1618,7 @@ export function DashboardScreen() {
                   assetId,
                   product: lastProductFor(assetId, rows) ?? assetById(assetId)?.product ?? "",
                   topOff: false,
-                  gal: roomIn(assetById(assetId)),
+                  gal: 0,
                 },
               ],
             });

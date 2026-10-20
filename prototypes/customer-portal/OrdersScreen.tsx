@@ -68,7 +68,6 @@ import {
   type RequestColumnKey,
   type RequestSort,
   orderTheRest,
-  roomIn,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { BatteryCell, LevelGauge, OrderTanksLayer } from "./TankLevel";
@@ -276,7 +275,7 @@ export function OrdersScreen({
               assetId: id,
               product: lastProductFor(id, all) ?? a?.product ?? "",
               topOff: false,
-              gal: roomIn(a),
+              gal: 0,
             };
           })
         : r.lines,
@@ -468,7 +467,7 @@ export function OrdersScreen({
         assetId: id,
         product: lastProductFor(id, rows) ?? assetById(id)?.product ?? "",
         topOff: false,
-        gal: roomIn(assetById(id)),
+        gal: 0,
       })),
     });
     setCreatingId(r.id);

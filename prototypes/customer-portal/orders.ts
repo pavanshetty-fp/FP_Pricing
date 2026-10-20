@@ -2,6 +2,7 @@ import * as React from "react";
 import { DATE_FMT, dateKeyOf, startOfDay } from "../unified-view/data";
 import { statusTones } from "../unified-view/statusKind";
 import type { ActivityEntry } from "../unified-view/activity";
+import type { RuleFrequency } from "../unified-view/threepl/RuleFrequency";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
 
 /*
@@ -477,6 +478,9 @@ export interface OrderRequest {
   instructions: string;
   recurring: boolean;
   frequency: string;
+  /** THE RULE'S OWN FREQUENCY UNIT (Pavan, 2026-10-20) — set on the order
+      when Recurring is ticked; `frequency` is its one-line summary. */
+  schedule?: RuleFrequency;
   /** `YYYY-MM-DD`, or "" for no end. */
   endDate: string;
   status: RequestStatus;
@@ -1419,9 +1423,6 @@ export const clampPreferred = (p: TimeSpan[], start: number, end: number): TimeS
   1,200 left → suggested 8,800; ordering 6,000 makes it 72%.
 */
 export const galNow = (a: Asset) => Math.round((a.level / 100) * a.capacity);
-/** THE ROOM LEFT IN THE TANK — size less what's in it now. A new order's
-    starting quantity for a tank (Pavan, 2026-10-20), never a top off. */
-export const roomIn = (a?: Asset) => (a && a.capacity ? Math.max(0, a.capacity - galNow(a)) : 0);
 export const daysToEmpty = (a: Asset): number | null =>
   a.monitor && a.dailyUse > 0 ? Math.floor(galNow(a) / a.dailyUse) : null;
 /** Whole days from today to a `YYYY-MM-DD` — 0 for today, unset or past. */
@@ -1531,3 +1532,14 @@ export const lacksPod = (r: OrderRequest) =>
   isOrder(r) && DELIVERED.includes(r.status) && !r.documents.some((d) => d.kind === "Delivery ticket");
 /** ON HOLD FOR CREDIT — a yes/no from the tenant; no balance. */
 export const onCreditHold = (r: OrderRequest) => r.flags.some((f) => f.kind === "Credit hold");
+
+/* THE FREQUENCY UNIT IN ONE LINE (Pavan, 2026-10-20) — for the list's
+   Repeats column and anywhere an order's repeat is named. */
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export function scheduleSummary(f: RuleFrequency): string {
+  if (f.basis === "date") return f.dates.length ? `On ${f.dates.length} picked ${f.dates.length === 1 ? "date" : "dates"}` : "";
+  if (f.repeat === "cycle") return `Every ${(f.cycleWeeks ?? []).length || 2} weeks`;
+  const days = f.dayMode === "daily" ? "Every day" : f.days.slice().sort().map((d) => DAY_SHORT[d]).join(", ");
+  if (!days) return "";
+  return f.repeat === "weekly" || f.dayMode === "daily" ? (f.dayMode === "daily" ? days : `Weekly · ${days}`) : `${f.repeat[0].toUpperCase()}${f.repeat.slice(1)} · ${days}`;
+}

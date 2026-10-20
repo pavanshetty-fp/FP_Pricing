@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send } from "lucide-react";
+import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Plus, Send } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,14 +10,13 @@ import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { SheetField, SheetSection, SheetSectionRemove } from "@/components/side-sheet/parts";
 import {
   TableCellInput,
   TableCellSelect,
   TableRequiredLabel,
   TableRowRemove,
 } from "@/components/form-layout/table-cells";
-import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,13 +41,13 @@ import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import { NumberLink, RulePill } from "./cells";
-import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading, SuggestedGal } from "./TankLevel";
-import { PreferredWindows } from "./PreferredWindows";
+import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading } from "./TankLevel";
+import { DeliveryWindowTimeline } from "./DeliveryWindowTimeline";
+import { RuleFrequencyPicker, blankFrequency } from "../unified-view/threepl/RuleFrequency";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import {
-  FREQUENCIES,
   PRICES_AS_OF,
   PRODUCTS,
   REQUEST_STATUS_TONE,
@@ -64,6 +63,8 @@ import {
   ordersOfRequest,
   requestChange,
   daysUntil,
+  suggestedGal,
+  scheduleSummary,
   cancelRule,
   dateOfKey,
   discardRequest,
@@ -106,6 +107,7 @@ type Draft = Pick<
   | "instructions"
   | "recurring"
   | "frequency"
+  | "schedule"
   | "endDate"
 >;
 
@@ -120,6 +122,7 @@ const draftOf = (r: OrderRequest): Draft => ({
   instructions: r.instructions,
   recurring: r.recurring,
   frequency: r.frequency,
+  schedule: r.schedule,
   endDate: r.endDate,
 });
 
@@ -207,18 +210,17 @@ export function LinesTable({
     /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
        than closing the asset and product cells. */
     <div className="overflow-x-auto">
-    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[984px]" : "min-w-[772px]")}>
+    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[888px]" : "min-w-[772px]")}>
       {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order.
           WHAT THE ORDER DOES TO THE TANK FIRST (Pavan, 2026-10-17): its level
-          now, the % on fulfilment, and while ordering the suggested quantity
-          and days to empty. THEN TOP OFF, AND THE QUANTITY LAST (Pavan,
+          now, the % on fulfilment, and while ordering days to empty (the
+          suggested quantity is the Qty cell's placeholder, 2026-10-20). THEN TOP OFF, AND THE QUANTITY LAST (Pavan,
           2026-10-20) — the figure the readings lead to, at the row's end. */}
       <colgroup>
         <col className="w-[154px]" />
         <col className="w-[146px]" />
         <col className="w-[112px]" />
         <col className="w-[124px]" />
-        {live && <col className="w-[96px]" />}
         {live && <col className="w-[108px]" />}
         <col className="w-[96px]" />
         <col className="w-[104px]" />
@@ -240,11 +242,6 @@ export function LinesTable({
               <FulfilmentHead />
             </TableRequiredLabel>
           </th>
-          {live && (
-            <th className="px-3 py-2.5 text-left">
-              <TableRequiredLabel>Suggested</TableRequiredLabel>
-            </th>
-          )}
           {live && (
             <th className="px-3 py-2.5 text-left">
               <TableRequiredLabel>Days to empty</TableRequiredLabel>
@@ -331,11 +328,6 @@ export function LinesTable({
               <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
               {live && (
                 <td className="px-3">
-                  <SuggestedGal asset={asset} days={days} onUse={(gal) => update(i, { gal, topOff: false })} />
-                </td>
-              )}
-              {live && (
-                <td className="px-3">
                   <DaysToEmpty asset={asset} days={days} />
                 </td>
               )}
@@ -352,6 +344,9 @@ export function LinesTable({
                 <TableCellInput
                   value={l.topOff ? "" : l.gal ? String(l.gal) : ""}
                   placeholder={l.topOff ? "Top-off" : "0"}
+                  /* THE SUGGESTION IS THE PLACEHOLDER (Pavan, 2026-10-20) —
+                     the tank full on the planned day; → takes it. */
+                  suggestion={live && !l.topOff && asset?.monitor && asset.capacity ? String(suggestedGal(asset, days)) : undefined}
                   disabled={l.topOff}
                   numeric
                   suffix="gal"
@@ -375,7 +370,7 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={live ? 7 : 5} className="px-3 text-right text-sm text-muted-foreground">
+            <td colSpan={live ? 6 : 5} className="px-3 text-right text-sm text-muted-foreground">
               Total
             </td>
             <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
@@ -609,7 +604,7 @@ export function OrderRequestSheet({
         target: SECTION_DELIVERY,
       },
     draft.recurring &&
-      !draft.frequency && { key: "freq", label: "Choose a frequency", target: SECTION_DELIVERY },
+      !draft.frequency && { key: "freq", label: "Pick the days", target: SECTION_DELIVERY },
     draft.lines.some((l) => !l.product) && {
       key: "product",
       label: "Choose a product",
@@ -667,7 +662,7 @@ export function OrderRequestSheet({
          documents = document · added · by · bin. The summary rail beside. */
       fit={{
         tables: [
-          [CELL.pick, CELL.pick, CELL.number, CELL.number, CELL.number, CELL.number, CELL.topOff, CELL.number, CELL.bin],
+          [CELL.pick, CELL.pick, CELL.number, CELL.number, CELL.number, CELL.topOff, CELL.number, CELL.bin],
           [CELL.name, CELL.date, CELL.pick, CELL.bin],
         ],
         rail: true,
@@ -854,7 +849,9 @@ export function OrderRequestSheet({
         ) : null}
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-10">
           <SheetSection id={SECTION_DELIVERY} title="Delivery">
-            <div className="grid grid-cols-2 gap-4">
+            {/* SHIP-TO, PO # AND PLANNED DATE ON ONE LINE; the day's window
+                and preferred times under them, full width (Pavan, 2026-10-20). */}
+            <div className="grid grid-cols-3 gap-4">
               <SheetField label="Ship-to" required>
                 <Combobox
                   className="w-full"
@@ -902,74 +899,72 @@ export function OrderRequestSheet({
                   from={today}
                 />
               </SheetField>
-              <TimeWindowSlider
-                label="Delivery window"
-                required
-                start={draft.windowStart}
-                end={draft.windowEnd}
-                onChange={(a, b) =>
-                  setDraft((d) => ({ ...d, windowStart: a, windowEnd: b, preferred: clampPreferred(d.preferred, a, b) }))
-                }
-              />
-              {/* UNDER THE WINDOW THEY SIT INSIDE (Pavan, 2026-10-17); a sent
-                  order with none shows nothing. */}
-              {(!locked || draft.preferred.length > 0) && (
-              <div className="col-start-2">
-                <PreferredWindows
-                  windowStart={draft.windowStart}
-                  windowEnd={draft.windowEnd}
-                  value={draft.preferred}
-                  onChange={(p) => set("preferred", p)}
-                  disabled={locked}
-                />
-              </div>
-              )}
             </div>
-            {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
-            {/* …and an ORDER repeats only through its request. */}
-            {!request.ruleNo && !order && (
-              <div className="grid grid-cols-2 items-end gap-4">
-                <SheetField>
-                  <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
-                    <Checkbox
-                      checked={draft.recurring}
-                      onCheckedChange={(v) => {
-                        const on = v === true;
-                        setDraft((d) => ({
-                          ...d,
-                          recurring: on,
-                          frequency: on ? d.frequency || FREQUENCIES[2] : d.frequency,
-                        }));
-                      }}
-                    />
-                    Recurring order
-                  </label>
-                </SheetField>
-                {draft.recurring && (
-                  <SheetField label="Frequency" required>
-                    <Combobox
-                      className="w-full"
-                      value={draft.frequency}
-                      onValueChange={(v) => set("frequency", v)}
-                      options={FREQUENCIES}
-                      placeholder="Select frequency"
-                    />
-                  </SheetField>
-                )}
-                {draft.recurring && (
-                  <SheetField label="End date" className="col-start-2">
-                    <DateButton
-                      label="End date"
-                      value={draft.endDate}
-                      onChange={(k) => set("endDate", k)}
-                      placeholder="No end date"
-                      from={dateOfKey(draft.date) ?? today}
-                    />
-                  </SheetField>
-                )}
-              </div>
-            )}
+            <DeliveryWindowTimeline
+              required
+              start={draft.windowStart}
+              end={draft.windowEnd}
+              onWindowChange={(a, b) =>
+                setDraft((d) => ({ ...d, windowStart: a, windowEnd: b, preferred: clampPreferred(d.preferred, a, b) }))
+              }
+              preferred={draft.preferred}
+              onPreferredChange={(p) => set("preferred", p)}
+              disabled={locked}
+            />
           </SheetSection>
+
+          {/* RECURRING ORDER, AS THE 3PL LOAD ORDER (Pavan, 2026-10-20) — an
+              optional section: a dashed "Add" row until it's asked for, then
+              the recurring rule's frequency unit in its own box, removed with
+              the section's minus. */}
+          {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
+          {/* …and an ORDER repeats only through its request. */}
+          {!request.ruleNo && !order && (!locked || draft.recurring) && (
+            <SheetSection
+              title="Recurring order"
+              action={
+                draft.recurring && !locked ? (
+                  <SheetSectionRemove
+                    label="Remove recurring order"
+                    onClick={() => setDraft((d) => ({ ...d, recurring: false, frequency: "", endDate: "" }))}
+                  />
+                ) : undefined
+              }
+            >
+              {!draft.recurring ? (
+                <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
+                  <span className="text-sm text-foreground">Add Recurring Order</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setDraft((d) => {
+                        /* STARTS ON THE PLANNED DATE'S WEEKDAY, weekly. */
+                        const day = dateOfKey(d.date)?.getDay() ?? new Date().getDay();
+                        const schedule = d.schedule ?? { ...blankFrequency(), days: [day] };
+                        return { ...d, recurring: true, schedule, frequency: scheduleSummary(schedule), endDate: schedule.endKey ?? "" };
+                      })
+                    }
+                  >
+                    <Plus /> Add
+                  </Button>
+                </div>
+              ) : (
+                draft.schedule && (
+                  /* THE RECURRING RULE'S FREQUENCY UNIT, as it is there — days,
+                     repeat, weeks, end date — in one box. */
+                  <div className="rounded-md border border-fp-outline-1 p-4">
+                    <RuleFrequencyPicker
+                      value={draft.schedule}
+                      onChange={(f) =>
+                        setDraft((d) => ({ ...d, schedule: f, frequency: scheduleSummary(f), endDate: f.endKey ?? "" }))
+                      }
+                    />
+                  </div>
+                )
+              )}
+            </SheetSection>
+          )}
 
           <SheetSection
             id={SECTION_LINES}

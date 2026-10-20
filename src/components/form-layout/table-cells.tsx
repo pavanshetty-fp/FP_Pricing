@@ -235,6 +235,12 @@ export interface TableCellInputProps {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  /**
+   * A SUGGESTED VALUE (Pavan, 2026-10-20) — shown as the placeholder while the
+   * cell is empty; → (ArrowRight) in the empty cell takes it, as an inline
+   * completion does. The suggested quantity for a tank, on an order.
+   */
+  suggestion?: string;
   disabled?: boolean;
   /** Right-align and tabular-align digits, for a quantity or amount column. */
   numeric?: boolean;
@@ -264,6 +270,7 @@ export function TableCellInput({
   value,
   onChange,
   placeholder,
+  suggestion,
   disabled,
   numeric,
   suffix,
@@ -324,7 +331,14 @@ export function TableCellInput({
           onChange(e.target.value);
         }}
         onBlur={() => setTyped(null)}
-        placeholder={placeholder}
+        onKeyDown={(e) => {
+          if (suggestion && e.key === "ArrowRight" && shown === "") {
+            e.preventDefault();
+            setTyped(suggestion);
+            onChange(suggestion);
+          }
+        }}
+        placeholder={suggestion || placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
         autoFocus={autoFocus}

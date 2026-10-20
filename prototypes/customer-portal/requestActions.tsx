@@ -81,7 +81,7 @@ export function QuoteLines({ r }: { r: OrderRequest }) {
       <RailRow variant="line" label={`Tax (${Math.round(TAX_RATE * 100)}%)`} value={usd.format(q.tax)} />
       <RailRow variant="total" label="Quoted total" value={usd.format(q.total)} />
       <p className="pt-1 text-xs text-muted-foreground">
-        Estimate was {usd.format(q.est.low)} – {usd.format(q.est.high)} for fuel
+        Estimate was {usd.format((q.est.low + q.est.high) / 2)} for fuel
         {q.valid ? ` · valid until ${printKey(`${q.valid.getFullYear()}-${String(q.valid.getMonth() + 1).padStart(2, "0")}-${String(q.valid.getDate()).padStart(2, "0")}`)}` : ""}
       </p>
     </dl>

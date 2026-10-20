@@ -74,6 +74,27 @@ const TAG_KIND: Record<BannerStatus, PillKind> = {
   success: "success",
 };
 
+/* THE SWEEP'S BAR PER KIND — a deeper shade of the pill's own colour
+   (Pavan, 2026-10-20: every pill in the banner, not only Needs action). */
+const SWEEP: Record<BannerStatus, string> = {
+  warning: "color-mix(in oklab, var(--color-fp-lane-red) 30%, transparent)",
+  caution: "color-mix(in oklab, var(--color-fp-lane-orange) 35%, transparent)",
+  info: "color-mix(in oklab, var(--color-fp-lane-blue) 30%, transparent)",
+  success: "color-mix(in oklab, var(--color-fp-lane-green) 30%, transparent)",
+};
+
+/** THE CTA SHINE (Pavan, 2026-10-20) — every button the banner carries gets
+    the white sweep on its outline, the one first drawn on "Create Order
+    Request". A ring 2px wide, centred on the button's 1px border. */
+function Shined({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="relative inline-flex rounded-md">
+      {children}
+      <OutlineShine color="var(--color-white)" band="50%" thickness={2} inset={-0.5} />
+    </span>
+  );
+}
+
 const ICON_BTN =
   "flex size-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-4";
 
@@ -245,13 +266,12 @@ export function AlertBanner({
               "relative h-6 gap-1.5 overflow-hidden px-2 text-[11px] font-medium tracking-wide uppercase [&_svg]:size-3.5 [&_svg]:shrink-0"
             )}
           >
-            {/* A RED BAR THROUGH THE PILL (Pavan, 2026-10-20) — the outline
-                shine's sweep, on the fill, in a deeper red than the pill. */}
+            {/* A BAR THROUGH THE PILL (Pavan, 2026-10-20) — the outline
+                shine's sweep, on the fill, in a deeper shade of the pill.
+                Every kind, not only red ("Quote waiting" too). */}
             {/* …ONLY WHILE COLLAPSED (Pavan, 2026-10-20): opened, the list
                 is the attention; closed again, the sweep comes back. */}
-            {a.status === "warning" && !open && (
-              <OutlineShine fill color="color-mix(in oklab, var(--color-fp-lane-red) 30%, transparent)" band="30%" />
-            )}
+            {!open && <OutlineShine fill color={SWEEP[a.status]} band="30%" />}
             <TriangleAlert className="relative" />
             <span className="relative">{a.tag}</span>
             {/* THE COUNT IN THE TAG — a pill inside the pill (ctaMode). */}
@@ -297,15 +317,17 @@ export function AlertBanner({
                   className={cn(
                     PILL_SHAPE,
                     pillColorClass(TAG_KIND[a.status]),
-                    "h-6 gap-1 px-2 tabular-nums outline-none transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring/50"
+                    "relative h-6 gap-1 overflow-hidden px-2 tabular-nums outline-none transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring/50"
                   )}
                 >
-                  {a.count ?? a.items!.length}
-                  <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+                  {!open && <OutlineShine fill color={SWEEP[a.status]} band="30%" />}
+                  <span className="relative">{a.count ?? a.items!.length}</span>
+                  <ChevronDown className={cn("relative size-3.5 transition-transform", open && "rotate-180")} />
                 </button>
               ) : (
-                <span className={cn(PILL_SHAPE, pillColorClass(TAG_KIND[a.status]), "h-6 px-2 tabular-nums")}>
-                  {a.count}
+                <span className={cn(PILL_SHAPE, pillColorClass(TAG_KIND[a.status]), "relative h-6 overflow-hidden px-2 tabular-nums")}>
+                  <OutlineShine fill color={SWEEP[a.status]} band="30%" />
+                  <span className="relative">{a.count}</span>
                 </span>
               )}
             </>
@@ -344,7 +366,11 @@ export function AlertBanner({
         </div>
         {/* RIGHT — the action, snooze, the stepper, and ✕ LAST: dismissing
             is the way out, so it sits at the edge (Pavan, 2026-10-13). */}
-        {a.action && <div className="flex shrink-0 items-center gap-2">{a.action}</div>}
+        {a.action && (
+          <div className="flex shrink-0 items-center gap-2">
+            <Shined>{a.action}</Shined>
+          </div>
+        )}
 
         {/* ONE KIND AT A TIME — the Pending strip's stepper. */}
         {alerts.length > 1 && (
@@ -394,7 +420,11 @@ export function AlertBanner({
                   <span className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(0,1fr))] items-center gap-x-4">{it.facts}</span>
                 )}
               </span>
-              {it.action && <span className="flex shrink-0 items-center gap-2">{it.action}</span>}
+              {it.action && (
+                <span className="flex shrink-0 items-center gap-2">
+                  <Shined>{it.action}</Shined>
+                </span>
+              )}
             </li>
           ))}
         </ul>

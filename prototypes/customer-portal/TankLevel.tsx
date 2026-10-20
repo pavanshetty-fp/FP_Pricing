@@ -261,6 +261,9 @@ function FulfilmentFigure({
 }) {
   const a = assetById(line.assetId);
   if (!a?.monitor || !a.capacity) return dash;
+  /* NO PLANNED DATE, NO FIGURE (Pavan, 2026-10-20) — the sum runs to the
+     planned date; until one is picked there is nothing to work out. */
+  if (!delivered && !dateKey) return dash;
   const card = fulfilmentCard(a, line, dateKey, delivered, r);
   const pct = card.total!.value.split("%")[0];
   return (

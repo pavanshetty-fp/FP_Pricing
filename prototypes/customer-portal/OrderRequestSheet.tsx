@@ -207,22 +207,22 @@ export function LinesTable({
     /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
        than closing the asset and product cells. */
     <div className="overflow-x-auto">
-    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[1056px]" : "min-w-[826px]")}>
-      {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order. TOP OFF
-          LAST, NEXT TO THE QUANTITY IT REPLACES (Pavan, 2026-10-16 — DS ui §10i). */}
-      {/* AFTER TOP OFF, WHAT THE ORDER DOES TO THE TANK (Pavan, 2026-10-17):
-          its level now, the % on fulfilment, and while ordering the suggested
-          quantity (full on the day) and days to empty. */}
+    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[984px]" : "min-w-[772px]")}>
+      {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order.
+          WHAT THE ORDER DOES TO THE TANK FIRST (Pavan, 2026-10-17): its level
+          now, the % on fulfilment, and while ordering the suggested quantity
+          and days to empty. THEN TOP OFF, AND THE QUANTITY LAST (Pavan,
+          2026-10-20) — the figure the readings lead to, at the row's end. */}
       <colgroup>
-        <col className="w-[160px]" />
-        <col className="w-[160px]" />
-        <col className="w-[110px]" />
+        <col className="w-[154px]" />
+        <col className="w-[146px]" />
+        <col className="w-[112px]" />
+        <col className="w-[124px]" />
+        {live && <col className="w-[96px]" />}
+        {live && <col className="w-[108px]" />}
+        <col className="w-[96px]" />
         <col className="w-[104px]" />
-        <col className="w-[120px]" />
-        <col className="w-[120px]" />
-        {live && <col className="w-[120px]" />}
-        {live && <col className="w-[110px]" />}
-        <col className="w-[52px]" />
+        <col className="w-[44px]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
@@ -231,20 +231,6 @@ export function LinesTable({
           </th>
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel required>Product</TableRequiredLabel>
-          </th>
-          <th className="px-3 py-2.5 text-right">
-            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-          </th>
-          {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
-          <th className="px-3 py-2.5">
-            <span className="flex items-center justify-between gap-2">
-              <TableRequiredLabel>Top off</TableRequiredLabel>
-              <Checkbox
-                checked={allTop ? true : someTop ? "indeterminate" : false}
-                aria-label="Top off every line"
-                onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
-              />
-            </span>
           </th>
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Current level</TableRequiredLabel>
@@ -264,6 +250,20 @@ export function LinesTable({
               <TableRequiredLabel>Days to empty</TableRequiredLabel>
             </th>
           )}
+          {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
+          <th className="px-3 py-2.5">
+            <span className="flex items-center justify-between gap-2">
+              <TableRequiredLabel>Top off</TableRequiredLabel>
+              <Checkbox
+                checked={allTop ? true : someTop ? "indeterminate" : false}
+                aria-label="Top off every line"
+                onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
+              />
+            </span>
+          </th>
+          <th className="px-3 py-2.5 text-right">
+            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+          </th>
           <th aria-hidden />
         </tr>
       </thead>
@@ -325,26 +325,6 @@ export function LinesTable({
                   onChange={(v) => update(i, { product: v })}
                 />
               </td>
-              <td className="relative p-0">
-                <TableCellInput
-                  value={l.topOff ? "" : l.gal ? String(l.gal) : ""}
-                  placeholder={l.topOff ? "Top-off" : "0"}
-                  disabled={l.topOff}
-                  numeric
-                  suffix="gal"
-                  aria-label={`Gallons for ${name}`}
-                  onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
-                />
-              </td>
-              <td className="px-3">
-                <span className="flex justify-end">
-                  <Checkbox
-                    checked={l.topOff}
-                    onCheckedChange={(c) => update(i, { topOff: c === true })}
-                    aria-label={`Top off ${name}`}
-                  />
-                </span>
-              </td>
               <td className="px-3">
                 {l.assetId ? <LevelReading asset={asset} /> : <span className="text-sm text-muted-foreground">—</span>}
               </td>
@@ -359,6 +339,26 @@ export function LinesTable({
                   <DaysToEmpty asset={asset} days={days} />
                 </td>
               )}
+              <td className="px-3">
+                <span className="flex justify-end">
+                  <Checkbox
+                    checked={l.topOff}
+                    onCheckedChange={(c) => update(i, { topOff: c === true })}
+                    aria-label={`Top off ${name}`}
+                  />
+                </span>
+              </td>
+              <td className="relative p-0">
+                <TableCellInput
+                  value={l.topOff ? "" : l.gal ? String(l.gal) : ""}
+                  placeholder={l.topOff ? "Top-off" : "0"}
+                  disabled={l.topOff}
+                  numeric
+                  suffix="gal"
+                  aria-label={`Gallons for ${name}`}
+                  onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
+                />
+              </td>
               <td className="relative p-0 text-center">
                 {/* A request needs a line, so the last row keeps no bin. */}
                 <TableRowRemove
@@ -375,13 +375,13 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={2} className="px-3 text-right text-sm text-muted-foreground">
+            <td colSpan={live ? 7 : 5} className="px-3 text-right text-sm text-muted-foreground">
               Total
             </td>
             <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
-            <td aria-hidden colSpan={live ? 6 : 4} />
+            <td aria-hidden />
           </tr>
         </tfoot>
       )}
@@ -400,7 +400,9 @@ const AS_OF_FMT = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
 });
-const range = (low: number, high: number) => `${MONEY(low)} – ${MONEY(high)}`;
+/* ONE FIGURE, NOT A RANGE (Pavan, 2026-10-20) — the median of the
+   estimate's low and high. */
+const median = (low: number, high: number) => MONEY((low + high) / 2);
 
 /**
  * THE REQUEST SUMMARY — the shared summary card (ux §Record sheets), with the
@@ -414,11 +416,11 @@ function InvoiceLink({ no }: { no: string }) {
   return INVOICES.some((i) => i.invoiceNo === no) ? <RecordLink label={no} onOpen={() => nav.openInvoice(no)} /> : <>{no}</>;
 }
 
-function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?: string }) {
+function RequestSummary({ lines, invoiceNo, fill }: { lines: RequestLine[]; invoiceNo?: string; fill?: boolean }) {
   const est = estimate(lines);
   const qty = quantityOf(lines);
   return (
-    <SummaryCard title="Request summary">
+    <SummaryCard title="Request summary" fill={fill}>
       {est.rows.length > 0 && (
         <>
           <dl className="flex flex-col">
@@ -429,7 +431,7 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
                 label={`${assetById(r.line.assetId)?.name ?? "Tank or asset"} · ${r.line.product}`}
                 value={
                   r.low !== null && r.high !== null ? (
-                    range(r.low, r.high)
+                    median(r.low, r.high)
                   ) : (
                     <span className="text-muted-foreground">
                       {r.line.topOff ? "Priced on delivery" : "—"}
@@ -444,7 +446,7 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
                   },
                   {
                     label: "Estimated rate",
-                    value: `${RATE(r.rateLow)} – ${RATE(r.rateHigh)}/gal`,
+                    value: `${RATE((r.rateLow + r.rateHigh) / 2)}/gal`,
                   },
                 ]}
               />
@@ -453,7 +455,9 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
           <div aria-hidden className="border-t border-dashed border-border" />
         </>
       )}
-      <dl className="flex flex-col">
+      {/* THE TOTALS AT THE CARD'S FOOT when it fills the rail (Pavan,
+          2026-10-20); the lines above them. */}
+      <dl className={cn("flex flex-col", fill && "mt-auto")}>
         <RailRow
           variant="line"
           label="Total gallons"
@@ -484,7 +488,7 @@ function RequestSummary({ lines, invoiceNo }: { lines: RequestLine[]; invoiceNo?
               </Tooltip>
             </span>
           }
-          value={est.high > 0 ? range(est.low, est.high) : "—"}
+          value={est.high > 0 ? median(est.low, est.high) : "—"}
         />
       </dl>
       {/* INVOICES SHOW ON THE REQUEST TOO (Pavan, 2026-10-13). */}
@@ -663,7 +667,7 @@ export function OrderRequestSheet({
          documents = document · added · by · bin. The summary rail beside. */
       fit={{
         tables: [
-          [CELL.pick, CELL.pick, CELL.number, CELL.topOff, CELL.number, CELL.number, CELL.number, CELL.number, CELL.bin],
+          [CELL.pick, CELL.pick, CELL.number, CELL.number, CELL.number, CELL.number, CELL.topOff, CELL.number, CELL.bin],
           [CELL.name, CELL.date, CELL.pick, CELL.bin],
         ],
         rail: true,
@@ -1052,8 +1056,11 @@ export function OrderRequestSheet({
         {/* THE RIGHT COLUMN — the summary card, while creating too (Pavan,
             2026-10-13: the estimate sits beside the form, not in it); the
             activity card once the request exists. */}
-        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
-          <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} />
+        {/* THE SUMMARY TAKES THE RAIL'S FULL HEIGHT (Pavan, 2026-10-20) — the
+            sheet's scroll area less its padding; the trip and activity cards
+            keep their own height below it, the summary takes the rest. */}
+        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(100dvh-10.25rem)]">
+          <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} fill />
           {!creating && ["Out for delivery", "Partial delivery", "Delivered", "Invoiced", "Paid"].includes(request.status) && (
             <SummaryCard title="Trip">
               <TripTimeline r={request} />

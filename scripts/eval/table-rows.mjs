@@ -18,8 +18,9 @@
     · EVERY picker in a table that adds rows takes `multiple` — several
       picks make several rows — or is marked ONE VALUE with why it is a value
       inside a row (Pavan, 2026-10-15; tightened 2026-10-16);
-    · TOP OFF COMES AFTER QTY — a table header naming Top off before its
-      Qty / Quantity header (§10i, Pavan, 2026-10-16).
+    · TOP OFF, THEN QTY — a Top off header that is not the one right before
+      the Qty / Quantity header (§10i, Pavan, 2026-10-16; Qty last since
+      2026-10-20).
 
   WHAT IT DOES NOT DO. Whether the RIGHT cell takes focus, whether a table may
   be emptied, and what a new row starts with are readings (L2), listed in the
@@ -93,11 +94,15 @@ export function check() {
     let at = 0;
     for (const h of heads) {
       at = src.indexOf(h, at);
-      const top = h.search(/Top off/i);
+      /* The label, not a comment ("TOP OFF …") above its cell. */
+      const top = h.search(/Top off/);
       const qty = h.search(/Qty|Quantity/);
-      if (top >= 0 && qty >= 0 && top < qty) {
+      if (top < 0 || qty < 0) continue;
+      /* TOP OFF FIRST, AND NO HEADER BETWEEN — Qty's own <th is the only one. */
+      const between = top < qty ? (h.slice(top, qty).match(/<th\b/g)?.length ?? 0) : 0;
+      if (top > qty || between > 1) {
         out.push(finding("L1", rel(file), src.slice(0, at + top).split("\n").length,
-          "Top off comes before the quantity — move it to the column after Qty, select-all in its header, ticks right-aligned (§10i)",
+          "Top off must be the column right before Qty, and Qty last — select-all in its header, ticks right-aligned (§10i)",
           rule));
       }
     }

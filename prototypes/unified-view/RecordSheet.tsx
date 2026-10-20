@@ -46,7 +46,7 @@ export const CELL = {
   check: 44,
   /** "Top off" and other labelled checkboxes. */
   flag: 72,
-  /** Top off — its label and the select-all, after the quantity (DS ui §10i). */
+  /** Top off — its label and the select-all, just before the quantity (DS ui §10i). */
   topOff: 104,
   /** A tank's level reading — gauge and % (portal, 2026-10-17). */
   level: 150,

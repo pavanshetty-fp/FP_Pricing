@@ -153,7 +153,7 @@ export function RecurringDeliverySheet({
     <RecordSheet
       /* WIDTH FROM ITS TABLES (Pavan, 2026-10-15): lines table = product pick,
          asset name, quantity, Top off. */
-      fit={{ tables: [[CELL.pick, CELL.name, CELL.number, CELL.topOff]] }}
+      fit={{ tables: [[CELL.pick, CELL.name, CELL.topOff, CELL.number]] }}
       /* IT OPENS OVER THE RULE SHEET, so it takes the gap twice. At level 1 it
          covered the rule sheet exactly and read as the SAME sheet having
          changed its contents — the 56px strip of the sheet underneath is the
@@ -321,9 +321,6 @@ export function RecurringDeliverySheet({
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                   Asset
                 </th>
-                <th className="w-[150px] px-3 py-2 text-right text-xs font-medium text-muted-foreground">
-                  Quantity (gal)
-                </th>
                 <th className="w-[104px] px-3 py-2 text-xs font-medium text-muted-foreground">
                   {/* TOP OFF, THEN ITS SELECT-ALL; ticks right-aligned under it (DS ui §10i). */}
                   <span className="flex items-center justify-between gap-2">
@@ -337,6 +334,9 @@ export function RecurringDeliverySheet({
                     )}
                   </span>
                 </th>
+                <th className="w-[150px] px-3 py-2 text-right text-xs font-medium text-muted-foreground">
+                  Quantity (gal)
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -348,6 +348,23 @@ export function RecurringDeliverySheet({
                   <td className="px-3 py-2.5 text-foreground">{l.product}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">
                     {l.asset}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="flex justify-end">
+                      {editable ? (
+                        <Checkbox
+                          checked={l.topOff}
+                          aria-label={`Top off ${l.product}`}
+                          onCheckedChange={(v) =>
+                            setLine(i, { topOff: v === true })
+                          }
+                        />
+                      ) : l.topOff ? (
+                        <Pill>Yes</Pill>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </span>
                   </td>
                   {/* THE CELL IS THE FIELD — DS ui §10f. A boxed input inside
                       a padded cell drew a second grid over the table's. */}
@@ -374,23 +391,6 @@ export function RecurringDeliverySheet({
                         {(l.gal ?? 0).toLocaleString()}
                       </span>
                     )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className="flex justify-end">
-                      {editable ? (
-                        <Checkbox
-                          checked={l.topOff}
-                          aria-label={`Top off ${l.product}`}
-                          onCheckedChange={(v) =>
-                            setLine(i, { topOff: v === true })
-                          }
-                        />
-                      ) : l.topOff ? (
-                        <Pill>Yes</Pill>
-                      ) : (
-                        <span className="text-muted-foreground">No</span>
-                      )}
-                    </span>
                   </td>
                 </tr>
               ))}

@@ -1419,6 +1419,9 @@ export const clampPreferred = (p: TimeSpan[], start: number, end: number): TimeS
   1,200 left → suggested 8,800; ordering 6,000 makes it 72%.
 */
 export const galNow = (a: Asset) => Math.round((a.level / 100) * a.capacity);
+/** THE ROOM LEFT IN THE TANK — size less what's in it now. A new order's
+    starting quantity for a tank (Pavan, 2026-10-20), never a top off. */
+export const roomIn = (a?: Asset) => (a && a.capacity ? Math.max(0, a.capacity - galNow(a)) : 0);
 export const daysToEmpty = (a: Asset): number | null =>
   a.monitor && a.dailyUse > 0 ? Math.floor(galNow(a) / a.dailyUse) : null;
 /** Whole days from today to a `YYYY-MM-DD` — 0 for today, unset or past. */

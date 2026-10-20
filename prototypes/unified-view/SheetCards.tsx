@@ -98,6 +98,9 @@ export function RailRow({
       className={cn(
         "flex items-baseline justify-between gap-3",
         variant === "rail" ? "px-4 py-2.5" : "py-1",
+        /* A TOTAL NEVER CUTS ITS LABEL (Pavan, 2026-10-20) — too long for
+           one line, the figure drops under it, right-aligned. */
+        variant === "total" && "flex-wrap gap-y-0.5",
         breakdown?.length && "cursor-help"
       )}
     >
@@ -106,7 +109,7 @@ export function RailRow({
           "min-w-0 truncate",
           variant === "rail" && "shrink-0 text-xs text-muted-foreground",
           variant === "line" && "text-sm text-foreground",
-          variant === "total" && "text-base font-medium text-foreground"
+          variant === "total" && "shrink-0 overflow-visible text-base font-medium text-foreground"
         )}
       >
         {label}
@@ -116,7 +119,7 @@ export function RailRow({
           "min-w-0 shrink-0 truncate tabular-nums",
           variant === "rail" && "text-sm text-foreground",
           variant === "line" && "text-sm text-muted-foreground",
-          variant === "total" && "text-base font-semibold text-foreground",
+          variant === "total" && "ml-auto text-base font-semibold text-foreground",
           /* THE DOTTED RULE IS THE WHOLE AFFORDANCE. A figure that explains
              itself has to say so without a second control beside it. */
           breakdown?.length &&
@@ -180,11 +183,21 @@ export function RailCard({
  * a tinted frame, the title on the frame, and one inner card that holds the
  * label · value rows with the headline figure last.
  */
-export function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
+export function SummaryCard({
+  title,
+  children,
+  fill = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** GROW TO THE COLUMN'S HEIGHT (Pavan, 2026-10-20) — when it's the only
+      card in the rail; put `mt-auto` on what should sit at its bottom. */
+  fill?: boolean;
+}) {
   return (
-    <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
+    <section className={`${fill ? "flex min-h-64 flex-1 flex-col" : "shrink-0"} rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]`}>
       <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">{title}</h3>
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-fp-surface-1b p-3">
+      <div className={`flex flex-col gap-3 rounded-lg border border-border bg-fp-surface-1b p-3${fill ? " min-h-0 flex-1 overflow-auto" : ""}`}>
         {children}
       </div>
     </section>

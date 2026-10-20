@@ -225,7 +225,7 @@ const blankLine = (products: string[]): OrderLine => ({
 
 /**
  * ONE SHIP-TO, AND WHAT IT TAKES (Pavan, 2026-10-01) — the Delivery Order's
- * own table: Top off · Asset · Product · Qty, with Add asset hanging off it.
+ * own table: Asset · Product · Top off · Qty, with Add asset hanging off it.
  * The product list is the rule's products only; picking a known asset fills
  * its product, the same as on an order.
  */
@@ -279,15 +279,15 @@ function TargetEditor({
           className="overflow-hidden rounded-md rounded-bl-none border border-fp-outline-1"
         >
           <table className="w-full table-fixed border-collapse">
-            {/* TOP OFF LAST, NEXT TO THE QUANTITY IT REPLACES (Pavan,
-                2026-10-16). */}
+            {/* TOP OFF, THEN THE QUANTITY LAST — beside the number it
+                replaces (Pavan, 2026-10-20 — DS ui §10i). */}
             <colgroup>
               <col className={loads ? "w-[22%]" : "w-[34%]"} />
               <col className={loads ? "w-[18%]" : "w-[30%]"} />
               {loads && <col className="w-[18%]" />}
               {loads && <col className="w-[16%]" />}
-              <col />
               <col className="w-[104px]" />
+              <col />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
@@ -308,9 +308,6 @@ function TargetEditor({
                     <TableRequiredLabel>Supplier</TableRequiredLabel>
                   </th>
                 )}
-                <th className="px-3 py-2.5 text-right">
-                  <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-                </th>
                 {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under
                     this one (Pavan, 2026-10-16). */}
                 <th className="px-3 py-2.5">
@@ -331,6 +328,9 @@ function TargetEditor({
                       }
                     />
                   </span>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                 </th>
                 <th aria-hidden />
               </tr>
@@ -442,6 +442,20 @@ function TargetEditor({
                         </>
                       );
                     })()}
+                    <td className="px-3">
+                      <span className="flex justify-end">
+                      <Checkbox
+                        checked={Boolean(line.topOff)}
+                        onCheckedChange={(c) =>
+                          setLine(i, {
+                            topOff: c === true,
+                            gal: c === true ? null : line.gal,
+                          })
+                        }
+                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                      />
+                      </span>
+                    </td>
                     <td className="relative p-0">
                       <TableCellInput
                         value={
@@ -458,20 +472,6 @@ function TargetEditor({
                           })
                         }
                       />
-                    </td>
-                    <td className="px-3">
-                      <span className="flex justify-end">
-                      <Checkbox
-                        checked={Boolean(line.topOff)}
-                        onCheckedChange={(c) =>
-                          setLine(i, {
-                            topOff: c === true,
-                            gal: c === true ? null : line.gal,
-                          })
-                        }
-                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                      />
-                      </span>
                     </td>
                     <td className="relative p-0 text-center">
                       <TableRowRemove

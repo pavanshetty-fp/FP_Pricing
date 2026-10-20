@@ -68,11 +68,10 @@ import {
   type RequestColumnKey,
   type RequestSort,
   orderTheRest,
+  roomIn,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { BatteryCell, LevelGauge, OrderTanksLayer } from "./TankLevel";
-import { OutlineShine } from "@/components/ui/outline-shine";
-import { cn } from "@/lib/utils";
 import { NumberLink } from "./cells";
 import { usePortalNav } from "./nav";
 import { GroupedListFooter, useGrouping, type GroupDim } from "@/components/tables-layout";
@@ -276,8 +275,8 @@ export function OrdersScreen({
             return {
               assetId: id,
               product: lastProductFor(id, all) ?? a?.product ?? "",
-              topOff: true,
-              gal: 0,
+              topOff: false,
+              gal: roomIn(a),
             };
           })
         : r.lines,
@@ -468,8 +467,8 @@ export function OrdersScreen({
       lines: assetIds.map((id) => ({
         assetId: id,
         product: lastProductFor(id, rows) ?? assetById(id)?.product ?? "",
-        topOff: true,
-        gal: 0,
+        topOff: false,
+        gal: roomIn(assetById(id)),
       })),
     });
     setCreatingId(r.id);
@@ -519,13 +518,9 @@ export function OrdersScreen({
           </>
         ),
         action: (
-          /* A NUDGE ON THE OUTLINE (Pavan, 2026-10-20) — the dashboard's
-             shine, in a light grey and a wider band. */
-          <Button variant="outline" size="sm" className={cn(bannerSoftAction, "relative")} onClick={() => orderFor(t.shipTo, [t.asset.id])}>
+          /* The CTA shine comes from the banner (DS AlertBanner). */
+          <Button variant="outline" size="sm" className={bannerSoftAction} onClick={() => orderFor(t.shipTo, [t.asset.id])}>
             Create Order Request
-            {/* ON the outline, FULLY WHITE, a 2px ring centred on the 1px
-                border and a wider band — so it reads (Pavan, 2026-10-20). */}
-            <OutlineShine color="var(--color-white)" band="50%" thickness={2} inset={-1.5} />
           </Button>
         ),
       })),

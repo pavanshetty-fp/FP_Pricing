@@ -4267,7 +4267,7 @@ export function BrokerOrderSheet({
       fit={{
         tables: [
           [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, 132, 96, CELL.bin],
-          [CELL.name, CELL.name, CELL.number, CELL.topOff, CELL.bin],
+          [CELL.name, CELL.name, CELL.topOff, CELL.number, CELL.bin],
           [CELL.pick, CELL.name, CELL.number, CELL.bin],
         ],
         rail: !inCreation,
@@ -5234,13 +5234,13 @@ export function BrokerOrderSheet({
             <div>
               <table className="w-full table-fixed border-collapse">
                 {/* NARROW BY DESIGN (Pavan, 2026-10-15): names are short, a
-                    quantity is six digits. TOP OFF LAST, NEXT TO THE QUANTITY
-                    IT REPLACES (Pavan, 2026-10-16 — DS ui §10i). */}
+                    quantity is six digits. TOP OFF, THEN THE QUANTITY LAST —
+                    beside the number it replaces (Pavan, 2026-10-20 — DS ui §10i). */}
                 <colgroup>
                   <col />
                   <col />
-                  <col className="w-[110px]" />
                   <col className="w-[104px]" />
+                  <col className="w-[110px]" />
                   <col className="w-[52px]" />
                 </colgroup>
                 <thead>
@@ -5254,9 +5254,6 @@ export function BrokerOrderSheet({
                     </th>
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Product</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-right">
-                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                     </th>
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Its select-all sits beside the label; every row's
@@ -5276,6 +5273,9 @@ export function BrokerOrderSheet({
                           onCheckedChange={(c) => draft.lines.forEach((_, i) => setTopOff(i, c === true))}
                         />
                       </span>
+                    </th>
+                    <th className="px-3 py-2.5 text-right">
+                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                     </th>
                     <th aria-hidden />
                   </tr>
@@ -5363,6 +5363,17 @@ export function BrokerOrderSheet({
                             onChange={(v) => setLine(i, { product: v })}
                           />
                         </td>
+                        {/* Checked = fill it. Unchecked = type a number. One
+                            control, so a row cannot claim both at once. */}
+                        <td className="px-3">
+                          <span className="flex justify-end">
+                            <Checkbox
+                              checked={Boolean(line.topOff)}
+                              onCheckedChange={(c) => setTopOff(i, c === true)}
+                              aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                            />
+                          </span>
+                        </td>
                         <td className="relative p-0">
                           <TableCellInput
                             value={
@@ -5379,17 +5390,6 @@ export function BrokerOrderSheet({
                               })
                             }
                           />
-                        </td>
-                        {/* Checked = fill it. Unchecked = type a number. One
-                            control, so a row cannot claim both at once. */}
-                        <td className="px-3">
-                          <span className="flex justify-end">
-                            <Checkbox
-                              checked={Boolean(line.topOff)}
-                              onCheckedChange={(c) => setTopOff(i, c === true)}
-                              aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                            />
-                          </span>
                         </td>
                         <td className="relative p-0 text-center">
                           <TableRowRemove
@@ -5415,7 +5415,7 @@ export function BrokerOrderSheet({
                   <tfoot>
                     <tr className="h-11 border-t border-border">
                       <td
-                        colSpan={2}
+                        colSpan={3}
                         className="px-3 text-right text-sm text-muted-foreground"
                       >
                         Total
@@ -5425,7 +5425,6 @@ export function BrokerOrderSheet({
                           ? "Top-off"
                           : `${gal.toLocaleString()} gal`}
                       </td>
-                      <td aria-hidden />
                       <td aria-hidden />
                     </tr>
                   </tfoot>

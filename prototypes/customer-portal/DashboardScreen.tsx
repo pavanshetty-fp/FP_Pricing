@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, ArrowUpRight, BellRing, ChevronDown, Clock, FileQuestion, FileText, Lock, Repeat } from "lucide-react";
+import { ArrowUpRight, BellRing, ChevronDown, Clock, FileQuestion, FileText, Lock, Repeat } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Pill, pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -33,11 +33,13 @@ import {
   windowText,
   type OrderRequest,
   type RequestStatus,
+  roomIn,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { TankHealthCard } from "./TankHealth";
 import { OutlineShine } from "@/components/ui/outline-shine";
 import { MetricIcon, TERM_ICONS } from "@/components/ui/term-icons";
+import { TrendChip } from "@/components/ui/trend-chip";
 import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
 import { Button } from "@/components/ui/button";
@@ -204,25 +206,12 @@ function Change({
   const shown = points || pct !== undefined ? Math.abs(d).toFixed(1) : String(Math.abs(Math.round(d)));
   if (shown === "0" || shown === "0.0") return <span className="text-sm text-muted-foreground">No change</span>;
   const up = d > 0;
-  const good = goodWhenDown ? !up : up;
+  /* THE ONE MARKER (DS ui §10k, Pavan, 2026-10-20). */
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 text-sm font-medium tabular-nums",
-        good ? "text-fp-trend-up" : "text-status-processing"
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-5 items-center justify-center rounded-full [&_svg]:size-3",
-          good ? "bg-fp-trend-up-bg" : "bg-status-processing/15"
-        )}
-      >
-        {up ? <ArrowUp /> : <ArrowDown />}
-      </span>
+    <TrendChip dir={up ? "up" : "down"} good={goodWhenDown ? !up : up}>
       {shown}
       {points ? " pts" : "%"}
-    </span>
+    </TrendChip>
   );
 }
 
@@ -1402,27 +1391,11 @@ function upcoming(rows: OrderRequest[]) {
     red down, grey the same. */
 function WeekChange({ now, then }: { now: number; then: number }) {
   const same = now === then;
-  const up = now > then;
   const pct = then ? Math.round((Math.abs(now - then) / then) * 100) : null;
   return (
-    <span
-      className={cn(
-        "inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm font-medium tabular-nums",
-        same
-          ? "bg-muted text-muted-foreground"
-          : up
-            ? "bg-fp-trend-up-bg text-fp-trend-up"
-            : "bg-fp-trend-down-bg text-fp-trend-down"
-      )}
-    >
-      {!same && (
-        <span
-          aria-hidden
-          className={cn("size-0 border-x-[5px] border-x-transparent", up ? "border-b-[6px] border-b-current" : "border-t-[6px] border-t-current")}
-        />
-      )}
+    <TrendChip dir={same ? "same" : now > then ? "up" : "down"}>
       {same ? "Same" : pct === null ? `+${now - then}` : `${pct}%`}
-    </span>
+    </TrendChip>
   );
 }
 
@@ -1645,8 +1618,8 @@ export function DashboardScreen() {
                 {
                   assetId,
                   product: lastProductFor(assetId, rows) ?? assetById(assetId)?.product ?? "",
-                  topOff: true,
-                  gal: 0,
+                  topOff: false,
+                  gal: roomIn(assetById(assetId)),
                 },
               ],
             });

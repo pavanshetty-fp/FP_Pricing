@@ -634,23 +634,26 @@ Repeat / Times a day, 2026-10-16).
 **Checked, not remembered.** `npm run eval` → `fields-fill`: a container with
 a fixed pixel width that holds fields and no `FIXED WIDTH` note.
 
-## 10i. Top off sits next to the quantity, right-aligned (Pavan, 2026-10-16)
+## 10i. Top off, then the quantity LAST (Pavan, 2026-10-16; order 2026-10-20)
 
-**Top off is the column AFTER Qty** — it replaces the number, so it sits
-beside it, never first. Every table with a Top off column, every module
-(3PL, Sales, Service, Customer Portal), as 3PL's Create recurring rule:
+**Qty is the last column of a lines table, and Top off sits just before
+it** — it replaces the number, so the two are never apart, and the figure
+the row leads to ends the row. Every table with a Top off column, every
+module (3PL Delivery Order, Create recurring rule, recurring delivery;
+Customer Portal order create + detail and its recurring rule):
+Asset · Product · (anything else — readings, accounts) · Top off · Qty · bin.
 
 - **Header:** the label "Top off", then its **select-all checkbox** at the
   right edge (`justify-between`) — ticked when every line tops off,
   indeterminate when some do.
 - **Rows:** each tick **right-aligned** (`justify-end`) under the select-all.
 - **Width:** `CELL.topOff` (104) in the sheet's `fit`; the total row's label
-  spans the columns before Qty, the total sits under Qty.
+  spans every column before Qty, the total sits under Qty.
 - Ticking a row shuts its Qty cell ("Top-off"); the typed number is kept for
   unticking.
 
 **Checked, not remembered.** `npm run eval` → `table-rows`: a Top off header
-that comes before the table's Qty header.
+that is not the one right before the table's Qty header.
 
 ## 10j. Nested layers — the expandable row (Pavan, 2026-10-17)
 
@@ -714,6 +717,29 @@ The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
 filled ▲ when up, `bg-fp-trend-down-bg` / `text-fp-trend-down` (#b74e6d on
 #fae7ec) with ▼ when down, `bg-muted` grey "Same" — and "vs N the previous …"
 under it. The same green for a positive change everywhere in the app.
+
+**ONE marker, everywhere (Pavan, 2026-10-20)** — `<TrendChip>` in
+`src/components/ui/trend-chip.tsx`. Every figure card in every module uses
+it: no arrows in circles, no orange, no `destructive` red for a fall. Red is
+always `--fp-trend-down`. `good` sets the colour when down is good news (late
+orders down → green ▼). **No trend lines on figure cards** — the term's
+`MetricIcon` sits there instead (Orders overview, 2026-10-20).
+
+## 10l. Alert banner motion — every pill sweeps, every CTA shines (Pavan, 2026-10-20)
+
+In the DS `AlertBanner` (Sales Orders, Service Work, Portal Orders and
+Invoices — one component, so one behaviour):
+- **Every pill sweeps** — the tag pill ("Needs action", "Overdue", "At risk")
+  and the count pill — whatever its kind: a bar in a deeper shade of the
+  pill's own colour (red, orange, blue, green) moves through the fill. **Only
+  while the banner is collapsed**; opened, the list is the attention.
+- **Every CTA the banner carries shines** — the banner's own action and each
+  item's action ("Create Order Request", "Order the rest") get the white
+  `OutlineShine` on their outline (2px ring centred on the 1px border, 50%
+  band). The banner adds it; screens don't.
+- The ghost "View details" / "Clear filter" has no outline, so no shine.
+- The dashboard's **Attention required** tiles are a different pattern by
+  design (red outline shine on the banner) — not an `AlertBanner`.
 
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 

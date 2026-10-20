@@ -5,8 +5,6 @@ import {
   MousePointer2,
   ShoppingCart,
   MoreHorizontal,
-  ArrowUp,
-  ArrowDown,
   Store,
   Truck,
   Warehouse,
@@ -36,6 +34,7 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { TrendChip } from "@/components/ui/trend-chip";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -121,18 +120,12 @@ function CardHead({ title }: { title: string }) {
   );
 }
 
-/** Green (up) / red (down) delta pill. */
+/** Green (up) / red (down) delta — the DS trend chip (§10k). */
 function Delta({ value, up }: { value: string; up: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
-        up ? "bg-fp-trend-up-bg text-fp-trend-up" : "bg-destructive/15 text-destructive"
-      )}
-    >
-      {up ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+    <TrendChip dir={up ? "up" : "down"} size="sm">
       {value}
-    </span>
+    </TrendChip>
   );
 }
 

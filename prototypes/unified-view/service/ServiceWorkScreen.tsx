@@ -17,6 +17,7 @@ import { ListToolbar, FilterChips, ColumnSearchChip, type ListView } from "../Li
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
@@ -1217,6 +1218,60 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       </Empty>
     );
 
+  /* THE ALERT BANNER (Pavan, 2026-10-20) — the DS banner with interaction,
+     as on Sales Orders and the portal: each alert is a filter (View details,
+     then Clear filter), counted in the dates on screen. Its filter is
+     facets, so the alert is "on" while the list shows exactly that set. */
+  const [alertsOff, setAlertsOff] = React.useState<ReadonlySet<string>>(new Set());
+  const [snoozed, setSnoozed] = React.useState<Record<string, number>>({});
+  React.useEffect(() => {
+    const next = Object.values(snoozed).filter((t) => t > Date.now());
+    if (!next.length) return;
+    const t = window.setTimeout(() => setSnoozed((m) => ({ ...m })), Math.min(...next) - Date.now());
+    return () => window.clearTimeout(t);
+  }, [snoozed]);
+  const openStatuses = WORK_LANES.find((l) => l.key === "Open")!.statuses;
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const alertDefs = [
+    {
+      id: "urgent",
+      status: "warning" as const,
+      tag: "Needs action",
+      rows: searched.filter((r) => r.priority === "Urgent" && isUnassigned(r.status)),
+      title: (n: number) => `${plural(n, "urgent order has", "urgent orders have")} no technician`,
+      sel: ["priority:Urgent", ...openStatuses.map((st) => `status:${st}`)],
+    },
+    {
+      id: "approval",
+      status: "caution" as const,
+      tag: "Needs action",
+      rows: searched.filter((r) => r.status === "Needs approval"),
+      title: (n: number) => `${plural(n, "order needs", "orders need")} your approval`,
+      sel: ["status:Needs approval"],
+    },
+    {
+      id: "payment",
+      status: "warning" as const,
+      tag: "Overdue",
+      rows: searched.filter((r) => r.status === "Payment delayed"),
+      title: (n: number) => `${plural(n, "payment is", "payments are")} delayed`,
+      sel: ["status:Payment delayed"],
+    },
+  ].filter((d) => d.rows.length > 0 && !alertsOff.has(d.id) && !((snoozed[d.id] ?? 0) > Date.now()));
+  const alerts: BannerAlert[] = alertDefs.map((d) => ({
+    id: d.id,
+    status: d.status,
+    tag: d.tag,
+    title: d.title(d.rows.length),
+    count: d.rows.length,
+    onApply: () => {
+      setFacetSel(new Set(d.sel));
+      setPage(1);
+    },
+  }));
+  const appliedAlert =
+    alertDefs.find((d) => d.sel.length === facetSel.size && d.sel.every((k) => facetSel.has(k)))?.id ?? null;
+
   const openOrder = rows.find((r) => r.id === openId) ?? null;
 
   return (
@@ -1227,7 +1282,21 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
         onCreateOrder={() => setCreating(true)}
       />
 
-      <div className="mt-4 shrink-0">
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          appliedId={appliedAlert}
+          onClearApplied={() => {
+            setFacetSel(new Set());
+            setPage(1);
+          }}
+          onSnooze={(id, ms) => setSnoozed((m) => ({ ...m, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setAlertsOff((o) => new Set(o).add(id))}
+        />
+      )}
+
+      <div className={alerts.length > 0 ? "mt-3 shrink-0" : "mt-4 shrink-0"}>
         <ListToolbar
           boardView
           searchValue={search}

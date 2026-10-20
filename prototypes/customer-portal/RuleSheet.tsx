@@ -111,7 +111,7 @@ export function RuleSheet({
   return (
     <RecordSheet
       /* WIDTH FROM ITS CONTENT — the frequency unit is the widest thing. */
-      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.pick, CELL.pick, CELL.number, CELL.topOff, CELL.number, CELL.number, CELL.number, CELL.number, CELL.bin]] }}
+      fit={{ tables: [[360 + 60 + 340 + 32], [CELL.pick, CELL.pick, CELL.number, CELL.number, CELL.number, CELL.number, CELL.topOff, CELL.number, CELL.bin]] }}
       open={open}
       onOpenChange={onOpenChange}
       mode="create"

@@ -1,7 +1,10 @@
 import * as React from "react";
+import { siteTank } from "./tankMonitors";
+import { AfterDelivery, DaysToEmpty, FulfilmentHead, LevelReading } from "../../customer-portal/TankLevel";
+import { daysUntil, suggestedGal } from "../../customer-portal/orders";
 import { DeliveryWindowTimeline, type TimeSpan } from "../DeliveryWindowTimeline";
 import { RecurringOrderSection } from "../RecurringOrderSection";
-import { decodeFrequency, encodeFrequency, scheduleSummary, type RuleFrequency } from "./RuleFrequency";
+import { decodeFrequency, encodeFrequency, frequencyFromLegacy, scheduleSummary, type RuleFrequency } from "./RuleFrequency";
 import {
   Calendar as CalendarIcon,
   Check,
@@ -647,7 +650,10 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
         })()
       : null,
     recurrenceFrequency: o.recurrence?.frequency ?? RECURRENCE_FREQUENCIES[0],
-    schedule: decodeFrequency(o.recurrence?.frequency ?? "") ?? undefined,
+    schedule:
+      decodeFrequency(o.recurrence?.frequency ?? "") ??
+      frequencyFromLegacy(o.recurrence?.frequency ?? "") ??
+      undefined,
     loadRows: o.loadOrder ? o.loadOrder.map((r) => ({ ...r })) : null,
   };
 }
@@ -1822,6 +1828,10 @@ export function BrokerOrderSheet({
           }
         : d
     );
+
+  /* THE PLANNED DAY, for the tank sums. */
+  const plannedKey = draft.plannedDate ? dateKeyOf(draft.plannedDate) : "";
+  const plannedDays = daysUntil(plannedKey);
 
   const siteAssets = (() => {
     const listed = site?.assets ?? [];
@@ -4277,7 +4287,7 @@ export function BrokerOrderSheet({
       fit={{
         tables: [
           [CELL.check, CELL.name, CELL.pick, CELL.pick, CELL.number, 132, 96, CELL.bin],
-          [CELL.name, CELL.name, CELL.topOff, CELL.number, CELL.bin],
+          [CELL.name, CELL.name, CELL.number, CELL.number, CELL.number, CELL.topOff, CELL.number, CELL.bin],
           [CELL.pick, CELL.name, CELL.number, CELL.bin],
         ],
         rail: !inCreation,
@@ -5200,6 +5210,12 @@ export function BrokerOrderSheet({
                 <colgroup>
                   <col />
                   <col />
+                  {/* THE TANK'S MONITOR READINGS (Pavan, 2026-10-20) — as on
+                      the portal's order: level now, on fulfilment, days to
+                      empty. */}
+                  <col className="w-[112px]" />
+                  <col className="w-[124px]" />
+                  <col className="w-[108px]" />
                   <col className="w-[104px]" />
                   <col className="w-[110px]" />
                   <col className="w-[52px]" />
@@ -5215,6 +5231,17 @@ export function BrokerOrderSheet({
                     </th>
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Product</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Current level</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>
+                        <FulfilmentHead />
+                      </TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Days to empty</TableRequiredLabel>
                     </th>
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Its select-all sits beside the label; every row's
@@ -5244,6 +5271,7 @@ export function BrokerOrderSheet({
                 <tbody>
                   {draft.lines.map((line, i) => {
                     const asset = siteAssets.find((a) => a.name === line.asset);
+                    const tank = line.asset ? siteTank(draft.shipTo, line.asset, line.product, asset?.rental) : undefined;
                     return (
                       <tr
                         key={i}
@@ -5324,6 +5352,23 @@ export function BrokerOrderSheet({
                             onChange={(v) => setLine(i, { product: v })}
                           />
                         </td>
+                        <td className="px-3">
+                          {tank ? <LevelReading asset={tank} /> : <span className="text-sm text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-3">
+                          {tank ? (
+                            <AfterDelivery
+                              asset={tank}
+                              dateKey={plannedKey}
+                              line={{ assetId: tank.id, product: line.product, topOff: Boolean(line.topOff), gal: line.gal ?? 0 }}
+                            />
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="px-3">
+                          <DaysToEmpty asset={tank} days={plannedDays} />
+                        </td>
                         {/* Checked = fill it. Unchecked = type a number. One
                             control, so a row cannot claim both at once. */}
                         <td className="px-3">
@@ -5341,6 +5386,13 @@ export function BrokerOrderSheet({
                               line.topOff ? "" : line.gal != null ? String(line.gal) : ""
                             }
                             placeholder={line.topOff ? "Top-off" : "0"}
+                            /* THE SUGGESTION IS THE PLACEHOLDER — the tank full
+                               on the planned day; → takes it (as the portal). */
+                            suggestion={
+                              !line.topOff && tank?.monitor && tank.capacity
+                                ? String(suggestedGal(tank, plannedDays))
+                                : undefined
+                            }
                             disabled={line.topOff}
                             numeric
                             suffix="gal"
@@ -5376,7 +5428,7 @@ export function BrokerOrderSheet({
                   <tfoot>
                     <tr className="h-11 border-t border-border">
                       <td
-                        colSpan={3}
+                        colSpan={6}
                         className="px-3 text-right text-sm text-muted-foreground"
                       >
                         Total
@@ -5696,9 +5748,11 @@ export function BrokerOrderSheet({
 
 
       {/* NO VENDOR UNIT ONCE THE JOB IS DONE (Pavan, 2026-10-05) — the chosen
-          vendor and everything it charged are in Pricing. NOR BEFORE CREATE
-          ORDER (2026-10-06) — inviting is done on the created order. */}
-      {!pastCompletion && !creating && (
+          vendor and everything it charged are in Pricing. WHILE CREATING TOO
+          (Pavan, 2026-10-20, reversing 2026-10-06): choosing the partners is
+          one of the steps of a 3PL order, so the list is there from the start;
+          what's picked and sent carries into the created order. */}
+      {!pastCompletion && (
       <>
       <FormStep label={CREATE_STEPS.vendor}>
       {/* ── The 3PL section. Everything above exists on a first-party order

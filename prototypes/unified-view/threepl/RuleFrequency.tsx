@@ -93,6 +93,7 @@ export const DATE_REPEATS = [
   { n: 2, label: "Every 2 months" },
   { n: 3, label: "Every 3 months" },
   { n: 6, label: "Every 6 months" },
+  { n: 12, label: "Every year" },
   { n: 0, label: "Does not repeat" },
 ];
 
@@ -1015,3 +1016,29 @@ export const decodeFrequency = (raw: string): RuleFrequency | null => {
     return null;
   }
 };
+
+/** AN OLD CADENCE AS THE UNIT (Pavan, 2026-10-20) — orders saved with the
+    former frequency list open on what they said. "Custom" and anything else
+    unknown start blank. */
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export function frequencyFromLegacy(raw: string): RuleFrequency | null {
+  const base = blankFrequency();
+  if (raw === "Daily") return { ...base, dayMode: "daily", days: [0, 1, 2, 3, 4, 5, 6] };
+  if (raw === "Every Weekday (Monday To Friday)") return { ...base, days: [1, 2, 3, 4, 5] };
+  const w = /^Weekly On (\w+)$/.exec(raw);
+  if (w && DAY_NAMES.includes(w[1])) return { ...base, days: [DAY_NAMES.indexOf(w[1])] };
+  const m = /^Monthly On (\w+) (\w+)$/.exec(raw);
+  if (m && DAY_NAMES.includes(m[2])) {
+    const nth = ["First", "Second", "Third", "Fourth"].indexOf(m[1]) + 1;
+    return { ...base, repeat: "monthly", monthWeeks: [nth || 1], days: [DAY_NAMES.indexOf(m[2])] };
+  }
+  const y = /^Annually On (\w+) (\d+)$/.exec(raw);
+  if (y && MONTH_NAMES.includes(y[1])) {
+    const mo = MONTH_NAMES.indexOf(y[1]);
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(mo + 1).padStart(2, "0")}-${String(Number(y[2])).padStart(2, "0")}`;
+    return { ...base, basis: "date", dates: [key], dateRepeat: 12 };
+  }
+  return null;
+}

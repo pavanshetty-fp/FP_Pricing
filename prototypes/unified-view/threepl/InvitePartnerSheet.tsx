@@ -266,9 +266,9 @@ export function InvitePartnerSheet({
 
   return (
     <RecordSheet
-      /* WIDTH FROM ITS CONTENT (Pavan, 2026-10-15): compose and preview side
-         by side — two panes of 420, as a form beside a map. */
-      fit={{ tables: [[420, 420]] }}
+      /* ONE COLUMN (Pavan, 2026-10-20) — recipients, then the message, then
+         what's attached, read top to bottom as the email is. */
+      fit={{ tables: [[560]] }}
       /* OVER THE ORDER SHEET — see `level` on `RecordSheet`. */
       level={2}
       open={open}
@@ -301,9 +301,7 @@ export function InvitePartnerSheet({
         </Button>
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6">
-        {/* ── left: what you write ─────────────────────────────────────── */}
-        <div className="flex min-h-0 min-w-0 flex-col gap-10">
+      <div className="flex min-w-0 flex-col gap-10">
           <SheetSection title="Recipients">
             <SheetField label="To">
               <EmailChips
@@ -346,11 +344,7 @@ export function InvitePartnerSheet({
               two short fields made the writing feel like an afterthought to
               the addressing. Everything above it is fixed; this takes what
               is left. */}
-          <SheetSection
-            title="Message"
-            className="flex min-h-0 flex-1 flex-col"
-            bodyClassName="min-h-0 flex-1"
-          >
+          <SheetSection title="Message">
             <SheetField label="Subject">
               <Input
                 value={subject}
@@ -365,31 +359,20 @@ export function InvitePartnerSheet({
                 textarea is `field-sizing-content`, which sizes to what is
                 typed and would shrink a deliberately tall box back to three
                 lines. Fixed sizing plus `flex-1` is what makes it fill. */}
-            <SheetField
-              label="Your note"
-              className="min-h-0 flex-1 [&>div:last-child]:min-h-0 [&>div:last-child]:flex-1"
-            >
+            <SheetField label="Your note">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Anything this partner needs to know."
-                className="min-h-[200px] flex-1 resize-none [field-sizing:fixed]"
+                className="min-h-[160px] resize-y [field-sizing:fixed]"
               />
             </SheetField>
           </SheetSection>
-        </div>
 
-        {/* ── right: what they get ─────────────────────────────────────── */}
-        {/* THE SAME HEIGHT AS WHAT IS BEING WRITTEN. The two columns are one
-            thing seen twice, and a preview that stops halfway down reads as a
-            fragment of the email rather than the email. It scrolls inside
-            itself when the order is long, so the card's edge stays put. */}
-        <div className="flex min-h-0 min-w-0 flex-col">
+          {/* WHAT THEY GET, UNDER WHAT YOU WRITE. */}
           <SheetSection
             title="Attached"
             flush
-            className="flex min-h-0 flex-1 flex-col"
-            bodyClassName="min-h-0 flex-1 overflow-y-auto"
             action={
               <span className="text-xs text-muted-foreground">
                 {one ? one.name : `${targets.length} partners`}
@@ -401,7 +384,6 @@ export function InvitePartnerSheet({
               partnerName={one?.name ?? "the partner"}
             />
           </SheetSection>
-        </div>
       </div>
     </RecordSheet>
   );

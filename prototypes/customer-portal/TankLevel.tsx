@@ -253,13 +253,16 @@ function FulfilmentFigure({
   dateKey,
   delivered,
   r,
+  asset,
 }: {
   line: RequestLine;
   dateKey: string;
   delivered: boolean;
   r?: OrderRequest;
+  /** The tank itself, for a module whose tanks aren't the portal's (3PL). */
+  asset?: Asset;
 }) {
-  const a = assetById(line.assetId);
+  const a = asset ?? assetById(line.assetId);
   if (!a?.monitor || !a.capacity) return dash;
   /* NO PLANNED DATE, NO FIGURE (Pavan, 2026-10-20) — the sum runs to the
      planned date; until one is picked there is nothing to work out. */
@@ -290,9 +293,20 @@ function FulfilmentFigure({
 }
 
 /** ON FULFILMENT while ordering — the % after delivery on the draft's date. */
-export function AfterDelivery({ line, days, dateKey = "" }: { line: RequestLine; days?: number; dateKey?: string }) {
+export function AfterDelivery({
+  line,
+  days,
+  dateKey = "",
+  asset,
+}: {
+  line: RequestLine;
+  days?: number;
+  dateKey?: string;
+  /** The tank itself, when it isn't one of the portal's (3PL). */
+  asset?: Asset;
+}) {
   void days;
-  return <FulfilmentFigure line={line} dateKey={dateKey} delivered={false} />;
+  return <FulfilmentFigure line={line} dateKey={dateKey} delivered={false} asset={asset} />;
 }
 
 /** ON FULFILMENT for a sent order — refilled to once delivered, else expected. */

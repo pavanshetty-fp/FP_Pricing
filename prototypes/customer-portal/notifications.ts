@@ -23,7 +23,7 @@ function events(): Event[] {
   const out: Event[] = [];
   const onWay = rs.find((r) => r.status === "Out for delivery" && r.trip);
   if (onWay) out.push({ text: `${onWay.requestNo} arriving in 30 minutes`, open: { order: onWay.requestNo } });
-  const quote = rs.find((r) => r.status === "Quote sent");
+  const quote = rs.find((r) => r.status === "Quote received");
   if (quote) out.push({ text: `Quote ready for ${quote.requestNo}`, open: { order: quote.requestNo } });
   const inv = [...INVOICES].sort((a, b) => b.issued.localeCompare(a.issued))[0];
   if (inv) out.push({ text: `Invoice ${inv.invoiceNo} ready`, open: { invoice: inv.invoiceNo } });

@@ -132,12 +132,13 @@ function NoteDialog({
 /** Accept the quote — Decline and Request change behind ⋯, each with a note. */
 export function QuoteActions({ r, onDone }: { r: OrderRequest; onDone?: () => void }) {
   const [asking, setAsking] = React.useState<null | "decline" | "change">(null);
-  if (r.status !== "Quote sent") return null;
+  if (r.status !== "Quote received") return null;
   return (
     <span className="flex items-center gap-1">
       <Button
         onClick={() => {
-          updateRequest(r.id, { status: "Scheduled" }, "Quote accepted");
+          /* THE TENANT SCHEDULES IT NEXT — it becomes an order then. */
+          updateRequest(r.id, { status: "Quote accepted" }, "Quote accepted");
           toast.success(`Quote accepted for ${r.requestNo}`);
           onDone?.();
         }}

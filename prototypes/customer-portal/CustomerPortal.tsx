@@ -19,7 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ModuleSidebar } from "../unified-view/ModuleSidebar";
 import { OrdersScreen } from "./OrdersScreen";
 import { SitesScreen } from "./SitesScreen";
-import { DashboardScreen } from "./DashboardScreen";
+import { DashboardScreen, DeliveryPerformanceReport } from "./DashboardScreen";
 import { InvoicesScreen } from "./InvoicesScreen";
 import { PortalNavContext } from "./nav";
 import { TeamScreen } from "./TeamScreen";
@@ -62,7 +62,9 @@ const SUB_NAV: Record<string, NavGroup[]> = {
   orders: [
     {
       items: [
-        { key: "orders", label: "Order Requests", icon: <ClipboardList /> },
+        /* ORDERS AND ORDER REQUESTS, ONE PAGE (Pavan, 2026-10-19) — a
+           segment above the list switches between them. */
+        { key: "orders", label: "Orders", icon: <ClipboardList /> },
         { key: "recurring", label: "Recurring Orders", icon: <Repeat /> },
       ],
     },
@@ -97,6 +99,8 @@ export function CustomerPortal() {
     }
   };
   const active = SUB_PAGES.find((i) => i.key === page) ?? NAV.find((i) => i.key === page) ?? NAV[0];
+  /* A NUMBER OPENS WHERE IT LIVES — ORD-… on the Orders segment, REQ-… on
+     Order Requests (the page picks the segment). */
   const openOrder = (requestNo: string) => {
     setFocusOrder({ requestNo, n: Date.now() });
     go("orders");
@@ -163,6 +167,10 @@ export function CustomerPortal() {
               go("orders");
             }}
           />
+        ) : page === "reports" ? (
+          /* REPORTS — canned reports; Delivery performance moved here from
+             the dashboard (Anirudh review, 2026-10-17). */
+          <DeliveryPerformanceReport />
         ) : (
           <div className="flex-1" />
         )}

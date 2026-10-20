@@ -9,6 +9,7 @@ import {
   assetById,
   dateOfKey,
   insertRequests,
+  isOrder,
   nextRequestNo,
   updateRequest,
   type OrderRequest,
@@ -272,7 +273,7 @@ export function generate(say = false) {
 */
 {
   const weekday = (key: string) => (dateOfKey(key) ?? new Date()).getDay();
-  for (const q of allRequests().filter((x) => x.recurring && x.status !== "Draft")) {
+  for (const q of allRequests().filter((x) => !isOrder(x) && x.recurring && x.status !== "Draft")) {
     const wd = weekday(q.date);
     const n = 2001 + rules.length;
     const base = blankRule();

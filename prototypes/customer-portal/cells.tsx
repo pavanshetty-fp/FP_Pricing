@@ -241,3 +241,20 @@ export function RulePill({ ruleNo }: { ruleNo: string }) {
     </Pill>
   );
 }
+
+/** A REQUEST OR ORDER NUMBER THAT OPENS ITS RECORD (Pavan, 2026-10-19) —
+    REQ-… on Order Requests, ORD-… on Orders. A press here is not a row press. */
+export function NumberLink({ no, onOpen }: { no: string; onOpen: (no: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen(no);
+      }}
+      className="shrink-0 rounded text-sm tabular-nums text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      {no}
+    </button>
+  );
+}

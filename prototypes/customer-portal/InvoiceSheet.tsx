@@ -257,7 +257,7 @@ export function InvoiceSheet({
   onOpenChange: (open: boolean) => void;
   onDownload: (inv: Invoice) => void;
   /** The order number as a link, when it can open (PRD FR-10). */
-  orderLink?: (requestNo: string) => React.ReactNode;
+  orderLink?: (orderNo: string) => React.ReactNode;
 }) {
   const [disputing, setDisputing] = React.useState(false);
   if (!invoice) return null;
@@ -328,7 +328,7 @@ export function InvoiceSheet({
       <div className="flex min-w-0 flex-col gap-10">
         <SheetSection title="Summary">
           <div className="grid grid-cols-3 gap-4">
-            <Fact label="Order">{orderLink ? orderLink(invoice.requestNo) : invoice.requestNo}</Fact>
+            <Fact label="Order">{orderLink ? orderLink(invoice.orderNo) : invoice.orderNo}</Fact>
             <Fact label="Bill to">{invoice.billTo}</Fact>
             <Fact label="Ship-to">{invoice.shipTo}</Fact>
             <Fact label="Issued">

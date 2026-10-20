@@ -867,7 +867,9 @@ opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
 - **The chevron leads the first cell** — a small muted `ChevronRight` that
   turns down when open. Never a column of its own.
 - **The open parent** keeps the row-hover tint and **drops its bottom
-  divider**.
+  divider** Every cell of it wears the tint — a pinned (sticky)
+  cell such as the row's open chevron included, so nothing at the row's end
+  sits as a white box (Pavan, 2026-10-19).
 - **The layer is WHITE** — the content layer (`bg-fp-surface-1b`), end to end
   across the row, its inner table pinned to the visible width (sticky left)
   so its columns don't scroll away with a wide parent.
@@ -2676,10 +2678,12 @@ decoration.
 A resize watches for its release on the WINDOW as well as on the handle: a
 pointer let go outside the window would otherwise strand the "resizing" flag and
 silently refuse every column drag until reload — one control disabling another is
-the worst kind of bug to find. Two things do NOT move: the leading select box and the
-trailing row-open chevron are the FRAME a row is read inside, not content, and
-the chevron is pinned to the right edge so it survives a sideways scroll —
-neither is draggable and nothing can be dropped past them. The order belongs in
+the worst kind of bug to find. The leading select box does NOT move: it is the
+FRAME a row is read inside, not content — not draggable, nothing dropped past it.
+**No row-open chevron (Pavan, 2026-10-19):** the ROW opens the record — a click
+anywhere on it, or Enter / Space on a focused row (each row is focusable and
+named "Open …"). No trailing chevron column, pinned or not, in any list or
+clickable list row, in any module. The order belongs in
 the saved view alongside the filters: a view that restored the narrowing but not
 the arrangement rebuilds half the thing. A saved order that predates a new column
 keeps the column, in its declared position — a stale view may cost you the

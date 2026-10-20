@@ -208,7 +208,11 @@ export function ListTable<Row, K extends string>({
     widths: columnWidths,
     onWidthsChange: onResizeColumns,
   });
-  const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key)));
+  /* NO CHEVRON COLUMN (Pavan, 2026-10-19): the row itself opens the
+     record — a click anywhere on it, or Enter on a focused row — so the
+     pinned chevron cell at the end is gone from every list. `actionsKey`
+     names that column so it is dropped here. */
+  const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key) && c.key !== actionsKey));
 
   /* THE CHECKBOX COLUMN IS NOT A COLUMN. It cannot be hidden, reordered,
      resized or sorted, so it sits outside `cols` entirely and is drawn as a
@@ -402,12 +406,24 @@ export function ListTable<Row, K extends string>({
             <TableRow
               className={cn(
                 "group/row h-14",
-                onOpenRow && "cursor-pointer",
+                onOpenRow && "cursor-pointer outline-none focus-visible:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
                 /* The open parent keeps a tint and drops its divider, so the
                    rail runs on into its layer (DS). */
                 expanded.has(node.id) && "border-b-0 bg-fp-row-hover hover:bg-fp-row-hover"
               )}
               data-state={selectedIds?.has(node.id) ? "selected" : undefined}
+              data-expanded={expanded.has(node.id) ? "true" : undefined}
+              /* THE ROW IS THE CONTROL — reachable by keyboard, Enter or
+                 Space opens it, and it says what it opens. */
+              tabIndex={onOpenRow ? 0 : undefined}
+              aria-label={onOpenRow ? openLabel(node.row) : undefined}
+              onKeyDown={(e) => {
+                if (!onOpenRow || e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpenRow(node.row);
+                }
+              }}
               onClick={(e) => {
                 if (!onOpenRow) return;
                 const t = e.target as HTMLElement | null;
@@ -436,7 +452,10 @@ export function ListTable<Row, K extends string>({
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
                     col.key === actionsKey &&
-                      "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover group-data-[state=selected]/row:before:bg-fp-row-selected"
+                      /* THE PINNED CELL WEARS THE ROW'S STATE — hover, an open
+                         nested layer, selection — so it never reads as a
+                         white box at the end of a tinted row. */
+                      "sticky right-0 z-10 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-0 group-hover/row:before:bg-fp-row-hover group-data-[expanded=true]/row:before:bg-fp-row-hover group-data-[state=selected]/row:before:bg-fp-row-selected"
                   )}
                 >
                   <span className={cn(col.key === actionsKey && "relative")}>

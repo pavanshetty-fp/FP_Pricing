@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Send } from "lucide-react";
+import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send } from "lucide-react";
+import { StatusChip } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,7 +41,7 @@ import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
-import { RulePill } from "./cells";
+import { NumberLink, RulePill } from "./cells";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading, SuggestedGal } from "./TankLevel";
 import { PreferredWindows } from "./PreferredWindows";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,8 +56,13 @@ import {
   TENANT,
   allRequests,
   assetById,
+  printKey,
   blankLine,
   clampPreferred,
+  CHANGE_KINDS,
+  isOrder,
+  ordersOfRequest,
+  requestChange,
   daysUntil,
   cancelRule,
   dateOfKey,
@@ -516,7 +522,11 @@ export function OrderRequestSheet({
     setHeld((h) => (h ? { id: h.id, d: fn(h.d) } : h));
   const [focusRow, setFocusRow] = React.useState<number | undefined>();
   const [pendingShown, setPendingShown] = React.useState(false);
+  const nav = usePortalNav();
   const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [changeOpen, setChangeOpen] = React.useState(false);
+  const [changeWhat, setChangeWhat] = React.useState("");
+  const [changeNote, setChangeNote] = React.useState("");
   const [cancelReason, setCancelReason] = React.useState("");
   const fileInput = React.useRef<HTMLInputElement>(null);
 
@@ -580,14 +590,18 @@ export function OrderRequestSheet({
   const shipTo = SHIP_TOS.find((s) => s.name === draft.shipTo);
   const unusedAsset = shipTo?.assets.find((a) => !draft.lines.some((l) => l.assetId === a.id));
   const rule = cancelRule(request);
+  /* AN ORDER OR A REQUEST (Pavan, 2026-10-19) — the same page, its links
+     and its acts differ. */
+  const order = isOrder(request);
+  const linked = order ? [] : ordersOfRequest(request, allRequests());
 
   const pending: PendingItem[] = [
     !draft.shipTo && { key: "shipTo", label: "Choose a ship-to", target: SECTION_DELIVERY },
-    !draft.date && { key: "date", label: "Choose a requested date", target: SECTION_DELIVERY },
+    !draft.date && { key: "date", label: "Choose a planned date", target: SECTION_DELIVERY },
     draft.date &&
       draft.date < dateKeyOf(today) && {
         key: "datePast",
-        label: "Move the requested date to today or later",
+        label: "Move the planned date to today or later",
         target: SECTION_DELIVERY,
       },
     draft.recurring &&
@@ -616,13 +630,13 @@ export function OrderRequestSheet({
       const a = assetById(l.assetId);
       return a?.monitor ? { ...l, levelAtOrder: a.level } : l;
     });
-    updateRequest(request.id, { ...draft, lines, status: "Created" }, "Request submitted");
+    updateRequest(request.id, { ...draft, lines, status: "In review" }, "Request submitted");
     toast.success(`${request.requestNo} submitted`);
     onOpenChange(false);
   };
 
   /* WHAT WAITS ON THE CUSTOMER — the quote's answer is the footer's act. */
-  const footerPrimary = locked ? (request.status === "Quote sent" ? <QuoteActions r={request} /> : null) : (
+  const footerPrimary = locked ? (request.status === "Quote received" ? <QuoteActions r={request} /> : null) : (
     <div className="flex items-center gap-3">
       <Button
         variant="outline"
@@ -657,7 +671,7 @@ export function OrderRequestSheet({
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(o) : close())}
       mode={creating ? "create" : "edit"}
-      editTitle={`Request #: ${request.requestNo}`}
+      editTitle={`${order ? "Order" : "Request"} #: ${request.requestNo}`}
       createTitle="Create Order"
       createAction="Submit request"
       showCancel={false}
@@ -665,6 +679,14 @@ export function OrderRequestSheet({
         <span className="flex items-center gap-2">
           <DraftStatusChip tone={REQUEST_STATUS_TONE[request.status]} label={request.status} saveState={saveState} />
           {request.ruleNo && <RulePill ruleNo={request.ruleNo} />}
+          {order && (request.fromRequests ?? []).length > 0 && (
+            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              From
+              {request.fromRequests!.map((n) => (
+                <NumberLink key={n} no={n} onOpen={nav.openOrder} />
+              ))}
+            </span>
+          )}
         </span>
       }
       headerMenu={
@@ -684,9 +706,23 @@ export function OrderRequestSheet({
                 }}
               >
                 <Copy />
-                Duplicate order
+                {order ? "Order again" : "Duplicate request"}
               </DropdownMenuItem>
-              {rule !== "none" && (
+              {/* AN ACCEPTED ORDER IS CHANGED BY ASKING (Pavan, 2026-10-19). */}
+              {order && request.status === "Scheduled" && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setChangeWhat("");
+                    setChangeNote("");
+                    setChangeOpen(true);
+                  }}
+                >
+                  <Pencil />
+                  Request change
+                </DropdownMenuItem>
+              )}
+              {!order && rule !== "none" && (
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
@@ -721,9 +757,72 @@ export function OrderRequestSheet({
     >
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-10">
+        {/* WHERE THE REQUEST WENT (Pavan, 2026-10-19) — its orders, each
+            with its tanks and status; tanks still waiting say so. */}
+        {!order && (linked.length > 0 || request.status === "Partly accepted") && (
+          <SheetSection title="Orders" flush>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border bg-fp-table-header">
+                  {["Order #", "Tanks", "Planned date", "Status"].map((h) => (
+                    <th key={h} className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {linked.map((o) => (
+                  <tr key={o.id} className="h-12 border-b border-border last:border-b-0">
+                    <td className="whitespace-nowrap px-3">
+                      <NumberLink no={o.requestNo} onOpen={nav.openOrder} />
+                    </td>
+                    <td className="px-3 text-foreground">
+                      {o.lines.map((l) => `${assetById(l.assetId)?.name ?? "No tank"} · ${l.product}`).join(", ")}
+                    </td>
+                    <td className="whitespace-nowrap px-3 text-foreground">{o.date ? printKey(o.date) : "—"}</td>
+                    <td className="whitespace-nowrap px-3">
+                      <StatusChip tone={REQUEST_STATUS_TONE[o.status]} variant="soft">
+                        {o.status}
+                      </StatusChip>
+                    </td>
+                  </tr>
+                ))}
+                {request.lines
+                  .filter((l) => !l.orderNo && request.status === "Partly accepted")
+                  .map((l, i) => (
+                    <tr key={`p-${i}`} className="h-12 border-b border-border last:border-b-0">
+                      <td className="whitespace-nowrap px-3 text-muted-foreground">Pending</td>
+                      <td className="px-3 text-foreground">
+                        {assetById(l.assetId)?.name ?? "No tank"} · {l.product}
+                      </td>
+                      <td className="whitespace-nowrap px-3 text-muted-foreground">—</td>
+                      <td className="whitespace-nowrap px-3 text-muted-foreground">Not on an order yet</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </SheetSection>
+        )}
+        {order && request.changeRequest && (
+          <SheetSection title="Change requested">
+            <p className="text-sm text-foreground">
+              {request.changeRequest.what}
+              {request.changeRequest.note ? ` — ${request.changeRequest.note}` : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Sent to {TENANT} {DATE_FMT.format(new Date(request.changeRequest.at))}
+            </p>
+          </SheetSection>
+        )}
         {/* WHAT THE REQUEST WAITS ON — first, above the order (Pavan, 2026-10-15). */}
-        {!creating && request.status === "Quote sent" && (
-          <SheetSection title={`Quote from ${TENANT}`}>
+        {/* THE QUOTE STAYS READABLE once accepted (Pavan, 2026-10-19 — "View
+            quote" on an accepted request). */}
+        {!creating &&
+          (request.status === "Quote received" ||
+            ((request.status === "Accepted" || request.status === "Partly accepted") &&
+              request.documents.some((d) => d.kind === "Quote"))) && (
+          <SheetSection id="request-quote" title={`Quote from ${TENANT}`}>
             <QuoteLines r={request} />
           </SheetSection>
         )}
@@ -790,9 +889,9 @@ export function OrderRequestSheet({
                   onChange={(e) => set("po", e.target.value)}
                 />
               </SheetField>
-              <SheetField label="Requested date" required>
+              <SheetField label="Planned date" required>
                 <DateButton
-                  label="Requested date"
+                  label="Planned date"
                   value={draft.date}
                   onChange={(k) => set("date", k)}
                   placeholder="Select date"
@@ -823,7 +922,8 @@ export function OrderRequestSheet({
               )}
             </div>
             {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
-            {!request.ruleNo && (
+            {/* …and an ORDER repeats only through its request. */}
+            {!request.ruleNo && !order && (
               <div className="grid grid-cols-2 items-end gap-4">
                 <SheetField>
                   <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
@@ -966,6 +1066,41 @@ export function OrderRequestSheet({
 
     {/* CANCEL ASKS FIRST — the Sales order's dialog. Inside the cut-off it
         is a request the supplier answers, and says a fee may apply. */}
+    {/* REQUEST A CHANGE TO AN ACCEPTED ORDER (Pavan, 2026-10-19) — what, and
+        a note; it goes to the tenant, who decides. */}
+    <AlertDialog open={changeOpen} onOpenChange={setChangeOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Request a change to {request.requestNo}</AlertDialogTitle>
+          <AlertDialogDescription>{TENANT} decides; the order stays as it is until they do.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <SheetField label="What to change" required>
+          <Combobox
+            className="w-full"
+            value={changeWhat}
+            onValueChange={setChangeWhat}
+            options={CHANGE_KINDS}
+            placeholder="Select"
+            searchThreshold={99}
+          />
+        </SheetField>
+        <SheetField label="Note" required>
+          <Textarea aria-label="Note" value={changeNote} onChange={(e) => setChangeNote(e.target.value)} className="min-h-20" />
+        </SheetField>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Back</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!changeWhat || !changeNote.trim()}
+            onClick={() => {
+              requestChange(request.id, changeWhat, changeNote.trim());
+              toast.success(`Change requested for ${request.requestNo}`);
+            }}
+          >
+            Send to {TENANT}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>

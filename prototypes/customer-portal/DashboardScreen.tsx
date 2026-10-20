@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, BellRing, ChevronDown, ChevronRight, Clock, FileText, Lock, MessageCircleQuestion, PackageMinus, Repeat, Scale } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, BellRing, ChevronDown, Clock, FileQuestion, FileText, Lock, Repeat } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Pill, pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -13,13 +13,18 @@ import { kindTone } from "../unified-view/statusKind";
 import {
   DELIVERED,
   REQUEST_STATUS_TONE,
+  isOrder,
+  orderListRows,
+  quantityOf,
+  isRunningLate,
+  lacksPod,
+  onCreditHold,
   TENANT,
   YET_TO_DELIVER,
   assetById,
   dateOfKey,
   printKey,
   quantityText,
-  shipToOfAsset,
   todayKey,
   useRequests,
   windowText,
@@ -29,19 +34,19 @@ import { OrderRequestSheet } from "./OrderRequestSheet";
 import { BatteryCell, DaysToEmpty, LevelReading } from "./TankLevel";
 import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
+import { Button } from "@/components/ui/button";
+import { CELL, RecordSheet } from "../unified-view/RecordSheet";
+import { NumberLink } from "./cells";
 import {
   CREDIT,
   DEFAULT_RANGE,
-  DRIVER_NOTES,
   OPEN_INVOICES,
   PRICED_PRODUCTS,
   RANGES,
-  SHOW_MARKET_PRICE,
   daysSinceEmpty,
   headline,
   periods,
   productTotals,
-  savings,
   spend,
   type NoteLevel,
   type RangeWeeks,
@@ -49,22 +54,20 @@ import {
 } from "./dashboard";
 
 /*
-  THE DASHBOARD (Pavan, 2026-10-13) — the landing page. It answers, in order:
+  THE DASHBOARD (Pavan, 2026-10-13; reworked after the Anirudh review,
+  2026-10-17) — a few things to glance at, in order:
 
-    How are my requests being met?   four headline figures, each against the
-                                     same number of weeks before
-    What needs me now?               orders, and assets drivers flagged
-    Week on week                     requests on time / late / partial; times
-                                     a tank was found empty (the goal is 0)
-    Money                            invoices to pay; credit, when the tenant
-                                     gives it
-    Products and price               gallons per product against the period
-                                     before; the price paid against market
-    Coming up                        the next 7 days of deliveries
+    Attention required   orders on hold for credit (a count), quotes waiting,
+                         orders running late, deliveries with no proof
+    Schedule             the next 7 days of deliveries
+    Tank levels          every monitored tank, emptiest first
+    Spend                total spend and spend by product — history only,
+                         never against market
+    Billing & credit     open invoices; credit where the tenant gives it
 
-  DEFAULT RANGE = 8 FULL WEEKS (Pavan, 2026-10-13): eight bars is enough to
-  see a trend and short enough that a change made last month shows; it spans
-  two monthly invoice cycles. 4 and 12 weeks are a press away.
+  Delivery performance (headlines, requests by week, empty-tank reports) is
+  a REPORT now, on the Reports page. Asset health (driver notes) is out
+  until notes are structured.
 
   CHARTS (dataviz skill): the DS dashboard palette `fp-viz-1…3` in its fixed
   order, validated; thin marks, rounded data ends, 2px gaps, recessive grid,
@@ -134,10 +137,13 @@ function Card({
 }
 
 /** A titled group of cards — the page's structure. */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="flex shrink-0 flex-col gap-3" aria-label={title}>
-      <h2 className="pt-2 text-base font-semibold text-foreground">{title}</h2>
+      <div className="flex items-end justify-between gap-3 pt-2">
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        {aside}
+      </div>
       {children}
     </section>
   );
@@ -552,18 +558,13 @@ function Headlines({ now, before, n }: { now: Week[]; before: Week[]; n: number 
 
 /* --------------------------------------------------- needs attention --- */
 
-const LEVEL_TEXT: Record<NoteLevel, string> = {
-  critical: "text-status-failed",
-  warning: "text-status-processing",
-  info: "text-foreground",
-};
 
 /*
   WHAT THE CUSTOMER HAS TO DO (Pavan, 2026-10-13) — the title is the action
   itself, not the state ("Waiting on you" said nothing); the line under it
   says why, from the request's own flag where it has one.
 */
-export type ActionKind = "credit" | "answer" | "quote" | "dispute" | "partial" | "late";
+export type ActionKind = "credit" | "quote" | "late" | "pod";
 export interface NeededAction {
   kind: ActionKind;
   action: string;
@@ -571,32 +572,34 @@ export interface NeededAction {
   level: NoteLevel;
 }
 
+/*
+  ATTENTION REQUIRED, IN ANIRUDH'S ORDER (review 2026-10-17): orders on hold
+  for credit (one tile — how many, no balance: we only get a yes/no), quotes
+  waiting, orders running late (planned date passed, not delivered — no ETA
+  yet), orders delivered with no proof of delivery. Nothing else: invoice
+  disputes are not in the product yet.
+*/
+const KIND_ORDER: ActionKind[] = ["credit", "quote", "late", "pod"];
+
 function actionOf(r: OrderRequest): NeededAction | null {
-  const flag = (k: string) => r.flags.find((f) => f.kind === k);
-  const hold = flag("Credit hold");
-  if (r.status === "Action needed")
-    return hold
-      ? { kind: "credit", action: "Clear your balance to release this order", why: hold.detail, level: "critical" }
-      : { kind: "answer", action: `Answer ${TENANT}’s question`, why: `${TENANT} needs more from you before it can schedule.`, level: "critical" };
-  if (r.status === "Quote sent")
+  if (!isOrder(r) && r.status === "Quote received")
     return { kind: "quote", action: "Accept or decline the quote", why: `${TENANT} has priced this request; it is not scheduled until you accept.`, level: "warning" };
-  if (r.status === "Invoice disputed")
+  if (isRunningLate(r)) {
+    const d = Math.round((startOfDay(new Date()).getTime() - (dateOfKey(r.date)?.getTime() ?? 0)) / 86_400_000);
     return {
-      kind: "dispute",
-      action: `Settle the disputed invoice with ${TENANT}`,
-      why: flag("Invoice past due")?.detail ?? "The invoice is on hold until the dispute is settled.",
+      kind: "late",
+      action: "Running late",
+      why: `Planned for ${printKey(r.date)} — ${d} ${d === 1 ? "day" : "days"} ago — and not delivered yet.`,
+      level: "critical",
+    };
+  }
+  if (lacksPod(r))
+    return {
+      kind: "pod",
+      action: "No proof of delivery",
+      why: `Delivered, but ${TENANT} has not shared the delivery ticket.`,
       level: "warning",
     };
-  if (r.status === "Partial delivery")
-    return {
-      kind: "partial",
-      action: "Reorder the gallons not delivered",
-      why: flag("Driver note")?.detail ?? "Part of this order was not delivered.",
-      level: "warning",
-    };
-  const late = flag("At risk of being late");
-  if (late) return { kind: "late", action: "Confirm the site can take a later delivery", why: late.detail, level: "warning" };
-  if (hold) return { kind: "credit", action: "Clear your balance to release this order", why: hold.detail, level: "critical" };
   return null;
 }
 
@@ -658,17 +661,60 @@ function TraceStroke() {
 */
 /* EVERY KIND'S FACE — the problem in 1–3 words, a line of at most six, the
    act on the pill (Pavan, 2026-10-15). */
-const ACTION_FACE: Record<ActionKind, { icon: React.ReactNode; problem: string; line: string; pill: string }> = {
-  credit: { icon: <Lock />, problem: "Credit on hold", line: "Pay overdue balance to release order", pill: "Clear dues" },
-  answer: { icon: <MessageCircleQuestion />, problem: "Supplier question", line: `Answer ${TENANT} to continue`, pill: "Reply" },
-  quote: { icon: <FileText />, problem: "Quote waiting", line: "Accept or decline the new quote", pill: "Accept quote" },
-  dispute: { icon: <Scale />, problem: "Invoice disputed", line: "Settle the disputed invoice amount", pill: "Settle invoice" },
-  partial: { icon: <PackageMinus />, problem: "Partly delivered", line: "Reorder the gallons not delivered", pill: "Reorder" },
-  late: { icon: <Clock />, problem: "Running late", line: "Confirm the site can wait", pill: "Confirm site" },
+const ACTION_FACE: Record<Exclude<ActionKind, "credit">, { icon: React.ReactNode; problem: string; line: string; pill: string }> = {
+  quote: { icon: <FileText />, problem: "Quote waiting", line: "Accept or decline the quote", pill: "Accept quote" },
+  late: { icon: <Clock />, problem: "Running late", line: "Planned date passed, not delivered", pill: "Late" },
+  pod: { icon: <FileQuestion />, problem: "No proof of delivery", line: `No delivery ticket from ${TENANT}`, pill: "Ask for POD" },
 };
 
+/*
+  ORDERS ON HOLD FOR CREDIT — ONE TILE (Anirudh, 2026-10-17): how many are
+  blocked, so the customer sees what is at stake and clears it with the
+  tenant directly. No balance and no payment here — the tenant gives a
+  yes/no. Each order opens from its number.
+*/
+function CreditHoldTile({ held, onOpenOrder }: { held: OrderRequest[]; onOpenOrder: (id: string) => void }) {
+  const gal = held.reduce((t, r) => t + r.lines.reduce((n, l) => n + (l.topOff ? 0 : l.gal), 0), 0);
+  return (
+    <div className="flex h-full w-full flex-col rounded-xl border border-border bg-fp-surface-1b">
+      <span className="flex items-start gap-3 p-3">
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg [&_svg]:size-5", pillColorClass("neutral", "violet"))}>
+          <Lock />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-base font-semibold text-foreground">
+            {held.length} {held.length === 1 ? "order" : "orders"} on hold due to credit
+          </span>
+          <span className="text-sm text-muted-foreground">Clear it with {TENANT} to release them</span>
+        </span>
+        <StatusChip tone={kindTone("critical")} variant="text">
+          On hold
+        </StatusChip>
+      </span>
+      <span className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border p-3">
+        <span className="col-span-2 flex min-w-0 flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Orders</span>
+          <span className="flex flex-wrap gap-x-3 gap-y-1">
+            {held.map((r) => (
+              <NumberLink key={r.id} no={r.requestNo} onOpen={() => onOpenOrder(r.id)} />
+            ))}
+          </span>
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Gallons held</span>
+          <span className="text-sm tabular-nums text-foreground">{gal ? `${gal.toLocaleString()} gal` : "Top off"}</span>
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Ship-tos</span>
+          <span className="truncate text-sm text-foreground">{Array.from(new Set(held.map((r) => r.shipTo))).join(", ")}</span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function ActionTile({ r, a, onOpen }: { r: OrderRequest; a: NeededAction; onOpen: () => void }) {
-  const face = ACTION_FACE[a.kind];
+  const face = ACTION_FACE[a.kind as Exclude<ActionKind, "credit">];
   const lines = r.lines.filter((l) => l.assetId || l.product);
   const assets = Array.from(new Set(lines.map((l) => assetById(l.assetId)?.name ?? "No tank")));
   const products = Array.from(new Set(lines.map((l) => l.product).filter(Boolean)));
@@ -751,16 +797,25 @@ function ActionTile({ r, a, onOpen }: { r: OrderRequest; a: NeededAction; onOpen
   item shows at once, each a tile that opens its order. Lightly decorative:
   the warning wash and a soft glow in the corner.
 */
-function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: string) => void }) {
+function ActionBanner({
+  rows,
+  onOpen,
+  onOpenOrder,
+}: {
+  rows: OrderRequest[];
+  onOpen: (id: string) => void;
+  onOpenOrder: (id: string) => void;
+}) {
   /* COLLAPSED BY DEFAULT (Pavan, 2026-10-13) — the header and its count;
      opened, every item. */
   const [open, setOpen] = React.useState(false);
-  const order: NoteLevel[] = ["critical", "warning", "info"];
+  const held = rows.filter(onCreditHold);
   const items = rows
     .map((r) => ({ r, a: actionOf(r) }))
     .filter((x): x is { r: OrderRequest; a: NonNullable<ReturnType<typeof actionOf>> } => x.a !== null)
-    .sort((x, y) => order.indexOf(x.a.level) - order.indexOf(y.a.level));
-  if (items.length === 0) return null;
+    .sort((x, y) => KIND_ORDER.indexOf(x.a.kind) - KIND_ORDER.indexOf(y.a.kind));
+  const count = items.length + (held.length ? 1 : 0);
+  if (count === 0) return null;
   return (
     <section
       aria-label="Attention required"
@@ -782,7 +837,7 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
         </span>
         <span className="text-base font-semibold text-foreground">Attention required</span>
         <span className="rounded-full bg-status-processing/15 px-2 py-0.5 text-xs font-medium tabular-nums text-status-processing">
-          {items.length}
+          {count}
         </span>
         <ChevronDown
           className={cn("ml-auto size-4 text-muted-foreground transition-transform", open && "rotate-180")}
@@ -790,6 +845,11 @@ function ActionBanner({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
       </button>
       {open && (
       <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {held.length > 0 && (
+          <li>
+            <CreditHoldTile held={held} onOpenOrder={onOpenOrder} />
+          </li>
+        )}
         {items.map(({ r, a }) => (
           <li key={r.id}>
             <ActionTile r={r} a={a} onOpen={() => onOpen(r.id)} />
@@ -810,55 +870,12 @@ function Row({ onClick, children, label }: { onClick?: () => void; children: Rea
         onClick={onClick}
         className="group/row flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
       >
+        {/* NO TRAILING CHEVRON — the row is the control (Pavan, 2026-10-19). */}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">{children}</div>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
       </button>
     </li>
   );
 }
-
-/* DRIVER REPORTS — a table (Pavan, 2026-10-13): asset, ship-to, the issue,
-   driver, date, order. The issue's name is coloured by level as Flags are. */
-function DriverReports() {
-  const notes = [...DRIVER_NOTES].sort((a, b) => b.at.localeCompare(a.at));
-  return (
-    <Card title="Driver reports" aside={<span className="text-sm tabular-nums text-muted-foreground">{notes.length}</span>}>
-      <div className="-mx-4 -mb-4 overflow-hidden rounded-b-xl border-t border-border">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-fp-table-header hover:bg-fp-table-header">
-              <TableHead className="pl-4">Asset</TableHead>
-              <TableHead>Ship-to</TableHead>
-              <TableHead>Issue</TableHead>
-              <TableHead>Driver</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="pr-4">Order</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {notes.map((n) => (
-              <TableRow key={n.id}>
-                <TableCell className="pl-4 font-medium text-foreground">{assetById(n.assetId)?.name ?? "Asset"}</TableCell>
-                <TableCell>{shipToOfAsset(n.assetId)?.name ?? "—"}</TableCell>
-                <TableCell className="whitespace-normal">
-                  <span className="flex flex-col gap-0.5">
-                    <span className={cn("font-medium", LEVEL_TEXT[n.level])}>{n.kind}</span>
-                    <span className="text-xs text-muted-foreground">{n.detail}</span>
-                  </span>
-                </TableCell>
-                <TableCell>{n.driver}</TableCell>
-                <TableCell className="tabular-nums">{DATE_FMT.format(new Date(n.at))}</TableCell>
-                <TableCell className="pr-4 tabular-nums">{n.requestNo}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------- week on week --- */
 
 function RequestsChart({ weeks }: { weeks: Week[] }) {
   const series: BarSeries[] = [
@@ -963,7 +980,7 @@ function InvoicesCard({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
       <ul className="-mx-2 flex flex-col divide-y divide-border">
         {inv.map((i) => {
           const d = daysFromToday(i.due);
-          const live = rows.find((r) => r.requestNo === i.requestNo);
+          const live = rows.find((r) => r.requestNo === i.orderNo);
           return (
             <Row key={i.invoiceNo} label={`Open ${i.invoiceNo}`} onClick={live ? () => onOpen(live.id) : undefined}>
               <span className="flex items-center justify-between gap-3">
@@ -975,7 +992,7 @@ function InvoicesCard({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: str
               </span>
               <span className="flex items-center justify-between gap-3 text-xs">
                 <span className="truncate text-muted-foreground">
-                  {i.requestNo} · {i.shipTo}
+                  {i.orderNo} · {i.shipTo}
                 </span>
                 <span className={cn("shrink-0", d < 0 ? "text-status-failed" : "text-muted-foreground")}>
                   {d < 0 ? `${-d} ${d === -1 ? "day" : "days"} overdue` : d === 0 ? "Due today" : `Due in ${d} ${d === 1 ? "day" : "days"}`}
@@ -1048,258 +1065,250 @@ function CreditCard({ weeks }: { weeks: Week[] }) {
 
 /* --------------------------------------------------- products & price --- */
 
-function ProductsCard({ now, before, n }: { now: Week[]; before: Week[]; n: number }) {
-  const a = productTotals(now);
-  const b = productTotals(before);
-  const rows = a
-    .map((r, i) => ({ ...r, before: b[i].gal }))
-    .filter((r) => r.gal > 0 || r.before > 0)
-    .sort((x, y) => y.gal - x.gal);
-  const max = Math.max(...rows.flatMap((r) => [r.gal, r.before]), 1);
-  return (
-    <Card title="Volume by product">
-      <Legend
-        items={[
-          { hue: VIZ[1].bg, label: `Last ${n} weeks` },
-          { hue: "bg-muted-foreground/35", label: `${n} weeks before` },
-        ]}
-      />
-      <ul className="flex flex-col gap-3">
-        {rows.map((r) => {
-          const d = r.before ? Math.round(((r.gal - r.before) / r.before) * 100) : 0;
-          return (
-            <li key={r.product} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3" title={`${r.product}: ${num(r.gal)} gal (before: ${num(r.before)} gal)`}>
-              <span className="truncate text-sm text-foreground">{r.product}</span>
-              <span className="flex flex-col gap-0.5">
-                <span className="h-2 rounded-r-[4px] bg-fp-viz-1" style={{ width: `${(r.gal / max) * 100}%` }} />
-                <span className="h-1.5 rounded-r-[3px] bg-muted-foreground/35" style={{ width: `${(r.before / max) * 100}%` }} />
-              </span>
-              <span className="flex w-28 items-center justify-end gap-2 text-right">
-                <span className="text-sm tabular-nums text-foreground">{num(r.gal)}</span>
-                <span className="w-10 text-xs tabular-nums text-muted-foreground">
-                  {d === 0 ? "—" : `${d > 0 ? "+" : "−"}${Math.abs(d)}%`}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
-  );
-}
-
 /*
-  PRICE VS MARKET, PER PRODUCT (Pavan, 2026-10-13) — two cards in a row: on
-  the left, what the customer saved against market for the chosen product
-  and weeks; on the right, a tab per product and their price (green) against
-  the market's (red), week by week. The point is to show the value of
-  ordering through the tenant.
+  SPEND, AS HISTORY (Anirudh, 2026-10-17 — no market comparison: a customer
+  shown "x% under market" starts shopping on price). What the account spent
+  over the weeks, all products or one, week by week; then per product.
 */
-/* THE OVERALL TAB (Pavan, 2026-10-15) — every priced product at once: what
-   the customer spent against what the same gallons cost at market. */
 const ALL = "All products";
 
-function SavingsCard({
-  weeks,
-  product,
-  n,
-  bare,
-}: {
-  weeks: Week[];
-  product: string;
-  n: number;
-  bare?: boolean;
-}) {
+function SpendCard({ weeks, n }: { weeks: Week[]; n: number }) {
+  const [product, setProduct] = React.useState<string>(ALL);
   const one = product === ALL ? undefined : product;
-  const saved = savings(weeks, one);
-  const atMarket = spend(weeks, "market", one);
-  /* A GALLON-WEIGHTED AVERAGE — on "All products", across them. */
-  const gal = weeks.reduce((a, w) => a + (one ? (w.byProduct[one] ?? 0) : PRICED_PRODUCTS.reduce((t, p) => t + (w.byProduct[p] ?? 0), 0)), 0);
-  const avg = (k: "paid" | "market") => spend(weeks, k, one) / Math.max(1, gal);
+  const total = spend(weeks, "paid", one);
+  const gal = weeks.reduce(
+    (a, w) => a + (one ? (w.byProduct[one] ?? 0) : PRICED_PRODUCTS.reduce((t, p) => t + (w.byProduct[p] ?? 0), 0)),
+    0
+  );
   return (
-    <Card bare={bare} title="Saved vs market">
-      <dl className="flex flex-1 flex-col gap-4">
-        <div className="flex flex-col gap-0.5">
-          <dt className="text-xs text-muted-foreground">
-            {product} · last {n} weeks
-          </dt>
-          {/* THE SAVING, "vs. market price" beside it, and what share of the
-              market cost it is (Pavan, 2026-10-15). */}
-          <dd className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-4xl font-semibold tabular-nums text-status-success">{usd.format(saved)}</span>
-            <span className="text-sm text-muted-foreground">vs. market price</span>
-            {/* UP OR DOWN, SAID BY THE ARROW — the dashboard's change marker
-                (Pavan, 2026-10-15): your spend against the market's. */}
-            {atMarket > 0 && <Change now={atMarket} then={atMarket - saved} points={false} pct={(saved / atMarket) * 100} />}
-          </dd>
-        </div>
-        {/* THE AVERAGES 32px UNDER THE SAVING (Pavan, 2026-10-15). */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+    <div className="grid divide-y divide-border rounded-xl border border-border bg-fp-surface-1b lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
+      <Card bare title="Total spend">
+        <dl className="flex flex-1 flex-col gap-4">
           <div className="flex flex-col gap-0.5">
-            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span aria-hidden className={cn("size-2 rounded-[2px]", VIZ[6].bg)} />
-              Your average
+            <dt className="text-xs text-muted-foreground">
+              {product} · last {n} weeks
             </dt>
-            <dd className="text-base font-semibold tabular-nums text-foreground">
-              {usd3.format(avg("paid"))}
-              <span className="text-xs font-normal text-muted-foreground"> /gal</span>
-            </dd>
+            <dd className="text-4xl font-semibold tabular-nums text-foreground">{usd.format(total)}</dd>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span aria-hidden className={cn("size-2 rounded-[2px]", VIZ[8].bg)} />
-              Market average
-            </dt>
-            <dd className="text-base font-semibold tabular-nums text-foreground">
-              {usd3.format(avg("market"))}
-              <span className="text-xs font-normal text-muted-foreground"> /gal</span>
-            </dd>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs text-muted-foreground">Gallons</dt>
+              <dd className="text-base font-semibold tabular-nums text-foreground">{num(gal)}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs text-muted-foreground">Average price</dt>
+              <dd className="text-base font-semibold tabular-nums text-foreground">
+                {usd3.format(total / Math.max(1, gal))}
+                <span className="text-xs font-normal text-muted-foreground"> /gal</span>
+              </dd>
+            </div>
           </div>
-        </div>
-        {/* THE REST OF THE CARD — a quiet outline lattice, fading in from the
-            top (Pavan, 2026-10-15: "very subtle … geometric"). No rule, no
-            bottom line. */}
-        {/* TO THE CARD'S EDGES (Pavan, 2026-10-15) — out of the 16px padding
-            on the left, bottom and right (up to the divider); whole tiles
-            start at the bottom-left, the top and right may cut. The bottom-
-            left corner is the shared card's, so it rounds with it. */}
-        <QuietPattern className="-mx-4 -mb-4 min-h-16 flex-1 rounded-bl-[11px]" />
-      </dl>
-    </Card>
+          <QuietPattern className="-mx-4 -mb-4 min-h-16 flex-1 rounded-bl-[11px]" />
+        </dl>
+      </Card>
+      <Card bare title="Spend by week">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={product}
+          onValueChange={(v) => v && setProduct(v)}
+          aria-label="Product"
+          className="flex w-fit flex-wrap"
+        >
+          {[ALL, ...PRICED_PRODUCTS].map((p) => (
+            <ToggleGroupItem key={p} value={p} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              {p}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <WeekLines
+          fill
+          weeks={weeks}
+          format={(v) => usd.format(v)}
+          series={[{ key: "paid", label: "Spend", hue: 6, value: (w) => spend([w], "paid", one) }]}
+        />
+      </Card>
+    </div>
   );
 }
 
-function PriceCard({
-  weeks,
-  product,
-  onProduct,
-  bare,
-}: {
-  weeks: Week[];
-  product: string;
-  onProduct: (p: string) => void;
-  bare?: boolean;
-}) {
+function SpendByProductCard({ weeks }: { weeks: Week[] }) {
+  const rows = productTotals(weeks)
+    .map((r) => ({ ...r, usd: PRICED_PRODUCTS.includes(r.product) ? spend(weeks, "paid", r.product) : null }))
+    .filter((r) => r.gal > 0)
+    .sort((x, y) => (y.usd ?? 0) - (x.usd ?? 0) || y.gal - x.gal);
+  const max = Math.max(...rows.map((r) => r.usd ?? 0), 1);
   return (
-    <Card bare={bare} title="Price vs market">
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        size="sm"
-        value={product}
-        onValueChange={(v) => v && onProduct(v)}
-        aria-label="Product"
-        className="flex w-fit flex-wrap"
-      >
-        {[ALL, ...PRICED_PRODUCTS].map((p) => (
-          <ToggleGroupItem key={p} value={p} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
-            {p}
-          </ToggleGroupItem>
+    <Card title="Spend by product">
+      <ul className="flex flex-col gap-3">
+        {rows.map((r) => (
+          <li key={r.product} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3" title={`${r.product}: ${num(r.gal)} gal`}>
+            <span className="truncate text-sm text-foreground">{r.product}</span>
+            <span className="h-2 rounded-r-[4px] bg-fp-viz-1" style={{ width: `${((r.usd ?? 0) / max) * 100}%` }} />
+            <span className="flex w-44 items-center justify-end gap-3 text-right">
+              <span className="text-xs tabular-nums text-muted-foreground">{num(r.gal)} gal</span>
+              <span className="w-20 text-sm tabular-nums text-foreground">{r.usd === null ? "—" : usd.format(r.usd)}</span>
+            </span>
+          </li>
         ))}
-      </ToggleGroup>
-      {product === ALL ? (
-        /* OVERALL — each week's spend against the same gallons at market;
-           the gap between the lines is what was saved. */
-        <>
-          <Legend
-            items={[
-              { hue: VIZ[6].bg, label: "You paid", line: "solid" },
-              { hue: VIZ[8].bg, label: "At market", line: "dashed" },
-            ]}
-          />
-          <WeekLines
-            fill
-            weeks={weeks}
-            format={(v) => usd.format(v)}
-            series={[
-              { key: "paid", label: "You paid", hue: 6, value: (w) => spend([w], "paid") },
-              { key: "market", label: "At market", hue: 8, dashed: true, value: (w) => spend([w], "market") },
-            ]}
-          />
-        </>
-      ) : (
-        <>
-          <Legend
-            items={[
-              { hue: VIZ[6].bg, label: "Your price", line: "solid" },
-              { hue: VIZ[8].bg, label: "Market price", line: "dashed" },
-            ]}
-          />
-          <WeekLines
-            fill
-            weeks={weeks}
-            format={(v) => usd3.format(v)}
-            series={[
-              { key: "paid", label: "Your price", hue: 6, value: (w) => w.prices[product]?.paid ?? 0 },
-              { key: "market", label: "Market price", hue: 8, dashed: true, value: (w) => w.prices[product]?.market ?? 0 },
-            ]}
-          />
-        </>
-      )}
+      </ul>
     </Card>
   );
 }
 
 /* ----------------------------------------------------------- coming up --- */
 
-function ComingUp({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: string) => void }) {
+/*
+  THE SCHEDULE AS CARDS (Pavan, 2026-10-19 — like the Orders page's overview):
+  one card, three tiles ruled apart — Today, Tomorrow, the next 7 days —
+  each with how many deliveries, how many products, the gallons and how many
+  ship-tos it covers. "View details" opens the full table in a sheet.
+*/
+const dayKeyAhead = (n: number) => {
+  const d = startOfDay(new Date());
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** Every delivery still to come in the next 7 days — the Orders list's rows. */
+function upcoming(rows: OrderRequest[]) {
   const t = todayKey();
-  const end = (() => {
-    const d = startOfDay(new Date());
-    d.setDate(d.getDate() + 7);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  })();
-  const next = rows
+  const end = dayKeyAhead(6);
+  return orderListRows(rows)
     .filter((r) => r.date >= t && r.date <= end && (YET_TO_DELIVER.includes(r.status) || r.status === "Out for delivery"))
     .sort((a, b) => a.date.localeCompare(b.date) || a.windowStart - b.windowStart);
+}
+
+/** One figure of the next 7 days — the Orders overview's tile. */
+function ScheduleTile({ title, value, unit, sub, className }: { title: string; value: string; unit?: string; sub?: string; className?: string }) {
   return (
-    <Card title="Next 7 days" aside={<span className="text-sm tabular-nums text-muted-foreground">{next.length}</span>}>
-      {next.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No deliveries planned.</p>
-      ) : (
-        <div className="-mx-4 -mb-4 overflow-hidden rounded-b-xl border-t border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-fp-table-header hover:bg-fp-table-header">
-                <TableHead className="pl-4">Date</TableHead>
-                <TableHead>Window</TableHead>
-                <TableHead>Request</TableHead>
-                <TableHead>Ship-to</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead>Repeats</TableHead>
-                <TableHead className="pr-4">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {next.map((r) => (
-                <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(r.id)}>
-                  <TableCell className="pl-4">{r.date === t ? "Today" : printKey(r.date)}</TableCell>
-                  <TableCell className="tabular-nums">{windowText(r)}</TableCell>
-                  <TableCell className="font-medium text-foreground tabular-nums">{r.requestNo}</TableCell>
-                  <TableCell>{r.shipTo}</TableCell>
-                  <TableCell className="text-right tabular-nums">{quantityText(r.lines)}</TableCell>
-                  <TableCell>
-                    {r.recurring ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Repeat className="size-3.5 text-muted-foreground" />
-                        {r.frequency}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="pr-4">
-                    <StatusChip tone={REQUEST_STATUS_TONE[r.status]} variant="text">
-                      {r.status}
-                    </StatusChip>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+    <section className={cn("flex min-w-0 flex-1 flex-col gap-1 px-4 py-3", className)}>
+      <h3 className="text-sm font-medium text-foreground">{title}</h3>
+      <p className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-3xl font-semibold tabular-nums text-foreground">{value}</span>
+        {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+      </p>
+      <p className="text-xs text-muted-foreground">{sub ?? "next 7 days"}</p>
+    </section>
+  );
+}
+
+function ScheduleOverview({
+  rows,
+  onOpen,
+  details,
+  setDetails,
+}: {
+  rows: OrderRequest[];
+  onOpen: (id: string) => void;
+  details: boolean;
+  setDetails: (o: boolean) => void;
+}) {
+  const next = upcoming(rows);
+  const q = quantityOf(next.flatMap((r) => r.lines));
+  const products = new Set(next.flatMap((r) => r.lines.map((l) => l.product).filter(Boolean))).size;
+  const sites = new Set(next.map((r) => r.shipTo)).size;
+  const shipTos = SHIP_TOS.filter((x) => x.status === "Active").length;
+  return (
+    <>
+      <div className="relative shrink-0 rounded-xl border border-border bg-fp-surface-1b">
+        {/* FOUR FIGURES, THE NEXT 7 DAYS (Pavan, 2026-10-19). */}
+        <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
+          <ScheduleTile title="Deliveries" value={next.length.toLocaleString()} unit={next.length === 1 ? "delivery" : "deliveries"} />
+          <ScheduleTile title="Products" value={products.toLocaleString()} unit={products === 1 ? "product" : "products"} />
+          <ScheduleTile
+            title="Gallons"
+            value={q.gal ? num(q.gal) : "—"}
+            unit="gal"
+            sub={q.topOff ? `next 7 days · + ${q.topOff} top off` : undefined}
+          />
+          {/* Room for the corner button. */}
+          <ScheduleTile title="Ship-tos" value={`${sites}`} unit={`of ${shipTos}`} className="pr-12" />
         </div>
-      )}
-    </Card>
+        {/* THE ONE CONTROL, IN THE CARD'S CORNER — as the Orders overview. */}
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label="View the next 7 days"
+          title="View details"
+          onClick={() => setDetails(true)}
+          className="absolute top-2.5 right-2.5 rounded-full"
+        >
+          <ArrowUpRight />
+        </Button>
+      </div>
+      <RecordSheet
+        fit={{ tables: [[CELL.date, CELL.pick, CELL.pick, CELL.pick, CELL.pick, CELL.number, CELL.pick, CELL.status]] }}
+        open={details}
+        onOpenChange={setDetails}
+        mode="edit"
+        editTitle="Next 7 days"
+        createTitle=""
+        createAction=""
+        showCancel={false}
+        onSubmit={() => {}}
+        footerPrimary={null}
+      >
+        <ScheduleTable
+          list={next}
+          onOpen={(id) => {
+            setDetails(false);
+            onOpen(id);
+          }}
+        />
+      </RecordSheet>
+    </>
+  );
+}
+
+function ScheduleTable({ list, onOpen }: { list: OrderRequest[]; onOpen: (id: string) => void }) {
+  const t = todayKey();
+  if (list.length === 0) return <p className="text-sm text-muted-foreground">No deliveries planned.</p>;
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-fp-table-header hover:bg-fp-table-header">
+            <TableHead className="pl-4">Date</TableHead>
+            <TableHead>Window</TableHead>
+            <TableHead>Request</TableHead>
+            <TableHead>Order</TableHead>
+            <TableHead>Ship-to</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead>Repeats</TableHead>
+            <TableHead className="pr-4">Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map((r) => (
+            <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(r.openId ?? r.id)}>
+              <TableCell className="pl-4">{r.date === t ? "Today" : printKey(r.date)}</TableCell>
+              <TableCell className="tabular-nums">{windowText(r)}</TableCell>
+              <TableCell className="font-medium text-foreground tabular-nums">{r.requestNo}</TableCell>
+              <TableCell className="tabular-nums">{r.orderRef || <span className="text-muted-foreground">—</span>}</TableCell>
+              <TableCell>{r.shipTo}</TableCell>
+              <TableCell className="text-right tabular-nums">{quantityText(r.lines)}</TableCell>
+              <TableCell>
+                {r.recurring ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Repeat className="size-3.5 text-muted-foreground" />
+                    {r.frequency}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="pr-4">
+                <StatusChip tone={REQUEST_STATUS_TONE[r.status]} variant="text">
+                  {r.status}
+                </StatusChip>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -1308,12 +1317,12 @@ function ComingUp({ rows, onOpen }: { rows: OrderRequest[]; onOpen: (id: string)
 export function DashboardScreen() {
   const rows = useRequests();
   const [range, setRange] = React.useState<RangeWeeks>(DEFAULT_RANGE);
-  const { now, before } = periods(range);
+  const { now } = periods(range);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
   const [actionId, setActionId] = React.useState<string | null>(null);
+  const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const actionReq = rows.find((r) => r.id === actionId) ?? null;
-  const [product, setProduct] = React.useState<string>(ALL);
   const from = now[0];
   const to = now[now.length - 1];
 
@@ -1341,18 +1350,15 @@ export function DashboardScreen() {
         </ToggleGroup>
       </div>
 
-      <Section title="Delivery performance">
-        <Headlines now={now} before={before} n={range} />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RequestsChart weeks={now} />
-          <EmptyChart weeks={now} />
-        </div>
-      </Section>
+      {/* WHAT NEEDS YOU, FIRST (Anirudh review, 2026-10-17) — delivery
+          performance moved to Reports. A tile opens what is needed; the
+          order is one press further. */}
+      <ActionBanner rows={rows} onOpen={setActionId} onOpenOrder={setOpenId} />
 
-      {/* BELOW PERFORMANCE, COLLAPSED (Pavan, 2026-10-13). */}
-      {/* A TILE OPENS WHAT IS NEEDED FIRST (Pavan, 2026-10-15); the order is
-          one press further. */}
-      <ActionBanner rows={rows} onOpen={setActionId} />
+      {/* THE NEXT 7 DAYS, UP FRONT (Anirudh, 2026-10-17). */}
+      <Section title="Schedule">
+        <ScheduleOverview rows={rows} onOpen={setOpenId} details={scheduleOpen} setDetails={setScheduleOpen} />
+      </Section>
 
       {/* TANK LEVELS (Pavan, 2026-10-17) — every monitored tank, emptiest
           first, with its band and the monitor's battery. */}
@@ -1360,21 +1366,9 @@ export function DashboardScreen() {
         <TankLevelsCard />
       </Section>
 
-      <Section title="Products & pricing">
-        {/* THE TENANT CHOOSES WHETHER MARKET PRICES ARE SHOWN. ONE CARD, TWO
-            PARTS RULED APART (Pavan, 2026-10-14) — as the Delivery
-            performance headlines: saved against market, then the chart. */}
-        {SHOW_MARKET_PRICE && (
-          <div className="grid divide-y divide-border rounded-xl border border-border bg-fp-surface-1b lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
-            <SavingsCard bare weeks={now} product={product} n={range} />
-            <PriceCard bare weeks={now} product={product} onProduct={setProduct} />
-          </div>
-        )}
-        <ProductsCard now={now} before={before} n={range} />
-      </Section>
-
-      <Section title="Asset health">
-        <DriverReports />
+      <Section title="Spend">
+        <SpendCard weeks={now} n={range} />
+        <SpendByProductCard weeks={now} />
       </Section>
 
       <Section title="Billing & credit">
@@ -1385,10 +1379,6 @@ export function DashboardScreen() {
         </div>
       </Section>
 
-      <Section title="Schedule">
-        <ComingUp rows={rows} onOpen={setOpenId} />
-      </Section>
-
       <ActionSheet
         request={actionReq}
         action={actionReq ? actionOf(actionReq) : null}
@@ -1396,11 +1386,6 @@ export function DashboardScreen() {
         onOpenChange={(o) => !o && setActionId(null)}
         onViewOrder={(id) => {
           setActionId(null);
-          setOpenId(id);
-        }}
-        onCreated={(id) => {
-          setActionId(null);
-          setCreatingId(id);
           setOpenId(id);
         }}
       />
@@ -1463,5 +1448,49 @@ function TankLevelsCard() {
         </TableBody>
       </Table>
     </Card>
+  );
+}
+
+/*
+  DELIVERY PERFORMANCE — A REPORT (Anirudh review, 2026-10-17: the dashboard
+  is a few things to glance at; reports are what you generate and take
+  away). The four headlines against the weeks before, then requests by week
+  and empty-tank reports. On the Reports page.
+*/
+export function DeliveryPerformanceReport() {
+  const [range, setRange] = React.useState<RangeWeeks>(DEFAULT_RANGE);
+  const { now, before } = periods(range);
+  const from = now[0];
+  const to = now[now.length - 1];
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-6">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {SHORT.format(from.start)} – {DATE_FMT.format(weekEnd(to))}
+        </p>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={String(range)}
+          onValueChange={(v) => v && setRange(Number(v) as RangeWeeks)}
+          aria-label="Time range"
+          className="h-7"
+        >
+          {RANGES.map((r) => (
+            <ToggleGroupItem key={r} value={String(r)} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              Last {r} weeks
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+      <Section title="Delivery performance">
+        <Headlines now={now} before={before} n={range} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RequestsChart weeks={now} />
+          <EmptyChart weeks={now} />
+        </div>
+      </Section>
+    </div>
   );
 }

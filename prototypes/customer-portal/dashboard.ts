@@ -1,5 +1,5 @@
 import { startOfDay } from "../unified-view/data";
-import { PRODUCTS, MARKET_PRICE, CUSTOMER_DIFF } from "./orders";
+import { PRODUCTS, MARKET_PRICE, CUSTOMER_DIFF, orderNoFor } from "./orders";
 import { INVOICES, OPEN, totalOf } from "./invoices";
 
 /*
@@ -150,22 +150,13 @@ export function productTotals(ws: Week[]) {
 /** Products with a market price — the price card's tabs. */
 export const PRICED_PRODUCTS = PRODUCTS.filter((p) => MARKET_PRICE[p] !== undefined);
 
-/** What the customer's price saved against the market, $, on one product (or all). */
-export function savings(ws: Week[], product?: string) {
-  const ps = product ? [product] : PRICED_PRODUCTS;
-  return sum(ws, (w) =>
-    ps.reduce((a, p) => a + (w.prices[p] ? (w.prices[p].market - w.prices[p].paid) * (w.byProduct[p] ?? 0) : 0), 0)
-  );
-}
-
 /** What the gallons cost, $ — at the customer's price or at market, on one product (or all). */
 export function spend(ws: Week[], at: "paid" | "market", product?: string) {
   const ps = product ? [product] : PRICED_PRODUCTS;
   return sum(ws, (w) => ps.reduce((a, p) => a + (w.prices[p] ? w.prices[p][at] * (w.byProduct[p] ?? 0) : 0), 0));
 }
 
-/** The tenant chooses whether its customers see market prices (Pavan, 2026-10-13). INVENTED: on. */
-export const SHOW_MARKET_PRICE = true;
+/* NO MARKET COMPARISON for the customer (Anirudh review, 2026-10-17). */
 
 /* ------------------------------------------------------------- credit --- */
 
@@ -189,7 +180,7 @@ export const CREDIT = {
 
 export interface OpenInvoice {
   invoiceNo: string;
-  requestNo: string;
+  orderNo: string;
   shipTo: string;
   amount: number;
   /** `YYYY-MM-DD`. */
@@ -201,7 +192,7 @@ export interface OpenInvoice {
 /** Invoices not yet paid — read from the one invoice store (invoices.ts). */
 export const OPEN_INVOICES: OpenInvoice[] = INVOICES.filter((i) => OPEN.includes(i.status)).map((i) => ({
   invoiceNo: i.invoiceNo,
-  requestNo: i.requestNo,
+  orderNo: i.orderNo,
   shipTo: i.shipTo,
   amount: totalOf(i),
   due: i.due,
@@ -243,7 +234,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Water found at the bottom of the tank.",
     level: "critical",
     assetId: "c-1",
-    requestNo: "REQ-1112",
+    requestNo: orderNoFor("REQ-1112"),
     driver: "Marcus Reyes",
     at: daysAgo(0, 8),
   },
@@ -253,7 +244,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Gate locked; 2,400 gal not delivered.",
     level: "warning",
     assetId: "b-2",
-    requestNo: "REQ-1114",
+    requestNo: orderNoFor("REQ-1114"),
     driver: "Dana Holt",
     at: daysAgo(1, 15),
   },
@@ -263,7 +254,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Fill cap cracked; fuel could get contaminated.",
     level: "warning",
     assetId: "a-4",
-    requestNo: "REQ-1086",
+    requestNo: orderNoFor("REQ-1086"),
     driver: "Marcus Reyes",
     at: daysAgo(6, 11),
   },
@@ -273,7 +264,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Tank monitor offline on arrival.",
     level: "info",
     assetId: "b-1",
-    requestNo: "REQ-1109",
+    requestNo: orderNoFor("REQ-1109"),
     driver: "Luis Ortega",
     at: daysAgo(9, 9),
   },
@@ -283,7 +274,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Tank was empty when the driver arrived.",
     level: "critical",
     assetId: "b-2",
-    requestNo: "REQ-1079",
+    requestNo: orderNoFor("REQ-1079"),
     driver: "Dana Holt",
     at: daysAgo(23, 7),
   },

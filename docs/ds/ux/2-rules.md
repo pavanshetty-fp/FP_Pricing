@@ -580,10 +580,12 @@ decoration.
 A resize watches for its release on the WINDOW as well as on the handle: a
 pointer let go outside the window would otherwise strand the "resizing" flag and
 silently refuse every column drag until reload — one control disabling another is
-the worst kind of bug to find. Two things do NOT move: the leading select box and the
-trailing row-open chevron are the FRAME a row is read inside, not content, and
-the chevron is pinned to the right edge so it survives a sideways scroll —
-neither is draggable and nothing can be dropped past them. The order belongs in
+the worst kind of bug to find. The leading select box does NOT move: it is the
+FRAME a row is read inside, not content — not draggable, nothing dropped past it.
+**No row-open chevron (Pavan, 2026-10-19):** the ROW opens the record — a click
+anywhere on it, or Enter / Space on a focused row (each row is focusable and
+named "Open …"). No trailing chevron column, pinned or not, in any list or
+clickable list row, in any module. The order belongs in
 the saved view alongside the filters: a view that restored the narrowing but not
 the arrangement rebuilds half the thing. A saved order that predates a new column
 keeps the column, in its declared position — a stale view may cost you the

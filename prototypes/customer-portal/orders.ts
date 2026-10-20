@@ -40,10 +40,19 @@ export const REQUEST_STATUSES = [
   "Created",
   "In review",
   "Action needed",
-  "Quote sent",
+  "Quote received",
+  /* THE CUSTOMER SAID YES TO THE QUOTE (Pavan, 2026-10-19); the tenant
+     schedules it next. */
+  "Quote accepted",
   "Quote declined",
   "Quote expired",
+  /* THE TENANT HAS TAKEN IT (Pavan, 2026-10-19): some tanks onto orders, or
+     all of them. A request's statuses end here; the ORDERS go on. */
+  "Partly accepted",
+  "Accepted",
   "Scheduled",
+  /* The customer asked the tenant to change an accepted order. */
+  "Change requested",
   "Cancellation requested",
   "Out for delivery",
   "Partial delivery",
@@ -56,6 +65,56 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
+/*
+  REQUESTS AND ORDERS (Pavan, 2026-10-19). The customer RAISES a request
+  (REQ-…): one ship-to, its tanks, products and gallons. The TENANT puts
+  requests — from one or many customers — onto routes and makes ORDERS
+  (ORD-…). A request's tanks can go onto one order or be split across
+  several, and some can wait (Partly accepted). The customer sees only their
+  own tanks on an order. Both live in one store (`kind`), sharing a shape, so
+  every screen that shows an order shows either; their statuses do not
+  overlap but for Cancelled.
+*/
+/* NO "SENT" STEP (Pavan, 2026-10-19): a submitted request goes straight to
+   the tenant's review, and from there to accepted — Accepted before Partly
+   accepted in every list and lane. ("Created" stays only in the type.) */
+export const REQUEST_SIDE: RequestStatus[] = [
+  "Draft",
+  "In review",
+  "Action needed",
+  "Quote received",
+  "Quote accepted",
+  "Accepted",
+  "Partly accepted",
+  "Quote declined",
+  "Quote expired",
+  "Rejected",
+  "Cancelled",
+];
+export const ORDER_SIDE: RequestStatus[] = [
+  "Scheduled",
+  "Change requested",
+  "Cancellation requested",
+  "Out for delivery",
+  "Partial delivery",
+  "Delivered",
+  "Invoiced",
+  "Invoice disputed",
+  "Paid",
+  "Cancelled",
+];
+export const isOrder = (r: Pick<OrderRequest, "kind">) => r.kind === "order";
+/** THE ONE ORDERS LIST'S STATES, in life order (Pavan, 2026-10-19) — a
+    request's until accepted, then its orders'. */
+export const LIST_STATUSES: RequestStatus[] = [
+  ...REQUEST_SIDE.filter((st) => !["Accepted", "Partly accepted", "Quote declined", "Quote expired", "Rejected", "Cancelled"].includes(st)),
+  ...ORDER_SIDE.filter((st) => st !== "Cancelled"),
+  "Quote declined",
+  "Quote expired",
+  "Rejected",
+  "Cancelled",
+];
+
 /* KINDS, NEVER TONES — docs/unified-view/1-components.md §Status kinds. */
 export const REQUEST_STATUS_TONE = statusTones<RequestStatus>({
   Draft: "neutral",
@@ -65,10 +124,14 @@ export const REQUEST_STATUS_TONE = statusTones<RequestStatus>({
   /* The tenant needs something from the customer before it can go on. */
   "Action needed": "critical",
   /* Waiting on the customer's answer. */
-  "Quote sent": "caution",
+  "Quote received": "caution",
+  "Quote accepted": "info",
   "Quote declined": "neutral",
   "Quote expired": "neutral",
+  "Partly accepted": "info",
+  Accepted: "success",
   Scheduled: "info",
+  "Change requested": "caution",
   /* Inside the cut-off: waiting on the tenant to say yes or no. */
   "Cancellation requested": "caution",
   "Out for delivery": "info",
@@ -377,6 +440,10 @@ export interface RequestLine {
       to — % full, from its monitor (Pavan, 2026-10-17). */
   levelAtOrder?: number;
   levelAfter?: number;
+  /** On a REQUEST's line: the order the tenant put this tank on — unset
+      while it waits. On an ORDER's line: the request it came from. */
+  orderNo?: string;
+  fromRequest?: string;
 }
 
 /** A span of the day, minutes from midnight. */
@@ -421,6 +488,17 @@ export interface OrderRequest {
   invoiceNo?: string;
   /** A partial delivery: the gallons that did not arrive. */
   undeliveredGal?: number;
+  /** A REQUEST, or a tenant's ORDER (Pavan, 2026-10-19). Unset = request.
+      `requestNo` carries either number — REQ-… or ORD-…. */
+  kind?: "request" | "order";
+  /** An order's requests — one, or several merged onto one truck. */
+  fromRequests?: string[];
+  /** ON A LIST ROW (Pavan, 2026-10-19): the order this part of a request is
+      on, and the record a press opens. Not stored — see `orderListRows`. */
+  orderRef?: string;
+  openId?: string;
+  /** THE CHANGE THE CUSTOMER ASKED FOR on an accepted order. */
+  changeRequest?: { what: string; note: string; at: string; from: RequestStatus };
   /** MADE BY A RULE (Pavan, 2026-10-16) — which one; the order is its own
       record from then on. */
   ruleId?: string;
@@ -555,12 +633,13 @@ type Seed = [
 ];
 
 const SEED: Seed[] = [
-  ["Created", 0, [["a-1", false, 4000], ["a-2", false, 3500]], 2, [8, 12], "PO-77120", "", 1],
-  ["Created", 1, [["b-2", false, 2200]], 0, [15, 19], "", "", 2],
-  ["In review", 1, [["b-1", true, 0], ["b-2", false, 2500]], 3, [7, 11], "", "", 3],
+  ["In review", 0, [["a-1", false, 4000], ["a-2", false, 3500]], 2, [8, 12], "PO-77120", "", 1],
+  ["In review", 1, [["b-2", false, 2200]], 0, [15, 19], "", "", 2],
+  ["Quote accepted", 1, [["b-1", true, 0], ["b-2", false, 2500]], 3, [7, 11], "", "", 3],
   ["Action needed", 2, [["c-1", false, 3000]], 1, [9, 13], "", "", 5],
-  ["Quote sent", 0, [["a-1", false, 6000], ["a-3", false, 250], ["a-5", false, 120]], 4, [8, 16], "PO-77131", "", 8],
-  ["Scheduled", 1, [["b-1", false, 5000]], 2, [6, 10], "PO-77098", "Weekly", 20],
+  ["Quote received", 0, [["a-1", false, 6000], ["a-3", false, 250], ["a-5", false, 120]], 4, [8, 16], "PO-77131", "", 8],
+  /* PLANNED YESTERDAY, NOT DELIVERED — running late (Pavan, 2026-10-19). */
+  ["Scheduled", 1, [["b-1", false, 5000]], -1, [6, 10], "PO-77098", "Weekly", 20],
   ["Scheduled", 0, [["a-4", true, 0], ["a-2", false, 4200]], 0, [13, 17], "", "", 26],
   ["Out for delivery", 2, [["c-2", false, 800]], 0, [8, 12], "PO-77090", "", 2],
   ["Out for delivery", 0, [["a-1", false, 5200], ["a-3", false, 200]], 0, [10, 14], "", "Every 2 weeks", 1.5],
@@ -600,10 +679,11 @@ function seedDocs(status: RequestStatus, i: number, at: string): RequestDoc[] {
   const add = (name: string, kind: DocKind, by = TENANT) =>
     docs.push({ id: `doc-${i}-${docs.length}`, name, kind, by, at });
   const rank = statusRank(status);
-  if (status === "Quote sent" || status === "Quote declined" || status === "Quote expired" || rank >= statusRank("Scheduled"))
+  if (status === "Quote received" || status === "Quote accepted" || status === "Quote declined" || status === "Quote expired" || rank >= statusRank("Scheduled"))
     if (status !== "Rejected" && status !== "Cancelled") add(`Quote Q-${n}.pdf`, "Quote");
   if (rank >= statusRank("Partial delivery") && rank <= statusRank("Paid")) {
-    add(`Delivery ticket T-${n}.pdf`, "Delivery ticket");
+    /* ONE DELIVERED ORDER CAME WITHOUT ITS TICKET — no proof of delivery. */
+    if (i !== 11) add(`Delivery ticket T-${n}.pdf`, "Delivery ticket");
     add(`BOL B-${n}.pdf`, "BOL");
   }
   if (status === "Invoiced" || status === "Invoice disputed" || status === "Paid")
@@ -794,7 +874,8 @@ export function cancelRule(r: OrderRequest, now = new Date()): CancelRule {
     case "Created":
     case "In review":
     case "Action needed":
-    case "Quote sent":
+    case "Quote received":
+    case "Quote accepted":
     case "Quote declined":
     case "Quote expired":
       return "now";
@@ -827,8 +908,10 @@ export function lastProductFor(assetId: string, all: OrderRequest[]): string | u
 export const todayKey = () => dateKeyOf(startOfDay(new Date()));
 
 /** A request that is live — not a draft, not ended. */
+/* LIVE — an Accepted request is not: its ORDERS are what is live now. A
+   partly accepted one still is, for the tanks still waiting. */
 export const LIVE: RequestStatus[] = REQUEST_STATUSES.filter(
-  (st) => !["Draft", "Rejected", "Cancelled", "Quote declined", "Quote expired"].includes(st)
+  (st) => !["Draft", "Rejected", "Cancelled", "Quote declined", "Quote expired", "Accepted"].includes(st)
 );
 export const DELIVERED: RequestStatus[] = [
   "Partial delivery",
@@ -957,6 +1040,7 @@ export function lowTanksWithoutOrder(all: OrderRequest[]) {
 
 export type RequestColumnKey =
   | "requestNo"
+  | "orders"
   | "shipTo"
   | "assets"
   | "products"
@@ -977,13 +1061,15 @@ export const REQUEST_COLUMNS: {
   sortable?: boolean;
   align?: "left" | "right";
 }[] = [
-  { key: "requestNo", label: "Request #", width: 110, sortable: true },
+  { key: "requestNo", label: "Request #", width: 130, sortable: true },
   { key: "shipTo", label: "Ship-to", width: 140, sortable: true },
   { key: "assets", label: "Tanks & assets", width: 150, sortable: true },
   { key: "products", label: "Product", width: 120, sortable: true },
   { key: "quantity", label: "Quantity (Gal)", width: 140, sortable: true, align: "right" },
-  { key: "date", label: "Requested date", width: 140, sortable: true },
+  { key: "date", label: "Planned date", width: 140, sortable: true },
   { key: "status", label: "Status", width: 180, sortable: true },
+  /* WHICH ORDER THE ROW IS ON (Pavan, 2026-10-19). */
+  { key: "orders", label: "Orders", width: 170, sortable: true },
   /* WHAT NEEDS THE EYE, and WHAT HAS BEEN SHARED (Pavan, 2026-10-13). */
   { key: "flags", label: "Flags", width: 180, sortable: true },
   { key: "documents", label: "Documents", width: 130, sortable: true },
@@ -997,6 +1083,10 @@ export const REQUEST_COLUMNS: {
    (docs/unified-view/2-layouts.md §5). All are in the column menu. */
 export const DEFAULT_HIDDEN: RequestColumnKey[] = ["po", "repeats", "updated"];
 
+/* THE ORDERS LIST'S COLUMNS (Pavan, 2026-10-19) — the order-request set: no
+   delivery-flags column; Orders says which order each row is on. */
+export const REQUEST_LIST_COLUMNS = REQUEST_COLUMNS.filter((c) => c.key !== "flags");
+
 export const REQUEST_SEARCH_FIELDS = REQUEST_COLUMNS.filter((c) => c.label).map((c) => ({
   key: c.key,
   label: c.label,
@@ -1005,8 +1095,15 @@ export const REQUEST_SEARCH_FIELDS = REQUEST_COLUMNS.filter((c) => c.label).map(
 /** What each column PRINTS, as text a header box or a search can match. */
 export function requestColumnText(r: OrderRequest, key: RequestColumnKey): string {
   switch (key) {
-    case "requestNo":
-      return r.requestNo;
+    case "requestNo": {
+      const s = sentOn(r);
+      return `${r.requestNo} ${s ? DATE_FMT.format(new Date(s)) : ""}`;
+    }
+    case "orders": {
+      if (r.orderRef !== undefined) return r.orderRef;
+      const nos = Array.from(new Set(r.lines.map((l) => l.orderNo).filter(Boolean)));
+      return [...nos, ...(r.lines.some((l) => !l.orderNo) && r.status === "Partly accepted" ? ["Pending"] : [])].join(", ");
+    }
     case "shipTo":
       return r.shipTo;
     case "assets":
@@ -1083,7 +1180,71 @@ export function sortRequests(rows: OrderRequest[], sort: RequestSort | null): Or
   is still here after visiting another page. The setter writes the activity
   log, as `quoteStore` does.
 */
-let requests: OrderRequest[] = SEED_REQUESTS;
+/*
+  THE SEED, SPLIT AS A TENANT WOULD (Pavan, 2026-10-19). Every seeded request
+  the tenant has taken becomes Accepted, and its delivery life — trip,
+  invoice, delivery papers, flags — moves to its ORDER(S): one order for the
+  whole request, or (every other one with several tanks) one per tank. The
+  first scheduled request with several tanks is PARTLY accepted — its first
+  tank still waits. INVENTED.
+*/
+function splitSeed(seed: OrderRequest[]): OrderRequest[] {
+  const out: OrderRequest[] = [];
+  let no = 8801;
+  let partlyDone = false;
+  seed.forEach((r, i) => {
+    if (!ORDER_SIDE.includes(r.status) || r.status === "Cancelled") {
+      out.push(r);
+      return;
+    }
+    const partly = !partlyDone && r.status === "Scheduled" && r.lines.length > 1;
+    if (partly) partlyDone = true;
+    const placed = partly ? r.lines.slice(1) : r.lines;
+    const groups = !partly && placed.length > 1 && i % 2 === 0 ? placed.map((l) => [l]) : [placed];
+    const created = r.audit?.[0]?.at ?? r.updatedAt;
+    const accepted = new Date(Math.min(Date.parse(r.updatedAt), Date.parse(created) + 3 * 3_600_000)).toISOString();
+    const numbers = groups.map(() => `ORD-${no++}`);
+    groups.forEach((g, k) => {
+      out.push({
+        ...r,
+        id: `ord-${numbers[k].slice(4)}`,
+        requestNo: numbers[k],
+        kind: "order",
+        fromRequests: [r.requestNo],
+        lines: g.map((l) => ({ ...l, fromRequest: r.requestNo })),
+        /* A split order carries its own tanks' share of a partial drop. */
+        undeliveredGal: k === 0 ? r.undeliveredGal : undefined,
+        audit: [
+          { at: accepted, by: TENANT, changes: [`Order ${numbers[k]} created from ${r.requestNo}`] },
+          ...(r.audit ?? []).slice(1),
+        ],
+      });
+    });
+    const orderOf = (l: RequestLine) => {
+      const k = groups.findIndex((g) => g.includes(l));
+      return k >= 0 ? numbers[k] : undefined;
+    };
+    out.push({
+      ...r,
+      status: partly ? "Partly accepted" : "Accepted",
+      lines: r.lines.map((l) => ({ ...l, orderNo: orderOf(l) })),
+      trip: undefined,
+      invoiceNo: undefined,
+      undeliveredGal: undefined,
+      flags: [],
+      /* The request keeps the quote and what the customer added. */
+      documents: r.documents.filter((d) => d.kind === "Quote" || d.by === PORTAL_ACTOR),
+      updatedAt: accepted,
+      audit: [
+        ...(r.audit ?? []).slice(0, 1),
+        { at: accepted, by: TENANT, changes: [`${partly ? "Partly accepted" : "Accepted"} · ${numbers.join(", ")}`] },
+      ],
+    });
+  });
+  return out;
+}
+
+let requests: OrderRequest[] = splitSeed(SEED_REQUESTS);
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const subscribe = (l: () => void) => {
@@ -1113,7 +1274,7 @@ export function updateRequest(id: string, patch: Partial<OrderRequest>, change?:
 
 /** A blank Draft, made the moment Create Order is pressed. */
 export function createRequest(recurring = false): OrderRequest {
-  const n = Math.max(FIRST_REQUEST_NO - 1, ...requests.map((r) => Number(r.requestNo.slice(4)))) + 1;
+  const n = Math.max(FIRST_REQUEST_NO - 1, ...requests.filter((r) => !isOrder(r)).map((r) => Number(r.requestNo.slice(4)))) + 1;
   const at = new Date().toISOString();
   const r: OrderRequest = {
     id: `req-new-${n}`,
@@ -1152,7 +1313,7 @@ export function insertRequests(made: OrderRequest[]) {
 
 /** The next request number, for a rule's orders. */
 export const nextRequestNo = () =>
-  Math.max(FIRST_REQUEST_NO - 1, ...requests.map((r) => Number(r.requestNo.slice(4)))) + 1;
+  Math.max(FIRST_REQUEST_NO - 1, ...requests.filter((r) => !isOrder(r)).map((r) => Number(r.requestNo.slice(4)))) + 1;
 
 /** Every request, as it is now — for reads outside React. */
 export const allRequests = () => requests;
@@ -1274,3 +1435,96 @@ export const suggestedGal = (a: Asset, days: number) =>
   Math.max(0, Math.round((a.capacity - galAtDelivery(a, days)) / 10) * 10);
 export const pctAfterDelivery = (a: Asset, days: number, gal: number, topOff: boolean) =>
   topOff ? 100 : Math.min(100, Math.round(((galAtDelivery(a, days) + gal) / a.capacity) * 100));
+
+/**
+ * WHEN THE REQUEST WAS SENT TO THE TENANT (Pavan, 2026-10-19) — the request
+ * number's own date, shown under it; null while it is a draft. The PLANNED
+ * DATE (`date`) is a different thing: when the customer wants it delivered.
+ */
+export function sentOn(r: OrderRequest): string | null {
+  if (r.status === "Draft") return null;
+  const sent = r.audit?.find((e) => e.changes.some((c) => c === "Request submitted"));
+  return sent?.at ?? r.audit?.[0]?.at ?? null;
+}
+
+/* --------------------------------------------- request ↔ order links --- */
+
+/** The orders a request became. */
+export const ordersOfRequest = (r: OrderRequest, all: OrderRequest[]) =>
+  all.filter((o) => isOrder(o) && (o.fromRequests ?? []).includes(r.requestNo));
+/** A request's own record, by number. */
+export const requestByNo = (no: string, all: OrderRequest[]) => all.find((x) => !isOrder(x) && x.requestNo === no);
+
+/** THE CUSTOMER ASKS FOR A CHANGE to an accepted order (Pavan, 2026-10-19). */
+export const CHANGE_KINDS = ["Planned date", "Delivery window", "Quantity", "Tanks or products", "Cancel the order", "Something else"];
+export function requestChange(id: string, what: string, note: string) {
+  const o = requests.find((x) => x.id === id);
+  if (!o) return;
+  updateRequest(
+    id,
+    {
+      status: what === "Cancel the order" ? "Cancellation requested" : "Change requested",
+      changeRequest: { what, note, at: new Date().toISOString(), from: o.status },
+    },
+    `Change requested · ${what}${note ? ` — ${note}` : ""}`
+  );
+}
+
+/** The order a seeded request became — invoices and driver reports are the
+    ORDER's. Older requests (before the seed) get a stable invented number. */
+export function orderNoFor(reqNo: string): string {
+  const o = requests.find((x) => isOrder(x) && (x.fromRequests ?? []).includes(reqNo));
+  return o?.requestNo ?? `ORD-${Number(reqNo.slice(4)) + 7000}`;
+}
+
+/*
+  THE ORDERS LIST'S ROWS (Pavan, 2026-10-19) — one per REQUEST PER ORDER it
+  went on. A request not yet accepted is one row in its own status. An
+  accepted one becomes a row per order — that order's status, date, trip,
+  papers and flags, but only this request's tanks; a partly accepted
+  request's waiting tanks are one more row, In review. Group by Request or by
+  Order number gathers them.
+*/
+export function orderListRows(all: OrderRequest[]): OrderRequest[] {
+  const out: OrderRequest[] = [];
+  for (const r of all) {
+    if (isOrder(r)) continue;
+    if (r.status !== "Accepted" && r.status !== "Partly accepted") {
+      out.push({ ...r, openId: r.id });
+      continue;
+    }
+    for (const o of ordersOfRequest(r, all)) {
+      out.push({
+        ...o,
+        id: `${o.id}|${r.id}`,
+        requestNo: r.requestNo,
+        kind: undefined,
+        orderRef: o.requestNo,
+        openId: o.id,
+        recurring: r.recurring,
+        frequency: r.frequency,
+        ruleNo: r.ruleNo,
+        lines: o.lines.filter((l) => l.fromRequest === r.requestNo),
+        /* The request's own day stays under its number. */
+        audit: [...(r.audit ?? []).slice(0, 1), ...(o.audit ?? [])],
+      });
+    }
+    const waiting = r.lines.filter((l) => !l.orderNo);
+    if (waiting.length)
+      out.push({ ...r, id: `${r.id}|pending`, status: "In review", lines: waiting, orderRef: "", openId: r.id });
+  }
+  return out;
+}
+
+/* ---------------------------------------------- dashboard attention ---- */
+
+/** STILL TO ARRIVE — an order the tenant has, not yet delivered. */
+export const NOT_DELIVERED: RequestStatus[] = ["Scheduled", "Change requested", "Cancellation requested", "Out for delivery"];
+/** RUNNING LATE (Anirudh, 2026-10-17): its planned date has passed and it is
+    not delivered. There is no ETA to judge it by yet. */
+export const isRunningLate = (r: OrderRequest) => isOrder(r) && NOT_DELIVERED.includes(r.status) && !!r.date && r.date < todayKey();
+/** NO PROOF OF DELIVERY: delivered, but no delivery ticket on it. */
+export const lacksPod = (r: OrderRequest) =>
+  isOrder(r) && DELIVERED.includes(r.status) && !r.documents.some((d) => d.kind === "Delivery ticket");
+/** ON HOLD FOR CREDIT — a yes/no from the tenant; no balance. */
+export const onCreditHold = (r: OrderRequest) => r.flags.some((f) => f.kind === "Credit hold");

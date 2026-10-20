@@ -3,9 +3,13 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BreakdownPopover, type BreakdownCardProps } from "../unified-view/BreakdownCard";
 import { dateKeyOf } from "../unified-view/data";
+import { StatusChip } from "@/components/ui/status-chip";
+import { NumberLink } from "./cells";
+import { usePortalNav } from "./nav";
 import {
   DELIVERED,
   LOW_BATTERY,
+  REQUEST_STATUS_TONE,
   assetById,
   daysUntil,
   daysToEmpty,
@@ -188,7 +192,7 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
     const atOrder = line.levelAtOrder !== undefined ? Math.round((line.levelAtOrder / 100) * a.capacity) : null;
     const used = atOrder !== null ? Math.min(atOrder, a.dailyUse * span) : null;
     return {
-      title: `${a.name} — delivered${dateKey ? ` on the requested date, ${fmt(dateKey)}` : ""}`,
+      title: `${a.name} — delivered${dateKey ? ` on the planned date, ${fmt(dateKey)}` : ""}`,
       rows: [
         ...(atOrder !== null
           ? [
@@ -198,7 +202,7 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
                 value: gal(atOrder),
               },
               {
-                label: "Used until the requested date",
+                label: "Used until the planned date",
                 sub: `${gal(a.dailyUse)}/day × ${span} day${span === 1 ? "" : "s"}${createdKey && dateKey ? ` (${fmt(createdKey)} → ${fmt(dateKey)})` : ""}`,
                 value: `− ${gal(used!)}`,
               },
@@ -225,14 +229,14 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
   const pct = pctAfterDelivery(a, days, line.gal, line.topOff);
   return {
     title: late
-      ? `${a.name} — requested for ${fmt(dateKey)}, not delivered yet`
+      ? `${a.name} — planned for ${fmt(dateKey)}, not delivered yet`
       : day === "today"
-        ? `${a.name} — requested for today`
-        : `${a.name} — requested date ${day}`,
+        ? `${a.name} — planned for today`
+        : `${a.name} — planned date ${day}`,
     rows: [
       { label: `Today · ${dayFmt.format(new Date())}`, sub: `the tank is at ${a.level}% of ${gal(a.capacity)}`, value: gal(now) },
       {
-        label: "Used until the requested date",
+        label: "Used until the planned date",
         sub: !dateKey
           ? "no date yet — counted as today"
           : late
@@ -310,24 +314,24 @@ export function FulfilmentHead({ className }: { className?: string }) {
           rows: [
             {
               label: "Example",
-              sub: `order created today, ${dayFmt.format(new Date())} · requested date ${dayFmt.format(new Date(Date.now() + 5 * 86_400_000))}, 5 days later · 10,000 gal tank`,
+              sub: `order created today, ${dayFmt.format(new Date())} · planned date ${dayFmt.format(new Date(Date.now() + 5 * 86_400_000))}, 5 days later · 10,000 gal tank`,
             },
             { label: `1 · Today · ${dayFmt.format(new Date())}`, sub: "the tank monitor reads 64% of 10,000 gal", value: "6,400 gal" },
             {
-              label: "2 · Used until the requested date",
+              label: "2 · Used until the planned date",
               sub: "900 gal/day × 5 days — the tank keeps emptying while the order waits",
               value: "− 4,500 gal",
             },
             {
               label: `3 · Left on ${dayFmt.format(new Date(Date.now() + 5 * 86_400_000))}`,
-              sub: "64% today is only 19% by the requested date",
+              sub: "64% today is only 19% by the planned date",
               value: "1,900 gal",
             },
             { label: "4 · Delivered", sub: "the quantity requested (a top off fills it to the brim)", value: "+ 5,200 gal" },
             { label: "= On fulfilment", sub: "1,900 + 5,200 = 7,100 gal of 10,000", value: "71%" },
             { label: "The tenant decides", sub: "the request goes to the tenant; the sum follows what happens to it" },
-            { label: "Requested date moved", sub: "counted to the new requested date instead" },
-            { label: "Requested date passed, not delivered", sub: "the tank is still emptying — counted from today's reading until it arrives" },
+            { label: "Planned date moved", sub: "counted to the new planned date instead" },
+            { label: "Planned date passed, not delivered", sub: "the tank is still emptying — counted from today's reading until it arrives" },
             {
               label: "Delivered",
               sub: "the actual numbers: the level when the order was created, used until it arrived, delivered, and the monitor's reading after",
@@ -382,6 +386,74 @@ export function OrderTanksLayer({ r }: { r: OrderRequest }) {
                 </td>
                 <td className="px-4 py-3.5">
                   <BatteryCell asset={a} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * A REQUEST'S TANKS, NESTED UNDER ITS ROW (Pavan, 2026-10-19) — where each
+ * went: the order the tenant put it on and that order's status, or Pending
+ * while it waits; and the tank's level now.
+ */
+export function RequestTanksLayer({ r, all }: { r: OrderRequest; all: OrderRequest[] }) {
+  const nav = usePortalNav();
+  const head = ["Asset", "Product", "Qty (gal)", "Order", "Order status", "Current level", "Days to empty"];
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {head.map((h, i) => (
+              <th
+                key={h}
+                className={cn("whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 2 && "text-right")}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {r.lines.map((l, i) => {
+            const a = assetById(l.assetId);
+            const o = l.orderNo ? all.find((x) => x.requestNo === l.orderNo) : undefined;
+            const accepted = r.status === "Accepted" || r.status === "Partly accepted";
+            return (
+              <tr key={i} className="border-t border-border/60">
+                <td className="whitespace-nowrap px-4 py-3.5 text-foreground">{a?.name ?? "No tank"}</td>
+                <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">{l.product || "—"}</td>
+                <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums text-foreground">
+                  {l.topOff ? "Top off" : l.gal.toLocaleString()}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5">
+                  {l.orderNo ? (
+                    <NumberLink no={l.orderNo} onOpen={nav.openOrder} />
+                  ) : accepted ? (
+                    <span className="text-muted-foreground">Pending</span>
+                  ) : (
+                    dash
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5">
+                  {o ? (
+                    <StatusChip tone={REQUEST_STATUS_TONE[o.status]} variant="text">
+                      {o.status}
+                    </StatusChip>
+                  ) : (
+                    dash
+                  )}
+                </td>
+                <td className="px-4 py-3.5">
+                  <LevelReading asset={a} />
+                </td>
+                <td className="px-4 py-3.5">
+                  <DaysToEmpty asset={a} />
                 </td>
               </tr>
             );

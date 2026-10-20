@@ -43,7 +43,7 @@ export function StatementView({
   const lines: Line[] = [];
   for (const i of invoices) {
     if (inPeriod(i.issued))
-      lines.push({ date: i.issued, doc: i.invoiceNo, what: `Invoice · ${i.requestNo} · ${i.shipTo}`, charge: totalOf(i), payment: 0 });
+      lines.push({ date: i.issued, doc: i.invoiceNo, what: `Invoice · ${i.orderNo} · ${i.shipTo}`, charge: totalOf(i), payment: 0 });
     if (i.status === "Payment confirmed" && i.paidOn && inPeriod(i.paidOn))
       lines.push({ date: i.paidOn, doc: i.invoiceNo, what: "Payment received", charge: 0, payment: totalOf(i) });
     /* A CREDIT NOTE FROM A DISPUTE IS ITS OWN ROW (Pavan, 2026-10-15). */

@@ -80,7 +80,7 @@ const text = (i: Invoice, k: IK): string => {
     case "due":
       return `${printKey(i.due)} ${dueNote(i)}`;
     case "order":
-      return i.requestNo;
+      return i.orderNo;
     case "shipTo":
       return i.shipTo;
     case "amount":
@@ -265,7 +265,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
               );
             }
             case "order":
-              return orderCell(i.requestNo);
+              return orderCell(i.orderNo);
             case "shipTo":
               return <TwoLineCell title={i.shipTo} description={i.billTo} />;
             case "amount":

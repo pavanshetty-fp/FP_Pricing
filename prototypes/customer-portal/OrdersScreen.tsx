@@ -32,6 +32,13 @@ import { useSavedViews } from "../unified-view/useSavedViews";
 import { DATE_FMT } from "../unified-view/data";
 import {
   DEFAULT_HIDDEN,
+  sentOn,
+  isOrder,
+  LIST_STATUSES,
+  orderListRows,
+  quantityOf,
+  requestByNo,
+  REQUEST_LIST_COLUMNS,
   FLAG_KINDS,
   PRODUCTS,
   LINE_SCOPES,
@@ -43,7 +50,6 @@ import {
   type RequestStatus,
   REQUEST_COLUMNS,
   REQUEST_SEARCH_FIELDS,
-  REQUEST_STATUSES,
   REQUEST_STATUS_TONE,
   SHIP_TOS,
   assetById,
@@ -63,7 +69,10 @@ import {
   orderTheRest,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
-import { OrderTanksLayer } from "./TankLevel";
+import { OrderTanksLayer, RequestTanksLayer } from "./TankLevel";
+import { NumberLink } from "./cells";
+import { usePortalNav } from "./nav";
+import { GroupedListFooter, useGrouping, type GroupDim } from "@/components/tables-layout";
 import { MapHoverCard, OverviewCards } from "./overview";
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { bannerSoftAction } from "@/components/ui/banner";
@@ -74,7 +83,7 @@ import { TodaySheet } from "./TodaySheet";
  * View list: the view row with the CTA, the toolbar, the table, pagination.
  *
  * NOT DATE-SCOPED, as Quotes: a customer looks across all of their requests,
- * past and coming; the requested date is a column that sorts. One view — a
+ * past and coming; the planned date is a column that sorts. One view — a
  * table — so no view switch.
  */
 const TOGGLE_COLUMNS = REQUEST_COLUMNS.filter((c) => c.label).map((c) => ({
@@ -126,6 +135,22 @@ const DEFAULT_STATE: ViewState = {
    on the way back does not make a second draft (the Quotes rule). */
 let answeredPrefill: number | null = null;
 
+/*
+  ORDERS (Pavan, 2026-10-19) — ONE LIST, everything in it: every request,
+  and for an accepted one a row per order it went on (`orderListRows`), each
+  in its own state. The columns are the order-request columns; GROUP BY
+  (beside Filters) gathers the rows by Request or by Order number, by Status
+  or by Ship-to.
+*/
+let answeredFocus: number | null = null;
+
+const ORDER_GROUP_DIMS: GroupDim<OrderRequest>[] = [
+  { key: "request", label: "Request", hides: "requestNo", valuesOf: (r) => [r.requestNo] },
+  { key: "order", label: "Order number", hides: "orders", valuesOf: (r) => (r.orderRef ? [r.orderRef] : []) },
+  { key: "status", label: "Status", hides: "status", order: [...LIST_STATUSES], valuesOf: (r) => [r.status] },
+  { key: "shipTo", label: "Ship-to", hides: "shipTo", valuesOf: (r) => (r.shipTo ? [r.shipTo] : []) },
+];
+
 export function OrdersScreen({
   prefill,
   focus,
@@ -135,13 +160,22 @@ export function OrdersScreen({
   /** An order to open on arrival — a link from an invoice. */
   focus?: { requestNo: string; n: number } | null;
 } = {}) {
-  const rows = useRequests();
+  const all = useRequests();
+  const rows = React.useMemo(() => orderListRows(all), [all]);
+  const orderRows = React.useMemo(() => all.filter(isOrder), [all]);
+  const COLUMNS = REQUEST_LIST_COLUMNS;
+  const SIDE = LIST_STATUSES;
+  const nav = usePortalNav();
   const [openId, setOpenId] = React.useState<string | null>(null);
   /* OPENED FROM A LINK — the order behind an invoice. */
   React.useEffect(() => {
-    if (!focus) return;
-    const r = rows.find((x) => x.requestNo === focus.requestNo);
-    if (r) setOpenId(r.id);
+    /* ONCE PER LINK — switching segments later does not reopen it. */
+    if (!focus || focus.n === answeredFocus) return;
+    /* A NUMBER OPENS ITS RECORD — a request (REQ-…) or an order (ORD-…). */
+    const r = all.find((x) => x.requestNo === focus.requestNo);
+    if (!r) return;
+    answeredFocus = focus.n;
+    setOpenId(r.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.n]);
   const [creatingId, setCreatingId] = React.useState<string | null>(null);
@@ -213,7 +247,7 @@ export function OrdersScreen({
     defaultState: DEFAULT_STATE,
     keyOf,
     apply: applyState,
-    storageKey: "portal-orders",
+    storageKey: "portal-orders-list",
   });
 
   const startCreate = () => {
@@ -238,7 +272,7 @@ export function OrdersScreen({
             const a = assetById(id);
             return {
               assetId: id,
-              product: lastProductFor(id, rows) ?? a?.product ?? "",
+              product: lastProductFor(id, all) ?? a?.product ?? "",
               topOff: true,
               gal: 0,
             };
@@ -295,11 +329,21 @@ export function OrdersScreen({
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
   const sorted = React.useMemo(() => sortRequests(filtered, sort), [filtered, sort]);
-  const pageRows = sorted.slice((page - 1) * pageSize, page * pageSize);
+  /* GROUPED, EVERY ROW SHOWS — a group is never cut by a page edge. */
+  const g = useGrouping<OrderRequest, RequestColumnKey>({
+    dimensions: ORDER_GROUP_DIMS,
+    rows: sorted,
+    rowId: React.useCallback((r: OrderRequest) => r.id, []),
+    measureOf: React.useCallback((r: OrderRequest) => quantityOf(r.lines).gal, []),
+    hiddenColumns: hidden,
+    page,
+    pageSize,
+  });
+  const pageRows = g.visibleRows;
 
   const facets: ListFacet[] = React.useMemo(
     () => [
-      { key: "status", label: "Status", options: [...REQUEST_STATUSES] },
+      { key: "status", label: "Status", options: [...SIDE] },
       { key: "flags", label: "Flags", options: [...FLAG_KINDS] },
       { key: "shipTo", label: "Ship-to", options: SHIP_TOS.map((s) => s.name) },
       { key: "product", label: "Product", options: PRODUCTS },
@@ -320,8 +364,32 @@ export function OrdersScreen({
   const renderCell = (r: OrderRequest, key: RequestColumnKey) => {
     const muted = <span className="text-sm text-muted-foreground">—</span>;
     switch (key) {
-      case "requestNo":
-        return <span className="text-sm font-medium text-foreground">{r.requestNo}</span>;
+      case "requestNo": {
+        /* THE NUMBER'S OWN DAY under it (Pavan, 2026-10-19) — a request's,
+           the day it was sent; an order's, the day the tenant accepted. */
+        const s = sentOn(r);
+        return <TwoLineCell title={r.requestNo} description={s ? DATE_FMT.format(new Date(s)) : "Not sent"} />;
+      }
+      case "orders": {
+        /* THIS ROW'S ORDER — or Pending for tanks not on one yet. */
+        if (r.orderRef !== undefined)
+          return r.orderRef ? (
+            <NumberLink no={r.orderRef} onOpen={nav.openOrder} />
+          ) : (
+            <span className="text-sm text-muted-foreground">Pending</span>
+          );
+        const nos = Array.from(new Set(r.lines.map((l) => l.orderNo).filter(Boolean))) as string[];
+        const waiting = r.status === "Partly accepted" && r.lines.some((l) => !l.orderNo);
+        if (nos.length === 0) return muted;
+        return (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+            {nos.map((n) => (
+              <NumberLink key={n} no={n} onOpen={nav.openOrder} />
+            ))}
+            {waiting && <span className="text-muted-foreground">+ pending</span>}
+          </span>
+        );
+      }
       case "shipTo":
         return r.shipTo ? <span className="truncate text-sm">{r.shipTo}</span> : muted;
       case "assets":
@@ -415,12 +483,14 @@ export function OrdersScreen({
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const flagged = (kind: string) => rows.filter((r) => r.flags.some((f) => f.kind === kind));
   const flagDetail = (kind: string) => (r: OrderRequest) => r.flags.find((f) => f.kind === kind)?.detail ?? "";
-  const tanks = lowTanksWithoutOrder(rows);
+  const tanks = lowTanksWithoutOrder(all);
   const actionNeeded = rows.filter((r) => r.status === "Action needed");
   const pastDue = flagged("Invoice past due");
   const partial = rows.filter((r) => r.status === "Partial delivery");
-  const quotes = rows.filter((r) => r.status === "Quote sent");
+  const quotes = rows.filter((r) => r.status === "Quote received");
   const late = flagged("At risk of being late");
+  /* EACH LIST ITS OWN ALERTS — the asks (tanks, answers, quotes) on Order
+     Requests; the deliveries (late, partial, past due) on Orders. */
   const allAlerts: BannerAlert[] = [
     tanks.length > 0 && {
       id: "tanks",
@@ -490,8 +560,8 @@ export function OrdersScreen({
       tag: "Needs action",
       title: `${plural(quotes.length, "quote is", "quotes are")} waiting for you to accept`,
       count: quotes.length,
-      onApply: () => narrowTo(["status:Quote sent"], "any"),
-      items: reqItems(quotes, (r) => (r.date ? `Requested for ${printKey(r.date)}` : "")),
+      onApply: () => narrowTo(["status:Quote received"], "any"),
+      items: reqItems(quotes, (r) => (r.date ? `Planned for ${printKey(r.date)}` : "")),
     },
     late.length > 0 && {
       id: "late",
@@ -534,27 +604,55 @@ export function OrdersScreen({
       success: "green",
       failed: "red",
     };
-    const steps = REQUEST_STATUSES.filter((st) => !ENDS.includes(st));
-    return [...steps, ...ENDS].map((st) => ({
-      key: st,
-      title: st,
+    /* ONE "QUOTE" LANE (Pavan, 2026-10-19) for both of its states — Quote
+       received, Quote accepted; each card says which. Scheduled follows. */
+    const QUOTE: RequestStatus[] = ["Quote received", "Quote accepted"];
+    const laneOf = (st: RequestStatus) => (QUOTE.includes(st) ? "Quote" : st);
+    const steps = SIDE.filter((st) => !ENDS.includes(st) && st !== "Quote accepted");
+    return [...steps, ...ENDS.filter((st) => SIDE.includes(st))].map((st) => ({
+      key: laneOf(st),
+      title: laneOf(st),
       color: KIND_LANE[REQUEST_STATUS_TONE[st]] ?? "grey",
       apart: st === ENDS[0],
       emptyLabel: "No orders",
       cards: sorted
-        .filter((r) => r.status === st)
+        .filter((r) => laneOf(r.status) === laneOf(st))
         .map((r) => ({
           id: r.id,
           title: r.requestNo,
-          badges: r.flags
-            .filter((f) => f.level !== "info")
-            .map((f) => ({ label: f.kind, tone: f.level === "critical" ? ("critical" as const) : ("caution" as const) })),
+
+          /* ACCEPTED, AND ITS QUOTE TO HAND (Pavan, 2026-10-19). */
+          footerAction:
+            Boolean(r.orderRef) && r.status === "Scheduled" && r.documents.some((d) => d.kind === "Quote")
+              ? {
+                  label: "Quote received",
+                  actionLabel: "View quote",
+                  actionVariant: "outline" as const,
+                  onAction: () => {
+                    /* THE QUOTE IS THE REQUEST'S — open the request. */
+                    setCreatingId(null);
+                    setOpenId(requestByNo(r.requestNo, all)?.id ?? r.openId ?? r.id);
+                  },
+                }
+              : undefined,
+          /* IN THE QUOTE LANE, WHICH QUOTE STATE — a pill: received waits on
+             the customer, accepted on the tenant. */
+          badges: [
+            ...(r.status === "Quote received"
+              ? [{ label: "Quote received", tone: "caution" as const }]
+              : r.status === "Quote accepted"
+                ? [{ label: "Quote accepted", tone: "success" as const }]
+                : []),
+            ...r.flags
+              .filter((f) => f.level !== "info")
+              .map((f) => ({ label: f.kind, tone: f.level === "critical" ? ("critical" as const) : ("caution" as const) })),
+          ],
           units: [
             { kind: "stack" as const, key: "shipTo", heading: "Ship-to", lines: [{ text: r.shipTo || "—", level: 1 as const }] },
             {
               kind: "inline" as const,
               key: "schedule",
-              heading: "Requested",
+              heading: "Planned",
               parts: r.date ? [printKey(r.date), windowText(r)] : ["No date"],
             },
             {
@@ -569,6 +667,7 @@ export function OrdersScreen({
           ],
         })),
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorted]);
 
   /* THE MAP — the same narrowed list, each request a pin at its ship-to;
@@ -625,7 +724,7 @@ export function OrdersScreen({
     },
     ...activeColFilters.map(([key, value]) => ({
       key: `col:${key}`,
-      label: REQUEST_COLUMNS.find((c) => c.key === key)?.label ?? key,
+      label: COLUMNS.find((c) => c.key === key)?.label ?? key,
       values: [
         {
           value: value.trim(),
@@ -656,16 +755,19 @@ export function OrdersScreen({
           view row, the banner and the tools come after it. */}
       {/* 20px UNDER THE TITLE (Pavan, 2026-10-15) — the header's 12 and the
           body's padding, less 14. Everything below moves up with it. */}
+      {/* THE DAY'S DELIVERIES ARE THE ORDERS' (Pavan, 2026-10-19) — counted
+          from orders on both segments, so the page does not jump on a switch. */}
       <div className="-mt-3.5 shrink-0">
-        <OverviewCards rows={rows} onDetails={() => setTodayOpen(true)} />
+        <OverviewCards rows={orderRows} onDetails={() => setTodayOpen(true)} />
       </div>
-      <TodaySheet rows={rows} open={todayOpen} onOpenChange={setTodayOpen} />
+      <TodaySheet rows={orderRows} open={todayOpen} onOpenChange={setTodayOpen} />
 
       {/* AIR BETWEEN THE OVERVIEW AND THE CONTROLS (Pavan, 2026-10-13). */}
       <div className="mt-8 shrink-0">
       <FuelOrdersViewBar
         {...savedViews}
-        ctaLabel="Create Order"
+        /* ORDERS COME FROM THE TENANT — only a request is created here. */
+        ctaLabel="Create Request"
         onCreateOrder={startCreate}
         onExport={() => setExporting(true)}
         segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
@@ -684,7 +786,18 @@ export function OrdersScreen({
             setSearch(v);
             setPage(1);
           }}
-          searchPlaceholder="Search requests, ship-tos, tanks…"
+          searchPlaceholder="Search requests, orders, ship-tos, tanks…"
+          /* GROUP BY, BESIDE FILTERS (Pavan, 2026-10-19) — Request, Order
+             number, Status, Ship-to. Off on the board, already in lanes. */
+          showGroupBy={view === "table"}
+          groupBy={{
+            dimensions: g.menuDimensions,
+            value: g.groupBy,
+            onChange: (next) => {
+              g.setGrouping(next);
+              setPage(1);
+            },
+          }}
           filters={
             <ListFilters
               facets={facets}
@@ -696,7 +809,7 @@ export function OrdersScreen({
               }}
             />
           }
-          columns={TOGGLE_COLUMNS}
+          columns={COLUMNS.filter((c) => c.label).map((c) => ({ key: c.key, label: c.label }))}
           hiddenColumns={hidden}
           columnOrder={columnOrder}
           onReorderColumns={setColumnOrder}
@@ -735,7 +848,6 @@ export function OrdersScreen({
           onViewChange={setView}
           boardView
           mapView
-          showGroupBy={false}
           dateControl={
             <DateRangeFilter
               value={range}
@@ -808,13 +920,17 @@ export function OrdersScreen({
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">{narrowed ? <SearchX /> : <ClipboardList />}</EmptyMedia>
-                <EmptyTitle>{narrowed ? "No matching orders" : "No orders yet"}</EmptyTitle>
+                <EmptyTitle>
+                  {narrowed ? "No matching orders" : "No orders yet"}
+                </EmptyTitle>
                 {narrowed && (
                   <EmptyDescription>
                     {`${rows.length} orders in all. Clear the search or a filter to see them.`}
                   </EmptyDescription>
                 )}
               </EmptyHeader>
+              {(
+              
               <EmptyContent>
                 <Button
                   variant="outline"
@@ -828,12 +944,19 @@ export function OrdersScreen({
                     setPage(1);
                   }}
                 >
-                  {narrowed ? "Clear all" : "Create Order"}
+                  {narrowed ? "Clear all" : "Create Request"}
                 </Button>
               </EmptyContent>
+              )}
             </Empty>
           ) : view === "board" ? (
-            <BrokerBoard lanes={boardLanes} onOpenCard={(id) => { setCreatingId(null); setOpenId(id); }} />
+            <BrokerBoard
+              lanes={boardLanes}
+              onOpenCard={(id) => {
+                setCreatingId(null);
+                setOpenId(rows.find((x) => x.id === id)?.openId ?? id);
+              }}
+            />
           ) : view === "map" ? (
             <OrderMapView
               orders={mapOrders}
@@ -841,7 +964,7 @@ export function OrdersScreen({
               minPad={0.04}
               onOpenOrder={(id) => {
                 setCreatingId(null);
-                setOpenId(id);
+                setOpenId(rows.find((x) => x.id === id)?.openId ?? id);
               }}
               hoverCard={(pins) => (
                 <MapHoverCard requests={pins.map((p) => rows.find((r) => r.id === p.id)!).filter(Boolean)} />
@@ -850,8 +973,8 @@ export function OrdersScreen({
           ) : (
             <ListTable
               rows={pageRows}
-              columns={REQUEST_COLUMNS}
-              hidden={hidden}
+              columns={COLUMNS}
+              hidden={g.effectiveHidden}
               sort={sort}
               onSort={onSort}
               rowId={(r) => r.id}
@@ -861,13 +984,18 @@ export function OrdersScreen({
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
-              openLabel={(r) => `Open request ${r.requestNo}`}
+              openLabel={(r) => `Open ${r.orderRef ? `order ${r.orderRef} for` : "request"} ${r.requestNo}`}
               onOpenRow={(r) => {
                 setCreatingId(null);
-                setOpenId(r.id);
+                setOpenId(r.openId ?? r.id);
               }}
+              nodes={g.grouped ? g.groups.nodes : undefined}
+              collapsedGroups={g.collapsed}
+              onToggleGroupCollapse={g.toggleGroupCollapse}
+              groupNoun="row"
+              groupUnit="gal"
               /* EACH ORDER'S TANKS, ONE LAYER DOWN (Pavan, 2026-10-17). */
-              renderExpanded={(r) => <OrderTanksLayer r={r} />}
+              renderExpanded={(r) => (r.orderRef ? <OrderTanksLayer r={r} /> : <RequestTanksLayer r={r} all={all} />)}
               expandLabel={(r, open) => `${open ? "Hide" : "Show"} tanks for ${r.requestNo}`}
               showColumnFilters={colFiltersOpen}
               columnFilters={colFilters}
@@ -907,7 +1035,7 @@ export function OrdersScreen({
       />
 
       <OrderRequestSheet
-        request={rows.find((r) => r.id === openId) ?? null}
+        request={all.find((r) => r.id === openId) ?? null}
         open={openId !== null}
         creating={creatingId !== null && creatingId === openId}
         onOpenChange={(o) => {
@@ -941,6 +1069,20 @@ export function OrdersScreen({
             </span>
           </div>
         ) : null
+      ) : g.grouped ? (
+        <div className="mt-4 shrink-0">
+          <GroupedListFooter
+            groupCount={g.groups.groupCount}
+            rowCount={g.groups.rowCount}
+            noun="row"
+            total={g.total}
+            unit="gal"
+            overCounts={g.groups.overCounts}
+            allCollapsed={g.allCollapsed}
+            onExpandAll={g.expandAll}
+            onCollapseAll={g.collapseAll}
+          />
+        </div>
       ) : (
       <div className="mt-4 shrink-0">
         <TablePagination

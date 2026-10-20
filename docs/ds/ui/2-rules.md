@@ -661,7 +661,9 @@ opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
 - **The chevron leads the first cell** — a small muted `ChevronRight` that
   turns down when open. Never a column of its own.
 - **The open parent** keeps the row-hover tint and **drops its bottom
-  divider**.
+  divider** Every cell of it wears the tint — a pinned (sticky)
+  cell such as the row's open chevron included, so nothing at the row's end
+  sits as a white box (Pavan, 2026-10-19).
 - **The layer is WHITE** — the content layer (`bg-fp-surface-1b`), end to end
   across the row, its inner table pinned to the visible width (sticky left)
   so its columns don't scroll away with a wide parent.

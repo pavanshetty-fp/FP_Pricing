@@ -1,7 +1,7 @@
 import * as React from "react";
 import { startOfDay } from "../unified-view/data";
 import { statusTones } from "../unified-view/statusKind";
-import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests, dateOfKey, updateRequest, type RequestDoc } from "./orders";
+import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests, dateOfKey, orderNoFor, updateRequest, type RequestDoc } from "./orders";
 
 /*
   INVOICES (Pavan, 2026-10-14) — after the Lovable reference's invoice page
@@ -141,7 +141,8 @@ export interface Dispute {
 
 export interface Invoice {
   invoiceNo: string;
-  requestNo: string;
+  /** The tenant ORDER it bills (Pavan, 2026-10-19 — invoices are orders'). */
+  orderNo: string;
   shipTo: string;
   billTo: string;
   /** `YYYY-MM-DD`. */
@@ -207,7 +208,7 @@ const SEED: Seed[] = [
 
 export const INVOICES: Invoice[] = SEED.map(([no, req, shipTo, ago, status, lines, paidAgo]) => ({
   invoiceNo: `INV-${no}`,
-  requestNo: `REQ-${req}`,
+  orderNo: orderNoFor(`REQ-${req}`),
   shipTo,
   billTo: ACCOUNT,
   issued: dayKey(-ago),
@@ -389,8 +390,8 @@ const dueStatus = (inv: Invoice): InvoiceStatus =>
   daysFrom(inv.due) < 0 ? "Overdue" : daysFrom(inv.due) <= 7 ? "Payment due" : "Received";
 
 /** The order behind an invoice follows it. */
-function orderTo(requestNo: string, status: "Invoice disputed" | "Invoiced", change: string) {
-  const r = allRequests().find((x) => x.requestNo === requestNo);
+function orderTo(orderNo: string, status: "Invoice disputed" | "Invoiced", change: string) {
+  const r = allRequests().find((x) => x.requestNo === orderNo);
   if (r) updateRequest(r.id, { status }, change);
 }
 
@@ -423,7 +424,7 @@ export function raiseDispute(
       })),
     },
   };
-  orderTo(inv.requestNo, "Invoice disputed", `Invoice ${no} disputed · ${input.kind}`);
+  orderTo(inv.orderNo, "Invoice disputed", `Invoice ${no} disputed · ${input.kind}`);
   emit();
 }
 
@@ -433,7 +434,7 @@ export function closeDispute(no: string) {
   const inv = INVOICES[i];
   if (i < 0 || !inv.dispute) return;
   INVOICES[i] = { ...inv, status: dueStatus(inv), dispute: { ...inv.dispute, closedAt: new Date().toISOString() } };
-  orderTo(inv.requestNo, "Invoiced", `Dispute on ${no} closed`);
+  orderTo(inv.orderNo, "Invoiced", `Dispute on ${no} closed`);
   emit();
 }
 

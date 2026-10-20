@@ -353,3 +353,47 @@ From the FleetPanda portal's user record (structure only, invented people).
   ordered → refilled %). **Orders' nested layer:** Asset · Product · Qty ·
   Current level · On fulfilment · Days to empty · Battery. Days to empty also
   on the Assets list and dashboard card; red when it runs out before delivery.
+- **Two dates (Pavan, 2026-10-19):** the **request's own date** (the day it was
+  sent to the tenant, `sentOn`) sits under its number in the Request # column;
+  the **Planned date** (`date`) is when the customer wants it delivered —
+  the column before Status, the order form's field, and what every tank sum
+  counts to. "Requested date" is no longer used.
+
+## Requests → orders (Pavan, 2026-10-19)
+
+- **Orders page = a segment before the search: Orders · Order Requests**
+  (Orders first). One menu item; the same height as search and filters.
+- **A request (REQ-…)** is the customer's ask, one ship-to. Its statuses end
+  at **Partly accepted** / **Accepted** (or Rejected / Cancelled). It keeps
+  its quote and history; its Orders column and nested layer say where each
+  tank went (order # + status, or Pending); its page lists its orders.
+- **An order (ORD-…)** is the tenant's, built from one or more requests —
+  a request's tanks may sit on one order or be split across several. The
+  customer sees only their tanks. Statuses: Scheduled · Change requested ·
+  Cancellation requested · Out for delivery · Partial · Delivered · Invoiced
+  · Invoice disputed · Paid. Column "From Request" + page header links back.
+  Trip, invoices, delivery papers, flags, late/partial/past-due banners live
+  on orders; quotes, action needed, low tanks on requests.
+- **Request change** (order ⋯, while Scheduled): what (planned date, window,
+  quantity, tanks or products, cancel, other) + note → "Change requested"
+  (or "Cancellation requested") until the tenant answers.
+- One store, `kind: "order"`; `requestNo` carries either number. Seed split by
+  `splitSeed` (one Partly accepted, some split per tank). Invoices bill orders
+  (`orderNo`).
+- **UPDATE (same day): one Orders list, no segment.** Rows = one per request
+  per order it went on (`orderListRows`): a request not yet accepted is one
+  row in its own status; an accepted one is a row per order (that order's
+  status, date, papers; only this request's tanks); a partly accepted one's
+  waiting tanks are one more row, In review, Orders = "Pending". Columns =
+  the order-request columns (Orders shows the row's order #). **Group By**
+  beside Filters: Request · Order number · Status · Ship-to. All alerts on
+  the one list. A row opens its order (or its request); View quote opens the
+  request. Requests: no "Sent" step (submitted → In review); lanes Accepted
+  before Partly accepted; Action needed stays after In review.
+- **Dashboard after the Anirudh review (2026-10-19):** Attention required =
+  credit holds (one tile, a count, no balance) · quotes waiting · running late
+  (planned date passed, not delivered) · no proof of delivery (no delivery
+  ticket) — nothing else. Then Schedule (next 7 days, Request + Order),
+  Tank levels, Spend (total + by week + by product, history only — no
+  market comparison anywhere), Billing & credit. Delivery performance is
+  the Reports page; Asset health removed.

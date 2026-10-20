@@ -30,6 +30,7 @@ import {
   printKey,
   productsIn,
   REQUEST_STATUS_TONE,
+  isOrder,
   useRequests,
   type Asset,
   type ShipTo,
@@ -575,7 +576,9 @@ function AssetOrderHistory({ asset }: { asset: Asset }) {
   const nav = usePortalNav();
   const rows = useRequests()
     .filter((r) => r.status !== "Draft")
-    .flatMap((r) => r.lines.filter((l) => l.assetId === asset.id).map((l) => ({ r, l })))
+    /* ONCE PER TANK — a line the tenant has put on an order is listed on
+       its ORDER, not again on the request (Pavan, 2026-10-19). */
+    .flatMap((r) => r.lines.filter((l) => l.assetId === asset.id && (isOrder(r) || !l.orderNo)).map((l) => ({ r, l })))
     .sort((x, y) => (y.r.date || "").localeCompare(x.r.date || ""))
     .slice(0, 10);
   return (

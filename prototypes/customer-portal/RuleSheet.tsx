@@ -6,14 +6,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetField, SheetSection, SheetSteps } from "@/components/side-sheet/parts";
-import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { NextDeliveries, RuleFrequencyPicker } from "../unified-view/threepl/RuleFrequency";
 import { LinesTable } from "./OrderRequestSheet";
 import { SHIP_TOS, blankLine, clampPreferred, todayKey } from "./orders";
-import { PreferredWindows } from "./PreferredWindows";
+import { DeliveryWindowTimeline } from "../unified-view/DeliveryWindowTimeline";
 import { LEAD_DAYS, blankRule, runDates, saveRule, type PortalRule } from "./portalRules";
 
 /*
@@ -176,20 +175,17 @@ export function RuleSheet({
 
         <SheetSection title="Frequency">
           <RuleFrequencyPicker value={draft.frequency} onChange={(f) => set("frequency", f)} />
-          <TimeWindowSlider
-            label="Delivery window"
+          {/* THE ORDER SHEET'S TIMELINE (Pavan, 2026-10-20) — its orders
+              inherit the window and the preferred times. */}
+          <DeliveryWindowTimeline
             required
             start={draft.windowStart}
             end={draft.windowEnd}
-            onChange={(a, b) =>
+            onWindowChange={(a, b) =>
               setDraft((d) => ({ ...d, windowStart: a, windowEnd: b, preferred: clampPreferred(d.preferred, a, b) }))
             }
-          />
-          <PreferredWindows
-            windowStart={draft.windowStart}
-            windowEnd={draft.windowEnd}
-            value={draft.preferred}
-            onChange={(p) => set("preferred", p)}
+            preferred={draft.preferred}
+            onPreferredChange={(p) => set("preferred", p)}
           />
         </SheetSection>
 

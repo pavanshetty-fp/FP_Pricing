@@ -741,6 +741,26 @@ Invoices — one component, so one behaviour):
 - The dashboard's **Attention required** tiles are a different pattern by
   design (red outline shine on the banner) — not an `AlertBanner`.
 
+## 10m. Delivery window & preferred time; Recurring order (Pavan, 2026-10-20)
+
+**One timeline for every window** — `DeliveryWindowTimeline`
+(`prototypes/unified-view/DeliveryWindowTimeline.tsx`). The label sits outside;
+inside an input-style outlined box: the window on a full-day track (hours every
+3), each preferred time a light-blue bar under it (drag to move, drag an end to
+size, ✕ to remove, press its time to type start and end to the minute). Bars
+never overlap; with no free half hour, + says "Delete or adjust the current
+preferred time to add a new one." The add is the table's hanging +.
+Used on: 3PL Delivery Order and Create recurring rule (per ship-to), Service
+Work service order (scheduling window), Portal order, ship-to and recurring
+rule.
+
+**Recurring order is an optional section, as Load Order** —
+`RecurringOrderSection`: a dashed "Add Recurring Order" row, then the
+recurring rule's own frequency unit (`RuleFrequencyPicker`) in a box; the
+section's minus removes it. Used on: 3PL Delivery Order, Portal order.
+Service orders don't repeat (Agreements / Maintenance do), Sales orders have
+no window.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

@@ -580,6 +580,9 @@ export interface BrokerOrder {
   dateKey: string;
   /** The §5.3 start/end delivery window, e.g. `{ start: "8:00 AM", end: "12:00 PM" }`. */
   window: { start: string; end: string };
+  /** PREFERRED TIMES inside the window, minutes from midnight (Pavan,
+      2026-10-20 — the shared delivery timeline). */
+  preferred?: { start: number; end: number }[];
   lines: OrderLine[];
   status: BrokerStatus;
   /**

@@ -1,4 +1,7 @@
 import * as React from "react";
+import { DeliveryWindowTimeline, type TimeSpan } from "../DeliveryWindowTimeline";
+import { RecurringOrderSection } from "../RecurringOrderSection";
+import { decodeFrequency, encodeFrequency, scheduleSummary, type RuleFrequency } from "./RuleFrequency";
 import {
   Calendar as CalendarIcon,
   Check,
@@ -88,7 +91,6 @@ import { FormStep } from "@/components/side-sheet/form-steps";
 import { type Stage } from "@/components/ui/stage-bar";
 import { StageTrack } from "@/components/ui/stage-track";
 import {
-  TimeWindowSlider,
   formatMinutes,
   parseWindow,
   TableCellCombobox,
@@ -489,6 +491,8 @@ export interface BrokerOrderDraft {
   plannedDate: Date | null;
   windowStart: string;
   windowEnd: string;
+  /** Preferred times inside the window, minutes from midnight. */
+  preferred: TimeSpan[];
   poNumber: string;
   orderType: BrokerOrderType;
   hub: string;
@@ -554,6 +558,9 @@ export interface BrokerOrderDraft {
   recurring: boolean;
   recurrenceFrom: Date | null;
   recurrenceFrequency: string;
+  /** THE RULE'S FREQUENCY UNIT (Pavan, 2026-10-20) — carried in
+      `recurrenceFrequency` as text, see `encodeFrequency`. */
+  schedule?: RuleFrequency;
   /** A human summary of the custom rule, e.g. "Every 3 months on Thu, ends after 5". */
   customRecurrence?: string;
   /**
@@ -586,6 +593,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     plannedDate: new Date(y, m - 1, d),
     windowStart: o.window.start,
     windowEnd: o.window.end,
+    preferred: o.preferred ?? [],
     /* NONE UNTIL ATTACHED (Pavan, 2026-10-06). */
     documents: [],
     images: [],
@@ -639,6 +647,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
         })()
       : null,
     recurrenceFrequency: o.recurrence?.frequency ?? RECURRENCE_FREQUENCIES[0],
+    schedule: decodeFrequency(o.recurrence?.frequency ?? "") ?? undefined,
     loadRows: o.loadOrder ? o.loadOrder.map((r) => ({ ...r })) : null,
   };
 }
@@ -669,6 +678,7 @@ function emptyDraft(): BrokerOrderDraft {
     plannedDate: tomorrow(),
     windowStart: "8:00 AM",
     windowEnd: "12:00 PM",
+    preferred: [],
     poNumber: "",
     orderType: "Core",
     recurring: false,
@@ -5059,98 +5069,49 @@ export function BrokerOrderSheet({
               could not say "7 to 11", or "all day", or a two-hour slot — a
               customer who could take one was filed under the nearest option
               and the difference lived in somebody's head. */}
-          <TimeWindowSlider
-            className="col-span-5"
-            label="Delivery Window"
-            required
-            start={windowMinutes[0]}
-            end={windowMinutes[1]}
-            onChange={(a, b) => {
-              set("windowStart", formatMinutes(a));
-              set("windowEnd", formatMinutes(b));
-            }}
-            aria-label="Delivery window"
-          />
         </div>
-
-        {/* NO RULE BETWEEN THE TWO ROWS, and only the section's 16px gap
-            (Pavan, 2026-09-25) — replaces the 2026-09-17 rule with 12px
-            either side. */}
-        <div className="grid grid-cols-9 items-end gap-4">
-          {/* A CHECKBOX, NOT A YES/NO LIST (Pavan, 2026-09-17). Opening a menu
-              to choose between Yes and No is two gestures to say one thing, and
-              the field had to carry a label as well as the word "No" to be read
-              at all. Ticked or not is the whole question.
-
-              THE LABEL IS THE CONTROL'S, so the field carries none — and no
-              asterisk: a box that is off is answered, not empty. The row's
-              `items-end` sits it on the line of the Frequency input beside it,
-              without a top offset that would widen the gap above. */}
-          <SheetField className="col-span-4">
-            <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
-              <Checkbox
-                checked={draft.recurring}
-                onCheckedChange={(v) => {
-                  const on = v === true;
-                  setDraft((d) =>
-                    d
-                      ? {
-                          ...d,
-                          recurring: on,
-                          recurrenceFrequency: on
-                            ? d.recurrenceFrequency || RECURRENCE_FREQUENCIES[0]
-                            : d.recurrenceFrequency,
-                        }
-                      : d
-                  );
-                }}
-              />
-              Recurring Order
-            </label>
-          </SheetField>
-
-          {/* Revealed by the field beside it, IN THE ROW IT ANSWERS. A cadence
-              with nothing recurring is a question about nothing, so it appears
-              only on "Yes" — and when it appears it takes the empty half of the
-              row rather than pushing a new one below, which read as a separate
-              question and left a hole beside "Recurring Order".
-              "Custom" opens its own dialog rather than growing five more fields
-              nobody uses on the common cadences. */}
-          {draft.recurring && (
-            <SheetField label="Frequency" required className="col-span-5">
-              <Combobox
-                className="w-full"
-                value={draft.recurrenceFrequency}
-                onValueChange={(v) => {
-                  set("recurrenceFrequency", v);
-                  if (v === "Custom") setCustomOpen(true);
-                }}
-                options={[...RECURRENCE_FREQUENCIES]}
-                placeholder="Select frequency"
-                searchPlaceholder="Search cadences…"
-              />
-            </SheetField>
-          )}
-
-          {/* Under Frequency, in Frequency's own column — it is what that
-              choice resolved to, not a new question. */}
-          {draft.recurring &&
-            draft.recurrenceFrequency === "Custom" &&
-            draft.customRecurrence && (
-              <SheetField label="Custom rule" className="col-span-5 col-start-5">
-                <Button
-                  variant="outline"
-                  className="w-full justify-between font-normal"
-                  onClick={() => setCustomOpen(true)}
-                >
-                  {draft.customRecurrence}
-                  <Pencil className="size-4 text-muted-foreground" />
-                </Button>
-              </SheetField>
-            )}
-        </div>
+        {/* THE SHARED DELIVERY TIMELINE (Pavan, 2026-10-20) — the window and
+            the preferred times on one day, as on the portal's order. */}
+        <DeliveryWindowTimeline
+          label="Delivery Window & Preferred Time"
+          required
+          start={windowMinutes[0]}
+          end={windowMinutes[1]}
+          onWindowChange={(a, b) =>
+            setDraft((d) =>
+              d
+                ? {
+                    ...d,
+                    windowStart: formatMinutes(a),
+                    windowEnd: formatMinutes(b),
+                    preferred: (d.preferred ?? [])
+                      .map((p) => ({ start: Math.max(p.start, a), end: Math.min(p.end, b) }))
+                      .filter((p) => p.end - p.start >= 30),
+                  }
+                : d
+            )
+          }
+          preferred={draft.preferred ?? []}
+          onPreferredChange={(p) => set("preferred", p)}
+        />
 
       </SheetSection>
+
+      {/* RECURRING ORDER — the shared section, as Load Order (Pavan,
+          2026-10-20): the recurring rule's frequency unit, not a list of
+          cadences. */}
+      {!isMovement && (
+        <RecurringOrderSection
+          title="Recurring Order"
+          on={draft.recurring}
+          schedule={draft.schedule}
+          plannedDay={draft.plannedDate?.getDay()}
+          onChange={(f) =>
+            setDraft((d) => (d ? { ...d, recurring: true, schedule: f, recurrenceFrequency: encodeFrequency(f) } : d))
+          }
+          onRemove={() => setDraft((d) => (d ? { ...d, recurring: false } : d))}
+        />
+      )}
       </FormStep>
         </>
       )}
@@ -5595,8 +5556,17 @@ export function BrokerOrderSheet({
               <Fact label="Delivery window">
                 {draft.windowStart} – {draft.windowEnd}
               </Fact>
+              <Fact label="Preferred time">
+                {draft.preferred?.length
+                  ? draft.preferred.map((p) => `${formatMinutes(p.start)} – ${formatMinutes(p.end)}`).join(", ")
+                  : NOT_SET}
+              </Fact>
               <Fact label="Recurring">
-                {draft.recurring ? draft.recurrenceFrequency || "Yes" : "No"}
+                {draft.recurring
+                  ? draft.schedule
+                    ? scheduleSummary(draft.schedule)
+                    : draft.recurrenceFrequency || "Yes"
+                  : "No"}
               </Fact>
             </FactGrid>
           </SheetSection>

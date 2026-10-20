@@ -18,7 +18,6 @@ import {
   TableRequiredLabel,
   TableRowRemove,
 } from "@/components/form-layout/table-cells";
-import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +37,7 @@ import { assetLog, shipToLog } from "./activityLog";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ASSET_TYPES, PRODUCT_CATEGORIES, assetById, clampPreferred, productsIn, sizeRequired, type Asset, type ShipTo } from "./orders";
 import { BatteryCell, LevelReading } from "./TankLevel";
-import { PreferredWindows } from "./PreferredWindows";
+import { DeliveryWindowTimeline } from "../unified-view/DeliveryWindowTimeline";
 import {
   blankAsset,
   blankShipTo,
@@ -771,24 +770,18 @@ export function ShipToSheet({
           </SheetSection>
 
           <SheetSection title="Delivery">
-            <TimeWindowSlider
-              label="Delivery hours"
+            {/* THE ORDER SHEET'S TIMELINE (Pavan, 2026-10-20) — new orders
+                here start with these hours and preferred times. */}
+            <DeliveryWindowTimeline
+              label="Delivery hours & preferred time"
               start={draft.hoursStart}
               end={draft.hoursEnd}
-              onChange={(a, b) =>
+              onWindowChange={(a, b) =>
                 setDraft((d) => (d ? { ...d, hoursStart: a, hoursEnd: b, preferred: clampPreferred(d.preferred ?? [], a, b) } : d))
               }
-              aria-label="Delivery hours"
+              preferred={draft.preferred ?? []}
+              onPreferredChange={(p) => set("preferred", p)}
             />
-            {/* NEW ORDERS HERE START WITH THESE (Pavan, 2026-10-17). */}
-            <div className="grid grid-cols-2 gap-6">
-              <PreferredWindows
-                windowStart={draft.hoursStart}
-                windowEnd={draft.hoursEnd}
-                value={draft.preferred ?? []}
-                onChange={(p) => set("preferred", p)}
-              />
-            </div>
             <SheetField label="Delivery instructions">
               <Textarea
                 value={draft.accessNotes}

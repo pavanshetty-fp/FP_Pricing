@@ -155,6 +155,8 @@ export interface ProgramTarget {
   lines: OrderLine[];
   /** This site's own window. You cannot be at thirty sites at eight o'clock. */
   window: { start: string; end: string };
+  /** Preferred times inside the window, minutes from midnight (2026-10-20). */
+  preferred?: { start: number; end: number }[];
   poc: string;
   instructions: string;
   poNumber: string;

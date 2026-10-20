@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DeliveryWindowTimeline } from "../DeliveryWindowTimeline";
 import { ChevronDown, Eye, Plus, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
@@ -21,7 +22,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TokenMultiSelect } from "../TokenMultiSelect";
 import { HangingAdd } from "../HangingAdd";
 import {
-  TimeWindowSlider,
   formatMinutes,
   parseWindow,
   TableCellCombobox,
@@ -1475,30 +1475,6 @@ export function RecurringProgramCreate({
                       same slider the Delivery Order uses. An overlap with
                       another rule at this ship-to is said here, as it is
                       picked, and again in Conflicts below. */}
-                  {(() => {
-                    const w =
-                      parseWindow(`${activeTarget.window.start} – ${activeTarget.window.end}`) ??
-                      [8 * 60, 12 * 60];
-                    return (
-                      <div className="flex flex-col gap-1.5">
-                        <TimeWindowSlider
-                          label="Delivery Window"
-                          required
-                          disabled={!activeTarget.shipTo}
-                          start={w[0]}
-                          end={w[1]}
-                          onChange={(a, b) =>
-                            setTarget(activeTarget.id, {
-                              window: { start: formatMinutes(a), end: formatMinutes(b) },
-                            })
-                          }
-                          aria-label="Delivery window"
-                        />
-                        {/* NO OVERLAP NOTE HERE — Conflicts below says it
-                            (Pavan, 2026-10-16). */}
-                      </div>
-                    );
-                  })()}
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -1509,6 +1485,33 @@ export function RecurringProgramCreate({
                     <Trash2 />
                   </Button>
                 </div>
+                {/* THE SHARED DELIVERY TIMELINE, PER SHIP-TO (Pavan, 2026-10-20)
+                    — the window and its preferred times, under the row. An
+                    overlap with another rule here is said in Conflicts. */}
+                {(() => {
+                  const w =
+                    parseWindow(`${activeTarget.window.start} – ${activeTarget.window.end}`) ??
+                    [8 * 60, 12 * 60];
+                  return (
+                    <DeliveryWindowTimeline
+                      label="Delivery Window & Preferred Time"
+                      required
+                      disabled={!activeTarget.shipTo}
+                      start={w[0]}
+                      end={w[1]}
+                      onWindowChange={(a, b) =>
+                        setTarget(activeTarget.id, {
+                          window: { start: formatMinutes(a), end: formatMinutes(b) },
+                          preferred: (activeTarget.preferred ?? [])
+                            .map((p) => ({ start: Math.max(p.start, a), end: Math.min(p.end, b) }))
+                            .filter((p) => p.end - p.start >= 30),
+                        })
+                      }
+                      preferred={activeTarget.preferred ?? []}
+                      onPreferredChange={(p) => setTarget(activeTarget.id, { preferred: p })}
+                    />
+                  );
+                })()}
                 <TargetEditor
                   target={activeTarget}
                   products={draft.products}

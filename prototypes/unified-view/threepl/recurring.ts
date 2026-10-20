@@ -1,5 +1,6 @@
 import { DATE_FMT, dateKeyOf, relativeLabel, startOfDay } from "../data";
 import type { TwoLine } from "../types";
+import { decodeFrequency, toSchedule } from "./RuleFrequency";
 import {
   BROKER_ORDERS,
   isDelivered,
@@ -179,6 +180,9 @@ function nthWeekdayOfMonth(d: Date): number {
  * an open question, not a decision this file is making.
  */
 export function parseSchedule(raw: string, anchorKey: string): Schedule {
+  /* THE RULE'S FREQUENCY UNIT, set on an order (Pavan, 2026-10-20). */
+  const unit = decodeFrequency(raw);
+  if (unit) return toSchedule(unit);
   const anchor = dayFromKey(anchorKey);
 
   if (raw === "Daily") {

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DeliveryWindowTimeline } from "../DeliveryWindowTimeline";
 import {
   ClipboardList,
   CornerDownRight,
@@ -42,7 +43,6 @@ import {
   TableCellMultiSelect,
   TableRequiredLabel,
 } from "@/components/form-layout/table-cells";
-import { TimeWindowSlider } from "@/components/form-layout/TimeWindowSlider";
 import { HangingAdd } from "../HangingAdd";
 import {
   SheetField,
@@ -1901,32 +1901,37 @@ export function ServiceOrderSheet({
               </PopoverContent>
             </Popover>
           </SheetField>
-          {/* A WINDOW, NOT A MOMENT — the same control 3PL uses for a delivery
-              window, and for the same reason. */}
-          <TimeWindowSlider
-            required
-            label="Scheduling window"
-            disabled={workLocked}
-            start={scheduledMinutes}
-            end={draft.windowEndMin ?? scheduledMinutes + 180}
-            aria-label="Scheduling window"
-            onChange={(startMin, endMin) => {
-              if (!draft.scheduledAt) return;
-              const at = new Date(draft.scheduledAt);
-              at.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
-              setDraft((x) =>
-                x
-                  ? {
-                      ...x,
-                      scheduledAt: at.toISOString(),
-                      dateKey: keyOf(at),
-                      windowEndMin: endMin,
-                    }
-                  : x
-              );
-            }}
-          />
         </div>
+        {/* A WINDOW, NOT A MOMENT — the shared delivery timeline (Pavan,
+            2026-10-20), as 3PL and the portal: the window and the times the
+            customer would rather have, on one day. */}
+        <DeliveryWindowTimeline
+          required
+          label="Scheduling window & preferred time"
+          disabled={workLocked}
+          start={scheduledMinutes}
+          end={draft.windowEndMin ?? scheduledMinutes + 180}
+          onWindowChange={(startMin, endMin) => {
+            if (!draft.scheduledAt) return;
+            const at = new Date(draft.scheduledAt);
+            at.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+            setDraft((x) =>
+              x
+                ? {
+                    ...x,
+                    scheduledAt: at.toISOString(),
+                    dateKey: keyOf(at),
+                    windowEndMin: endMin,
+                    preferred: (x.preferred ?? [])
+                      .map((p) => ({ start: Math.max(p.start, startMin), end: Math.min(p.end, endMin) }))
+                      .filter((p) => p.end - p.start >= 30),
+                  }
+                : x
+            );
+          }}
+          preferred={draft.preferred ?? []}
+          onPreferredChange={(p) => setDraft((x) => (x ? { ...x, preferred: p } : x))}
+        />
       </SheetSection>
 
       {/* ── TECHNICIAN — ITS OWN UNIT (Pavan, 2026-09-23) ────────────────

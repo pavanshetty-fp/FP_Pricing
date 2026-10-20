@@ -7,17 +7,22 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { SheetField } from "@/components/side-sheet/parts";
-import { HangingAdd } from "../unified-view/HangingAdd";
+import { HangingAdd } from "./HangingAdd";
 import { Slider } from "@/components/ui/slider";
 import {
   formatSpan,
   formatWindow,
 } from "@/components/form-layout/TimeWindowSlider";
 import { cn } from "@/lib/utils";
-import type { TimeSpan } from "./orders";
+/** A stretch of the day, minutes from midnight. */
+export interface TimeSpan {
+  start: number;
+  end: number;
+}
 
 /*
-  DELIVERY WINDOW & PREFERRED TIME (Pavan, 2026-10-20, after his reference) —
+  DELIVERY WINDOW & PREFERRED TIME (Pavan, 2026-10-20, after his reference;
+  shared by every module's order sheet) —
   ONE day, drawn once, full width. The delivery window is the range on the
   track; each preferred time is a light-blue bar under it, on the same scale,
   with dashed lines up to the track and its two times under its ends. A bar
@@ -77,7 +82,10 @@ export function DeliveryWindowTimeline({
   onPreferredChange,
   disabled,
   required,
+  label = "Delivery window & preferred time",
 }: {
+  /** The field's label, outside the box — every module says it its own way. */
+  label?: string;
   /** The delivery window, minutes from midnight. */
   start: number;
   end: number;
@@ -212,7 +220,7 @@ export function DeliveryWindowTimeline({
   return (
     /* THE LABEL OUTSIDE, as every field's (Pavan, 2026-10-20); the unit in
        the input's own outline; the add hangs off its corner, as a table's. */
-    <SheetField label="Delivery window & preferred time" required={required}>
+    <SheetField label={label} required={required}>
       <div className="flex flex-col">
         <div
           className={cn(

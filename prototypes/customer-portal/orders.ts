@@ -1533,13 +1533,4 @@ export const lacksPod = (r: OrderRequest) =>
 /** ON HOLD FOR CREDIT — a yes/no from the tenant; no balance. */
 export const onCreditHold = (r: OrderRequest) => r.flags.some((f) => f.kind === "Credit hold");
 
-/* THE FREQUENCY UNIT IN ONE LINE (Pavan, 2026-10-20) — for the list's
-   Repeats column and anywhere an order's repeat is named. */
-const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-export function scheduleSummary(f: RuleFrequency): string {
-  if (f.basis === "date") return f.dates.length ? `On ${f.dates.length} picked ${f.dates.length === 1 ? "date" : "dates"}` : "";
-  if (f.repeat === "cycle") return `Every ${(f.cycleWeeks ?? []).length || 2} weeks`;
-  const days = f.dayMode === "daily" ? "Every day" : f.days.slice().sort().map((d) => DAY_SHORT[d]).join(", ");
-  if (!days) return "";
-  return f.repeat === "weekly" || f.dayMode === "daily" ? (f.dayMode === "daily" ? days : `Weekly · ${days}`) : `${f.repeat[0].toUpperCase()}${f.repeat.slice(1)} · ${days}`;
-}
+export { scheduleSummary } from "../unified-view/threepl/RuleFrequency";

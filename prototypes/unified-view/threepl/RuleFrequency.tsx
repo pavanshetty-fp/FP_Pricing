@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -450,92 +450,48 @@ function DatePart({
   value: RuleFrequency;
   onChange: (next: RuleFrequency) => void;
 }) {
+  /* DATES OF THE MONTH, NOT OF A MONTH (Pavan, 2026-10-20) — 1 to 31, no
+     month to step through: the dates repeat every month, or every N. Each
+     pick is kept as that date's next turn from today (this month if it's
+     still ahead, else next month), which is where the repeat starts. */
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const picked = new Set(value.dates ?? []);
-  /* Opens on the month of the first picked date, else this month. */
-  const [month, setMonth] = React.useState(() => {
-    const first = [...picked].sort()[0];
-    return first
-      ? new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1)
-      : new Date(today.getFullYear(), today.getMonth(), 1);
-  });
-  const daysIn = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  /* THE MONTH AS A CALENDAR — day 1 under its own weekday. */
-  const lead = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
-  const shift = (n: number) =>
-    setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
-  const toggle = (key: string) => {
+  const picked = new Set((value.dates ?? []).map((k) => Number(k.slice(8, 10))));
+  const keyOf = (dom: number) => {
+    const ahead = dom >= today.getDate();
+    const m = new Date(today.getFullYear(), today.getMonth() + (ahead ? 0 : 1), 1);
+    return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(dom).padStart(2, "0")}`;
+  };
+  const toggle = (dom: number) => {
     const next = new Set(picked);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    onChange({ ...value, dates: [...next].sort() });
+    if (next.has(dom)) next.delete(dom);
+    else next.add(dom);
+    onChange({ ...value, dates: [...next].sort((x, y) => x - y).map(keyOf).sort() });
   };
 
   return (
-    /* THE DAYS UNIT'S SHAPE (Pavan, 2026-10-20) — the dates in the same
-       360px column, Repeat beside them on the right. */
-    <div className="flex items-start gap-15">
-      <div className="flex w-[360px] shrink-0 flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium text-foreground">
-            Select date/s
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Previous month"
-              onClick={() => shift(-1)}
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="w-32 text-center text-sm font-medium tabular-nums text-foreground">
-              {MONTHS[month.getMonth()]} {month.getFullYear()}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Next month"
-              onClick={() => shift(1)}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
-        </div>
-        {/* EVERY DATE PICKABLE (Pavan, 2026-10-20) — one already gone this
-            month still comes round again next month. */}
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: lead }, (_, i) => (
-            <span key={`lead-${i}`} aria-hidden />
-          ))}
-          {Array.from({ length: daysIn }, (_, i) => {
-            const d = new Date(month.getFullYear(), month.getMonth(), i + 1);
-            const key = dateKeyOf(d);
-            const on = picked.has(key);
+    /* THE DATES TAKE THE ROW; REPEAT SITS AT ITS RIGHT EDGE, well apart. */
+    <div className="flex items-start gap-12">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="text-sm font-medium text-foreground">Select dates</span>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-1">
+          {Array.from({ length: 31 }, (_, i) => {
+            const dom = i + 1;
+            const on = picked.has(dom);
             return (
               <button
-                key={key}
+                key={dom}
                 type="button"
                 aria-pressed={on}
-                aria-label={d.toDateString()}
-                onClick={() => toggle(key)}
+                aria-label={`The ${ordinal(dom)}`}
+                onClick={() => toggle(dom)}
                 className={cn(
-                  "flex h-11 flex-col items-center justify-center gap-0.5 rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                  "flex h-9 items-center justify-center rounded-md text-sm font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                   on
                     ? "bg-accent-violet text-accent-violet-foreground"
                     : "bg-fp-card-1 text-foreground hover:bg-accent"
                 )}
               >
-                <span
-                  className={cn(
-                    "text-[10px] font-normal",
-                    on ? "text-accent-violet-foreground/80" : "text-muted-foreground"
-                  )}
-                >
-                  {WEEKDAYS[d.getDay()].letter}
-                </span>
-                {i + 1}
+                {dom}
               </button>
             );
           })}
@@ -545,8 +501,7 @@ function DatePart({
         )}
       </div>
 
-      {/* REPEAT ON THE RIGHT, as in Days — the row's other half. */}
-      <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-6">
+      <div className="w-62 shrink-0">
         <Row label="Repeat">
           <Select
             value={String(value.dateRepeat ?? 1)}
@@ -1030,3 +985,33 @@ export function NextDeliveries({ keys }: { keys: string[] }) {
     </div>
   );
 }
+
+/* THE FREQUENCY UNIT IN ONE LINE (Pavan, 2026-10-20) — for the list's
+   Repeats column and anywhere an order's repeat is named. */
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export function scheduleSummary(f: RuleFrequency): string {
+  if (f.basis === "date") {
+    if (!f.dates.length) return "";
+    const th = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
+    const doms = [...new Set(f.dates.map((k) => Number(k.slice(8, 10))))].sort((a, b) => a - b).map(th).join(", ");
+    const every = f.dateRepeat ?? 1;
+    return `${every === 0 ? "Once" : every === 1 ? "Every month" : `Every ${every} months`} · ${doms}`;
+  }
+  if (f.repeat === "cycle") return `Every ${(f.cycleWeeks ?? []).length || 2} weeks`;
+  const days = f.dayMode === "daily" ? "Every day" : f.days.slice().sort().map((d) => DAY_SHORT[d]).join(", ");
+  if (!days) return "";
+  return f.repeat === "weekly" || f.dayMode === "daily" ? (f.dayMode === "daily" ? days : `Weekly · ${days}`) : `${f.repeat[0].toUpperCase()}${f.repeat.slice(1)} · ${days}`;
+}
+
+/** A FREQUENCY CARRIED AS TEXT — an order's `recurrence.frequency`, which
+    `parseSchedule` reads back (Pavan, 2026-10-20: the order sheet now uses
+    the rule's frequency unit). */
+export const encodeFrequency = (f: RuleFrequency) => `rf:${JSON.stringify(f)}`;
+export const decodeFrequency = (raw: string): RuleFrequency | null => {
+  if (!raw.startsWith("rf:")) return null;
+  try {
+    return JSON.parse(raw.slice(3)) as RuleFrequency;
+  } catch {
+    return null;
+  }
+};

@@ -668,6 +668,9 @@ export interface ServiceOrder {
    * about which day they are on.
    */
   windowEndMin: number | null;
+  /** PREFERRED TIMES inside the window, minutes from midnight (Pavan,
+      2026-10-20 — the shared delivery timeline). */
+  preferred?: { start: number; end: number }[];
   /** Null is exactly what Open means. */
   technicianId: string | null;
   /** Set when the technician marks arrival. */

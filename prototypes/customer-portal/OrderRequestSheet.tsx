@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Plus, Send } from "lucide-react";
+import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,7 +10,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { SheetField, SheetSection, SheetSectionRemove } from "@/components/side-sheet/parts";
+import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import {
   TableCellInput,
   TableCellSelect,
@@ -42,8 +42,8 @@ import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import { NumberLink, RulePill } from "./cells";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading } from "./TankLevel";
-import { DeliveryWindowTimeline } from "./DeliveryWindowTimeline";
-import { RuleFrequencyPicker, blankFrequency } from "../unified-view/threepl/RuleFrequency";
+import { DeliveryWindowTimeline } from "../unified-view/DeliveryWindowTimeline";
+import { RecurringOrderSection } from "../unified-view/RecurringOrderSection";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrderRestButton, QuoteActions, QuoteLines, ReplyPanel, TripTimeline } from "./requestActions";
 import { DATE_FMT, MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
@@ -913,57 +913,20 @@ export function OrderRequestSheet({
             />
           </SheetSection>
 
-          {/* RECURRING ORDER, AS THE 3PL LOAD ORDER (Pavan, 2026-10-20) — an
-              optional section: a dashed "Add" row until it's asked for, then
-              the recurring rule's frequency unit in its own box, removed with
-              the section's minus. */}
+          {/* RECURRING ORDER — the shared section (as the 3PL Load Order). */}
           {/* MADE BY A RULE — the rule owns the repeating; the header pill says which. */}
           {/* …and an ORDER repeats only through its request. */}
-          {!request.ruleNo && !order && (!locked || draft.recurring) && (
-            <SheetSection
-              title="Recurring order"
-              action={
-                draft.recurring && !locked ? (
-                  <SheetSectionRemove
-                    label="Remove recurring order"
-                    onClick={() => setDraft((d) => ({ ...d, recurring: false, frequency: "", endDate: "" }))}
-                  />
-                ) : undefined
+          {!request.ruleNo && !order && (
+            <RecurringOrderSection
+              on={draft.recurring}
+              schedule={draft.schedule}
+              plannedDay={dateOfKey(draft.date)?.getDay()}
+              locked={locked}
+              onChange={(f) =>
+                setDraft((d) => ({ ...d, recurring: true, schedule: f, frequency: scheduleSummary(f), endDate: f.endKey ?? "" }))
               }
-            >
-              {!draft.recurring ? (
-                <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
-                  <span className="text-sm text-foreground">Add Recurring Order</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setDraft((d) => {
-                        /* STARTS ON THE PLANNED DATE'S WEEKDAY, weekly. */
-                        const day = dateOfKey(d.date)?.getDay() ?? new Date().getDay();
-                        const schedule = d.schedule ?? { ...blankFrequency(), days: [day] };
-                        return { ...d, recurring: true, schedule, frequency: scheduleSummary(schedule), endDate: schedule.endKey ?? "" };
-                      })
-                    }
-                  >
-                    <Plus /> Add
-                  </Button>
-                </div>
-              ) : (
-                draft.schedule && (
-                  /* THE RECURRING RULE'S FREQUENCY UNIT, as it is there — days,
-                     repeat, weeks, end date — in one box. */
-                  <div className="rounded-md border border-fp-outline-1 p-4">
-                    <RuleFrequencyPicker
-                      value={draft.schedule}
-                      onChange={(f) =>
-                        setDraft((d) => ({ ...d, schedule: f, frequency: scheduleSummary(f), endDate: f.endKey ?? "" }))
-                      }
-                    />
-                  </div>
-                )
-              )}
-            </SheetSection>
+              onRemove={() => setDraft((d) => ({ ...d, recurring: false, frequency: "", endDate: "" }))}
+            />
           )}
 
           <SheetSection

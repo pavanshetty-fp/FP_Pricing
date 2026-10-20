@@ -127,7 +127,7 @@ function Delta({ value, up }: { value: string; up: boolean }) {
     <span
       className={cn(
         "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
-        up ? "bg-status-success/15 text-status-success" : "bg-destructive/15 text-destructive"
+        up ? "bg-fp-trend-up-bg text-fp-trend-up" : "bg-destructive/15 text-destructive"
       )}
     >
       {up ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}

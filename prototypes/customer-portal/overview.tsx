@@ -33,17 +33,20 @@ const HUE = {
   orange: { stroke: "stroke-fp-viz-2", fill: "var(--fp-viz-2)" },
 };
 
-/** Seven days, oldest first — a 2px line over a fading wash, a hover per day. */
-function Sparkline({
+/** Days, oldest first — a 2px line over a fading wash, a hover per day.
+    Shared with the dashboard's schedule (Pavan, 2026-10-20). */
+export function Sparkline({
   values,
   labels,
   hue,
   format,
+  className,
 }: {
   values: number[];
   labels: string[];
   hue: keyof typeof HUE;
   format: (n: number) => string;
+  className?: string;
 }) {
   const id = React.useId();
   const W = 132;
@@ -53,7 +56,7 @@ function Sparkline({
   const y = (v: number) => H - 3 - (v / max) * (H - 8);
   const line = values.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-[52px] w-[132px] shrink-0 overflow-visible" aria-hidden>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className={cn("h-[52px] w-[132px] shrink-0 overflow-visible", className)} aria-hidden>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={HUE[hue].fill} stopOpacity="0.22" />
@@ -61,10 +64,10 @@ function Sparkline({
         </linearGradient>
       </defs>
       <path d={`${line} L${W},${H} L0,${H} Z`} fill={`url(#${id})`} />
-      <path d={line} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className={HUE[hue].stroke} />
+      <path d={line} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" className={HUE[hue].stroke} />
       {/* A HOVER PER DAY — a column bigger than the mark. */}
       {values.map((v, i) => (
-        <rect key={i} x={x(i) - W / 14} y={0} width={W / 7} height={H} fill="transparent">
+        <rect key={i} x={x(i) - W / (2 * values.length)} y={0} width={W / values.length} height={H} fill="transparent">
           <title>{`${labels[i]}: ${format(v)}`}</title>
         </rect>
       ))}
@@ -81,13 +84,14 @@ function Change({ now, then }: { now: number; then: number }) {
     <span
       className={cn(
         "inline-flex items-center gap-1 text-sm font-medium tabular-nums",
-        up ? "text-status-success" : "text-status-processing"
+        /* THE TREND GREEN (DS ui §10k, Pavan, 2026-10-20). */
+        up ? "text-fp-trend-up" : "text-status-processing"
       )}
     >
       <span
         className={cn(
           "flex size-5 items-center justify-center rounded-full [&_svg]:size-3",
-          up ? "bg-status-success/15" : "bg-status-processing/15"
+          up ? "bg-fp-trend-up-bg" : "bg-status-processing/15"
         )}
       >
         {up ? <ArrowUp /> : <ArrowDown />}

@@ -338,6 +338,12 @@
   --color-accent-violet-foreground: var(--accent-violet-foreground);
   --color-accent-violet-soft: var(--accent-violet-soft);
   --color-accent-violet-ink: var(--accent-violet-ink);
+  /* A CHANGE AGAINST A PERIOD (Pavan, 2026-10-20 — from his reference card):
+     the up / down chip's ink and wash. */
+  --color-fp-trend-up: var(--fp-trend-up);
+  --color-fp-trend-up-bg: var(--fp-trend-up-bg);
+  --color-fp-trend-down: var(--fp-trend-down);
+  --color-fp-trend-down-bg: var(--fp-trend-down-bg);
   --color-drawer: var(--drawer);
   --color-rail: var(--rail);
   --color-fp-shell-ground: var(--fp-shell-ground);
@@ -796,6 +802,10 @@
   --accent-violet-foreground: #ffffff;
   --accent-violet-soft: color-mix(in oklab, #8b5cf6 12%, transparent);
   --accent-violet-ink: color-mix(in oklab, #8b5cf6 70%, var(--foreground));
+  --fp-trend-up: #3aac73;
+  --fp-trend-up-bg: #e7f6ef;
+  --fp-trend-down: #b74e6d;
+  --fp-trend-down-bg: #fae7ec;
   /* PASTEL PAIRS — a light fill with a dark same-hue foreground, declared once
      and NOT overridden in `.dark`: a categorical hue that changed with the
      theme would change identity, which is what a categorical scale must not do.
@@ -876,6 +886,12 @@
   collection). Applied when `<html>` carries `.dark`. Source variable per token.
 */
 .dark {
+  /* The trend chip on the dark content layer — the same hues, lifted ink
+     on a quiet wash of each. */
+  --fp-trend-up: #5cc994;
+  --fp-trend-up-bg: color-mix(in oklab, #3aac73 18%, transparent);
+  --fp-trend-down: #e58aa3;
+  --fp-trend-down-bg: color-mix(in oklab, #b74e6d 22%, transparent);
   /* The dashboard chart palette's dark steps — same hues, see :root. */
   --fp-viz-1: #3987e5;
   --fp-viz-2: #d95926;

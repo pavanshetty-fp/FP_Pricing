@@ -676,6 +676,45 @@ opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
   `border-border/60`; the row's own thing in foreground, secondary values
   muted.
 
+## 10k. Metric icons — one icon per term, one style (Pavan, 2026-10-20)
+
+**Use them on metric / figure cards and dashboard units** — wherever a card
+leads with a number (deliveries, products, gallons, ship-tos and the like).
+The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
+**Metric Icons**.
+
+**The set** — `TERM_ICONS`, one icon per term, the same in every module:
+
+| Term | Icon | Drawn as |
+|---|---|---|
+| Deliveries | `TruckIcon` | Lucide truck, soft fill |
+| Products | `DropIcon` | a drop holding fluid to ~60%, wavy level |
+| Gallons | `DrumIcon` | a metal fuel drum (oval lid, straight sides, rounded base) ~70% full, wavy level |
+| Ship-tos | `PinIcon` | Lucide map pin, soft fill |
+
+**The style** — every icon, and any new one added to the set:
+- Lucide's **24 grid**, round caps and joins, `currentColor`.
+- A **soft fill of its own colour** (22%) inside the outline.
+- Anything that holds liquid fills **only to its level**, and the level is a
+  **wave**, not a straight line — so it reads as liquid. Nothing else inside
+  the shape (no ribs, no hatching).
+- Wherever the app names one of these terms — a figure, a menu item, a
+  heading, an activity entry — it draws that icon and no other.
+
+**On a metric card** — `<MetricIcon icon={TERM_ICONS.gallons} />`:
+- a **48px `rounded-lg` tile** in the accent at **6%** (`bg-accent-violet/6`),
+  the icon **28px**, **1.75** line, `text-accent-violet`;
+- it sits **beside the figure, centred on the figure-and-change unit** (the
+  number, its change chip and the "vs …" line), not in the title row;
+- the card's own design (title, figure, chip) is unchanged — the icon is
+  added, not a new card.
+
+**A change against a period** — the chip after the figure:
+`bg-fp-trend-up-bg` / `text-fp-trend-up` (#3aac73 on #e7f6ef) with a small
+filled ▲ when up, `bg-fp-trend-down-bg` / `text-fp-trend-down` (#b74e6d on
+#fae7ec) with ▼ when down, `bg-muted` grey "Same" — and "vs N the previous …"
+under it. The same green for a positive change everywhere in the app.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

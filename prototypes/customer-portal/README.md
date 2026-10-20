@@ -397,3 +397,15 @@ From the FleetPanda portal's user record (structure only, invented people).
   Tank levels, Spend (total + by week + by product, history only — no
   market comparison anywhere), Billing & credit. Delivery performance is
   the Reports page; Asset health removed.
+- **Schedule for the next 7 days** (one header): Deliveries · Products ·
+  Gallons · Ship-tos, each with ↑ / ↓ % or "Same" against the previous 7
+  days (every delivery planned for them); corner arrow → the table.
+- **Tank monitor readings** (`TankHealth.tsx`): Tank levels (monitor bands as one bar
+  + counts), Days to empty (1 · 2 · 3 days + "N will run dry before their
+  next delivery"), Monitor battery (below 40 · 20 · 10 · 5%). Every count opens
+  the table filtered to it; each row can Create order (top off) for its tank.
+- **Spend by product** has a toggle: **Compare** (every product stacked per day by gallons, legend, hover ranks the day) · **Totals** (period total per product,
+  ranked) · **By days** (spend day by day, product tabs with All first —
+  `dailySpend` splits each week's gallons over its days on a working-week
+  shape, INVENTED). Both spend cards say "Last N weeks"; Spend by week is
+  week-on-week, Spend by product is day-to-day.

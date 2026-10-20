@@ -68,6 +68,7 @@ import {
   CalendarRange,
   X,
   Archive,
+  Gauge,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,7 @@ import {
   SelectDemo,
   SeparatorDemo,
   StepsDemo,
+  MetricIconsDemo,
   SidebarDemo,
   SkeletonDemo,
   SliderDemo,
@@ -281,6 +283,7 @@ const COMPONENT_PAGES: {
   { key: "select", label: "Select", icon: <ChevronsUpDown />, content: <SelectDemo /> },
   { key: "separator", label: "Separator", icon: <Minus />, content: <SeparatorDemo /> },
   { key: "steps", label: "Steps", icon: <Footprints />, content: <StepsDemo /> },
+  { key: "metric-icons", label: "Metric Icons", icon: <Gauge />, content: <MetricIconsDemo /> },
   { key: "sidebar", label: "Sidebar", icon: <PanelLeft />, content: <SidebarDemo /> },
   { key: "skeleton", label: "Skeleton", icon: <Loader />, content: <SkeletonDemo /> },
   { key: "slider", label: "Slider", icon: <SlidersHorizontal />, content: <SliderDemo /> },

@@ -16,6 +16,9 @@ import {
   isOrder,
   orderListRows,
   quantityOf,
+  createRequest,
+  updateRequest,
+  lastProductFor,
   isRunningLate,
   lacksPod,
   onCreditHold,
@@ -29,9 +32,11 @@ import {
   useRequests,
   windowText,
   type OrderRequest,
+  type RequestStatus,
 } from "./orders";
 import { OrderRequestSheet } from "./OrderRequestSheet";
-import { BatteryCell, DaysToEmpty, LevelReading } from "./TankLevel";
+import { TankHealthCard } from "./TankHealth";
+import { MetricIcon, TERM_ICONS } from "@/components/ui/term-icons";
 import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
 import { Button } from "@/components/ui/button";
@@ -48,6 +53,7 @@ import {
   periods,
   productTotals,
   spend,
+  dailySpend,
   type NoteLevel,
   type RangeWeeks,
   type Week,
@@ -91,6 +97,9 @@ const VIZ = {
   1: { bg: "bg-fp-viz-1", fill: "fill-fp-viz-1", stroke: "stroke-fp-viz-1" },
   2: { bg: "bg-fp-viz-2", fill: "fill-fp-viz-2", stroke: "stroke-fp-viz-2" },
   3: { bg: "bg-fp-viz-3", fill: "fill-fp-viz-3", stroke: "stroke-fp-viz-3" },
+  4: { bg: "bg-fp-viz-4", fill: "fill-fp-viz-4", stroke: "stroke-fp-viz-4" },
+  5: { bg: "bg-fp-viz-5", fill: "fill-fp-viz-5", stroke: "stroke-fp-viz-5" },
+  7: { bg: "bg-fp-viz-7", fill: "fill-fp-viz-7", stroke: "stroke-fp-viz-7" },
   /* GREEN = YOUR PRICE, RED = MARKET (Pavan, 2026-10-13) — the palette's own
      green and red, not the status tokens. */
   6: { bg: "bg-fp-viz-6", fill: "fill-fp-viz-6", stroke: "stroke-fp-viz-6" },
@@ -199,13 +208,13 @@ function Change({
     <span
       className={cn(
         "inline-flex items-center gap-1 text-sm font-medium tabular-nums",
-        good ? "text-status-success" : "text-status-processing"
+        good ? "text-fp-trend-up" : "text-status-processing"
       )}
     >
       <span
         className={cn(
           "flex size-5 items-center justify-center rounded-full [&_svg]:size-3",
-          good ? "bg-status-success/15" : "bg-status-processing/15"
+          good ? "bg-fp-trend-up-bg" : "bg-status-processing/15"
         )}
       >
         {up ? <ArrowUp /> : <ArrowDown />}
@@ -485,6 +494,186 @@ function WeekLines({
           rows={series.map((s) => ({ hue: VIZ[s.hue].bg, label: s.label, value: format(s.value(weeks[hover])) }))}
         />
       )}
+    </div>
+  );
+}
+
+
+/*
+  A BAR PER DAY (Pavan, 2026-10-20) — the period day by day, the bar's height
+  the day's spend; the axis names each week's Monday. Each bar carries its
+  gallons: written on it where the bar is wide enough, and always in the
+  hover with the spend.
+*/
+const DAY_FMT = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+function DayBars({
+  days,
+  label,
+  format,
+  /* 40% TALLER (Pavan, 2026-10-20). */
+  height = 252,
+}: {
+  days: { date: Date; value: number; gal: number }[];
+  label: string;
+  format: (n: number) => string;
+  height?: number;
+}) {
+  const [ref, W] = useWidth<HTMLDivElement>();
+  const [hover, setHover] = React.useState<number | null>(null);
+  const padL = 56;
+  const padB = 22;
+  const padR = 8;
+  const plotW = Math.max(0, W - padL - padR);
+  const plotH = height - padB - 6;
+  const hi = Math.max(...days.map((d) => d.value), 1);
+  const slot = plotW / Math.max(1, days.length);
+  const gap = Math.min(2, slot * 0.25);
+  const bw = Math.max(1, slot - gap);
+  const x = (i: number) => padL + i * slot + gap / 2;
+  const y = (v: number) => 6 + plotH - (v / hi) * plotH;
+  const ticks = [0, hi / 2, hi];
+  /* GALLONS ON THE BAR where it fits; the hover says it either way. */
+  const onBar = bw >= 30;
+  return (
+    <div ref={ref} className="relative w-full" style={{ height }} onMouseLeave={() => setHover(null)}>
+      {W > 0 && (
+        <svg width={W} height={height} className="absolute inset-x-0 top-0 block" role="img" aria-label={`${label} spend by day`}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth={1} />
+              <text x={padL - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+                {format(t)}
+              </text>
+            </g>
+          ))}
+          {days.map((d, i) => (
+            <g key={i} onMouseEnter={() => setHover(i)}>
+              {/* A HOVER COLUMN bigger than the bar. */}
+              <rect x={padL + i * slot} y={6} width={slot} height={plotH} fill="transparent" />
+              <rect
+                x={x(i)}
+                y={y(d.value)}
+                width={bw}
+                height={Math.max(0, 6 + plotH - y(d.value))}
+                rx={Math.min(2, bw / 2)}
+                className={cn(VIZ[1].fill, hover !== null && hover !== i && "opacity-50")}
+              />
+              {onBar && d.gal > 0 && (
+                <text x={x(i) + bw / 2} y={y(d.value) - 4} textAnchor="middle" className="fill-muted-foreground text-[10px] tabular-nums">
+                  {num(d.gal)}
+                </text>
+              )}
+              {/* A NARROW BAR CARRIES ITS GALLONS UPRIGHT, inside it, when
+                  it is tall enough to hold the figure. */}
+              {!onBar && bw >= 9 && d.gal > 0 && 6 + plotH - y(d.value) >= 34 && (
+                <text
+                  transform={`translate(${x(i) + bw / 2}, ${y(d.value) + 4}) rotate(90)`}
+                  dy="0.35em"
+                  className="pointer-events-none fill-fp-surface-1b text-[9px] font-medium tabular-nums"
+                >
+                  {num(d.gal)}
+                </text>
+              )}
+              {i % 7 === 0 && (
+                <text x={x(i)} y={height - 6} className="fill-muted-foreground text-[11px]">
+                  {SHORT.format(d.date)}
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
+      )}
+      {hover !== null && days[hover] && (
+        <Tip
+          x={Math.min(Math.max(x(hover) + bw / 2, 80), W - 80)}
+          title={DAY_FMT.format(days[hover].date)}
+          rows={[
+            { hue: VIZ[1].bg, label: "Spend", value: format(days[hover].value) },
+            { label: "Gallons", value: `${num(days[hover].gal)} gal` },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+/*
+  EVERY PRODUCT, DAY BY DAY, ON ONE CHART (Pavan, 2026-10-20 — "compare"):
+  a bar per day stacked by product's gallons, a colour each from the DS
+  categorical palette in its fixed order, named in the legend. The stack
+  shows the day's total and which product led it; the hover ranks that day's
+  products, highest first, with gallons and spend. No product tabs.
+*/
+const PRODUCT_HUE: (keyof typeof VIZ)[] = [1, 2, 3, 4, 5, 6, 7];
+
+function ProductStack({ weeks, height = 280 }: { weeks: Week[]; height?: number }) {
+  const [ref, W] = useWidth<HTMLDivElement>();
+  const [hover, setHover] = React.useState<number | null>(null);
+  const series = PRICED_PRODUCTS.map((p, k) => ({ p, hue: PRODUCT_HUE[k % PRODUCT_HUE.length], days: dailySpend(weeks, p) }));
+  const n = series[0]?.days.length ?? 0;
+  const totals = Array.from({ length: n }, (_, i) => series.reduce((t, s) => t + s.days[i].gal, 0));
+  const hi = Math.max(...totals, 1);
+  const padL = 56;
+  const padB = 22;
+  const padR = 8;
+  const plotW = Math.max(0, W - padL - padR);
+  const plotH = height - padB - 6;
+  const slot = plotW / Math.max(1, n);
+  const gap = Math.min(2, slot * 0.25);
+  const bw = Math.max(1, slot - gap);
+  const x = (i: number) => padL + i * slot + gap / 2;
+  const h = (v: number) => (v / hi) * plotH;
+  const base = 6 + plotH;
+  const ticks = [0, hi / 2, hi];
+  return (
+    <div className="flex flex-col gap-3">
+      <Legend items={series.map((s) => ({ hue: VIZ[s.hue].bg, label: s.p }))} />
+      <div ref={ref} className="relative w-full" style={{ height }} onMouseLeave={() => setHover(null)}>
+        {W > 0 && (
+          <svg width={W} height={height} className="absolute inset-x-0 top-0 block" role="img" aria-label="Gallons by product, day by day">
+            {ticks.map((t) => (
+              <g key={t}>
+                <line x1={padL} x2={W - padR} y1={base - h(t)} y2={base - h(t)} className="stroke-border" strokeWidth={1} />
+                <text x={padL - 8} y={base - h(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+                  {num(t)}
+                </text>
+              </g>
+            ))}
+            {Array.from({ length: n }, (_, i) => {
+              let y0 = base;
+              return (
+                <g key={i} onMouseEnter={() => setHover(i)} className={cn(hover !== null && hover !== i && "opacity-50")}>
+                  <rect x={padL + i * slot} y={6} width={slot} height={plotH} fill="transparent" />
+                  {series.map((s) => {
+                    const hh = h(s.days[i].gal);
+                    y0 -= hh;
+                    return hh > 0 ? <rect key={s.p} x={x(i)} y={y0} width={bw} height={hh} className={VIZ[s.hue].fill} /> : null;
+                  })}
+                  {i % 7 === 0 && (
+                    <text x={x(i)} y={height - 6} className="fill-muted-foreground text-[11px]">
+                      {SHORT.format(series[0].days[i].date)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        )}
+        {hover !== null && series[0]?.days[hover] && (
+          <Tip
+            x={Math.min(Math.max(x(hover) + bw / 2, 90), W - 90)}
+            title={`${DAY_FMT.format(series[0].days[hover].date)} · ${num(totals[hover])} gal`}
+            rows={[...series]
+              .filter((s) => s.days[hover].gal > 0)
+              .sort((a, b) => b.days[hover].gal - a.days[hover].gal)
+              .map((s) => ({
+                hue: VIZ[s.hue].bg,
+                label: s.p,
+                value: `${num(s.days[hover].gal)} gal · ${usd.format(s.days[hover].usd)}`,
+              }))}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -1106,7 +1295,7 @@ function SpendCard({ weeks, n }: { weeks: Week[]; n: number }) {
           <QuietPattern className="-mx-4 -mb-4 min-h-16 flex-1 rounded-bl-[11px]" />
         </dl>
       </Card>
-      <Card bare title="Spend by week">
+      <Card bare title="Spend by week" aside={<span className="text-xs text-muted-foreground">Last {n} weeks</span>}>
         <ToggleGroup
           type="single"
           variant="outline"
@@ -1133,26 +1322,84 @@ function SpendCard({ weeks, n }: { weeks: Week[]; n: number }) {
   );
 }
 
-function SpendByProductCard({ weeks }: { weeks: Week[] }) {
+/*
+  SPEND BY PRODUCT (Pavan, 2026-10-20) — two views on a toggle. TOTALS: the
+  period's spend per product, largest first. BY PRODUCT: that spend day by
+  day, a product at a time (All by default) — the week-on-week line is above
+  in Spend by week; this is day to day.
+*/
+function SpendByProductCard({ weeks, n }: { weeks: Week[]; n: number }) {
+  const [view, setView] = React.useState<"totals" | "byProduct" | "compare">("totals");
+  const [product, setProduct] = React.useState<string>(ALL);
   const rows = productTotals(weeks)
     .map((r) => ({ ...r, usd: PRICED_PRODUCTS.includes(r.product) ? spend(weeks, "paid", r.product) : null }))
     .filter((r) => r.gal > 0)
     .sort((x, y) => (y.usd ?? 0) - (x.usd ?? 0) || y.gal - x.gal);
   const max = Math.max(...rows.map((r) => r.usd ?? 0), 1);
+  const days = dailySpend(weeks, product === ALL ? undefined : product).map((d) => ({ date: d.date, value: d.usd, gal: d.gal }));
   return (
-    <Card title="Spend by product">
-      <ul className="flex flex-col gap-3">
-        {rows.map((r) => (
-          <li key={r.product} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3" title={`${r.product}: ${num(r.gal)} gal`}>
-            <span className="truncate text-sm text-foreground">{r.product}</span>
-            <span className="h-2 rounded-r-[4px] bg-fp-viz-1" style={{ width: `${((r.usd ?? 0) / max) * 100}%` }} />
-            <span className="flex w-44 items-center justify-end gap-3 text-right">
-              <span className="text-xs tabular-nums text-muted-foreground">{num(r.gal)} gal</span>
-              <span className="w-20 text-sm tabular-nums text-foreground">{r.usd === null ? "—" : usd.format(r.usd)}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+    <Card
+      title="Spend by product"
+      aside={
+        <span className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">Last {n} weeks</span>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={view}
+            onValueChange={(v) => v && setView(v as "totals" | "byProduct" | "compare")}
+            aria-label="Spend by product view"
+            className="h-7"
+          >
+            <ToggleGroupItem value="totals" className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              Totals
+            </ToggleGroupItem>
+            <ToggleGroupItem value="byProduct" className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              By days
+            </ToggleGroupItem>
+            <ToggleGroupItem value="compare" className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+              Compare
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </span>
+      }
+    >
+      {view === "totals" ? (
+        <ul className="flex flex-col gap-3">
+          {rows.map((r) => (
+            <li key={r.product} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3" title={`${r.product}: ${num(r.gal)} gal`}>
+              <span className="truncate text-sm text-foreground">{r.product}</span>
+              <span className="h-2 rounded-r-[4px] bg-fp-viz-1" style={{ width: `${((r.usd ?? 0) / max) * 100}%` }} />
+              <span className="flex w-44 items-center justify-end gap-3 text-right">
+                <span className="text-xs tabular-nums text-muted-foreground">{num(r.gal)} gal</span>
+                <span className="w-20 text-sm tabular-nums text-foreground">{r.usd === null ? "—" : usd.format(r.usd)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : view === "compare" ? (
+        <ProductStack weeks={weeks} />
+      ) : (
+        <>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={product}
+            onValueChange={(v) => v && setProduct(v)}
+            aria-label="Product"
+            className="flex w-fit flex-wrap"
+          >
+            {[ALL, ...PRICED_PRODUCTS].map((p) => (
+              <ToggleGroupItem key={p} value={p} className="h-7 px-2.5 text-xs font-normal data-[state=on]:font-medium">
+                {p}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <DayBars days={days} label={product === ALL ? "All products" : product} format={(v) => usd.format(v)} />
+        </>
+      )}
     </Card>
   );
 }
@@ -1171,6 +1418,15 @@ const dayKeyAhead = (n: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+/** THE 7 DAYS BEFORE TODAY — every delivery that was planned for them
+    (made or not), to compare the week ahead against. */
+function previousWeek(rows: OrderRequest[]) {
+  const from = dayKeyAhead(-7);
+  const to = dayKeyAhead(-1);
+  const gone: RequestStatus[] = ["Draft", "Rejected", "Cancelled", "Quote declined", "Quote expired"];
+  return orderListRows(rows).filter((r) => r.date >= from && r.date <= to && !gone.includes(r.status));
+}
+
 /** Every delivery still to come in the next 7 days — the Orders list's rows. */
 function upcoming(rows: OrderRequest[]) {
   const t = todayKey();
@@ -1180,16 +1436,75 @@ function upcoming(rows: OrderRequest[]) {
     .sort((a, b) => a.date.localeCompare(b.date) || a.windowStart - b.windowStart);
 }
 
-/** One figure of the next 7 days — the Orders overview's tile. */
-function ScheduleTile({ title, value, unit, sub, className }: { title: string; value: string; unit?: string; sub?: string; className?: string }) {
+/** UP, DOWN OR THE SAME as the 7 days before (Pavan, 2026-10-20 — the
+    reference's chip): a soft pill with a small filled triangle — green up,
+    red down, grey the same. */
+function WeekChange({ now, then }: { now: number; then: number }) {
+  const same = now === then;
+  const up = now > then;
+  const pct = then ? Math.round((Math.abs(now - then) / then) * 100) : null;
+  return (
+    <span
+      className={cn(
+        "inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm font-medium tabular-nums",
+        same
+          ? "bg-muted text-muted-foreground"
+          : up
+            ? "bg-fp-trend-up-bg text-fp-trend-up"
+            : "bg-fp-trend-down-bg text-fp-trend-down"
+      )}
+    >
+      {!same && (
+        <span
+          aria-hidden
+          className={cn("size-0 border-x-[5px] border-x-transparent", up ? "border-b-[6px] border-b-current" : "border-t-[6px] border-t-current")}
+        />
+      )}
+      {same ? "Same" : pct === null ? `+${now - then}` : `${pct}%`}
+    </span>
+  );
+}
+
+/** One figure of the next 7 days, against the 7 days before. The term's
+    icon at the top right, in the accent (Pavan, 2026-10-20). */
+function ScheduleTile({
+  title,
+  icon: Icon,
+  value,
+  then,
+  format = (n: number) => n.toLocaleString(),
+  unit,
+  sub,
+  className,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  value: number;
+  then: number;
+  format?: (n: number) => string;
+  unit?: string;
+  sub?: string;
+  className?: string;
+}) {
   return (
     <section className={cn("flex min-w-0 flex-1 flex-col gap-1 px-4 py-3", className)}>
       <h3 className="text-sm font-medium text-foreground">{title}</h3>
-      <p className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-3xl font-semibold tabular-nums text-foreground">{value}</span>
-        {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-      </p>
-      <p className="text-xs text-muted-foreground">{sub ?? "next 7 days"}</p>
+      {/* THE FIGURE, ITS CHANGE AND THE "VS" LINE ARE ONE UNIT; the icon,
+          larger, sits beside it, centred on it (Pavan, 2026-10-20). */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-3xl font-semibold tabular-nums text-foreground">{format(value)}</span>
+            {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+            <WeekChange now={value} then={then} />
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {sub ? `${sub} · ` : ""}vs {format(then)} the previous 7 days
+          </p>
+        </div>
+        {/* THE DS METRIC ICON (§10k). */}
+        <MetricIcon icon={Icon} />
+      </div>
     </section>
   );
 }
@@ -1206,25 +1521,41 @@ function ScheduleOverview({
   setDetails: (o: boolean) => void;
 }) {
   const next = upcoming(rows);
-  const q = quantityOf(next.flatMap((r) => r.lines));
-  const products = new Set(next.flatMap((r) => r.lines.map((l) => l.product).filter(Boolean))).size;
-  const sites = new Set(next.map((r) => r.shipTo)).size;
+  const before = previousWeek(rows);
+  const figures = (list: OrderRequest[]) => ({
+    deliveries: list.length,
+    products: new Set(list.flatMap((r) => r.lines.map((l) => l.product).filter(Boolean))).size,
+    q: quantityOf(list.flatMap((r) => r.lines)),
+    sites: new Set(list.map((r) => r.shipTo)).size,
+  });
+  const a = figures(next);
+  const b = figures(before);
   const shipTos = SHIP_TOS.filter((x) => x.status === "Active").length;
   return (
     <>
       <div className="relative shrink-0 rounded-xl border border-border bg-fp-surface-1b">
         {/* FOUR FIGURES, THE NEXT 7 DAYS (Pavan, 2026-10-19). */}
         <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
-          <ScheduleTile title="Deliveries" value={next.length.toLocaleString()} unit={next.length === 1 ? "delivery" : "deliveries"} />
-          <ScheduleTile title="Products" value={products.toLocaleString()} unit={products === 1 ? "product" : "products"} />
+          <ScheduleTile title="Deliveries" icon={TERM_ICONS.deliveries} value={a.deliveries} then={b.deliveries} />
+          <ScheduleTile title="Products" icon={TERM_ICONS.products} value={a.products} then={b.products} />
           <ScheduleTile
             title="Gallons"
-            value={q.gal ? num(q.gal) : "—"}
+            icon={TERM_ICONS.gallons}
+            value={a.q.gal}
+            then={b.q.gal}
+            format={num}
             unit="gal"
-            sub={q.topOff ? `next 7 days · + ${q.topOff} top off` : undefined}
+            sub={a.q.topOff ? `+ ${a.q.topOff} top off` : undefined}
           />
           {/* Room for the corner button. */}
-          <ScheduleTile title="Ship-tos" value={`${sites}`} unit={`of ${shipTos}`} className="pr-12" />
+          <ScheduleTile
+            title="Ship-tos"
+            icon={TERM_ICONS.shipTos}
+            value={a.sites}
+            then={b.sites}
+            unit={`of ${shipTos}`}
+            className="pr-12"
+          />
         </div>
         {/* THE ONE CONTROL, IN THE CARD'S CORNER — as the Orders overview. */}
         <Button
@@ -1356,19 +1687,38 @@ export function DashboardScreen() {
       <ActionBanner rows={rows} onOpen={setActionId} onOpenOrder={setOpenId} />
 
       {/* THE NEXT 7 DAYS, UP FRONT (Anirudh, 2026-10-17). */}
-      <Section title="Schedule">
+      {/* THE HEADER SAYS THE SPAN, once (Pavan, 2026-10-20). */}
+      <Section title="Schedule for the next 7 days">
         <ScheduleOverview rows={rows} onOpen={setOpenId} details={scheduleOpen} setDetails={setScheduleOpen} />
       </Section>
 
-      {/* TANK LEVELS (Pavan, 2026-10-17) — every monitored tank, emptiest
-          first, with its band and the monitor's battery. */}
-      <Section title="Tank levels">
-        <TankLevelsCard />
+      {/* TANK HEALTH (Pavan, 2026-10-20) — levels by band, days to empty,
+          monitor battery; each count opens its tanks, each can be ordered. */}
+      <Section title="Tank monitor readings">
+        <TankHealthCard
+          rows={rows}
+          onCreateOrder={(shipTo, assetId) => {
+            const r = createRequest();
+            updateRequest(r.id, {
+              shipTo,
+              lines: [
+                {
+                  assetId,
+                  product: lastProductFor(assetId, rows) ?? assetById(assetId)?.product ?? "",
+                  topOff: true,
+                  gal: 0,
+                },
+              ],
+            });
+            setCreatingId(r.id);
+            setOpenId(r.id);
+          }}
+        />
       </Section>
 
       <Section title="Spend">
         <SpendCard weeks={now} n={range} />
-        <SpendByProductCard weeks={now} />
+        <SpendByProductCard weeks={now} n={range} />
       </Section>
 
       <Section title="Billing & credit">
@@ -1404,50 +1754,6 @@ export function DashboardScreen() {
         }}
       />
     </div>
-  );
-}
-
-function TankLevelsCard() {
-  const tanks = SHIP_TOS.flatMap((s) => s.assets.filter((a) => a.monitor && a.status === "Active").map((a) => ({ a, s })))
-    .sort((x, y) => x.a.level - y.a.level);
-  return (
-    <Card
-      title="Monitored tanks"
-      aside={
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {tanks.length} tanks
-        </span>
-      }
-    >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Asset</TableHead>
-            <TableHead>Ship-to</TableHead>
-            <TableHead>Current level</TableHead>
-            <TableHead>Days to empty</TableHead>
-            <TableHead>Battery</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tanks.map(({ a, s }) => (
-            <TableRow key={a.id}>
-              <TableCell className="text-foreground">{a.name}</TableCell>
-              <TableCell className="text-muted-foreground">{s.name}</TableCell>
-              <TableCell>
-                <LevelReading asset={a} />
-              </TableCell>
-              <TableCell>
-                <DaysToEmpty asset={a} />
-              </TableCell>
-              <TableCell>
-                <BatteryCell asset={a} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
   );
 }
 

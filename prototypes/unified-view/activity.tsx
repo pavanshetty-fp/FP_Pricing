@@ -1,5 +1,6 @@
 import * as React from "react";
-import { CircleDot, Plus, Truck, UserRound, CalendarClock, Ban } from "lucide-react";
+import { CircleDot, Plus, UserRound, CalendarClock, Ban } from "lucide-react";
+import { TERM_ICONS } from "@/components/ui/term-icons";
 import { cn } from "@/lib/utils";
 import { SheetSection } from "@/components/side-sheet/parts";
 import { DATE_FMT } from "./data";
@@ -79,7 +80,8 @@ function mark(text: string): { icon: React.ReactNode; tone: string } {
     return { icon: <Ban />, tone: "border-status-failed/30 bg-status-failed/10 text-status-failed" };
   if (/^(Driver|Status)/.test(text)) return { icon: <UserRound />, tone: quiet };
   if (/^(Planned|Delivery date)/.test(text)) return { icon: <CalendarClock />, tone: quiet };
-  if (/^Products/.test(text)) return { icon: <Truck />, tone: quiet };
+  /* THE TERM'S OWN ICON (DS term-icons, Pavan, 2026-10-20). */
+  if (/^Products/.test(text)) return { icon: <TERM_ICONS.products />, tone: quiet };
   return { icon: <CircleDot />, tone: quiet };
 }
 

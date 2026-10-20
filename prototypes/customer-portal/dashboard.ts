@@ -287,3 +287,42 @@ export function daysSinceEmpty(): number | null {
     .sort((a, b) => b - a)[0];
   return last ? Math.floor((startOfDay(new Date()).getTime() - startOfDay(new Date(last)).getTime()) / 86_400_000) : null;
 }
+
+/* ------------------------------------------------------------- by day --- */
+
+/*
+  SPEND BY DAY (Pavan, 2026-10-20) — the week's gallons, split over its seven
+  days on a working-week shape (busier early, light at the weekend) with a
+  little seeded wobble per product; each day priced at that week's paid
+  rate. The days always add back up to the week. INVENTED.
+*/
+const DAY_SHAPE = [1.25, 1.15, 1.1, 1.05, 1.2, 0.75, 0.5];
+export interface DaySpend {
+  date: Date;
+  gal: number;
+  usd: number;
+}
+export function dailySpend(ws: Week[], product?: string): DaySpend[] {
+  const ps = product ? [product] : PRICED_PRODUCTS;
+  return ws.flatMap((w, wi) => {
+    const days = Array.from({ length: 7 }, (_, d) => {
+      const date = new Date(w.start);
+      date.setDate(date.getDate() + d);
+      return { date, gal: 0, usd: 0 };
+    });
+    for (const p of ps) {
+      const weekGal = w.byProduct[p] ?? 0;
+      const price = w.prices[p]?.paid ?? 0;
+      if (!weekGal) continue;
+      const r = rng(wi * 97 + p.length * 13 + p.charCodeAt(0));
+      const weights = DAY_SHAPE.map((s) => s * (0.8 + r() * 0.4));
+      const total = weights.reduce((a, b) => a + b, 0);
+      weights.forEach((wt, d) => {
+        const g = (weekGal * wt) / total;
+        days[d].gal += g;
+        days[d].usd += g * price;
+      });
+    }
+    return days;
+  });
+}

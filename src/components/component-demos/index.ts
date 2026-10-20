@@ -18,6 +18,7 @@ export { RadioGroupDemo } from "./RadioGroupDemo";
 export { SelectDemo } from "./SelectDemo";
 export { SeparatorDemo } from "./SeparatorDemo";
 export { StepsDemo } from "./StepsDemo";
+export { MetricIconsDemo } from "./MetricIconsDemo";
 export { SidebarDemo } from "./SidebarDemo";
 export { SkeletonDemo } from "./SkeletonDemo";
 export { SliderDemo } from "./SliderDemo";

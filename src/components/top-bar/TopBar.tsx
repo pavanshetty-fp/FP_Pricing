@@ -84,13 +84,16 @@ export function TopBar({
   return (
     /* NO FILL OF ITS OWN — it sits on the shell's ground, so an app that tints
        its ground (Unified View, 2026-10-06) tints the bar with it. */
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-transparent px-3">
+    /* `data-fp-frame` / `data-fp-on-frame` — at the far end of the
+       Accessibility panel's Component background the shell ground goes near
+       black, and what sits straight on it turns white (DS ui §10n). */
+    <header data-fp-frame className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-transparent px-3">
       {/* Left — brand logo */}
       <div className="flex flex-1 items-center gap-2">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground [&_svg]:size-5">
           <Boxes />
         </span>
-        <span className="truncate text-base font-semibold text-foreground">FleetPanda</span>
+        <span data-fp-on-frame className="truncate text-base font-semibold text-foreground">FleetPanda</span>
       </div>
 
       {/* Center — global search + keyboard shortcuts */}
@@ -128,6 +131,7 @@ export function TopBar({
                   variant="ghost"
                   size="icon"
                   aria-label="Keyboard shortcuts"
+                  data-fp-on-frame
                   onClick={() => setShortcutsOpen(true)}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
@@ -142,7 +146,7 @@ export function TopBar({
 
       {/* Right — notifications + profile */}
       <div className="flex flex-1 items-center justify-end gap-1">
-        <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
+        <Button variant="ghost" size="icon" aria-label="Notifications" data-fp-on-frame className="relative">
           <Bell />
           {unread > 0 && (
             <span
@@ -157,6 +161,7 @@ export function TopBar({
             <button
               type="button"
               aria-label="Account menu"
+              data-fp-on-frame
               className="flex items-center gap-1.5 rounded-md p-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <Avatar className="size-8">

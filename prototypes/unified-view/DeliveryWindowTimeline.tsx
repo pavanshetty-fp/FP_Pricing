@@ -224,7 +224,7 @@ export function DeliveryWindowTimeline({
       <div className="flex flex-col">
         <div
           className={cn(
-            "flex flex-col gap-2 rounded-md border border-input bg-fp-surface-1b px-4 pt-3 pb-3 transition-[color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50 dark:bg-input/30",
+            "flex flex-col gap-2 rounded-md border border-input bg-fp-surface-1b px-4 pt-3 pb-3 transition-[color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50 dark:bg-fp-field-fill",
             canAdd && "rounded-bl-none",
           )}
         >

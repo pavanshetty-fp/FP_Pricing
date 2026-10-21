@@ -18,7 +18,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, finding } from "./lib.mjs";
+import { ROOT, finding, filesUnder, read } from "./lib.mjs";
 
 export const name = "wcag-contrast";
 export const segment = "1-components";
@@ -60,8 +60,13 @@ function resolve(t, v, depth = 0) {
   if (ref) return resolve(t, t[ref[1]], depth + 1);
   if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
   if (/^#[0-9a-f]{3}$/i.test(v)) return `#${[...v.slice(1)].map((c) => c + c).join("")}`.toLowerCase();
+  /* A TINT MADE WITH color-mix(… N%, transparent) — kept with its alpha, laid
+     over the surface where it's used. */
+  const mx = /^color-mix\(in oklab,\s*(#[0-9a-f]{6})\s+(\d+)%,\s*transparent\)$/i.exec(v);
+  if (mx) return mx[1].toLowerCase() + Math.round(Number(mx[2]) * 2.55).toString(16).padStart(2, "0");
   return null;
 }
+const solid = (h, ground) => (h.length === 9 ? over(h.slice(0, 7), ground, parseInt(h.slice(7), 16) / 255) : h);
 
 const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -102,6 +107,10 @@ const PAIRS = [
   ["Critical pill", "--status-failed", ["--fp-surface-1b"], "pill"],
   ["Success pill", "--fp-banner-accent-success", ["--fp-surface-1b"], "pill"],
   ["Field border", "--input", FIELD_GROUNDS, "ui"],
+  /* THE DARK FRAME (Component background 80%+) — the same in every mode. */
+  ["Text on the dark frame", "--fp-frame-ink", ["--fp-frame-ground", "--fp-frame-selected"], "text"],
+  ["Muted text on the dark frame", "--fp-frame-ink-muted", ["--fp-frame-ground"], "text"],
+  ["Selected nav item on its panel", "--fp-frame-selected", ["--fp-shell-panel"], "ui"],
   /* SEPARATION (Pavan, 2026-10-21) — a card's rim and a divider must be seen
      on a mirrored screen too. */
   ["Card rim", "--fp-outline-1", SURFACES, "ui"],
@@ -118,12 +127,48 @@ const PAIRS = [
   ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => [`Chart series ${n}`, `--fp-viz-${n}`, ["--fp-surface-1b"], "ui"]),
 ];
 
+/*
+  THE PAIRINGS THE SCREENS ACTUALLY USE (Pavan, 2026-10-21) — every class
+  string in src/ and prototypes/ that sets a background colour and a text
+  colour together, with their opacities. A new pairing is checked the day it
+  is written, not when someone remembers to add it here. (Text inherited from
+  a parent isn't seen — the hand list above covers the common ones.)
+*/
+function usedPairs(css) {
+  const ti = css.slice(css.indexOf("@theme inline"));
+  const known = new Set([...ti.slice(0, ti.indexOf("\n}")).matchAll(/--color-([\w-]+)\s*:/g)].map((m) => m[1]));
+  const out = new Map();
+  for (const f of filesUnder(["src", "prototypes"], [".tsx"])) {
+    for (const m of read(f).matchAll(/["'`]([^"'`\n]*\b(?:bg|text)-[^"'`\n]*)["'`]/g)) {
+      const cls = m[1].split(/\s+/).filter((c) => !c.includes(":"));
+      const pick = (pre) =>
+        cls
+          .map((c) => new RegExp(`^${pre}-([a-z0-9-]+?)(?:/(\\d+))?$`).exec(c))
+          .filter((x) => x && known.has(x[1]));
+      for (const b of pick("bg"))
+        for (const t of pick("text")) {
+          const key = `${t[1]}${t[2] ? "/" + t[2] : ""} on ${b[1]}${b[2] ? "/" + b[2] : ""}`;
+          out.set(key, { fg: t[1], fga: t[2] ? Number(t[2]) / 100 : 1, bg: b[1], bga: b[2] ? Number(b[2]) / 100 : 1 });
+        }
+    }
+  }
+  return [...out].map(([what, p]) => ({ what, ...p }));
+}
+
 export function measure() {
-  const b = blocks(readFileSync(CSS, "utf8"));
+  const css = readFileSync(CSS, "utf8");
+  const b = blocks(css);
+  const ti = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const inline = Object.fromEntries(
+    [...ti.slice(ti.indexOf("@theme inline")).matchAll(/(--color-[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()])
+  );
+  const used = usedPairs(css);
   const rows = [];
   for (const mode of Object.keys(MODES)) {
     const t = tokensFor(b, mode);
     for (const [what, fgT, bgTs, kind] of PAIRS) {
+      /* The dark frame is a light-theme state only. */
+      if (mode.includes("dark") && /dark frame|Selected nav item on its panel/.test(what)) continue;
       const fg = resolve(t, t[fgT]);
       if (!fg) continue;
       let worst = Infinity;
@@ -131,13 +176,31 @@ export function measure() {
       for (const bgT of bgTs) {
         let bg = resolve(t, t[bgT]);
         if (!bg) continue;
+        bg = solid(bg, resolve(t, t["--fp-surface-1b"]));
         if (kind === "pill") bg = over(fg, bg, 0.1);
         const r = ratio(fg, bg);
         if (r < worst) [worst, on] = [r, bgT];
       }
       if (worst === Infinity) continue;
-      const need = kind === "ui" ? 3 : 7;
+      const need = kind === "ui" ? 3 : fgT === "--brand-foreground" ? 4.5 : 7;
       rows.push({ mode, what, fg: fgT, on, ratio: worst, kind, aa: worst >= (kind === "ui" ? 3 : 4.5), aaa: worst >= need });
+    }
+    /* THE USED PAIRINGS — each over the content layer, at its opacities. */
+    const ground = resolve(t, t["--fp-surface-1b"]);
+    for (const p of used) {
+      let bg = resolve(t, inline[`--color-${p.bg}`] ?? t[`--${p.bg}`]);
+      /* ORANGE TEXT is its own colour (`.text-brand` → --fp-brand-ink). */
+      let fg = resolve(t, p.fg === "brand" ? t["--fp-brand-ink"] : (inline[`--color-${p.fg}`] ?? t[`--${p.fg}`]));
+      if (!bg || !fg || !ground) continue;
+      bg = solid(bg, ground);
+      if (p.bga < 1) bg = over(bg, ground, p.bga);
+      fg = solid(fg, bg);
+      if (p.fga < 1) fg = over(fg, bg, p.fga);
+      const r = ratio(fg, bg);
+      /* THE BRAND FILL (logo, brand buttons) keeps its orange in every mode —
+         identity — so text on it is held to AA, not AAA. */
+      const need = p.bg === "brand" && p.bga === 1 ? 4.5 : 7;
+      rows.push({ mode, what: `Used: ${p.what}`, fg: `text-${p.fg}`, on: `bg-${p.bg}`, ratio: r, kind: "text", aa: r >= 4.5, aaa: r >= need, used: true });
     }
   }
   return rows;

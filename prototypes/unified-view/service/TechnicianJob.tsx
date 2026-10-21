@@ -992,7 +992,7 @@ function AssessmentCard({
             value={line.workType}
             onChange={(e) => onChange({ workType: e.target.value })}
             aria-label="Work type"
-            className="h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30"
+            className="h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-fp-field-fill"
           >
             {WORK_TYPE_NAMES.map((w) => (
               <option key={w} value={w}>{w}</option>
@@ -1139,7 +1139,7 @@ function NewTicket({
   const [ticketParts, setTicketParts] = React.useState<PartLine[]>([]);
   const setService = (i: number, p: Partial<ReturnType<typeof blankService>>) =>
     setServices((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)));
-  const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
+  const field = "h-11 rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-fp-field-fill";
   return (
     <>
       <TopBar title="New ticket" subtitle={`${job.customer} · ${job.shipTo}`} onBack={onBack} />
@@ -1361,7 +1361,7 @@ function TaskFees({ fees, onChange, locked }: { fees: FeeLine[]; onChange: (fees
   const [naming, setNaming] = React.useState<number | null>(null);
   const [draftName, setDraftName] = React.useState("");
   const custom = (f: FeeLine) => Boolean(f.name) && !FEE_BOOK.some((b) => b.name === f.name);
-  const field = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-input/30";
+  const field = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground dark:bg-fp-field-fill";
   if (locked) {
     return (
       <div className="flex flex-col gap-1">
@@ -1695,7 +1695,7 @@ export function RichText({
     { command: "insertOrderedList", label: "Numbered list", icon: <ListOrdered className="size-4" /> },
   ];
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-input dark:bg-input/30">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-input dark:bg-fp-field-fill">
       <div className="flex shrink-0 gap-1 border-b border-fp-outline-1 p-1">
         {tools.map((t) => (
           <button

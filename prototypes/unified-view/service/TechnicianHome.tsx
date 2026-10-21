@@ -810,7 +810,7 @@ function ChoiceField({
         type="button"
         disabled={disabled}
         onClick={onPress}
-        className="flex h-11 items-center justify-between rounded-md border border-input bg-transparent px-3 text-left text-sm active:bg-accent disabled:opacity-50 dark:bg-input/30"
+        className="flex h-11 items-center justify-between rounded-md border border-input bg-transparent px-3 text-left text-sm active:bg-accent disabled:opacity-50 dark:bg-fp-field-fill"
       >
         <span className={cn("truncate", value ? "text-foreground" : "text-muted-foreground")}>
           {value || placeholder}

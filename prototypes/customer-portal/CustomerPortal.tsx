@@ -14,7 +14,6 @@ import { useEventToasts } from "./notifications";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
-import { ThemeToggle } from "@/components/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ModuleSidebar } from "../unified-view/ModuleSidebar";
 import { OrdersScreen } from "./OrdersScreen";
@@ -145,7 +144,6 @@ export function CustomerPortal() {
             onNavigate={(area, sub) => go(sub ?? (area === "orders" ? "orders" : area))}
           />
         }
-        headerAction={<ThemeToggle />}
       >
         {/* A page is empty until it is designed. */}
         {page === "dashboard" ? (

@@ -12,8 +12,13 @@ import * as React from "react";
     stroke   0–100 → every rim, divider, field border, lane and chart colour:
              the theme's own value at 0, its WCAG value (3:1+) at 50, the
              MAXIMUM (5:1+) at 100
-    layers   0–100 → surfaces and text — foreground and background — the
-             same way: theme · WCAG (text AAA 7:1) · maximum
+    background 0–100 → the page, panels, cards and their steps, hover and
+             selected fills — theme · WCAG · maximum
+    ink      0–100 → secondary and coloured text (muted, status, brand,
+             violet, trend, pills) — theme · WCAG (text AAA 7:1) · maximum
+             (Pavan, 2026-10-21: Layers split into Background and Text)
+    TEXT ON A COLOUR FILL is automatic while either is on: white or dark,
+             whichever reads better on the fill as it now is
     screen   the display it's shown on — a laptop, a monitor, a large
              monitor, a TV or projector, or Auto (from this screen's size).
              It scales EVERYTHING — every component and view — by one zoom
@@ -30,17 +35,18 @@ export type ScreenSize = "auto" | "laptop" | "monitor" | "large" | "tv";
 export interface A11y {
   text: number;
   stroke: number;
-  layers: number;
+  background: number;
+  ink: number;
   screen: ScreenSize;
 }
-export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, layers: 0, screen: "laptop" };
+export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, background: 0, ink: 0, screen: "laptop" };
 
 /** Each screen's zoom — everything scales with it. */
-export const SCREENS: { key: Exclude<ScreenSize, "auto">; label: string; hint: string; zoom: number }[] = [
-  { key: "laptop", label: "Laptop", hint: "13–16 inch", zoom: 1 },
-  { key: "monitor", label: "Monitor", hint: "21–24 inch", zoom: 1.1 },
-  { key: "large", label: "Large monitor", hint: "27–34 inch", zoom: 1.25 },
-  { key: "tv", label: "TV or projector", hint: "Viewed from across a room", zoom: 1.5 },
+export const SCREENS: { key: Exclude<ScreenSize, "auto">; label: string; max: string; zoom: number }[] = [
+  { key: "laptop", label: "Laptop", max: "16″", zoom: 1 },
+  { key: "monitor", label: "Monitor", max: "24″", zoom: 1.1 },
+  { key: "large", label: "Large monitor", max: "34″", zoom: 1.25 },
+  { key: "tv", label: "TV or projector", max: "TV", zoom: 1.5 },
 ];
 /** AUTO — from this screen's width in points (a Mac's "looks like" size). */
 export function autoScreen(): Exclude<ScreenSize, "auto"> {
@@ -63,11 +69,12 @@ const STROKE = [
   "--fp-selected-border",
   "--fp-shell-marker",
   "--sidebar-border",
+  "--ring",
   ...["grey", "blue", "yellow", "green", "cyan", "purple", "pink", "orange", "red"].map((l) => `--fp-lane-${l}`),
   ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `--fp-viz-${n}`),
 ];
-/** Text and surfaces — the Layers slider. */
-const LAYERS = [
+/** Secondary and coloured text — the Text slider. */
+const INK = [
   "--fp-ink-3",
   "--fp-danger",
   "--destructive",
@@ -82,30 +89,43 @@ const LAYERS = [
   "--fp-banner-accent-caution",
   "--fp-banner-accent-warning",
   "--fp-banner-accent-success",
-  "--fp-banner-caution",
   "--accent-violet",
-  "--brand",
+  /* ORANGE TEXT — not --brand, which is the logo's and the brand buttons' fill. */
+  "--fp-brand-ink",
+  /* MAIN TEXT — pure black (white in dark) at the far end. */
+  "--fp-ink-1",
+  "--fp-ink-2",
+];
+/** The page, panels, cards, their steps, hover and selected fills — the Background slider. */
+const BACKGROUND = [
   "--fp-surface-base",
   "--fp-surface-1a",
   "--fp-card-1",
   "--fp-card-2",
   "--fp-card-3",
   "--fp-shell-ground",
+  "--fp-shell-selected",
   "--fp-emphasis",
   "--fp-emphasis-hover",
   "--fp-emphasis-quiet",
   "--fp-table-header",
   "--fp-board-lane",
   "--fp-row-hover",
+  "--fp-banner-caution",
 ];
-/** Text ON a fill — switches, never blends (a mid-grey on orange reads worse than either end). */
-const SWITCHED = [
-  "--accent-violet-foreground",
-  "--brand-foreground",
-  "--verified-foreground",
-  "--status-foreground",
-  "--status-success-foreground",
+/** TEXT ON A FILL — chosen, never blended: white or dark, whichever reads
+    better on the fill as the sliders left it. [text token, its fill]. */
+const ON_FILL: [string, string][] = [
+  ["--primary-foreground", "--primary"],
+  ["--brand-foreground", "--brand"],
+  ["--accent-violet-foreground", "--accent-violet"],
+  ["--verified-foreground", "--verified"],
+  ["--status-success-foreground", "--status-success"],
+  ["--status-foreground", "--status-success"],
+  ["--destructive-foreground", "--destructive"],
 ];
+const LIGHT_INK = "white";
+const DARK_INK = "black";
 
 function read<T>(key: string, fallback: T, parse: (v: string) => T | null): T {
   try {
@@ -121,14 +141,16 @@ const legacy = read<string | null>(THEME_KEY, null, (v) => v);
 let theme: Theme = legacy === "dark" || legacy === "wcag-dark" ? "dark" : "light";
 let a11y: A11y =
   legacy === "wcag-light" || legacy === "wcag-dark"
-    ? { ...A11Y_DEFAULT, text: 30, stroke: 50, layers: 50 }
+    ? { ...A11Y_DEFAULT, text: 30, stroke: 50, background: 50, ink: 50 }
     : read<A11y>(A11Y_KEY, A11Y_DEFAULT, (v) => {
         const o = JSON.parse(v) as Partial<A11y>;
         const n = (x: unknown, d: number) => (Number.isFinite(Number(x)) && x !== null && x !== undefined ? Number(x) : d);
         return {
           text: n(o.text, 0),
           stroke: n(o.stroke, 0),
-          layers: n(o.layers, 0),
+          /* THE OLD Layers SLIDER BECOMES BOTH. */
+          background: n(o.background, n((o as { layers?: number }).layers, 0)),
+          ink: n(o.ink, n((o as { layers?: number }).layers, 0)),
           screen: (["auto", "laptop", "monitor", "large", "tv"] as const).includes(o.screen as ScreenSize) ? (o.screen as ScreenSize) : "laptop",
         };
       });
@@ -151,6 +173,7 @@ export function applySettings() {
   const style = root.style;
   root.classList.toggle("dark", theme === "dark");
   root.classList.remove("wcag", "a11y-max");
+  root.classList.remove("a11y-ink", "a11y-frame");
 
   /* TYPE — 100%–130%; the units around it are fitted after. */
   const scale = 1 + (a11y.text / 100) * 0.3;
@@ -168,9 +191,20 @@ export function applySettings() {
   style.removeProperty("filter");
 
   /* COLOURS — read both ends in one pass, then mix. */
-  const all = [...STROKE, ...LAYERS, ...SWITCHED];
+  const all = [...STROKE, ...INK, ...BACKGROUND, ...ON_FILL.map(([t]) => t)];
   all.forEach((t) => style.removeProperty(t));
-  if (a11y.stroke !== 0 || a11y.layers !== 0) mixContrast(root, all);
+  if (a11y.stroke !== 0 || a11y.background !== 0 || a11y.ink !== 0) mixContrast(root, all);
+  if (a11y.background !== 0 || a11y.ink !== 0) textOnFills(root);
+  /* THE DARK FRAME — Component background 80%+ in the light theme: the shell
+     ground and the selected nav item jump to near black, white text on them
+     (Pavan, 2026-10-21 — no grey between ~#5a and #95 reads at 7:1 either
+     way, so it jumps rather than fades). */
+  const frame = theme === "light" && a11y.background >= 80;
+  root.classList.toggle("a11y-frame", frame);
+  if (frame) {
+    style.setProperty("--fp-shell-ground", "var(--fp-frame-ground)");
+    style.setProperty("--fp-shell-selected", "var(--fp-frame-selected)");
+  }
 }
 
 function mixContrast(root: HTMLElement, all: string[]) {
@@ -193,8 +227,66 @@ function mixContrast(root: HTMLElement, all: string[]) {
     if (value !== from[t]) style.setProperty(t, value);
   };
   STROKE.forEach((t) => mix(t, a11y.stroke));
-  LAYERS.forEach((t) => mix(t, a11y.layers));
-  SWITCHED.forEach((t) => a11y.layers >= 25 && to[t] && style.setProperty(t, to[t]));
+  /* TEXT NEVER SITS BELOW ITS GROUND — past the middle, Component background
+     darkens the greys, so Text colour rises with it (it can go further, not
+     less). */
+  const ink = Math.max(a11y.ink, a11y.background);
+  INK.forEach((t) => mix(t, ink));
+  /* Faded labels come up to full past the middle (CSS `.a11y-ink`). */
+  root.classList.toggle("a11y-ink", ink >= 50);
+  BACKGROUND.forEach((t) => mix(t, a11y.background));
+}
+
+/* A COLOUR AS IT NOW RENDERS — a probe swatch read back as rgb(). */
+function rgbOf(value: string): [number, number, number] | null {
+  const el = document.createElement("span");
+  el.style.color = value;
+  el.style.display = "none";
+  document.body.appendChild(el);
+  const c = getComputedStyle(el).color;
+  el.remove();
+  /* A color-mix comes back in the space it was mixed in — oklab here. */
+  const ok = /oklab\((-?[\d.]+) (-?[\d.]+) (-?[\d.]+)/.exec(c);
+  if (ok) {
+    const [L, A, B] = [Number(ok[1]), Number(ok[2]), Number(ok[3])];
+    const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+    const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+    const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+    const lin = [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ];
+    const enc = (x: number) => {
+      const v = Math.min(1, Math.max(0, x));
+      return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055;
+    };
+    return [enc(lin[0]), enc(lin[1]), enc(lin[2])];
+  }
+  /* …or as color(srgb r g b) in 0–1; plain colours as rgb(). */
+  const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/.exec(c);
+  if (srgb) return [Number(srgb[1]), Number(srgb[2]), Number(srgb[3])];
+  const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(c);
+  return m ? [Number(m[1]) / 255, Number(m[2]) / 255, Number(m[3]) / 255] : null;
+}
+const luminance = ([r, g, b]: [number, number, number]) => {
+  const l = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * l(r) + 0.7152 * l(g) + 0.0722 * l(b);
+};
+const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
+/** WHITE OR DARK on each fill, whichever reads better (Pavan, 2026-10-21). */
+function textOnFills(root: HTMLElement) {
+  const cs = getComputedStyle(root);
+  const white = 1;
+  const dark = luminance(rgbOf(DARK_INK)!);
+  for (const [fg, fill] of ON_FILL) {
+    const v = cs.getPropertyValue(fill).trim();
+    const c = v && rgbOf(v);
+    if (!c) continue;
+    const l = luminance(c);
+    root.style.setProperty(fg, contrast(white, l) >= contrast(dark, l) ? LIGHT_INK : DARK_INK);
+  }
 }
 
 export function setTheme(t: Theme) {

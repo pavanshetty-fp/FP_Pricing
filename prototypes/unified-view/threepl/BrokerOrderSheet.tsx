@@ -2665,7 +2665,7 @@ export function BrokerOrderSheet({
 
                      THE `dark:` HALF IS NOT BELT-AND-BRACES (Pavan,
                      2026-09-22 — "the hover state seems off"). The `outline`
-                     variant carries `dark:hover:bg-input/50`, which is a
+                     variant carries `dark:hover:bg-fp-field-fill-hover`, which is a
                      later-stacked variant of the same specificity and so BEAT
                      the plain `hover:bg-status-success`: in dark the fill
                      never went green at all. The text still switched to

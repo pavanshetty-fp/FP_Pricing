@@ -8,10 +8,10 @@
          hand on the toggle, before first paint to avoid a flash. -->
     <script>
       try {
-        /* light · dark · wcag-light · wcag-dark (Pavan, 2026-10-21) */
+        /* The theme before first paint; the Accessibility settings follow
+           once the app loads (src/components/theme/a11y.ts). */
         var t = localStorage.getItem("fp-theme-choice");
         if (t === "dark" || t === "wcag-dark") document.documentElement.classList.add("dark");
-        if (t === "wcag-light" || t === "wcag-dark") document.documentElement.classList.add("wcag");
       } catch (e) {}
     </script>
   </head>

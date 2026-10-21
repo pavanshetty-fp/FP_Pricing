@@ -141,7 +141,7 @@ function DropdownMenuRadioItem({
           a radio in a menu and a radio in a form are the same object. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-2 flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-input shadow-xs dark:bg-input/30"
+        className="pointer-events-none absolute left-2 flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-input shadow-xs dark:bg-fp-field-fill"
       >
         <DropdownMenuPrimitive.ItemIndicator>
           <CircleIcon className="size-2 fill-primary text-primary" />

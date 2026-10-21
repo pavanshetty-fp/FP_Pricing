@@ -969,18 +969,28 @@ no window.
 
 ## 10n. Accessibility panel — text size and contrast (Pavan, 2026-10-21)
 
-**The theme switcher is Light / Dark only.** Everything else lives in the
+**There is no header theme icon any more** (2026-10-21) — Light / Dark is
+the first control of the Accessibility panel. Everything lives in the
 **Accessibility** item at the foot of the main navigation (every module —
 `ModuleSidebar`). Its panel opens beside the nav, changes the page live, and
 is saved:
 
+In this order (Pavan, 2026-10-21): Theme on top; Text size and Text colour
+together; Component stroke and Component background; a divider; Screen size.
+Reset is the header's icon alone.
+
 | Control | Range | Moves |
 |---|---|---|
 | Theme | Light · Dark | the same switch as the header's |
-| Text size | 100% – 130% | **the text only** — the type ramp (xs, sm, base, lg and the fixed tiny sizes), weights +75 at 130% (Geist is variable). A unit — the nav, a board lane, a sheet and its table columns — widens only when the bigger text would be cut inside it, and only as far as it takes (measured: what's already cut at 100% doesn't count) |
-| Screen size | Auto · Laptop 100% · Monitor 110% · Large monitor 125% · TV or projector 150% | EVERYTHING — every component and view — by one zoom, for the display it's on (an extension or a mirror of the laptop). Auto picks from the screen's width and follows the window to another screen |
-| Contrast · Stroke | Default · WCAG (middle) · Maximum | card rims, dividers, field borders, focus/selection rims, lane and chart colours |
-| Contrast · Layers | Default · WCAG (middle) · Maximum | foreground and background: muted, status and pill text, text on fills, and the surface steps |
+| Text size | 100% – 130% | **the text only** — type ramp and weights; a unit widens only when the bigger text would be cut inside it; table headers wrap |
+| Text colour | Default → Maximum | main text (to pure black / white), secondary and coloured text, and orange text (`--fp-brand-ink`); past the middle, faded labels (main or muted text at 35–80%, e.g. nav items) come up to full. **The brand fill — the logo, brand buttons — never moves.** It never sits below Component background (rises with it) |
+| Component stroke | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border colour (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
+| Component background | Default → Maximum | **whites stay white, greys go darker** toward dark grey — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker grey**, not a deeper beige; the **selected nav item** goes much darker; text on those greys goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no grey between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
+| Screen size | stepped: 16″ · 24″ · 34″ · TV (100 · 110 · 125 · 150%), or Auto | everything, by one zoom |
+| Text on a colour fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
+
+The WCAG point sits at each contrast slider's middle (not labelled); Maximum
+is its far end.
 
 **Maximum** (the far end, past WCAG — `.a11y-max` blocks) darkens every rim
 and divider to 5:1+ in light (brightens in dark), deepens the surface steps,
@@ -1002,8 +1012,11 @@ the **same hue** that clears the bar. `src/components/theme/a11y.ts` mixes
 each token between the two points either side of the slider; text on a fill
 switches at a quarter rather than blending.
 
-**Checked, not remembered.** `npm run eval` → `wcag-contrast` fails any WCAG
-or Maximum pair under its bar; `npm run wcag` prints Light, Dark, WCAG and
+**Checked, not remembered.** `npm run eval` → `wcag-contrast` measures every
+pairing the screens actually use — each class string that sets a background
+and a text colour together, with their opacities (68 today) — plus a hand
+list for rims, dividers, lanes and charts, and fails any WCAG or Maximum pair
+under its bar; `npm run wcag` prints Light, Dark, WCAG and
 Maximum for each theme.
 
 **Anything sized to the window** uses `var(--fp-vw)` / `var(--fp-vh)`, never
@@ -1013,8 +1026,30 @@ Maximum for each theme.
 (inside a sheet), or uses `--fp-nav-k` / `--fp-lane-k`; a new kind of unit is
 added to `UNITS` in `a11y.ts` so it's fitted too.
 **A new colour token** gets its WCAG light and dark values, a pair in
-`scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke or Layers
-list.
+`scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke, Background or
+Text list (or `ON_FILL` if it's text on a fill).
+
+## 10o. Dark theme layers — separated by default (Pavan, 2026-10-21)
+
+The default Dark ladder was a few RGB steps apart (a board card on its lane:
+1.08:1, no card rim), so layers ran together. It's now spaced so each layer
+reads on its own, and the Accessibility sliders only go up from here:
+
+| Layer | Was | Now |
+|---|---|---|
+| Ground / board lane (`--fp-surface-base`) | #0f1216 | #07080a |
+| Content layer, cards, sheets (`--fp-surface-1b`) | #161a20 | #1d222a |
+| Inset panel (`--fp-surface-1a`, drawer) | #20252c | #272c35 |
+| Raised (`--fp-card-1`, emphasis, chip) | #282d35 | #2e343e |
+| Quiet step (`--fp-card-2`, table header, nav panel) | #1b1f25 | #23282f |
+| Card rim (`--fp-outline-1`) | transparent | #3d4550 |
+| Divider (`--fp-stroke-hairline`) | #242930 | #343b45 |
+| Field border (`--fp-stroke-field`) | #30363f | #474f5b |
+| Hover rim (`--fp-outline-2`) | #3a414b | #555e6b |
+| Muted text (`--fp-ink-3`) | #8f96a0 | #a0a7b0 |
+
+Card on lane 1.08 → 1.25:1, rim on lane none → 2.1:1, field border 1.3 →
+1.7:1. Light is unchanged.
 
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 

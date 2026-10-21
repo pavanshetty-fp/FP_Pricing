@@ -45,7 +45,6 @@ import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ModuleSidebar } from "./ModuleSidebar";
 import { ModuleSkeleton } from "./ModuleSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ThemeToggle } from "@/components/theme";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
 import { TechniciansScreen } from "./service/TechniciansScreen";
@@ -862,7 +861,6 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         }
         /* Export moved onto the preset-view row next to Create Order, so the
            page header carries only the theme toggle. */
-        headerAction={<ThemeToggle />}
       >
         {/* WHILE A MODULE LOADS, its page is shimmering placeholders
             (Pavan, 2026-10-10). */}

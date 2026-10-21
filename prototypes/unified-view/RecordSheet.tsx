@@ -532,16 +532,17 @@ export function RecordSheet({
         style={
           {
             "--fp-sheet-gap": level === 2 ? "112px" : "56px",
-            "--fp-sheet-w": `${width}px`,
+            /* SCALED IN THE WCAG MODES — wider text, wider sheet (§10n). */
+            "--fp-sheet-w": `calc(${width}px * var(--fp-scale, 1))`,
           } as React.CSSProperties
         }
         className={cn(
           "gap-0 p-0",
           fills
             ? /* FULL — the intense forms, and any sheet showing its step column. */
-              "w-[calc(100vw-var(--fp-sheet-gap))] sm:max-w-[calc(100vw-var(--fp-sheet-gap))]"
+              "w-[calc(var(--fp-vw)-var(--fp-sheet-gap))] sm:max-w-[calc(var(--fp-vw)-var(--fp-sheet-gap))]"
             : /* THE CONTENT'S WIDTH, clamped by the gap (`--fp-sheet-w`). */
-              "w-[min(var(--fp-sheet-w),calc(100vw-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(100vw-var(--fp-sheet-gap)))]"
+              "w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))]"
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">

@@ -761,6 +761,55 @@ section's minus removes it. Used on: 3PL Delivery Order, Portal order.
 Service orders don't repeat (Agreements / Maintenance do), Sales orders have
 no window.
 
+## 10n. Accessibility panel — text size and contrast (Pavan, 2026-10-21)
+
+**The theme switcher is Light / Dark only.** Everything else lives in the
+**Accessibility** item at the foot of the main navigation (every module —
+`ModuleSidebar`). Its panel opens beside the nav, changes the page live, and
+is saved:
+
+| Control | Range | Moves |
+|---|---|---|
+| Theme | Light · Dark | the same switch as the header's |
+| Text size | 100% – 130% | **the text only** — the type ramp (xs, sm, base, lg and the fixed tiny sizes), weights +75 at 130% (Geist is variable). A unit — the nav, a board lane, a sheet and its table columns — widens only when the bigger text would be cut inside it, and only as far as it takes (measured: what's already cut at 100% doesn't count) |
+| Screen size | Auto · Laptop 100% · Monitor 110% · Large monitor 125% · TV or projector 150% | EVERYTHING — every component and view — by one zoom, for the display it's on (an extension or a mirror of the laptop). Auto picks from the screen's width and follows the window to another screen |
+| Contrast · Stroke | Default · WCAG (middle) · Maximum | card rims, dividers, field borders, focus/selection rims, lane and chart colours |
+| Contrast · Layers | Default · WCAG (middle) · Maximum | foreground and background: muted, status and pill text, text on fills, and the surface steps |
+
+**Maximum** (the far end, past WCAG — `.a11y-max` blocks) darkens every rim
+and divider to 5:1+ in light (brightens in dark), deepens the surface steps,
+and pushes text further while keeping it at 7:1 on the darker surfaces.
+
+**Always reachable, always resettable (Pavan, 2026-10-21).** The panel is
+pinned beside the nav at the window's foot (not a measured popover, which a
+zoomed page misplaces) and never wider or taller than the window. **Reset to
+default** sits at its top; the same reset is **⌘⌥0** (Ctrl+Alt+0) anywhere,
+and `?a11y=reset` in the address. When a Screen size leaves the window
+narrower than the app's 1280px layout, the **page scrolls sideways** (with a
+visible bar) instead of clipping — every control stays reachable.
+
+**The WCAG point** is the `.wcag:not(.dark)` / `.dark.wcag` blocks in
+`src/index.css`: text **AAA 7:1** on every surface, controls and graphics
+**AA 3:1**, every rim and divider **3:1+**, surfaces a full step apart (so
+cards hold up mirrored or projected). Each value is the nearest colour of
+the **same hue** that clears the bar. `src/components/theme/a11y.ts` mixes
+each token between the two points either side of the slider; text on a fill
+switches at a quarter rather than blending.
+
+**Checked, not remembered.** `npm run eval` → `wcag-contrast` fails any WCAG
+or Maximum pair under its bar; `npm run wcag` prints Light, Dark, WCAG and
+Maximum for each theme.
+
+**Anything sized to the window** uses `var(--fp-vw)` / `var(--fp-vh)`, never
+`100vw` / `100vh` / `h-screen` — a zoomed page multiplies viewport units too.
+
+**A new fixed width that holds text** is written `w-[calc(Npx*var(--fp-scale))]`
+(inside a sheet), or uses `--fp-nav-k` / `--fp-lane-k`; a new kind of unit is
+added to `UNITS` in `a11y.ts` so it's fitted too.
+**A new colour token** gets its WCAG light and dark values, a pair in
+`scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke or Layers
+list.
+
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,

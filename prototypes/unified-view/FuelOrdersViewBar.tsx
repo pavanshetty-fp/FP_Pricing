@@ -188,7 +188,7 @@ const tabCls = (isActive: boolean) =>
        centred tab floated a couple of pixels clear of the hairline and its 2px
        underline read as a second, parallel line. Bottom-aligned, the two meet:
        the tab's rule lands on the divider with nothing between them. */
-    "self-end px-3 py-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+    "self-end px-3 py-2 text-xs whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
     isActive
       ? "font-medium text-foreground"
       : "text-muted-foreground hover:text-foreground"

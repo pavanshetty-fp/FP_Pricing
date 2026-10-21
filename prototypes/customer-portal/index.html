@@ -7,8 +7,10 @@
     <!-- Light by default, as the Unified View: dark only when picked by hand. -->
     <script>
       try {
-        if (localStorage.getItem("fp-theme-choice") === "dark")
-          document.documentElement.classList.add("dark");
+        /* light · dark · wcag-light · wcag-dark (Pavan, 2026-10-21) */
+        var t = localStorage.getItem("fp-theme-choice");
+        if (t === "dark" || t === "wcag-dark") document.documentElement.classList.add("dark");
+        if (t === "wcag-light" || t === "wcag-dark") document.documentElement.classList.add("wcag");
       } catch (e) {}
     </script>
   </head>

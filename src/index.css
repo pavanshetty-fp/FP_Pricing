@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -411,18 +411,19 @@
   --color-pastel-green: var(--pastel-green);
   --color-pastel-green-foreground: var(--pastel-green-foreground);
   /* Kanban lane accents (27631:11154) — theme-independent palette used for the
-     lane top-strip + count pill. Literal values (same in light/dark). */
-  --color-fp-lane-grey: #64748b;
-  --color-fp-lane-blue: #3b82f6;
-  --color-fp-lane-yellow: #eab308;
-  --color-fp-lane-green: #22c55e;
-  --color-fp-lane-cyan: #06b6d4;
-  --color-fp-lane-purple: #6366f1;
+     lane top-strip + count pill. Values in :root (--fp-lane-*), so the WCAG
+     modes can swap them (2026-10-21). */
+  --color-fp-lane-grey: var(--fp-lane-grey);
+  --color-fp-lane-blue: var(--fp-lane-blue);
+  --color-fp-lane-yellow: var(--fp-lane-yellow);
+  --color-fp-lane-green: var(--fp-lane-green);
+  --color-fp-lane-cyan: var(--fp-lane-cyan);
+  --color-fp-lane-purple: var(--fp-lane-purple);
   /* MAPPED TO THE ACCENT (2026-10-16) — one violet in the system. */
   --color-fp-lane-violet: var(--accent-violet);
-  --color-fp-lane-pink: #d946ef;
-  --color-fp-lane-orange: #f59e0b;
-  --color-fp-lane-red: #f43f5e;
+  --color-fp-lane-pink: var(--fp-lane-pink);
+  --color-fp-lane-orange: var(--fp-lane-orange);
+  --color-fp-lane-red: var(--fp-lane-red);
   /* Chart palette (449:6176) — categorical series colors, theme-independent.
      chart-1 = brand. Used by Recharts cards on the Dashboard. */
   /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
@@ -611,6 +612,37 @@
      aliases this in light: the Figma sync moved it to red/500 (#ef4444, 3.76),
      so the two are independent in light and rejoin in dark. */
   --fp-danger: #dc2626;
+  /* The one-panel sidebar's width (WCAG widens it with its text). */
+  /* FIXED WIDTHS THAT HOLD TEXT (sheets, table columns, the nav, board
+     lanes) multiply by this; the Accessibility panel's Text size raises it
+     (1–1.3, §10n). */
+  --fp-scale: 1;
+  /* THE SCREEN-SIZE ZOOM (Accessibility panel) — set on <html> by a11y.ts.
+     A zoomed page multiplies viewport units too, so anything sized to the
+     window uses these instead of 100vw / 100vh (§10n). */
+  --fp-zoom: 1;
+  --fp-vw: calc(100vw / var(--fp-zoom));
+  --fp-vh: calc(100dvh / var(--fp-zoom));
+  /* TEXT GROWS; BOXES DON'T (Pavan, 2026-10-21) — the Text size slider sets
+     --fp-text-scale. A unit widens only when the bigger text would be cut
+     inside it: a11y.ts measures and sets --fp-nav-k (the nav), --fp-lane-k
+     (board lanes) and --fp-scale (sheets and their table columns). */
+  --fp-text-scale: 1;
+  --fp-nav-k: 1;
+  --fp-lane-k: 1;
+  --fp-nav-width: calc(15rem * var(--fp-nav-k));
+  --fp-board-lane-width: calc(400px * var(--fp-lane-k));
+  --fp-board-column-width: calc(320px * var(--fp-lane-k));
+  /* Lane accents — the same in light and dark; WCAG swaps them. */
+  --fp-lane-grey: #64748b;
+  --fp-lane-blue: #3b82f6;
+  --fp-lane-yellow: #eab308;
+  --fp-lane-green: #22c55e;
+  --fp-lane-cyan: #06b6d4;
+  --fp-lane-purple: #6366f1;
+  --fp-lane-pink: #d946ef;
+  --fp-lane-orange: #f59e0b;
+  --fp-lane-red: #f43f5e;
 
   /* ------------------------------------------------------------------
      LAYER 2 — SEMANTICS. No literals. Tokens whose primitive is the same in
@@ -1083,4 +1115,244 @@
     filter: invert(1);
   }
 
+}
+
+/* =========================================================================
+   WCAG VALUES (Pavan, 2026-10-21; DS ui §10n) — the far end of the
+   Accessibility panel's Stroke and Layers sliders (src/components/theme/
+   a11y.ts mixes each token between the theme's value and these). SAME
+   LAYOUT, SAME COMPONENTS — only tokens move:
+
+     text          AAA — 7:1 on every surface it sits on (WCAG 1.4.6)
+     controls,     AA  — 3:1: field and card rims, focus ring, selection
+     graphics           rim, lane accents, chart series (WCAG 1.4.11)
+     type          one step larger and heavier; nothing under 9px
+
+   Every value was found the same way: the nearest colour of the SAME HUE
+   that clears the bar on every surface it is used on, so the modes still
+   read as FleetPanda. `npm run eval` → `wcag-contrast` checks them.
+   ========================================================================= */
+
+/* ── type, from the Accessibility panel's Text size (--fp-text-scale 1–1.3) ── */
+.a11y-text {
+  --text-xs: calc(0.75rem * var(--fp-text-scale));
+  --text-sm: calc(0.875rem * var(--fp-text-scale));
+  --text-base: calc(1rem * var(--fp-text-scale));
+  --text-lg: calc(1.125rem * var(--fp-text-scale));
+  /* HEAVIER AS IT GROWS — Geist is variable: +75 at 130%. */
+  --font-weight-normal: calc(400 + (var(--fp-text-scale) - 1) * 250);
+  --font-weight-medium: calc(500 + (var(--fp-text-scale) - 1) * 250);
+  --font-weight-semibold: calc(600 + (var(--fp-text-scale) - 1) * 250);
+  --font-weight-bold: calc(700 + (var(--fp-text-scale) - 1) * 250);
+}
+.a11y-text body {
+  font-weight: var(--font-weight-normal);
+}
+/* THE FIXED TINY SIZES — counts in badges, axis ticks — grow too. */
+.a11y-text .text-\[7px\] {
+  font-size: calc(7px * var(--fp-text-scale));
+}
+.a11y-text .text-\[9px\] {
+  font-size: calc(9px * var(--fp-text-scale));
+}
+.a11y-text .text-\[10px\] {
+  font-size: calc(10px * var(--fp-text-scale));
+}
+.a11y-text .text-\[11px\] {
+  font-size: calc(11px * var(--fp-text-scale));
+}
+.a11y-text .text-\[13px\] {
+  font-size: calc(13px * var(--fp-text-scale));
+}
+
+/* ── WCAG light ───────────────────────────────────────────────────────── */
+.wcag:not(.dark) {
+  /* text — 7:1 */
+  --fp-ink-3: #3a424e; /* muted text and placeholders; was 5.1 */
+  --fp-danger: #8c1515;
+  --destructive: #8c1515;
+  --status-success: #0e5328;
+  --status-processing: #763606;
+  --status-pink: #951950;
+  --verified: #1144b5;
+  --fp-selected-strong: #873400;
+  --fp-trend-up: #1f5c3e;
+  --fp-trend-down: #81344b;
+  --fp-banner-accent-info: #173ca8;
+  --fp-banner-accent-caution: #763606;
+  --fp-banner-accent-warning: #9a1717;
+  --fp-banner-accent-success: #0e5328;
+  --fp-banner-caution: #74430b;
+  --accent-violet: #4f0de6;
+  /* the brand as a fill under white text (7:1), and as the focus ring */
+  --brand: #963c00;
+  /* controls and graphics — 3:1 */
+  --fp-stroke-field: #5f5f69;
+  --fp-outline-2: #5f5f69;
+  /* SEPARATION THAT SURVIVES A PROJECTOR (Pavan, 2026-10-21) — every rim
+     and divider at 3:1 or more, and the surfaces a full step apart. */
+  --fp-outline-1: #7c7c86;
+  --fp-stroke-hairline: #7c7c86;
+  --fp-shell-rim: #7c7c86;
+  --fp-shell-guide: #8a8a94;
+  --fp-surface-base: #e4e4dd;
+  --fp-surface-1a: #eef0f4;
+  --fp-card-1: #e2e6ed;
+  --fp-card-2: #eef0f4;
+  --fp-card-3: #f3f4f7;
+  --fp-shell-ground: #e6e6e1;
+  --fp-emphasis: #dfe2e8;
+  --fp-emphasis-hover: #e6e9ef;
+  --fp-emphasis-quiet: #eceef1;
+  --fp-table-header: #e9ecf1;
+  --fp-board-lane: #e9ecf1;
+  --fp-row-hover: #e6e9ef;
+  --fp-selected-border: #d35400;
+  --fp-shell-marker: #2a5645;
+  --fp-lane-yellow: #a67f06;
+  --fp-lane-green: #1a9848;
+  --fp-lane-cyan: #0592aa;
+  --fp-lane-pink: #c026d3;
+  --fp-lane-orange: #b97708;
+  --fp-lane-red: #e11d48;
+  --fp-viz-3: #189c6d;
+  --fp-viz-4: #b97e00;
+  --fp-viz-5: #e2598c;
+}
+
+/* ── WCAG dark ────────────────────────────────────────────────────────── */
+.dark.wcag {
+  /* text — 7:1 */
+  --fp-ink-3: #c3c8ce; /* was 4.6 */
+  --fp-danger: #fbaeae;
+  --status-success: #39dd75;
+  --status-processing: #f7b646;
+  --status-pink: #ff9e9e;
+  --verified: #93bafa;
+  --fp-trend-up: #64cc99;
+  --fp-trend-down: #eba6b9;
+  --fp-banner-accent-info: #b4c0fd;
+  --accent-violet: #c4acfa;
+  --brand: #ff761b;
+  /* LIGHT FILLS TAKE DARK TEXT — white on them would fail. */
+  --accent-violet-foreground: #0f1216;
+  --brand-foreground: #0f1216;
+  --verified-foreground: #0f1216;
+  --status-foreground: #0f1216;
+  --status-success-foreground: #052e16;
+  /* controls and graphics — 3:1 */
+  --fp-stroke-field: #9aa5b6;
+  --fp-outline-2: #9aa5b6;
+  /* SEPARATION THAT SURVIVES A PROJECTOR (Pavan, 2026-10-21) — cards get
+     rims again, every rim and divider at 3:1 or more, surfaces a full step. */
+  --fp-outline-1: #7d899c;
+  --fp-stroke-hairline: #7d899c;
+  --sidebar-border: #7d899c;
+  --fp-surface-base: #0a0c0f;
+  --fp-surface-1a: #272d36;
+  --fp-card-1: #2c333d;
+  --fp-card-2: #1f242b;
+  --fp-card-3: #1c2026;
+  --fp-emphasis: #2c333d;
+  --fp-emphasis-hover: #353d48;
+  --fp-row-hover: #222830;
+  --fp-selected-border: #636f80;
+  --fp-shell-marker: #80c7aa;
+}
+
+/* ── MAXIMUM — the far end of Stroke and Layers, past WCAG (Pavan,
+   2026-10-21: "more contrast on sliding"). Sliders run Default → WCAG at
+   the middle → this. Text still 7:1 on every (darker) surface; rims and
+   dividers 5:1 and more. Tokens not named here stay at their WCAG value. */
+.a11y-max:not(.dark) {
+  --fp-ink-3: #373f4b;
+  --fp-danger: #7e1313;
+  --destructive: #7e1313;
+  --status-success: #0c4923;
+  --status-processing: #672f05;
+  --status-pink: #791441;
+  --verified: #0e3793;
+  --fp-selected-strong: #6e2a00;
+  --fp-trend-up: #184730;
+  --fp-trend-down: #682a3c;
+  --fp-banner-accent-info: #143595;
+  --fp-banner-accent-caution: #672f05;
+  --fp-banner-accent-warning: #7e1313;
+  --fp-banner-accent-success: #0c4923;
+  --fp-banner-caution: #5f370a;
+  --accent-violet: #400bbb;
+  --brand: #7a3100;
+  --fp-stroke-field: #3f3f48;
+  --fp-outline-2: #3f3f48;
+  --fp-outline-1: #52525c;
+  --fp-stroke-hairline: #52525c;
+  --fp-shell-rim: #52525c;
+  --fp-shell-guide: #6b6b75;
+  --fp-selected-border: #a64300;
+  --fp-shell-marker: #1f4233;
+  --fp-lane-blue: #196cf4;
+  --fp-lane-yellow: #916f05;
+  --fp-lane-green: #17863f;
+  --fp-lane-cyan: #048095;
+  --fp-lane-orange: #a16807;
+  --fp-lane-purple: #5f62f1;
+  --fp-surface-base: #d6d6ce;
+  --fp-surface-1a: #e2e5eb;
+  --fp-card-1: #d3d8e1;
+  --fp-card-2: #e2e5eb;
+  --fp-card-3: #eceef2;
+  --fp-shell-ground: #d9d9d3;
+  --fp-emphasis: #d0d4dc;
+  --fp-emphasis-hover: #d8dce3;
+  --fp-emphasis-quiet: #dfe2e8;
+  --fp-table-header: #dce0e7;
+  --fp-board-lane: #dce0e7;
+  --fp-row-hover: #d8dce3;
+}
+.dark.a11y-max {
+  --fp-ink-3: #d0d4d9;
+  --fp-danger: #fcc6c6;
+  --status-success: #7ce9a4;
+  --status-processing: #f9cc7f;
+  --status-pink: #ffc6c6;
+  --verified: #bdd5fc;
+  --fp-trend-up: #a2e0c2;
+  --fp-trend-down: #f3c8d4;
+  --fp-banner-accent-info: #c8d1fe;
+  --fp-banner-accent-warning: #fdc5c5;
+  --accent-violet: #dbccfc;
+  --brand: #ff9a52;
+  --fp-stroke-field: #b9c3d2;
+  --fp-outline-2: #b9c3d2;
+  --fp-outline-1: #a3aebe;
+  --fp-stroke-hairline: #a3aebe;
+  --sidebar-border: #a3aebe;
+  --fp-selected-border: #8b96a8;
+  --fp-shell-marker: #a5d9c3;
+  --fp-surface-base: #000000;
+  --fp-surface-1a: #303843;
+  --fp-card-1: #353e4a;
+  --fp-card-2: #252b33;
+  --fp-card-3: #20252c;
+  --fp-emphasis: #353e4a;
+  --fp-emphasis-hover: #3f4956;
+  --fp-row-hover: #2a313a;
+}
+
+/* ── ZOOMED PAST THE ROOM (Pavan, 2026-10-21) — a larger Screen size on a
+   narrow window would clip the app's right side (header actions, toolbars).
+   The app keeps its narrowest laid-out width and the PAGE SCROLLS sideways
+   instead, with a visible bar, so every control stays reachable. */
+html.a11y-zoom {
+  overflow-x: auto;
+}
+html.a11y-zoom body {
+  min-width: 1280px;
+}
+html.a11y-zoom::-webkit-scrollbar {
+  height: 12px;
+}
+html.a11y-zoom::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: var(--fp-outline-2);
 }

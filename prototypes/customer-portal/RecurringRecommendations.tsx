@@ -99,7 +99,7 @@ export function RecurringRecommendations({ onCreate }: { onCreate: (r: PortalRec
           side="right"
           showCloseButton={false}
           className="gap-0 p-0"
-          style={{ width: `min(${width}px, calc(100vw - 56px))`, maxWidth: `min(${width}px, calc(100vw - 56px))` }}
+          style={{ width: `min(${width}px, calc(var(--fp-vw) - 56px))`, maxWidth: `min(${width}px, calc(var(--fp-vw) - 56px))` }}
         >
           <div className="flex items-start justify-between gap-4 border-b border-border p-4">
             <div className="flex min-w-0 flex-col gap-0.5">

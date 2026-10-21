@@ -281,7 +281,7 @@ export function RuleRecommendations({
              table at comfortable widths — customer, ship-to, products,
              total — plus the card's and the list's padding; a sheet over a
              sheet, so never wider than the screen less two gaps. */
-          className="z-[60] w-[min(var(--fp-rec-w),calc(100vw-112px))] gap-0 p-0 sm:max-w-[min(var(--fp-rec-w),calc(100vw-112px))]"
+          className="z-[60] w-[min(var(--fp-rec-w),calc(var(--fp-vw)-112px))] gap-0 p-0 sm:max-w-[min(var(--fp-rec-w),calc(var(--fp-vw)-112px))]"
           style={{ "--fp-rec-w": `${fitWidth({ tables: [[CELL.name, CELL.name, CELL.name, CELL.number]] }) + 24}px` } as React.CSSProperties}
         >
           <div className="flex items-start justify-between gap-4 border-b border-border p-4">

@@ -56,7 +56,8 @@ export function BoardView({ rows }: BoardViewProps) {
         return (
           <div
             key={lane.status}
-            className="flex h-full w-[320px] shrink-0 flex-col overflow-hidden rounded-md bg-accent"
+            data-fp-unit="lane"
+            className="flex h-full w-(--fp-board-column-width) shrink-0 flex-col overflow-hidden rounded-md bg-accent"
           >
             <div className={cn("h-1 w-full shrink-0", lane.accent)} />
             <div className="flex shrink-0 items-center gap-2 px-4 py-3">

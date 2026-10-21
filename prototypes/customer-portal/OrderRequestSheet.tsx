@@ -210,21 +210,21 @@ export function LinesTable({
     /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
        than closing the asset and product cells. */
     <div className="overflow-x-auto">
-    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[888px]" : "min-w-[772px]")}>
+    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[calc(888px*var(--fp-scale))]" : "min-w-[calc(772px*var(--fp-scale))]")}>
       {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order.
           WHAT THE ORDER DOES TO THE TANK FIRST (Pavan, 2026-10-17): its level
           now, the % on fulfilment, and while ordering days to empty (the
           suggested quantity is the Qty cell's placeholder, 2026-10-20). THEN TOP OFF, AND THE QUANTITY LAST (Pavan,
           2026-10-20) — the figure the readings lead to, at the row's end. */}
       <colgroup>
-        <col className="w-[154px]" />
-        <col className="w-[146px]" />
-        <col className="w-[112px]" />
-        <col className="w-[124px]" />
-        {live && <col className="w-[108px]" />}
-        <col className="w-[96px]" />
-        <col className="w-[104px]" />
-        <col className="w-[44px]" />
+        <col className="w-[calc(154px*var(--fp-scale))]" />
+        <col className="w-[calc(146px*var(--fp-scale))]" />
+        <col className="w-[calc(112px*var(--fp-scale))]" />
+        <col className="w-[calc(124px*var(--fp-scale))]" />
+        {live && <col className="w-[calc(108px*var(--fp-scale))]" />}
+        <col className="w-[calc(96px*var(--fp-scale))]" />
+        <col className="w-[calc(104px*var(--fp-scale))]" />
+        <col className="w-[calc(44px*var(--fp-scale))]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
@@ -1017,7 +1017,7 @@ export function OrderRequestSheet({
         {/* THE SUMMARY TAKES THE RAIL'S FULL HEIGHT (Pavan, 2026-10-20) — the
             sheet's scroll area less its padding; the trip and activity cards
             keep their own height below it, the summary takes the rest. */}
-        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(100dvh-10.25rem)]">
+        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(var(--fp-vh)-10.25rem)]">
           <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} fill />
           {!creating && ["Out for delivery", "Partial delivery", "Delivered", "Invoiced", "Paid"].includes(request.status) && (
             <SummaryCard title="Trip">

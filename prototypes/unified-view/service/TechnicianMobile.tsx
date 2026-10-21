@@ -312,7 +312,7 @@ export function TechnicianMobile() {
       {/* THE DEVICE. 390×844 — an iPhone's points, which is the narrowest
           screen this has to work on and therefore the one to design at.
           `relative` because the menu and the bottom sheets overlay INSIDE it. */}
-      <div className="relative flex h-[844px] max-h-[calc(100vh-180px)] w-[390px] shrink-0 flex-col overflow-hidden rounded-[2.25rem] border-[10px] border-fp-outline-2 bg-fp-surface-1b shadow-2xl">
+      <div className="relative flex h-[844px] max-h-[calc(var(--fp-vh)-180px)] w-[390px] shrink-0 flex-col overflow-hidden rounded-[2.25rem] border-[10px] border-fp-outline-2 bg-fp-surface-1b shadow-2xl">
         {open ? (
           <TechnicianJob
             key={open.id}

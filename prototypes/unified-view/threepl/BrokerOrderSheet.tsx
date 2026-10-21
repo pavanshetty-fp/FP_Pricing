@@ -5213,12 +5213,12 @@ export function BrokerOrderSheet({
                   {/* THE TANK'S MONITOR READINGS (Pavan, 2026-10-20) — as on
                       the portal's order: level now, on fulfilment, days to
                       empty. */}
-                  <col className="w-[112px]" />
-                  <col className="w-[124px]" />
-                  <col className="w-[108px]" />
-                  <col className="w-[104px]" />
-                  <col className="w-[110px]" />
-                  <col className="w-[52px]" />
+                  <col className="w-[calc(112px*var(--fp-scale))]" />
+                  <col className="w-[calc(124px*var(--fp-scale))]" />
+                  <col className="w-[calc(108px*var(--fp-scale))]" />
+                  <col className="w-[calc(104px*var(--fp-scale))]" />
+                  <col className="w-[calc(110px*var(--fp-scale))]" />
+                  <col className="w-[calc(52px*var(--fp-scale))]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border bg-fp-table-header">

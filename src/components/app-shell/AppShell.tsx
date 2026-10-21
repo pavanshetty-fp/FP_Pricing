@@ -233,7 +233,7 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "flex h-screen flex-col overflow-hidden bg-background text-foreground",
+        "flex h-(--fp-vh) flex-col overflow-hidden bg-background text-foreground",
         className
       )}
     >

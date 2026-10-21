@@ -364,7 +364,7 @@ function AssetPickerSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="z-[60] w-[min(620px,calc(100vw-56px))] gap-0 p-0 sm:max-w-[min(620px,calc(100vw-56px))]"
+        className="z-[60] w-[min(620px,calc(var(--fp-vw)-56px))] gap-0 p-0 sm:max-w-[min(620px,calc(var(--fp-vw)-56px))]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex min-w-0 flex-col gap-0.5">

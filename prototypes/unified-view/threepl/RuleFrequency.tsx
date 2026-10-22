@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DateKeyField } from "@/components/ui/date-picker";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -590,13 +591,9 @@ function CyclePart({
           </Select>
         </Row>
         <Row label="Week 1 starts">
-          <Input
-            type="date"
+          <DateKeyField
             value={startKey}
-            aria-label="Week 1 starts"
-            onChange={(e) =>
-              e.target.value && onChange({ ...value, cycleStartKey: e.target.value })
-            }
+            onChange={(key) => onChange({ ...value, cycleStartKey: key })}
           />
         </Row>
       </div>
@@ -917,13 +914,9 @@ export function RuleFrequencyPicker({
           <div className="flex items-center gap-2">
             {/* AS WIDE AS THE DAY BUTTONS ABOVE — seven 32px buttons and six
                 4px gaps, 248px (Pavan, 2026-09-25). */}
-            <Input
-              type="date"
-              className="w-62"
-              value={value.endKey}
-              aria-label="End date"
-              onChange={(e) => e.target.value && set("endKey", e.target.value)}
-            />
+            <div className="w-62">
+              <DateKeyField value={value.endKey} placeholder="End date" onChange={(key) => set("endKey", key)} />
+            </div>
             <Button
               variant="ghost"
               size="icon-sm"

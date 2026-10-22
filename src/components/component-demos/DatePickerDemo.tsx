@@ -1,56 +1,50 @@
 import * as React from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { type DateRange } from "react-day-picker";
 import { Stack, SectionHeading } from "@/components/typography";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  DateField,
+  DatePickerPanel,
+  DateRangePopover,
+  formatDateRange,
+  type DateRange,
+} from "@/components/ui/date-picker";
 
-const fmt = (d?: Date) =>
-  d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+const today = (() => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+})();
 
-/** Date Picker — a Popover + Calendar composition (single date or range). */
+/** Date Picker — the ONE picker every screen uses (DS ui §10p). */
 export function DatePickerDemo() {
-  const [date, setDate] = React.useState<Date | undefined>();
-  const [range, setRange] = React.useState<DateRange | undefined>();
+  const [date, setDate] = React.useState<Date | null>(null);
+  const [range, setRange] = React.useState<DateRange>({ from: today, to: today });
   return (
-    <Stack space="section" className="max-w-xl overflow-auto pb-10">
-      <p className="text-sm text-muted-foreground">
-        Date Picker — a <code className="text-foreground">Popover</code> +{" "}
-        <code className="text-foreground">Calendar</code> composition for a date
-        or a range.
+    <Stack space="section" className="overflow-auto pb-10">
+      <p className="max-w-xl text-sm text-muted-foreground">
+        One date picker for every module and every screen: presets on the left,
+        two months with the range drawn on them, typed start → end dates, a live
+        count of what the window catches, Reset and Apply. A range picker picks
+        one day too — click it and Apply.
       </p>
       <Stack space="title">
-        <SectionHeading as="h3" title="Single date" />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-64 justify-start font-normal">
-              <CalendarIcon className="text-muted-foreground" />
-              {date ? fmt(date) : <span className="text-muted-foreground">Pick a date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={date} onSelect={setDate} />
-          </PopoverContent>
-        </Popover>
+        <SectionHeading as="h3" title="Filter — a range" />
+        <DateRangePopover value={range} onChange={setRange} count={() => 42} noun="orders" align="start">
+          <Button variant="outline" size="sm" className="w-fit">
+            {formatDateRange(range)}
+          </Button>
+        </DateRangePopover>
       </Stack>
       <Stack space="title">
-        <SectionHeading as="h3" title="Date range" />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-72 justify-start font-normal">
-              <CalendarIcon className="text-muted-foreground" />
-              {range?.from ? (
-                range.to ? `${fmt(range.from)} – ${fmt(range.to)}` : fmt(range.from)
-              ) : (
-                <span className="text-muted-foreground">Pick a range</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="range" numberOfMonths={2} selected={range} onSelect={setRange} />
-          </PopoverContent>
-        </Popover>
+        <SectionHeading as="h3" title="Form field — one date" />
+        <div className="w-64">
+          <DateField value={date} onChange={setDate} />
+        </div>
+      </Stack>
+      <Stack space="title">
+        <SectionHeading as="h3" title="The panel" />
+        <div className="w-fit rounded-lg border border-border">
+          <DatePickerPanel value={range} onApply={(r) => r && setRange(r)} count={() => 42} noun="orders" />
+        </div>
       </Stack>
     </Stack>
   );

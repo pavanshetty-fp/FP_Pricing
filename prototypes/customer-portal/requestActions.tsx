@@ -1,49 +1,28 @@
 import * as React from "react";
+import { DateKeyField } from "@/components/ui/date-picker";
 import { toast } from "sonner";
-import { Check, MoreHorizontal, Paperclip, Send, X } from "lucide-react";
+import { Paperclip, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { SheetField } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
-import { RailRow } from "../unified-view/SheetCards";
 import {
   PORTAL_ACTOR,
   TENANT,
-  assetById,
   dateOfKey,
-  estimate,
   orderTheRest,
   printKey,
   updateRequest,
   type OrderRequest,
 } from "./orders";
-import { FEES_PER_GAL, TAX_RATE } from "./invoices";
 
 /*
-  WHAT A CUSTOMER DOES WITH A REQUEST THAT WAITS ON THEM (Pavan,
+  WHAT A CUSTOMER DOES WITH AN ORDER THAT WAITS ON THEM (Pavan,
   2026-10-15), shared by the dashboard's action sheet and the order sheet:
 
-    a quote      read it; Accept — or, from ⋯, Decline or Request a change,
-                 each with a note the supplier reads (PRD FR-21)
-    action needed  send what is asked: a note and files; for a credit hold,
+    a credit hold  send what is asked: a note and files, and
                  the payment made OFFLINE (date, amount, reference, proof) —
                  the portal takes no payment; the supplier releases the hold
                  (PRD FR-25)
@@ -51,149 +30,7 @@ import { FEES_PER_GAL, TAX_RATE } from "./invoices";
     on its way   the trip, step by step (PRD FR-05)
 */
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
-/* ------------------------------------------------------------ the quote --- */
-
-/** The supplier's quote — each line at its quoted rate, fees, tax. INVENTED:
-    the rate is the middle of the estimate. */
-export function quoteOf(r: OrderRequest) {
-  const est = estimate(r.lines);
-  const lines = est.rows
-    .filter((x) => x.low !== null && x.high !== null)
-    .map((x) => ({ product: x.line.product, asset: assetById(x.line.assetId)?.name ?? "No tank", gal: x.line.gal, amount: (x.low! + x.high!) / 2 }));
-  const gal = lines.reduce((t, l) => t + l.gal, 0);
-  const fuel = lines.reduce((t, l) => t + l.amount, 0);
-  const fees = gal * FEES_PER_GAL;
-  const tax = (fuel + fees) * TAX_RATE;
-  const valid = dateOfKey(r.date) ? new Date(dateOfKey(r.date)!.getTime() - 86_400_000) : null;
-  return { lines, fuel, fees, tax, total: fuel + fees + tax, est, valid };
-}
-
-export function QuoteLines({ r }: { r: OrderRequest }) {
-  const q = quoteOf(r);
-  return (
-    <dl className="flex flex-col">
-      {q.lines.map((l, i) => (
-        <RailRow key={i} variant="line" label={`${l.asset} · ${l.product} · ${l.gal.toLocaleString()} gal`} value={usd.format(l.amount)} />
-      ))}
-      <RailRow variant="line" label="Fees (delivery, environmental)" value={usd.format(q.fees)} />
-      <RailRow variant="line" label={`Tax (${Math.round(TAX_RATE * 100)}%)`} value={usd.format(q.tax)} />
-      <RailRow variant="total" label="Quoted total" value={usd.format(q.total)} />
-      <p className="pt-1 text-xs text-muted-foreground">
-        Estimate was {usd.format((q.est.low + q.est.high) / 2)} for fuel
-        {q.valid ? ` · valid until ${printKey(`${q.valid.getFullYear()}-${String(q.valid.getMonth() + 1).padStart(2, "0")}-${String(q.valid.getDate()).padStart(2, "0")}`)}` : ""}
-      </p>
-    </dl>
-  );
-}
-
-/** A note the supplier reads — asked for before Decline or Request change. */
-function NoteDialog({
-  open,
-  title,
-  description,
-  action,
-  onOpenChange,
-  onSend,
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  action: string;
-  onOpenChange: (o: boolean) => void;
-  onSend: (note: string) => void;
-}) {
-  const [note, setNote] = React.useState("");
-  React.useEffect(() => {
-    if (!open) setNote("");
-  }, [open]);
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <SheetField label="Note" required>
-          <Textarea autoFocus value={note} onChange={(e) => setNote(e.target.value)} className="min-h-24" />
-        </SheetField>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Back</AlertDialogCancel>
-          <AlertDialogAction disabled={!note.trim()} onClick={() => onSend(note.trim())}>
-            {action}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-/** Accept the quote — Decline and Request change behind ⋯, each with a note. */
-export function QuoteActions({ r, onDone }: { r: OrderRequest; onDone?: () => void }) {
-  const [asking, setAsking] = React.useState<null | "decline" | "change">(null);
-  if (r.status !== "Quote received") return null;
-  return (
-    <span className="flex items-center gap-1">
-      <Button
-        onClick={() => {
-          /* THE TENANT SCHEDULES IT NEXT — it becomes an order then. */
-          updateRequest(r.id, { status: "Quote accepted" }, "Quote accepted");
-          toast.success(`Quote accepted for ${r.requestNo}`);
-          onDone?.();
-        }}
-      >
-        <Check />
-        Accept quote
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="More quote actions">
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onSelect={() => setAsking("change")}>
-            <Send />
-            Request change
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setAsking("decline")}>
-            <X />
-            Decline quote
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <NoteDialog
-        open={asking === "change"}
-        onOpenChange={(o) => !o && setAsking(null)}
-        title={`Request a change to ${r.requestNo}'s quote`}
-        description={`Say what should change — ${TENANT} revises the quote and sends it again.`}
-        action="Send request"
-        onSend={(note) => {
-          updateRequest(r.id, { status: "In review" }, `Change requested: ${note}`);
-          toast.success(`Change requested for ${r.requestNo}`);
-          setAsking(null);
-          onDone?.();
-        }}
-      />
-      <NoteDialog
-        open={asking === "decline"}
-        onOpenChange={(o) => !o && setAsking(null)}
-        title={`Decline ${r.requestNo}'s quote?`}
-        description={`The request will not be delivered. Tell ${TENANT} why.`}
-        action="Decline quote"
-        onSend={(note) => {
-          updateRequest(r.id, { status: "Quote declined" }, `Quote declined: ${note}`);
-          toast.success(`Quote declined for ${r.requestNo}`);
-          setAsking(null);
-          onDone?.();
-        }}
-      />
-    </span>
-  );
-}
-
-/* ------------------------------------------------------- action needed --- */
+/* --------------------------------------------------------- credit hold --- */
 
 /** What the customer can send back — and, once sent, that it is with the supplier. */
 export function ReplyPanel({ r, credit }: { r: OrderRequest; credit: boolean }) {
@@ -225,7 +62,7 @@ export function ReplyPanel({ r, credit }: { r: OrderRequest; credit: boolean }) 
       {credit && (
         <div className="grid grid-cols-3 gap-3">
           <SheetField label="Paid on" required>
-            <Input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+            <DateKeyField value={paidOn} onChange={setPaidOn} />
           </SheetField>
           <SheetField label="Amount" required>
             <Input inputMode="decimal" placeholder="$0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />

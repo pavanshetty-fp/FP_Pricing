@@ -885,6 +885,13 @@ opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
   `border-border/60`; the row's own thing in foreground, secondary values
   muted.
 
+**Stacked lines instead of a nested layer (Pavan, 2026-10-21).** Where a record's
+children are few and short (a Portal order's tanks), they are not nested: each child
+is a line INSIDE the record's row, and the child columns (tank, product, quantity,
+level, on fulfilment, days to empty, battery) line up line for line; the record's
+own cells show once, at the TOP of the row, level with the first child line
+(ListTable `alignTop`). Chosen over one band per child.
+
 ## 10k. Metric icons — one icon per term, one style (Pavan, 2026-10-20)
 
 **Use them on metric / figure cards and dashboard units** — wherever a card
@@ -1050,6 +1057,66 @@ reads on its own, and the Accessibility sliders only go up from here:
 
 Card on lane 1.08 → 1.25:1, rim on lane none → 2.1:1, field border 1.3 →
 1.7:1. Light is unchanged.
+
+## 10p. Views, sorting, display icons, the date picker (Pavan, 2026-10-21)
+
+**Views.** No preset view tabs (Transport, Tank Wagon, Lubes…) and no line-of-service
+segment in any module — Line of Service, Business (3PL) and Order Kind (Sales) are
+filters in the Filters panel. The first tab is **All** (never "Default"). A saved
+view stores its filters **and** its display (table / board / map) and opens in it.
+
+**Filters remember; views name themselves** (Pavan, 2026-10-21). The Filters panel
+leads with **Recent history** — every set applied on that list in the last 24 hours, by
+category, newest first; a press puts the ticks back, Apply applies. It is absent when
+there is none. **Save view** suggests a name from the filters on (placeholder; → or Tab
+takes it to type on; Save with the box empty saves it): the business (or the line of
+service when no business), then the other facets in panel order, at most three parts
+joined " · " — "Transport · Priya Raman". A saved view with changes shows an **update
+icon** beside its name — the two-arrow refresh glyph (`RefreshCw`), grey; tooltip
+"Update changes". Logic: `filterMemory.ts`.
+
+**Sorted column, in greys.** Any `th` with `aria-sort` sits a shade darker
+(`--chip`) with a semibold, full-ink label (rule in `index.css`). The icon is an
+arrow (`ArrowUp` / `ArrowDown`), not a chevron; unsorted columns keep a faint
+`ChevronsUpDown`. ListTable gives the sorted column's cells a very light grey
+(`.fp-sorted-cell`, half the row hover). No brand colour, no underline.
+
+**Column widths come from the content, and the table always fills** (Pavan,
+2026-10-21/22). A column starts at its widest RENDERED cell — text, "+N" chips, pills,
+day grids — plus padding, never narrower than its header + sort arrow, rounded up to
+10px. NO EMPTY SPACE ON THE RIGHT, EVER: when the table is narrower than its frame, the
+spare width goes to the columns that hold the most, each in proportion to how far it is
+wider than 120px — an icon (Notes), a count or a code stays put; a name, an address, a
+contact takes the room (ListTable does this for every list). Wider than the frame, the
+table scrolls. Customer starts at 250, Ship-to / Ship-Tos 170; rule tables give Schedule
+and the column before it +20. Hand-tuned widths per module come from Pavan. Numbers:
+`docs/ds/ui/column-widths.md`.
+
+**Everything is left-aligned** (Pavan, 2026-10-22) — every column, header and cell,
+numbers and money included, in every table (lists, nested and sheet tables, dashboard
+tables, statements). Only action buttons sit at a row's end.
+
+**Display icons are three shapes.** Table `Rows3`, Board `Kanban`, Map `MapPinned`.
+The one you are on wears `bg-selected text-selected-foreground` and `aria-pressed`. The view you
+are on carries ITS OWN TOOLS in one bordered group with it — Table: Search by column,
+Show/Hide columns; Board: Card fields; Map: none — and the other views stand 12px
+apart (Pavan, 2026-10-22).
+
+**One date picker** — `src/components/ui/date-picker.tsx`, used by every screen that
+picks a date (filters and form fields, every module):
+
+- Left rail of presets: All dates (when the list passes `all`), Today, Yesterday,
+  This week, Last week, Last 7 days, Last 30 days, Next 7 days, Month to date,
+  Last month, This quarter, Custom range. The preset the draft is on is selected.
+- Two months; range ends filled, days between tinted. One click + Apply = one day.
+- Footer: typed start → end (MM/DD/YYYY), live "N orders match" (`count`), Reset, Apply.
+  Nothing changes until Apply.
+- `select="single"` for a field that holds one date: day presets (Today, Tomorrow,
+  Yesterday, In 7 days), one month, one typed date.
+- Parts: `DateRangeFilter` (toolbar stepper, prototypes), `DateRangePopover`,
+  `DateField` / `DateKeyField` (form fields), `DatePopover` + `DatePanel` (drop-in for
+  a Popover + single Calendar), `dateWindowOf(keys)` → `all` + `count` for a list.
+- Not used: the technician phone app keeps its full-width calendar (no room for a rail).
 
 ## 10c. The accent — violet (Pavan, 2026-10-16)
 

@@ -45,15 +45,15 @@ type TechColumnKey =
   | "actions";
 
 const TECH_COLUMNS: ListColumn<TechColumnKey>[] = [
-  { key: "name", label: "Technician", width: 200, sortable: true },
-  { key: "base", label: "Base", width: 180, sortable: true },
-  { key: "skills", label: "Skills", width: 260, sortable: true },
+  { key: "name", label: "Technician", width: 130, sortable: true },
+  { key: "base", label: "Base", width: 130, sortable: true },
+  { key: "skills", label: "Skills", width: 220, sortable: true },
   /* COMPARED DOWN THE COLUMN, so right-aligned — these two are read against
      each other and against the rows above. */
-  { key: "open", label: "Open Jobs", width: 120, sortable: true, align: "right" },
-  { key: "capacity", label: "Jobs / Day", width: 120, sortable: true, align: "right" },
-  { key: "phone", label: "Phone", width: 170, sortable: true },
-  { key: "status", label: "Status", width: 130, sortable: true },
+  { key: "open", label: "Open Jobs", width: 110, sortable: true },
+  { key: "capacity", label: "Jobs / Day", width: 110, sortable: true },
+  { key: "phone", label: "Phone", width: 140, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { dateWindowOf } from "@/components/ui/date-picker";
 import { Wrench, SearchX, CalendarOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -102,21 +103,21 @@ type Col =
    what, when, who is doing it, state, money — so the three modules' tables
    read as one product. Every column sorts, for the reason `orders.ts` gives. */
 const COLUMNS: ListColumn<Col>[] = [
-  { key: "order", label: "Service Order #", width: 150, sortable: true },
-  { key: "type", label: "Type", width: 140, sortable: true },
-  { key: "customer", label: "Customer", width: 200, sortable: true },
-  { key: "shipTo", label: "Site", width: 180, sortable: true },
-  { key: "asset", label: "Asset", width: 180, sortable: true },
-  { key: "fault", label: "Description", width: 250, sortable: true },
-  { key: "scheduled", label: "Scheduled", width: 175, sortable: true },
-  { key: "technician", label: "Technician", width: 165, sortable: true },
-  { key: "priority", label: "Priority", width: 110, sortable: true },
+  { key: "order", label: "Service Order #", width: 130, sortable: true },
+  { key: "type", label: "Type", width: 130, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "shipTo", label: "Site", width: 170, sortable: true },
+  { key: "asset", label: "Asset", width: 170, sortable: true },
+  { key: "fault", label: "Description", width: 210, sortable: true },
+  { key: "scheduled", label: "Scheduled", width: 180, sortable: true },
+  { key: "technician", label: "Technician", width: 140, sortable: true },
+  { key: "priority", label: "Priority", width: 90, sortable: true },
   { key: "status", label: "Status", width: 160, sortable: true },
-  { key: "total", label: "Total", width: 120, sortable: true, align: "right" },
+  { key: "total", label: "Total", width: 80, sortable: true },
   /* ── Available, not shown by default. ── */
   { key: "source", label: "Intake Source", width: 165, sortable: true },
   { key: "raisedBy", label: "Raised By", width: 160, sortable: true },
-  { key: "labor", label: "Labour", width: 110, sortable: true, align: "right" },
+  { key: "labor", label: "Labour", width: 110, sortable: true },
   { key: "invoice", label: "Invoice", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -1274,6 +1275,9 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
 
   const openOrder = rows.find((r) => r.id === openId) ?? null;
 
+  /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
+  const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <FuelOrdersViewBar
@@ -1386,6 +1390,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           onViewChange={setView}
           dateControl={
             <DateRangeFilter
+              {...dateWindow}
+              noun="service orders"
               value={range}
               onChange={(next) => {
                 setRange(next);

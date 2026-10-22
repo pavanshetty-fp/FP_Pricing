@@ -217,7 +217,6 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
   const into = line.topOff ? a.capacity - left : line.gal;
   const raw = now - a.dailyUse * days;
   const sum = left + into;
-  const end = Math.min(a.capacity, sum);
   const pct = pctAfterDelivery(a, days, line.gal, line.topOff);
   /* THE TWO THINGS THAT GO WRONG (Pavan, 2026-10-20). */
   const warnings: string[] = [];
@@ -230,6 +229,10 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
       `Tank empty — it runs dry ${dry === 0 ? "today" : `on ${dayFmt.format(on)}`}, ${days - dry} ${days - dry === 1 ? "day" : "days"} before the planned date.`
     );
   }
+  /* LOW EVEN AFTER IT COMES (Pavan, 2026-10-22) — under a quarter full once
+     delivered, the tank is still the next problem. */
+  if (raw >= 0 && pct < 25)
+    warnings.push(`Low after delivery — only ${pct}% full once this arrives.`);
   if (sum > a.capacity)
     warnings.push(
       `Tank overload — ${n(sum - a.capacity)} gal won't fit in the ${n(a.capacity)} gal tank. That overage might cause a penalty by the tenant.`
@@ -239,10 +242,10 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
     rows: [
       {
         label: "This tank",
-        sub: `((${n(now)} − ${n(a.dailyUse)} × ${days}) + ${line.topOff ? `${n(into)} (top off)` : n(into)}) ÷ ${n(a.capacity)} = ${n(sum)} ÷ ${n(a.capacity)} = ${pct}%${raw < 0 ? " (empty before it arrives, so it starts from 0)" : ""}${sum > a.capacity ? " (capped at full)" : ""}`,
+        sub: `((${n(now)} − ${n(a.dailyUse)} × ${days}) + ${line.topOff ? `${n(into)} (top off)` : n(into)}) ÷ ${n(a.capacity)} = ${n(sum)} ÷ ${n(a.capacity)} = ${pct}%${raw < 0 ? " (empty before it arrives, so it starts from 0)" : ""}`,
       },
     ],
-    total: { label: "On fulfilment", value: `${pct}% · ${gal(end)}` },
+    total: { label: "On fulfilment", value: `${pct}% · ${gal(sum)}` },
     warnings,
   };
 }
@@ -336,55 +339,3 @@ export function FulfilmentHead({ className }: { className?: string }) {
   );
 }
 
-/**
- * AN ORDER'S TANKS, NESTED UNDER ITS ROW (DS ui §10j). Asset, product,
- * quantity, then the tank's level now, its level on fulfilment (ordered →
- * refilled), days to empty and the monitor's battery.
- */
-export function OrderTanksLayer({ r }: { r: OrderRequest }) {
-  const head = ["Asset", "Product", "Qty (gal)", "Current level", "On fulfilment", "Days to empty", "Battery"];
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {head.map((h, i) => (
-              <th
-                key={h}
-                className={cn("whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 2 && "text-right")}
-              >
-                {h === "On fulfilment" ? <FulfilmentHead /> : h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {r.lines.map((l, i) => {
-            const a = assetById(l.assetId);
-            return (
-              <tr key={i} className="border-t border-border/60">
-                <td className="whitespace-nowrap px-4 py-3.5 text-foreground">{a?.name ?? "No tank"}</td>
-                <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">{l.product || "—"}</td>
-                <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums text-foreground">
-                  {l.topOff ? "Top off" : l.gal.toLocaleString()}
-                </td>
-                <td className="px-4 py-3.5">
-                  <LevelReading asset={a} />
-                </td>
-                <td className="px-4 py-3.5">
-                  <FulfilmentPct line={l} r={r} />
-                </td>
-                <td className="px-4 py-3.5">
-                  <DaysToEmpty asset={a} />
-                </td>
-                <td className="px-4 py-3.5">
-                  <BatteryCell asset={a} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}

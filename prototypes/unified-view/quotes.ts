@@ -400,18 +400,18 @@ export const QUOTE_COLUMNS: {
   sortable?: boolean;
   align?: "left" | "right";
 }[] = [
-  { key: "quoteNo", label: "Quote #", width: 110, sortable: true },
-  { key: "customer", label: "Customer", width: 210, sortable: true },
-  { key: "shipTo", label: "Ship-to", width: 190, sortable: true },
-  { key: "products", label: "Product", width: 200, sortable: true },
-  { key: "gallons", label: "Gallons", width: 110, sortable: true, align: "right" },
-  { key: "market", label: "Market", width: 150, sortable: true },
-  { key: "net", label: "Net $/gal", width: 110, sortable: true, align: "right" },
-  { key: "total", label: "Quote total", width: 130, sortable: true, align: "right" },
-  { key: "email", label: "Customer email", width: 220, sortable: true },
-  { key: "validThrough", label: "Valid through", width: 130, sortable: true },
-  { key: "status", label: "Status", width: 120, sortable: true },
-  { key: "updated", label: "Updated", width: 140, sortable: true },
+  { key: "quoteNo", label: "Quote #", width: 90, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
+  { key: "products", label: "Product", width: 240, sortable: true },
+  { key: "gallons", label: "Gallons", width: 90, sortable: true },
+  { key: "market", label: "Market", width: 140, sortable: true },
+  { key: "net", label: "Net $/gal", width: 100, sortable: true },
+  { key: "total", label: "Quote total", width: 110, sortable: true },
+  { key: "email", label: "Customer email", width: 210, sortable: true },
+  { key: "validThrough", label: "Valid through", width: 120, sortable: true },
+  { key: "status", label: "Status", width: 110, sortable: true },
+  { key: "updated", label: "Updated", width: 110, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Ban, CalendarDays, Clock, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -26,11 +26,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
 import { HangingAdd } from "./HangingAdd";
@@ -483,7 +479,7 @@ export function OrderSheet({
     planDate: () => ({
       half: true,
       control: (
-        <Popover>
+        <DatePopover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="w-full justify-start font-normal">
               <CalendarDays />
@@ -491,15 +487,12 @@ export function OrderSheet({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
-            <Calendar
-              mode="single"
+            <DatePanel
               selected={draft.plannedDate ?? undefined}
               onSelect={(d) => d && set("plannedDate", d)}
-              defaultMonth={draft.plannedDate ?? undefined}
-              autoFocus
             />
           </PopoverContent>
-        </Popover>
+        </DatePopover>
       ),
     }),
     planTime: () => ({

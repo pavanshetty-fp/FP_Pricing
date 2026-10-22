@@ -1028,17 +1028,17 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
      stop trying, and the ones left out were the text columns, which are
      exactly where "show me these together" is asked most. See `sortValue` for
      what each one sorts BY, which is the part that is worth deciding. */
-  { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 165, sortable: true },
-  { key: "customer", label: "Customer", width: 230, sortable: true },
-  { key: "shipTo", label: "Ship To", width: 190, sortable: true },
-  { key: "date", label: "Planned Date", width: 165, sortable: true },
+  { key: "order", label: "Order #", width: 100, sortable: true },
+  { key: "type", label: "Type", width: 150, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "shipTo", label: "Ship To", width: 170, sortable: true },
+  { key: "date", label: "Planned Date", width: 120, sortable: true },
   { key: "window", label: "Delivery Window", width: 160, sortable: true },
-  { key: "products", label: "Products", width: 230, sortable: true },
-  { key: "qty", label: "Qty (Gal)", width: 110, sortable: true, align: "right" },
-  { key: "vendor", label: "Vendor", width: 210, sortable: true },
-  { key: "status", label: "Status", width: 200, sortable: true },
-  { key: "createdBy", label: "Created By", width: 170, sortable: true },
+  { key: "products", label: "Products", width: 170, sortable: true },
+  { key: "qty", label: "Qty (Gal)", width: 100, sortable: true },
+  { key: "vendor", label: "Vendor", width: 200, sortable: true },
+  { key: "status", label: "Status", width: 140, sortable: true },
+  { key: "createdBy", label: "Created By", width: 160, sortable: true },
   /* ── Available, not shown. See `BROKER_HIDDEN_BY_DEFAULT`. ── */
   { key: "business", label: "Business", width: 140, sortable: true },
   { key: "orderType", label: "Order Type", width: 140, sortable: true },

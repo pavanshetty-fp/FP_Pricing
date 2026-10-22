@@ -329,7 +329,7 @@ function TargetEditor({
                     />
                   </span>
                 </th>
-                <th className="px-3 py-2.5 text-right">
+                <th className="px-3 py-2.5">
                   <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                 </th>
                 <th aria-hidden />
@@ -443,7 +443,7 @@ function TargetEditor({
                       );
                     })()}
                     <td className="px-3">
-                      <span className="flex justify-end">
+                      <span className="flex">
                       <Checkbox
                         checked={Boolean(line.topOff)}
                         onCheckedChange={(c) =>
@@ -1013,13 +1013,10 @@ export function RecurringProgramCreate({
                     <tr className="border-b border-fp-outline-1">
                       <th className="w-9 px-3 py-2" />
                       {["Partner", "Base", "Covers", "Sites in range", "Safety"].map(
-                        (h, k) => (
+                        (h) => (
                           <th
                             key={h}
-                            className={cn(
-                              "whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground",
-                              k >= 3 && "text-right"
-                            )}
+                            className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground"
                           >
                             {h}
                           </th>
@@ -1078,14 +1075,14 @@ export function RecurringProgramCreate({
                               ? `${v.coveredZips.length} zips`
                               : v.serviceStates.join(", ") || "—"}
                           </td>
-                          <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                          <td className="px-3 py-2.5 tabular-nums text-foreground">
                             {/* THE ONLY NUMBER THAT MATTERS HERE. A partner who
                                 reaches two of your sites is a different
                                 proposition from one who reaches nine, and it
                                 is the fact a name cannot carry. */}
                             {reachCount(v.id)}
                           </td>
-                          <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                          <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
                             {v.safetyScore}
                           </td>
                         </tr>

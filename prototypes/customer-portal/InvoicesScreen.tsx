@@ -52,14 +52,14 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 type IK = "invoice" | "issued" | "due" | "order" | "shipTo" | "amount" | "status" | "download" | "actions";
 const COLUMNS: ListColumn<IK>[] = [
-  { key: "invoice", label: "Invoice", width: 130, sortable: true },
-  { key: "issued", label: "Issued", width: 130, sortable: true },
-  { key: "due", label: "Due", width: 150, sortable: true },
-  { key: "order", label: "Order", width: 120, sortable: true },
+  { key: "invoice", label: "Invoice", width: 90, sortable: true },
+  { key: "issued", label: "Issued", width: 120, sortable: true },
+  { key: "due", label: "Due", width: 130, sortable: true },
+  { key: "order", label: "Order", width: 100, sortable: true },
   { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
-  { key: "amount", label: "Amount", width: 130, sortable: true, align: "right" },
-  { key: "status", label: "Status", width: 170, sortable: true },
-  { key: "download", label: "Download", width: 100, align: "center" },
+  { key: "amount", label: "Amount", width: 100, sortable: true },
+  { key: "status", label: "Status", width: 160, sortable: true },
+  { key: "download", label: "Download", width: 90 },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -152,7 +152,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
   const filterTo = (status: string) => setApplied({ ids: [`status:${status}`], n: Date.now() });
   /* WHICH ALERT'S FILTER IS ON — the list's filter is exactly its status. */
   const [facets, setFacets] = React.useState<string[]>([]);
-  const ALERT_STATUS: Record<string, string> = { overdue: "Overdue", disputed: "Invoice disputed", due: "Payment due" };
+  const ALERT_STATUS: Record<string, string> = { overdue: "Overdue", disputed: "Payment disputed", due: "Payment due" };
   const appliedId =
     facets.length === 1 ? (Object.keys(ALERT_STATUS).find((k) => facets[0] === `status:${ALERT_STATUS[k]}`) ?? null) : null;
 
@@ -166,8 +166,9 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
       onApply: () => setOpenNo(i.invoiceNo),
     }));
   const overdue = by("Overdue");
-  /* BOTH DISPUTES — the customer's and the tenant's. */
-  const disputed = [...by("Invoice disputed"), ...by("Payment disputed")];
+  /* THE PAYMENT DISPUTES — the customer's own invoice dispute is off for now
+     (Pavan, 2026-10-22). */
+  const disputed = by("Payment disputed");
   const dueSoon = by("Payment due");
   const sum = (xs: Invoice[]) => usd0.format(xs.reduce((t, i) => t + totalOf(i), 0));
   const alerts = (
@@ -189,7 +190,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
         title: `${plural(disputed.length, "invoice is", "invoices are")} disputed`,
         detail: usd0.format(disputed.reduce((t, i) => t + inQuestion(i), 0)),
         count: disputed.length,
-        onApply: () => filterTo("Invoice disputed"),
+        onApply: () => filterTo("Payment disputed"),
         items: disputed.map((i) => ({
           id: i.invoiceNo,
           title: `${i.invoiceNo} · ${usd.format(inQuestion(i))} in question`,
@@ -243,7 +244,7 @@ export function InvoicesScreen({ focus }: { focus?: { invoiceNo: string; n: numb
         rowId={(i) => i.invoiceNo}
         text={text}
         sortValue={(i, k) =>
-          k === "amount" ? totalOf(i) : k === "issued" ? i.issued : k === "due" ? i.due : k === "status" ? INVOICE_STATUSES.indexOf(i.status) : undefined
+          k === "amount" ? totalOf(i) : k === "issued" ? i.issued : k === "due" ? i.due : k === "status" ? (INVOICE_STATUSES as readonly string[]).indexOf(i.status) : undefined
         }
         renderCell={(i, k) => {
           switch (k) {

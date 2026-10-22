@@ -1,22 +1,23 @@
 import * as React from "react";
 import {
-  ChevronsUpDown,
-  ChevronUp,
+  ArrowDown,
+  ArrowUp,
+  Bold,
   ChevronDown,
   ChevronRight,
+  ChevronsUpDown,
   CirclePlay,
-  Bold,
   Italic,
-  Underline,
   MoreHorizontal,
+  PackagePlus,
+  PanelRightOpen,
   Pencil,
   Share2,
-  Trash2,
-  User,
-  PanelRightOpen,
   Table2,
-  PackagePlus,
   Tag,
+  Trash2,
+  Underline,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -438,8 +439,8 @@ export function DataTable({
               const SortIcon = !active
                 ? ChevronsUpDown
                 : sort.dir === "asc"
-                  ? ChevronUp
-                  : ChevronDown;
+                  ? ArrowUp
+                  : ArrowDown;
               return (
                 <TableColumnHeader
                   key={col.key}

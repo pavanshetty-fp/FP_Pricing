@@ -265,9 +265,9 @@ export function ThreePLDashboard({
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="px-2 text-xs">Partner</TableHead>
-                  <TableHead className="px-2 text-right text-xs">Loads</TableHead>
-                  <TableHead className="px-2 text-right text-xs">Cost</TableHead>
-                  <TableHead className="px-2 text-right text-xs">Share</TableHead>
+                  <TableHead className="px-2 text-xs">Loads</TableHead>
+                  <TableHead className="px-2 text-xs">Cost</TableHead>
+                  <TableHead className="px-2 text-xs">Share</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,9 +278,9 @@ export function ThreePLDashboard({
                     onClick={() => drill([`vendor:${p.name}`])}
                   >
                     <TableCell className="px-2">{p.name}</TableCell>
-                    <TableCell className="px-2 text-right tabular-nums">{p.loads}</TableCell>
-                    <TableCell className="px-2 text-right tabular-nums">{MONEY.format(p.cost)}</TableCell>
-                    <TableCell className="px-2 text-right tabular-nums text-muted-foreground">
+                    <TableCell className="px-2 tabular-nums">{p.loads}</TableCell>
+                    <TableCell className="px-2 tabular-nums">{MONEY.format(p.cost)}</TableCell>
+                    <TableCell className="px-2 tabular-nums text-muted-foreground">
                       {cost ? `${Math.round((p.cost / cost) * 100)}%` : "—"}
                     </TableCell>
                   </TableRow>
@@ -302,7 +302,7 @@ export function ThreePLDashboard({
                   <TableHead className="px-2 text-xs">Order</TableHead>
                   <TableHead className="px-2 text-xs">Customer</TableHead>
                   <TableHead className="px-2 text-xs">Status</TableHead>
-                  <TableHead className="px-2 text-right text-xs">Date</TableHead>
+                  <TableHead className="px-2 text-xs">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,7 +325,7 @@ export function ThreePLDashboard({
                         {r.status}
                       </StatusChip>
                     </TableCell>
-                    <TableCell className="px-2 text-right tabular-nums text-muted-foreground">
+                    <TableCell className="px-2 tabular-nums text-muted-foreground">
                       {r.date.title}
                     </TableCell>
                   </TableRow>

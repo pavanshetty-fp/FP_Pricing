@@ -131,11 +131,11 @@ export function ProductTable<L extends ProductLine = ProductLine>({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel required>{productLabel}</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel required>{qtyLabel}</TableRequiredLabel>
               </th>
               {columns.map((c) => (
-                <th key={c.key} className="px-3 py-2.5 text-right">
+                <th key={c.key} className="px-3 py-2.5">
                   <TableRequiredLabel required={c.required}>{c.label}</TableRequiredLabel>
                 </th>
               ))}
@@ -204,16 +204,16 @@ export function ProductTable<L extends ProductLine = ProductLine>({
               so it can never disagree with them. */}
           <tfoot>
             <tr className="h-11 border-t border-border">
-              <td className="px-3 text-right text-sm text-muted-foreground">
+              <td className="px-3 text-sm text-muted-foreground">
                 Total
               </td>
-              <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+              <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                 {total.toLocaleString()}
               </td>
               {columns.map((c) => (
                 <td
                   key={c.key}
-                  className="px-3 text-right text-sm font-medium tabular-nums text-foreground"
+                  className="px-3 text-sm font-medium tabular-nums text-foreground"
                 >
                   {c.total}
                 </td>

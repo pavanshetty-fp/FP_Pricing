@@ -117,16 +117,16 @@ export interface AssetColumnDef {
 }
 
 export const ASSET_COLUMNS: AssetColumnDef[] = [
-  { key: "asset", label: "Asset", width: 200, sortable: true },
+  { key: "asset", label: "Asset", width: 190, sortable: true },
   /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — DS rule. */
-  { key: "erpId", label: "ERP ID", width: 190, sortable: true },
-  { key: "hub", label: "Hub", width: 150, sortable: true },
+  { key: "erpId", label: "ERP ID", width: 160, sortable: true },
+  { key: "hub", label: "Hub", width: 130, sortable: true },
   { key: "los", label: "LOS", width: 150, sortable: true },
-  { key: "products", label: "Product Compatibility", width: 200, sortable: true },
-  { key: "capacity", label: "Size (Gal)", width: 130, sortable: true, align: "right" },
-  { key: "monitor", label: "Tank Monitor", width: 150, sortable: true },
-  { key: "createdOn", label: "Created On", width: 150, sortable: true },
-  { key: "status", label: "Status", width: 140, sortable: true },
+  { key: "products", label: "Product Compatibility", width: 170, sortable: true },
+  { key: "capacity", label: "Size (Gal)", width: 100, sortable: true },
+  { key: "monitor", label: "Tank Monitor", width: 120, sortable: true },
+  { key: "createdOn", label: "Created On", width: 120, sortable: true },
+  { key: "status", label: "Status", width: 110, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

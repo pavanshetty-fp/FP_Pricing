@@ -2,10 +2,10 @@ import * as React from "react";
 import { toast } from "sonner";
 import { CalendarDays, ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import {
@@ -443,7 +443,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
     validThrough: () => ({
       half: true,
       control: (
-        <Popover>
+        <DatePopover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="w-full justify-start font-normal">
               <CalendarDays />
@@ -455,16 +455,13 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
-            <Calendar
-              mode="single"
+            <DatePanel
               selected={dateOfKey(draft.validThrough) ?? undefined}
               onSelect={(d) => d && set("validThrough", dateKeyOf(d))}
-              defaultMonth={dateOfKey(draft.validThrough) ?? today}
               disabled={{ before: today }}
-              autoFocus
             />
           </PopoverContent>
-        </Popover>
+        </DatePopover>
       ),
     }),
     market: () => ({

@@ -1,5 +1,6 @@
 import { FileText, Repeat } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
+import { StatusChip } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { DATE_FMT } from "../unified-view/data";
 import { BreakdownPopover, OverflowChip } from "../unified-view/BreakdownCard";
@@ -14,7 +15,42 @@ import {
   type FlagLevel,
   type OrderRequest,
   type RequestLine,
+  TENANT,
 } from "./orders";
+
+/*
+  AWAITING CONFIRMATION (Pavan, 2026-10-22) — a change or a cancellation the
+  customer asked for is not a status of its own: the order stays Unassigned
+  or Scheduled and wears this pill until the tenant answers. A press opens
+  what was asked, the note and when.
+*/
+export const awaitingLabel = (r: OrderRequest) =>
+  r.changeRequest ? (r.changeRequest.kind === "cancel" ? "Awaiting cancellation" : "Awaiting confirmation") : null;
+
+export function AwaitingPill({ r }: { r: OrderRequest }) {
+  const ask = r.changeRequest;
+  const label = awaitingLabel(r);
+  if (!ask || !label) return null;
+  return (
+    <BreakdownPopover
+      className="rounded-full"
+      label={`Show what was asked on ${r.requestNo}`}
+      width={320}
+      trigger={
+        <StatusChip tone="processing" variant="soft">
+          {label}
+        </StatusChip>
+      }
+      card={{
+        title: ask.kind === "cancel" ? "Cancellation requested" : "Change requested",
+        rows: [
+          { label: ask.what, sub: ask.note || undefined },
+          { label: `Sent to ${TENANT}`, sub: `${DATE_FMT.format(new Date(ask.at))} · waiting for their confirmation` },
+        ],
+      }}
+    />
+  );
+}
 
 /*
   THE LINE BREAKDOWN — the Unified View's way, which is the source of truth
@@ -68,9 +104,9 @@ export function QuantityCell({ r }: { r: OrderRequest }) {
   const { gal } = quantityOf(r.lines);
   const face = <span className="truncate text-sm tabular-nums text-foreground">{text}</span>;
   /* ONE LINE HAS NOTHING TO BREAK DOWN — plain text, no dead trigger. */
-  if (r.lines.length < 2) return <div className="flex justify-end">{face}</div>;
+  if (r.lines.length < 2) return <div className="flex">{face}</div>;
   return (
-    <div className="flex justify-end">
+    <div className="flex">
       <BreakdownPopover
         align="end"
         className="rounded-sm"
@@ -170,7 +206,7 @@ export function ShipToAssetsCell({ s }: { s: ShipTo }) {
             title: `All assets (${s.assets.length})`,
             rows: [],
             table: {
-              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Products" }, { label: "Capacity", align: "right" }],
+              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Products" }, { label: "Capacity" }],
               groups: [
                 {
                   label: "",
@@ -209,7 +245,7 @@ export function ShipToProductsCell({ s }: { s: ShipTo }) {
             title: `All products (${groups.size})`,
             rows: [],
             table: {
-              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Capacity", align: "right" }],
+              columns: [{ label: "Asset" }, { label: "Type" }, { label: "Capacity" }],
               groups: [...groups].map(([product, assets]) => ({
                 label: product,
                 rows: assets.map((a) => [a.name, a.type, a.capacity > 0 ? gal(a.capacity) : "No tank"]),

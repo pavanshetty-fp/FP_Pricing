@@ -97,18 +97,18 @@ export type SalesOrderColumnKey =
    column set for every line, as 3PL keeps one set across its lines. A cell a
    kind has no value for prints an em-dash. */
 export const SALES_ORDER_COLUMNS: ListColumn<SalesOrderColumnKey>[] = [
-  { key: "order", label: "Order #", width: 120, sortable: true },
-  { key: "type", label: "Type", width: 130, sortable: true },
-  { key: "customer", label: "Customer", width: 220, sortable: true },
-  { key: "products", label: "Product / Asset", width: 190, sortable: true },
-  { key: "qty", label: "Qty", width: 110, sortable: true },
+  { key: "order", label: "Order #", width: 90, sortable: true },
+  { key: "type", label: "Type", width: 120, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "products", label: "Product / Asset", width: 230, sortable: true },
+  { key: "qty", label: "Qty", width: 100, sortable: true },
   { key: "date", label: "Date of Delivery", width: 140, sortable: true },
-  { key: "planned", label: "Planned Date & Time", width: 150, sortable: true },
+  { key: "planned", label: "Planned Date & Time", width: 160, sortable: true },
   /* ROOM FOR A STAGE AND ITS FLAG — "Over SLA" rides beside it (2026-10-07). */
-  { key: "status", label: "Status", width: 230, sortable: true },
-  { key: "driver", label: "Driver", width: 140, sortable: true },
-  { key: "salesRep", label: "Sales Rep", width: 150, sortable: true },
-  { key: "tags", label: "Tags", width: 200, sortable: true },
+  { key: "status", label: "Status", width: 200, sortable: true },
+  { key: "driver", label: "Driver", width: 120, sortable: true },
+  { key: "salesRep", label: "Sales Rep", width: 120, sortable: true },
+  { key: "tags", label: "Tags", width: 150, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

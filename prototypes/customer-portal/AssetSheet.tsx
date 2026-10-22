@@ -30,7 +30,6 @@ import {
   printKey,
   productsIn,
   REQUEST_STATUS_TONE,
-  isOrder,
   useRequests,
   type Asset,
   type ShipTo,
@@ -576,9 +575,7 @@ function AssetOrderHistory({ asset }: { asset: Asset }) {
   const nav = usePortalNav();
   const rows = useRequests()
     .filter((r) => r.status !== "Draft")
-    /* ONCE PER TANK — a line the tenant has put on an order is listed on
-       its ORDER, not again on the request (Pavan, 2026-10-19). */
-    .flatMap((r) => r.lines.filter((l) => l.assetId === asset.id && (isOrder(r) || !l.orderNo)).map((l) => ({ r, l })))
+    .flatMap((r) => r.lines.filter((l) => l.assetId === asset.id).map((l) => ({ r, l })))
     .sort((x, y) => (y.r.date || "").localeCompare(x.r.date || ""))
     .slice(0, 10);
   return (
@@ -589,7 +586,7 @@ function AssetOrderHistory({ asset }: { asset: Asset }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
-              {["Request #", "Date", "Product", "Qty (gal)", "Ordered at → refilled to", "Status"].map((h, i) => (
+              {["Order #", "Date", "Product", "Qty (gal)", "Ordered at → refilled to", "Status"].map((h, i) => (
                 <th
                   key={h}
                   className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}

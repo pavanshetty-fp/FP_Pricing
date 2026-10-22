@@ -9,7 +9,6 @@ import {
   assetById,
   dateOfKey,
   insertRequests,
-  isOrder,
   nextRequestNo,
   updateRequest,
   type OrderRequest,
@@ -229,7 +228,7 @@ export function generate(say = false) {
       const at = new Date().toISOString();
       made.push({
         id,
-        requestNo: `REQ-${no++}`,
+        requestNo: `ORD-${no++}`,
         shipTo: r.shipTo,
         lines: r.lines
           .filter((l) => l.product)
@@ -268,12 +267,12 @@ export function generate(say = false) {
 /* -------------------------------------------------------------- seed --- */
 
 /*
-  THE ACCOUNT'S STANDING ORDERS, AS RULES — one per recurring request on the
-  seed, that request its first order. INVENTED.
+  THE ACCOUNT'S STANDING ORDERS, AS RULES — one per recurring order on the
+  seed, that order its first. INVENTED.
 */
 {
   const weekday = (key: string) => (dateOfKey(key) ?? new Date()).getDay();
-  for (const q of allRequests().filter((x) => !isOrder(x) && x.recurring && x.status !== "Draft")) {
+  for (const q of allRequests().filter((x) => x.recurring && x.status !== "Draft")) {
     const wd = weekday(q.date);
     const n = 2001 + rules.length;
     const base = blankRule();

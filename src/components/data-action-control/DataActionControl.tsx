@@ -197,7 +197,7 @@ export function DataActionControl({
             onClick={resetToDefault}
             className={cn(tabCls(activeId === null), "border-b-2", activeId === null ? "border-foreground" : "border-transparent")}
           >
-            Default
+            All
             {activeId === null && dirty && <span className="ml-1.5 inline-block size-1.5 rounded-full bg-brand align-middle" aria-label="unsaved" />}
           </button>
           {presets.map((p) => {

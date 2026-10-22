@@ -629,7 +629,7 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
             <Head>Stage</Head>
             <Head>Colour</Head>
             <Head>Requires approval</Head>
-            <Head className="text-right">SLA (hours)</Head>
+            <Head>SLA (hours)</Head>
             <Head>Order</Head>
             <th aria-hidden />
           </tr>
@@ -677,7 +677,7 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
                 </td>
                 {ends ? (
                   /* NOTHING IS LATE IN A STAGE AN ORDER ENDS IN. */
-                  <td className="px-3 text-right text-sm text-muted-foreground">—</td>
+                  <td className="px-3 text-sm text-muted-foreground">—</td>
                 ) : (
                   <td className="relative p-0">
                     <TableCellInput

@@ -39,7 +39,6 @@ import {
   lastProductFor,
   useRequests,
   windowText,
-  type LineScope,
   type OrderRequest,
   type RequestLine,
 } from "./orders";
@@ -100,18 +99,19 @@ function Products({ lines }: { lines: RequestLine[] }) {
 }
 
 type RK = "rule" | "shipTo" | "products" | "qty" | "schedule" | "next" | "made" | "status";
-/* FIXED TO THEIR LONGEST CONTENT (Pavan, 2026-10-17): a rule is its number
-   or a short name, products are one name and a "+N", a quantity is five
-   digits, orders made a small count, status one short pill. */
+/* TUNED BY HAND TO FILL THE TABLE (Pavan, 2026-10-21). Each starts from its
+   widest cell (DS ui §10p) and gets 10–15% more; Ship-to and Schedule get
+   more again, Qty extra room on its right so it stands off the Schedule
+   grid. Numbers sit left. Spare width goes to the wide columns (DS ui §10p). */
 const LIST_COLUMNS: ListColumn<RK>[] = [
-  { key: "rule", label: "Rule", width: 180, sortable: true },
-  { key: "shipTo", label: "Ship-to", width: 160, sortable: true },
-  { key: "products", label: "Products", width: 150, sortable: true },
-  { key: "qty", label: "Qty (gal)", width: 100, sortable: true, align: "right" },
-  { key: "schedule", label: "Schedule", width: 190, sortable: true },
-  { key: "next", label: "Next Delivery", width: 160, sortable: true },
-  { key: "made", label: "Orders Made", width: 120, sortable: true, align: "right" },
-  { key: "status", label: "Status", width: 100, sortable: true },
+  { key: "rule", label: "Rule", width: 90, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 220, sortable: true },
+  { key: "products", label: "Products", width: 125, sortable: true },
+  { key: "qty", label: "Qty (gal)", width: 150, sortable: true },
+  { key: "schedule", label: "Schedule", width: 380, sortable: true },
+  { key: "next", label: "Next Delivery", width: 140, sortable: true },
+  { key: "made", label: "Orders Made", width: 135, sortable: true },
+  { key: "status", label: "Status", width: 105, sortable: true },
 ];
 
 const nextOf = (r: PortalRule) => (r.status === "Active" ? runDates(r, 120).find((d) => !d.skipped) : undefined);
@@ -226,7 +226,7 @@ function RuleDetail({
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border bg-fp-table-header">
-                    {["Request #", "Planned Date", "Products", "Qty (gal)", "Status", ""].map((h, i) => (
+                    {["Order #", "Planned Date", "Products", "Qty (gal)", "Status", ""].map((h, i) => (
                       <th
                         key={i}
                         className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}
@@ -258,7 +258,7 @@ function RuleDetail({
                           <td className="px-3 text-muted-foreground">
                             <Products lines={m.lines} />
                           </td>
-                          <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">{qtyText(m.lines)}</td>
+                          <td className="whitespace-nowrap px-3 tabular-nums text-foreground">{qtyText(m.lines)}</td>
                           <td className="whitespace-nowrap px-3">
                             <StatusChip tone={REQUEST_STATUS_TONE[m.status]} variant="soft">
                               {m.status}
@@ -282,7 +282,7 @@ function RuleDetail({
                         <td className="px-3 text-muted-foreground">
                           <Products lines={rule.lines} />
                         </td>
-                        <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">{qtyText(rule.lines)}</td>
+                        <td className="whitespace-nowrap px-3 tabular-nums text-foreground">{qtyText(rule.lines)}</td>
                         <td className="whitespace-nowrap px-3">
                           <StatusChip tone={kindTone(d.skipped || rule.status !== "Active" ? "neutral" : "info")} variant="soft">
                             {d.skipped ? "Skipped" : rule.status === "Paused" ? "Paused" : "Upcoming"}
@@ -341,11 +341,10 @@ function RuleDetail({
 export function RecurringScreen() {
   const rules = useRules();
   const requests = useRequests();
-  const [line, setLine] = React.useState<LineScope>("All");
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<{ rule: PortalRule | null; seed?: Partial<PortalRule> } | null>(null);
 
-  const rows = rules.filter((r) => inLine(r, line));
+  const rows = rules;
   const madeBy = (id: string) => requests.filter((q) => q.ruleId === id);
   const opened = rules.find((r) => r.id === openId) ?? null;
 
@@ -438,10 +437,20 @@ export function RecurringScreen() {
           }
         }}
         facets={[
+          /* LINE OF SERVICE IS A FILTER (Pavan, 2026-10-21). */
+          { key: "line", label: "Line of Service", options: LINE_SCOPES.filter((l) => l !== "All") },
           { key: "status", label: "Status", options: [...RULE_STATUSES] },
           { key: "shipTo", label: "Ship-to", options: SHIP_TOS.map((x) => x.name) },
         ]}
-        facetValues={(r, f) => (f === "status" ? [r.status] : f === "shipTo" ? [r.shipTo] : [])}
+        facetValues={(r, f) =>
+          f === "line"
+            ? LINE_SCOPES.filter((l) => l !== "All" && inLine(r, l))
+            : f === "status"
+              ? [r.status]
+              : f === "shipTo"
+                ? [r.shipTo]
+                : []
+        }
         storageKey="portal-recurring-rules"
         noun="rules"
         nounOne="rule"
@@ -449,9 +458,6 @@ export function RecurringScreen() {
         ctaLabel="Create Rule"
         onCreate={() => setForm({ rule: null })}
         afterFilters={<RecurringRecommendations onCreate={fromRecommendation} />}
-        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(v) => setLine(v as LineScope)}
         onOpen={(r) => setOpenId(r.id)}
         openLabel={(r) => `Open rule ${r.ruleNo}`}
         emptyIcon={<Repeat />}

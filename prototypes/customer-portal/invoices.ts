@@ -1,7 +1,7 @@
 import * as React from "react";
 import { startOfDay } from "../unified-view/data";
 import { statusTones } from "../unified-view/statusKind";
-import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests, dateOfKey, orderNoFor, updateRequest, type RequestDoc } from "./orders";
+import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests, dateOfKey, updateRequest, type RequestDoc } from "./orders";
 
 /*
   INVOICES (Pavan, 2026-10-14) — after the Lovable reference's invoice page
@@ -18,8 +18,7 @@ import { ACCOUNT, CUSTOMER_DIFF, MARKET_PRICE, PORTAL_ACTOR, TENANT, allRequests
     Paid               the customer says it is paid; the tenant has not confirmed
     Payment confirmed  the tenant has the money
     Payment disputed   the payment does not match — the two sides disagree
-    Invoice disputed   the CUSTOMER says the invoice is wrong (Pavan,
-                       2026-10-15) — see "THE CUSTOMER'S DISPUTE" below
+    (Invoice disputed  off for now, 2026-10-22 — see below)
 
   The last column is DOWNLOAD INVOICE — one icon.
 
@@ -34,9 +33,11 @@ export const INVOICE_STATUSES = [
   "Paid",
   "Payment confirmed",
   "Payment disputed",
-  "Invoice disputed",
 ] as const;
-export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+/* "INVOICE DISPUTED" IS OFF FOR NOW (Pavan, 2026-10-22) — no invoice is in it
+   and no list, filter or lane offers it; the dispute flow that would set it
+   stays built behind DISPUTES_ON (InvoiceSheet). */
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number] | "Invoice disputed";
 
 export const INVOICE_STATUS_TONE = statusTones<InvoiceStatus>({
   Received: "info",
@@ -52,7 +53,7 @@ export const INVOICE_STATUS_TONE = statusTones<InvoiceStatus>({
 });
 
 /** Still the customer's to pay (or to settle). */
-export const OPEN: InvoiceStatus[] = ["Received", "Payment due", "Overdue", "Payment disputed", "Invoice disputed"];
+export const OPEN: InvoiceStatus[] = ["Received", "Payment due", "Overdue", "Payment disputed"];
 export const SETTLED: InvoiceStatus[] = ["Paid", "Payment confirmed"];
 
 /** The customer's payment terms — days from issue to due. */
@@ -193,12 +194,12 @@ export const daysFrom = (key: string) => {
 type Seed = [no: number, req: number, shipTo: string, issuedAgo: number, status: InvoiceStatus, lines: InvoiceLine[], paidAgo?: number];
 const SEED: Seed[] = [
   [5415, 1108, "Cardinal Hub A", 14, "Paid", [{ product: "Diesel", gal: 4800 }], 1],
-  [5414, 1109, "Cardinal Hub B", 17, "Invoice disputed", [{ product: "Diesel", gal: 7000 }]],
+  [5414, 1109, "Cardinal Hub B", 17, "Overdue", [{ product: "Diesel", gal: 7000 }]],
   [5413, 1110, "Cardinal Hub A", 12, "Payment due", [{ product: "Diesel", gal: 3900 }]],
   [5412, 1111, "Cardinal Overflow", 21, "Overdue", [{ product: "Dyed Diesel", gal: 1150 }, { product: "Diesel", gal: 45 }]],
   [5391, 1094, "Cardinal Hub A", 10, "Payment due", [{ product: "Diesel", gal: 4100 }, { product: "DEF", gal: 280 }]],
   [5385, 1089, "Cardinal Hub B", 3, "Received", [{ product: "Unleaded 87", gal: 2900 }]],
-  [5376, 1083, "Cardinal Hub A", 1, "Invoice disputed", [{ product: "Jet A", gal: 2200 }, { product: "Avgas 100LL", gal: 600 }]],
+  [5376, 1083, "Cardinal Hub A", 1, "Received", [{ product: "Jet A", gal: 2200 }, { product: "Avgas 100LL", gal: 600 }]],
   [5360, 1071, "Cardinal Overflow", 49, "Overdue", [{ product: "Propane", gal: 2600 }]],
   [5340, 1060, "Cardinal Hub A", 40, "Payment confirmed", [{ product: "Diesel", gal: 5200 }], 27],
   [5322, 1052, "Cardinal Hub B", 55, "Payment confirmed", [{ product: "Diesel", gal: 6100 }, { product: "Unleaded 87", gal: 1500 }], 41],
@@ -208,7 +209,8 @@ const SEED: Seed[] = [
 
 export const INVOICES: Invoice[] = SEED.map(([no, req, shipTo, ago, status, lines, paidAgo]) => ({
   invoiceNo: `INV-${no}`,
-  orderNo: orderNoFor(`REQ-${req}`),
+  /* THE ORDER IT BILLS — the seed's old request numbers, moved onto ORD-. */
+  orderNo: `ORD-${req + 7700}`,
   shipTo,
   billTo: ACCOUNT,
   issued: dayKey(-ago),
@@ -389,10 +391,11 @@ export const disputeOpen = (inv: Invoice) => Boolean(inv.dispute && !inv.dispute
 const dueStatus = (inv: Invoice): InvoiceStatus =>
   daysFrom(inv.due) < 0 ? "Overdue" : daysFrom(inv.due) <= 7 ? "Payment due" : "Received";
 
-/** The order behind an invoice follows it. */
-function orderTo(orderNo: string, status: "Invoice disputed" | "Invoiced", change: string) {
+/** The order behind an invoice logs what happened to it — its status stays
+    Invoiced (there is no "Invoice disputed" for an order, 2026-10-22). */
+function orderTo(orderNo: string, change: string) {
   const r = allRequests().find((x) => x.requestNo === orderNo);
-  if (r) updateRequest(r.id, { status }, change);
+  if (r) updateRequest(r.id, {}, change);
 }
 
 /** The customer disputes an invoice. */
@@ -424,7 +427,7 @@ export function raiseDispute(
       })),
     },
   };
-  orderTo(inv.orderNo, "Invoice disputed", `Invoice ${no} disputed · ${input.kind}`);
+  orderTo(inv.orderNo, `Invoice ${no} disputed · ${input.kind}`);
   emit();
 }
 
@@ -434,7 +437,7 @@ export function closeDispute(no: string) {
   const inv = INVOICES[i];
   if (i < 0 || !inv.dispute) return;
   INVOICES[i] = { ...inv, status: dueStatus(inv), dispute: { ...inv.dispute, closedAt: new Date().toISOString() } };
-  orderTo(inv.orderNo, "Invoiced", `Dispute on ${no} closed`);
+  orderTo(inv.orderNo, `Dispute on ${no} closed`);
   emit();
 }
 

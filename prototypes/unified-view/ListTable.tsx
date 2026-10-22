@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,6 +62,9 @@ export interface ListSort<K extends string> {
 }
 
 export interface ListTableProps<Row, K extends string> {
+  /** Every cell sits at the top of its row — for rows that grow tall with
+   *  stacked lines, so the record's own cells read first. */
+  alignTop?: boolean;
   rows: Row[];
   columns: ListColumn<K>[];
   hidden?: Set<K>;
@@ -175,6 +178,7 @@ export function ListTable<Row, K extends string>({
   showColumnFilters = false,
   renderExpanded,
   expandLabel,
+  alignTop = false,
 }: ListTableProps<Row, K>) {
   const expandable = Boolean(renderExpanded);
   const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(() => new Set());
@@ -185,16 +189,17 @@ export function ListTable<Row, K extends string>({
       else next.add(id);
       return next;
     });
-  /* THE NESTED LAYER FILLS THE VISIBLE WIDTH, not the scrolled one. */
+  /* THE FRAME'S WIDTH — what the columns fill, and what a nested layer
+     spans (the visible width, not the scrolled one). */
   const frame = React.useRef<HTMLDivElement>(null);
   const [frameWidth, setFrameWidth] = React.useState<number | undefined>();
   React.useEffect(() => {
-    if (!expandable || !frame.current) return;
+    if (!frame.current) return;
     const el = frame.current;
     const ro = new ResizeObserver(() => setFrameWidth(el.clientWidth));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [expandable]);
+  }, []);
   /* THE PINNED CHEVRON IS THE FRAME, not a column: it is how a row is opened
      and it is stuck to the right edge so it survives a sideways scroll. It
      does not move, and nothing can be dropped past it. */
@@ -223,14 +228,36 @@ export function ListTable<Row, K extends string>({
   const allSelected = selectable && ids.length > 0 && ids.every((id) => selectedIds!.has(id));
   const someSelected = selectable && ids.some((id) => selectedIds!.has(id));
   const span = visible.length + (selectable ? 1 : 0);
+  /* NO EMPTY SPACE ON THE RIGHT, EVER (Pavan, 2026-10-22). Each column starts
+     at the width its longest value needs (DS ui §10p); when the table is
+     narrower than its frame, the spare width goes to the columns that hold
+     the most — a column gets a share in proportion to how far it is wider
+     than 120px, so an icon, a count or a short code stays as it is and a
+     name, an address or a contact takes the room. Wider than the frame, the
+     table scrolls. */
+  const base = visible.map((c) => cols.widthOf(c));
+  const widths = (() => {
+    const lead = selectable ? 44 : 0;
+    const spare = (frameWidth ?? 0) - lead - base.reduce((a, b) => a + b, 0);
+    if (spare <= 0) return base;
+    const weight = base.map((w) => Math.max(0, w - 120));
+    const total = weight.reduce((a, b) => a + b, 0) || base.reduce((a, b) => a + b, 0);
+    const share = total === 0 ? base.map(() => 0) : (weight.some((w) => w > 0) ? weight : base).map((w) => w / total);
+    const out = base.map((w, i) => Math.floor(w + spare * share[i]));
+    /* What rounding left goes on the widest column, so the edge lands exactly. */
+    const left = (frameWidth ?? 0) - lead - out.reduce((a, b) => a + b, 0);
+    const widest = out.indexOf(Math.max(...out));
+    if (widest >= 0) out[widest] += Math.max(0, left);
+    return out;
+  })();
 
   return (
     <div ref={frame} className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
-      <Table style={{ tableLayout: "fixed" }}>
+      <Table style={{ tableLayout: "fixed", width: widths.reduce((a, b) => a + b, selectable ? 44 : 0) }}>
         <colgroup>
           {selectable && <col style={{ width: "44px" }} />}
-          {visible.map((c) => (
-            <col key={c.key} style={{ width: `${cols.widthOf(c)}px` }} />
+          {visible.map((c, i) => (
+            <col key={c.key} style={{ width: `${widths[i]}px` }} />
           ))}
         </colgroup>
         <TableHeader className="sticky top-0 z-20">
@@ -246,11 +273,13 @@ export function ListTable<Row, K extends string>({
             )}
             {visible.map((col) => {
               const active = sort?.key === col.key;
+              /* THE SORTED COLUMN (Pavan, 2026-10-21): a real arrow, not a
+                 chevron, on a darker grey header; its cells a very light grey. */
               const SortIcon = !active
                 ? ChevronsUpDown
                 : sort.dir === "asc"
-                  ? ChevronUp
-                  : ChevronDown;
+                  ? ArrowUp
+                  : ArrowDown;
               return (
                 <TableColumnHeader
                   key={col.key}
@@ -265,8 +294,6 @@ export function ListTable<Row, K extends string>({
                   }
                   className={cn(
                     "border-b border-fp-outline-1 bg-fp-table-header px-3 text-xs font-medium text-muted-foreground",
-                    col.align === "right" && "text-right",
-                    col.align === "center" && "text-center",
                     col.key === actionsKey && "sticky right-0 z-30"
                   )}
                 >
@@ -284,7 +311,7 @@ export function ListTable<Row, K extends string>({
                       <SortIcon
                         className={cn(
                           "size-3.5",
-                          active ? "opacity-100" : "opacity-70"
+                          active ? "opacity-100" : "opacity-50"
                         )}
                       />
                     </button>
@@ -363,6 +390,7 @@ export function ListTable<Row, K extends string>({
                       )}
                     </TableCell>
                   ))}
+                  
                 </TableRow>
               ))
             : (nodes ??
@@ -447,10 +475,10 @@ export function ListTable<Row, K extends string>({
                   key={col.key}
                   className={cn(
                     "px-3",
+                    alignTop && "align-top py-3",
                     /* THE RAIL STARTS ON THE OPEN PARENT'S FIRST CELL. */
                     ci === 0 && !selectable && expanded.has(node.id) && "relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70",
-                    col.align === "right" && "text-right",
-                    col.align === "center" && "text-center",
+                    sort?.key === col.key && "fp-sorted-cell",
                     col.key === actionsKey &&
                       /* THE PINNED CELL WEARS THE ROW'S STATE — hover, an open
                          nested layer, selection — so it never reads as a
@@ -490,6 +518,7 @@ export function ListTable<Row, K extends string>({
                   </span>
                 </TableCell>
               ))}
+              
             </TableRow>
             {expandable && expanded.has(node.id) && (
               <TableRow className="hover:bg-transparent data-[state=selected]:bg-transparent">

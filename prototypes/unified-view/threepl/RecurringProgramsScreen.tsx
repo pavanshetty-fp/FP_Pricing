@@ -1,11 +1,11 @@
 import * as React from "react";
 import {
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
   Network,
   SearchX,
-  Archive,
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -54,10 +54,9 @@ import {
   LOADING_ACCOUNTS,
   suppliersOf,
   terminalsOf,
-  LINE_SCOPES,
-  inLineScope,
+  SERVICE_LINES,
+  LINE_BUSINESSES,
   businessesOf,
-  type LineScope,
   lineOfProduct,
 } from "./orders";
 import { VENDORS } from "./vendors";
@@ -141,43 +140,41 @@ const COLUMNS: Col[] = [
   {
     key: "programNo",
     label: "Programme # / Created",
-    width: 190,
+    width: 180,
     sort: (p) => p.programNo,
   },
-  { key: "schedule", label: "Frequency", width: 240, sort: (p) => p.schedule.label },
-  { key: "product", label: "Product", width: 170, sort: (p) => p.products.join(" + ") },
-  { key: "status", label: "Status", width: 150, sort: (p) => p.status },
-  { key: "vendor", label: "Partner", width: 190, sort: (p) => programPartnerLabel(p) },
+  { key: "schedule", label: "Frequency", width: 220, sort: (p) => p.schedule.label },
+  { key: "product", label: "Product", width: 150, sort: (p) => p.products.join(" + ") },
+  { key: "status", label: "Status", width: 90, sort: (p) => p.status },
+  { key: "vendor", label: "Partner", width: 160, sort: (p) => programPartnerLabel(p) },
   {
     key: "loadOrder",
     label: "Load Order",
-    width: 130,
+    width: 110,
     sort: (p) => (p.loadOrder ? "Yes" : "No"),
   },
   {
     key: "terminal",
     label: "Terminal",
-    width: 170,
+    width: 130,
     sort: (p) => (p.loadOrder ? uniq(p.loadRows.map((l) => l.terminal)) : ""),
   },
   {
     key: "account",
     label: "Loading Account",
-    width: 180,
+    width: 160,
     sort: (p) => (p.loadOrder ? uniq(p.loadRows.map((l) => l.loadingAccount)) : ""),
   },
   {
     key: "sites",
     label: "Sites",
-    width: 110,
-    align: "right",
+    width: 80,
     sort: (p) => p.targets.length,
   },
   {
     key: "customers",
     label: "Customers",
-    width: 130,
-    align: "right",
+    width: 110,
     sort: (p) => new Set(p.targets.map((t) => t.customer.title)).size,
   },
   {
@@ -191,22 +188,19 @@ const COLUMNS: Col[] = [
   {
     key: "cost",
     label: "Estimated Partner Price",
-    width: 200,
-    align: "right",
+    width: 180,
     sort: (p) => programMoney(p).cost || Number.MAX_SAFE_INTEGER,
   },
   {
     key: "revenue",
     label: "Estimated Customer Price",
-    width: 210,
-    align: "right",
+    width: 190,
     sort: (p) => programMoney(p).revenue || Number.MAX_SAFE_INTEGER,
   },
   {
     key: "margin",
     label: "Estimated Margin",
-    width: 170,
-    align: "right",
+    width: 150,
     sort: (p) =>
       programMoney(p).revenue > 0 ? programMoney(p).margin : Number.MAX_SAFE_INTEGER,
   },
@@ -264,6 +258,20 @@ const PROGRAM_FACETS: {
   valuesOf?: (p: RecurringProgram) => string[];
   searchable?: boolean;
 }[] = [
+  /* LINE OF SERVICE AND BUSINESS ARE FILTERS (Pavan, 2026-10-21) — not a
+     segment and preset tabs above the list. */
+  {
+    key: "serviceLine",
+    label: "Line of Service",
+    options: [...SERVICE_LINES],
+    valueOf: (p) => p.serviceLine,
+  },
+  {
+    key: "business",
+    label: "Business",
+    options: businessesOf("All"),
+    valueOf: (p) => p.business ?? "",
+  },
   {
     key: "status",
     label: "Status",
@@ -376,8 +384,6 @@ export function RecurringProgramsScreen({
   const [colQuery, setColQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [line, setLine] = React.useState<LineScope>("All");
-  const [business, setBusiness] = React.useState<string | null>(null);
 
   /* THE COLUMNS ARE THE READER'S — order, widths and the sort, the same
      `useTableColumns` call every flat table here makes. */
@@ -487,8 +493,6 @@ export function RecurringProgramsScreen({
       return acc;
     }, {});
     return programs.filter((p) => {
-      if (!inLineScope(line, p.serviceLine)) return false;
-      if (business !== null && p.business !== business) return false;
       if (!matchesProgram(p, search)) return false;
       if (cq && field && !field.text(p).toLowerCase().includes(cq)) return false;
       /* AND, because that is what typing in two boxes looks like it does. */
@@ -505,7 +509,7 @@ export function RecurringProgramsScreen({
         return mine.some((x) => wanted.includes(x));
       });
     });
-  }, [programs, search, colScope, colQuery, line, business, activeColFilters]);
+  }, [programs, search, colScope, colQuery, activeColFilters]);
 
   const rows = React.useMemo(() => {
     const kept = narrow(applied);
@@ -528,7 +532,7 @@ export function RecurringProgramsScreen({
   const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business, activeColFilters]);
+  }, [search, applied, colQuery, colScope, activeColFilters]);
 
   const openProgram = programs.find((p) => p.id === openId) ?? null;
   const editing = programs.find((p) => p.id === editingId) ?? null;
@@ -557,11 +561,6 @@ export function RecurringProgramsScreen({
   /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
      every narrowing that shapes the file listed. */
   const exportFilters: ExportFilterRow[] = [
-    {
-      key: "business",
-      label: "Business",
-      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
-    },
     {
       key: "search",
       label: "Search",
@@ -769,23 +768,6 @@ export function RecurringProgramsScreen({
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
-        onResetToDefault={() => {
-          setBusiness(null);
-          savedViews.onResetToDefault();
-        }}
-        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(l) => {
-          setLine(l as LineScope);
-          setBusiness(null);
-          setPage(1);
-        }}
-        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
-        presetKey={business}
-        onPresetChange={(b) => {
-          setBusiness((prev) => (prev === b ? null : b));
-          setPage(1);
-        }}
         /* CREATE RULE, NOT CREATE ORDER — and it opens HERE rather than
            sending the reader to the delivery-order form. V1 and V2 make a
            recurring order by ticking a box on an order, so their CTA goes
@@ -942,8 +924,8 @@ export function RecurringProgramsScreen({
                     const SortIcon = !active
                       ? ChevronsUpDown
                       : sort?.dir === "asc"
-                        ? ChevronUp
-                        : ChevronDown;
+                        ? ArrowUp
+                        : ArrowDown;
                     return (
                       <TableColumnHeader
                         key={c.key}
@@ -1145,8 +1127,8 @@ export function RecurringProgramsScreen({
             products: d.products,
             winterProducts: d.winterProducts,
             /* Under "All" the program takes its first product's line. */
-            serviceLine: line === "All" ? lineOfProduct(d.products[0] ?? "") : line,
-            business: business,
+            serviceLine: lineOfProduct(d.products[0] ?? ""),
+            business: LINE_BUSINESSES[lineOfProduct(d.products[0] ?? "")][0] ?? null,
             orderType: "Core",
             signatureOnDelivery: d.signatureOnDelivery,
             schedule,

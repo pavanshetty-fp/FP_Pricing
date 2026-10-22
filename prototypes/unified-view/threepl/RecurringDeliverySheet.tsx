@@ -1,10 +1,10 @@
 import * as React from "react";
+import { DateKeyField } from "@/components/ui/date-picker";
 import { AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { TableCellInput } from "@/components/form-layout";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -247,15 +247,11 @@ export function RecurringDeliverySheet({
               Delivery date
             </label>
             {editable ? (
-              <Input
+              <DateKeyField
                 id="delivery-date"
-                type="date"
                 value={delivery.dateKey}
                 min={todayKey}
-                onChange={(e) =>
-                  e.target.value &&
-                  onPatch(delivery.dateKey, { dateKey: e.target.value })
-                }
+                onChange={(key) => onPatch(delivery.dateKey, { dateKey: key })}
               />
             ) : (
               <span className="text-sm text-foreground">

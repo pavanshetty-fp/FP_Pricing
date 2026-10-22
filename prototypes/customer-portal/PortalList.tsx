@@ -30,6 +30,8 @@ import { useSavedViews } from "../unified-view/useSavedViews";
 */
 
 interface ViewState {
+  /** THE DISPLAY IT OPENS IN — table, board or map (Pavan, 2026-10-21). */
+  mode?: ListView;
   search: string;
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
@@ -46,6 +48,7 @@ interface ViewState {
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
+    mode: s.mode ?? "table",
     hidden: [...s.hidden].sort(),
     facets: [...s.facets].sort(),
     colFilters: Object.fromEntries(
@@ -129,6 +132,7 @@ export function PortalList<R, K extends string>({
   const firstKey = labelled[0]?.key ?? "";
   const toggleColumns = labelled.map((c) => ({ key: c.key, label: c.label }));
   const defaults: ViewState = {
+    mode: "table",
     search: "",
     sortKey: null,
     sortDir: null,
@@ -171,6 +175,8 @@ export function PortalList<R, K extends string>({
   );
 
   const current: ViewState = {
+
+    mode: view,
     search,
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
@@ -184,6 +190,7 @@ export function PortalList<R, K extends string>({
     facets: [...facetSel],
   };
   const applyState = (s: ViewState) => {
+    setView(s.mode ?? "table");
     setSearch(s.search);
     setSort(s.sortKey && s.sortDir ? { key: s.sortKey as K, dir: s.sortDir } : null);
     setHidden(new Set(s.hidden as K[]));

@@ -1,8 +1,9 @@
 import * as React from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   ChevronsUpDown,
   Info,
   MoreHorizontal,
@@ -66,10 +67,8 @@ import {
   BROKER_STATUS_TONE,
   totalGal,
   type BrokerStatus,
-  LINE_SCOPES,
-  inLineScope,
+  SERVICE_LINES,
   businessesOf,
-  type LineScope,
 } from "./orders";
 import { VENDORS } from "./vendors";
 import {
@@ -144,7 +143,7 @@ interface SeriesCol {
 const SERIES_COLUMNS: SeriesCol[] = [
   { key: "order", label: "Order # / Created", width: 165, sort: (s) => s.parent.orderNo },
   { key: "customer", label: "Customer", width: 230, sort: (s) => s.parent.customer.title },
-  { key: "shipTo", label: "Ship To", width: 190, sort: (s) => s.parent.shipTo },
+  { key: "shipTo", label: "Ship To", width: 170, sort: (s) => s.parent.shipTo },
   { key: "schedule", label: "Schedule", width: 190, sort: (s) => s.schedule.label },
   /* No next date sorts last, as on Rules. */
   { key: "next", label: "Next Delivery", width: 165, sort: (s) => s.nextKey ?? "9999" },
@@ -152,7 +151,6 @@ const SERIES_COLUMNS: SeriesCol[] = [
     key: "upcoming",
     label: "Upcoming",
     width: 100,
-    align: "right",
     sort: (s) => upcomingCount(s, startOfDay(new Date())),
   },
   { key: "vendor", label: "Partner", width: 210, sort: (s) => vendorName(s.parent.vendorId) },
@@ -176,7 +174,7 @@ const DELIVERY_COLUMNS: DeliveryCol[] = [
   { key: "order", label: "Order # / Created", width: 165, sort: (d) => d.orderNo },
   { key: "date", label: "Planned Date", width: 165, sort: (d) => d.dateKey },
   { key: "products", label: "Products", width: 230, sort: (d) => d.lines[0]?.product ?? "" },
-  { key: "qty", label: "Qty (Gal)", width: 110, align: "right", sort: (d) => totalGal(d.lines) },
+  { key: "qty", label: "Qty (Gal)", width: 110, sort: (d) => totalGal(d.lines) },
   { key: "vendor", label: "Partner", width: 210, sort: (d) => vendorName(d.vendorId) },
   { key: "status", label: "Status", width: 210, sort: (d) => BROKER_STATUSES.indexOf(d.status) },
 ];
@@ -219,7 +217,7 @@ function SortButton({
   onSort: (key: string) => void;
 }) {
   const active = sort?.key === colKey;
-  const Icon = !active ? ChevronsUpDown : sort?.dir === "asc" ? ChevronUp : ChevronDown;
+  const Icon = !active ? ChevronsUpDown : sort?.dir === "asc" ? ArrowUp : ArrowDown;
   return (
     <button
       type="button"
@@ -277,6 +275,20 @@ const SERIES_FACETS: {
   valueOf: (s: RecurringSeries) => string;
   searchable?: boolean;
 }[] = [
+  /* LINE OF SERVICE AND BUSINESS ARE FILTERS (Pavan, 2026-10-21) — not a
+     segment and preset tabs above the list. */
+  {
+    key: "serviceLine",
+    label: "Line of Service",
+    options: [...SERVICE_LINES],
+    valueOf: (s) => s.parent.serviceLine,
+  },
+  {
+    key: "business",
+    label: "Business",
+    options: businessesOf("All"),
+    valueOf: (s) => s.parent.business ?? "",
+  },
   {
     key: "series",
     label: "Series",
@@ -474,7 +486,7 @@ function DeliveryRow({ d }: { d: Delivery }) {
           )}
         </span>
       </td>
-      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-foreground">
+      <td className="whitespace-nowrap px-4 py-3 tabular-nums text-foreground">
         {gal > 0 ? gal.toLocaleString() : "—"}
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -528,8 +540,6 @@ export function RecurringOrdersScreen({
   const [ops, setOps] = React.useState<Operations>("all");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [line, setLine] = React.useState<LineScope>("All");
-  const [business, setBusiness] = React.useState<string | null>(null);
   /* THE COLUMNS ARE THE READER'S (Pavan, 2026-10-07) — order, widths, sort
      and the filter row, as on Delivery Orders, kept by a saved view. */
   const [colOrder, setColOrder] = React.useState<string[]>(SERIES_KEYS);
@@ -582,8 +592,6 @@ export function RecurringOrdersScreen({
       return acc;
     }, {});
     return all.filter((s) => {
-      if (!inLineScope(line, s.parent.serviceLine)) return false;
-      if (business !== null && s.parent.business !== business) return false;
       if (ops === "first" && s.parent.jobType !== "Transportation") return false;
       if (ops === "third" && s.parent.jobType !== "Brokerage") return false;
       if (!matchesSeries(s, search)) return false;
@@ -600,7 +608,7 @@ export function RecurringOrdersScreen({
         return !facet || wanted.includes(facet.valueOf(s));
       });
     });
-  }, [all, search, colScope, colQuery, line, business, ops, activeColFilters, today]);
+  }, [all, search, colScope, colQuery, ops, activeColFilters, today]);
 
   const rows = React.useMemo(
     () =>
@@ -621,7 +629,7 @@ export function RecurringOrdersScreen({
   );
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business, ops, activeColFilters]);
+  }, [search, applied, colQuery, colScope, ops, activeColFilters]);
 
   /** The columns actually drawn, in the reader's order — actions never hides. */
   const visibleCols = React.useMemo(
@@ -777,11 +785,6 @@ export function RecurringOrdersScreen({
   /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
      every narrowing that shapes the file listed. */
   const exportFilters: ExportFilterRow[] = [
-    {
-      key: "business",
-      label: "Business",
-      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
-    },
     {
       key: "search",
       label: "Search",
@@ -998,23 +1001,6 @@ export function RecurringOrdersScreen({
           the CTA. Same bar as the orders board and as V1. */}
       <FuelOrdersViewBar
         {...savedViews}
-        onResetToDefault={() => {
-          setBusiness(null);
-          savedViews.onResetToDefault();
-        }}
-        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(l) => {
-          setLine(l as LineScope);
-          setBusiness(null);
-          setPage(1);
-        }}
-        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
-        presetKey={business}
-        onPresetChange={(b) => {
-          setBusiness((prev) => (prev === b ? null : b));
-          setPage(1);
-        }}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}

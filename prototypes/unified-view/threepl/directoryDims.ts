@@ -75,15 +75,15 @@ export type BrokerCustomerColumnKey =
   CUSTOMER INSTRUCTIONS MOVED LAST, and stopped being text. See its cell.
 */
 export const BROKER_CUSTOMER_COLUMNS = [
-  { key: "name" as const, label: "Customer Name", width: 240, sortable: true },
-  { key: "erpId" as const, label: "ERP ID", width: 130, sortable: true },
-  { key: "poc" as const, label: "Primary POC", width: 210, sortable: true },
-  { key: "address" as const, label: "Address", width: 260, sortable: true },
-  { key: "credit" as const, label: "Credit", width: 170, sortable: true },
-  { key: "balance" as const, label: "Current Balance ($)", width: 180, sortable: true, align: "right" as const },
-  { key: "shipTos" as const, label: "Ship-Tos", width: 230, sortable: true },
-  { key: "terms" as const, label: "Terms", width: 130, sortable: true },
-  { key: "status" as const, label: "Status", width: 120, sortable: true },
+  { key: "name" as const, label: "Customer Name", width: 250, sortable: true },
+  { key: "erpId" as const, label: "ERP ID", width: 110, sortable: true },
+  { key: "poc" as const, label: "Primary POC", width: 150, sortable: true },
+  { key: "address" as const, label: "Address", width: 160, sortable: true },
+  { key: "credit" as const, label: "Credit", width: 130, sortable: true },
+  { key: "balance" as const, label: "Current Balance ($)", width: 160, sortable: true },
+  { key: "shipTos" as const, label: "Ship-Tos", width: 170, sortable: true },
+  { key: "terms" as const, label: "Terms", width: 120, sortable: true },
+  { key: "status" as const, label: "Status", width: 100, sortable: true },
   /* 64px — the table's own resize minimum, and the narrowest this can be.
      The cell is a 32px icon: 32 + 24px of padding is 56, so the label is free
      up to ~34px of text and the FLOOR is set by `useColumnWidths`, not by the
@@ -92,7 +92,7 @@ export const BROKER_CUSTOMER_COLUMNS = [
      icon's tooltip and the drawer's own title both say "Delivery instructions"
      in full. Judged within its own table there is no other notes column to
      confuse it with. */
-  { key: "instruction" as const, label: "Notes", width: 64, sortable: true },
+  { key: "instruction" as const, label: "Notes", width: 80, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -216,21 +216,21 @@ export const BROKER_PRODUCT_COLUMNS = [
   /* NAME OVER CODE. They were adjacent columns holding one identity, and the
      code is what people actually type into search — it belongs beside the
      name, not 140px away from it. */
-  { key: "name" as const, label: "Product and Code", width: 250, sortable: true },
+  { key: "name" as const, label: "Product and Code", width: 230, sortable: true },
   /* Freed by the merge above, and it earns the place: what a product IS in
      regulatory terms decides who may carry it. */
-  { key: "classification" as const, label: "Classification", width: 240, sortable: true },
-  { key: "category" as const, label: "Category", width: 140, sortable: true },
-  { key: "unit" as const, label: "UOM", width: 100, sortable: true },
-  { key: "topOff" as const, label: "TopOff", width: 130, sortable: true },
-  { key: "price" as const, label: "Base Price", width: 140, sortable: true, align: "right" as const },
-  { key: "taxCode" as const, label: "Tax Code", width: 140, sortable: true },
-  { key: "accounting" as const, label: "Accounting Mapping", width: 230, sortable: true },
-  { key: "status" as const, label: "Status", width: 120, sortable: true },
-  { key: "customers" as const, label: "Customers", width: 130, sortable: true, align: "right" as const },
-  { key: "vendors" as const, label: "Vendors", width: 120, sortable: true, align: "right" as const },
+  { key: "classification" as const, label: "Classification", width: 190, sortable: true },
+  { key: "category" as const, label: "Category", width: 100, sortable: true },
+  { key: "unit" as const, label: "UOM", width: 80, sortable: true },
+  { key: "topOff" as const, label: "TopOff", width: 100, sortable: true },
+  { key: "price" as const, label: "Base Price", width: 110, sortable: true },
+  { key: "taxCode" as const, label: "Tax Code", width: 100, sortable: true },
+  { key: "accounting" as const, label: "Accounting Mapping", width: 180, sortable: true },
+  { key: "status" as const, label: "Status", width: 100, sortable: true },
+  { key: "customers" as const, label: "Customers", width: 110, sortable: true },
+  { key: "vendors" as const, label: "Vendors", width: 90, sortable: true },
   /* Same 64px icon column as Customers and Vendors — see the note there. */
-  { key: "notes" as const, label: "Notes", width: 64, sortable: true },
+  { key: "notes" as const, label: "Notes", width: 80, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 
@@ -347,17 +347,17 @@ export type RentalAssetColumnKey =
   "is this thing free" is the question the list is opened with.
 */
 export const RENTAL_ASSET_COLUMNS = [
-  { key: "name" as const, label: "Asset Name", width: 200, sortable: true },
-  { key: "asset" as const, label: "Asset ID / Type", width: 180, sortable: true },
-  { key: "rental" as const, label: "Rental Start and End Date", width: 230, sortable: true },
-  { key: "customer" as const, label: "Customer", width: 240, sortable: true },
-  { key: "shipTo" as const, label: "Ship-to / Location", width: 200, sortable: true },
-  { key: "address" as const, label: "Address", width: 240, sortable: true },
-  { key: "status" as const, label: "Status", width: 120, sortable: true },
-  { key: "rate" as const, label: "Rate", width: 120, sortable: true, align: "right" as const },
-  { key: "product" as const, label: "Linked Product", width: 190, sortable: true },
-  { key: "maintenance" as const, label: "Maintenance", width: 150, sortable: true },
-  { key: "notes" as const, label: "Notes", width: 64, sortable: true },
+  { key: "name" as const, label: "Asset Name", width: 170, sortable: true },
+  { key: "asset" as const, label: "Asset ID / Type", width: 130, sortable: true },
+  { key: "rental" as const, label: "Rental Start and End Date", width: 280, sortable: true },
+  { key: "customer" as const, label: "Customer", width: 250, sortable: true },
+  { key: "shipTo" as const, label: "Ship-to / Location", width: 170, sortable: true },
+  { key: "address" as const, label: "Address", width: 160, sortable: true },
+  { key: "status" as const, label: "Status", width: 100, sortable: true },
+  { key: "rate" as const, label: "Rate", width: 80, sortable: true },
+  { key: "product" as const, label: "Linked Product", width: 160, sortable: true },
+  { key: "maintenance" as const, label: "Maintenance", width: 130, sortable: true },
+  { key: "notes" as const, label: "Notes", width: 80, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
 ];
 

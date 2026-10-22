@@ -48,20 +48,20 @@ const coords = (lat: number | null, lng: number | null) =>
 
 type SK = "name" | "address" | "assets" | "products" | "contact" | "hours" | "preferred" | "lastDelivery" | "nextDelivery" | "po" | "access" | "geofence" | "location" | "status" | "actions";
 const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
-  { key: "name", label: "Ship-to", width: 180, sortable: true },
-  { key: "address", label: "Address", width: 240, sortable: true },
-  { key: "assets", label: "Assets", width: 200, sortable: true },
-  { key: "products", label: "Products", width: 180, sortable: true },
-  { key: "contact", label: "Contact", width: 180, sortable: true },
-  { key: "hours", label: "Delivery hours", width: 170, sortable: true },
-  { key: "preferred", label: "Preferred windows", width: 190 },
-  { key: "lastDelivery", label: "Last Delivery", width: 140, sortable: true },
-  { key: "nextDelivery", label: "Next Delivery", width: 140, sortable: true },
+  { key: "name", label: "Ship-to", width: 170, sortable: true },
+  { key: "address", label: "Address", width: 170, sortable: true },
+  { key: "assets", label: "Assets", width: 120, sortable: true },
+  { key: "products", label: "Products", width: 150, sortable: true },
+  { key: "contact", label: "Contact", width: 120, sortable: true },
+  { key: "hours", label: "Delivery hours", width: 160, sortable: true },
+  { key: "preferred", label: "Preferred windows", width: 160 },
+  { key: "lastDelivery", label: "Last Delivery", width: 120, sortable: true },
+  { key: "nextDelivery", label: "Next Delivery", width: 120, sortable: true },
   { key: "po", label: "Default PO #", width: 130, sortable: true },
   { key: "access", label: "Delivery Instructions", width: 260, sortable: true },
   { key: "geofence", label: "Geofence", width: 120, sortable: true },
   { key: "location", label: "Location", width: 170, sortable: true },
-  { key: "status", label: "Status", width: 120, sortable: true },
+  { key: "status", label: "Status", width: 90, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 const shipToText = (s: ShipTo, k: SK): string => {
@@ -135,10 +135,10 @@ const ASSET_COLUMNS: ListColumn<AK>[] = [
   { key: "rfid", label: "RFID Code", width: 150, sortable: true },
   { key: "erpId", label: "ERP ID", width: 120, sortable: true },
   { key: "type", label: "Type", width: 110, sortable: true },
-  { key: "shipTo", label: "Ship-to", width: 150, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
   { key: "categories", label: "Product Categories", width: 160, sortable: true },
-  { key: "product", label: "Products", width: 160, sortable: true },
-  { key: "capacity", label: "Size (Gal)", width: 100, sortable: true, align: "right" },
+  { key: "product", label: "Products", width: 190, sortable: true },
+  { key: "capacity", label: "Size (Gal)", width: 100, sortable: true },
   { key: "ownership", label: "Ownership", width: 110, sortable: true },
   { key: "monitor", label: "Tank Monitor", width: 130, sortable: true },
   { key: "level", label: "Current Level", width: 150, sortable: true },
@@ -148,7 +148,7 @@ const ASSET_COLUMNS: ListColumn<AK>[] = [
   { key: "lastFilled", label: "Last Filled", width: 120, sortable: true },
   { key: "log", label: "Activity Log", width: 110 },
   { key: "location", label: "Location", width: 170, sortable: true },
-  { key: "status", label: "Status", width: 110, sortable: true },
+  { key: "status", label: "Status", width: 180, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 const assetText = ({ asset: a, shipTo: s }: AssetRow, k: AK): string => {

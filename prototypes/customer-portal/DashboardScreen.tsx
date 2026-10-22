@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowUpRight, BellRing, ChevronDown, Clock, FileQuestion, FileText, Lock, Repeat } from "lucide-react";
+import { ArrowUpRight, BellRing, ChevronDown, Clock, FileQuestion, Lock, Repeat } from "lucide-react";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Pill, pillColorClass } from "@/components/ui/pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -13,7 +13,6 @@ import { kindTone } from "../unified-view/statusKind";
 import {
   DELIVERED,
   REQUEST_STATUS_TONE,
-  isOrder,
   orderListRows,
   quantityOf,
   createRequest,
@@ -694,11 +693,11 @@ function Headlines({ now, before, n }: { now: Week[]; before: Week[]; n: number 
       note: since !== null ? `${since} days since the last one` : "none on record",
     },
     {
-      title: "Time to confirm",
+      title: "Time to schedule",
       value: a.hoursToConfirm.toFixed(1),
       unit: "hrs",
       change: <Change now={a.hoursToConfirm} then={b.hoursToConfirm} goodWhenDown />,
-      note: `from request to scheduled by ${TENANT}`,
+      note: `from order to driver assigned by ${TENANT}`,
     },
   ];
   return (
@@ -742,7 +741,7 @@ function Headlines({ now, before, n }: { now: Week[]; before: Week[]; n: number 
   itself, not the state ("Waiting on you" said nothing); the line under it
   says why, from the request's own flag where it has one.
 */
-export type ActionKind = "credit" | "quote" | "late" | "pod";
+export type ActionKind = "credit" | "late" | "pod";
 export interface NeededAction {
   kind: ActionKind;
   action: string;
@@ -752,16 +751,14 @@ export interface NeededAction {
 
 /*
   ATTENTION REQUIRED, IN ANIRUDH'S ORDER (review 2026-10-17): orders on hold
-  for credit (one tile — how many, no balance: we only get a yes/no), quotes
-  waiting, orders running late (planned date passed, not delivered — no ETA
+  for credit (one tile — how many, no balance: we only get a yes/no), orders
+  running late (planned date passed, not delivered — no ETA
   yet), orders delivered with no proof of delivery. Nothing else: invoice
   disputes are not in the product yet.
 */
-const KIND_ORDER: ActionKind[] = ["credit", "quote", "late", "pod"];
+const KIND_ORDER: ActionKind[] = ["credit", "late", "pod"];
 
 function actionOf(r: OrderRequest): NeededAction | null {
-  if (!isOrder(r) && r.status === "Quote received")
-    return { kind: "quote", action: "Accept or decline the quote", why: `${TENANT} has priced this request; it is not scheduled until you accept.`, level: "warning" };
   if (isRunningLate(r)) {
     const d = Math.round((startOfDay(new Date()).getTime() - (dateOfKey(r.date)?.getTime() ?? 0)) / 86_400_000);
     return {
@@ -800,7 +797,6 @@ function actionOf(r: OrderRequest): NeededAction | null {
 /* EVERY KIND'S FACE — the problem in 1–3 words, a line of at most six, the
    act on the pill (Pavan, 2026-10-15). */
 const ACTION_FACE: Record<Exclude<ActionKind, "credit">, { icon: React.ReactNode; problem: string; line: string; pill: string }> = {
-  quote: { icon: <FileText />, problem: "Quote waiting", line: "Accept or decline the quote", pill: "Accept quote" },
   late: { icon: <Clock />, problem: "Running late", line: "Planned date passed, not delivered", pill: "Late" },
   pod: { icon: <FileQuestion />, problem: "No proof of delivery", line: `No delivery ticket from ${TENANT}`, pill: "Ask for POD" },
 };
@@ -1023,7 +1019,7 @@ function RequestsChart({ weeks }: { weeks: Week[] }) {
   ];
   const tot = (f: (w: Week) => number) => weeks.reduce((a, w) => a + f(w), 0);
   return (
-    <Card title="Requests by week">
+    <Card title="Orders by week">
       <Legend
         items={series.map((s) => ({ hue: VIZ[s.hue].bg, label: s.label, value: num(tot(s.value)) }))}
       />
@@ -1372,7 +1368,7 @@ const dayKeyAhead = (n: number) => {
 function previousWeek(rows: OrderRequest[]) {
   const from = dayKeyAhead(-7);
   const to = dayKeyAhead(-1);
-  const gone: RequestStatus[] = ["Draft", "Rejected", "Cancelled", "Quote declined", "Quote expired"];
+  const gone: RequestStatus[] = ["Draft", "Cancelled"];
   return orderListRows(rows).filter((r) => r.date >= from && r.date <= to && !gone.includes(r.status));
 }
 
@@ -1536,23 +1532,21 @@ function ScheduleTable({ list, onOpen }: { list: OrderRequest[]; onOpen: (id: st
           <TableRow className="bg-fp-table-header hover:bg-fp-table-header">
             <TableHead className="pl-4">Date</TableHead>
             <TableHead>Window</TableHead>
-            <TableHead>Request</TableHead>
             <TableHead>Order</TableHead>
             <TableHead>Ship-to</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead>Quantity</TableHead>
             <TableHead>Repeats</TableHead>
             <TableHead className="pr-4">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {list.map((r) => (
-            <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(r.openId ?? r.id)}>
+            <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(r.id)}>
               <TableCell className="pl-4">{r.date === t ? "Today" : printKey(r.date)}</TableCell>
               <TableCell className="tabular-nums">{windowText(r)}</TableCell>
               <TableCell className="font-medium text-foreground tabular-nums">{r.requestNo}</TableCell>
-              <TableCell className="tabular-nums">{r.orderRef || <span className="text-muted-foreground">—</span>}</TableCell>
               <TableCell>{r.shipTo}</TableCell>
-              <TableCell className="text-right tabular-nums">{quantityText(r.lines)}</TableCell>
+              <TableCell className="tabular-nums">{quantityText(r.lines)}</TableCell>
               <TableCell>
                 {r.recurring ? (
                   <span className="inline-flex items-center gap-1.5">

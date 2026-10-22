@@ -181,7 +181,6 @@ export function productReadSections(
             {
               key: "qty",
               label: "Quantity",
-              align: "right",
               render: (o) => {
                 const line = o.lines.find((l) => l.product === p.name);
                 if (!line) return <Muted />;

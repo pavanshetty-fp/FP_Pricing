@@ -28,14 +28,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Pill } from "@/components/ui/pill";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   TableCellCombobox,
@@ -1871,7 +1867,7 @@ export function ServiceOrderSheet({
       <SheetSection id={SECTION_SCHEDULE} title="Schedule details">
         <div className="grid grid-cols-2 gap-4">
           <SheetField label="Scheduled date" required>
-            <Popover>
+            <DatePopover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -1885,8 +1881,7 @@ export function ServiceOrderSheet({
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
+                <DatePanel
                   selected={draft.scheduledAt ? new Date(draft.scheduledAt) : undefined}
                   onSelect={(d) => {
                     if (!d) return;
@@ -1899,7 +1894,7 @@ export function ServiceOrderSheet({
                   }}
                 />
               </PopoverContent>
-            </Popover>
+            </DatePopover>
           </SheetField>
         </div>
         {/* A WINDOW, NOT A MOMENT — the shared delivery timeline (Pavan,

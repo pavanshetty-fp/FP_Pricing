@@ -41,13 +41,13 @@ const num = (n: number) => <span className="tabular-nums">{n}</span>;
 
 type PbKey = "code" | "job" | "category" | "labor" | "parts" | "fee" | "rate" | "actions";
 const PB_COLUMNS: ListColumn<PbKey>[] = [
-  { key: "code", label: "Code", width: 140, sortable: true },
-  { key: "job", label: "Job", width: 200, sortable: true },
-  { key: "category", label: "Category", width: 220, sortable: true },
-  { key: "labor", label: "Labour", width: 110, sortable: true, align: "right" },
-  { key: "parts", label: "Parts", width: 240, sortable: true },
-  { key: "fee", label: "Fee", width: 120, sortable: true, align: "right" },
-  { key: "rate", label: "Flat rate", width: 130, sortable: true, align: "right" },
+  { key: "code", label: "Code", width: 90, sortable: true },
+  { key: "job", label: "Job", width: 120, sortable: true },
+  { key: "category", label: "Category", width: 190, sortable: true },
+  { key: "labor", label: "Labour", width: 90, sortable: true },
+  { key: "parts", label: "Parts", width: 130, sortable: true },
+  { key: "fee", label: "Fee", width: 80, sortable: true },
+  { key: "rate", label: "Flat rate", width: 90, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -101,14 +101,14 @@ const STOCK_TONE = statusTones<StockStatus>({ Stocked: "info", Reorder: "caution
 
 type PtKey = "sku" | "part" | "bin" | "vendor" | "onHand" | "reorderAt" | "cost" | "status" | "actions";
 const PT_COLUMNS: ListColumn<PtKey>[] = [
-  { key: "sku", label: "SKU", width: 130, sortable: true },
-  { key: "part", label: "Part", width: 220, sortable: true },
-  { key: "bin", label: "Bin", width: 100, sortable: true },
-  { key: "vendor", label: "Vendor", width: 160, sortable: true },
-  { key: "onHand", label: "On hand", width: 110, sortable: true, align: "right" },
-  { key: "reorderAt", label: "Reorder at", width: 120, sortable: true, align: "right" },
-  { key: "cost", label: "Cost", width: 110, sortable: true, align: "right" },
-  { key: "status", label: "Status", width: 130, sortable: true },
+  { key: "sku", label: "SKU", width: 90, sortable: true },
+  { key: "part", label: "Part", width: 160, sortable: true },
+  { key: "bin", label: "Bin", width: 70, sortable: true },
+  { key: "vendor", label: "Vendor", width: 110, sortable: true },
+  { key: "onHand", label: "On hand", width: 90, sortable: true },
+  { key: "reorderAt", label: "Reorder at", width: 110, sortable: true },
+  { key: "cost", label: "Cost", width: 80, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -160,15 +160,15 @@ const AGREEMENT_TONE = statusTones<AgreementStatus>({ Active: "info", "Renewal d
 
 type AgKey = "no" | "kind" | "customer" | "asset" | "plan" | "visits" | "monthly" | "renews" | "status" | "actions";
 const AG_COLUMNS: ListColumn<AgKey>[] = [
-  { key: "no", label: "Agreement", width: 120, sortable: true },
-  { key: "kind", label: "Type", width: 130, sortable: true },
-  { key: "customer", label: "Customer", width: 200, sortable: true },
-  { key: "asset", label: "Asset", width: 180, sortable: true },
+  { key: "no", label: "Agreement", width: 110, sortable: true },
+  { key: "kind", label: "Type", width: 120, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "asset", label: "Asset", width: 160, sortable: true },
   { key: "plan", label: "Plan", width: 200, sortable: true },
-  { key: "visits", label: "Visits", width: 100, sortable: true, align: "right" },
-  { key: "monthly", label: "Monthly", width: 110, sortable: true, align: "right" },
-  { key: "renews", label: "Renews", width: 170, sortable: true },
-  { key: "status", label: "Status", width: 140, sortable: true },
+  { key: "visits", label: "Visits", width: 80, sortable: true },
+  { key: "monthly", label: "Monthly", width: 90, sortable: true },
+  { key: "renews", label: "Renews", width: 150, sortable: true },
+  { key: "status", label: "Status", width: 120, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -230,16 +230,16 @@ const raised = new Map<string, string>();
 
 type MpKey = "no" | "asset" | "customer" | "task" | "every" | "last" | "next" | "raise" | "actions";
 const MP_COLUMNS: ListColumn<MpKey>[] = [
-  { key: "no", label: "Plan", width: 110, sortable: true },
-  { key: "asset", label: "Asset", width: 180, sortable: true },
-  { key: "customer", label: "Customer", width: 200, sortable: true },
-  { key: "task", label: "Task", width: 170, sortable: true },
-  { key: "every", label: "Every", width: 100, sortable: true, align: "right" },
-  { key: "last", label: "Last done", width: 140, sortable: true },
-  { key: "next", label: "Next due", width: 140, sortable: true },
+  { key: "no", label: "Plan", width: 80, sortable: true },
+  { key: "asset", label: "Asset", width: 160, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "task", label: "Task", width: 120, sortable: true },
+  { key: "every", label: "Every", width: 80, sortable: true },
+  { key: "last", label: "Last done", width: 110, sortable: true },
+  { key: "next", label: "Next due", width: 110, sortable: true },
   /* EVERY COLUMN SORTS, as on 3PL (Pavan, 2026-10-07) — by the order a plan
      raised, so the plans still waiting on a visit gather at one end. */
-  { key: "raise", label: "Visit", width: 150, sortable: true },
+  { key: "raise", label: "Visit", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -330,14 +330,14 @@ const COMPLIANCE_TONE = statusTones<ComplianceStatus>({ OK: "info", "Due soon": 
 
 type CpKey = "no" | "asset" | "customer" | "requirement" | "authority" | "last" | "due" | "status" | "actions";
 const CP_COLUMNS: ListColumn<CpKey>[] = [
-  { key: "no", label: "Item", width: 100, sortable: true },
-  { key: "asset", label: "Asset", width: 180, sortable: true },
-  { key: "customer", label: "Customer", width: 190, sortable: true },
-  { key: "requirement", label: "Requirement", width: 230, sortable: true },
-  { key: "authority", label: "Authority", width: 130, sortable: true },
-  { key: "last", label: "Last cert", width: 140, sortable: true },
-  { key: "due", label: "Due on", width: 140, sortable: true },
-  { key: "status", label: "Status", width: 120, sortable: true },
+  { key: "no", label: "Item", width: 70, sortable: true },
+  { key: "asset", label: "Asset", width: 160, sortable: true },
+  { key: "customer", label: "Customer", width: 250, sortable: true },
+  { key: "requirement", label: "Requirement", width: 200, sortable: true },
+  { key: "authority", label: "Authority", width: 100, sortable: true },
+  { key: "last", label: "Last cert", width: 120, sortable: true },
+  { key: "due", label: "Due on", width: 120, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
@@ -399,9 +399,9 @@ const SC_COLUMNS: ListColumn<ScKey>[] = [
   { key: "name", label: "Technician", width: 200, sortable: true },
   { key: "base", label: "Base", width: 180, sortable: true },
   { key: "skills", label: "Skills", width: 260, sortable: true },
-  { key: "open", label: "Open jobs", width: 120, sortable: true, align: "right" },
-  { key: "fix", label: "First-time fix", width: 140, sortable: true, align: "right" },
-  { key: "attach", label: "Quote attach", width: 140, sortable: true, align: "right" },
+  { key: "open", label: "Open jobs", width: 120, sortable: true },
+  { key: "fix", label: "First-time fix", width: 140, sortable: true },
+  { key: "attach", label: "Quote attach", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

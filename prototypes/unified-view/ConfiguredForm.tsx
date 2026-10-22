@@ -2,10 +2,10 @@ import * as React from "react";
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import type { PendingItem } from "./PendingStrip";
@@ -152,7 +152,7 @@ function ExtraControl({
       const [y, m, d] = text.split("-").map(Number);
       const day = text ? new Date(y, m - 1, d) : null;
       return (
-        <Popover>
+        <DatePopover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="w-full justify-start font-normal" aria-label={label}>
               <CalendarDays />
@@ -164,15 +164,12 @@ function ExtraControl({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
-            <Calendar
-              mode="single"
+            <DatePanel
               selected={day ?? undefined}
-              defaultMonth={day ?? undefined}
               onSelect={(next) => next && onChange(dateKeyOf(next))}
-              autoFocus
             />
           </PopoverContent>
-        </Popover>
+        </DatePopover>
       );
     }
     case "File":

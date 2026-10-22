@@ -698,12 +698,11 @@ export function AttachmentTable({ files }: { files: Attachment[] }) {
             );
           },
         },
-        { key: "size", label: "Size", align: "right", render: (f) => `${f.sizeKb.toLocaleString()} KB` },
+        { key: "size", label: "Size", render: (f) => `${f.sizeKb.toLocaleString()} KB` },
         { key: "by", label: "Uploaded by", render: (f) => f.uploadedBy },
         {
           key: "dl",
           label: "",
-          align: "right",
           render: () => (
             <Button variant="ghost" size="icon-sm" aria-label="Download file">
               <Download />

@@ -376,7 +376,7 @@ export function RuleRecommendations({
                             <th className="px-2.5 py-2 text-left">
                               <TableRequiredLabel>Products</TableRequiredLabel>
                             </th>
-                            <th className="px-2.5 py-2 text-right">
+                            <th className="px-2.5 py-2">
                               <TableRequiredLabel>Total (gal)</TableRequiredLabel>
                             </th>
                           </tr>
@@ -392,7 +392,7 @@ export function RuleRecommendations({
                                 )}
                                 <td className="px-2.5 py-2 text-foreground">{t.shipTo}</td>
                                 <td className="px-2.5 py-2 text-foreground">{t.products.join(", ")}</td>
-                                <td className="px-2.5 py-2 text-right tabular-nums text-foreground">
+                                <td className="px-2.5 py-2 tabular-nums text-foreground">
                                   {t.gallons.toLocaleString("en-US")}
                                 </td>
                               </tr>

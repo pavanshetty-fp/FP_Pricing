@@ -1,12 +1,12 @@
 import * as React from "react";
 import {
-  Map as MapIcon,
   Columns3,
   GripVertical,
-  KanbanSquare,
+  Kanban,
   LayoutList,
+  MapPinned,
+  Rows3,
   Search,
-  Table2,
   TextSearch,
   X,
 } from "lucide-react";
@@ -227,6 +227,13 @@ export interface ListToolbarProps<K extends string> {
   };
 }
 
+/** The display switch's three views, in their order. */
+const VIEW_ICONS = [
+  { key: "table" as const, label: "Table view", icon: <Rows3 /> },
+  { key: "board" as const, label: "Board view", icon: <Kanban /> },
+  { key: "map" as const, label: "Map view", icon: <MapPinned /> },
+];
+
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
 function IconTool({
   label,
@@ -246,11 +253,12 @@ function IconTool({
           variant="ghost"
           size="icon-sm"
           aria-label={label}
+          aria-pressed={active}
           onClick={onClick}
           // Same fill as the chips: `--chip`, not `--accent`. At #cad1db the
           // control-emphasis token sits far too heavy on white inside a 32px
           // button. Dark is unchanged — `--chip` is #2a2f37 there.
-          className={cn(active && "bg-chip text-foreground")}
+          className={cn(active && "bg-selected text-selected-foreground hover:bg-selected hover:text-selected-foreground")}
         >
           {children}
         </Button>
@@ -340,102 +348,7 @@ export function ListToolbar<K extends string>({
     );
   };
 
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* LEFT — quick filters · search · Filters · Group By
-
-          THE QUICK FILTERS COME FIRST, before the search box, because they are
-          the coarsest cut on the row: they decide WHICH SET you are searching
-          and filtering inside. Reading left to right then matches the order
-          somebody actually narrows — pick the book, then find the row. */}
-      <div className="flex items-center gap-3">
-        {quickFilters}
-        {/* FIXED WIDTH — the list search box is the DS's 320px, the same on
-            every list; it is not a row of fields. */}
-        <div className="relative w-[320px]">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label="Search all columns"
-            className={cn("h-8 pl-8", searchValue && "pr-8")}
-          />
-          {searchValue && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => onSearchChange("")}
-              className="absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-        {filters}
-        {afterFilters}
-        {/* WHY (Pavan, 2026-10-07). Group By only when the screen hands it real
-           dimensions. With none, the menu fell back to the DS demo dims and
-           grouped nothing — a dead control on every screen that forgot to
-           switch it off (G8). */}
-        {showGroupBy && groupBy && groupBy.dimensions.length > 0 && (
-          <GroupByMenu
-            dimensions={groupBy.dimensions}
-            value={groupBy.value}
-            onChange={groupBy.onChange}
-          />
-        )}
-      </div>
-
-      {/* RIGHT — [date]   view switch │ column tools */}
-      <div className="flex items-center gap-1">
-        {(dateControl ?? dateScope) && (
-          <>
-            {dateControl ?? (
-              <DateFilter
-                value={dateScope!.date}
-                onChange={dateScope!.onDateChange}
-              />
-            )}
-            {/* SPACE, NOT A RULE (Pavan, 2026-10-05): 12px plus the row's 4px
-                gap each side — 20px between the date and the view switch. */}
-            <div className="w-3 shrink-0" aria-hidden />
-          </>
-        )}
-
-        {/* ONE VIEW, NO SWITCH (Pavan, 2026-10-01). A table-only list gets no
-            Table-view icon — a switch with one position switches nothing.
-            The column tools after it stay: they belong to the table. */}
-        {multiView && (
-          <IconTool
-            label="Table view"
-            active={view === "table"}
-            onClick={() => onViewChange("table")}
-          >
-            <Table2 />
-          </IconTool>
-        )}
-        {boardView && (
-          <IconTool
-            label="Board view"
-            active={view === "board"}
-            onClick={() => onViewChange("board")}
-          >
-            <KanbanSquare />
-          </IconTool>
-        )}
-        {mapView && (
-          <IconTool
-            label="Map view"
-            active={view === "map"}
-            onClick={() => onViewChange("map")}
-          >
-            <MapIcon />
-          </IconTool>
-        )}
-
-        {/* COLUMN TOOLS ARE A TABLE'S TOOLS, AND ONLY A TABLE'S.
+  /** COLUMN TOOLS ARE A TABLE'S TOOLS, AND ONLY A TABLE'S.
 
             Search by column and Show/Hide columns both name a thing the reader
             can see: a header to type under, a column to take away. On a board
@@ -448,11 +361,9 @@ export function ListToolbar<K extends string>({
             own control below, named for the card and shown only on the board.
 
             THIS IS A LIST RULE, NOT A 3PL ONE: it lives here so every screen
-            using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */}
-        {view === "table" && (
-          <>
-        {multiView && <div className="mx-1 h-5 w-px bg-border" aria-hidden />}
-
+            using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */
+  const tableTools = (
+    <>
         {/* Search by column — the row, where the table has one. */}
         {onToggleColumnFilters ? (
           <Tooltip>
@@ -677,16 +588,14 @@ export function ListToolbar<K extends string>({
             </div>
           </PopoverContent>
         </Popover>
-          </>
-        )}
-
-        {/* WHAT IS ON THE CARD — the board's own control, in the slot the
+    </>
+  );
+  /** WHAT IS ON THE CARD — the board's own control, in the slot the
             column tools vacate. Same place, different subject, and the subject
             is written at the top of the menu and spoken by the icon, so the
-            two can never be mistaken for one control that moved. */}
-        {view === "board" && cardFields && (
-          <>
-            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+            two can never be mistaken for one control that moved. */
+  const boardTools = cardFields ? (
+    <>
             <Popover>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -791,7 +700,103 @@ export function ListToolbar<K extends string>({
                 </div>
               </PopoverContent>
             </Popover>
+    </>
+  ) : null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* LEFT — quick filters · search · Filters · Group By
+
+          THE QUICK FILTERS COME FIRST, before the search box, because they are
+          the coarsest cut on the row: they decide WHICH SET you are searching
+          and filtering inside. Reading left to right then matches the order
+          somebody actually narrows — pick the book, then find the row. */}
+      <div className="flex items-center gap-3">
+        {quickFilters}
+        {/* FIXED WIDTH — the list search box is the DS's 320px, the same on
+            every list; it is not a row of fields. */}
+        <div className="relative w-[320px]">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label="Search all columns"
+            className={cn("h-8 pl-8", searchValue && "pr-8")}
+          />
+          {searchValue && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => onSearchChange("")}
+              className="absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+        {filters}
+        {afterFilters}
+        {/* WHY (Pavan, 2026-10-07). Group By only when the screen hands it real
+           dimensions. With none, the menu fell back to the DS demo dims and
+           grouped nothing — a dead control on every screen that forgot to
+           switch it off (G8). */}
+        {showGroupBy && groupBy && groupBy.dimensions.length > 0 && (
+          <GroupByMenu
+            dimensions={groupBy.dimensions}
+            value={groupBy.value}
+            onChange={groupBy.onChange}
+          />
+        )}
+      </div>
+
+      {/* RIGHT — [date]   view switch │ column tools */}
+      <div className="flex items-center gap-1">
+        {(dateControl ?? dateScope) && (
+          <>
+            {dateControl ?? (
+              <DateFilter
+                value={dateScope!.date}
+                onChange={dateScope!.onDateChange}
+              />
+            )}
+            {/* SPACE, NOT A RULE (Pavan, 2026-10-05): 12px plus the row's 4px
+                gap each side — 20px between the date and the view switch. */}
+            <div className="w-3 shrink-0" aria-hidden />
           </>
+        )}
+
+        {/* THREE SHAPES, NOT THREE BOXES (Pavan, 2026-10-21): rows for the
+            table, uneven columns for the board, a pinned map for the map.
+            THE VIEW YOU ARE ON CARRIES ITS OWN TOOLS (Pavan, 2026-10-22): its
+            icon and the actions that belong to it sit together in one group,
+            and the other views stand apart from it — so which tools go with
+            which view is read at a glance. */}
+        {/* ONE VIEW, NO SWITCH (Pavan, 2026-10-01). A table-only list gets no
+            Table-view icon — a switch with one position switches nothing;
+            its column tools stay. */}
+        {!multiView ? (
+          view === "table" && <span className="flex items-center gap-1">{tableTools}</span>
+        ) : (
+          <span className="flex items-center gap-3">
+            {VIEW_ICONS.filter((v) => (v.key === "table" ? true : v.key === "board" ? boardView : mapView)).map((v) => {
+              const icon = (
+                <IconTool key={v.key} label={v.label} active={view === v.key} onClick={() => onViewChange(v.key)}>
+                  {v.icon}
+                </IconTool>
+              );
+              const tools = v.key === "table" ? tableTools : v.key === "board" ? boardTools : null;
+              if (view !== v.key || !tools) return icon;
+              return (
+                <span key={v.key} className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+                  {icon}
+                  <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+                  {tools}
+                </span>
+              );
+            })}
+          </span>
         )}
       </div>
     </div>

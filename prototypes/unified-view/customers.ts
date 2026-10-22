@@ -63,11 +63,11 @@ export interface CustomerColumnDef {
 }
 
 export const CUSTOMER_COLUMNS: CustomerColumnDef[] = [
-  { key: "name", label: "Customer", width: 280, sortable: true },
+  { key: "name", label: "Customer", width: 250, sortable: true },
   /* EVERY COLUMN SORTS (Pavan, 2026-10-07) — DS rule. Ship-tos by count. */
-  { key: "shipTos", label: "Ship-Tos", width: 260, sortable: true },
-  { key: "los", label: "LOS", width: 260, sortable: true },
-  { key: "status", label: "Status", width: 140, sortable: true },
+  { key: "shipTos", label: "Ship-Tos", width: 170, sortable: true },
+  { key: "los", label: "LOS", width: 300, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

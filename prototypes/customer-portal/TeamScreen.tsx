@@ -26,12 +26,12 @@ const ago = (iso: string) => {
 
 type UK = "name" | "role" | "phone" | "invite" | "lastLogin" | "deactivated" | "actions";
 const COLUMNS: ListColumn<UK>[] = [
-  { key: "name", label: "Name", width: 240, sortable: true },
-  { key: "role", label: "Role", width: 120, sortable: true },
-  { key: "phone", label: "Phone", width: 150, sortable: true },
-  { key: "invite", label: "Invite Status", width: 140, sortable: true },
-  { key: "lastLogin", label: "Last Login", width: 170, sortable: true },
-  { key: "deactivated", label: "Deactivated", width: 140, sortable: true },
+  { key: "name", label: "Name", width: 220, sortable: true },
+  { key: "role", label: "Role", width: 100, sortable: true },
+  { key: "phone", label: "Phone", width: 130, sortable: true },
+  { key: "invite", label: "Invite Status", width: 120, sortable: true },
+  { key: "lastLogin", label: "Last Login", width: 120, sortable: true },
+  { key: "deactivated", label: "Deactivated", width: 120, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

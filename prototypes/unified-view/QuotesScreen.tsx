@@ -53,6 +53,8 @@ const TOGGLE_COLUMNS = QUOTE_COLUMNS.filter((c) => c.label).map((c) => ({
 }));
 
 interface ViewState {
+  /** THE DISPLAY IT OPENS IN — table, board or map (Pavan, 2026-10-21). */
+  mode?: ListView;
   search: string;
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
@@ -69,6 +71,7 @@ interface ViewState {
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
+    mode: s.mode ?? "table",
     hidden: [...s.hidden].sort(),
     facets: [...s.facets].sort(),
     /* Empty boxes are no filter — typing then clearing one is not a change. */
@@ -80,6 +83,7 @@ const keyOf = (s: ViewState) =>
   });
 
 const DEFAULT_STATE: ViewState = {
+  mode: "table",
   search: "",
   sortKey: null,
   sortDir: null,
@@ -137,6 +141,8 @@ export function QuotesScreen({
   );
 
   const current: ViewState = {
+
+    mode: view,
     search,
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
@@ -151,6 +157,8 @@ export function QuotesScreen({
   };
 
   const applyState = (s: ViewState) => {
+
+    setView(s.mode ?? "table");
     setSearch(s.search);
     setSort(s.sortKey && s.sortDir ? { key: s.sortKey as QuoteColumnKey, dir: s.sortDir } : null);
     setHidden(new Set(s.hidden as QuoteColumnKey[]));

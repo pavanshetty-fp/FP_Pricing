@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Pill } from "@/components/ui/pill";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -1228,7 +1228,7 @@ export function AssetMovementSheet({
             every paper version of this order. */}
         <div className="grid grid-cols-3 gap-4">
           <SheetField label="Planned Delivery Date" required>
-            <Popover>
+            <DatePopover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start font-normal">
                   <CalendarIcon />
@@ -1236,13 +1236,12 @@ export function AssetMovementSheet({
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
+                <DatePanel
                   selected={draft.plannedDate ?? undefined}
                   onSelect={(d) => set("plannedDate", d ?? null)}
                 />
               </PopoverContent>
-            </Popover>
+            </DatePopover>
           </SheetField>
           <SheetField label="Customer PO Number">
             <Input

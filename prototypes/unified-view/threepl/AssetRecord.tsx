@@ -249,7 +249,7 @@ export function assetReadSections(
             columns={[
               { key: "period", label: "Period", render: (r) => r.period },
               { key: "freq", label: "Frequency", render: () => a.billingFrequency },
-              { key: "amt", label: "Amount", align: "right", render: (r) => money(r.amount) },
+              { key: "amt", label: "Amount", render: (r) => money(r.amount) },
             ]}
           />
         );

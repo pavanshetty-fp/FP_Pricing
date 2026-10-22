@@ -129,9 +129,9 @@ export function StatementView({
               <th className="px-4 py-2.5 font-medium">Date</th>
               <th className="px-3 py-2.5 font-medium">Document</th>
               <th className="px-3 py-2.5 font-medium">Description</th>
-              <th className="px-3 py-2.5 text-right font-medium">Charges</th>
-              <th className="px-3 py-2.5 text-right font-medium">Payments</th>
-              <th className="px-4 py-2.5 text-right font-medium">Balance</th>
+              <th className="px-3 py-2.5 font-medium">Charges</th>
+              <th className="px-3 py-2.5 font-medium">Payments</th>
+              <th className="px-4 py-2.5 font-medium">Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -139,16 +139,16 @@ export function StatementView({
               <td className="px-4" colSpan={5}>
                 Opening balance
               </td>
-              <td className="px-4 text-right tabular-nums">{usd.format(opening)}</td>
+              <td className="px-4 tabular-nums">{usd.format(opening)}</td>
             </tr>
             {rows.map((l, k) => (
               <tr key={k} className="h-11 border-b border-border last:border-b-0">
                 <td className="px-4 text-foreground">{printKey(l.date)}</td>
                 <td className="px-3 tabular-nums text-foreground">{l.doc}</td>
                 <td className="truncate px-3 text-muted-foreground">{l.what}</td>
-                <td className="px-3 text-right tabular-nums text-foreground">{l.charge ? usd.format(l.charge) : "—"}</td>
-                <td className="px-3 text-right tabular-nums text-foreground">{l.payment ? usd.format(l.payment) : "—"}</td>
-                <td className="px-4 text-right font-medium tabular-nums text-foreground">{usd.format(l.balance)}</td>
+                <td className="px-3 tabular-nums text-foreground">{l.charge ? usd.format(l.charge) : "—"}</td>
+                <td className="px-3 tabular-nums text-foreground">{l.payment ? usd.format(l.payment) : "—"}</td>
+                <td className="px-4 font-medium tabular-nums text-foreground">{usd.format(l.balance)}</td>
               </tr>
             ))}
           </tbody>

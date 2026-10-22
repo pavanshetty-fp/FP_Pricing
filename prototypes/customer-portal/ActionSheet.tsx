@@ -5,11 +5,9 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../unified-view/RecordSheet";
 import { RailRow, SummaryCard } from "../unified-view/SheetCards";
-import { QuoteActions, QuoteLines } from "./requestActions";
 import {
   REQUEST_STATUS_TONE,
   TENANT,
-  estimate,
   printKey,
   quantityText,
   updateRequest,
@@ -19,12 +17,10 @@ import {
 import type { NeededAction } from "./DashboardScreen";
 
 /*
-  WHAT NEEDS THE CUSTOMER — FIRST, ON ITS OWN (Pavan, 2026-10-15; the four
-  kinds from the Anirudh review, 2026-10-17). A tile in the dashboard's
+  WHAT NEEDS THE CUSTOMER — FIRST, ON ITS OWN (Pavan, 2026-10-15; the kinds from the Anirudh review, 2026-10-17). A tile in the dashboard's
   "Attention required" opens THIS: a 600px sheet that says what is needed
   and why, with the facts for that action, and "View order details".
 
-    quote   the quote — accept, or ask for a change / decline
     late    the planned date it has passed; there is no ETA yet
     pod     delivered without a ticket — ask the tenant for it
 
@@ -49,7 +45,6 @@ export function ActionSheet({
 }) {
   if (!request || !action) return null;
   const r = request;
-  const est = estimate(r.lines);
   const asked = (r.audit ?? []).some((e) => e.changes.includes("Proof of delivery requested"));
 
   return (
@@ -70,11 +65,10 @@ export function ActionSheet({
       }
       footerPrimary={
         <span className="flex items-center gap-3">
-          <Button variant={r.status === "Quote received" || action.kind === "pod" ? "outline" : "default"} onClick={() => onViewOrder(r.id)}>
+          <Button variant={action.kind === "pod" ? "outline" : "default"} onClick={() => onViewOrder(r.id)}>
             View order details
             <ArrowRight />
           </Button>
-          <QuoteActions r={r} />
           {action.kind === "pod" && (
             <Button
               disabled={asked}
@@ -96,11 +90,6 @@ export function ActionSheet({
             <p className={cn("text-base font-semibold", LEVEL_TEXT[action.level])}>{action.action}</p>
             <p className="text-sm text-foreground">{action.why}</p>
           </div>
-          {action.kind === "quote" && est.high > 0 && (
-            <div className="border-t border-border pt-2">
-              <QuoteLines r={r} />
-            </div>
-          )}
         </SummaryCard>
 
         {/* THE ORDER, IN SHORT — what it is about; the rest is one press away. */}

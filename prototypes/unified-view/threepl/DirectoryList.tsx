@@ -196,6 +196,8 @@ export interface DirectoryListProps<Row, K extends string> {
 }
 
 interface ViewState {
+  /** THE DISPLAY IT OPENS IN — table, board or map (Pavan, 2026-10-21). */
+  mode?: ListView;
   search: string;
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
@@ -216,6 +218,7 @@ interface ViewState {
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
+    mode: s.mode ?? "table",
     hidden: [...s.hidden].sort(),
     filters: [...s.filters].sort(),
     colFilters: Object.fromEntries(liveColFilters(s.colFilters)),
@@ -317,6 +320,8 @@ export function DirectoryList<Row, K extends string>({
   React.useEffect(() => () => window.clearTimeout(settle.current), []);
 
   const current: ViewState = {
+
+    mode: view,
     search,
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
@@ -331,6 +336,7 @@ export function DirectoryList<Row, K extends string>({
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
+    mode: "table",
       search: "",
       sortKey: null,
       sortDir: null,
@@ -346,6 +352,7 @@ export function DirectoryList<Row, K extends string>({
     [firstScope]
   );
   const applyState = (s: ViewState) => {
+    setView(s.mode ?? "table");
     setSearch(s.search);
     setSort(s.sortKey && s.sortDir ? { key: s.sortKey as K, dir: s.sortDir } : null);
     setHidden(new Set(s.hidden as K[]));

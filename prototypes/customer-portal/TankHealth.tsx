@@ -285,7 +285,7 @@ export function TankHealthCard({
                         }}
                       >
                         <Plus />
-                        Create Order Request
+                        Create Order
                       </Button>
                     </TableCell>
                   </TableRow>

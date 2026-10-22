@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ListFilter, Search } from "lucide-react";
+import { History, ListFilter, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,6 +9,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  clearActiveFilters,
+  groupIds,
+  listKeyOf,
+  readHistory,
+  recordHistory,
+  setActiveFilters,
+  type HistoryEntry,
+} from "./filterMemory";
 
 /**
  * Faceted filter panel, generic over its facets.
@@ -69,8 +78,11 @@ export function ListFilters({
   onApply,
   fullWidth = false,
   countFor,
+  historyKey,
 }: {
   facets: ListFacet[];
+  /** Which list's RECENT HISTORY this is — defaults to the facets it has. */
+  historyKey?: string;
   /** Stretch the trigger to its container — for a row of its own, in a sheet. */
   fullWidth?: boolean;
   /**
@@ -102,6 +114,16 @@ export function ListFilters({
 }) {
   const [open, setOpen] = React.useState(false);
   const [checked, setChecked] = React.useState<Set<string>>(new Set());
+  /* RECENT HISTORY (Pavan, 2026-10-21) — the toolbar's panel only; the
+     export sheet's copy applies as it goes and keeps none. */
+  const list = historyKey ?? listKeyOf(facets);
+  const [history, setHistory] = React.useState<HistoryEntry[]>([]);
+  /* THE VIEW ROW NAMES A VIEW FROM WHAT IS ON — see `filterMemory`. */
+  React.useEffect(() => {
+    if (fullWidth) return;
+    setActiveFilters(facets, value ?? checked);
+    return () => clearActiveFilters(facets);
+  });
 
   const applied = value ? value.size : checked.size;
 
@@ -118,6 +140,7 @@ export function ListFilters({
       open={open}
       onOpenChange={(next) => {
         if (next && value) setChecked(new Set(value));
+        if (next && !fullWidth) setHistory(readHistory(list));
         setOpen(next);
       }}
     >
@@ -160,6 +183,8 @@ export function ListFilters({
           onToggle={toggle}
           menuWidth={200}
           height={264}
+          history={fullWidth ? undefined : history}
+          onPickHistory={(ids) => setChecked(new Set(ids))}
         />
 
         {/* THE COUNT ON THE LEFT, BOTH ACTS ON THE RIGHT (Pavan,
@@ -192,6 +217,7 @@ export function ListFilters({
             <Button
               size="sm"
               onClick={() => {
+                if (!fullWidth) recordHistory(list, checked);
                 onApply?.(checked);
                 setOpen(false);
               }}
@@ -224,8 +250,14 @@ export function ListFilterPanel({
   menuWidth = 200,
   height,
   className,
+  history,
+  onPickHistory,
 }: {
   facets: ListFacet[];
+  /** RECENT HISTORY — filter sets applied in the last 24 hours. The menu
+      leads with it only when there are some. */
+  history?: HistoryEntry[];
+  onPickHistory?: (ids: string[]) => void;
   /** Ticked ids, as `facetKey:option`. */
   checked: ReadonlySet<string>;
   onToggle: (id: string) => void;
@@ -245,6 +277,8 @@ export function ListFilterPanel({
   const [facetKey, setFacetKey] = React.useState(facets[0]?.key ?? "");
   const [query, setQuery] = React.useState("");
 
+  const HISTORY = "__history";
+  const showHistory = facetKey === HISTORY && Boolean(history?.length);
   const facet = facets.find((f) => f.key === facetKey) ?? facets[0];
 
   const q = query.toLowerCase();
@@ -272,6 +306,23 @@ export function ListFilterPanel({
         )}
         style={{ width: menuWidth }}
       >
+        {history && history.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setFacetKey(HISTORY);
+              setQuery("");
+            }}
+            className={cn(
+              "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring/50",
+              showHistory ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <History className="size-4 shrink-0" />
+            <span className="flex-1 truncate">Recent history</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{history.length}</span>
+          </button>
+        )}
         {facets.map((f) => {
           const n = facetOptions(f).filter((o) =>
             checked.has(`${f.key}:${o}`)
@@ -302,6 +353,35 @@ export function ListFilterPanel({
         })}
       </div>
 
+      {showHistory ? (
+        /* EACH SET AS IT WAS APPLIED, by category — a press puts its ticks
+           back; Apply applies them. */
+        <div className={cn("flex min-w-0 flex-1 flex-col gap-1.5 p-2", scrolls && "min-h-0 overflow-auto")}>
+          {history!.map((e) => {
+            const on = e.ids.length === checked.size && e.ids.every((id) => checked.has(id));
+            return (
+              <button
+                key={e.at}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onPickHistory?.(e.ids)}
+                className={cn(
+                  "flex flex-col gap-1 rounded-md border px-3 py-2 text-left outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-ring/50",
+                  on ? "border-selected-border bg-selected" : "border-border"
+                )}
+              >
+                {groupIds(facets, e.ids).map((g) => (
+                  <span key={g.key} className="flex min-w-0 gap-1.5 text-sm">
+                    <span className="shrink-0 text-muted-foreground">{g.label}</span>
+                    <span className="truncate text-foreground">{g.values.join(", ")}</span>
+                  </span>
+                ))}
+                <span className="text-xs text-muted-foreground">{ago(e.at)}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
       <div className="flex min-w-0 flex-1 flex-col">
         {facet?.searchable && (
           <div className="p-2">
@@ -367,6 +447,15 @@ export function ListFilterPanel({
           )}
         </div>
       </div>
+      )}
     </div>
   );
+}
+
+/** "Just now", "12 min ago", "3 h ago" — inside the 24 hours history keeps. */
+function ago(at: number) {
+  const min = Math.round((Date.now() - at) / 60_000);
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min} min ago`;
+  return `${Math.round(min / 60)} h ago`;
 }

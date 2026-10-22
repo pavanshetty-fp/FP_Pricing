@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Ban, CalendarDays, MoreHorizontal } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { StatusChip } from "@/components/ui/status-chip";
 import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordSheet";
@@ -347,7 +343,7 @@ export function AssetOrderSheet({
     }),
     deliveryDate: () => ({
       control: (
-        <Popover>
+        <DatePopover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="w-full justify-start">
               <CalendarDays />
@@ -355,14 +351,12 @@ export function AssetOrderSheet({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
-            <Calendar
-              mode="single"
+            <DatePanel
               selected={draft.deliveryDate ?? undefined}
               onSelect={(d) => set("deliveryDate", d ?? null)}
-              autoFocus
             />
           </PopoverContent>
-        </Popover>
+        </DatePopover>
       ),
     }),
     poNumber: () => ({

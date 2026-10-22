@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDown, MoreHorizontal, Plus, Upload } from "lucide-react";
+import { Check, ChevronDown, MoreHorizontal, Plus, RefreshCw, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { suggestViewName } from "./filterMemory";
 
 /**
  * Preset-view row.
@@ -230,12 +231,16 @@ export function FuelOrdersViewBar({
     mode: "new" | "rename";
     id?: string;
     name: string;
+    /** A NEW VIEW'S SUGGESTED NAME, from the filters on (Pavan, 2026-10-21) —
+        the placeholder; → or Tab takes it to type on from, and Save with
+        the box empty saves it. */
+    suggestion?: string;
   } | null>(null);
 
 
   const submit = () => {
     if (!dialog) return;
-    const name = dialog.name.trim();
+    const name = dialog.name.trim() || (dialog.mode === "new" ? dialog.suggestion ?? "" : "");
     if (!name) return;
     /* Creating activates the new view, so it clears the business for the same
        reason applying one does. */
@@ -309,7 +314,7 @@ export function FuelOrdersViewBar({
               : "border-transparent"
           )}
         >
-          Default
+          All
           {activeId === null && presetKey === null && dirty && <DirtyDot />}
         </button>
 
@@ -338,8 +343,25 @@ export function FuelOrdersViewBar({
                 )}
               >
                 {v.name}
-                {isActive && dirty && <DirtyDot />}
               </button>
+              {/* CHANGED SINCE SAVED — THE UPDATE IS ONE PRESS, beside the
+                  name (Pavan, 2026-10-21), not a dot that sends you to ⋯.
+                  The two-arrow refresh glyph, in grey (2026-10-22). */}
+              {isActive && dirty && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`Update ${v.name} with the changes`}
+                      onClick={() => onUpdate(v.id)}
+                      className="mb-1.5 ml-0.5 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <RefreshCw className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Update changes</TooltipContent>
+                </Tooltip>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -377,7 +399,7 @@ export function FuelOrdersViewBar({
 
         <button
           type="button"
-          onClick={() => setDialog({ mode: "new", name: "" })}
+          onClick={() => setDialog({ mode: "new", name: "", suggestion: suggestViewName() })}
           /* Not a tab — it has no rule to land, so it keeps 4px off the
              hairline rather than sitting on it. */
           className="mb-1 ml-1 inline-flex items-center gap-1 self-end rounded-md px-2 py-1 text-xs text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -573,15 +595,25 @@ export function FuelOrdersViewBar({
               onChange={(e) =>
                 setDialog((d) => (d ? { ...d, name: e.target.value } : d))
               }
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-              placeholder="e.g. Unassigned today"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submit();
+                /* TAKE THE SUGGESTION to add to it. */
+                if ((e.key === "ArrowRight" || e.key === "Tab") && !dialog?.name && dialog?.suggestion) {
+                  e.preventDefault();
+                  setDialog((d) => (d ? { ...d, name: `${d.suggestion} ` } : d));
+                }
+              }}
+              placeholder={(dialog?.mode === "new" && dialog.suggestion) || "e.g. Unassigned today"}
             />
           </div>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={submit} disabled={!dialog?.name.trim()}>
+            <Button
+              onClick={submit}
+              disabled={!dialog?.name.trim() && !(dialog?.mode === "new" && dialog.suggestion)}
+            >
               {dialog?.mode === "rename" ? "Rename" : "Save view"}
             </Button>
           </DialogFooter>

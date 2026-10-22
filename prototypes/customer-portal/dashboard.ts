@@ -1,5 +1,5 @@
 import { startOfDay } from "../unified-view/data";
-import { PRODUCTS, MARKET_PRICE, CUSTOMER_DIFF, orderNoFor } from "./orders";
+import { PRODUCTS, MARKET_PRICE, CUSTOMER_DIFF } from "./orders";
 import { INVOICES, OPEN, totalOf } from "./invoices";
 
 /*
@@ -234,7 +234,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Water found at the bottom of the tank.",
     level: "critical",
     assetId: "c-1",
-    requestNo: orderNoFor("REQ-1112"),
+    requestNo: "ORD-8812",
     driver: "Marcus Reyes",
     at: daysAgo(0, 8),
   },
@@ -244,7 +244,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Gate locked; 2,400 gal not delivered.",
     level: "warning",
     assetId: "b-2",
-    requestNo: orderNoFor("REQ-1114"),
+    requestNo: "ORD-8814",
     driver: "Dana Holt",
     at: daysAgo(1, 15),
   },
@@ -254,7 +254,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Fill cap cracked; fuel could get contaminated.",
     level: "warning",
     assetId: "a-4",
-    requestNo: orderNoFor("REQ-1086"),
+    requestNo: "ORD-8786",
     driver: "Marcus Reyes",
     at: daysAgo(6, 11),
   },
@@ -264,7 +264,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Tank monitor offline on arrival.",
     level: "info",
     assetId: "b-1",
-    requestNo: orderNoFor("REQ-1109"),
+    requestNo: "ORD-8809",
     driver: "Luis Ortega",
     at: daysAgo(9, 9),
   },
@@ -274,7 +274,7 @@ export const DRIVER_NOTES: DriverNote[] = [
     detail: "Tank was empty when the driver arrived.",
     level: "critical",
     assetId: "b-2",
-    requestNo: orderNoFor("REQ-1079"),
+    requestNo: "ORD-8779",
     driver: "Dana Holt",
     at: daysAgo(23, 7),
   },

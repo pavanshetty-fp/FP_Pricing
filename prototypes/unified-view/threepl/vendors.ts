@@ -507,22 +507,22 @@ export interface VendorColumnDef {
   they already carrying" is the next question, and it was ninth.
 */
 export const VENDOR_COLUMNS: VendorColumnDef[] = [
-  { key: "name", label: "Vendor Name", width: 250, sortable: true },
-  { key: "erpId", label: "Vendor ID", width: 130, sortable: true },
+  { key: "name", label: "Vendor Name", width: 220, sortable: true },
+  { key: "erpId", label: "Vendor ID", width: 110, sortable: true },
   /* CENTRED, not right-aligned. These are 1-2 digit counts that get READ, not
      compared down the column — at 150px a right edge sits so far from a
      15px header that it reads as a mistake. `tabular-nums` stays, so the
      digits still line up with each other. Money and long figures keep
      `right`, where lining up the units is the whole point. */
-  { key: "assigned", label: "Assigned Orders", width: 150, sortable: true, align: "center" },
-  { key: "dispatch", label: "Dispatch", width: 240, sortable: true },
-  { key: "lines", label: "Business Lines", width: 230, sortable: true },
-  { key: "address", label: "Address", width: 250, sortable: true },
-  { key: "serviceArea", label: "Service Area", width: 200, sortable: true },
-  { key: "products", label: "Supported Products", width: 230, sortable: true },
-  { key: "status", label: "Status", width: 120, sortable: true },
-  { key: "rateCard", label: "Default Rate Card", width: 180, sortable: true },
-  { key: "instruction", label: "Notes", width: 64, sortable: true },
+  { key: "assigned", label: "Assigned Orders", width: 140, sortable: true },
+  { key: "dispatch", label: "Dispatch", width: 250, sortable: true },
+  { key: "lines", label: "Business Lines", width: 210, sortable: true },
+  { key: "address", label: "Address", width: 160, sortable: true },
+  { key: "serviceArea", label: "Service Area", width: 150, sortable: true },
+  { key: "products", label: "Supported Products", width: 270, sortable: true },
+  { key: "status", label: "Status", width: 100, sortable: true },
+  { key: "rateCard", label: "Default Rate Card", width: 150, sortable: true },
+  { key: "instruction", label: "Notes", width: 80, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 

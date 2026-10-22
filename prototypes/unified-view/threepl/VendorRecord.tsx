@@ -226,19 +226,16 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
             {
               key: "min",
               label: "From",
-              align: "right",
               render: (l) => (l.minGallons ? `${l.minGallons.toLocaleString()} gal` : <Muted />),
             },
             {
               key: "rate",
               label: "Rate",
-              align: "right",
               render: (l) => `${money(l.rate)} ${l.unit}`,
             },
             {
               key: "fsc",
               label: "Surcharge",
-              align: "right",
               render: (l) => (l.fuelSurcharge === null ? <Muted /> : money(l.fuelSurcharge)),
             },
           ]}

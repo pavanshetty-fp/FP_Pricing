@@ -149,7 +149,7 @@ export function RecurringRecommendations({ onCreate }: { onCreate: (r: PortalRec
                         <th className="px-2.5 py-2 text-left">
                           <TableRequiredLabel>Product</TableRequiredLabel>
                         </th>
-                        <th className="px-2.5 py-2 text-right">
+                        <th className="px-2.5 py-2">
                           <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                         </th>
                       </tr>
@@ -163,7 +163,7 @@ export function RecurringRecommendations({ onCreate }: { onCreate: (r: PortalRec
                               {a?.name ?? l.assetId} · {r.shipTo}
                             </td>
                             <td className="px-2.5 py-2 text-foreground">{a?.product ?? "—"}</td>
-                            <td className="px-2.5 py-2 text-right tabular-nums text-foreground">
+                            <td className="px-2.5 py-2 tabular-nums text-foreground">
                               {l.gal.toLocaleString("en-US")}
                             </td>
                           </tr>

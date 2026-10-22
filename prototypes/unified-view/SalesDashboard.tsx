@@ -204,8 +204,8 @@ export function SalesDashboard({
                 <TableHead className="px-2 text-xs">Customer</TableHead>
                 <TableHead className="px-2 text-xs">Type</TableHead>
                 <TableHead className="px-2 text-xs">Driver</TableHead>
-                <TableHead className="px-2 text-right text-xs">Qty</TableHead>
-                <TableHead className="px-2 text-right text-xs">Planned</TableHead>
+                <TableHead className="px-2 text-xs">Qty</TableHead>
+                <TableHead className="px-2 text-xs">Planned</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -230,8 +230,8 @@ export function SalesDashboard({
                       </Pill>
                     )}
                   </TableCell>
-                  <TableCell className="px-2 text-right tabular-nums">{gal(r.qtyGal)}</TableCell>
-                  <TableCell className="px-2 text-right tabular-nums text-muted-foreground">
+                  <TableCell className="px-2 tabular-nums">{gal(r.qtyGal)}</TableCell>
+                  <TableCell className="px-2 tabular-nums text-muted-foreground">
                     {r.planned?.time ?? "—"}
                   </TableCell>
                 </TableRow>

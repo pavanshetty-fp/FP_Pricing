@@ -23,8 +23,10 @@ function events(): Event[] {
   const out: Event[] = [];
   const onWay = rs.find((r) => r.status === "Out for delivery" && r.trip);
   if (onWay) out.push({ text: `${onWay.requestNo} arriving in 30 minutes`, open: { order: onWay.requestNo } });
-  const quote = rs.find((r) => r.status === "Quote received");
-  if (quote) out.push({ text: `Quote ready for ${quote.requestNo}`, open: { order: quote.requestNo } });
+  /* A DRIVER IS ON IT (Pavan, 2026-10-21) — the one thing the customer
+     hears about an order before its delivery. */
+  const assigned = rs.find((r) => r.status === "Scheduled");
+  if (assigned) out.push({ text: `${assigned.requestNo} scheduled · driver assigned`, open: { order: assigned.requestNo } });
   const inv = [...INVOICES].sort((a, b) => b.issued.localeCompare(a.issued))[0];
   if (inv) out.push({ text: `Invoice ${inv.invoiceNo} ready`, open: { invoice: inv.invoiceNo } });
   const done = rs.find((r) => r.status === "Delivered");
@@ -32,8 +34,6 @@ function events(): Event[] {
   /* THE TENANT ANSWERED A DISPUTE (Pavan, 2026-10-15). */
   const answered = INVOICES.find((i) => i.dispute?.outcome && !i.dispute.closedAt);
   if (answered) out.push({ text: `${TENANT} answered the dispute on ${answered.invoiceNo}`, open: { invoice: answered.invoiceNo } });
-  const asked = rs.find((r) => r.status === "Action needed");
-  if (asked) out.push({ text: `${TENANT} needs your answer on ${asked.requestNo}`, open: { order: asked.requestNo } });
   return out;
 }
 

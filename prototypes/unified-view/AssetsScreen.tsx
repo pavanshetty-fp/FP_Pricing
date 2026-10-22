@@ -63,6 +63,8 @@ const TOGGLE_COLUMNS = ASSET_COLUMNS.filter((c) => c.label).map((c) => ({
 }));
 
 interface ViewState {
+  /** THE DISPLAY IT OPENS IN — table, board or map (Pavan, 2026-10-21). */
+  mode?: ListView;
   search: string;
   sortKey: string | null;
   sortDir: "asc" | "desc" | null;
@@ -101,6 +103,7 @@ const ASSET_FACETS: ListFacet[] = [
 const keyOf = (s: ViewState) =>
   JSON.stringify({
     ...s,
+    mode: s.mode ?? "table",
     hidden: [...s.hidden].sort(),
     facets: [...(s.facets ?? [])].sort(),
     /* Empty boxes are no filter — typing then clearing one is not a change. */
@@ -168,6 +171,8 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
   );
 
   const current: ViewState = {
+
+    mode: view,
     search,
     sortKey: sort?.key ?? null,
     sortDir: sort?.dir ?? null,
@@ -182,6 +187,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
   };
   const defaultState: ViewState = React.useMemo(
     () => ({
+    mode: "table",
       search: "",
       sortKey: null,
       sortDir: null,
@@ -198,6 +204,8 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
   );
 
   const applyState = (s: ViewState) => {
+
+    setView(s.mode ?? "table");
     setSearch(s.search);
     setSort(
       s.sortKey && s.sortDir

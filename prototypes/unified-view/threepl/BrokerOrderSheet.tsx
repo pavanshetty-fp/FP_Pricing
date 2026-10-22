@@ -36,7 +36,7 @@ import { Pill } from "@/components/ui/pill";
 import { DocumentsTable } from "../DocumentsTable";
 import { BannerCallout } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -61,7 +61,7 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -316,7 +316,7 @@ function CustomRecurrenceDialog({
               <label htmlFor="ends-on" className="flex cursor-pointer items-center gap-2.5">
                 <RadioGroupItem id="ends-on" value="on" />
                 <span className="text-sm">On</span>
-                <Popover>
+                <DatePopover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -329,13 +329,12 @@ function CustomRecurrenceDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-auto p-0">
-                    <Calendar
-                      mode="single"
+                    <DatePanel
                       selected={endsOn ?? undefined}
                       onSelect={(d) => setEndsOn(d ?? null)}
                     />
                   </PopoverContent>
-                </Popover>
+                </DatePopover>
               </label>
               <label htmlFor="ends-after" className="flex cursor-pointer items-center gap-2.5">
                 <RadioGroupItem id="ends-after" value="after" />
@@ -5049,7 +5048,7 @@ export function BrokerOrderSheet({
       <SheetSection title="Schedule Details">
         <div className="grid grid-cols-9 gap-4">
           <SheetField label="Planned Delivery Date" required className="col-span-4">
-            <Popover>
+            <DatePopover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -5062,13 +5061,12 @@ export function BrokerOrderSheet({
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
+                <DatePanel
                   selected={draft.plannedDate ?? undefined}
                   onSelect={(d) => set("plannedDate", d ?? null)}
                 />
               </PopoverContent>
-            </Popover>
+            </DatePopover>
           </SheetField>
 
           {/* ONE control, not a start and an end. The window is picked from the

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { dateWindowOf } from "@/components/ui/date-picker";
 import { CalendarOff, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,6 @@ import {
 } from "./assetOrders";
 import type { FuelOrder } from "./types";
 import {
-  SALES_LINES,
   SALES_ORDER_COLUMNS,
   SALES_ORDER_GROUP_DIMS,
   SALES_ORDER_SEARCH_FIELDS,
@@ -540,6 +540,10 @@ export function SalesOrdersScreen({
     const assets = rows.filter((r) => r.kind === "asset" && inSalesLine(line, r));
     const inLine = [...fuel, ...assets];
     return [
+      /* ORDER KIND IS A FILTER (Pavan, 2026-10-21) — it was the All · Fuel
+         Orders · Asset Orders switch above the list. One kind ticked sets the
+         list to that kind, as the switch did. */
+      { key: "orderKind", label: "Order Kind", options: ["Fuel Orders", "Asset Orders"] },
       ...(line !== "Asset Orders"
         ? [{ key: "type", label: "Type", options: ["Delivery", "Extraction"] }]
         : []),
@@ -575,11 +579,10 @@ export function SalesOrdersScreen({
   React.useEffect(() => {
     if (!drill) return;
     /* THE DASHBOARD COUNTS FUEL ORDERS, so it lands on that line. */
-    setLine("Fuel Orders");
     const day = startOfDay(drill.date);
     setRange({ from: day, to: day });
     setOverdueOnly(false);
-    setFacetSel(new Set());
+    setFacetSel(new Set(["orderKind:Fuel Orders"]));
     setSearch("");
     setColQuery("");
     setView("table");
@@ -635,6 +638,7 @@ export function SalesOrdersScreen({
         !on(facet) || values.some((v) => sel.has(`${facet}:${v}`));
       return searched.filter(
         (r) =>
+          pass("orderKind", [r.kind === "fuel" ? "Fuel Orders" : "Asset Orders"]) &&
           pass("type", r.kind === "fuel" ? [r.fuel.type.label] : []) &&
           pass("status", [stageLabel(statusOf(r))]) &&
           pass("customer", [customerOf(r)]) &&
@@ -835,6 +839,7 @@ export function SalesOrdersScreen({
     }
     const offered = new Set(
       [
+        "orderKind",
         "status",
         "customer",
         "shipTo",
@@ -847,6 +852,14 @@ export function SalesOrdersScreen({
     setLine(next);
     setPage(1);
   };
+
+  /* THE LINE FOLLOWS THE ORDER KIND FILTER — exactly one kind ticked is that
+     kind's list; none or both is All. */
+  React.useEffect(() => {
+    const kinds = [...facetSel].filter((id) => id.startsWith("orderKind:")).map((id) => id.slice(10));
+    changeLine(kinds.length === 1 ? (kinds[0] as SalesLine) : "All");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facetSel]);
 
   const onSort = (key: SalesOrderColumnKey) => {
     setSort((prev) => {
@@ -926,8 +939,10 @@ export function SalesOrdersScreen({
         to: day > startOfDay(r.to) ? day : r.to,
       };
     });
+    /* A new order of the other kind than the one filtered — drop the kind
+       filter so it shows. */
     if (line !== "All" && line !== (kind === "fuel" ? "Fuel Orders" : "Asset Orders")) {
-      setLine(kind === "fuel" ? "Fuel Orders" : "Asset Orders");
+      setFacetSel((prev) => new Set([...prev].filter((id) => !id.startsWith("orderKind:"))));
     }
   };
 
@@ -1276,15 +1291,14 @@ export function SalesOrdersScreen({
   const openAsset =
     opened?.kind === "asset" ? (assetRows.find((r) => r.id === opened.id) ?? null) : null;
 
+  /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
+  const dateWindow = React.useMemo(() => dateWindowOf(rows.map(dateKeyOfRow)), [rows]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
         ctaLabel="Create Order"
-        /* LINE OF SERVICE, ON THE RIGHT — 3PL's switch (Pavan, 2026-10-07). */
-        segments={SALES_LINES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(l) => changeLine(l as SalesLine)}
         /* CREATE IS A MENU, as 3PL's — three different forms, so the choice
            comes before the form (Pavan, 2026-10-07). */
         createMenu={[
@@ -1432,6 +1446,8 @@ export function SalesOrdersScreen({
           onViewChange={setView}
           dateControl={
             <DateRangeFilter
+              {...dateWindow}
+              noun="orders"
               value={range}
               onChange={(next) => {
                 setRange(next);
@@ -1608,6 +1624,8 @@ export function SalesOrdersScreen({
         count={sorted.length}
         date={
           <DateRangeFilter
+            {...dateWindow}
+            noun="orders"
             value={range}
             onChange={(next) => {
               setRange(next);

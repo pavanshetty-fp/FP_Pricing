@@ -1,7 +1,7 @@
 import * as React from "react";
 import {
-  ChevronDown,
-  ChevronUp,
+  ArrowDown,
+  ArrowUp,
   ChevronsUpDown,
   Repeat,
   SearchX,
@@ -53,10 +53,8 @@ import { DATE_FMT, MONEY, dateKeyOf, startOfDay } from "../data";
 import { VENDORS } from "./vendors";
 import { SERIES_STATUSES, type SeriesStatus } from "./recurring";
 import {
-  LINE_SCOPES,
-  inLineScope,
+  SERVICE_LINES,
   businessesOf,
-  type LineScope,
 } from "./orders";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -140,10 +138,10 @@ const COLUMNS: Col[] = [
   {
     key: "ruleNo",
     label: "Rule # / Created",
-    width: 150,
+    width: 170,
     sort: (r) => r.ruleNo,
   },
-  { key: "schedule", label: "Schedule", width: 190, sort: (r) => r.schedule.label },
+  { key: "schedule", label: "Schedule", width: 270, sort: (r) => r.schedule.label },
   {
     key: "next",
     label: "Next Delivery",
@@ -154,7 +152,7 @@ const COLUMNS: Col[] = [
   },
   { key: "status", label: "Status", width: 190, sort: (r) => r.status },
   { key: "customer", label: "Customer", width: 230, sort: (r) => r.customer.title },
-  { key: "shipTo", label: "Ship To", width: 190, sort: (r) => r.shipTo },
+  { key: "shipTo", label: "Ship To", width: 170, sort: (r) => r.shipTo },
   {
     key: "assets",
     label: "Assets",
@@ -171,7 +169,6 @@ const COLUMNS: Col[] = [
     key: "qty",
     label: "Qty (Gal)",
     width: 110,
-    align: "right",
     sort: (r) => ruleGallons(r),
   },
   {
@@ -213,7 +210,6 @@ const COLUMNS: Col[] = [
        that was carrying meaning has to hand it back to the labels. */
     label: "Vendor Price",
     width: 130,
-    align: "right",
     /* NOT PRICED SORTS LAST on a money column, for the same reason a missing
        date does: an absent number is not the smallest one. */
     sort: (r) => r.vendorPrice ?? Number.MAX_SAFE_INTEGER,
@@ -222,7 +218,6 @@ const COLUMNS: Col[] = [
     key: "customerPrice",
     label: "Customer Price",
     width: 140,
-    align: "right",
     sort: (r) => r.customerPrice ?? Number.MAX_SAFE_INTEGER,
   },
 ];
@@ -244,6 +239,20 @@ const RULE_FACETS: {
   valueOf: (r: RecurringRule) => string;
   searchable?: boolean;
 }[] = [
+  /* LINE OF SERVICE AND BUSINESS ARE FILTERS (Pavan, 2026-10-21) — not a
+     segment and preset tabs above the list. */
+  {
+    key: "serviceLine",
+    label: "Line of Service",
+    options: [...SERVICE_LINES],
+    valueOf: (r) => r.serviceLine,
+  },
+  {
+    key: "business",
+    label: "Business",
+    options: businessesOf("All"),
+    valueOf: (r) => r.business ?? "",
+  },
   {
     key: "status",
     label: "Status",
@@ -416,8 +425,6 @@ export function RecurringRulesScreen({
   /* THE SCOPE SHELF — the line, and the business inside it. Not a filter: a
      filter narrows the list you are looking at, and this says WHICH LIST. It
      is the same pair the orders board carries, in the same place. */
-  const [line, setLine] = React.useState<LineScope>("All");
-  const [business, setBusiness] = React.useState<string | null>(null);
   /* THE RULES LIVE IN STATE, not straight off the fixture, because a delivery
      edited in the sheet has to survive closing it. The seed is the starting
      point and nothing writes back to it. */
@@ -554,8 +561,6 @@ export function RecurringRulesScreen({
       /* THE SCOPE COMES FIRST, because it is not a narrowing of the list — it
          IS the list. A rule on another line is not a hidden row, it is a row
          that belongs to a different screenful. */
-      if (!inLineScope(line, r.serviceLine)) return false;
-      if (business !== null && r.business !== business) return false;
       if (ops === "first" && r.jobType !== "Transportation") return false;
       if (ops === "third" && r.jobType !== "Brokerage") return false;
       if (!matchesRule(r, search)) return false;
@@ -575,7 +580,7 @@ export function RecurringRulesScreen({
         return !facet || wanted.includes(facet.valueOf(r));
       });
     });
-  }, [rules, search, colScope, colQuery, line, business, ops, activeColFilters]);
+  }, [rules, search, colScope, colQuery, ops, activeColFilters]);
 
   const rows = React.useMemo(() => {
     const kept = narrow(applied);
@@ -609,7 +614,7 @@ export function RecurringRulesScreen({
   );
   React.useEffect(() => {
     setPage(1);
-  }, [search, applied, colQuery, colScope, line, business, ops, activeColFilters]);
+  }, [search, applied, colQuery, colScope, ops, activeColFilters]);
 
   /* READ THE OPEN RULE OUT OF STATE EVERY RENDER. Holding the rule object
      itself would leave the sheet showing the version it was opened with, so
@@ -632,11 +637,6 @@ export function RecurringRulesScreen({
   /* EXPORT ASKS FIRST (Pavan, 2026-10-07) — the Delivery Orders sheet, with
      every narrowing that shapes the file listed. */
   const exportFilters: ExportFilterRow[] = [
-    {
-      key: "business",
-      label: "Business",
-      values: business ? [{ value: business, onRemove: () => setBusiness(null) }] : [],
-    },
     {
       key: "search",
       label: "Search",
@@ -880,28 +880,6 @@ export function RecurringRulesScreen({
           §10c. */}
       <FuelOrdersViewBar
         {...savedViews}
-        /* DEFAULT MEANS NOTHING IS APPLIED, and that has to include the
-           business — `useSavedViews` knows nothing about the shelf above it. */
-        onResetToDefault={() => {
-          setBusiness(null);
-          savedViews.onResetToDefault();
-        }}
-        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(l) => {
-          setLine(l as LineScope);
-          /* THE BUSINESS BELONGS TO THE LINE. Tank Wagon is a fuel word, and
-             carrying it to Propane would underline a tab that narrows by
-             something that line has never heard of. */
-          setBusiness(null);
-          setPage(1);
-        }}
-        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
-        presetKey={business}
-        onPresetChange={(b) => {
-          setBusiness((prev) => (prev === b ? null : b));
-          setPage(1);
-        }}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}
@@ -1089,8 +1067,8 @@ export function RecurringRulesScreen({
                     const SortIcon = !active
                       ? ChevronsUpDown
                       : sort?.dir === "asc"
-                        ? ChevronUp
-                        : ChevronDown;
+                        ? ArrowUp
+                        : ArrowDown;
                     return (
                       <TableColumnHeader
                         key={c.key}

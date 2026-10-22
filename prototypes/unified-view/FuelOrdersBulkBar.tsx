@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePanel } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -476,7 +476,7 @@ export function FuelOrdersBulkBar({
         }
       >
         <div className="flex justify-center">
-          <Calendar mode="single" selected={date} onSelect={setDate} autoFocus />
+          <DatePanel selected={date} onSelect={setDate} />
         </div>
       </BulkEditDialog>
 

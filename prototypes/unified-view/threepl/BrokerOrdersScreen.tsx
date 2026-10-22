@@ -1,4 +1,5 @@
 import * as React from "react";
+import { dateWindowOf } from "@/components/ui/date-picker";
 import { CalendarOff, SearchX } from "lucide-react";
 import {
   Dialog,
@@ -68,7 +69,6 @@ import {
   LINE_BUSINESSES,
   type BrokerStatus,
   lineOfProduct,
-  type ServiceLine,
   BROKER_ORDERS,
   BROKER_SEARCH_FIELDS,
   BROKER_STATUS_FILTERS,
@@ -102,8 +102,6 @@ import {
   MOVEMENT_LABEL,
   MOVEMENT_ROUTE,
   type MovementDirection,
-  LINE_SCOPES,
-  inLineScope,
   businessesOf,
   type LineScope,
 } from "./orders";
@@ -1138,10 +1136,9 @@ export function BrokerOrdersScreen({
 
   React.useEffect(() => {
     if (!drill) return;
-    setLine(drill.line);
-    setBusiness(null);
     setRange(drill.range);
-    setFacetSel(new Set(drill.facets));
+    /* THE LINE ARRIVES AS A FILTER now (2026-10-21). */
+    setFacetSel(new Set([...drill.facets, ...(drill.line !== "All" ? [`serviceLine:${drill.line}`] : [])]));
     setSearch("");
     setColQuery("");
     setColFilters({});
@@ -1159,24 +1156,16 @@ export function BrokerOrdersScreen({
   const q = search.trim().toLowerCase();
   const cq = colQuery.trim().toLowerCase();
 
-  /*
-    WHICH LINE THIS IS. Fuel, lubricants and propane are three kinds of work
-    that happen to share a screen — different trucks, different certificates,
-    different customers — not three filters of one list. The scope therefore
-    sits ABOVE every other control on the page: the search, the facets, the
-    lanes and the counts all apply within the line you have chosen.
-  */
-  const [line, setLine] = React.useState<LineScope>("All");
 
   const onDate = React.useMemo(
     () => {
       const from = dateKeyOf(range.from);
       const to = dateKeyOf(range.to);
       return rows.filter(
-        (r) => r.dateKey >= from && r.dateKey <= to && inLineScope(line, r.serviceLine)
+        (r) => r.dateKey >= from && r.dateKey <= to
       );
     },
-    [rows, range, line]
+    [rows, range]
   );
   /** Tab counts are computed BEFORE the kind filter, so each tab can show how
    *  many rows it holds rather than only the active one being non-zero. */
@@ -1207,8 +1196,6 @@ export function BrokerOrdersScreen({
     empties the list rather than being quietly ignored. "Created / Draft" is the
     filter's label for the `Draft` lane.
   */
-  /** Which business inside the line, or none — see `LINE_BUSINESSES`. */
-  const [business, setBusiness] = React.useState<string | null>(null);
 
   /* THE FACET NARROWING, FOR ANY SET OF TICKS — the list uses the applied
      set; the filter panel asks it of its own ticks, to count them. */
@@ -1234,6 +1221,8 @@ export function BrokerOrdersScreen({
           ...(r.kind === "Recurring" ? ["Recurring"] : []),
           r.orderType === "Asset Movement" ? "Movement" : r.orderType,
         ]),
+        pass("serviceLine", [r.serviceLine]),
+        pass("business", businessOf(r) ? [businessOf(r)!] : []),
         pass("status", [r.status === "Draft" ? "Created / Draft" : r.status]),
         pass("customer", [r.customer.title]),
         pass("shipToAddress", [r.shipTo, r.zip, r.state]),
@@ -1254,10 +1243,8 @@ export function BrokerOrdersScreen({
      which list you are looking at. */
   const inBusiness = React.useMemo(
     () =>
-      business === null
-        ? filtered
-        : filtered.filter((r) => businessOf(r) === business),
-    [filtered, business]
+      filtered,
+    [filtered]
   );
   const sorted = React.useMemo(
     () => sortBrokerOrders(inBusiness, sort),
@@ -1442,6 +1429,19 @@ export function BrokerOrdersScreen({
   const ORDER_FACETS: ListFacet[] = React.useMemo(
     () => [
 
+              /* LINE OF SERVICE AND BUSINESS ARE FILTERS (Pavan, 2026-10-21) —
+                 no longer a segment and preset tabs above the list: people
+                 make the views they want from them. */
+              {
+                key: "serviceLine",
+                label: "Line of Service",
+                options: [...SERVICE_LINES],
+              },
+              {
+                key: "business",
+                label: "Business",
+                options: businessesOf("All"),
+              },
               {
                 key: "status",
                 label: "Status",
@@ -1653,7 +1653,7 @@ export function BrokerOrdersScreen({
        open over a list the row has left, and closing it looks like the edit
        was lost. Same widening as a new order gets. */
     if (draft.plannedDate) {
-      revealOn(draft.plannedDate, lineOfProduct(draft.lines[0]?.product ?? ""));
+      revealOn(draft.plannedDate);
     }
     setRows((prev) => {
       const saved = prev.map((r) => (r.id === order.id ? applyDraft(r, draft) : r));
@@ -1694,7 +1694,7 @@ export function BrokerOrdersScreen({
    * reader typed, and undoing them is a bigger liberty than widening a window
    * that was never chosen.
    */
-  const revealOn = (when: Date, serviceLine: ServiceLine) => {
+  const revealOn = (when: Date) => {
     setRange((r) => {
       const day = startOfDay(when);
       if (day >= startOfDay(r.from) && day <= startOfDay(r.to)) return r;
@@ -1703,7 +1703,6 @@ export function BrokerOrdersScreen({
         to: day > startOfDay(r.to) ? day : r.to,
       };
     });
-    setLine(serviceLine);
   };
 
   /** New orders continue the D- series in steps of 7, as the seeds do. */
@@ -1762,10 +1761,7 @@ export function BrokerOrdersScreen({
            Wagon would hide it behind the tab they are looking at. On Default
            it is the line's first business, which is the one the form's
            defaults describe. */
-        business:
-          business ??
-          LINE_BUSINESSES[lineOfProduct(draft.lines[0]?.product ?? "")][0] ??
-          null,
+        business: LINE_BUSINESSES[lineOfProduct(draft.lines[0]?.product ?? "")][0] ?? null,
         audit: [
           {
             at: new Date().toISOString(),
@@ -1817,7 +1813,7 @@ export function BrokerOrdersScreen({
       },
       ...prev,
     ]);
-    revealOn(when, lineOfProduct(draft.lines[0]?.product ?? ""));
+    revealOn(when);
     setPage(1);
     setCreating(false);
     setOpenId(`bo-new-${nextNo}`);
@@ -1931,7 +1927,7 @@ export function BrokerOrdersScreen({
       },
       ...prev,
     ]);
-    revealOn(when, lineOfProduct(""));
+    revealOn(when);
     setPage(1);
   };
 
@@ -2139,21 +2135,6 @@ export function BrokerOrdersScreen({
 
   const exportFilters: ExportFilterRow[] = [
     {
-      key: "business",
-      label: "Business",
-      values: business
-        ? [
-            {
-              value: business,
-              onRemove: () => {
-                setBusiness(null);
-                setPage(1);
-              },
-            },
-          ]
-        : [],
-    },
-    {
       key: "search",
       label: "Search",
       values: search.trim()
@@ -2246,40 +2227,14 @@ export function BrokerOrdersScreen({
     </Empty>
   );
 
+  /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
+  const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
-        /* DEFAULT MEANS NOTHING IS APPLIED, and that has to include the
-           business. `useSavedViews` restores the saved state — search, sort,
-           columns, facets — and knows nothing about the preset row, so
-           pressing Default while Transport was underlined cleared everything
-           the reader could see and left the one narrowing they could not.
-           Default is the tab that says "all of it", so it has to mean it. */
-        onResetToDefault={() => {
-          setBusiness(null);
-          savedViews.onResetToDefault();
-        }}
         ctaLabel="Create Order"
-        segments={LINE_SCOPES.map((l) => ({ key: l, label: l }))}
-        segmentValue={line}
-        onSegmentChange={(l) => {
-          setLine(l as LineScope);
-          /* THE BUSINESS BELONGS TO THE LINE. Tank Wagon is a fuel word;
-             carrying it across to Propane would leave a tab underlined that
-             narrows by something the new line has never heard of. */
-          setBusiness(null);
-          setPage(1);
-        }}
-        /* THE BUSINESSES INSIDE THE LINE, as tabs beside Default. Fuel has two
-           and the other lines have none yet, so the row shows what is true
-           rather than placeholders. */
-        presets={businessesOf(line).map((b) => ({ key: b, label: b }))}
-        presetKey={business}
-        onPresetChange={(b) => {
-          setBusiness((prev) => (prev === b ? null : b));
-          setPage(1);
-        }}
         /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; an
            asset order has one asset and a route — different forms, so the
            choice comes before the form rather than as a Type field inside it.
@@ -2337,7 +2292,7 @@ export function BrokerOrdersScreen({
           filters={
             <ListFilters
               countFor={(sel) =>
-                narrowFacets(sel).filter((r) => business === null || businessOf(r) === business)
+                narrowFacets(sel)
                   .length
               }
               value={facetSel}
@@ -2448,6 +2403,8 @@ export function BrokerOrdersScreen({
           mapView
           dateControl={
             <DateRangeFilter
+              {...dateWindow}
+              noun="orders"
               value={range}
               onChange={(next) => {
                 setRange(next);
@@ -2566,6 +2523,8 @@ export function BrokerOrdersScreen({
            open; everything else is behind the click, exactly as it is outside. */
         date={
           <DateRangeFilter
+            {...dateWindow}
+            noun="orders"
             value={range}
             onChange={(next) => {
               setRange(next);
@@ -2581,7 +2540,7 @@ export function BrokerOrdersScreen({
         filtersControl={
           <ListFilters
             countFor={(sel) =>
-              narrowFacets(sel).filter((r) => business === null || businessOf(r) === business)
+              narrowFacets(sel)
                 .length
             }
             value={facetSel}

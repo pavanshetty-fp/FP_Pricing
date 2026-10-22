@@ -256,7 +256,7 @@ export function customerReadSections(
             { key: "type", label: "Type", render: (a) => a.assetType },
             { key: "site", label: "Ship-to", render: (a) => a.shipTo ?? <Muted /> },
             { key: "start", label: "Since", render: (a) => formatDate(a.rentalStartDate) },
-            { key: "rate", label: "Rate", align: "right", render: (a) => money(a.rentalRate) },
+            { key: "rate", label: "Rate", render: (a) => money(a.rentalRate) },
           ]}
         />
       ),

@@ -724,8 +724,11 @@
      as one field of cards rather than as eight columns. At #f4f5f8 the step is
      11/255 against the layer and 11/255 against the cards inside it — the lane
      is legible as a container from across the room, and a white card on it is
-     still the lightest thing in the lane, which is the order that matters. */
-  --fp-board-lane: var(--fp-card-2);
+     still the lightest thing in the lane, which is the order that matters.
+     ONE STEP DARKER AGAIN (Pavan, 2026-10-22): on older laptops and cheap
+     monitors #f4f5f8 washed out into the white layer. #e9ecf1 (Card 1) is a
+     22/255 step — still light, and a lane on any screen. */
+  --fp-board-lane: var(--fp-card-1);
   /* A TABLE HEADER NEEDS ITS OWN GROUND. In dark the panel fill already differs
      from the content layer, so the header reads; in light both are #ffffff and
      the header row had nothing but its hairline — a header that is only a line
@@ -1248,7 +1251,7 @@
   --fp-emphasis-hover: #e6e9ef;
   --fp-emphasis-quiet: #eceef1;
   --fp-table-header: #e9ecf1;
-  --fp-board-lane: #e9ecf1;
+  --fp-board-lane: #e9ecf1; /* = the default since 2026-10-22; darker would cost the lane strips their 3:1 */
   --fp-row-hover: #e6e9ef;
   --fp-selected-border: #d35400;
   --fp-shell-marker: #2a5645;

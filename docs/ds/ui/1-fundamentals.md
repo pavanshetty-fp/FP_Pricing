@@ -73,7 +73,7 @@ popover.
 | `border-fp-outline-2` | `#c4c4c9` | `#575757` | hover / active rim — **must stay darker than outline-1 in light** |
 | `bg-fp-row-hover` | `#f4f5f8` | `#22272f` | table row hover |
 | `bg-fp-row-selected` | `#fee8d9` | `#2a2f37` | table row selected (= `--selected`) |
-| `bg-fp-board-lane` | `#f4f5f8` | `#2a2f37` | board lane ground — one token, every board |
+| `bg-fp-board-lane` | `#e9ecf1` (Card 1, darkened 2026-10-22 for washed-out monitors) | `#2a2f37` | board lane ground — one token, every board |
 | `bg-fp-table-header` | `#fafafa` | `#1b1f25` | table header row — its own value in light since 2026-10-14 (Pavan, after the Profound "All data" table); dark stays `--fp-card-2`. **Row hover keeps `--fp-row-hover` (`#f4f5f8`)** — the two no longer share a value. **A `tfoot` total takes no fill** — its top rule and weight carry it; a pinned totals band takes the sheet's own `bg-popover` |
 | `bg-fp-viz-1…8` | blue `#2a78d6` · orange `#eb6834` · aqua `#1baf7a` · yellow `#eda100` · magenta `#e87ba4` · green `#008300` · violet `#4a3aa7` · red `#e34948` | `#3987e5` · `#d95926` · `#199e70` · `#c98500` · `#d55181` · `#008300` · `#9085e9` · `#e66767` | **dashboard chart palette** (2026-10-05) — fixed order, never cycled; validated (six checks) on #ffffff / #161a20: adjacent CVD ΔE ≥ 8.4, normal ≥ 19.3. Light slots 3–5 are under 3:1, so charts using them always show names and values. The old `--chart-1…5` failed the validator and is no longer used by a chart |
 | `text-status-success` | `#15803d` | `#22c55e` | success |

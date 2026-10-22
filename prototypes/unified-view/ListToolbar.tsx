@@ -1,12 +1,12 @@
 import * as React from "react";
 import {
+  Map as MapIcon,
   Columns3,
   GripVertical,
-  Kanban,
+  KanbanSquare,
   LayoutList,
-  MapPinned,
-  Rows3,
   Search,
+  Table2,
   TextSearch,
   X,
 } from "lucide-react";
@@ -227,21 +227,17 @@ export interface ListToolbarProps<K extends string> {
   };
 }
 
-/** The display switch's three views, in their order. */
-const VIEW_ICONS = [
-  { key: "table" as const, label: "Table view", icon: <Rows3 /> },
-  { key: "board" as const, label: "Board view", icon: <Kanban /> },
-  { key: "map" as const, label: "Map view", icon: <MapPinned /> },
-];
-
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
 function IconTool({
   label,
+  view,
   active,
   onClick,
   children,
 }: {
   label: string;
+  /** Which display it switches to — where the routing line starts. */
+  view?: string;
   active?: boolean;
   onClick?: () => void;
   children: React.ReactNode;
@@ -253,12 +249,12 @@ function IconTool({
           variant="ghost"
           size="icon-sm"
           aria-label={label}
-          aria-pressed={active}
+          data-view={view}
           onClick={onClick}
           // Same fill as the chips: `--chip`, not `--accent`. At #cad1db the
           // control-emphasis token sits far too heavy on white inside a 32px
           // button. Dark is unchanged — `--chip` is #2a2f37 there.
-          className={cn(active && "bg-selected text-selected-foreground hover:bg-selected hover:text-selected-foreground")}
+          className={cn(active && "bg-chip text-foreground")}
         >
           {children}
         </Button>
@@ -348,7 +344,7 @@ export function ListToolbar<K extends string>({
     );
   };
 
-  /** COLUMN TOOLS ARE A TABLE'S TOOLS, AND ONLY A TABLE'S.
+  /* COLUMN TOOLS ARE A TABLE'S TOOLS, AND ONLY A TABLE'S.
 
             Search by column and Show/Hide columns both name a thing the reader
             can see: a header to type under, a column to take away. On a board
@@ -590,7 +586,7 @@ export function ListToolbar<K extends string>({
         </Popover>
     </>
   );
-  /** WHAT IS ON THE CARD — the board's own control, in the slot the
+  /* WHAT IS ON THE CARD — the board's own control, in the slot the
             column tools vacate. Same place, different subject, and the subject
             is written at the top of the menu and spoken by the icon, so the
             two can never be mistaken for one control that moved. */
@@ -702,9 +698,38 @@ export function ListToolbar<K extends string>({
             </Popover>
     </>
   ) : null;
+  const activeTools = view === "table" ? tableTools : view === "board" ? boardTools : null;
+
+  /* WHERE THE ROUTING LINE DROPS FROM — the active icon's centre, measured. */
+  const rightRef = React.useRef<HTMLDivElement>(null);
+  const [routeX, setRouteX] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const box = rightRef.current;
+    if (!box) return;
+    const place = () => {
+      const icon = box.querySelector<HTMLElement>(`[data-view="${view}"]`);
+      if (!icon) return;
+      const a = box.getBoundingClientRect();
+      const b = icon.getBoundingClientRect();
+      setRouteX(Math.round(b.left - a.left + b.width / 2));
+      /* THE CHIPS' RIGHT EDGE — they share the tools' row and stop short of
+         the right cluster. Set on the parent: the chip row is a sibling. */
+      box.parentElement?.parentElement?.style.setProperty("--fp-routed-w", `${Math.round(a.width) + 16}px`);
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [view]);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    /* TOP-ALIGNED — the routed tools hang below the right cluster, and the
+       search row stays level with the view icons. `data-routed` lets the
+       filter chips that follow rise into the tools' row (index.css). */
+    <div
+      data-routed={multiView && activeTools ? "" : undefined}
+      className="flex flex-wrap items-start justify-between gap-3"
+    >
       {/* LEFT — quick filters · search · Filters · Group By
 
           THE QUICK FILTERS COME FIRST, before the search box, because they are
@@ -751,7 +776,9 @@ export function ListToolbar<K extends string>({
         )}
       </div>
 
-      {/* RIGHT — [date]   view switch │ column tools */}
+      {/* RIGHT — [date]   view switch, and under the view you are on, its own
+          tools, joined to it by a line (Pavan, 2026-10-22). */}
+      <div ref={rightRef} className="flex flex-col items-start">
       <div className="flex items-center gap-1">
         {(dateControl ?? dateScope) && (
           <>
@@ -767,37 +794,53 @@ export function ListToolbar<K extends string>({
           </>
         )}
 
-        {/* THREE SHAPES, NOT THREE BOXES (Pavan, 2026-10-21): rows for the
-            table, uneven columns for the board, a pinned map for the map.
-            THE VIEW YOU ARE ON CARRIES ITS OWN TOOLS (Pavan, 2026-10-22): its
-            icon and the actions that belong to it sit together in one group,
-            and the other views stand apart from it — so which tools go with
-            which view is read at a glance. */}
         {/* ONE VIEW, NO SWITCH (Pavan, 2026-10-01). A table-only list gets no
-            Table-view icon — a switch with one position switches nothing;
-            its column tools stay. */}
-        {!multiView ? (
-          view === "table" && <span className="flex items-center gap-1">{tableTools}</span>
-        ) : (
-          <span className="flex items-center gap-3">
-            {VIEW_ICONS.filter((v) => (v.key === "table" ? true : v.key === "board" ? boardView : mapView)).map((v) => {
-              const icon = (
-                <IconTool key={v.key} label={v.label} active={view === v.key} onClick={() => onViewChange(v.key)}>
-                  {v.icon}
-                </IconTool>
-              );
-              const tools = v.key === "table" ? tableTools : v.key === "board" ? boardTools : null;
-              if (view !== v.key || !tools) return icon;
-              return (
-                <span key={v.key} className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-                  {icon}
-                  <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
-                  {tools}
-                </span>
-              );
-            })}
-          </span>
+            Table-view icon — a switch with one position switches nothing.
+            The column tools after it stay: they belong to the table. */}
+        {multiView && (
+          <IconTool
+            label="Table view"
+            view="table"
+            active={view === "table"}
+            onClick={() => onViewChange("table")}
+          >
+            <Table2 />
+          </IconTool>
         )}
+        {boardView && (
+          <IconTool
+            label="Board view"
+            view="board"
+            active={view === "board"}
+            onClick={() => onViewChange("board")}
+          >
+            <KanbanSquare />
+          </IconTool>
+        )}
+        {mapView && (
+          <IconTool
+            label="Map view"
+            view="map"
+            active={view === "map"}
+            onClick={() => onViewChange("map")}
+          >
+            <MapIcon />
+          </IconTool>
+        )}
+
+        {/* A ONE-VIEW LIST KEEPS ITS TOOLS IN THE ROW — there is no switch
+            for them to hang from. */}
+        {!multiView && view === "table" && tableTools}
+      </div>
+      {/* THE ACTIVE VIEW'S TOOLS, ROUTED FROM ITS ICON — a line drops from
+          under the icon and turns into the tools, so they read as the
+          table's (or the board's) and nothing else's. */}
+      {multiView && activeTools && (
+        <div className="flex items-start" style={{ paddingLeft: routeX }}>
+          <span aria-hidden className="h-4 w-3 shrink-0 rounded-bl-md border-b border-l border-muted-foreground/40" />
+          <span className="flex items-center gap-1">{activeTools}</span>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -923,7 +966,7 @@ export function FilterChips({
   const valueOf = (id: string) => id.slice(id.indexOf(":") + 1);
 
   return (
-    <div className={cn("mt-3 flex shrink-0 items-center gap-2", className)}>
+    <div data-filter-chips className={cn("mt-3 flex shrink-0 items-center gap-2", className)}>
       {/* THE CHIPS TAKE ONLY THE WIDTH THEY NEED, so Clear all sits right
           after the last one (Pavan, 2026-10-09); past the row's width they
           still scroll rather than wrap. */}

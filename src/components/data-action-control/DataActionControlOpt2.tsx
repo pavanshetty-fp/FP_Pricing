@@ -1,6 +1,6 @@
 import * as React from "react";
 import {
-  SearchX, Search, TextSearch, Columns3, Rows3, Kanban,
+  SearchX, Search, TextSearch, Columns3, Table2, KanbanSquare,
   Plus, X, MoreHorizontal, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -164,7 +164,7 @@ export function DataActionControlOpt2({ rows = SAMPLE_ROWS }: { rows?: TableRow[
             onClick={resetToDefault}
             className={cn(tabCls(activeId === null), "border-b-2", activeId === null ? "border-foreground" : "border-transparent")}
           >
-            All
+            Default
             {activeId === null && dirty && <span className="ml-1.5 inline-block size-1.5 rounded-full bg-brand align-middle" aria-label="unsaved" />}
           </button>
           {/* Saved presets */}
@@ -238,8 +238,8 @@ export function DataActionControlOpt2({ rows = SAMPLE_ROWS }: { rows?: TableRow[
             <FilterPanel compact />
             <GroupByMenu compact />
             <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-            <IconTool label="Table view" active={view === "table"} onClick={() => setView("table")}><Rows3 /></IconTool>
-            <IconTool label="Board view" active={view === "board"} onClick={() => setView("board")}><Kanban /></IconTool>
+            <IconTool label="Table view" active={view === "table"} onClick={() => setView("table")}><Table2 /></IconTool>
+            <IconTool label="Board view" active={view === "board"} onClick={() => setView("board")}><KanbanSquare /></IconTool>
             {cq && (
               <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-fp-card-1 py-0.5 pl-2 pr-1 text-[11px] text-foreground">
                 <Search className="size-3 text-muted-foreground" />

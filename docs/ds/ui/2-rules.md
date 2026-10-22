@@ -830,6 +830,9 @@ added to `UNITS` in `a11y.ts` so it's fitted too.
 `scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke, Background or
 Text list (or `ON_FILL` if it's text on a fill).
 
+**The nav item's icon** is `AccessibilityIcon` (`src/components/theme`) — a dot with
+five widening rays fanning right, filled in the text colour (Pavan, 2026-10-22).
+
 ## 10o. Dark theme layers — separated by default (Pavan, 2026-10-21)
 
 The default Dark ladder was a few RGB steps apart (a board card on its lane:
@@ -890,11 +893,14 @@ and the column before it +20. Hand-tuned widths per module come from Pavan. Numb
 numbers and money included, in every table (lists, nested and sheet tables, dashboard
 tables, statements). Only action buttons sit at a row's end.
 
-**Display icons are three shapes.** Table `Rows3`, Board `Kanban`, Map `MapPinned`.
-The one you are on wears `bg-selected text-selected-foreground` and `aria-pressed`. The view you
-are on carries ITS OWN TOOLS in one bordered group with it — Table: Search by column,
-Show/Hide columns; Board: Card fields; Map: none — and the other views stand 12px
-apart (Pavan, 2026-10-22).
+**Display icons and their tools** (Pavan, 2026-10-22): `Table2`, `KanbanSquare`,
+`Map`, the active one on the chip fill. The ACTIVE view's own tools sit in a row just
+BELOW the three icons, joined to the active icon by a routing line (drops from under
+the icon, turns right into the tools): Table — Search by column, Show/Hide columns;
+Board — Card fields; Map — none. A one-view list keeps its tools in the row. The
+toolbar is top-aligned so the search row stays level with the icons. Filter chips share the
+tools' row — they rise into it beside the routed tools rather than starting below
+them (`[data-routed] + [data-filter-chips]` in index.css).
 
 **One date picker** — `src/components/ui/date-picker.tsx`, used by every screen that
 picks a date (filters and form fields, every module):

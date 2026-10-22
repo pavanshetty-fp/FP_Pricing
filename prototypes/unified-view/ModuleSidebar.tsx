@@ -1,6 +1,6 @@
 import * as React from "react";
-import { Accessibility, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { AccessibilityPanel } from "@/components/theme";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { AccessibilityIcon, AccessibilityPanel } from "@/components/theme";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -583,7 +583,7 @@ function AccessibilityNav({ collapsed }: { collapsed?: boolean }) {
             open ? "bg-fp-shell-selected text-sidebar-foreground" : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
           )}
         >
-          <Accessibility />
+          <AccessibilityIcon />
         </button>
       ) : (
         <button
@@ -597,7 +597,7 @@ function AccessibilityNav({ collapsed }: { collapsed?: boolean }) {
           )}
         >
           <span className="flex shrink-0">
-            <Accessibility />
+            <AccessibilityIcon />
           </span>
           <span className="min-w-0 flex-1 truncate text-left">Accessibility</span>
         </button>

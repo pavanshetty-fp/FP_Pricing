@@ -1489,3 +1489,12 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
 .fp-sorted-cell {
   background-color: color-mix(in oklab, var(--fp-row-hover) 55%, transparent);
 }
+
+/* FILTER CHIPS SHARE THE ROUTED TOOLS' ROW (Pavan, 2026-10-22). When the active
+   view's tools hang under the view icons (ListToolbar `data-routed`), the chip
+   shelf that follows rises into that row instead of starting below it, and
+   stops short of the right cluster (`--fp-routed-w`, set by the toolbar). */
+[data-routed] + [data-filter-chips] {
+  margin-top: -1.75rem;
+  padding-right: var(--fp-routed-w, 0px);
+}

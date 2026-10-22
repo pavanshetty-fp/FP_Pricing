@@ -1,4 +1,4 @@
-import { Kanban, Rows3 } from "lucide-react";
+import { Table2, KanbanSquare } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export type DataView = "table" | "board";
@@ -24,11 +24,11 @@ export function ViewSwitcher({ view, onViewChange }: ViewSwitcherProps) {
       className="h-8"
     >
       <ToggleGroupItem value="table" aria-label="Table view" className="gap-1.5 px-2.5">
-        <Rows3 className="size-4" />
+        <Table2 className="size-4" />
         Table
       </ToggleGroupItem>
       <ToggleGroupItem value="board" aria-label="Board view" className="gap-1.5 px-2.5">
-        <Kanban className="size-4" />
+        <KanbanSquare className="size-4" />
         Board
       </ToggleGroupItem>
     </ToggleGroup>

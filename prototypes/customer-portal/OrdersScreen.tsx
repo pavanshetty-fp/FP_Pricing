@@ -15,12 +15,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
-import {
-  ListToolbar,
-  ColumnSearchChip,
-  FilterChips,
-  type ListView,
-} from "../unified-view/ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "../unified-view/ListToolbar";
 import { ListFilters, type ListFacet } from "../unified-view/ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../unified-view/ExportSheet";
 import { ListTable, TwoLineCell } from "../unified-view/ListTable";
@@ -330,6 +325,8 @@ export function OrdersScreen({
     [searched]
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => sortRequests(filtered, sort), [filtered, sort]);
   /* GROUPED, EVERY ROW SHOWS — a group is never cut by a page edge. */
   const g = useGrouping<OrderRequest, RequestColumnKey>({
@@ -776,6 +773,8 @@ export function OrdersScreen({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${dateKeyOf(range.from) === dateKeyOf(range.to) ? formatFullDate(range.from) : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`}` : `· ${dateKeyOf(range.from) === dateKeyOf(range.to) ? formatFullDate(range.from) : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`}`} />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -947,13 +946,15 @@ export function OrdersScreen({
               )}
             </Empty>
           ) : view === "board" ? (
-            <BrokerBoard
-              lanes={boardLanes}
-              onOpenCard={(id) => {
-                setCreatingId(null);
-                setOpenId(id);
-              }}
-            />
+            <BoardWithBar barRef={bar.ref}>
+              <BrokerBoard
+                lanes={boardLanes}
+                onOpenCard={(id) => {
+                  setCreatingId(null);
+                  setOpenId(id);
+                }}
+              />
+            </BoardWithBar>
           ) : view === "map" ? (
             <OrderMapView
               orders={mapOrders}
@@ -969,6 +970,7 @@ export function OrdersScreen({
             />
           ) : (
             <ListTable
+              topBar={bar.slot}
               /* A TALL ORDER READS FROM ITS TOP (Pavan, 2026-10-21) — the
                  number, ship-to, date and status sit level with its first tank. */
               alignTop
@@ -1052,7 +1054,7 @@ export function OrdersScreen({
           scope (2-layouts §9), worded and weighted as on 3PL and Sales: the
           count in medium, then lanes and the date range muted; nothing when
           there is nothing. */}
-      {view !== "table" ? (
+      {view === "map" ? (
         sorted.length > 0 ? (
           <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
             <span className="font-medium text-foreground">

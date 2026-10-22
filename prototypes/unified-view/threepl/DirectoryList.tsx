@@ -20,12 +20,7 @@ import {
 } from "@/components/tables-layout";
 import { toast } from "sonner";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
-import {
-  ListToolbar,
-  ColumnSearchChip,
-  FilterChips,
-  type ListView,
-} from "../ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { ListTable } from "../ListTable";
@@ -429,6 +424,8 @@ export function DirectoryList<Row, K extends string>({
 
   const filtered = React.useMemo(() => narrow(applied), [narrow, applied]);
 
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => sortRows(filtered, sort), [filtered, sort, sortRows]);
 
   const g = useGrouping<Row, K>({
@@ -566,6 +563,8 @@ export function DirectoryList<Row, K extends string>({
       <div className="mt-4 flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
           <ListToolbar
+            viewToolsInto={bar.into}
+            viewStatement={<ViewStatement count={sorted.length} one={noun} many={plural} />}
             searchValue={search}
             onSearchChange={(v) => {
               setSearch(v);
@@ -756,6 +755,7 @@ export function DirectoryList<Row, K extends string>({
             </Empty>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={g.visibleRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}

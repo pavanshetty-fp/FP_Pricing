@@ -13,7 +13,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
@@ -234,6 +234,8 @@ export function QuotesScreen({
     [searched]
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => sortQuotes(filtered, sort), [filtered, sort]);
   const pageRows = sorted.slice((page - 1) * pageSize, page * pageSize);
 
@@ -368,6 +370,8 @@ export function QuotesScreen({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="quote" many="quotes" />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -493,6 +497,7 @@ export function QuotesScreen({
             </Empty>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               columns={QUOTE_COLUMNS}
               hidden={hidden}

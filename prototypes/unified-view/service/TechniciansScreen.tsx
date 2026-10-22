@@ -10,7 +10,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout";
-import { ListToolbar } from "../ListToolbar";
+import { ListToolbar, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { TECHNICIANS, type ServiceOrder, type Technician } from "./work";
 import { useServiceOrders } from "./store";
@@ -149,6 +149,8 @@ export function TechniciansScreen() {
     );
   }, [search, activeColFilters, open]);
 
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
     const value = (t: Technician): string | number => {
@@ -222,6 +224,8 @@ export function TechniciansScreen() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="technician" many="technicians" />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -289,6 +293,7 @@ export function TechniciansScreen() {
             </Empty>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               columns={TECH_COLUMNS}
               hidden={hidden}

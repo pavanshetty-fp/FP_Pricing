@@ -1106,7 +1106,14 @@ the icon, turns right into the tools): Table — Search by column, Show/Hide col
 Board — Card fields; Map — none. A one-view list keeps its tools in the row. The
 toolbar is top-aligned so the search row stays level with the icons. Filter chips share the
 tools' row — they rise into it beside the routed tools rather than starting below
-them (`[data-routed] + [data-filter-chips]` in index.css).
+them (`[data-routed] + [data-filter-chips]` in index.css). **THE VIEW BAR — every list** (Pavan, 2026-10-22,
+after a trial on 3PL Delivery Orders): the view's tools sit in a bar ON the view —
+above the table header (`ListTable topBar`, or the hand-built recurring tables' frame),
+or above the lanes (`BoardWithBar`). LEFT: a statement — "62 orders · Thu, Oct 22,
+2026" (table), "62 orders across 9 of 9 lanes · …" (board, replacing the footer line),
+"150 customers" where a list has no date. RIGHT: the view's tools — "Search by
+column", 24px, the settings icon for Show/Hide columns (table); Card fields (board).
+Wiring: `useViewBar()`, `ListToolbar viewToolsInto + viewStatement`, `ViewStatement`.
 
 **One date picker** — `src/components/ui/date-picker.tsx`, used by every screen that
 picks a date (filters and form fields, every module):

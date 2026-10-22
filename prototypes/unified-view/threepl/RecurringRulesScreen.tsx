@@ -36,6 +36,8 @@ import {
   ColumnSearchChip,
   FilterChips,
   ListToolbar,
+  ViewStatement,
+  useViewBar,
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
@@ -605,6 +607,8 @@ export function RecurringRulesScreen({
   /* PAGINATION IS OVER THE NARROWED LIST, and the page resets whenever the
      narrowing changes — page 4 of a list that just became one page long is a
      screen that reads as empty. */
+  /* THE VIEW BAR — the table's tools render into it. */
+  const bar = useViewBar();
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -900,6 +904,8 @@ export function RecurringRulesScreen({
           groups this table already has for the word "group". Each is switched
             off at the toolbar rather than drawn dead. */}
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={total} one="rule" many="rules" />}
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search rules, customers, sites, partners…"
@@ -1033,7 +1039,9 @@ export function RecurringRulesScreen({
             )}
           </Empty>
         ) : (
-          <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+          <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+            <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>
+            <div className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible">
             {/* BORDER-SEPARATE, AND IT IS THE WHOLE FIX.
 
                 Chrome will not honour `position: sticky` on a table CELL while
@@ -1166,6 +1174,7 @@ export function RecurringRulesScreen({
                 ))}
               </TableBody>
             </Table>
+          </div>
           </div>
         )}
       </div>

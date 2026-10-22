@@ -8,7 +8,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout";
-import { ListToolbar } from "../ListToolbar";
+import { ListToolbar, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 
 /**
@@ -92,6 +92,8 @@ export function ServiceListScreen<Row, K extends string>({
     );
   }, [rows, search, searchText, colQuery, colScope, sortValue, activeColFilters, renderCell]);
 
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
     const dir = sort.dir === "asc" ? 1 : -1;
@@ -111,6 +113,8 @@ export function ServiceListScreen<Row, K extends string>({
       {above && <div className="mb-4 shrink-0">{above}</div>}
       <div className="shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one={noun} many={noun} />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -172,6 +176,7 @@ export function ServiceListScreen<Row, K extends string>({
             </Empty>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               columns={columns}
               hidden={hidden}

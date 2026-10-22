@@ -42,6 +42,8 @@ import {
   ColumnSearchChip,
   FilterChips,
   ListToolbar,
+  ViewStatement,
+  useViewBar,
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
@@ -526,6 +528,8 @@ export function RecurringProgramsScreen({
     });
   }, [narrow, applied, sort]);
 
+  /* THE VIEW BAR — the table's tools render into it. */
+  const bar = useViewBar();
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -783,6 +787,8 @@ export function RecurringProgramsScreen({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={total} one="programme" many="programmes" />}
           /* RECOMMENDATIONS ON THE LIST TOO (Pavan, 2026-10-06) — a rule's
              frequency and the ship-tos it fits, across customers; Review and
              Create Rule opens the form with both filled in. Next to the Filters button. */
@@ -906,7 +912,9 @@ export function RecurringProgramsScreen({
             )}
           </Empty>
         ) : (
-          <div className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+          <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+            <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>
+            <div className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible">
             {/* Separated borders — see `docs/ds/ui/2-rules.md` §10d. */}
             <Table
               style={{ tableLayout: "fixed" }}
@@ -1013,6 +1021,7 @@ export function RecurringProgramsScreen({
                 ))}
               </TableBody>
             </Table>
+          </div>
           </div>
         )}
       </div>

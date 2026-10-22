@@ -14,7 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout";
-import { ListToolbar, FilterChips, ColumnSearchChip, type ListView } from "../ListToolbar";
+import { ListToolbar, FilterChips, ColumnSearchChip, type ListView, useViewBar, ViewStatement, BoardWithBar } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
@@ -724,6 +724,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
 
   const filtered = React.useMemo(() => narrow(facetSel), [narrow, facetSel]);
 
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
     const value = (r: ServiceOrder): string | number => {
@@ -1302,6 +1304,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
 
       <div className={alerts.length > 0 ? "mt-3 shrink-0" : "mt-4 shrink-0"}>
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           searchValue={search}
           onSearchChange={(v) => {
@@ -1437,21 +1441,24 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
-            <BrokerBoard
-              lanes={lanes}
-              onOpenCard={setOpenId}
-              /* FOUR WAYS TO ORDER A LANE, and the fourth belongs to the
-                 lane: what is worth ordering Open by is which job has waited
-                 longest with nobody on it, and that question does not exist
-                 once somebody is assigned. */
-              laneSortOptions={laneSortOptions}
-              laneSort={laneSort}
-              onLaneSortChange={(lane: string, key: string | null) =>
-                setLaneSort((prev) => ({ ...prev, [lane]: key ?? undefined }))
-              }
-            />
+            <BoardWithBar barRef={bar.ref}>
+              <BrokerBoard
+                lanes={lanes}
+                onOpenCard={setOpenId}
+                /* FOUR WAYS TO ORDER A LANE, and the fourth belongs to the
+                   lane: what is worth ordering Open by is which job has waited
+                   longest with nobody on it, and that question does not exist
+                   once somebody is assigned. */
+                laneSortOptions={laneSortOptions}
+                laneSort={laneSort}
+                onLaneSortChange={(lane: string, key: string | null) =>
+                  setLaneSort((prev) => ({ ...prev, [lane]: key ?? undefined }))
+                }
+              />
+            </BoardWithBar>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               columns={COLUMNS}
               hidden={hidden}
@@ -1483,7 +1490,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
         </div>
       </div>
 
-      {view !== "table" && sorted.length > 0 && (
+      {view === "map" && sorted.length > 0 && (
         <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
           <span className="font-medium text-foreground">
             {sorted.length.toLocaleString()}{" "}

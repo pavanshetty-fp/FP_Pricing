@@ -49,6 +49,8 @@ import {
   ColumnSearchChip,
   FilterChips,
   ListToolbar,
+  ViewStatement,
+  useViewBar,
   type ListView,
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
@@ -620,6 +622,8 @@ export function RecurringOrdersScreen({
     [narrow, applied, sort]
   );
 
+  /* THE VIEW BAR — the table's tools render into it. */
+  const bar = useViewBar();
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -1012,6 +1016,8 @@ export function RecurringOrdersScreen({
             no pins, and grouping rows that already expand is two disclosure
             mechanics fighting for one triangle. */}
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={total} one="recurring order" many="recurring orders" />}
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search recurring orders, customers, sites…"
@@ -1145,9 +1151,11 @@ export function RecurringOrdersScreen({
             )}
           </Empty>
         ) : (
-          <div
+          <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+            <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>
+            <div
             ref={scrollRef}
-            className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible"
+            className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible"
           >
             {/* BORDER-SEPARATE so the header cells can stick and paint above
                 the body — see `docs/ds/ui/2-rules.md` §10d. The row rule moves
@@ -1293,6 +1301,7 @@ export function RecurringOrdersScreen({
                 })}
               </TableBody>
             </Table>
+          </div>
           </div>
         )}
       </div>

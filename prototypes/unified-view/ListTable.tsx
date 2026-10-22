@@ -62,6 +62,9 @@ export interface ListSort<K extends string> {
 }
 
 export interface ListTableProps<Row, K extends string> {
+  /** A ROW ABOVE THE HEADER, inside the table's frame and outside its scroll —
+   *  for the table's own tools (see `ListToolbarProps.tableToolsInto`). */
+  topBar?: React.ReactNode;
   /** Every cell sits at the top of its row — for rows that grow tall with
    *  stacked lines, so the record's own cells read first. */
   alignTop?: boolean;
@@ -179,6 +182,7 @@ export function ListTable<Row, K extends string>({
   renderExpanded,
   expandLabel,
   alignTop = false,
+  topBar,
 }: ListTableProps<Row, K>) {
   const expandable = Boolean(renderExpanded);
   const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(() => new Set());
@@ -251,8 +255,14 @@ export function ListTable<Row, K extends string>({
     return out;
   })();
 
-  return (
-    <div ref={frame} className="h-full overflow-auto rounded-md border border-border [&_[data-slot=table-container]]:overflow-visible">
+  const body = (
+    <div
+      ref={frame}
+      className={cn(
+        "overflow-auto [&_[data-slot=table-container]]:overflow-visible",
+        topBar ? "min-h-0 flex-1" : "h-full rounded-md border border-border"
+      )}
+    >
       <Table style={{ tableLayout: "fixed", width: widths.reduce((a, b) => a + b, selectable ? 44 : 0) }}>
         <colgroup>
           {selectable && <col style={{ width: "44px" }} />}
@@ -538,6 +548,13 @@ export function ListTable<Row, K extends string>({
             )}
         </TableBody>
       </Table>
+    </div>
+  );
+  if (!topBar) return body;
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+      <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{topBar}</div>
+      {body}
     </div>
   );
 }

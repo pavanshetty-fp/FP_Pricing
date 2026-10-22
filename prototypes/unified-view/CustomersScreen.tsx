@@ -15,7 +15,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, OverflowList, TwoLineCell } from "./ListTable";
@@ -241,6 +241,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
     [searched]
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => sortCustomers(filtered, sort), [filtered, sort]);
   /* Grouping. The hook owns the dimension stack and the collapsed set, and
      suspends pagination while grouped — a group cannot straddle a page
@@ -370,6 +372,8 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="customer" many="customers" />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -514,6 +518,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
             </Empty>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={g.visibleRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}

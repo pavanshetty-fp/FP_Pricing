@@ -30,6 +30,9 @@ import {
   ListToolbar,
   ColumnSearchChip,
   FilterChips,
+  BoardWithBar,
+  ViewStatement,
+  useViewBar,
   type ListView,
 } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
@@ -1110,6 +1113,8 @@ export function BrokerOrdersScreen({
   /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
+  /* THE VIEW BAR — where the table's and the board's tools render. */
+  const bar = useViewBar();
   const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(
     () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
@@ -2379,6 +2384,22 @@ export function BrokerOrdersScreen({
              board keeps the button pointed at nothing rather than opening a
              row of boxes above cards that have no columns. */
           columnFiltersOpen={!board && colFiltersOpen}
+          /* THE VIEW'S TOOLS IN A BAR ON THE VIEW — the trial (Pavan,
+             2026-10-22), this list only for now: what is shown on the
+             left, the view's tools on the right. */
+          viewToolsInto={bar.into}
+          viewStatement={
+            <ViewStatement
+              count={sorted.length}
+              one="order"
+              many="orders"
+              rest={
+                view === "board"
+                  ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}`
+                  : `· ${rangeLabel}`
+              }
+            />
+          }
           onToggleColumnFilters={
             board
               ? undefined
@@ -2451,13 +2472,15 @@ export function BrokerOrdersScreen({
           {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
-            <BrokerBoard
-              lanes={lanes}
-              onOpenCard={setOpenId}
-              laneSortOptions={laneSortOptions}
-              laneSort={laneSort}
-              onLaneSortChange={setLaneSortKey}
-            />
+            <BoardWithBar barRef={bar.ref}>
+              <BrokerBoard
+                lanes={lanes}
+                onOpenCard={setOpenId}
+                laneSortOptions={laneSortOptions}
+                laneSort={laneSort}
+                onLaneSortChange={setLaneSortKey}
+              />
+            </BoardWithBar>
           ) : view === "map" ? (
             /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a
                property of a table; half the day's work missing from a map
@@ -2475,6 +2498,7 @@ export function BrokerOrdersScreen({
             />
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}
@@ -2635,7 +2659,7 @@ export function BrokerOrdersScreen({
           — but the lane counts have to add up to something, and until now there
           was nothing to add them up to. It states the window as well, because a
           total with no scope is a number you cannot check. */}
-      {view !== "table" && sorted.length > 0 && (
+      {view === "map" && sorted.length > 0 && (
         <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
           <span className="font-medium text-foreground">
             {sorted.length.toLocaleString()}{" "}

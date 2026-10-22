@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Map as MapIcon,
   Columns3,
@@ -6,6 +7,7 @@ import {
   KanbanSquare,
   LayoutList,
   Search,
+  Settings2,
   Table2,
   TextSearch,
   X,
@@ -144,6 +146,17 @@ export interface ListToolbarProps<K extends string> {
    */
   columnFiltersOpen?: boolean;
   onToggleColumnFilters?: () => void;
+  /**
+   * THE VIEW'S TOOLS IN A BAR ON THE VIEW (Pavan, 2026-10-22 — trial on 3PL
+   * Delivery Orders): given, the table's and the board's own tools render
+   * into this element — a row above the table header, or above the lanes —
+   * with `viewStatement` on the left and the tools on the right ("Search by
+   * column", 24px, the columns setting; or Card fields), instead of hanging
+   * under the view icons.
+   */
+  viewToolsInto?: HTMLElement | null;
+  /** What the bar says on its left — how many records, over what window. */
+  viewStatement?: React.ReactNode;
   /** How many of the row's boxes have something in them. */
   columnFilterCount?: number;
   view: ListView;
@@ -282,6 +295,8 @@ export function ListToolbar<K extends string>({
   onColQueryChange,
   columnFiltersOpen,
   onToggleColumnFilters,
+  viewToolsInto,
+  viewStatement,
   columnFilterCount = 0,
   columnOrder,
   onReorderColumns,
@@ -358,6 +373,7 @@ export function ListToolbar<K extends string>({
 
             THIS IS A LIST RULE, NOT A 3PL ONE: it lives here so every screen
             using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */
+  const inBar = Boolean(viewToolsInto);
   const tableTools = (
     <>
         {/* Search by column — the row, where the table has one. */}
@@ -366,7 +382,7 @@ export function ListToolbar<K extends string>({
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size={inBar ? "sm" : "icon-sm"}
                 aria-label="Search by column"
                 aria-pressed={columnFiltersOpen}
                 onClick={onToggleColumnFilters}
@@ -376,6 +392,7 @@ export function ListToolbar<K extends string>({
                 )}
               >
                 <TextSearch />
+                {inBar && "Search by column"}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -389,11 +406,12 @@ export function ListToolbar<K extends string>({
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size={inBar ? "sm" : "icon-sm"}
                   aria-label="Search by column"
                   className={cn(colQuery.trim() && "text-foreground")}
                 >
                   <TextSearch />
+                  {inBar && "Search by column"}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
@@ -449,7 +467,7 @@ export function ListToolbar<K extends string>({
                   size="icon-sm"
                   aria-label="Show/Hide columns"
                 >
-                  <Columns3 />
+                  {inBar ? <Settings2 /> : <Columns3 />}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
@@ -698,7 +716,7 @@ export function ListToolbar<K extends string>({
             </Popover>
     </>
   ) : null;
-  const activeTools = view === "table" ? tableTools : view === "board" ? boardTools : null;
+  const activeTools = inBar ? null : view === "table" ? tableTools : view === "board" ? boardTools : null;
 
   /* WHERE THE ROUTING LINE DROPS FROM — the active icon's centre, measured. */
   const rightRef = React.useRef<HTMLDivElement>(null);
@@ -830,7 +848,7 @@ export function ListToolbar<K extends string>({
 
         {/* A ONE-VIEW LIST KEEPS ITS TOOLS IN THE ROW — there is no switch
             for them to hang from. */}
-        {!multiView && view === "table" && tableTools}
+        {!multiView && view === "table" && !inBar && tableTools}
       </div>
       {/* THE ACTIVE VIEW'S TOOLS, ROUTED FROM ITS ICON — a line drops from
           under the icon and turns into the tools, so they read as the
@@ -842,6 +860,15 @@ export function ListToolbar<K extends string>({
         </div>
       )}
       </div>
+      {viewToolsInto &&
+        (view === "table" || view === "board") &&
+        createPortal(
+          <div className="flex h-11 items-center justify-between gap-3 px-3">
+            <span className="min-w-0 truncate text-sm text-muted-foreground">{viewStatement}</span>
+            <span className="flex shrink-0 items-center gap-6">{view === "table" ? tableTools : boardTools}</span>
+          </div>,
+          viewToolsInto
+        )}
     </div>
   );
 }
@@ -1057,6 +1084,57 @@ export function FilterChips({
       >
         Clear all
       </button>
+    </div>
+  );
+}
+
+/*
+  THE VIEW BAR (Pavan, 2026-10-22) — a row ON the view: above the table
+  header (`ListTable topBar`), or above the lanes (`BoardWithBar`). Its left
+  says what is shown; its right carries the view's own tools, which the
+  toolbar renders into it (`ListToolbar viewToolsInto`). Every list with a
+  table or a board has one.
+*/
+export function useViewBar() {
+  const [into, setInto] = React.useState<HTMLDivElement | null>(null);
+  return { into, ref: setInto, slot: <div ref={setInto} /> };
+}
+
+/** "62 orders · Thu, Oct 22, 2026" — the count leads, the rest follows. */
+export function ViewStatement({
+  count,
+  one,
+  many,
+  rest,
+}: {
+  count: number;
+  one: string;
+  many: string;
+  /** What follows the count — the lanes, the window. */
+  rest?: string;
+}) {
+  return (
+    <>
+      <span className="font-medium text-foreground">
+        {count.toLocaleString()} {count === 1 ? one : many}
+      </span>
+      {rest ? ` ${rest}` : ""}
+    </>
+  );
+}
+
+/** A board under its view bar — the bar a white strip, the lanes below. */
+export function BoardWithBar({
+  barRef,
+  children,
+}: {
+  barRef: (el: HTMLDivElement | null) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div ref={barRef} className="shrink-0 rounded-md border border-border bg-fp-surface-1b" />
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   );
 }

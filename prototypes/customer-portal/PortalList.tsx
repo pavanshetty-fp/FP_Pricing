@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "../unified-view/ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "../unified-view/ListToolbar";
 import { ListFilters, type ListFacet } from "../unified-view/ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../unified-view/ExportSheet";
 import { ListTable, type ListColumn, type ListSort } from "../unified-view/ListTable";
@@ -235,6 +235,8 @@ export function PortalList<R, K extends string>({
     [searched, facets, facetValues]
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
     const dir = sort.dir === "asc" ? 1 : -1;
@@ -314,6 +316,8 @@ export function PortalList<R, K extends string>({
 
       <div className="mt-4 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one={nounOne} many={noun} />}
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -411,6 +415,7 @@ export function PortalList<R, K extends string>({
           </Empty>
         ) : (
           <ListTable
+            topBar={bar.slot}
             rows={pageRows}
             columns={columns}
             hidden={hidden}

@@ -16,7 +16,7 @@ import {
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FuelOrdersViewBar, viewStateKey, type ViewState } from "./FuelOrdersViewBar";
-import { ListToolbar, ColumnSearchChip, FilterChips, type ListView } from "./ListToolbar";
+import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, TwoLineCell } from "./ListTable";
@@ -651,6 +651,8 @@ export function SalesOrdersScreen({
     [searched]
   );
   const filtered = React.useMemo(() => narrowFacets(facetSel), [narrowFacets, facetSel]);
+  /* THE VIEW BAR — the table's and the board's tools render into it. */
+  const bar = useViewBar();
   const sorted = React.useMemo(
     () => sortSalesOrders(filtered, sort),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the stage order and names sort and group the rows
@@ -1351,6 +1353,8 @@ export function SalesOrdersScreen({
 
       <div className="mt-3 shrink-0">
         <ListToolbar
+          viewToolsInto={bar.into}
+          viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           mapView
           searchValue={search}
@@ -1544,19 +1548,22 @@ export function SalesOrdersScreen({
               onOpenOrder={openById}
             />
           ) : view === "board" ? (
-            <BrokerBoard
-              lanes={boardLanes}
-              onOpenCard={openById}
-              laneSortOptions={(laneKey) =>
-                laneSortKeys(line, laneKey).map((k) => ({ key: k, label: LANE_SORTS[k].label }))
-              }
-              laneSort={laneSort}
-              onLaneSortChange={(laneKey, option) =>
-                setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }))
-              }
-            />
+            <BoardWithBar barRef={bar.ref}>
+              <BrokerBoard
+                lanes={boardLanes}
+                onOpenCard={openById}
+                laneSortOptions={(laneKey) =>
+                  laneSortKeys(line, laneKey).map((k) => ({ key: k, label: LANE_SORTS[k].label }))
+                }
+                laneSort={laneSort}
+                onLaneSortChange={(laneKey, option) =>
+                  setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }))
+                }
+              />
+            </BoardWithBar>
           ) : (
             <ListTable
+              topBar={bar.slot}
               rows={pageRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}
@@ -1678,7 +1685,7 @@ export function SalesOrdersScreen({
 
       {/* THE BOARD GETS A TOTAL INSTEAD OF PAGINATION (G19, Pavan, 2026-10-07)
           — 3PL's line: the lane counts add up to it, and it states the window. */}
-      {view !== "table" && sorted.length > 0 && (
+      {view === "map" && sorted.length > 0 && (
         <div className="mt-4 flex shrink-0 items-baseline gap-2 text-sm">
           <span className="font-medium text-foreground">
             {sorted.length.toLocaleString()}{" "}

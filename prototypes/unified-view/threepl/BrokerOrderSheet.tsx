@@ -90,7 +90,7 @@ import {
   SheetSectionNote,
   SheetSectionRemove,
 } from "@/components/side-sheet/parts";
-import { FormStep } from "@/components/side-sheet/form-steps";
+import { FormStep, travelToStep } from "@/components/side-sheet/form-steps";
 import { type Stage } from "@/components/ui/stage-bar";
 import { StageTrack } from "@/components/ui/stage-track";
 import {
@@ -819,6 +819,22 @@ const CREATE_STEPS = {
  * filled from the top, and past Assigned the order is being read rather than
  * worked on.
  */
+/* THE SECTION A PRESSED STAGE TAKES THE READER TO — the step whose work the
+   stage is about: an order is drafted in its details, quoted and assigned
+   in Vendor, completed in Products (what was delivered), and reviewed,
+   verified and synced in Additional Details (papers and invoice). A saved
+   order names its sections differently (Order, Delivery order, Pricing), so
+   each stage lists the create name first and the saved one after it. */
+const STAGE_STEP: Record<string, string[]> = {
+  Draft: [CREATE_STEPS.order, "Order"],
+  Quoting: [CREATE_STEPS.vendor],
+  Assigned: [CREATE_STEPS.vendor],
+  Completed: [CREATE_STEPS.products, "Delivery order"],
+  Review: [CREATE_STEPS.files, "Pricing"],
+  Verified: [CREATE_STEPS.files, "Pricing"],
+  Synced: [CREATE_STEPS.files, "Pricing"],
+};
+
 const STAGE_SECTION: Partial<Record<BrokerStatus, string>> = {
   Quoting: VENDOR_SECTION_ID,
   /* BACK TO THE TOP (Pavan, 2026-10-06) — Move to Assigned lands the reader
@@ -919,7 +935,7 @@ function BoxGallons({
           onChange(num(e.target.value));
         }}
         onBlur={() => setTyped(null)}
-        className="w-auto min-w-8 bg-transparent text-right text-sm tabular-nums text-foreground outline-none field-sizing-content"
+        className="w-auto min-w-8 bg-transparent text-sm tabular-nums text-foreground outline-none field-sizing-content"
       />
       <span className="text-xs text-muted-foreground">gal</span>
     </label>
@@ -1007,9 +1023,9 @@ function ChargeRow({
           however long the names are — and the `×` stays muted beside it,
           because the sign is punctuation and the number is the fact. */}
       {(qty || qtyNode) && (
-        <span className="flex shrink-0 items-center justify-end gap-1">
+        <span className="flex shrink-0 items-center gap-1">
           {qtyNode ?? (
-            <span className="w-[68px] text-right text-sm tabular-nums text-foreground">
+            <span className="w-[68px] text-sm tabular-nums text-foreground">
               {qty}
             </span>
           )}
@@ -1111,7 +1127,7 @@ function PricingRateInput({
            The hover fill ended flush against the last digit and ran straight
            into the "× 1,550 gal" beside it — a highlight with no air inside it
            reads as a box that has been cut off rather than as a field. */
-        "flex w-[140px] shrink-0 cursor-text items-center justify-end gap-1 self-stretch py-2.5 pr-2 transition-colors",
+        "flex w-[140px] shrink-0 cursor-text items-center gap-1 self-stretch py-2.5 pr-2 transition-colors",
         "hover:bg-accent focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
         padClass
       )}
@@ -1129,7 +1145,7 @@ function PricingRateInput({
           onChange(num(e.target.value));
         }}
         onBlur={() => setTyped(null)}
-        className="w-auto min-w-10 bg-transparent text-right text-sm tabular-nums text-foreground outline-none field-sizing-content placeholder:text-muted-foreground"
+        className="w-auto min-w-10 bg-transparent text-sm tabular-nums text-foreground outline-none field-sizing-content placeholder:text-muted-foreground"
       />
     </label>
   );
@@ -1274,7 +1290,7 @@ function stageOf(status: BrokerStatus): string {
  * thing the sheet already knows.
  */
 function summaryEmptyLine(status: BrokerStatus, invited: number): string {
-  if (status === "Cancelled") return "Cancelled — nothing to price.";
+  if (status === "Canceled") return "Canceled — nothing to price.";
   if (status === "Draft")
     return invited > 0
       ? "Invitations are out. Quotes appear here as partners respond."
@@ -2110,7 +2126,7 @@ export function BrokerOrderSheet({
     });
 
   /* ONE FINALIZED VENDOR AT A TIME (Pavan, 2026-10-06). To pick another,
-     the finalization is cancelled first; then every quote can be finalized
+     the finalization is canceled first; then every quote can be finalized
      again. The quotes themselves are untouched. */
   const cancelFinalization = () =>
     setDraft((d) => {
@@ -2149,19 +2165,19 @@ export function BrokerOrderSheet({
   const resendInvitation = (vendorId: string) => openInvite([vendorId], true);
 
   /* THE TERMINAL EXIT. Available from any live stage and from none of the dead
-     ones — an order already cancelled or already through accounting has nothing
+     ones — an order already canceled or already through accounting has nothing
      left to cancel. It is confirmed because it cannot be walked back here. */
   const cancellable =
-    draft.status !== "Cancelled" &&
+    draft.status !== "Canceled" &&
     draft.status !== "Synced" &&
     !creating;
   const cancelOrder = () =>
     setDraft((d) => {
       if (!d) return d;
-      toast.success(`${order?.orderNo ?? "Order"} cancelled`, {
+      toast.success(`${order?.orderNo ?? "Order"} canceled`, {
         description: "It leaves the working lanes.",
       });
-      return { ...d, status: "Cancelled" };
+      return { ...d, status: "Canceled" };
     });
 
   /** Draft -> Assigned. The moment the invitations actually go out. */
@@ -2602,11 +2618,11 @@ export function BrokerOrderSheet({
             </span>
           </td>
           <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{v.base}</td>
-          <td className="w-[84px] px-3 py-2.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">
+          <td className="w-[84px] px-3 py-2.5 whitespace-nowrap tabular-nums text-muted-foreground">
             {v.distanceMi} mi
           </td>
           <td className="px-3 py-2">
-            <div className="flex items-center justify-end gap-1.5">
+            <div className="flex items-center gap-1.5">
               {quoted ? (
                 <>
                 {/* TWO ACTS ON A PRICED ROW, AND THEY ARE NOT THE SAME
@@ -3180,8 +3196,8 @@ export function BrokerOrderSheet({
   const nextActBlocked =
     draft.status === "Blocked"
       ? "Blocked on credit"
-      : draft.status === "Cancelled"
-        ? "Order cancelled"
+      : draft.status === "Canceled"
+        ? "Order canceled"
         : nextAct.why;
   /* Disabled either because something is SAID beside it, or because the banner
      above it is saying it instead. */
@@ -4091,7 +4107,7 @@ export function BrokerOrderSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Label</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
               {/* UNNAMED, LIKE EVERY OTHER ROW REMOVE — DS ui §10f. A named
@@ -4185,11 +4201,11 @@ export function BrokerOrderSheet({
               <tr className="h-11 border-t border-border">
                 <td
                   colSpan={2}
-                  className="px-3 text-right text-sm text-muted-foreground"
+                  className="px-3 text-sm text-muted-foreground"
                 >
                   Total
                 </td>
-                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                   {money(runFees)}
                 </td>
                 <td aria-hidden />
@@ -4612,7 +4628,20 @@ export function BrokerOrderSheet({
           data-form-sticky
           className="sticky -top-4 z-10 -mt-4 -mb-4 bg-popover pt-4 pb-3"
         >
-          <StageTrack stages={ORDER_STAGES} current={stageOf(heldStage ?? draft.status)} />
+          {/* A STAGE IS ALSO A WAY IN (Pavan, 2026-10-23): pressing one takes
+              the sheet to the section where that stage's work lives. It moves
+              the reader, never the order. */}
+          <StageTrack
+            stages={ORDER_STAGES}
+            current={stageOf(heldStage ?? draft.status)}
+            onStageClick={(stage) => {
+              const el = (STAGE_STEP[stage] ?? [CREATE_STEPS.order, "Order"])
+                .map((label) => document.querySelector<HTMLElement>(`[data-form-step="${label}"]`))
+                .find(Boolean);
+              const port = el?.closest<HTMLElement>(".overflow-auto");
+              if (el && port) travelToStep(port, el);
+            }}
+          />
         </div>
       )}
       {/* §5.2 — a blocked order is blocked for a REASON, and the reason is what
@@ -5260,7 +5289,7 @@ export function BrokerOrderSheet({
                         />
                       </span>
                     </th>
-                    <th className="px-3 py-2.5 text-right">
+                    <th className="px-3 py-2.5">
                       <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                     </th>
                     <th aria-hidden />
@@ -5370,7 +5399,7 @@ export function BrokerOrderSheet({
                         {/* Checked = fill it. Unchecked = type a number. One
                             control, so a row cannot claim both at once. */}
                         <td className="px-3">
-                          <span className="flex justify-end">
+                          <span className="flex ">
                             <Checkbox
                               checked={Boolean(line.topOff)}
                               onCheckedChange={(c) => setTopOff(i, c === true)}
@@ -5427,11 +5456,11 @@ export function BrokerOrderSheet({
                     <tr className="h-11 border-t border-border">
                       <td
                         colSpan={6}
-                        className="px-3 text-right text-sm text-muted-foreground"
+                        className="px-3 text-sm text-muted-foreground"
                       >
                         Total
                       </td>
-                      <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                      <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                         {isAllTopOff(draft.lines)
                           ? "Top-off"
                           : `${gal.toLocaleString()} gal`}
@@ -5628,12 +5657,11 @@ export function BrokerOrderSheet({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-fp-table-header">
-                  {["Asset", "Product", "Quantity"].map((h, k) => (
+                  {["Asset", "Product", "Quantity"].map((h) => (
                     <th
                       key={h}
                       className={cn(
-                        "px-3 py-2 text-left text-xs font-medium text-muted-foreground",
-                        k === 2 && "text-right"
+                        "px-3 py-2 text-left text-xs font-medium text-muted-foreground"
                       )}
                     >
                       {h}
@@ -5665,7 +5693,7 @@ export function BrokerOrderSheet({
                         <td className="px-3 py-2.5 text-muted-foreground">
                           {l.product}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                        <td className="px-3 py-2.5 tabular-nums text-foreground">
                           {l.topOff
                             ? "Top off"
                             : `${(l.gal ?? 0).toLocaleString()} gal`}
@@ -5687,7 +5715,7 @@ export function BrokerOrderSheet({
                       </Pill>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-sm font-semibold tabular-nums text-foreground">
+                  <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-foreground">
                     {totalGal(draft.lines).toLocaleString()} gal
                   </td>
                 </tr>
@@ -5863,7 +5891,7 @@ export function BrokerOrderSheet({
                              "Best" and must not be squeezed. */
                           k === 0 && "w-full",
                           k === 1 && "whitespace-nowrap",
-                          k === 2 && "w-[84px] text-right"
+                          k === 2 && "w-[84px]"
                         )}
                       >
                         {h}
@@ -5873,7 +5901,7 @@ export function BrokerOrderSheet({
                         controls side by side on a priced row, and squeezed
                         they wrapped or truncated the only words on the row
                         that say what pressing them does. */}
-                    <th className="w-[280px] px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">
+                    <th className="w-[280px] px-3 py-2.5 text-xs font-medium text-muted-foreground">
                       Action
                     </th>
                   </tr>
@@ -7221,7 +7249,7 @@ export function BrokerOrderSheet({
                           <td className="px-3 py-2 text-muted-foreground">
                             {r.label}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          <td className="px-3 py-2 tabular-nums text-foreground">
                             {money(r.value)}
                           </td>
                         </tr>
@@ -7230,7 +7258,7 @@ export function BrokerOrderSheet({
                         <td className="px-3 py-2.5 font-medium text-foreground">
                           Vendor cost
                         </td>
-                        <td className="px-3 py-2.5 text-right text-base font-semibold tabular-nums text-foreground">
+                        <td className="px-3 py-2.5 text-base font-semibold tabular-nums text-foreground">
                           {money(total)}
                         </td>
                       </tr>
@@ -7290,7 +7318,7 @@ export function BrokerOrderSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel {order?.orderNo}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It leaves the working lanes and moves to Cancelled, keeping its
+              It leaves the working lanes and moves to Canceled, keeping its
               history. Any vendor already invited is told it has gone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -7304,7 +7332,7 @@ export function BrokerOrderSheet({
       </AlertDialog>
 
       {/* DELETING IS NOT CANCELLING, and the copy has to say which. Cancel
-          leaves the order in the Cancelled lane with its history; delete takes
+          leaves the order in the Canceled lane with its history; delete takes
           it away, and there is nothing to look at afterwards. */}
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent>
@@ -7332,7 +7360,7 @@ export function BrokerOrderSheet({
             <AlertDialogTitle>Delete {order?.orderNo}?</AlertDialogTitle>
             <AlertDialogDescription>
               The order and its history are removed for good. If you only want it
-              out of the working lanes, cancel it instead — a cancelled order keeps
+              out of the working lanes, cancel it instead — a canceled order keeps
               its trail and can still be read.
             </AlertDialogDescription>
           </AlertDialogHeader>

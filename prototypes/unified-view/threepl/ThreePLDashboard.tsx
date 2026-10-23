@@ -58,9 +58,9 @@ const DAY_FMT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric
 const statusFacet = (s: BrokerStatus) =>
   `status:${s === "Draft" ? "Created / Draft" : s}`;
 
-/** Live = still being worked: not settled, not cancelled. */
+/** Live = still being worked: not settled, not canceled. */
 const LIVE: BrokerStatus[] = BROKER_STATUSES.filter(
-  (s) => s !== "Synced" && s !== "Cancelled"
+  (s) => s !== "Synced" && s !== "Canceled"
 );
 /** Needs somebody now: not yet out, stuck, held, or a failed sync. */
 const NEEDS_ACTION: BrokerStatus[] = ["Draft", "Blocked", "Review", "Partially Synced"];
@@ -117,7 +117,7 @@ export function ThreePLDashboard({
   const needs = rows.filter((r) => NEEDS_ACTION.includes(r.status));
 
   /* Where the work is sitting — the board's lanes, in its order. */
-  const byLane = BROKER_STATUSES.filter((s) => s !== "Cancelled").map((s) => {
+  const byLane = BROKER_STATUSES.filter((s) => s !== "Canceled").map((s) => {
     const n = rows.filter((r) => r.status === s).length;
     return {
       key: s,

@@ -18,7 +18,11 @@
     "lint": "eslint .",
     "eval": "node scripts/eval.mjs",
     "wcag": "node scripts/eval/wcag-contrast.mjs",
-    "eval:boxed-tables": "node scripts/eval-boxed-tables.mjs"
+    "eval:boxed-tables": "node scripts/eval-boxed-tables.mjs",
+    "fpds:build": "node scripts/fpds/build.mjs",
+    "fpds:resolve": "node scripts/fpds/resolve.mjs",
+    "dev:reference": "REFERENCE=1 vite",
+    "build:reference": "tsc -b && REFERENCE=1 vite build"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

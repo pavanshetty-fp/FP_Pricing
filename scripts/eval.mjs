@@ -49,10 +49,13 @@ import * as parityShell from "./eval/parity-shell.mjs";
 import * as fieldReach from "./eval/field-reach.mjs";
 import * as fieldsFill from "./eval/fields-fill.mjs";
 import * as wcagContrast from "./eval/wcag-contrast.mjs";
+/* FPDS (2026-10-23) — the new layered design system's own checks. */
+import * as fpds from "./eval/fpds.mjs";
 
 const CHECKS = [
   tokens, boxedTables, sheets, microcopy, statusKinds, tableRows,
   parityLists, paritySheets, parityTables, parityShell, fieldReach, fieldsFill, wcagContrast,
+  ...fpds.ALL,
 ];
 const RESULTS = join(ROOT, "docs/unified-view/evals/results");
 

@@ -1,12 +1,11 @@
 import * as React from "react";
-import { Moon, RotateCcw, Sun } from "lucide-react";
+import { Minus, Moon, Plus, RotateCcw, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RESET_SHORTCUT, SCREENS, autoScreen, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, zoomOf, type A11y } from "./a11y";
+import { DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep, textStepOf, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, type A11y } from "./a11y";
 
 /*
   THE ACCESSIBILITY PANEL (Pavan, 2026-10-21; DS ui §10n) — opened from the
@@ -14,13 +13,17 @@ import { RESET_SHORTCUT, SCREENS, autoScreen, isDefaultA11y, resetA11y, setA11y,
   applies across every module. In this order (Pavan, 2026-10-21):
 
     Theme                 Light | Dark, on top
-    Text size             100% – 130%
-    Text colour           secondary and coloured text — Default → Maximum
-    Component stroke      rims, dividers, field borders — Default → Maximum
-    Component background  greys go darker, whites stay white — Default → Maximum
+    Text size             six steps, 100% – 130%; only the text grows
+    Stroke contrast       rims, dividers, field borders — Default → Maximum
+    Contrast              grays go darker, whites stay white, text follows
+                          — Default → Maximum
+                          (renamed and Text color removed, Pavan, 2026-10-24)
     ── divider ──
-    Screen size           a stepped slider: up to 16″, 24″, 34″, a TV —
-                          scales every component and view; Auto picks the step
+    Display size          50% – 150% in five steps, 100% in the middle —
+                          scales every component and view
+
+  THE TWO SIZES ARE STEPS, LIKE ANDROID'S "Display size and text" (Pavan,
+  2026-10-23): − and + either side of a track with a dot on every step.
 
   Reset is the icon in the header (⌘⌥0 too). Text on colour fills picks white
   or dark by itself.
@@ -79,15 +82,60 @@ function Row({
   );
 }
 
+/** A STEPPED SIZE — − · a track with a dot per step · +. */
+function StepRow({
+  label,
+  step,
+  steps,
+  shown,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  step: number;
+  /** The last step's index (steps + 1 dots). */
+  steps: number;
+  shown: string;
+  onChange: (step: number) => void;
+  disabled?: boolean;
+}) {
+  const id = React.useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span id={id} className="text-sm font-medium text-foreground">
+          {label}
+        </span>
+        <span className="text-sm tabular-nums text-foreground">{shown}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon-sm" aria-label={`Smaller ${label.toLowerCase()}`} disabled={disabled || step <= 0} onClick={() => onChange(step - 1)}>
+          <Minus />
+        </Button>
+        <div className="relative flex-1">
+          <Slider aria-labelledby={id} min={0} max={steps} step={1} value={[step]} disabled={disabled} onValueChange={([v]) => onChange(v)} />
+          {/* A DOT ON EVERY STEP, under the thumb's travel. */}
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-1">
+            {Array.from({ length: steps + 1 }, (_, i) => (
+              <span key={i} className={i <= step ? "size-1 rounded-full bg-primary-foreground" : "size-1 rounded-full bg-muted-foreground"} />
+            ))}
+          </div>
+        </div>
+        <Button variant="ghost" size="icon-sm" aria-label={`Larger ${label.toLowerCase()}`} disabled={disabled || step >= steps} onClick={() => onChange(step + 1)}>
+          <Plus />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function AccessibilityPanel() {
   const theme = useTheme();
   const a = useA11y();
   const set = (k: keyof A11y) => (v: number) => setA11y({ [k]: v });
   const pct = (v: number) => (v === 0 ? "Default" : v === 100 ? "Maximum" : `${v}%`);
-  const auto = a.screen === "auto";
-  const step = SCREENS.findIndex((s) => s.key === (auto ? autoScreen() : a.screen));
   return (
-    /* ALWAYS FITS THE WINDOW, at any Screen size — it scrolls inside. */
+    /* ALWAYS FITS THE WINDOW, at any Display size — it scrolls inside. */
     <div className="flex max-h-[calc(var(--fp-vh)*0.85)] w-80 max-w-full flex-col">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h2 className="text-base font-semibold text-foreground">Accessibility</h2>
@@ -130,40 +178,30 @@ export function AccessibilityPanel() {
           </ToggleGroupItem>
         </ToggleGroup>
 
-        {/* TEXT — size and colour together. */}
-        <div className="flex flex-col gap-4">
-          <Row label="Text size" value={a.text} shown={`${Math.round(100 + a.text * 0.3)}%`} onChange={set("text")} ends={["100%", "130%"]} />
-          <Row label="Text colour" value={a.ink} shown={pct(a.ink)} onChange={set("ink")} ends={["Default", "Maximum"]} />
-        </div>
+        <StepRow
+          label="Text size"
+          step={textStepOf(a.text)}
+          steps={TEXT_STEPS}
+          shown={`${Math.round(100 + a.text * 0.3)}%`}
+          onChange={(v) => setA11y({ text: textOfStep(v) })}
+        />
 
+        {/* NO TEXT COLOR SLIDER (Pavan, 2026-10-24) — text contrast follows
+            Contrast (a11y.ts), so the two never pull apart. */}
         <div className="flex flex-col gap-4">
-          <Row label="Component stroke" value={a.stroke} shown={pct(a.stroke)} onChange={set("stroke")} ends={["Default", "Maximum"]} />
-          <Row label="Component background" value={a.background} shown={pct(a.background)} onChange={set("background")} ends={["Default", "Maximum"]} />
+          <Row label="Stroke contrast" value={a.stroke} shown={pct(a.stroke)} onChange={set("stroke")} ends={["Default", "Maximum"]} />
+          <Row label="Contrast" value={a.background} shown={pct(a.background)} onChange={set("background")} ends={["Default", "Maximum"]} />
         </div>
 
         <Separator />
 
-        {/* SCREEN SIZE — a stepped slider, each step the largest screen it's for. */}
-        <Row
-          label="Screen size"
-          value={step}
-          min={0}
-          max={SCREENS.length - 1}
-          step={1}
-          disabled={auto}
-          shown={`${Math.round(zoomOf(a.screen) * 100)}%`}
-          onChange={(v) => setA11y({ screen: SCREENS[v].key })}
-          ends={SCREENS.map((s) => s.max)}
-          aside={
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              Auto
-              <Switch
-                checked={auto}
-                aria-label="Match this screen"
-                onCheckedChange={(on) => setA11y({ screen: on ? "auto" : SCREENS[step].key })}
-              />
-            </label>
-          }
+        {/* DISPLAY SIZE — 50% to 150%, 100% in the middle (Pavan, 2026-10-23). */}
+        <StepRow
+          label="Display size"
+          step={DISPLAY_STEPS.indexOf(a.display)}
+          steps={DISPLAY_STEPS.length - 1}
+          shown={`${Math.round(a.display * 100)}%`}
+          onChange={(v) => setA11y({ display: DISPLAY_STEPS[v] })}
         />
       </div>
     </div>

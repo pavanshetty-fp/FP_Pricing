@@ -27,16 +27,16 @@ step is a second answer to a question already answered. `shadow-fp-surface`
 survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
-  chrome, full width above the rail + content. It shares the ground's colour.
+  chrome, full width above the rail + content. It shares the ground's color.
 - **Light:** ground `#efefeb` (WARM, under cool paper — the temperature does the separating) → drawer `#fafbf8` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
-  the ground's own colour and disappears into it.
+  the ground's own color and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
   `#2a2f37`.
 - **A field is filled, not transparent.** Transparent meant a field took whatever
   was behind it and could only be found by its border; filled white it is the
   same object on a card as on the content layer.
-- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does
+- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the color does
   not change on expand). `--drawer` (#292929) and `--fp-lane` are **legacy** — no
   longer bound to the main nav / Kanban lanes.
 - The content layer has **no outer border and no shadow** — it separates by value.
@@ -50,11 +50,11 @@ popover.
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
 | `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the product mark, the focus ring, and light's selection hue |
-| `bg-accent-violet` · `text-accent-violet-foreground` | `#8b5cf6` · `#ffffff` | same | **the accent** (2026-10-16) — the system's second colour: it HIGHLIGHTS (picked days/dates of a schedule, recommendations, what needs attention). Not `--accent`, which is the grey hover |
+| `bg-accent-violet` · `text-accent-violet-foreground` | `#8b5cf6` · `#ffffff` | same | **the accent** (2026-10-16) — the system's second color: it HIGHLIGHTS (picked days/dates of a schedule, recommendations, what needs attention). Not `--accent`, which is the gray hover |
 | `bg-accent-violet-soft` · `text-accent-violet-ink` | violet 12% wash · violet 70% into the foreground | same recipe | the accent quietly — a pill (`color="violet"`), a tint behind a figure |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
 | `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
-| `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
+| `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, gray in dark |
 | `text-selected-foreground` | `#a33f00` | `#f0f2f5` | its label, icon and indicator |
 | `border-selected-border` | `#fdb98c` | `#575757` | its rim, where one is drawn |
 | `bg-destructive` | `#ef4444` | `#f87171` | danger / delete |
@@ -62,7 +62,7 @@ popover.
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#efefeb` | `#080808` | tier-1 rail (merges into the ground) |
-| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating grey (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
+| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating gray (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
 | `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step AWAY from the drawer it sits on (down in light, up in dark), **not** the brand: orange put the product mark twice on one screen. Re-measure whenever `--sidebar` moves |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#efefeb` | `#080808` | the app ground, by its own name |
@@ -87,7 +87,7 @@ The callout is a solid fill with white text in **light**; in **dark** it drops t
 the near-black 950 of its own hue and the status moves to a 1px rim. The rim
 token exists in both themes and is `transparent` in light, so the box does not
 change height between them. The inline banner carries no fill of its own — it
-sits on `bg-fp-card-1` and says its status in the text colour.
+sits on `bg-fp-card-1` and says its status in the text color.
 
 | Status | Fill | Rim (dark only) | Inline accent |
 |---|---|---|---|
@@ -98,7 +98,7 @@ sits on `bg-fp-card-1` and says its status in the text colour.
 
 In light the four fills are the **800** of their hue and the four accents the
 **700** — one scale step apart, enough to separate a fill from a mark on it and
-close enough that the two never read as two colours. Info is BLUE, not indigo:
+close enough that the two never read as two colors. Info is BLUE, not indigo:
 indigo read as purple on the light ground, and purple is not a status anyone
 has been taught.
 

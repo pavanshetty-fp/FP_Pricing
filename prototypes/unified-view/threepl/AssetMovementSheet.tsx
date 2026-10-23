@@ -434,8 +434,8 @@ function AssetPickerSheet({
                       />
                     </span>
                   </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <span className="flex items-center justify-end gap-1">
+                  <th className="px-3 py-2.5">
+                    <span className="flex items-center gap-1">
                       <TableRequiredLabel>Capacity</TableRequiredLabel>
                       <HeaderRangeFilter
                         label="Capacity"
@@ -479,10 +479,10 @@ function AssetPickerSheet({
                       <td className="truncate px-3 py-2.5 text-sm text-muted-foreground">
                         {a.tankType ?? "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-right text-sm tabular-nums text-muted-foreground">
+                      <td className="px-3 py-2.5 text-sm tabular-nums text-muted-foreground">
                         {a.capacityGal > 0 ? `${a.capacityGal.toLocaleString()} gal` : "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3 py-2.5">
                         {/* THE ONE ALREADY ON THE ORDER SAYS SO rather than
                             offering to be added again. */}
                         {chosen ? (
@@ -1669,7 +1669,7 @@ export function AssetMovementSheet({
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Item</TableRequiredLabel>
                     </th>
-                    <th className="px-3 py-2.5 text-right">
+                    <th className="px-3 py-2.5">
                       <TableRequiredLabel>Qty</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">

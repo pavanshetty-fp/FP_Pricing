@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useA11y } from "@/components/theme/a11y";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,10 @@ import {
  * screen-specific. They belong beside `tables-layout/DataTable` once the DS
  * version can take a column set and a cell renderer as props.
  */
+
+/** A value that reads as one thing — a record number or code (no spaces),
+    or a date ("Oct 23, 2026"). */
+const ONE_LINE = /^(\S+|[A-Z][a-z]{2} \d{1,2}, \d{4})$/;
 
 export interface ListColumn<K extends string> {
   key: K;
@@ -239,7 +244,42 @@ export function ListTable<Row, K extends string>({
      than 120px, so an icon, a count or a short code stays as it is and a
      name, an address or a contact takes the room. Wider than the frame, the
      table scrolls. */
-  const base = visible.map((c) => cols.widthOf(c));
+  /* RECORD NUMBERS AND DATES STAY ON ONE LINE (Pavan, 2026-10-23). At a
+     bigger Text size the other cells wrap inside their column, but a value
+     like "D-105370" or "Oct 23, 2026" broken in two stops reading as one, so
+     its column widens by exactly what the value lacks. Measured after paint;
+     it only ever grows while the text size holds, so it can't see-saw. */
+  const textSize = useA11y().text;
+  const [oneLine, setOneLine] = React.useState<{ at: number; need: Record<string, number> }>({ at: 0, need: {} });
+  const need = oneLine.at === textSize ? oneLine.need : {};
+  React.useLayoutEffect(() => {
+    const root = frame.current;
+    if (!root || textSize === 0) return;
+    const lead = selectedIds && onToggleRow ? 1 : 0;
+    const next: Record<string, number> = { ...need };
+    let grew = false;
+    root.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((tr) => {
+      if (tr.children.length !== visible.length + lead) return;
+      visible.forEach((c, i) => {
+        const td = tr.children[i + lead] as HTMLElement;
+        td.querySelectorAll<HTMLElement>(".truncate").forEach((el) => {
+          if (!ONE_LINE.test(el.textContent?.trim() ?? "")) return;
+          el.dataset.oneLine = "";
+          const short = el.scrollWidth - el.clientWidth;
+          if (short <= 1) return;
+          const want = Math.ceil(td.offsetWidth + short);
+          if (want > (next[c.key] ?? 0)) {
+            next[c.key] = want;
+            grew = true;
+          }
+        });
+      });
+    });
+    if (grew || oneLine.at !== textSize) setOneLine({ at: textSize, need: next });
+    /* Re-measured when the text size, the rows or the columns change. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textSize, rows, frameWidth, visible.map((c) => c.key).join(), oneLine]);
+  const base = visible.map((c) => Math.max(cols.widthOf(c), need[c.key] ?? 0));
   const widths = (() => {
     const lead = selectable ? 44 : 0;
     const spare = (frameWidth ?? 0) - lead - base.reduce((a, b) => a + b, 0);

@@ -1,6 +1,6 @@
-# Interactions · Rules & behaviour  *(canonical)*
+# Interactions · Rules & behavior  *(canonical)*
 
-The normative rules for behaviour, state, feedback, and accessibility. **Single
+The normative rules for behavior, state, feedback, and accessibility. **Single
 source** — Do's/Don'ts, Common mistakes, and Checks derive from these.
 
 ## Feedback & state
@@ -41,7 +41,7 @@ Build recipes for all of the above: [`6-execute.md`](6-execute.md).
 
 ---
 
-# Interaction & behaviour — folded in from `02-rules/`
+# Interaction & behavior — folded in from `02-rules/`
 
 *Provenance: this ruleset previously lived at `02-rules/interaction-and-behavior.md`,
 outside the repo, in two copies that had already drifted from each other. It was
@@ -60,7 +60,7 @@ code that implements it.*
    `--fp-surface-1b` with no outer border.*
 3. *Primary-CTA placement — the "never inside the toolbar" rule is marked
    superseded and points at its replacement.*
-4. *Destructive colour — a carve-out added for the final confirm in a guarded
+4. *Destructive color — a carve-out added for the final confirm in a guarded
    flow, which the shipped `BulkEditDialog` relies on.*
 
 ## 1. Editing model
@@ -203,7 +203,7 @@ Added 2026-09-22, from Unified View's pending strip.
   every cell carrying `data-blink="<name>"`, which reads as the one unit it is.
 - **Nothing takes focus.** Inside a focus-trapped sheet, focusing the target
   makes the trap restore *its* scroll position, which fights the travel — and
-  `behavior: "smooth"` is cancelled by the same trap, so the scroll is a hand-
+  `behavior: "smooth"` is canceled by the same trap, so the scroll is a hand-
   run rAF loop on the scrollport. Known gap: a keyboard reader is shown the
   section and still has to Tab to it.
 - **Reduced motion keeps the point and drops the blink.** The outline or fill
@@ -298,7 +298,7 @@ it, which is often the next thing someone wanted.
 - **Pagination and grouping are exclusive.** While grouped, the list scrolls whole
   and `GroupedListFooter` reports its *shape* — at 25 rows a page a group straddles
   the boundary and its header claims a count for rows that are not on screen. Both
-  footers keep the same left/centre/right skeleton so the bottom of the screen does
+  footers keep the same left/center/right skeleton so the bottom of the screen does
   not jump when grouping turns on.
 - **Every column moves and resizes** — drag the header to reorder, drag the divider
   to resize, double-click to reset, arrows to nudge. Both marks appear on hover of
@@ -343,7 +343,7 @@ it, which is often the next thing someone wanted.
   (searchable-select for single-value attributes; chip picker for multi-value).
 - **Bar shape**: a small set of **fast-path actions inline** (the most-common
   operations for that record type) + a **`More ▾`** menu for the long tail.
-  More is organised into two labelled groups: **"Set or change"** (attribute
+  More is organised into two labeled groups: **"Set or change"** (attribute
   mutations, two-column layout for many attributes) and **"Apply an action"**
   (compound/state actions like Duplicate, Verify). Inapplicable options are
   **visible-but-disabled**, not hidden.
@@ -437,7 +437,7 @@ these are its components; a banner that acts on the page has all of them.
 **Right, in this order**
 5. **The alert's own action** (optional) — `bannerSoftAction` button.
 6. **‹ 1 of N ›** — one KIND of alert at a time, most serious first; the
-   banner takes the shown kind's status colour. Present only when N > 1.
+   banner takes the shown kind's status color. Present only when N > 1.
 7. **Snooze** — the clock, "Remind me later": `BANNER_SNOOZE_OPTIONS`
    (1 h · 2 h · 4 h · 8 h · Tomorrow, same time) **plus Custom…, which asks
    for hours and minutes** (no calendar). One set, every module.
@@ -461,7 +461,7 @@ the portal's Invoices, then every module):**
 **Expanded:** under the line, one row per item — its title (pressable: narrows
 the list to that item), its detail, its own action. The count pill folds it.
 
-**Colour:** soft fill and rim are alphas of the status's inline accent.
+**Color:** soft fill and rim are alphas of the status's inline accent.
 **Warning is half as loud in light** — a /5 wash with a /20 rim (dark keeps
 /10 · /30). **Placement on a list page:** under the view row, above the
 toolbar (Unified View 3-interactions).
@@ -511,7 +511,7 @@ From the 3PL and Service Work boards. Where this contradicts 8.1, this wins.
   somebody's behalf", which is a decision, not a gesture. Stages change from
   the record's own next-act control.
 - **A LANE THAT IS NOT A STEP SITS APART**, behind a 3px rule, not in sequence
-  and not in a tinted tray: Cancelled, Blocked. A lane that is a normal thing
+  and not in a tinted tray: Canceled, Blocked. A lane that is a normal thing
   for work to be doing — waiting on a part — stays in sequence.
 - **A CARD IS RULED UNITS**, not a property grid. Each unit is one heading and
   one shape, divided from the next by a rule, and three shapes cover every

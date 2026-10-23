@@ -28,7 +28,7 @@ in Light, not FP-dark:
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
 | ~~`--background`~~ | ~~`--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b`~~ | Light — **resolved 2026-09-11**: `--background` went back to the tinted Surface Base (`#efefeb`), and `--fp-surface-1a` (and so `--card`) moved to the inner-panel step `#f4f5f8`. Only `--popover`/`--fp-surface-1b` are still white together, which is correct — a popover IS the content layer, lifted. |
-| `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in grey, and the grey it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
+| `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in gray, and the gray it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
 | ~~`--fp-outline-2`~~ | ~~`--accent`~~ | Light — **resolved** 2026-08-27, `--accent` moved to `#e5e7eb` |
 
 This family has now caught nine token pairs, eight of them live: the same sync
@@ -53,13 +53,13 @@ shadow alone; if you need the old tinted ground, name `--fp-surface-base`. Befor
    `--shadow-fp-overlay`, and verify the separation rather than assuming it.
 6. **Do not borrow a control-emphasis token for a background wash.** `--accent`
    is sized to fill a button or a menu row; behind a full table row it reads as
-   a block of colour. Measured, light rows on `--accent` sat `[53,46,36]` off
+   a block of color. Measured, light rows on `--accent` sat `[53,46,36]` off
    `#ffffff` when selected. A wash needs its own token — see `--fp-row-hover`
    / `--fp-row-selected`. The tell is scale: the larger the painted area, the
    quieter the value has to be for the same perceived weight.
 
-## Colour mapping *(§10b, added 2026-09-18)*
-- [ ] Every hue in use appears in the application's own colour-mapping table.
+## Color mapping *(§10b, added 2026-09-18)*
+- [ ] Every hue in use appears in the application's own color-mapping table.
 - [ ] No hue means two different things in two modules of one product.
 - [ ] The failure channel is used only where something is wrong and somebody must act.
 - [ ] No chip that every row carries — render the absence instead.

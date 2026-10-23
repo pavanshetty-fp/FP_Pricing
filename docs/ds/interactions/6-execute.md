@@ -42,7 +42,7 @@ useEffect(() => {
 Convention: `chart-1`/`--brand` primary series, `--fp-outline-1` gridlines,
 `--muted-foreground` axis ticks. Reference: `dashboard/`.
 
-## Editable-cell hover behaviour
+## Editable-cell hover behavior
 The trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`);
 hover/open paint `bg-accent` across the entire cell, no inset outline. (Visual spec:
 `ui/6-execute`.) Reference: `tables-layout/`, `form-layout/`.

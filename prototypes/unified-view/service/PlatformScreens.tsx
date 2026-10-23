@@ -44,7 +44,7 @@ const PB_COLUMNS: ListColumn<PbKey>[] = [
   { key: "code", label: "Code", width: 90, sortable: true },
   { key: "job", label: "Job", width: 120, sortable: true },
   { key: "category", label: "Category", width: 190, sortable: true },
-  { key: "labor", label: "Labour", width: 90, sortable: true },
+  { key: "labor", label: "Labor", width: 90, sortable: true },
   { key: "parts", label: "Parts", width: 130, sortable: true },
   { key: "fee", label: "Fee", width: 80, sortable: true },
   { key: "rate", label: "Flat rate", width: 90, sortable: true },

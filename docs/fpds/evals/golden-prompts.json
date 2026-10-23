@@ -1,0 +1,24 @@
+{
+  "about": "Golden prompts — each is a request someone might give Lovable, Cursor or Claude with FPDS installed. `expect` is what the build protocol must answer. Checked by `npm run eval` (fpds-gaps, through scripts/fpds/resolve.mjs) and used by hand in each tool (rubric in evals/README.md).",
+  "prompts": [
+    { "prompt": "A vendors list for 3PL with filters, saved views and export", "expect": { "template": "template.list-page", "units": ["unit.view-row", "unit.filter-panel"], "gap": false } },
+    { "prompt": "Delivery orders as a kanban board with lanes by status", "expect": { "template": "template.list-page", "units": ["unit.board"], "gap": false } },
+    { "prompt": "Show service technicians on a map with their trucks", "expect": { "template": "template.list-page", "units": ["unit.map"], "gap": false } },
+    { "prompt": "Create a new fuel order form with products, quantity and top off", "expect": { "template": "template.record-sheet", "units": ["unit.lines-table"], "gap": false } },
+    { "prompt": "Edit a quote with documents and attachments", "expect": { "template": "template.record-sheet", "units": ["unit.documents-table"], "gap": false } },
+    { "prompt": "Create a recurring delivery with a frequency and a delivery window", "expect": { "template": "template.record-sheet", "units": ["unit.recurring-section", "unit.delivery-timeline"], "gap": false } },
+    { "prompt": "A dashboard for Sales with KPI tiles for today", "expect": { "template": "template.dashboard", "units": ["unit.dashboard"], "gap": false } },
+    { "prompt": "Settings page to configure SLA hours for the Service module", "expect": { "template": "template.settings", "gap": false } },
+    { "prompt": "Customer portal page listing my invoices with a date range", "expect": { "template": "template.list-page", "units": ["unit.date-picker"], "audience": "customer", "gap": false } },
+    { "prompt": "Bulk select orders and change the planned date", "expect": { "units": ["unit.bulk-bar", "unit.date-picker"], "gap": false } },
+    { "prompt": "Customer record profile page with ship-tos and history", "expect": { "template": "template.directory-record", "gap": false } },
+    { "prompt": "Show an alert banner when tanks are nearly empty", "expect": { "units": ["unit.alert-banner"], "gap": false } },
+    { "prompt": "Orders list where each order shows a status pill and awaiting confirmation", "expect": { "template": "template.list-page", "units": ["unit.status-and-awaiting"], "gap": false } },
+    { "prompt": "An onboarding welcome tour for new customers with an illustration", "expect": { "gap": true, "missing": ["Illustrations", "Empty pages & first-use states"] } },
+    { "prompt": "A week calendar view of technician jobs", "expect": { "gap": true, "missing": ["Calendar / schedule view"] } },
+    { "prompt": "A chat between the dispatcher and the driver on an order", "expect": { "gap": true, "missing": ["Chat / messaging unit"] } },
+    { "prompt": "Sales dashboard with a funnel chart of quotes", "expect": { "template": "template.dashboard", "gap": true, "missing": ["This chart type"] } },
+    { "prompt": "Capture the customer's signature on delivery", "expect": { "gap": true, "missing": ["Signature capture"] } },
+    { "prompt": "A drag and drop workflow builder for approvals", "expect": { "gap": true, "missing": ["Builder canvas"] } }
+  ]
+}

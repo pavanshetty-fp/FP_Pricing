@@ -251,7 +251,7 @@ export function LinesTable({
               />
             </span>
           </th>
-          <th className="px-3 py-2.5 text-right">
+          <th className="px-3 py-2.5">
             <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
           </th>
           <th aria-hidden />
@@ -325,7 +325,7 @@ export function LinesTable({
                 </td>
               )}
               <td className="px-3">
-                <span className="flex justify-end">
+                <span className="flex ">
                   <Checkbox
                     checked={l.topOff}
                     onCheckedChange={(c) => update(i, { topOff: c === true })}
@@ -363,10 +363,10 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={live ? 6 : 5} className="px-3 text-right text-sm text-muted-foreground">
+            <td colSpan={live ? 6 : 5} className="px-3 text-sm text-muted-foreground">
               Total
             </td>
-            <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+            <td className="px-3 text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
             <td aria-hidden />
@@ -997,7 +997,7 @@ export function OrderRequestSheet({
           <AlertDialogDescription>
             {rule === "request"
               ? `It is inside the cut-off, so ${TENANT} decides, and a cancellation fee may apply.`
-              : "It moves to Cancelled, keeping its history."}
+              : "It moves to Canceled, keeping its history."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <SheetField label="Reason" required={rule === "request"}>
@@ -1019,11 +1019,11 @@ export function OrderRequestSheet({
               /* INSIDE THE CUT-OFF, AN ASK — the order keeps its status and
                  waits on the tenant's confirmation (Pavan, 2026-10-22). */
               if (asked) requestChange(request.id, "Cancel the order", reason);
-              else updateRequest(request.id, { status: "Cancelled" }, `Cancelled${reason ? ` · ${reason}` : ""}`);
+              else updateRequest(request.id, { status: "Canceled" }, `Canceled${reason ? ` · ${reason}` : ""}`);
               toast.success(
                 asked
                   ? `Cancellation requested for ${request.requestNo}`
-                  : `${request.requestNo} cancelled`
+                  : `${request.requestNo} canceled`
               );
             }}
           >

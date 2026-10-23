@@ -82,10 +82,10 @@ export function vendorHeaderAside(v: Vendor) {
 export function vendorReadSections(v: Vendor): RecordReadSection[] {
   const orders = ordersForVendor(v.id);
   const live = orders.filter(
-    (o) => !["Completed", "Synced", "Cancelled"].includes(o.status)
+    (o) => !["Completed", "Synced", "Canceled"].includes(o.status)
   );
   const history = orders.filter((o) =>
-    ["Completed", "Synced", "Cancelled"].includes(o.status)
+    ["Completed", "Synced", "Canceled"].includes(o.status)
   );
   const products = BROKER_PRODUCTS.filter((p) => v.supportedProductIds.includes(p.id));
   const days = daysFromToday(v.complianceValidTo);
@@ -252,7 +252,7 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
         <SheetTable
           rows={products}
           rowKey={(p) => p.id}
-          emptyBody="This vendor's business lines cover nothing in the catalogue."
+          emptyBody="This vendor's business lines cover nothing in the catalog."
           columns={[
             { key: "name", label: "Product", render: (p) => p.name },
             { key: "code", label: "Code", render: (p) => p.productCode },
@@ -464,7 +464,7 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
         { key: "insuranceExpiry", label: "Insurance expiry", kind: "date", get: (d) => d.insuranceExpiry, set: (d, v) => ({ ...d, insuranceExpiry: (v as string) || null }) },
         {
           key: "licenseNumbers",
-          label: "Licence numbers",
+          label: "License numbers",
           kind: "text",
           wide: true,
           get: (d) => d.licenseNumbers.join(", "),

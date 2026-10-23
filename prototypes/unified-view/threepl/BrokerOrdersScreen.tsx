@@ -250,15 +250,18 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
     {
       kind: "stack",
       key: "customer",
-      heading: "Customer Details",
+      /* SHIP-TO FIRST (Pavan, 2026-10-23): the place the truck goes is what a
+         dispatcher reads a card by — its name leads, its address follows,
+         and the customer is the small line under them. */
+      heading: "Ship-to Details",
       lines: [
+        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
+        ...(site && !off.has("customer.address")
+          ? [{ text: siteAddress(site), level: 2 as const }]
+          : []),
         ...(off.has("customer.account")
           ? []
-          : [{ text: r.customer.title, level: 1 as const }]),
-        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
-        ...(site && !off.has("customer.address")
-          ? [{ text: siteAddress(site), level: 3 as const }]
-          : []),
+          : [{ text: r.customer.title, level: 3 as const }]),
       ],
     },
     {
@@ -360,7 +363,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
                 r.acceptedVendorIds.length > 0
                   ? `${r.acceptedVendorIds.length} accepted — no quote taken yet`
                   : r.sentVendorIds.filter(Boolean).length > 0
-                    ? "Out for acknowledgement"
+                    ? "Out for acknowledgment"
                     : r.invitedVendorIds.length > 0
                       ? `${r.invitedVendorIds.length} selected, not sent`
                       : "Not assigned",
@@ -576,10 +579,10 @@ const INVOICE_LANES = new Set<BrokerStatus>(["Assigned"]);
  * delivery. The statuses themselves are unchanged: they are what the record,
  * the filter and the chip all say.
  *
- * THE LAST TWO ARE NOT THE LIFECYCLE. Cancelled is a way out of it and Blocked
+ * THE LAST TWO ARE NOT THE LIFECYCLE. Canceled is a way out of it and Blocked
  * is a condition that holds an order wherever it already stands — neither is
  * somewhere the work moves THROUGH, and reading left to right past them tells
- * you nothing. `apart` puts a rule before Cancelled so the eye stops at the end
+ * you nothing. `apart` puts a rule before Canceled so the eye stops at the end
  * of the line rather than carrying on into two lanes that are not on it. It is
  * also why Blocked is here and not second, where it used to sit: it put a lane
  * nobody can act on between the two that are touched most.
@@ -611,7 +614,7 @@ const BOARD_LANES: {
      failed, an error on the hand-off rather than a place in the lifecycle —
      and the card's red badge and alert are what say so. */
   { key: "Synced", statuses: ["Partially Synced", "Synced"] },
-  { key: "Cancelled", statuses: ["Cancelled"], apart: true },
+  { key: "Canceled", statuses: ["Canceled"], apart: true },
   { key: "Blocked", statuses: ["Blocked"] },
 ];
 
@@ -666,7 +669,7 @@ function laneCardAlert(
     }
     return {
       status: "caution",
-      text: `Awaiting acknowledgement — ${n} invited`,
+      text: `Awaiting acknowledgment — ${n} invited`,
     };
   }
   /* NOTHING TO REVIEW ON ASSIGNED (Pavan, 2026-10-06) — the vendor has the
@@ -705,10 +708,10 @@ const TOGGLE_COLUMNS = BROKER_COLUMNS.filter((c) => c.label).map((c) => ({
  * number is not a card you can act on.
  */
 const CARD_UNITS: { key: string; label: string; group?: string }[] = [
-  { key: "customer", label: "Customer Details" },
-  { key: "customer.account", label: "Account", group: "customer" },
-  { key: "customer.site", label: "Ship-to site", group: "customer" },
+  { key: "customer", label: "Ship-to Details" },
+  { key: "customer.site", label: "Ship-to name", group: "customer" },
   { key: "customer.address", label: "Address", group: "customer" },
+  { key: "customer.account", label: "Customer", group: "customer" },
   { key: "schedule", label: "Schedule" },
   { key: "schedule.window", label: "Delivery window", group: "schedule" },
   { key: "schedule.when", label: "Scheduled date", group: "schedule" },
@@ -1196,7 +1199,7 @@ export function BrokerOrdersScreen({
     Facet application. Every facet is AND-ed with the others and OR-ed within
     itself, which is what a checkbox list means.
 
-    Three Status options — Overdue, Cancelled, Partially Synced — are
+    Three Status options — Overdue, Canceled, Partially Synced — are
     filterable states the seed data has no rows for, so selecting one correctly
     empties the list rather than being quietly ignored. "Created / Draft" is the
     filter's label for the `Draft` lane.

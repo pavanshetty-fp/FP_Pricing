@@ -66,7 +66,7 @@ import {
  * EDITABLE FIELD here, not derived. A fuel order's status is a function of its
  * driver, so offering a control would only let the two disagree. An asset order
  * has no such dependency — nothing else on the record implies whether it is
- * Requested, Scheduled, Dispatched, Delivered or Cancelled — so it needs an
+ * Requested, Scheduled, Dispatched, Delivered or Canceled — so it needs an
  * explicit control.
  */
 export interface AssetOrderDraft {
@@ -207,14 +207,14 @@ export function AssetOrderSheet({
   ) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
   /* CANCEL ORDER — 3PL's: behind the ··· and a confirm (Pavan, 2026-10-07).
-     Not on an order already Delivered or Cancelled. It goes through the
+     Not on an order already Delivered or Canceled. It goes through the
      sheet's autosave, so the change log records it. */
   const cancellable =
-    !creating && draft.status !== "Delivered" && draft.status !== "Cancelled";
+    !creating && draft.status !== "Delivered" && draft.status !== "Canceled";
   const cancelOrder = () => {
-    const quiet = getSalesSettings().notifications.find((n) => n.key === "cancelled")?.inApp;
-    if (!quiet) toast.success(`${order?.orderNo ?? "Order"} cancelled`);
-    setDraft((d) => (d ? { ...d, status: "Cancelled", approvalFor: undefined } : d));
+    const quiet = getSalesSettings().notifications.find((n) => n.key === "canceled")?.inApp;
+    if (!quiet) toast.success(`${order?.orderNo ?? "Order"} canceled`);
+    setDraft((d) => (d ? { ...d, status: "Canceled", approvalFor: undefined } : d));
   };
 
   /* A STAGE THAT REQUIRES APPROVAL (Pavan, 2026-10-07). On an asset order
@@ -535,7 +535,7 @@ export function AssetOrderSheet({
         <AlertDialogHeader>
           <AlertDialogTitle>Cancel {order?.orderNo}?</AlertDialogTitle>
           <AlertDialogDescription>
-            It moves to Cancelled, keeping its history.
+            It moves to Canceled, keeping its history.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -230,7 +230,7 @@ export function TechnicianMobile() {
      first eight, a day's worth, which hid anything booked further out. The
      list screen sequences and filters them. */
   const jobs = React.useMemo(
-    () => orders.filter((o) => o.technicianId === tech && o.status !== "Cancelled"),
+    () => orders.filter((o) => o.technicianId === tech && o.status !== "Canceled"),
     [orders, tech]
   );
 

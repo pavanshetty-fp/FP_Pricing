@@ -659,7 +659,7 @@ export function InvoiceSummarySheet({
           {order.parts.map((p, i) => (
             <SummaryRow key={`p-${i}`} label={p.qty > 1 ? `${p.name} × ${p.qty}` : p.name || "Part"} value={money(p.cost * p.qty)} />
           ))}
-          <SummaryRow label={`Labour — ${formatHours(order.labor)} at ${money(order.laborRate)}/h`} value={money(labour)} />
+          <SummaryRow label={`Labor — ${formatHours(order.labor)} at ${money(order.laborRate)}/h`} value={money(labour)} />
           {order.fees.map((f, i) => (
             <SummaryRow key={`f-${i}`} label={f.name || "Fee"} value={money(f.amount)} />
           ))}

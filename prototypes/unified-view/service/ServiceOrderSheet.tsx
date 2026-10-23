@@ -380,20 +380,20 @@ function LineTable({
               <TableRequiredLabel>{nameLabel}</TableRequiredLabel>
             </th>
             {withQty && (
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Qty</TableRequiredLabel>
               </th>
             )}
             {showFitted && (
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Fitted</TableRequiredLabel>
               </th>
             )}
-            <th className="px-3 py-2.5 text-right">
+            <th className="px-3 py-2.5">
               <TableRequiredLabel>{withQty ? "Unit" : "Amount"}</TableRequiredLabel>
             </th>
             {withQty && (
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
             )}
@@ -461,7 +461,7 @@ function LineTable({
               {withQty && (
                 <td className="relative p-0">
                   {readOnly ? (
-                    <span className="block px-3 text-right text-sm tabular-nums text-foreground">
+                    <span className="block px-3 text-sm tabular-nums text-foreground">
                       {(r as PartLine).qty}
                     </span>
                   ) : (
@@ -477,13 +477,13 @@ function LineTable({
                 </td>
               )}
               {showFitted && (
-                <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                <td className="px-3 text-sm tabular-nums text-foreground">
                   {fittedOf(r as PartLine)}
                 </td>
               )}
               <td className="relative p-0">
                 {readOnly ? (
-                  <span className="block px-3 text-right text-sm tabular-nums text-foreground">
+                  <span className="block px-3 text-sm tabular-nums text-foreground">
                     {money("cost" in r ? (r as PartLine).cost : (r as FeeLine).amount)}
                   </span>
                 ) : (
@@ -505,7 +505,7 @@ function LineTable({
                   unit is arithmetic, and a box to type it into is a box to get
                   it wrong in. */}
               {withQty && (
-                <td className="px-3 text-right text-sm tabular-nums text-foreground">
+                <td className="px-3 text-sm tabular-nums text-foreground">
                   {money(amountOf(r))}
                 </td>
               )}
@@ -528,11 +528,11 @@ function LineTable({
             <tr className="h-11 border-t border-border">
               <td
                 colSpan={(withQty ? 3 : 1) + (showFitted ? 1 : 0)}
-                className="px-3 text-right text-sm text-muted-foreground"
+                className="px-3 text-sm text-muted-foreground"
               >
                 Total
               </td>
-              <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+              <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                 {money(total)}
               </td>
               {!readOnly && <td aria-hidden />}
@@ -814,10 +814,10 @@ export function ServiceOrderSheet({
     dispatch &&
     (LANE_OF[draft.status] === "Completed" ||
       LANE_OF[draft.status] === "Synced" ||
-      draft.status === "Cancelled");
+      draft.status === "Canceled");
   const workLocked = dispatch
     ? dispatchDone
-    : isRecorded(draft.status) || draft.status === "Cancelled";
+    : isRecorded(draft.status) || draft.status === "Canceled";
   /** The work table: editable at intake, and again while recording. */
   const assetsLocked = dispatch ? dispatchDone || (!recording && intakeLocked) : intakeLocked;
   /* PAST THE VISIT, THE RECORD IS WHAT WAS BILLED. Both the Completed lane
@@ -1121,7 +1121,7 @@ export function ServiceOrderSheet({
       onSelect: () => setFieldOpen(true),
     });
   /* CANCEL, IN THE ··· (Pavan, 2026-09-25) — from Open (unassigned, drafts
-     included) through Job day, confirmed. Recorded work cannot be cancelled.
+     included) through Job day, confirmed. Recorded work cannot be canceled.
      IN THE HEADER'S ···, as on 3PL (Pavan, 2026-10-07) — an act on the
      record, not on the work. */
   const cancellable =
@@ -1228,12 +1228,12 @@ export function ServiceOrderSheet({
         : { label: "Send invoice to customer", onSelect: () => setInvoiceOpen(true) };
     if (dispatch && draft.status === "Awaiting approval")
       return { label: "Mark as completed", onSelect: () => setCompleteOpen(true) };
-    if (dispatch && dispatchDone && draft.status !== "Cancelled")
+    if (dispatch && dispatchDone && draft.status !== "Canceled")
       return {
         label: "Download invoice",
         onSelect: () => downloadInvoice(draft),
       };
-    if (draft.status === "Cancelled")
+    if (draft.status === "Canceled")
       return {
         label: "Reopen",
         onSelect: () => advance("Drafted", { technicianId: null }),
@@ -2227,7 +2227,7 @@ export function ServiceOrderSheet({
               <MoneyRow key={`qf-${i}`} label={f.name} value={money(f.amount)} />
             ))}
             {draft.quote.laborRate != null && (
-              <MoneyRow label="Labour" value={`${money(draft.quote.laborRate)} / hour`} />
+              <MoneyRow label="Labor" value={`${money(draft.quote.laborRate)} / hour`} />
             )}
             <div className="mt-2 border-t border-fp-outline-1 pt-2">
               <MoneyRow label="Quoted" value={money(draft.quote.total)} bold />
@@ -2391,7 +2391,7 @@ export function ServiceOrderSheet({
           in the Summary and on a quote — there is simply no longer a box for
           it here. */}
       <SheetSection
-        title="Labour and cost"
+        title="Labor and cost"
         flush
         /* THE CLOCK, WHILE IT IS RUNNING (Pavan, 2026-09-23). The technician
            presses Start labour in their app and the dispatcher watches it
@@ -2566,7 +2566,7 @@ export function ServiceOrderSheet({
               <SummaryRow variant="line" label="Parts" value={money(partsSum)} />
               <SummaryRow
                 variant="line"
-                label={`Labour — ${formatHours(draft.labor)}`}
+                label={`Labor — ${formatHours(draft.labor)}`}
                 value={money(laborSum)}
               />
               <SummaryRow variant="line" label="Fees" value={money(feesSum)} />
@@ -2747,7 +2747,7 @@ export function ServiceOrderSheet({
               <QuoteRow key={`qf-${i}`} label={f.name || "Fee"} value={f.amount} />
             ))}
             <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
-              <span className="text-sm text-muted-foreground">Labour</span>
+              <span className="text-sm text-muted-foreground">Labor</span>
               <span className="shrink-0 text-sm tabular-nums text-foreground">
                 {money(draft.laborRate)} / hour
               </span>
@@ -2798,7 +2798,7 @@ export function ServiceOrderSheet({
           <div className="overflow-hidden rounded-md border border-fp-outline-1">
             <QuoteRow label="Parts" value={partsSum} />
             <QuoteRow
-              label={`Labour — ${formatHours(draft.labor)} at ${money(draft.laborRate)}/h`}
+              label={`Labor — ${formatHours(draft.labor)} at ${money(draft.laborRate)}/h`}
               value={laborSum}
             />
             <QuoteRow label="Fees" value={feesSum} />
@@ -2846,8 +2846,8 @@ export function ServiceOrderSheet({
           <div className="overflow-hidden rounded-md border border-fp-outline-1">
             <div className="flex items-baseline gap-3 border-b border-border bg-fp-surface-1a px-3 py-2">
               <span className="flex-1 text-xs font-medium text-foreground">Part</span>
-              <span className="w-20 text-right text-xs font-medium text-foreground">Fitted</span>
-              <span className="w-16 text-right text-xs font-medium text-foreground">Needed</span>
+              <span className="w-20 text-xs font-medium text-foreground">Fitted</span>
+              <span className="w-16 text-xs font-medium text-foreground">Needed</span>
             </div>
             {draft.parts.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">
@@ -2878,7 +2878,7 @@ export function ServiceOrderSheet({
                     className="w-20 tabular-nums"
                     aria-label={`Fitted quantity for ${pt.name}`}
                   />
-                  <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">
+                  <span className="w-16 text-sm tabular-nums text-muted-foreground">
                     {pt.qty}
                   </span>
                 </div>
@@ -2989,8 +2989,8 @@ export function ServiceOrderSheet({
             <AlertDialogCancel>Keep order</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                advance("Cancelled");
-                toast.success(`${draft.orderNo} cancelled`);
+                advance("Canceled");
+                toast.success(`${draft.orderNo} canceled`);
               }}
             >
               Cancel order

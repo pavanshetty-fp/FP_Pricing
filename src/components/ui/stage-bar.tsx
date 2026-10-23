@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
   thing carrying the direction — rounding that would cost the bar its arrow.
 
   THE LINE ONLY. Every stage on the bar is one the record passes THROUGH.
-  Cancelled, blocked, on hold — the places a record can stop but never move
+  Canceled, blocked, on hold — the places a record can stop but never move
   through — are deliberately not here: they are conditions, not positions, and
   a bar that lists them turns a direction back into a set of states. A record
   in one of them renders with nothing current, which is the truthful reading:

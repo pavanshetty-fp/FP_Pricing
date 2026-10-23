@@ -87,7 +87,7 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Active: "info",
   /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
   Paused: "caution",
-  Cancelled: "neutral",
+  Canceled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
 });
@@ -204,15 +204,15 @@ function TargetRow({
       <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground">
         {t.window.start} – {t.window.end}
       </td>
-      <td className="px-3 py-2.5 text-right text-sm tabular-nums text-foreground">
+      <td className="px-3 py-2.5 text-sm tabular-nums text-foreground">
         {t.vendorPrice !== null ? MONEY(t.vendorPrice) : <span className="text-muted-foreground">{DASH}</span>}
       </td>
-      <td className="px-3 py-2.5 text-right text-sm tabular-nums text-foreground">
+      <td className="px-3 py-2.5 text-sm tabular-nums text-foreground">
         {t.customerPrice !== null ? MONEY(t.customerPrice) : <span className="text-muted-foreground">{DASH}</span>}
       </td>
       <td
         className={cn(
-          "px-3 py-2.5 text-right text-sm tabular-nums",
+          "px-3 py-2.5 text-sm tabular-nums",
           margin !== null && margin < 0 ? "text-status-failed" : "text-foreground"
         )}
       >
@@ -272,8 +272,7 @@ function TargetGrid({
                 key={c.key}
                 style={{ width: c.w }}
                 className={cn(
-                  "whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground",
-                  c.right && "text-right"
+                  "whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground"
                 )}
               >
                 {c.label}
@@ -292,15 +291,15 @@ function TargetGrid({
               <td colSpan={4} className="px-3 py-2.5 text-xs text-muted-foreground">
                 Per run, live lanes only
               </td>
-              <td className="px-3 py-2.5 text-right text-sm font-medium tabular-nums text-foreground">
+              <td className="px-3 py-2.5 text-sm font-medium tabular-nums text-foreground">
                 {MONEY(totals.cost)}
               </td>
-              <td className="px-3 py-2.5 text-right text-sm font-medium tabular-nums text-foreground">
+              <td className="px-3 py-2.5 text-sm font-medium tabular-nums text-foreground">
                 {MONEY(totals.revenue)}
               </td>
               <td
                 className={cn(
-                  "px-3 py-2.5 text-right text-sm font-semibold tabular-nums",
+                  "px-3 py-2.5 text-sm font-semibold tabular-nums",
                   totals.margin < 0 ? "text-status-failed" : "text-foreground"
                 )}
               >
@@ -387,7 +386,7 @@ function AddTargetDialog({
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
               {q
                 ? "Nothing matches inside this partner's area."
-                : "Every site this partner can reach is already on the programme."}
+                : "Every site this partner can reach is already on the program."}
             </p>
           ) : (
             options.map((o) => (
@@ -479,8 +478,8 @@ export function RecurringProgramSheet({
       onOpenChange={onOpenChange}
       mode="edit"
       editTitle={program.programNo}
-      createTitle="New programme"
-      createAction="Create programme"
+      createTitle="New program"
+      createAction="Create program"
       onSubmit={() => undefined}
       showCancel={false}
       footerPrimary={null}

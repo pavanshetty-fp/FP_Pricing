@@ -85,7 +85,7 @@ export interface DisputeNote {
 
     Price · Quantity · Fees or tax   a credit note for the difference
     Details (PO, ship-to)            a corrected invoice, same amount
-    Not delivered                    the invoice cancelled
+    Not delivered                    the invoice canceled
 
   They tick the lines that are wrong and say what each should be; a note is
   required, proof optional. The invoice goes to "Invoice disputed" — no

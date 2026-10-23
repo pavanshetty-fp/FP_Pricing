@@ -30,7 +30,7 @@ export type AssetOrderStatus =
   | "Scheduled"
   | "Dispatched"
   | "Delivered"
-  | "Cancelled"
+  | "Canceled"
   /* …or a stage added in Sales Settings (Pavan, 2026-10-07). */
   | (string & {});
 
@@ -45,10 +45,10 @@ export const ASSET_ORDER_STATUS_TONE = statusTones<CoreAssetStage>({
   Dispatched: "info",
   Delivered: "success",
   /* NOT RED — a terminal non-event, not a problem to solve. */
-  Cancelled: "neutral",
+  Canceled: "neutral",
 });
 
-type CoreAssetStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
+type CoreAssetStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Canceled";
 
 /** In stage order — the filter, the group-by and the sort all read it. */
 export const ASSET_ORDER_STATUSES: CoreAssetStage[] = [
@@ -56,7 +56,7 @@ export const ASSET_ORDER_STATUSES: CoreAssetStage[] = [
   "Scheduled",
   "Dispatched",
   "Delivered",
-  "Cancelled",
+  "Canceled",
 ];
 
 export interface AssetOrder {
@@ -180,7 +180,7 @@ const SEED: Seed[] = [
     customer: { title: "Gonzalez, Palmer and Miller", description: "ERP 331904" },
     salesRep: "Marcus Reed",
     dayOffset: 2,
-    status: "Cancelled",
+    status: "Canceled",
     assetType: "Tank — 1000 gal",
     quantity: 1,
     serialNo: "TK-1000-4502",

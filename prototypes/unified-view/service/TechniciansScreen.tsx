@@ -1,17 +1,9 @@
 import * as React from "react";
-import { HardHat, SearchX } from "lucide-react";
+import { HardHat } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { TablePagination } from "@/components/tables-layout";
-import { ListToolbar, useViewBar, ViewStatement } from "../ListToolbar";
-import { ListTable, type ListColumn, type ListSort } from "../ListTable";
+import type { ListColumn } from "../ListTable";
+import { ServiceListScreen } from "./ServiceListScreen";
 import { TECHNICIANS, type ServiceOrder, type Technician } from "./work";
 import { useServiceOrders } from "./store";
 import { ACTIVE_KIND, kindTone } from "../statusKind";
@@ -55,12 +47,6 @@ const TECH_COLUMNS: ListColumn<TechColumnKey>[] = [
   { key: "phone", label: "Phone", width: 140, sortable: true },
   { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },
-];
-
-const TECH_SEARCH_FIELDS = [
-  { key: "name", label: "Technician" },
-  { key: "base", label: "Base" },
-  { key: "skills", label: "Skills" },
 ];
 
 /**
@@ -108,81 +94,12 @@ function techColumnText(t: Technician, key: TechColumnKey, openJobs: number): st
 }
 
 export function TechniciansScreen() {
-  const [search, setSearch] = React.useState("");
-  const [sort, setSort] = React.useState<ListSort<TechColumnKey> | null>(null);
-  const [hidden, setHidden] = React.useState<Set<TechColumnKey>>(new Set());
-  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
-  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
-  const [colScope, setColScope] = React.useState("name");
-  const [colQuery, setColQuery] = React.useState("");
-  /** One box per column, under the headers — see `ListTableProps.columnFilters`. */
-  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
-  const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
-  const activeColFilters = React.useMemo(
-    () => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""),
-    [colFilters]
-  );
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(25);
-
   /* COUNTED OFF THE SHARED ORDERS (2026-09-24), so it moves as jobs move. */
   const [orders] = useServiceOrders();
   const open = React.useMemo(
     () => Object.fromEntries(TECHNICIANS.map((t) => [t.id, openJobsFor(orders, t.id)])),
     [orders]
   );
-
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q && activeColFilters.length === 0) return TECHNICIANS;
-    return TECHNICIANS.filter(
-      (t) =>
-        (!q ||
-          [t.name, t.base, t.skills.join(" ")].join(" ").toLowerCase().includes(q)) &&
-        /* AND, as on the 3PL board — each box matches what its own column
-           prints (`techColumnText`). */
-        activeColFilters.every(([key, value]) =>
-          techColumnText(t, key as TechColumnKey, open[t.id] ?? 0)
-            .toLowerCase()
-            .includes(value.trim().toLowerCase())
-        )
-    );
-  }, [search, activeColFilters, open]);
-
-  /* THE VIEW BAR — the table's and the board's tools render into it. */
-  const bar = useViewBar();
-  const sorted = React.useMemo(() => {
-    if (!sort) return filtered;
-    const value = (t: Technician): string | number => {
-      switch (sort.key) {
-        case "name":
-          return t.name;
-        case "base":
-          return t.base;
-        case "skills":
-          return t.skills.join(", ");
-        case "open":
-          return open[t.id] ?? 0;
-        case "capacity":
-          return t.dailyCapacity;
-        case "phone":
-          return t.phone;
-        case "status":
-          return t.active ? 0 : 1;
-        default:
-          return "";
-      }
-    };
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      const av = value(a);
-      const bv = value(b);
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-      return String(av).localeCompare(String(bv)) * dir;
-    });
-  }, [filtered, sort, open]);
-
-  const pageRows = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const renderCell = (t: Technician, key: TechColumnKey): React.ReactNode => {
     switch (key) {
@@ -220,123 +137,21 @@ export function TechniciansScreen() {
     }
   };
 
+  /* THE STANDARD LIST (Pavan, 2026-10-22) — views, Filters, chips, the view
+     bar, like every table page. Skills filter by each skill. */
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0">
-        <ListToolbar
-          viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={sorted.length} one="technician" many="technicians" />}
-          searchValue={search}
-          onSearchChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
-          searchPlaceholder="Search technicians, bases, skills…"
-          showGroupBy={false}
-          filters={null}
-          columns={TECH_COLUMNS.filter((c) => c.label).map((c) => ({
-            key: c.key,
-            label: c.label,
-          }))}
-          hiddenColumns={hidden}
-          columnOrder={columnOrder}
-          onReorderColumns={setColumnOrder}
-          onToggleColumn={(k) =>
-            setHidden((prev) => {
-              const next = new Set(prev);
-              if (next.has(k)) next.delete(k);
-              else next.add(k);
-              return next;
-            })
-          }
-          onShowAllColumns={() => setHidden(new Set())}
-          searchFields={TECH_SEARCH_FIELDS}
-          colScope={colScope}
-          onColScopeChange={setColScope}
-          colQuery={colQuery}
-          onColQueryChange={setColQuery}
-          /* THE ROW, NOT THE POPOVER — the 3PL board's column search. */
-          columnFiltersOpen={colFiltersOpen}
-          onToggleColumnFilters={() =>
-            setColFiltersOpen((wasOpen) => {
-              /* CLOSING THE ROW PUTS THE TABLE BACK — a narrowing with no box
-                 on screen saying so is one nobody can find. */
-              if (wasOpen) {
-                setColFilters({});
-                setPage(1);
-              }
-              return !wasOpen;
-            })
-          }
-          columnFilterCount={activeColFilters.length}
-          view="table"
-          onViewChange={() => {}}
-        />
-      </div>
-
-      <div className="relative mt-4 min-h-0 flex-1">
-        <div className="h-full min-h-0">
-          {/* THE ROW STAYS WHILE IT IS OPEN — an empty result is what the boxes
-             did, and the boxes are how you undo it. */}
-          {sorted.length === 0 && !colFiltersOpen ? (
-            <Empty className="h-full">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {search || activeColFilters.length ? <SearchX /> : <HardHat />}
-                </EmptyMedia>
-                <EmptyTitle>No technicians match</EmptyTitle>
-                <EmptyDescription>
-                  {TECHNICIANS.length} on the roster, none of them matching what
-                  you have typed.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <ListTable
-              topBar={bar.slot}
-              rows={pageRows}
-              columns={TECH_COLUMNS}
-              hidden={hidden}
-              sort={sort}
-              onSort={(key) =>
-                setSort((prev) => {
-                  if (prev?.key !== key) return { key, dir: "asc" };
-                  if (prev.dir === "asc") return { key, dir: "desc" };
-                  return null;
-                })
-              }
-              rowId={(t) => t.id}
-              renderCell={renderCell}
-              actionsKey="actions"
-              columnOrder={columnOrder}
-              onReorderColumns={setColumnOrder}
-              columnWidths={columnWidths}
-              onResizeColumns={setColumnWidths}
-              openLabel={(t) => `Open ${t.name}`}
-              showColumnFilters={colFiltersOpen}
-              columnFilters={colFilters}
-              onColumnFilterChange={(key, value) => {
-                setColFilters((prev) => ({ ...prev, [key]: value }));
-                setPage(1);
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 shrink-0">
-        <TablePagination
-          className="h-9"
-          page={page}
-          pageSize={pageSize}
-          total={sorted.length}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
-      </div>
-    </div>
+    <ServiceListScreen<Technician, TechColumnKey>
+      rows={TECHNICIANS}
+      columns={TECH_COLUMNS}
+      rowId={(t) => t.id}
+      renderCell={renderCell}
+      sortValue={(t, key) =>
+        key === "open" ? (open[t.id] ?? 0) : key === "capacity" ? t.dailyCapacity : key === "status" ? (t.active ? 0 : 1) : techColumnText(t, key, open[t.id] ?? 0)
+      }
+      valuesOf={(t, key) => (key === "skills" ? t.skills : undefined)}
+      searchPlaceholder="Search technicians, bases, skills…"
+      noun="technicians"
+      icon={<HardHat />}
+    />
   );
 }

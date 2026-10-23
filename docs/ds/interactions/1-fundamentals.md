@@ -1,6 +1,6 @@
 # Interactions · Fundamentals & principles
 
-*Behaviour, state, feedback, motion, accessibility — "how it behaves."* The mental
+*Behavior, state, feedback, motion, accessibility — "how it behaves."* The mental
 model behind the interaction rules ([`2-rules.md`](2-rules.md)).
 
 ## Principles
@@ -20,7 +20,7 @@ model behind the interaction rules ([`2-rules.md`](2-rules.md)).
 
 - **Accessible by default.** Keyboard-operable, visible focus, `aria-label` on
   icon-only controls, contrast ≥ AA, motion that respects `prefers-reduced-motion`.
-  Accessibility isn't a pass at the end — it's the resting behaviour.
+  Accessibility isn't a pass at the end — it's the resting behavior.
 
 - **Motion is functional, not decorative.** Movement clarifies a change (a bar
   docking, a panel entering); it's brief and purposeful. Static template charts

@@ -4,11 +4,10 @@ import {
   Map as MapIcon,
   Columns3,
   GripVertical,
-  KanbanSquare,
   LayoutList,
+  List,
   Search,
   Settings2,
-  Table2,
   TextSearch,
   X,
 } from "lucide-react";
@@ -240,8 +239,33 @@ export interface ListToolbarProps<K extends string> {
   };
 }
 
+/* A VIEW-BAR TOOL IS ITS ICON; its name slides out on hover (Pavan,
+   2026-10-22) — 12px, a darker grey, never black. NO FILL, ever: not on
+   hover, not when on. WHILE IT IS ON — the column search row open
+   (aria-pressed), a menu open (aria-expanded; the tooltip owns data-state)
+   — the name stays out. */
+const BAR_TOOL =
+  "group/tool h-8 gap-0 px-2 text-xs font-normal text-muted-foreground transition-[gap] duration-200 hover:bg-transparent hover:gap-1.5 hover:text-muted-foreground focus-visible:gap-1.5 aria-pressed:gap-1.5 aria-expanded:gap-1.5 dark:hover:bg-transparent";
+function Reveal({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/tool:max-w-48 group-hover/tool:opacity-100 group-focus-visible/tool:max-w-48 group-focus-visible/tool:opacity-100 group-aria-pressed/tool:max-w-48 group-aria-pressed/tool:opacity-100 group-aria-expanded/tool:max-w-48 group-aria-expanded/tool:opacity-100">
+      {children}
+    </span>
+  );
+}
+
+/** STACKED CARDS — the board's icon in the display switch (Pavan's reference). */
+function CardsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="4" y="3.5" width="16" height="7.5" rx="2.5" />
+      <rect x="4" y="13" width="16" height="7.5" rx="2.5" />
+    </svg>
+  );
+}
+
 /** Icon button in the toolbar, wrapped in a tooltip. The DS's `IconTool`. */
-function IconTool({
+export function IconTool({
   label,
   view,
   active,
@@ -387,15 +411,16 @@ export function ListToolbar<K extends string>({
                 aria-pressed={columnFiltersOpen}
                 onClick={onToggleColumnFilters}
                 className={cn(
-                  (columnFiltersOpen || columnFilterCount > 0) &&
-                    "bg-accent text-foreground"
+                  inBar
+                    ? BAR_TOOL
+                    : (columnFiltersOpen || columnFilterCount > 0) && "bg-accent text-foreground"
                 )}
               >
                 <TextSearch />
-                {inBar && "Search by column"}
+                {inBar && <Reveal>Search by column</Reveal>}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent className={cn(inBar && "hidden")}>
               {columnFiltersOpen ? "Hide column search" : "Search by column"}
             </TooltipContent>
           </Tooltip>
@@ -408,14 +433,14 @@ export function ListToolbar<K extends string>({
                   variant="ghost"
                   size={inBar ? "sm" : "icon-sm"}
                   aria-label="Search by column"
-                  className={cn(colQuery.trim() && "text-foreground")}
+                  className={cn(inBar ? BAR_TOOL : colQuery.trim() && "text-foreground")}
                 >
                   <TextSearch />
-                  {inBar && "Search by column"}
+                  {inBar && <Reveal>Search by column</Reveal>}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent>Search by column</TooltipContent>
+            <TooltipContent className={cn(inBar && "hidden")}>Search by column</TooltipContent>
           </Tooltip>
           <PopoverContent align="end" className="w-64 space-y-2 p-3">
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -464,14 +489,16 @@ export function ListToolbar<K extends string>({
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size={inBar ? "sm" : "icon-sm"}
                   aria-label="Show/Hide columns"
+                  className={cn(inBar && BAR_TOOL)}
                 >
                   {inBar ? <Settings2 /> : <Columns3 />}
+                  {inBar && <Reveal>Show/hide columns</Reveal>}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent>Show/Hide columns</TooltipContent>
+            <TooltipContent className={cn(inBar && "hidden")}>Show/Hide columns</TooltipContent>
           </Tooltip>
           <PopoverContent align="end" className="w-56 p-1">
             <div className="flex items-center justify-between px-2 py-1.5">
@@ -616,14 +643,16 @@ export function ListToolbar<K extends string>({
                   <PopoverTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="icon-sm"
+                      size={inBar ? "sm" : "icon-sm"}
                       aria-label="Card fields"
+                      className={cn(inBar && BAR_TOOL)}
                     >
                       <LayoutList />
+                      {inBar && <Reveal>Card configuration</Reveal>}
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Card fields</TooltipContent>
+                <TooltipContent className={cn(inBar && "hidden")}>Card fields</TooltipContent>
               </Tooltip>
               <PopoverContent align="end" className="w-60 p-1">
                 <div className="flex items-center justify-between px-2 py-1.5">
@@ -815,35 +844,40 @@ export function ListToolbar<K extends string>({
         {/* ONE VIEW, NO SWITCH (Pavan, 2026-10-01). A table-only list gets no
             Table-view icon — a switch with one position switches nothing.
             The column tools after it stay: they belong to the table. */}
+        {/* THE DISPLAY SWITCH — ONE SEGMENTED CONTROL (Pavan, 2026-10-23,
+            after his reference): a bordered pill of segments, the view you
+            are on filled grey; icons that say the view — a list for the
+            table, stacked cards for the board, a map. */}
         {multiView && (
-          <IconTool
-            label="Table view"
-            view="table"
-            active={view === "table"}
-            onClick={() => onViewChange("table")}
-          >
-            <Table2 />
-          </IconTool>
-        )}
-        {boardView && (
-          <IconTool
-            label="Board view"
-            view="board"
-            active={view === "board"}
-            onClick={() => onViewChange("board")}
-          >
-            <KanbanSquare />
-          </IconTool>
-        )}
-        {mapView && (
-          <IconTool
-            label="Map view"
-            view="map"
-            active={view === "map"}
-            onClick={() => onViewChange("map")}
-          >
-            <MapIcon />
-          </IconTool>
+          <div role="group" aria-label="Display" className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-fp-surface-1b">
+            {[
+              { key: "table" as const, label: "Table view", icon: <List />, on: true },
+              { key: "board" as const, label: "Board view", icon: <CardsIcon />, on: boardView },
+              { key: "map" as const, label: "Map view", icon: <MapIcon />, on: mapView },
+            ]
+              .filter((v) => v.on)
+              .map((v, i) => (
+                <Tooltip key={v.key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={v.label}
+                      aria-pressed={view === v.key}
+                      data-view={v.key}
+                      onClick={() => onViewChange(v.key)}
+                      className={cn(
+                        "inline-flex w-9 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-fp-row-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 [&_svg]:size-4",
+                        i > 0 && "border-l border-border",
+                        view === v.key && "bg-muted text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {v.icon}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{v.label}</TooltipContent>
+                </Tooltip>
+              ))}
+          </div>
         )}
 
         {/* A ONE-VIEW LIST KEEPS ITS TOOLS IN THE ROW — there is no switch
@@ -865,7 +899,7 @@ export function ListToolbar<K extends string>({
         createPortal(
           <div className="flex h-11 items-center justify-between gap-3 px-3">
             <span className="min-w-0 truncate text-sm text-muted-foreground">{viewStatement}</span>
-            <span className="flex shrink-0 items-center gap-6">{view === "table" ? tableTools : boardTools}</span>
+            <span className="flex shrink-0 items-center gap-1">{view === "table" ? tableTools : boardTools}</span>
           </div>,
           viewToolsInto
         )}

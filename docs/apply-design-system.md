@@ -112,16 +112,16 @@ step is a second answer to a question already answered. `shadow-fp-surface`
 survives for things that genuinely float *over* content: a hovered card, a
 popover.
 - **Global top bar:** `bg-background` + a bottom `border-border` hairline — app
-  chrome, full width above the rail + content. It shares the ground's colour.
+  chrome, full width above the rail + content. It shares the ground's color.
 - **Light:** ground `#efefeb` (WARM, under cool paper — the temperature does the separating) → drawer `#fafbf8` → content layer `#ffffff`, with
   cards and fields stepping *down* off the content layer at `#f4f5f8`. The rail is
-  the ground's own colour and disappears into it.
+  the ground's own color and disappears into it.
 - **FP:** ground/rail `#080808` → drawer `#11161d` → content `#1b2028`, inner
   `#2a2f37`.
 - **A field is filled, not transparent.** Transparent meant a field took whatever
   was behind it and could only be found by its border; filled white it is the
   same object on a card as on the content layer.
-- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does
+- The rail hover-expands to a 256px overlay that **stays `bg-rail`** (the color does
   not change on expand). `--drawer` (#292929) and `--fp-lane` are **legacy** — no
   longer bound to the main nav / Kanban lanes.
 - The content layer has **no outer border and no shadow** — it separates by value.
@@ -135,11 +135,11 @@ popover.
 | `bg-popover` | `#ffffff` | `#1b2028` | menus, popovers, dialogs, sheets — anything that floats over content |
 | `bg-primary` | `#090c0f` | `#f8fafc` | **neutral primary — the default CTA** |
 | `bg-brand`/`text-brand` | `#fa6400` | `#fa6400` | brand orange — the product mark, the focus ring, and light's selection hue |
-| `bg-accent-violet` · `text-accent-violet-foreground` | `#8b5cf6` · `#ffffff` | same | **the accent** (2026-10-16) — the system's second colour: it HIGHLIGHTS (picked days/dates of a schedule, recommendations, what needs attention). Not `--accent`, which is the grey hover |
+| `bg-accent-violet` · `text-accent-violet-foreground` | `#8b5cf6` · `#ffffff` | same | **the accent** (2026-10-16) — the system's second color: it HIGHLIGHTS (picked days/dates of a schedule, recommendations, what needs attention). Not `--accent`, which is the gray hover |
 | `bg-accent-violet-soft` · `text-accent-violet-ink` | violet 12% wash · violet 70% into the foreground | same recipe | the accent quietly — a pill (`color="violet"`), a tint behind a figure |
 | `text-muted-foreground` | `#596475` | `#9ca3af` | secondary / label |
 | `bg-accent` | `#e5e7eb` | `#2a2f37` | hover fill — *the pointer is here* |
-| `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, grey in dark |
+| `bg-selected` | `#fee8d9` | `#2a2f37` | **selection fill — *this is the one*.** Brand tint in light, gray in dark |
 | `text-selected-foreground` | `#a33f00` | `#f0f2f5` | its label, icon and indicator |
 | `border-selected-border` | `#fdb98c` | `#575757` | its rim, where one is drawn |
 | `bg-destructive` | `#ef4444` | `#f87171` | danger / delete |
@@ -147,7 +147,7 @@ popover.
 | `border-input` | `#c4c4c9` | `#363c45` | field boundary |
 | `ring-ring` | `#fa6400` | `#fa6400` | focus ring — **brand orange**, 2px |
 | `bg-rail` | `#efefeb` | `#080808` | tier-1 rail (merges into the ground) |
-| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating grey (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
+| `bg-sidebar` | `#fafbf8` | `#11161d` | tier-2 drawer + rail hover-overlay. A DELIBERATELY QUIET EDGE in light: it belongs to the content layer rather than standing off from it, and measures ~1.03:1 against the ground by design. A separating gray (`#e5e9f0`, 1.11:1 — dark's own middle rung) was tried and reads as a heavy slab beside white; light's ladder is compressed at the top and this one joins rather than steps |
 | `bg-sidebar-primary` | `#f4f5f8` | `#2a2f37` | the 24px section mark — one card step AWAY from the drawer it sits on (down in light, up in dark), **not** the brand: orange put the product mark twice on one screen. Re-measure whenever `--sidebar` moves |
 | `bg-sidebar-accent` | `#fee8d9` | `#2a2f37` | the drawer's active item (= `--selected`) |
 | `bg-fp-surface-base` | `#efefeb` | `#080808` | the app ground, by its own name |
@@ -172,7 +172,7 @@ The callout is a solid fill with white text in **light**; in **dark** it drops t
 the near-black 950 of its own hue and the status moves to a 1px rim. The rim
 token exists in both themes and is `transparent` in light, so the box does not
 change height between them. The inline banner carries no fill of its own — it
-sits on `bg-fp-card-1` and says its status in the text colour.
+sits on `bg-fp-card-1` and says its status in the text color.
 
 | Status | Fill | Rim (dark only) | Inline accent |
 |---|---|---|---|
@@ -183,7 +183,7 @@ sits on `bg-fp-card-1` and says its status in the text colour.
 
 In light the four fills are the **800** of their hue and the four accents the
 **700** — one scale step apart, enough to separate a fill from a mark on it and
-close enough that the two never read as two colours. Info is BLUE, not indigo:
+close enough that the two never read as two colors. Info is BLUE, not indigo:
 indigo read as purple on the light ground, and purple is not a status anyone
 has been taught.
 
@@ -204,7 +204,7 @@ The full verbatim stylesheet is in [`6-execute.md`](6-execute.md).
 
 ---
 
-# UI · Rules & behaviour  *(canonical)*
+# UI · Rules & behavior  *(canonical)*
 
 The normative rules for the visual surface. **Single source** — Do's/Don'ts, Common
 mistakes, and Checks derive from these.
@@ -358,7 +358,7 @@ ribbons and accents, but **color usage is governed, not free**.
 - **Status semantics** (Success/Warning/Error etc.) exist as variants in the
   DS components, but render **neutral** in generated output until a usage
   rule defines which records get which color and why. This applies to:
-  order statuses (Unassigned · Active · Blocked · Cancelled · etc.), tag
+  order statuses (Unassigned · Active · Blocked · Canceled · etc.), tag
   chips (Gold/Silver/Platinum Customer, High/Less Priority, etc.), pricing
   flags (P/M), and severity banners (per §3 diagnostic disclosure — those
   WERE earned: warning/error/info already have a usage rule).
@@ -542,7 +542,7 @@ A two-tier header reads beautifully and takes three things away:
 the sort glyph, all of it — are unusable grouped, because the hook knows
 nothing about groups. Everything has to be rebuilt by hand and constrained.
 
-**So default to flat and equal, every column sorting.** V1.1's programme
+**So default to flat and equal, every column sorting.** V1.1's program
 list was the one exception (terms, coverage, economics) until Pavan flattened
 it too on 2026-10-01 — no table in the prototype is grouped now. Group only
 if he asks.
@@ -740,7 +740,7 @@ the list once per tank.
   categories, tags — the cell stays one cell (`TableCellMultiSelect`). Rows
   are made only when each pick is a row of its own.
 - **The checkbox is the DS checkbox, its tick in `primary-foreground`.** A
-  list row mutes bare icons; the tick names its colour so it never goes grey
+  list row mutes bare icons; the tick names its color so it never goes gray
   on the filled box.
 
 - **Every other picker in such a table is a value INSIDE a row** (a line's
@@ -910,7 +910,7 @@ The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
 
 **The style** — every icon, and any new one added to the set:
 - Lucide's **24 grid**, round caps and joins, `currentColor`.
-- A **soft fill of its own colour** (22%) inside the outline.
+- A **soft fill of its own color** (22%) inside the outline.
 - Anything that holds liquid fills **only to its level**, and the level is a
   **wave**, not a straight line — so it reads as liquid. Nothing else inside
   the shape (no ribs, no hatching).
@@ -928,23 +928,23 @@ The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
 **A change against a period** — the chip after the figure:
 `bg-fp-trend-up-bg` / `text-fp-trend-up` (#3aac73 on #e7f6ef) with a small
 filled ▲ when up, `bg-fp-trend-down-bg` / `text-fp-trend-down` (#b74e6d on
-#fae7ec) with ▼ when down, `bg-muted` grey "Same" — and "vs N the previous …"
+#fae7ec) with ▼ when down, `bg-muted` gray "Same" — and "vs N the previous …"
 under it. The same green for a positive change everywhere in the app.
 
 **ONE marker, everywhere (Pavan, 2026-10-20)** — `<TrendChip>` in
 `src/components/ui/trend-chip.tsx`. Every figure card in every module uses
 it: no arrows in circles, no orange, no `destructive` red for a fall. Red is
-always `--fp-trend-down`. `good` sets the colour when down is good news (late
+always `--fp-trend-down`. `good` sets the color when down is good news (late
 orders down → green ▼). **No trend lines on figure cards** — the term's
 `MetricIcon` sits there instead (Orders overview, 2026-10-20).
 
 ## 10l. Alert banner motion — every pill sweeps, every CTA shines (Pavan, 2026-10-20)
 
 In the DS `AlertBanner` (Sales Orders, Service Work, Portal Orders and
-Invoices — one component, so one behaviour):
+Invoices — one component, so one behavior):
 - **Every pill sweeps** — the tag pill ("Needs action", "Overdue", "At risk")
   and the count pill — whatever its kind: a bar in a deeper shade of the
-  pill's own colour (red, orange, blue, green) moves through the fill. **Only
+  pill's own color (red, orange, blue, green) moves through the fill. **Only
   while the banner is collapsed**; opened, the list is the attention.
 - **Every CTA the banner carries shines** — the banner's own action and each
   item's action ("Create Order Request", "Order the rest") get the white
@@ -982,21 +982,19 @@ the first control of the Accessibility panel. Everything lives in the
 `ModuleSidebar`). Its panel opens beside the nav, changes the page live, and
 is saved:
 
-In this order (Pavan, 2026-10-21): Theme on top; Text size and Text colour
-together; Component stroke and Component background; a divider; Screen size.
+In this order (Pavan, 2026-10-21): Theme on top; Text size; Stroke contrast and Contrast (Text color removed, 2026-10-24); a divider; Display size. Text size and Display size are STEPS like Android's "Display size and text" (Pavan, 2026-10-23): − · a track with a dot per step · +. No preview card — the page itself is the preview.
 Reset is the header's icon alone.
 
 | Control | Range | Moves |
 |---|---|---|
 | Theme | Light · Dark | the same switch as the header's |
-| Text size | 100% – 130% | **the text only** — type ramp and weights; a unit widens only when the bigger text would be cut inside it; table headers wrap |
-| Text colour | Default → Maximum | main text (to pure black / white), secondary and coloured text, and orange text (`--fp-brand-ink`); past the middle, faded labels (main or muted text at 35–80%, e.g. nav items) come up to full. **The brand fill — the logo, brand buttons — never moves.** It never sits below Component background (rises with it) |
-| Component stroke | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border colour (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
-| Component background | Default → Maximum | **whites stay white, greys go darker** toward dark grey — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker grey**, not a deeper beige; the **selected nav item** goes much darker; text on those greys goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no grey between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
-| Screen size | stepped: 16″ · 24″ · 34″ · TV (100 · 110 · 125 · 150%), or Auto | everything, by one zoom |
-| Text on a colour fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
+| Text size | 6 steps, 100% – 130% | **the text only** — type ramp and weights. No box widens (nav, lanes, cards, sheets, table columns keep their width); text wraps onto the next line and the card or row grows taller — except record numbers and dates, which stay on one line and widen their table column just enough (2026-10-23) |
+| Stroke contrast | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border color (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
+| Contrast | Default → Maximum | **whites stay white, grays go darker** toward dark gray — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker gray**, not a deeper beige; the **selected nav item** goes much darker; text on those grays goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no gray between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
+| Display size | 5 steps: 50 · 75 · **100** · 125 · 150%, 100% in the middle; no Auto (2026-10-23) | everything, by one zoom |
+| Text on a color fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
 
-The WCAG point sits at each contrast slider's middle (not labelled); Maximum
+The WCAG point sits at each contrast slider's middle (not labeled); Maximum
 is its far end.
 
 **Maximum** (the far end, past WCAG — `.a11y-max` blocks) darkens every rim
@@ -1007,21 +1005,21 @@ and pushes text further while keeping it at 7:1 on the darker surfaces.
 pinned beside the nav at the window's foot (not a measured popover, which a
 zoomed page misplaces) and never wider or taller than the window. **Reset to
 default** sits at its top; the same reset is **⌘⌥0** (Ctrl+Alt+0) anywhere,
-and `?a11y=reset` in the address. When a Screen size leaves the window
+and `?a11y=reset` in the address. When a Display size leaves the window
 narrower than the app's 1280px layout, the **page scrolls sideways** (with a
 visible bar) instead of clipping — every control stays reachable.
 
 **The WCAG point** is the `.wcag:not(.dark)` / `.dark.wcag` blocks in
 `src/index.css`: text **AAA 7:1** on every surface, controls and graphics
 **AA 3:1**, every rim and divider **3:1+**, surfaces a full step apart (so
-cards hold up mirrored or projected). Each value is the nearest colour of
+cards hold up mirrored or projected). Each value is the nearest color of
 the **same hue** that clears the bar. `src/components/theme/a11y.ts` mixes
 each token between the two points either side of the slider; text on a fill
 switches at a quarter rather than blending.
 
 **Checked, not remembered.** `npm run eval` → `wcag-contrast` measures every
 pairing the screens actually use — each class string that sets a background
-and a text colour together, with their opacities (68 today) — plus a hand
+and a text color together, with their opacities (68 today) — plus a hand
 list for rims, dividers, lanes and charts, and fails any WCAG or Maximum pair
 under its bar; `npm run wcag` prints Light, Dark, WCAG and
 Maximum for each theme.
@@ -1032,12 +1030,12 @@ Maximum for each theme.
 **A new fixed width that holds text** is written `w-[calc(Npx*var(--fp-scale))]`
 (inside a sheet), or uses `--fp-nav-k` / `--fp-lane-k`; a new kind of unit is
 added to `UNITS` in `a11y.ts` so it's fitted too.
-**A new colour token** gets its WCAG light and dark values, a pair in
+**A new color token** gets its WCAG light and dark values, a pair in
 `scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke, Background or
 Text list (or `ON_FILL` if it's text on a fill).
 
 **The nav item's icon** is `AccessibilityIcon` (`src/components/theme`) — a dot with
-five widening rays fanning right, filled in the text colour (Pavan, 2026-10-22).
+five widening rays fanning right, filled in the text color (Pavan, 2026-10-22).
 
 ## 10o. Dark theme layers — separated by default (Pavan, 2026-10-21)
 
@@ -1075,14 +1073,14 @@ there is none. **Save view** suggests a name from the filters on (placeholder; �
 takes it to type on; Save with the box empty saves it): the business (or the line of
 service when no business), then the other facets in panel order, at most three parts
 joined " · " — "Transport · Priya Raman". A saved view with changes shows an **update
-icon** beside its name — the two-arrow refresh glyph (`RefreshCw`), grey; tooltip
+icon** beside its name — the two-arrow refresh glyph (`RefreshCw`), gray; tooltip
 "Update changes". Logic: `filterMemory.ts`.
 
-**Sorted column, in greys.** Any `th` with `aria-sort` sits a shade darker
+**Sorted column, in grays.** Any `th` with `aria-sort` sits a shade darker
 (`--chip`) with a semibold, full-ink label (rule in `index.css`). The icon is an
 arrow (`ArrowUp` / `ArrowDown`), not a chevron; unsorted columns keep a faint
-`ChevronsUpDown`. ListTable gives the sorted column's cells a very light grey
-(`.fp-sorted-cell`, half the row hover). No brand colour, no underline.
+`ChevronsUpDown`. ListTable gives the sorted column's cells a very light gray
+(`.fp-sorted-cell`, half the row hover). No brand color, no underline.
 
 **Column widths come from the content, and the table always fills** (Pavan,
 2026-10-21/22). A column starts at its widest RENDERED cell — text, "+N" chips, pills,
@@ -1094,6 +1092,13 @@ contact takes the room (ListTable does this for every list). Wider than the fram
 table scrolls. Customer starts at 250, Ship-to / Ship-Tos 170; rule tables give Schedule
 and the column before it +20. Hand-tuned widths per module come from Pavan. Numbers:
 `docs/ds/ui/column-widths.md`.
+
+**Every table page is the standard list** (Pavan, 2026-10-22) — `StandardList`
+(`prototypes/unified-view/StandardList.tsx`): the view row (All, saved views, Export),
+search + Filters, the chip shelf, the view bar, the table, pagination. The Customer
+Portal's lists and Service Work's reference pages (Technicians, Price Book, Parts,
+Agreements, Maintenance, Compliance, Performance) use it; their Filters come from their
+own category columns (2–12 shared values, not the first column, not numbers/dates).
 
 **Everything is left-aligned** (Pavan, 2026-10-22) — every column, header and cell,
 numbers and money included, in every table (lists, nested and sheet tables, dashboard
@@ -1111,8 +1116,10 @@ after a trial on 3PL Delivery Orders): the view's tools sit in a bar ON the view
 above the table header (`ListTable topBar`, or the hand-built recurring tables' frame),
 or above the lanes (`BoardWithBar`). LEFT: a statement — "62 orders · Thu, Oct 22,
 2026" (table), "62 orders across 9 of 9 lanes · …" (board, replacing the footer line),
-"150 customers" where a list has no date. RIGHT: the view's tools — "Search by
-column", 24px, the settings icon for Show/Hide columns (table); Card fields (board).
+"150 customers" where a list has no date. RIGHT: the view's tools — Search by
+column, Show/hide columns 4px apart like the view icons (table); Card configuration (board) — each ICON ONLY,
+its name sliding out on hover or focus and STAYING out while the tool is on (column
+search open, its menu open), 12px in the muted gray (never black), no fill or outline.
 Wiring: `useViewBar()`, `ListToolbar viewToolsInto + viewStatement`, `ViewStatement`.
 
 **One date picker** — `src/components/ui/date-picker.tsx`, used by every screen that
@@ -1135,7 +1142,7 @@ picks a date (filters and form fields, every module):
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,
 `accent-violet-foreground` (white), `accent-violet-soft` (12% wash),
-`accent-violet-ink` (readable text). It is the second colour after the brand,
+`accent-violet-ink` (readable text). It is the second color after the brand,
 and the two never trade jobs:
 
 - **The brand (orange) says "you chose this"** — selection (`--selected`),
@@ -1151,17 +1158,17 @@ and the two never trade jobs:
     `violet` pill).
 - **One violet.** `fp-lane-violet` and the `violet` pill map to the accent;
   never a second violet hex. `fp-lane-purple` (#6366f1) is an indigo LANE
-  colour, not the accent.
-- **`--accent` is not the accent.** It is shadcn's name for the grey hover and
+  color, not the accent.
+- **`--accent` is not the accent.** It is shadcn's name for the gray hover and
   keeps that job.
 
 ## 10b. The DS ships hues; the application binds meaning
 
 Added 2026-09-18. The DS already says a chip renders neutral until a usage rule
-binds a colour to a meaning (§9). This is the other half of it: **where that
+binds a color to a meaning (§9). This is the other half of it: **where that
 binding is written down.**
 
-- **Every application keeps ONE colour-mapping table**, in its own docs, listing
+- **Every application keeps ONE color-mapping table**, in its own docs, listing
   each hue against the single thing it means there. Lane fills, code-disc tones,
   status-chip channels, pastel badges — all of it, in one place, so a hue cannot
   come to mean two things in two modules of the same product.
@@ -1171,7 +1178,7 @@ binding is written down.**
   swatch.
 - **Four tone channels, and a lifecycle longer than four shares them.** That is
   allowed and is not a defect — the label always says which stage it is, so
-  colour is never the only carrier. What is NOT allowed is two stages sharing a
+  color is never the only carrier. What is NOT allowed is two stages sharing a
   channel when one of them is the exception: the failure channel belongs to the
   one state where something has gone wrong.
 - **A count of one meaning is a badge nobody needs.** "Normal" priority, a
@@ -1193,15 +1200,15 @@ status sits in its lifecycle.**
 | `info` | **simply true, asks nothing** — somebody is on it, it is under way, it exists | blue | Assigned · Ongoing · Scheduled · Active |
 | `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Finalized |
 | `critical` | **a warning**, or a state important enough to change a plan | red | Blocked · Declined · Compliance expired · Over limit |
-| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | grey | Draft · Cancelled · Ended · Inactive |
+| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | gray | Draft · Canceled · Ended · Inactive |
 
-- **A column is a place, not a state.** Every badge grey made the lane the only
+- **A column is a place, not a state.** Every badge gray made the lane the only
   thing carrying meaning, and in one lane a job waiting on parts and a
   brand-new job looked identical. A dispatcher scans a board for the amber ones.
 - **Being active is `info`, not `success`.** Nothing has been achieved by a
   customer existing. Green is kept for a thing that is DONE, so that it means
   something when it appears.
-- **Cancelled is not red.** It is a terminal non-event, not a problem to solve,
+- **Canceled is not red.** It is a terminal non-event, not a problem to solve,
   and a lane of red badges would be the loudest thing on the board saying the
   least. Red stays for the state that genuinely goes wrong — and a lifecycle
   with no such state has no red, which is correct rather than an oversight.
@@ -1211,11 +1218,11 @@ status sits in its lifecycle.**
 - **A price in is not a thing done.** "Quotation received" is `caution`: it is
   now the dispatcher's turn to award. `success` is Finalized.
 - **The normal state says nothing.** Maintenance "OK" is `neutral`; the
-  exceptions carry the colour.
+  exceptions carry the color.
 
 **An application declares KINDS, never tones.** `StatusChip`'s tones are the
 DS's channels and their names are hues in disguise (`processing` is amber). A
-map written in them is a map written in colours — which is how "Assigned" came
+map written in them is a map written in colors — which is how "Assigned" came
 to be green in one module, amber in another and blue in a third, each author
 reaching for a swatch. The DS's `StatusChip` ships `info` (blue, on
 `--fp-banner-accent-info`) as its fifth channel for this rule.
@@ -1232,7 +1239,7 @@ Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
 - **No dot beside a status label.** `text` (the default) and `soft` both draw
   the pill since 2026-10-09 (§11b), so in both the dot repeated a tone the
   chip was already carrying and spent 12px of a control whose whole job is to be
-  small. The word is the status; the colour is a second channel on the same
+  small. The word is the status; the color is a second channel on the same
   word, not a third element beside it.
 - **The dot is asked for by name, never arrived at.** `variant="dot"` still
   exists, for the one case where the dot IS the tone — a dense grid where the
@@ -1257,10 +1264,10 @@ before it was written down. The component is `Pill` (`ui/pill.tsx`).
   draws the pill for `text` and `soft` alike, so a status reads the same in a
   table cell, a sheet header and on a board card. `variant="dot"` is unchanged
   and stays opt-in.
-- **Colour is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
-  `critical` — so the same kind is the same colour in every module. **The one
-  exception is a colour the user chooses**: where a module lets the user pick a
-  colour (Sales stages and order types, in Sales Settings), `color` takes the
+- **Color is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
+  `critical` — so the same kind is the same color in every module. **The one
+  exception is a color the user chooses**: where a module lets the user pick a
+  color (Sales stages and order types, in Sales Settings), `color` takes the
   DS lane palette over the kind, and that choice is kept wherever the value
   shows.
 - **Not pills:** a counter inside a button or a nav item (`BadgeNumber`), a
@@ -1278,17 +1285,17 @@ before it was written down. The component is `Pill` (`ui/pill.tsx`).
 
 Red — a pill, a disc, a lane strip, a word — means **something is wrong or
 about to be** (Urgent, Late, Overdue, Unpaid, Blocked, Over SLA). A TYPE, a
-category, a lane that is just a place, Cancelled: never red. A categorical
-colour that would land on red takes another hue (the rose type disc's pill is
-pink; Service's Pump replace is green; Service's Cancelled lane is grey).
+category, a lane that is just a place, Canceled: never red. A categorical
+color that would land on red takes another hue (the rose type disc's pill is
+pink; Service's Pump replace is green; Service's Canceled lane is gray).
 
 ### A table's Type column is a pill (Pavan, 2026-10-16)
 
 Every list's **Type** column shows the type's FULL WORD in a pill of its
-colour — the Sales orders table's treatment — in 3PL Delivery Orders, Service
+color — the Sales orders table's treatment — in 3PL Delivery Orders, Service
 Work and wherever else a table lists a type. The round code disc (D, EM, M…)
 stays only on BOARD CARDS, where space is a letter; its hue carries over to the
-pill (`discTonePill`), so a type is the same colour on the card and in the row.
+pill (`discTonePill`), so a type is the same color on the card and in the row.
 
 ## 11c. Skeletons shimmer (Pavan, 2026-10-10)
 
@@ -1308,7 +1315,7 @@ shape it is about to take.
   centred on one of its corners), grouped 2 × 2 so they meet as half discs,
   full circles and loose quarters; no empty cells. Seeded — the same every
   time.
-- **Colour:** two very light greys only — the foreground at 5% and 3%.
+- **Color:** two very light grays only — the foreground at 5% and 3%.
   Never a hue.
 - **Size:** one scale (2.7). Do not resize it per card.
 - **Placement:** the last child of the card's flex column, `flex-1`; it
@@ -1362,9 +1369,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't give a field the divider's weight** — in light the border is the only
   thing that makes a field a field.
 
-## Colour mapping *(§10b)*
+## Color mapping *(§10b)*
 ### Do
-- **Keep one colour-mapping table per application**, listing each hue against the single thing it means there.
+- **Keep one color-mapping table per application**, listing each hue against the single thing it means there.
 - **Treat a mapping as a decision**, written down — not as something inherited from the swatch's name.
 
 ### Don't
@@ -1386,7 +1393,7 @@ Anti-patterns for the visual surface, each pointing back to [`2-rules.md`](2-rul
 - **Radius** — ❌ `rounded-[5px]` · ✅ the scale: `rounded-md` (buttons/inputs), `rounded-lg` (cards).
 - **Icons** — ❌ Tabler / Hugeicons / Phosphor / Remix / emoji · ✅ `lucide-react` only.
 - **Light mock** — ❌ copy the white cards / a foreign palette · ✅ re-map every color to FP tokens (dark-primary). Translate, don't trace.
-- **Recolouring an `outline` Button** — ❌ `hover:bg-status-success` alone · ✅ name the dark half too: `hover:bg-status-success dark:hover:bg-status-success`. The `outline` variant ships `dark:hover:bg-input/50`; that is the same specificity and stacks LATER, so in dark it wins and the fill never changes colour — while `hover:text-*-foreground` still applies, landing near-black text on the variant's own grey fill. The symptom is a hover state **less readable than the resting one**. (Found 2026-09-22 on Finalize vendor.)
+- **Recolouring an `outline` Button** — ❌ `hover:bg-status-success` alone · ✅ name the dark half too: `hover:bg-status-success dark:hover:bg-status-success`. The `outline` variant ships `dark:hover:bg-input/50`; that is the same specificity and stacks LATER, so in dark it wins and the fill never changes color — while `hover:text-*-foreground` still applies, landing near-black text on the variant's own gray fill. The symptom is a hover state **less readable than the resting one**. (Found 2026-09-22 on Finalize vendor.)
 - **A sticky bar in the surface it sits on** — ❌ `bg-popover` on a bar inside a `bg-popover` sheet · ✅ a step away from it (`bg-fp-card-1`). Opaque is not the same as distinguishable: nothing scrolls through it, but nothing says it is pinned either, and its top rule reads as one more row rule. (Found 2026-09-22 on the pricing totals bar.)
 
 
@@ -1422,7 +1429,7 @@ in Light, not FP-dark:
 | `--popover` | `--fp-surface-1b` | both themes (`#1b2028` / `#ffffff`) |
 | `--accent` | `--fp-card-1` | FP-dark, both `#2a2f37` |
 | ~~`--background`~~ | ~~`--card`, `--popover`, `--fp-surface-1a`, `--fp-surface-1b`~~ | Light — **resolved 2026-09-11**: `--background` went back to the tinted Surface Base (`#efefeb`), and `--fp-surface-1a` (and so `--card`) moved to the inner-panel step `#f4f5f8`. Only `--popover`/`--fp-surface-1b` are still white together, which is correct — a popover IS the content layer, lifted. |
-| `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in grey, and the grey it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
+| `--accent` | `--selected` | **FP-dark, both `#2a2f37`.** Deliberate: dark selects in gray, and the gray it selects in is the raised-surface step. They differ by what carries them — a hover is transient, a selection persists and takes `--selected-foreground` as well — but a fill that has to read as *chosen* against a *hovered* neighbour cannot rely on the fill alone in this theme. |
 | ~~`--fp-outline-2`~~ | ~~`--accent`~~ | Light — **resolved** 2026-08-27, `--accent` moved to `#e5e7eb` |
 
 This family has now caught nine token pairs, eight of them live: the same sync
@@ -1447,13 +1454,13 @@ shadow alone; if you need the old tinted ground, name `--fp-surface-base`. Befor
    `--shadow-fp-overlay`, and verify the separation rather than assuming it.
 6. **Do not borrow a control-emphasis token for a background wash.** `--accent`
    is sized to fill a button or a menu row; behind a full table row it reads as
-   a block of colour. Measured, light rows on `--accent` sat `[53,46,36]` off
+   a block of color. Measured, light rows on `--accent` sat `[53,46,36]` off
    `#ffffff` when selected. A wash needs its own token — see `--fp-row-hover`
    / `--fp-row-selected`. The tell is scale: the larger the painted area, the
    quieter the value has to be for the same perceived weight.
 
-## Colour mapping *(§10b, added 2026-09-18)*
-- [ ] Every hue in use appears in the application's own colour-mapping table.
+## Color mapping *(§10b, added 2026-09-18)*
+- [ ] Every hue in use appears in the application's own color-mapping table.
 - [ ] No hue means two different things in two modules of one product.
 - [ ] The failure channel is used only where something is wrong and somebody must act.
 - [ ] No chip that every row carries — render the absence instead.
@@ -1492,19 +1499,19 @@ ad-hoc margins. Rhythm: 96px between sections, 24px eyebrow→title, 16px title�
 ## FP-composed patterns (rebuild from primitives + tokens)
 - **App shell** — Tier-0 global top bar + tier-1 rail + optional tier-2 drawer + content layer; laid out as a `flex-col` (top bar on top) over a `flex` row (rail + padded region). Spacing laws: 8px gaps/outer margin, 16px content-body inset.
 - **Global top bar** — full-width `bg-background border-b border-border` band (`h-12`); three equal flex thirds: **brand logo** left · **global search** centered (`Input` + `Search` icon + `⌘K` `Kbd`) · **notifications + account** right (`Bell` with an unread dot · `Avatar` + `DropdownMenu`).
-- **Rail (tier-1)** — 52px `bg-rail`, hover-expands to a 256px overlay that **stays `bg-rail`** (the colour does not change on expand; 52px footprint reserved, no reflow). **Navigation only** — the brand lives in the top bar; a **module switcher** sits at the rail's top (opens in-place and pins the rail open).
+- **Rail (tier-1)** — 52px `bg-rail`, hover-expands to a 256px overlay that **stays `bg-rail`** (the color does not change on expand; 52px footprint reserved, no reflow). **Navigation only** — the brand lives in the top bar; a **module switcher** sits at the rail's top (opens in-place and pins the rail open).
 - **Compact content header** — the breadcrumb path **is** the header (no `text-2xl` title, no bottom divider); the tab row / toolbar pull up to ~12px beneath (`-mt-3.5` against the 16px body inset); breadcrumb crumbs `gap-1` (4px apart).
 - **Preset-view tabs** — a `line`-style tab bar at `text-xs`; the active tab's underline hugs the label; a `MoreHorizontal` menu (rename / delete / update) reveals on hover without extending the underline.
 - **Data table** — `rounded-md` with an **outer stroke** `border border-border` (the structural-divider weight — see Strokes; it is NOT `--fp-outline-1`, which is a card's rim); header on **`bg-fp-table-header`** (never `bg-fp-surface-1a` — in light both that and the content layer are `#ffffff`, and a header that is only a hairline stops being a header the moment the first row has one too); horizontal row dividers only (no vertical gridlines); status cells use `status-*` by row meaning. **Sticky header:** the table's own bordered box owns *both* scroll axes (neutralize the shadcn `Table` wrapper's inner `overflow-x-auto` — `[&_[data-slot=table-container]]:overflow-visible` — or its unconstrained height breaks sticky), the table sets **`border-separate border-spacing-0`** and the header sticks on its **CELLS** — `sticky top-0` on the first header row, `top-<height>` on a second tier (see §10d: collapsed, Chrome ignores z-index on the table and its rows, so a `sticky z-20` `<thead>` paints *underneath* the body; the row rule moves onto the cells with `[&>td]:border-b`), and the header cells carry a **solid `bg-fp-table-header`** + bottom hairline so rows scroll *under* the titles, never through them.
-- **Pill** — the DS's chip and badge, `Pill` (`ui/pill.tsx`), the default for every status, tag, flag and "+N" (§11b): `inline-flex h-7 rounded-full px-3 text-xs font-normal`, no border, a faint tint of the hue + text in that hue. `kind` (`neutral | info | caution | success | critical`) picks the colour; `color` (the lane palette, `PILL_COLORS`) overrides it only where the user chose a colour. `PillList` shows the first value and a "+N" pill that lists the rest on hover. `PILL_SHAPE` / `pillColorClass()` are exported so another chip (`StatusChip`) cannot drift from the recipe.
-- **Status chip** — `StatusChip` (`ui/status-chip.tsx`). Since 2026-10-09 `text` (the default) and `soft` both draw the **Pill**, tone matched to kind (`processing`→`caution`, `failed`→`critical`); it takes the same optional `color`. `dot` (token-coloured dot, neutral label — the quietest, for dense grids) is unchanged and opt-in. The dot is `aria-hidden` (it repeats the label) and colour is never the only carrier of meaning. **Tones are visual channels, not statuses** — per colour governance a status carries no colour until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
+- **Pill** — the DS's chip and badge, `Pill` (`ui/pill.tsx`), the default for every status, tag, flag and "+N" (§11b): `inline-flex h-7 rounded-full px-3 text-xs font-normal`, no border, a faint tint of the hue + text in that hue. `kind` (`neutral | info | caution | success | critical`) picks the color; `color` (the lane palette, `PILL_COLORS`) overrides it only where the user chose a color. `PillList` shows the first value and a "+N" pill that lists the rest on hover. `PILL_SHAPE` / `pillColorClass()` are exported so another chip (`StatusChip`) cannot drift from the recipe.
+- **Status chip** — `StatusChip` (`ui/status-chip.tsx`). Since 2026-10-09 `text` (the default) and `soft` both draw the **Pill**, tone matched to kind (`processing`→`caution`, `failed`→`critical`); it takes the same optional `color`. `dot` (token-coloured dot, neutral label — the quietest, for dense grids) is unchanged and opt-in. The dot is `aria-hidden` (it repeats the label) and color is never the only carrier of meaning. **Tones are visual channels, not statuses** — per color governance a status carries no color until a usage rule binds it, so the DS ships `success | processing | failed | info | neutral` and each application declares its own mapping (the table's lives in `statusTone()` in `tables-layout/data.ts`, from which the filled-Badge variant is *derived* so the two treatments cannot drift). **Contrast caveat (measured):** `dot` is safe on any surface (14.6 dark / 20.5 light) because its label stays `foreground`; `text` and `soft` fall below WCAG AA on **light** surfaces for the success and processing tones (text 3.30 / 3.19; soft 2.96 / 2.86; soft-failed 4.13) because the light `--status-*` values are too light to carry text on `#ffffff`. This is pre-existing, not new — the `destructive` Badge variant already ships the same recipe at 4.13 in light. The light `--status-success` / `--status-processing` values have since moved one step down their own ramp (green-600 -> green-700, amber-600 -> amber-700), which fixes `text` in light (3.30/3.19 -> 5.02/5.02). `soft` still lands at ~4.4 on light because a 10% tint of the label's own hue lifts the background faster than it darkens the text — large-text only until the tint stops being a straight alpha and becomes its own measured pair. Prefer `dot` or `text` on light surfaces. See `00-meta/token-provenance.md`.
 - **Pastel code disc** — a 22px pastel circle carrying a 12px initial, for dense rows where a full pill will not fit: `Badge shape="disc"` supplies the geometry, `CodeDisc` (`ui/code-disc.tsx`) is the wrapper that makes the accessible label non-optional (`label` feeds both the tooltip and `aria-label`, and the span is `tabIndex=0` so the tooltip is keyboard-reachable). Hues are generic (`--pastel-blue`, `--pastel-amber`) — applications bind meaning. *(Both pastel pairs were chosen in the repo and measure AAA; extending the set is a one-line change per pair — measure the pair before adding it. See `00-meta/token-provenance.md`.)*
 - **Bulk-attribute edit** — never a popover that commits on click. Three tiers by cardinality (scalar → single input; one-value-per-row → searchable select; a collection per row → multi-select), each opening a **dialog**, each taking the same two-step shape via `BulkEditDialog` (`components/bulk-edit/`): (1) picker, header leading with **scope + count**, primary gated until a value is picked; (2) per-row **before/after** preview, title becomes "View Summary", footer becomes `Go back` / `Confirm`; (3) commit → **toast**. Destructive replaces arm before they commit. **Why both steps earn their keep:** the operator must see the state that *already exists* on the target before piling onto it — `StandingItems` surfaces that standing state in step 1, `BeforeAfterTable` shows the delta in step 2. Collapsing to one step removes the only chance to notice you are about to replace something. `before` renders muted + `line-through` so a row reads as a replacement, with an em-dash fallback so "had nothing" and "had something" stay distinct. The dialog always reopens on step 1 — reopening mid-flow would offer a Confirm for a value the operator can no longer see. Body scrolls at `max-h-[55vh]`; header and footer stay put. **Inner panels use `bg-fp-surface-1b`, not `bg-fp-card-1`** — measured against the dialog's own `bg-background`, card-1 is only [6,3,6] away in light (near-invisible) while surface-1b is [16,16,20] light / [19,24,32] dark.
 - **Faceted filter panel** — facet side-menu + options pane. **The search field is per-facet and opt-in** (`Facet.searchable`): a facet gets one when its option list *cannot be taken in at once*, and does not when the list is short enough to scan — on a two-option facet a search field can only ever filter to one of the two, and it pushes the options down for nothing. Use an **explicit flag, not a length threshold**: a threshold silently changes a facet's affordance as its options grow or shrink, so the same facet gains and loses a control without anyone deciding. When the field is absent the option list needs its own `pt-2`, or it starts flush against the panel edge; placeholder reads `Search {facet}…`, matching the DS's `Search…` convention. Switching facets clears the query — carrying it over lets a term typed on a searchable facet silently filter a facet with no field to clear it in.
-- **Selection is a hue, hover is a grey — EXCEPT SEGMENT CONTROLS, which are greyscale** (Pavan, 2026-10-16: every segment control, every module). A selected segment (`Toggle`/`ToggleGroup` `data-[state=on]`) is a soft grey fill (`bg-muted`), a darker rim (`foreground/25`) and body ink; on the default `Tabs` track (itself grey) the selected tab is white with that rim. No brand, no accent. `--selected` (the brand tint) still marks a chosen ROW, the underline tabs and the sidebar's current item. Before the split hover and chosen both resolved to `--accent` and were pixel-identical; they still differ — hover is the darker `--accent` grey, chosen is the rimmed one.
+- **Selection is a hue, hover is a gray — EXCEPT SEGMENT CONTROLS, which are greyscale** (Pavan, 2026-10-16: every segment control, every module). A selected segment (`Toggle`/`ToggleGroup` `data-[state=on]`) is a soft gray fill (`bg-muted`), a darker rim (`foreground/25`) and body ink; on the default `Tabs` track (itself gray) the selected tab is white with that rim. No brand, no accent. `--selected` (the brand tint) still marks a chosen ROW, the underline tabs and the sidebar's current item. Before the split hover and chosen both resolved to `--accent` and were pixel-identical; they still differ — hover is the darker `--accent` gray, chosen is the rimmed one.
 - **Table row states** — hover and selected are their own tokens, `--fp-row-hover` / `--fp-row-selected`, **not** `--accent`. A row state is a full-width wash *behind* content, so it must sit far quieter than a control fill: borrowing `--accent` gave light-mode rows a `[53,46,36]` step off `#ffffff` when selected and `[26,23,18]` on hover — a control-emphasis value doing a background's job. The tokens keep an ordered, subtle progression off the content layer — light `hover [11,10,7] -> selected [22,19,14]`, dark `[7,7,7] -> [15,15,15]` — with selected always the stronger of the two. Anything that mirrors a row wash (a sticky column overlay, an expanded-parent tint, the `tfoot` band) binds the same two tokens, or it drifts out of step with the row it belongs to.
 - **Editable table cell** — the trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`); hover/open paint `bg-accent` across the entire cell, no inset outline; two-line cell = title over description.
-- **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behaviour: `interactions/6-execute`.)*
+- **Stacked delete-confirm** — the action cell becomes a **52×52** vertical split: ✕ cancel (top, `bg-fp-card-1`) over ✓ confirm (bottom, `bg-destructive text-white`), clipped `rounded-md`. *(Behavior: `interactions/6-execute`.)*
 - **Banners** — Callout (Type 1): full-width solid `bg-fp-banner-{status}`, white text, optional CTA/dismiss. Inline alert (Type 2): compact 32px bar on `bg-fp-card-1`, icon+text in `text-fp-banner-accent-{status}`.
 - **Cards / KPI tiles** — `rounded-lg border border-fp-outline-1 bg-card p-4/5`; number `text-2xl/3xl font-semibold tabular-nums`; delta pill green (`bg-status-success/15 text-status-success`) / red (`bg-destructive/15 text-destructive`) with `ArrowUp`/`ArrowDown`.
 - **Kanban** — fixed-width lanes (`w-[340px] bg-accent rounded-md`) with a 4px colored top strip (`bg-fp-lane-*`), header (title + count pill + `ArrowDownUp`), scrollable card stack; cards sit on `bg-fp-surface-1b`. *(The `--fp-lane` token is legacy — lanes now bind to `accent` / FP-Card-1.)*
@@ -2345,7 +2352,7 @@ these principles guard against.
 
 ---
 
-# UX · Rules & behaviour  *(canonical)*
+# UX · Rules & behavior  *(canonical)*
 
 The normative rules for structure, flow, and grouping. **Single source** — the
 Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
@@ -2356,7 +2363,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   the **brand logo** (left), **global search** (⌘K, centered), and **notifications
   + account menu** (right). Exactly one, app-level (see L1).
 - **Tier-1 rail:** 52px icon rail (`bg-rail`), flush with the background, hover-
-  expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
+  expands to a 256px overlay that **stays `bg-rail`** (color unchanged on expand).
   One item per top-level screen. **Navigation only** — the brand logo lives in the
   top bar; a **module switcher** sits at the top of the rail.
 - **Tier-2 drawer (optional):** contextual sub-nav for the active rail item, a
@@ -2520,10 +2527,10 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   A detail page's track stays read-only and spread end to end.
 - **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
   `StageTrack`: evenly spaced dots end to end on one line — a passed stage a
-  16px GREEN disc with a WHITE tick on a GREEN travelled line, a stage ahead
+  16px GREEN disc with a WHITE tick on a GREEN traveled line, a stage ahead
   a hollow 12px dot, names 8px under the marks (2026-10-06) — and the current
-  stage an outlined pill carrying its NAME with a BRAND-colour rim and label on a very light brand wash (10%;
-  Pavan, 2026-10-16: done is green, in progress the brand colour; no count). Every other name sits under its dot on one baseline.
+  stage an outlined pill carrying its NAME with a BRAND-color rim and label on a very light brand wash (10%;
+  Pavan, 2026-10-16: done is green, in progress the brand color; no count). Every other name sits under its dot on one baseline.
   In a stepped sheet it lives IN THE FORM COLUMN, pinned at its top
   (`data-form-sticky`, which the step list allows for), so it spans the form
   only and stops before the cards. The status chip beside the order number
@@ -2730,9 +2737,9 @@ its rows. With nothing in it, it still holds **one row**:
 Every uploaded file's name has its **format icon** on the left —
 `FileTypeIcon` (`src/components/ui/file-type-icon.tsx`): a document outline
 with a tag that names the format (PDF, PNG, SVG, JPG, DOC, XLS, CSV…). The
-tag's colour groups the family (PDF red · images violet · documents blue ·
+tag's color groups the family (PDF red · images violet · documents blue ·
 sheets green · archives orange · other ink); its text carries the format, so
-colour is never the only cue. One documents table everywhere —
+color is never the only cue. One documents table everywhere —
 `prototypes/unified-view/DocumentsTable.tsx`: Document (icon + name) · Added
 · By · download. **No Kind column** — the format icon says what it is.
 
@@ -2860,7 +2867,7 @@ Three details in that row are load-bearing rather than decorative:
 `useTableColumns` once.** That is the whole of it — the header carries the drag
 props, the keyboard, the drop indicator, both hover marks, and the guard that
 stops a resize press starting a column drag. The DS's own `DataTable` uses it,
-so a table copied from the gallery has the behaviour before anyone thinks about
+so a table copied from the gallery has the behavior before anyone thinks about
 it.
 
 ```tsx
@@ -3197,7 +3204,7 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Dense rows are fixed ordered slots, not crammed elements. (H4)
 - [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
 - [ ] Every side sheet with an editable field autosaves, shows the draft chip, and has no Save / Update / Cancel. (S1)
-- [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
+- [ ] The sheet's footer primary is the next act, labeled as an act. (S2)
 - [ ] Every optional picker has its empty choice first ("No asset", "No technician"); required pickers have none. (Forms)
 - [ ] A draft record's footer may show *Save as Draft* as the outline secondary left of the commit act; nowhere else is there a Save. (Forms)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)
@@ -3280,7 +3287,7 @@ Reference implementations: `tables-layout/`, `form-layout/`, `kanban-board/`,
 
 # Interactions · Fundamentals & principles
 
-*Behaviour, state, feedback, motion, accessibility — "how it behaves."* The mental
+*Behavior, state, feedback, motion, accessibility — "how it behaves."* The mental
 model behind the interaction rules ([`2-rules.md`](2-rules.md)).
 
 ## Principles
@@ -3300,7 +3307,7 @@ model behind the interaction rules ([`2-rules.md`](2-rules.md)).
 
 - **Accessible by default.** Keyboard-operable, visible focus, `aria-label` on
   icon-only controls, contrast ≥ AA, motion that respects `prefers-reduced-motion`.
-  Accessibility isn't a pass at the end — it's the resting behaviour.
+  Accessibility isn't a pass at the end — it's the resting behavior.
 
 - **Motion is functional, not decorative.** Movement clarifies a change (a bar
   docking, a panel entering); it's brief and purposeful. Static template charts
@@ -3311,9 +3318,9 @@ See [`4-common-mistakes.md`](4-common-mistakes.md) for the failures these guard 
 
 ---
 
-# Interactions · Rules & behaviour  *(canonical)*
+# Interactions · Rules & behavior  *(canonical)*
 
-The normative rules for behaviour, state, feedback, and accessibility. **Single
+The normative rules for behavior, state, feedback, and accessibility. **Single
 source** — Do's/Don'ts, Common mistakes, and Checks derive from these.
 
 ## Feedback & state
@@ -3354,7 +3361,7 @@ Build recipes for all of the above: [`6-execute.md`](6-execute.md).
 
 ---
 
-# Interaction & behaviour — folded in from `02-rules/`
+# Interaction & behavior — folded in from `02-rules/`
 
 *Provenance: this ruleset previously lived at `02-rules/interaction-and-behavior.md`,
 outside the repo, in two copies that had already drifted from each other. It was
@@ -3373,7 +3380,7 @@ code that implements it.*
    `--fp-surface-1b` with no outer border.*
 3. *Primary-CTA placement — the "never inside the toolbar" rule is marked
    superseded and points at its replacement.*
-4. *Destructive colour — a carve-out added for the final confirm in a guarded
+4. *Destructive color — a carve-out added for the final confirm in a guarded
    flow, which the shipped `BulkEditDialog` relies on.*
 
 ## 1. Editing model
@@ -3516,7 +3523,7 @@ Added 2026-09-22, from Unified View's pending strip.
   every cell carrying `data-blink="<name>"`, which reads as the one unit it is.
 - **Nothing takes focus.** Inside a focus-trapped sheet, focusing the target
   makes the trap restore *its* scroll position, which fights the travel — and
-  `behavior: "smooth"` is cancelled by the same trap, so the scroll is a hand-
+  `behavior: "smooth"` is canceled by the same trap, so the scroll is a hand-
   run rAF loop on the scrollport. Known gap: a keyboard reader is shown the
   section and still has to Tab to it.
 - **Reduced motion keeps the point and drops the blink.** The outline or fill
@@ -3611,7 +3618,7 @@ it, which is often the next thing someone wanted.
 - **Pagination and grouping are exclusive.** While grouped, the list scrolls whole
   and `GroupedListFooter` reports its *shape* — at 25 rows a page a group straddles
   the boundary and its header claims a count for rows that are not on screen. Both
-  footers keep the same left/centre/right skeleton so the bottom of the screen does
+  footers keep the same left/center/right skeleton so the bottom of the screen does
   not jump when grouping turns on.
 - **Every column moves and resizes** — drag the header to reorder, drag the divider
   to resize, double-click to reset, arrows to nudge. Both marks appear on hover of
@@ -3656,7 +3663,7 @@ it, which is often the next thing someone wanted.
   (searchable-select for single-value attributes; chip picker for multi-value).
 - **Bar shape**: a small set of **fast-path actions inline** (the most-common
   operations for that record type) + a **`More ▾`** menu for the long tail.
-  More is organised into two labelled groups: **"Set or change"** (attribute
+  More is organised into two labeled groups: **"Set or change"** (attribute
   mutations, two-column layout for many attributes) and **"Apply an action"**
   (compound/state actions like Duplicate, Verify). Inapplicable options are
   **visible-but-disabled**, not hidden.
@@ -3750,7 +3757,7 @@ these are its components; a banner that acts on the page has all of them.
 **Right, in this order**
 5. **The alert's own action** (optional) — `bannerSoftAction` button.
 6. **‹ 1 of N ›** — one KIND of alert at a time, most serious first; the
-   banner takes the shown kind's status colour. Present only when N > 1.
+   banner takes the shown kind's status color. Present only when N > 1.
 7. **Snooze** — the clock, "Remind me later": `BANNER_SNOOZE_OPTIONS`
    (1 h · 2 h · 4 h · 8 h · Tomorrow, same time) **plus Custom…, which asks
    for hours and minutes** (no calendar). One set, every module.
@@ -3774,7 +3781,7 @@ the portal's Invoices, then every module):**
 **Expanded:** under the line, one row per item — its title (pressable: narrows
 the list to that item), its detail, its own action. The count pill folds it.
 
-**Colour:** soft fill and rim are alphas of the status's inline accent.
+**Color:** soft fill and rim are alphas of the status's inline accent.
 **Warning is half as loud in light** — a /5 wash with a /20 rim (dark keeps
 /10 · /30). **Placement on a list page:** under the view row, above the
 toolbar (Unified View 3-interactions).
@@ -3824,7 +3831,7 @@ From the 3PL and Service Work boards. Where this contradicts 8.1, this wins.
   somebody's behalf", which is a decision, not a gesture. Stages change from
   the record's own next-act control.
 - **A LANE THAT IS NOT A STEP SITS APART**, behind a 3px rule, not in sequence
-  and not in a tinted tray: Cancelled, Blocked. A lane that is a normal thing
+  and not in a tinted tray: Canceled, Blocked. A lane that is a normal thing
   for work to be doing — waiting on a part — stays in sequence.
 - **A CARD IS RULED UNITS**, not a property grid. Each unit is one heading and
   one shape, divided from the next by a rule, and three shapes cover every
@@ -4043,7 +4050,7 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 
 # Interactions · Common mistakes (❌ / ✅)
 
-Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rules.md).
+Anti-patterns for behavior & state, each pointing back to [`2-rules.md`](2-rules.md).
 
 - **Focus** — ❌ a control with no visible focus state · ✅ `focus-visible:ring-2 focus-visible:ring-ring/50` (`ring-inset` in cells).
 - **Destructive** — ❌ delete fires on a single unguarded click · ✅ the 52px confirm or an `AlertDialog`.
@@ -4070,7 +4077,7 @@ Anti-patterns for behaviour & state, each pointing back to [`2-rules.md`](2-rule
 - **Double-duty selection** — ❌ the ticked rows are both the bulk target and the quote scope · ✅ a property of the whole set is a switch over the whole set (§4b).
 - **Per-instance section gap** — ❌ `<SheetSection className="gap-5">` on every section of one sheet · ✅ take the 40/16 default (`ux/2-rules`).
 - **A silently draggable header** — ❌ columns move but nothing on screen says so · ✅ `ColumnMoveGrip` in the header, `ColumnResizeHandle` on the divider, each revealed on hover (`ux/2-rules`).
-- **A white-on-white header** — ❌ `bg-fp-surface-1a` on a `thead`, which is the content layer's own colour in light · ✅ `bg-fp-table-header` (`ux/2-rules`).
+- **A white-on-white header** — ❌ `bg-fp-surface-1a` on a `thead`, which is the content layer's own color in light · ✅ `bg-fp-table-header` (`ux/2-rules`).
 - **A bare `<TableHead>`** — ❌ a new table whose columns cannot be moved or resized, indistinguishable from one that must not be · ✅ `TableColumnHeader` + `useTableColumns` (`ux/2-rules`).
 - **Every divider lit at once** — ❌ hovering the header row draws eleven resize marks, so the row reads as a grid · ✅ each mark lights with its own header (`ux/2-rules`).
 - **Two marks at once** — ❌ the move grip and the resize handle both showing on one hovered header · ✅ the grip is the handle's peer and steps aside on the divider (`ux/2-rules`).
@@ -4159,7 +4166,7 @@ useEffect(() => {
 Convention: `chart-1`/`--brand` primary series, `--fp-outline-1` gridlines,
 `--muted-foreground` axis ticks. Reference: `dashboard/`.
 
-## Editable-cell hover behaviour
+## Editable-cell hover behavior
 The trigger fills the whole cell (`td` gets `p-0`, control `h-full w-full`);
 hover/open paint `bg-accent` across the entire cell, no inset outline. (Visual spec:
 `ui/6-execute`.) Reference: `tables-layout/`, `form-layout/`.

@@ -66,6 +66,38 @@ function pinnedHeight(port: HTMLElement) {
  * pressed. `onCount` reports how many steps there are, so the sheet can drop
  * the column when there is nothing to list.
  */
+/**
+ * SCROLL A SHEET'S FORM TO ONE OF ITS STEPS and mark it once with a quiet
+ * fill — the step column's press, shared so another control can do the same
+ * (the 3PL order sheet's stage track, Pavan 2026-10-23). `port` is the form's
+ * scroller, `el` the `[data-form-step]` section.
+ */
+export function travelToStep(port: HTMLElement, el: HTMLElement, done?: () => void) {
+  const from = port.scrollTop;
+  const target = Math.max(
+    0,
+    Math.min(
+      from + el.getBoundingClientRect().top - port.getBoundingClientRect().top - 16 - pinnedHeight(port),
+      port.scrollHeight - port.clientHeight
+    )
+  );
+  const started = performance.now();
+  const frame = (now: number) => {
+    const t = Math.min((now - started) / 320, 1);
+    port.scrollTop = from + (target - from) * (1 - Math.pow(1 - t, 3));
+    if (t < 1) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    done?.();
+    el.classList.remove("fp-attention-fill-subtle");
+    void el.offsetWidth;
+    el.classList.add("fp-attention-fill-subtle");
+    window.setTimeout(() => el.classList.remove("fp-attention-fill-subtle"), 800);
+  };
+  requestAnimationFrame(frame);
+}
+
 export function FormStepsNav({
   formRef,
   onCount,
@@ -149,33 +181,7 @@ export function FormStepsNav({
     if (!port || !el) return;
     setAt(i);
     travelling.current = true;
-    const from = port.scrollTop;
-    const target = Math.max(
-      0,
-      Math.min(
-        from +
-          el.getBoundingClientRect().top -
-          port.getBoundingClientRect().top -
-          16 -
-          pinnedHeight(port),
-        port.scrollHeight - port.clientHeight
-      )
-    );
-    const started = performance.now();
-    const frame = (now: number) => {
-      const t = Math.min((now - started) / 320, 1);
-      port.scrollTop = from + (target - from) * (1 - Math.pow(1 - t, 3));
-      if (t < 1) {
-        requestAnimationFrame(frame);
-        return;
-      }
-      travelling.current = false;
-      el.classList.remove("fp-attention-fill-subtle");
-      void el.offsetWidth;
-      el.classList.add("fp-attention-fill-subtle");
-      window.setTimeout(() => el.classList.remove("fp-attention-fill-subtle"), 800);
-    };
-    requestAnimationFrame(frame);
+    travelToStep(port, el, () => (travelling.current = false));
   };
 
   const current = Math.min(at, Math.max(labels.length - 1, 0));

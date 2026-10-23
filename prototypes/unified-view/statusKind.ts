@@ -14,7 +14,7 @@ import type { StatusTone } from "@/components/ui/status-chip";
  *   success   DONE — the thing it was for has happened
  *   critical  A WARNING, or a state important enough to change a plan
  *   neutral   NEITHER — a record that exists and is not yet a state; an end
- *             that is not an outcome (Cancelled, Ended)
+ *             that is not an outcome (Canceled, Ended)
  *
  * A MODULE DECLARES KINDS, NEVER TONES. `StatusChip`'s tones are the DS's
  * channels and their names are hues-in-disguise (`processing` is amber); a map

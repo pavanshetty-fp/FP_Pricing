@@ -259,14 +259,14 @@ export const FUEL_ORDER_STAGES: CoreFuelStage[] = [
   "Scheduled",
   "Dispatched",
   "Delivered",
-  "Cancelled",
+  "Canceled",
 ];
 
 /**
  * THE STAGE A DRIVER CHANGE LEAVES (2026-10-07). An order cannot be scheduled
  * without a driver, so picking one on a Requested order schedules it and
  * clearing it from a Scheduled one sends it back. Once it is on the road, done
- * or cancelled, the driver no longer moves the stage.
+ * or canceled, the driver no longer moves the stage.
  */
 export function stageAfterDriver(
   status: FuelOrderStatus,
@@ -286,12 +286,12 @@ export function stageAfterDriver(
 /**
  * SAMPLE STAGES — INVENTED. The source list only knew Assigned / Unassigned.
  * No driver = Requested. With a driver: past days are Delivered (a few
- * Cancelled), today spreads over Scheduled, Dispatched and Delivered, and
+ * Canceled), today spreads over Scheduled, Dispatched and Delivered, and
  * later days are Scheduled.
  */
 function seedStage(i: number, dayOffset: number, hasDriver: boolean): FuelOrderStatus {
-  if (!hasDriver) return i % 11 === 5 ? "Cancelled" : "Requested";
-  if (dayOffset < 0) return i % 7 === 3 ? "Cancelled" : "Delivered";
+  if (!hasDriver) return i % 11 === 5 ? "Canceled" : "Requested";
+  if (dayOffset < 0) return i % 7 === 3 ? "Canceled" : "Delivered";
   if (dayOffset > 0) return "Scheduled";
   return (["Scheduled", "Dispatched", "Delivered"] as const)[i % 3];
 }

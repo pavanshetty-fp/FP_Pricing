@@ -13,7 +13,7 @@ import type { Stage } from "@/components/ui/stage-bar";
   carrying its name (Pavan, 2026-10-16 — done is green, in progress the brand colour). Every other stage's
   name sits under its dot.
 
-  THE LINE ONLY, as with `StageBar`: cancelled, blocked and the like are not
+  THE LINE ONLY, as with `StageBar`: canceled, blocked and the like are not
   positions, so a record in one renders with nothing current.
 */
 export function StageTrack({

@@ -586,10 +586,10 @@ function AssetOrderHistory({ asset }: { asset: Asset }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-fp-table-header">
-              {["Order #", "Date", "Product", "Qty (gal)", "Ordered at → refilled to", "Status"].map((h, i) => (
+              {["Order #", "Date", "Product", "Qty (gal)", "Ordered at → refilled to", "Status"].map((h) => (
                 <th
                   key={h}
-                  className={cn("whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground", i === 3 && "text-right")}
+                  className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground"
                 >
                   {h}
                 </th>
@@ -610,7 +610,7 @@ function AssetOrderHistory({ asset }: { asset: Asset }) {
                 </td>
                 <td className="whitespace-nowrap px-3 text-foreground">{r.date ? printKey(r.date) : "—"}</td>
                 <td className="whitespace-nowrap px-3 text-foreground">{l.product || "—"}</td>
-                <td className="whitespace-nowrap px-3 text-right tabular-nums text-foreground">
+                <td className="whitespace-nowrap px-3 tabular-nums text-foreground">
                   {l.topOff ? "Top off" : l.gal.toLocaleString()}
                 </td>
                 <td className="px-3">

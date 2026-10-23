@@ -1,4 +1,4 @@
-# UX · Rules & behaviour  *(canonical)*
+# UX · Rules & behavior  *(canonical)*
 
 The normative rules for structure, flow, and grouping. **Single source** — the
 Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
@@ -9,7 +9,7 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   the **brand logo** (left), **global search** (⌘K, centered), and **notifications
   + account menu** (right). Exactly one, app-level (see L1).
 - **Tier-1 rail:** 52px icon rail (`bg-rail`), flush with the background, hover-
-  expands to a 256px overlay that **stays `bg-rail`** (colour unchanged on expand).
+  expands to a 256px overlay that **stays `bg-rail`** (color unchanged on expand).
   One item per top-level screen. **Navigation only** — the brand logo lives in the
   top bar; a **module switcher** sits at the top of the rail.
 - **Tier-2 drawer (optional):** contextual sub-nav for the active rail item, a
@@ -173,10 +173,10 @@ Do's/Don'ts, Common mistakes, and Checks in this folder derive from these.
   A detail page's track stays read-only and spread end to end.
 - **ORDER DETAIL PAGES DRAW THE STAGE AS A TRACK (Pavan, 2026-10-05).**
   `StageTrack`: evenly spaced dots end to end on one line — a passed stage a
-  16px GREEN disc with a WHITE tick on a GREEN travelled line, a stage ahead
+  16px GREEN disc with a WHITE tick on a GREEN traveled line, a stage ahead
   a hollow 12px dot, names 8px under the marks (2026-10-06) — and the current
-  stage an outlined pill carrying its NAME with a BRAND-colour rim and label on a very light brand wash (10%;
-  Pavan, 2026-10-16: done is green, in progress the brand colour; no count). Every other name sits under its dot on one baseline.
+  stage an outlined pill carrying its NAME with a BRAND-color rim and label on a very light brand wash (10%;
+  Pavan, 2026-10-16: done is green, in progress the brand color; no count). Every other name sits under its dot on one baseline.
   In a stepped sheet it lives IN THE FORM COLUMN, pinned at its top
   (`data-form-sticky`, which the step list allows for), so it spans the form
   only and stops before the cards. The status chip beside the order number
@@ -383,9 +383,9 @@ its rows. With nothing in it, it still holds **one row**:
 Every uploaded file's name has its **format icon** on the left —
 `FileTypeIcon` (`src/components/ui/file-type-icon.tsx`): a document outline
 with a tag that names the format (PDF, PNG, SVG, JPG, DOC, XLS, CSV…). The
-tag's colour groups the family (PDF red · images violet · documents blue ·
+tag's color groups the family (PDF red · images violet · documents blue ·
 sheets green · archives orange · other ink); its text carries the format, so
-colour is never the only cue. One documents table everywhere —
+color is never the only cue. One documents table everywhere —
 `prototypes/unified-view/DocumentsTable.tsx`: Document (icon + name) · Added
 · By · download. **No Kind column** — the format icon says what it is.
 
@@ -513,7 +513,7 @@ Three details in that row are load-bearing rather than decorative:
 `useTableColumns` once.** That is the whole of it — the header carries the drag
 props, the keyboard, the drop indicator, both hover marks, and the guard that
 stops a resize press starting a column drag. The DS's own `DataTable` uses it,
-so a table copied from the gallery has the behaviour before anyone thinks about
+so a table copied from the gallery has the behavior before anyone thinks about
 it.
 
 ```tsx

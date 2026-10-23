@@ -114,7 +114,7 @@ function AssetsTable({
   const update = (i: number, p: Partial<AssetDraft>) =>
     onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const head = (label: string, required = false, align: "left" | "right" | "center" = "left") => (
-    <th className={cn("px-3 py-2.5 whitespace-nowrap", align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left")}>
+    <th className={cn("px-3 py-2.5 whitespace-nowrap", align === "right" ? "" : align === "center" ? "text-center" : "text-left")}>
       <TableRequiredLabel required={required}>{label}</TableRequiredLabel>
     </th>
   );

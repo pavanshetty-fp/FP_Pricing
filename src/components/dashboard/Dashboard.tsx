@@ -492,7 +492,7 @@ interface Product {
   rating: string;
 }
 const PRODUCTS: Product[] = [
-  { id: "#83009", name: "Hybrid Active Noise Cancelling", sold: "2,310 sold", revenue: "$124,839", rating: "4.5" },
+  { id: "#83009", name: "Hybrid Active Noise Canceling", sold: "2,310 sold", revenue: "$124,839", rating: "4.5" },
   { id: "#83001", name: "Casio G-Shock Mesh Resin", sold: "1,230 sold", revenue: "$92,662", rating: "4.8" },
   { id: "#83004", name: "SAMSUNG Galaxy S25 Ultra", sold: "812 sold", revenue: "$74,048", rating: "4.7" },
   { id: "#83002", name: "Xbox Wireless Gaming Controller", sold: "645 sold", revenue: "$62,800", rating: "4.5" },
@@ -508,9 +508,9 @@ function BestSellingCard() {
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-20">ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead className="text-right">Sold</TableHead>
-              <TableHead className="text-right">Revenue</TableHead>
-              <TableHead className="text-right">Rating</TableHead>
+              <TableHead className="">Sold</TableHead>
+              <TableHead className="">Revenue</TableHead>
+              <TableHead className="">Rating</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -525,9 +525,9 @@ function BestSellingCard() {
                     <span className="truncate text-sm text-foreground">{p.name}</span>
                   </span>
                 </TableCell>
-                <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{p.sold}</TableCell>
-                <TableCell className="text-right text-sm font-medium tabular-nums text-status-success">{p.revenue}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className=" text-sm tabular-nums text-muted-foreground">{p.sold}</TableCell>
+                <TableCell className=" text-sm font-medium tabular-nums text-status-success">{p.revenue}</TableCell>
+                <TableCell className="">
                   <span className="inline-flex items-center justify-end gap-1 text-sm tabular-nums text-foreground">
                     <Star className="size-3.5 fill-status-processing text-status-processing" />
                     {p.rating}

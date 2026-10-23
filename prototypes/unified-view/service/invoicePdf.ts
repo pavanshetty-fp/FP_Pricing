@@ -129,7 +129,7 @@ export function invoicePdf(order: ServiceOrder, opts: { partial?: boolean } = {}
   };
   for (const p of order.parts) row(p.name || "Part", String(p.qty), money(p.cost), p.cost * p.qty);
   if (order.labor > 0 || order.laborRate > 0)
-    row(`Labour (${formatHours(order.labor)})`, "", `${money(order.laborRate)}/h`, order.labor * order.laborRate);
+    row(`Labor (${formatHours(order.labor)})`, "", `${money(order.laborRate)}/h`, order.labor * order.laborRate);
   for (const f of order.fees) row(f.name || "Fee", "", "", f.amount);
   for (const f of order.extraCharges) row(f.name || "Charge", "", "", f.amount);
   rules.push({ x1: L, x2: R, y: y + 8 });

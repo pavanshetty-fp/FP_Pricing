@@ -330,7 +330,7 @@ export function RecurringDeliverySheet({
                     )}
                   </span>
                 </th>
-                <th className="w-[150px] px-3 py-2 text-right text-xs font-medium text-muted-foreground">
+                <th className="w-[150px] px-3 py-2 text-xs font-medium text-muted-foreground">
                   Quantity (gal)
                 </th>
               </tr>
@@ -346,7 +346,7 @@ export function RecurringDeliverySheet({
                     {l.asset}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className="flex justify-end">
+                    <span className="flex ">
                       {editable ? (
                         <Checkbox
                           checked={l.topOff}
@@ -364,7 +364,7 @@ export function RecurringDeliverySheet({
                   </td>
                   {/* THE CELL IS THE FIELD — DS ui §10f. A boxed input inside
                       a padded cell drew a second grid over the table's. */}
-                  <td className="relative p-0 text-right">
+                  <td className="relative p-0">
                     {editable && !l.topOff ? (
                       <TableCellInput
                         numeric

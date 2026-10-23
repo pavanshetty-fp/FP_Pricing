@@ -96,7 +96,7 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Active: "info",
   /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
   Paused: "caution",
-  Cancelled: "neutral",
+  Canceled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
 });
@@ -556,7 +556,7 @@ export function RecurringRuleSheet({
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                   Asset
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">
+                <th className="px-3 py-2 text-xs font-medium text-muted-foreground">
                   Quantity (gal)
                 </th>
               </tr>
@@ -568,7 +568,7 @@ export function RecurringRuleSheet({
                   <td className="px-3 py-2.5 text-muted-foreground">
                     {l.asset}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                  <td className="px-3 py-2.5 tabular-nums text-foreground">
                     {l.topOff ? (
                       <Pill>Top off</Pill>
                     ) : (

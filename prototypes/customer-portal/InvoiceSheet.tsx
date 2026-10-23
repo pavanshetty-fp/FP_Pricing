@@ -379,7 +379,7 @@ export function InvoiceSheet({
               <tr className="border-b border-border bg-fp-table-header text-left text-xs font-medium text-muted-foreground">
                 <th className="px-4 py-2.5 font-medium">Item</th>
                 <th className="px-3 py-2.5 font-medium">Basis</th>
-                <th className="px-4 py-2.5 text-right font-medium">Amount</th>
+                <th className="px-4 py-2.5 font-medium">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -389,7 +389,7 @@ export function InvoiceSheet({
                   <td className="px-3 tabular-nums text-muted-foreground">
                     {l.gal.toLocaleString()} gal @ {rate.format(l.rate)}
                   </td>
-                  <td className="px-4 text-right tabular-nums text-foreground">{usd.format(l.amount)}</td>
+                  <td className="px-4 tabular-nums text-foreground">{usd.format(l.amount)}</td>
                 </tr>
               ))}
               <tr className="h-11 border-b border-border">
@@ -397,18 +397,18 @@ export function InvoiceSheet({
                 <td className="px-3 tabular-nums text-muted-foreground">
                   {c.gal.toLocaleString()} gal @ {rate.format(FEES_PER_GAL)}
                 </td>
-                <td className="px-4 text-right tabular-nums text-foreground">{usd.format(c.fees)}</td>
+                <td className="px-4 tabular-nums text-foreground">{usd.format(c.fees)}</td>
               </tr>
               <tr className="h-11 border-b border-border">
                 <td className="px-4 text-foreground">Tax (federal + state excise)</td>
                 <td className="px-3 tabular-nums text-muted-foreground">{Math.round(TAX_RATE * 100)}%</td>
-                <td className="px-4 text-right tabular-nums text-foreground">{usd.format(c.tax)}</td>
+                <td className="px-4 tabular-nums text-foreground">{usd.format(c.tax)}</td>
               </tr>
               <tr className="h-12">
                 <td className="px-4 font-semibold text-foreground" colSpan={2}>
                   {settled ? "Total paid" : "Total due"}
                 </td>
-                <td className="px-4 text-right font-semibold tabular-nums text-foreground">{usd.format(c.total)}</td>
+                <td className="px-4 font-semibold tabular-nums text-foreground">{usd.format(c.total)}</td>
               </tr>
             </tbody>
           </table>

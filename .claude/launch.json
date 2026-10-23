@@ -36,6 +36,15 @@
         "dev:portal"
       ],
       "autoPort": true
+    },
+    {
+      "name": "design-reference",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:reference"
+      ],
+      "autoPort": true
     }
   ]
 }

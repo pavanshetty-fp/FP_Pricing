@@ -599,6 +599,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       /* see switchModule */
     }
     setFocus(recordId ? { id: recordId, n: Date.now() } : null);
+    /* 3PL DIRECTORY RECORDS open through `dirFocus`, not `focus`. */
+    if (recordId && SUB_NAV["3pl-directory"]?.some((g) => g.items.some((i) => i.key === nav)))
+      setDirFocus({ nav, id: recordId });
   };
 
   const goCreateOrder = () => {

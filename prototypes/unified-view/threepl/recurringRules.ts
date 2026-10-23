@@ -33,7 +33,7 @@ import { VENDORS } from "./vendors";
       so there is no "First delivery" badge to explain and no special case that
       skips day one to stop it being created twice.
     • EVERY DELIVERY IS A PEER. Cancel the first one and the rule is unharmed.
-      In V2 that act is ambiguous — you cancelled the schedule's own order.
+      In V2 that act is ambiguous — you canceled the schedule's own order.
     • THE CALENDAR CAN SHOW THE WHOLE SCHEDULE, not a rolling month. A rule
       knows every date it will ever want; only SOME of those dates have had an
       order cut for them yet. V2 cannot draw that distinction, because in V2 a
@@ -220,7 +220,7 @@ function addDays(d: Date, n: number): Date {
  * calendar distinguishes has to exist in the fixture or nobody can see whether
  * it works, and a random draw leaves that to chance. Three kinds, because they
  * are three different stories: a quantity somebody changed for one week, a date
- * somebody dragged, and a delivery somebody cancelled on its own.
+ * somebody dragged, and a delivery somebody canceled on its own.
  */
 const TWEAKS = [
   "Quantity changed for this delivery",
@@ -244,20 +244,20 @@ export const RECURRING_RULES: RecurringRule[] = RECURRING_PARENTS.map(
        status of its own to reconcile against. It is running, not yet running,
        or stopped. */
     const start = dayFromKey(startKey);
-    const cancelled = seed.status === "Cancelled";
+    const canceled = seed.status === "Canceled";
     /* A FIRST-PARTY RULE NEEDS NO PARTNER. We are the haulier, so the thing
        that gates a brokerage rule — somebody accepting the lane — simply does
        not apply, and it generates from its start date. */
     const firstParty = seed.jobType === "Transportation";
     const priced = firstParty || seed.vendorId !== null;
-    const status: SeriesStatus = cancelled
-      ? "Cancelled"
+    const status: SeriesStatus = canceled
+      ? "Canceled"
       : start > today
         ? "Upcoming"
         : "Active";
 
-    const stalledReason = cancelled
-      ? "Cancelled — the rule is kept, generation stopped"
+    const stalledReason = canceled
+      ? "Canceled — the rule is kept, generation stopped"
       : !priced
         ? "No partner assigned — nothing will be created yet"
         : seed.status === "Blocked"
@@ -276,19 +276,19 @@ export const RECURRING_RULES: RecurringRule[] = RECURRING_PARENTS.map(
       if (!schedule.hits(d)) continue;
       const key = dateKeyOf(d);
       const past = key < todayKey;
-      const generated = priced && !cancelled && d <= generatedTo;
+      const generated = priced && !canceled && d <= generatedTo;
 
       /* Every seventh delivery carries a tweak, cycling the three kinds. */
       const tweak =
         (generated || past) && n % 7 === 3 ? TWEAKS[n % TWEAKS.length] : null;
 
       let state: DeliveryState;
-      if (cancelled && !past) state = "skipped";
+      if (canceled && !past) state = "skipped";
       else if (past) state = "delivered";
       else if (generated) state = "created";
       else state = "scheduled";
 
-      /* A delivery somebody cancelled on its own — one per rule, so the state
+      /* A delivery somebody canceled on its own — one per rule, so the state
          is reachable without pretending it is common. */
       if (state === "created" && n % 11 === 5) state = "skipped";
 
@@ -303,7 +303,7 @@ export const RECURRING_RULES: RecurringRule[] = RECURRING_PARENTS.map(
           state === "delivered"
             ? (["Completed", "Verified", "Synced"] as BrokerStatus[])[n % 3]
             : state === "skipped"
-              ? "Cancelled"
+              ? "Canceled"
               : state === "created"
                 ? "Assigned"
                 : null,
@@ -517,11 +517,11 @@ export function editDelivery(
           : "scheduled";
       /* CANCELLED IS AN ORDER'S STATUS, and a date nobody cut an order for
          has none. Skipping it takes it off the schedule; there is nothing to
-         cancel, and a Cancelled chip would name an order that never was. */
+         cancel, and a Canceled chip would name an order that never was. */
       next.status = !next.orderNo
         ? null
         : patch.skipped
-          ? "Cancelled"
+          ? "Canceled"
           : "Assigned";
     }
 

@@ -33,9 +33,9 @@ Quick pointers into [`2-rules.md`](2-rules.md). One line each.
 - **Don't give a field the divider's weight** — in light the border is the only
   thing that makes a field a field.
 
-## Colour mapping *(§10b)*
+## Color mapping *(§10b)*
 ### Do
-- **Keep one colour-mapping table per application**, listing each hue against the single thing it means there.
+- **Keep one color-mapping table per application**, listing each hue against the single thing it means there.
 - **Treat a mapping as a decision**, written down — not as something inherited from the swatch's name.
 
 ### Don't

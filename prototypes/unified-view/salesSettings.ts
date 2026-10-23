@@ -188,7 +188,7 @@ export interface StageRule {
   label: string;
   approval: boolean;
   /* NULL ON THE TWO STAGES AN ORDER ENDS IN. A time limit is how long an
-     order may sit in a stage before it is late; Delivered and Cancelled are
+     order may sit in a stage before it is late; Delivered and Canceled are
      never left, so nothing can be late in them. */
   slaHours: number | null;
   /** THE TAG'S COLOUR (Pavan, 2026-10-09). Null = the stage's kind colour. */
@@ -226,7 +226,7 @@ export const NOTIFICATION_EVENTS: { key: string; event: string }[] = [
   { key: "approval", event: "Approval requested" },
   { key: "dispatched", event: "Order dispatched" },
   { key: "delivered", event: "Order delivered" },
-  { key: "cancelled", event: "Order cancelled" },
+  { key: "canceled", event: "Order canceled" },
   { key: "overSla", event: "Order over SLA" },
   { key: "digest", event: "Daily order digest" },
   { key: "quoteSent", event: "Quote sent" },
@@ -266,10 +266,10 @@ export interface SalesSettings {
 
 /* The SLAs and the notification defaults are INVENTED — a sensible start, not
    anything a customer asked for. */
-const TERMINAL = ["Delivered", "Cancelled"];
+const TERMINAL = ["Delivered", "Canceled"];
 const SLA: Record<string, number> = { Requested: 24, Scheduled: 48, Dispatched: 8 };
 /* STATUS COLOURS PAVAN SET (2026-10-09): Scheduled yellow, Dispatched blue;
-   Requested, Delivered and Cancelled keep their kind's colour. */
+   Requested, Delivered and Canceled keep their kind's colour. */
 const STAGE_COLOR: Record<string, PillColor> = { Scheduled: "yellow", Dispatched: "blue" };
 
 export const DEFAULT_SALES_SETTINGS: SalesSettings = {
@@ -286,7 +286,7 @@ export const DEFAULT_SALES_SETTINGS: SalesSettings = {
     { key: "urgent", event: "Urgent order created", inApp: true, email: true, sms: true },
     { key: "noDriver", event: "Scheduled order without driver", inApp: true, email: true, sms: false },
     { key: "delivered", event: "Order delivered", inApp: true, email: false, sms: false },
-    { key: "cancelled", event: "Order cancelled", inApp: true, email: true, sms: false },
+    { key: "canceled", event: "Order canceled", inApp: true, email: true, sms: false },
     { key: "digest", event: "Daily order digest", inApp: false, email: true, sms: false },
     { key: "quoteAccepted", event: "Quote accepted", inApp: true, email: true, sms: false },
     { key: "quoteExpired", event: "Quote expired", inApp: true, email: false, sms: false },
@@ -454,7 +454,7 @@ const CORE_KIND: Record<string, StatusKind> = {
   Dispatched: "info",
   Delivered: "success",
   /* Not a warning — grey, never red. */
-  Cancelled: "neutral",
+  Canceled: "neutral",
 };
 
 const CORE_LANE: Record<string, LaneColor> = {
@@ -462,7 +462,7 @@ const CORE_LANE: Record<string, LaneColor> = {
   Scheduled: "blue",
   Dispatched: "cyan",
   Delivered: "green",
-  Cancelled: "grey",
+  Canceled: "grey",
 };
 /* An added stage's lane — colours the core five do not use, in turn. */
 const ADDED_LANES: LaneColor[] = ["violet", "orange", "purple", "pink"];
@@ -510,16 +510,16 @@ export function stageLaneColor(id: string, s: SalesSettings = current): LaneColo
   return ADDED_LANES[Math.max(0, added.indexOf(id)) % ADDED_LANES.length];
 }
 
-/** The stage an order moves on to — none from Delivered or Cancelled. */
+/** The stage an order moves on to — none from Delivered or Canceled. */
 export function nextStage(id: string, s: SalesSettings = current): string | null {
-  if (id === "Delivered" || id === "Cancelled") return null;
-  const ids = stageIds(s).filter((x) => x !== "Cancelled");
+  if (id === "Delivered" || id === "Canceled") return null;
+  const ids = stageIds(s).filter((x) => x !== "Canceled");
   return ids[ids.indexOf(id) + 1] ?? null;
 }
 
 /** The stage right before Scheduled — the one a driver pick schedules from. */
 export function stageBeforeScheduled(s: SalesSettings = current): string {
-  const ids = stageIds(s).filter((x) => x !== "Cancelled");
+  const ids = stageIds(s).filter((x) => x !== "Canceled");
   return ids[ids.indexOf("Scheduled") - 1] ?? "Requested";
 }
 

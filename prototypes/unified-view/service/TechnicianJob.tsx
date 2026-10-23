@@ -431,7 +431,7 @@ export function TechnicianJob({
        or rejected. */
     const sent = Boolean(job.quote?.sentAt) && !job.quote?.approvedAt && !job.quote?.rejectedAt;
     /* REJECTED STAYS ON THE ORDER, FLAGGED (Pavan and Deepika, 2026-09-25):
-       it is not cancelled; the jobs unlock for revision and it goes again. */
+       it is not canceled; the jobs unlock for revision and it goes again. */
     const rejected = Boolean(job.quote?.rejectedAt);
     const editable = Boolean(job.startedAt) && !sent;
     const total = quoteableTotal(partsOfTasks(lines), job.fees);

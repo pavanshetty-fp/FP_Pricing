@@ -386,7 +386,7 @@ export function OrdersScreen({
     switch (key) {
       case "level":
         return reading((l) => <LevelReading asset={assetById(l.assetId)} />);
-      case "fulfil":
+      case "fulfill":
         return reading((l) => <FulfilmentPct line={l} r={r} />);
       case "daysToEmpty":
         return reading((l) => <DaysToEmpty asset={assetById(l.assetId)} />);
@@ -600,7 +600,7 @@ export function OrdersScreen({
      not steps of the work sit apart (2-layouts §6). Lane colour follows the
      status's kind. */
   const boardLanes = React.useMemo<BoardLane[]>(() => {
-    const ENDS: RequestStatus[] = ["Cancelled"];
+    const ENDS: RequestStatus[] = ["Canceled"];
     const KIND_LANE: Record<string, LaneColor> = {
       neutral: "grey",
       processing: "yellow",
@@ -643,7 +643,7 @@ export function OrdersScreen({
               .map((f) => ({ label: f.kind, tone: f.level === "critical" ? ("critical" as const) : ("caution" as const) })),
           ],
           units: [
-            { kind: "stack" as const, key: "shipTo", heading: "Ship-to", lines: [{ text: r.shipTo || "—", level: 1 as const }] },
+            { kind: "stack" as const, key: "shipTo", heading: "Ship-to Details", lines: [{ text: r.shipTo || "—", level: 1 as const }] },
             {
               kind: "inline" as const,
               key: "schedule",
@@ -771,6 +771,25 @@ export function OrdersScreen({
       />
       </div>
 
+      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
+          pressing an alert applies the filter it describes. ABOVE THE TOOLBAR,
+          as everywhere in the Unified View (Pavan, 2026-10-23 — one place for
+          the banner in every module): what needs attention is read before
+          the tools to act on it. */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+          appliedId={applied && applied.key === stateKey ? applied.id : null}
+          onClearApplied={() => {
+            narrowTo([], "today");
+            setApplied(null);
+          }}
+        />
+      )}
+
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -892,23 +911,6 @@ export function OrdersScreen({
         )}
       </div>
 
-      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
-          pressing an alert applies the filter it describes. In the portal it
-          sits BELOW the toolbar, search and filter chips, right above the
-          list (Pavan, 2026-10-14). */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={alerts}
-          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
-          appliedId={applied && applied.key === stateKey ? applied.id : null}
-          onClearApplied={() => {
-            narrowTo([], "today");
-            setApplied(null);
-          }}
-        />
-      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

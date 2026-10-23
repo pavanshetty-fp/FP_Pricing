@@ -27,7 +27,7 @@ export interface Week {
   onTime: number;
   late: number;
   partial: number;
-  cancelled: number;
+  canceled: number;
   galRequested: number;
   galDelivered: number;
   /** Times a driver found a tank empty. */
@@ -82,7 +82,7 @@ export const WEEKS: Week[] = (() => {
     const total = Math.round(30 + r() * 10 + t * 6);
     const late = Math.round(total * (0.17 - 0.11 * t + (r() - 0.5) * 0.05));
     const partial = Math.round(total * (0.08 - 0.05 * t + (r() - 0.5) * 0.03));
-    const cancelled = Math.round(r() * 2);
+    const canceled = Math.round(r() * 2);
     const galRequested = Math.round(total * (2900 + r() * 500)) ;
     const galDelivered = Math.round(galRequested * (0.9 + 0.07 * t + (r() - 0.5) * 0.02));
     const byProduct: Record<string, number> = {};
@@ -109,10 +109,10 @@ export const WEEKS: Week[] = (() => {
         d.setDate(d.getDate() + i * 7);
         return d;
       })(),
-      onTime: Math.max(0, total - late - partial - cancelled),
+      onTime: Math.max(0, total - late - partial - canceled),
       late: Math.max(0, late),
       partial: Math.max(0, partial),
-      cancelled,
+      canceled,
       galRequested,
       galDelivered,
       foundEmpty,

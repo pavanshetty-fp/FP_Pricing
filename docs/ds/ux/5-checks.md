@@ -12,7 +12,7 @@ Verifiable assertions derived from [`2-rules.md`](2-rules.md). Part of the
 - [ ] Dense rows are fixed ordered slots, not crammed elements. (H4)
 - [ ] Related units grouped by proximity; intra-group gap < inter-group gap.
 - [ ] Every side sheet with an editable field autosaves, shows the draft chip, and has no Save / Update / Cancel. (S1)
-- [ ] The sheet's footer primary is the next act, labelled as an act. (S2)
+- [ ] The sheet's footer primary is the next act, labeled as an act. (S2)
 - [ ] Every optional picker has its empty choice first ("No asset", "No technician"); required pickers have none. (Forms)
 - [ ] A draft record's footer may show *Save as Draft* as the outline secondary left of the commit act; nowhere else is there a Save. (Forms)
 - [ ] A blocked primary is disabled, with the reason on the press rather than beside it. (S2)

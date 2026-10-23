@@ -8,10 +8,10 @@ import type { ActivityEntry } from "./activity";
  */
 /**
  * THE ORDER'S STAGE (Pavan, 2026-10-07, taken from the Lovable Sales app):
- * Requested → Scheduled → Dispatched → Delivered, or Cancelled. Replaces the
+ * Requested → Scheduled → Dispatched → Delivered, or Canceled. Replaces the
  * old Assigned / Unassigned, which only said whether a driver was picked.
  */
-export type CoreFuelStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Cancelled";
+export type CoreFuelStage = "Requested" | "Scheduled" | "Dispatched" | "Delivered" | "Canceled";
 /* A STAGE IS AN ID, NOT ONE OF FIVE WORDS (Pavan, 2026-10-07). Sales
    Settings can add stages between the five, so an order's stage is the core
    name or an added stage's `stage-…` id; `stageLabel` prints it. */

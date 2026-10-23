@@ -192,7 +192,7 @@ function emptyDraft(): OrderDraft {
 const EVENT_OF: Record<string, string> = {
   Dispatched: "dispatched",
   Delivered: "delivered",
-  Cancelled: "cancelled",
+  Canceled: "canceled",
 };
 /** Would that notification show? Then it is the move's toast, not a second one. */
 const notifies = (stage: string) =>
@@ -317,13 +317,13 @@ export function OrderSheet({
 
   /* THE FOOTER'S PRIMARY IS THE NEXT STAGE, in the order Sales Settings
      keeps (Pavan, 2026-10-07). The stage right before Scheduled moves on by
-     picking a driver; Delivered and Cancelled are done. */
+     picking a driver; Delivered and Canceled are done. */
   const target = creating ? null : nextStage(status, settings);
   const toScheduled = target === "Scheduled";
   const needsDriver = toScheduled && !draft.driver;
   const quoteOk = quoteAllows({ fromQuote }, settings);
   const approval = target ? stageNeedsApproval(target, settings) : false;
-  /* A MOVE ASKED FOR — to the next stage, or to Cancelled. */
+  /* A MOVE ASKED FOR — to the next stage, or to Canceled. */
   const awaiting = draft.approvalFor;
 
   const advance = (next: FuelOrderStatus) => {
@@ -345,17 +345,17 @@ export function OrderSheet({
   };
 
   /* CANCEL ORDER — 3PL's: behind the ··· and a confirm (Pavan, 2026-10-07).
-     Not on an order already Delivered or Cancelled. It goes through the same
+     Not on an order already Delivered or Canceled. It goes through the same
      autosave as "Move to …", so the change log records it. */
-  const cancellable = !creating && status !== "Delivered" && status !== "Cancelled";
+  const cancellable = !creating && status !== "Delivered" && status !== "Canceled";
   const cancelOrder = () => {
     /* CANCELLED CAN ASK FOR APPROVAL TOO (Sales Settings › Workflow). */
-    if (stageNeedsApproval("Cancelled", settings)) {
-      requestApproval("Cancelled");
+    if (stageNeedsApproval("Canceled", settings)) {
+      requestApproval("Canceled");
       return;
     }
-    if (!notifies("Cancelled")) toast.success(`${order?.orderNo ?? "Order"} cancelled`);
-    setDraft((d) => (d ? { ...d, status: "Cancelled", approvalFor: undefined } : d));
+    if (!notifies("Canceled")) toast.success(`${order?.orderNo ?? "Order"} canceled`);
+    setDraft((d) => (d ? { ...d, status: "Canceled", approvalFor: undefined } : d));
   };
 
   /* ---- what each field is filled by ---------------------------------- */
@@ -765,7 +765,7 @@ export function OrderSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel {order?.orderNo}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It moves to Cancelled, keeping its history.
+              It moves to Canceled, keeping its history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

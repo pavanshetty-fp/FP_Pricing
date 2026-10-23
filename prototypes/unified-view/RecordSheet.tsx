@@ -116,7 +116,7 @@ function SheetPattern() {
       ref={ref}
       data-shown={shown}
       aria-hidden
-      /* Hidden, it takes no room: zero height, and the gap above cancelled. */
+      /* Hidden, it takes no room: zero height, and the gap above canceled. */
       className={cn(shown ? "-mx-4 -mb-4 flex min-h-24 flex-1" : "-mt-10 h-0 overflow-hidden")}
     >
       {shown && <QuietPattern className="flex-1" />}

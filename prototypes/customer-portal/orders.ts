@@ -50,7 +50,7 @@ export const REQUEST_STATUSES = [
   "Delivered",
   "Invoiced",
   "Paid",
-  "Cancelled",
+  "Canceled",
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
@@ -70,7 +70,7 @@ export const REQUEST_STATUS_TONE = statusTones<RequestStatus>({
   Invoiced: "caution",
   Paid: "success",
   /* An end, not a fault. */
-  Cancelled: "neutral",
+  Canceled: "neutral",
 });
 
 /** Lifecycle position — status sorts by this, never the alphabet. */
@@ -304,7 +304,7 @@ export const SHIP_TOS: ShipTo[] = [
     hoursStart: 6 * 60,
     hoursEnd: 20 * 60,
     accessNotes:
-      "Check in at the guard house and leave your licence there. Hi-vis vest past the yellow line. Signature required, printed name too.",
+      "Check in at the guard house and leave your license there. Hi-vis vest past the yellow line. Signature required, printed name too.",
     poNumber: "",
     geofence: 0.15,
     status: "Active",
@@ -580,8 +580,8 @@ const SEED: Seed[] = [
   ["Paid", 0, [["a-2", false, 4800]], -14, [8, 12], "PO-77010", "Monthly", 300],
   ["Unassigned", 2, [["c-2", false, 600]], 5, [12, 16], "", "", 30],
   ["Invoiced", 1, [["b-3", true, 0]], -3, [8, 12], "", "", 96],
-  ["Cancelled", 0, [["a-4", false, 450]], -4, [14, 18], "", "", 70],
-  ["Cancelled", 2, [["c-1", false, 2000]], -5, [8, 12], "PO-77031", "", 110],
+  ["Canceled", 0, [["a-4", false, 450]], -4, [14, 18], "", "", 70],
+  ["Canceled", 2, [["c-1", false, 2000]], -5, [8, 12], "PO-77031", "", 110],
   ["Scheduled", 2, [["c-1", false, 2500]], 0, [14, 18], "PO-77140", "", 4],
   ["Delivered", 1, [["b-1", false, 4100]], 0, [5, 8], "", "", 5],
   ["Draft", 1, [["b-1", false, 3000]], 6, [8, 12], "", "", 0.5],
@@ -798,7 +798,7 @@ export const CANCEL_CUTOFF_HOURS = 24;
 
 /*
   WHAT CANCEL DOES, BY WHERE THE REQUEST IS (PRD FR-27):
-    now      Unassigned, or Scheduled outside the cut-off — cancelled
+    now      Unassigned, or Scheduled outside the cut-off — canceled
              at once
     request  Scheduled inside the cut-off — the tenant decides,
              and a fee may apply
@@ -839,8 +839,8 @@ export function lastProductFor(assetId: string, all: OrderRequest[]): string | u
 
 export const todayKey = () => dateKeyOf(startOfDay(new Date()));
 
-/** An order that is live — not a draft, not cancelled. */
-export const LIVE: RequestStatus[] = REQUEST_STATUSES.filter((st) => !["Draft", "Cancelled"].includes(st));
+/** An order that is live — not a draft, not canceled. */
+export const LIVE: RequestStatus[] = REQUEST_STATUSES.filter((st) => !["Draft", "Canceled"].includes(st));
 export const DELIVERED: RequestStatus[] = [
   "Partial delivery",
   "Delivered",
@@ -972,7 +972,7 @@ export type RequestColumnKey =
   | "products"
   | "quantity"
   | "level"
-  | "fulfil"
+  | "fulfill"
   | "daysToEmpty"
   | "battery"
   | "date"
@@ -1002,7 +1002,7 @@ export const REQUEST_COLUMNS: {
   /* THE TANKS' READINGS, IN THE ORDER'S ROW (Pavan, 2026-10-21 — trial of
      bringing the nested layer up; see OrdersScreen's TANK_LAYOUT). */
   { key: "level", label: "Current level", width: 150 },
-  { key: "fulfil", label: "On fulfilment", width: 140 },
+  { key: "fulfill", label: "On fulfilment", width: 140 },
   { key: "daysToEmpty", label: "Days to empty", width: 130 },
   { key: "battery", label: "Battery", width: 110 },
   { key: "date", label: "Planned date", width: 165, sortable: true },

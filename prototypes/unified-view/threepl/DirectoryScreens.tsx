@@ -310,7 +310,7 @@ export function customerConfig(
         valueOf: (c) => {
           const orders = ordersForCustomer(c.name);
           const out: string[] = [];
-          if (orders.some((o) => !["Completed", "Synced", "Cancelled"].includes(o.status))) {
+          if (orders.some((o) => !["Completed", "Synced", "Canceled"].includes(o.status))) {
             out.push("Has active orders");
           }
           if (orders.some((o) => o.kind === "Recurring")) out.push("Has recurring orders");
@@ -891,7 +891,7 @@ export function productConfig(
               <TooltipTrigger asChild>
                 <span className="text-sm font-medium tabular-nums text-status-failed">0</span>
               </TooltipTrigger>
-              <TooltipContent>No vendor can fulfil this — orders naming it cannot be assigned</TooltipContent>
+              <TooltipContent>No vendor can fulfill this — orders naming it cannot be assigned</TooltipContent>
             </Tooltip>
           ) : (
             <span className="text-sm tabular-nums">{n}</span>
@@ -928,12 +928,12 @@ export function productConfig(
       {
         key: "config",
         label: "Configuration",
-        options: ["Tax configured", "Tax missing", "Accounting mapped", "Accounting unmapped", "No vendor can fulfil"],
+        options: ["Tax configured", "Tax missing", "Accounting mapped", "Accounting unmapped", "No vendor can fulfill"],
         valueOf: (p) => {
           const out: string[] = [];
           out.push(p.taxCode ? "Tax configured" : "Tax missing");
           out.push(p.revenueAccount && p.cogsAccount ? "Accounting mapped" : "Accounting unmapped");
-          if (vendorsForProduct(p).length === 0) out.push("No vendor can fulfil");
+          if (vendorsForProduct(p).length === 0) out.push("No vendor can fulfill");
           return out;
         },
       },
@@ -944,7 +944,7 @@ export function productConfig(
         valueOf: (p) => {
           const orders = BROKER_PRODUCTS.length > 0 ? ordersUsing(p.name) : [];
           const out: string[] = [];
-          if (orders.some((o) => !["Completed", "Synced", "Cancelled"].includes(o.status))) {
+          if (orders.some((o) => !["Completed", "Synced", "Canceled"].includes(o.status))) {
             out.push("Used in active orders");
           }
           if (orders.some((o) => o.kind === "Recurring")) out.push("Used in recurring orders");

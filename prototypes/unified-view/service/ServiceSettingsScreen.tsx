@@ -177,7 +177,7 @@ export function ServiceSettingsScreen() {
                 />
                 <SettingRow
                   title="Native billing"
-                  description="On: the invoice writes itself the moment a job is approved — parts, actual labour and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."
+                  description="On: the invoice writes itself the moment a job is approved — parts, actual labor and fees. Off: the costs are still captured, but somebody raises the invoice by hand. Either way it reaches accounting on a batch sync afterwards, not in real time."
                   value={check("nativeBilling", "Native billing")}
                 />
                 <SettingRow

@@ -149,7 +149,7 @@ function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boole
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Charge</TableRequiredLabel>
           </th>
-          <th className="px-3 py-2.5 text-right">
+          <th className="px-3 py-2.5">
             <TableRequiredLabel>Value</TableRequiredLabel>
           </th>
           {/* UNNAMED, like every row remove — DS ui §10f. */}
@@ -195,7 +195,7 @@ function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boole
                       <button
                         type="button"
                         aria-label={`${name} unit`}
-                        className="flex w-[72px] shrink-0 items-center justify-end gap-1 px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-[72px] shrink-0 items-center gap-1 px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {unit.label}
                         <ChevronDown className="size-4 shrink-0" />
@@ -547,7 +547,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
                 label: "Net $/gal",
                 width: "w-[16%]",
                 cell: (_, i) => (
-                  <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
+                  <div className="flex h-11 items-center px-3 text-sm tabular-nums text-foreground">
                     {price.lines[i] ? RATE(price.lines[i]!.net) : "—"}
                   </div>
                 ),
@@ -558,7 +558,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
                 label: "Line total",
                 width: "w-[20%]",
                 cell: (_, i) => (
-                  <div className="flex h-11 items-center justify-end px-3 text-sm tabular-nums text-foreground">
+                  <div className="flex h-11 items-center px-3 text-sm tabular-nums text-foreground">
                     {price.lines[i] ? MONEY(price.lines[i]!.total) : "—"}
                   </div>
                 ),

@@ -28,7 +28,7 @@ import {
   should be (the difference is what is in question); a note is required,
   proof optional. "Send dispute" puts the invoice — and its order — in
   "Invoice disputed". Details (PO, ship-to) asks for a corrected invoice, so
-  no amounts; Not delivered asks for the whole invoice cancelled.
+  no amounts; Not delivered asks for the whole invoice canceled.
 */
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -143,10 +143,10 @@ export function DisputeSheet({
                   <th className="px-3 py-2.5 text-left">
                     <TableRequiredLabel>Item</TableRequiredLabel>
                   </th>
-                  <th className="px-3 py-2.5 text-right">
+                  <th className="px-3 py-2.5">
                     <TableRequiredLabel>Charged</TableRequiredLabel>
                   </th>
-                  <th className="px-3 py-2.5 text-right">
+                  <th className="px-3 py-2.5">
                     <TableRequiredLabel>Should be</TableRequiredLabel>
                   </th>
                 </tr>
@@ -165,10 +165,10 @@ export function DisputeSheet({
                         />
                       </td>
                       <td className="truncate px-3 text-foreground">{r.label}</td>
-                      <td className="px-3 text-right tabular-nums text-foreground">{usd.format(r.charged)}</td>
+                      <td className="px-3 tabular-nums text-foreground">{usd.format(r.charged)}</td>
                       <td className="relative p-0">
                         {gone ? (
-                          <span className="flex h-full items-center justify-end px-3 tabular-nums text-foreground">{usd.format(0)}</span>
+                          <span className="flex h-full items-center px-3 tabular-nums text-foreground">{usd.format(0)}</span>
                         ) : (
                           <TableCellInput
                             value={on ? String(r.expected) : ""}
@@ -189,7 +189,7 @@ export function DisputeSheet({
                   <td className="px-3 font-semibold text-foreground" colSpan={2}>
                     In question
                   </td>
-                  <td className="px-3 text-right font-semibold tabular-nums text-foreground">{usd.format(diff)}</td>
+                  <td className="px-3 font-semibold tabular-nums text-foreground">{usd.format(diff)}</td>
                 </tr>
               </tbody>
             </table>

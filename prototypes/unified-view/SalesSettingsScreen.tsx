@@ -476,7 +476,7 @@ function FormFieldsTable({
 
 /* THE CORE FIVE KEEP THEIR ORDER (Pavan, 2026-10-07): an added stage can sit
    anywhere between Requested and Delivered, but Requested stays first and
-   Delivered and Cancelled last — the order model's lifecycle is not a list a
+   Delivered and Canceled last — the order model's lifecycle is not a list a
    business rearranges. */
 const coreOrderKept = (next: StageRule[]) => {
   const core = next.filter((r) => CORE_STAGES.includes(r.id as (typeof CORE_STAGES)[number]));
@@ -485,7 +485,7 @@ const coreOrderKept = (next: StageRule[]) => {
     core.every((r, i) => r.id === CORE_STAGES[i]) &&
     ids[0] === "Requested" &&
     ids.indexOf("Delivered") === ids.length - 2 &&
-    ids[ids.length - 1] === "Cancelled"
+    ids[ids.length - 1] === "Canceled"
   );
 };
 
@@ -512,7 +512,7 @@ function ColorCell({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`Colour of ${label}`}
+          aria-label={`Color of ${label}`}
           className="absolute inset-0 flex items-center justify-between gap-2 px-3 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
         >
           <Pill kind={kind} color={color}>
@@ -555,7 +555,7 @@ function TypeTagsTable({ tags }: { tags: TypeTag[] }) {
         <thead>
           <tr className="border-b border-border bg-fp-table-header">
             <Head>Type</Head>
-            <Head>Colour</Head>
+            <Head>Color</Head>
           </tr>
         </thead>
         <tbody>
@@ -627,7 +627,7 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
         <thead>
           <tr className="border-b border-border bg-fp-table-header">
             <Head>Stage</Head>
-            <Head>Colour</Head>
+            <Head>Color</Head>
             <Head>Requires approval</Head>
             <Head>SLA (hours)</Head>
             <Head>Order</Head>
@@ -637,7 +637,7 @@ function WorkflowTable({ stages }: { stages: StageRule[] }) {
         <tbody>
           {stages.map((r, i) => {
             const core = CORE_STAGES.includes(r.id as (typeof CORE_STAGES)[number]);
-            const ends = r.id === "Delivered" || r.id === "Cancelled";
+            const ends = r.id === "Delivered" || r.id === "Canceled";
             const name = r.label.trim() || `stage ${i + 1}`;
             const drag = rowProps(r.id);
             return (

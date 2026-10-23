@@ -44,7 +44,7 @@ import { MONEY as money } from "../data";
  *   Needs approval  the work is recorded and a manager has not signed it
  *   Approved        signed off; the invoice exists
  *   Completed       the invoice reached accounting and the job is closed
- *   Cancelled       it is not happening
+ *   Canceled       it is not happening
  *
  * OPEN AND ASSIGNED ARE TWO FACTS, NOT ONE. A job nobody is on and a job
  * somebody is on but has not started are different problems, and the gap
@@ -87,7 +87,7 @@ export type WorkLane =
   | "Working"
   | "Completed"
   | "Synced"
-  | "Cancelled";
+  | "Canceled";
 
 export type WorkStatus =
   /* Open — nobody is on it */
@@ -115,7 +115,7 @@ export type WorkStatus =
   | "Payment received"
   | "Payment delayed"
   | "Unpaid"
-  | "Cancelled";
+  | "Canceled";
 
 export const WORK_STATUSES: WorkStatus[] = [
   "Drafted",
@@ -134,10 +134,10 @@ export const WORK_STATUSES: WorkStatus[] = [
   "Payment received",
   "Payment delayed",
   "Unpaid",
-  "Cancelled",
+  "Canceled",
 ];
 
-/** Lane order on the board. Cancelled sits behind a rule — it is not a step. */
+/** Lane order on the board. Canceled sits behind a rule — it is not a step. */
 export const WORK_LANES: {
   key: WorkLane;
   statuses: WorkStatus[];
@@ -148,7 +148,7 @@ export const WORK_LANES: {
   { key: "Working", statuses: ["Yet to start", "Ongoing", "Awaiting approval", "Needs approval"] },
   { key: "Completed", statuses: ["Completed", "Completed — linked"] },
   { key: "Synced", statuses: ["Awaiting payment", "Payment delayed", "Unpaid", "Payment received", "Yet to be reviewed", "Reviewed"] },
-  { key: "Cancelled", statuses: ["Cancelled"], apart: true },
+  { key: "Canceled", statuses: ["Canceled"], apart: true },
 ];
 
 /** Which lane a status lives in. One place, so the board and the list agree. */
@@ -235,10 +235,10 @@ export const WORK_STATUS_KIND: Record<WorkStatus, StatusKind> = {
   "Payment received": "success",
   "Payment delayed": "caution",
   Unpaid: "critical",
-  /* NOT RED. Cancelled is a terminal non-event, not a problem to solve — and
+  /* NOT RED. Canceled is a terminal non-event, not a problem to solve — and
      a red badge on a lane of them would be the loudest thing on the board
      saying the least. */
-  Cancelled: "neutral",
+  Canceled: "neutral",
 };
 
 /** The same kinds as `StatusChip` tones — the table's and the sheet's chip. */
@@ -263,7 +263,7 @@ export const WORK_LANE_COLOR: Record<WorkStatus, LaneColor> = {
   "Payment delayed": "purple",
   Unpaid: "purple",
   /* CANCELLED IS NOT RED (DS ui §10b) — a terminal non-event, grey. */
-  Cancelled: "grey",
+  Canceled: "grey",
 };
 
 /* ------------------------------------------------------- what and how much */
@@ -879,12 +879,12 @@ export function diffServiceOrder(a: ServiceOrder, b: ServiceOrder): string[] {
   /* WHAT IT COSTS — the rate, a hand correction to the hours, and the
      bill's lines once the work is recorded (before that they are the plan,
      and the plan is still being written). */
-  say("Labour rate", a.laborRate, b.laborRate);
+  say("Labor rate", a.laborRate, b.laborRate);
   if (a.laborOverride !== b.laborOverride)
     out.push(
       b.laborOverride == null
-        ? "Labour: back to the clock"
-        : `Labour corrected: ${formatHours(b.laborOverride)}`
+        ? "Labor: back to the clock"
+        : `Labor corrected: ${formatHours(b.laborOverride)}`
     );
   if (isRecorded(a.status)) {
     const parts = (r: ServiceOrder) => r.parts.map((p) => `${p.name || "?"} ×${p.qty}`).join(" · ");
@@ -1245,7 +1245,7 @@ function buildOrders(): ServiceOrder[] {
     "Completed — linked",
     "Ongoing",
     "Yet to be reviewed",
-    "Cancelled",
+    "Canceled",
     "Linked order",
   ];
 
@@ -1292,7 +1292,7 @@ function buildOrders(): ServiceOrder[] {
        arrival like any other worked job. */
     const started =
       status === "Parts pending" ||
-      (LANE_OF[status] !== "Open" && status !== "Assigned" && status !== "Cancelled");
+      (LANE_OF[status] !== "Open" && status !== "Assigned" && status !== "Canceled");
     const recorded = isRecorded(status);
     const billed = LANE_OF[status] === "Completed" || LANE_OF[status] === "Synced";
 
@@ -1755,9 +1755,9 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     if (!r.orderNo.startsWith("SO-")) {
       problems.push(`${r.orderNo}: service order without an SO prefix`);
     }
-    /* A cancelled order is a snapshot of whatever it was when it stopped, so
+    /* A canceled order is a snapshot of whatever it was when it stopped, so
        the stage rules below do not describe it. */
-    if (r.status === "Cancelled") continue;
+    if (r.status === "Canceled") continue;
 
     /* OPEN MEANS NOBODY IS ON IT. Every stage after it means somebody is, or
        the lane is telling a lie. */
@@ -1783,7 +1783,7 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
     /* RECORDED WORK IS HOURS AND A SIGNATURE. A job sent for approval with no
        labour on it is a job nobody could approve. */
     if (isRecorded(r.status) && r.labor <= 0) {
-      problems.push(`${r.orderNo}: ${r.status} with no labour recorded`);
+      problems.push(`${r.orderNo}: ${r.status} with no labor recorded`);
     }
     /* A RECORDED JOB HAS A FINISHED VISIT — but the converse is NOT true any
        more, and that is the point of visits. "Parts pending" has a finished
@@ -1826,7 +1826,7 @@ export function assertServiceConsistent(rows: ServiceOrder[]): string[] {
       problems.push(`${r.orderNo}: completedAt does not match the last visit`);
     }
     if (Math.abs(totalVisitHours(r.visits) - r.labor) > 0.02) {
-      problems.push(`${r.orderNo}: labour is not the sum of its visits`);
+      problems.push(`${r.orderNo}: labor is not the sum of its visits`);
     }
     /* ONLY THE LAST VISIT MAY BE RUNNING. An open visit earlier in the list
        is a clock nobody will ever stop. */

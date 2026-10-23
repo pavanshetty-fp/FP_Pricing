@@ -109,7 +109,7 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Active: "info",
   /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
   Paused: "caution",
-  Cancelled: "neutral",
+  Canceled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
 });

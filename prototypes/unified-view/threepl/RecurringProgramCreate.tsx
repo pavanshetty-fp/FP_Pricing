@@ -860,7 +860,7 @@ export function RecurringProgramCreate({
       open={open}
       onOpenChange={onOpenChange}
       mode="create"
-      editTitle="Programme"
+      editTitle="Program"
       createTitle={editing ? `Edit ${initial?.name ?? "rule"}` : "Create recurring rule"}
       createAction={editing ? "Save rule" : "Create rule"}
       showCancel={false}

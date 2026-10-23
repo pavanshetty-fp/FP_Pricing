@@ -52,7 +52,7 @@ import {
  * §"Where a broker sees it" — the six states a series can be in.
  *
  * SIX WORDS, FOUR TONES. The DS ships four status tones and no more, so two
- * pairs must share one. Cancelled/Ended/Expired all read neutral, which the
+ * pairs must share one. Canceled/Ended/Expired all read neutral, which the
  * doc explicitly warns about: "if they share a visual treatment, the
  * difference disappears — and the difference is the whole audit story."
  *
@@ -66,7 +66,7 @@ export type SeriesStatus =
   | "Upcoming"
   | "Active"
   | "Paused"
-  | "Cancelled"
+  | "Canceled"
   | "Ended"
   | "Expired";
 
@@ -74,7 +74,7 @@ export const SERIES_STATUSES: SeriesStatus[] = [
   "Upcoming",
   "Active",
   "Paused",
-  "Cancelled",
+  "Canceled",
   "Ended",
   "Expired",
 ];
@@ -84,7 +84,7 @@ export const SERIES_STATUS_MEANING: Record<SeriesStatus, string> = {
   Upcoming: "Set up, but the start date hasn't arrived",
   Active: "Running and generating orders",
   Paused: "Temporarily stopped; will resume",
-  Cancelled: "Stopped by the broker; stays visible and editable",
+  Canceled: "Stopped by the broker; stays visible and editable",
   Ended: "The broker deliberately ended it on a date",
   Expired: "Its end date simply passed",
 };
@@ -299,7 +299,7 @@ export interface Delivery {
    * hide the thing V1 exists to fix.
    */
   isParent: boolean;
-  /** Cancelled by a pause, not by a person — restored when the pause lifts. */
+  /** Canceled by a pause, not by a person — restored when the pause lifts. */
   cancelledByPause: boolean;
 }
 
@@ -415,7 +415,7 @@ function history(
  * it wrong.
  */
 export interface SeriesOverride {
-  cancelled?: boolean;
+  canceled?: boolean;
   endKey?: string | null;
   pauses?: PauseRecord[];
 }
@@ -437,7 +437,7 @@ export function buildSeries(
   const todayKey = dateKeyOf(today);
 
   /* ── The series' own state ──────────────────────────────────────────────
-     Order matters. A cancelled series is cancelled whatever its dates say, a
+     Order matters. A canceled series is canceled whatever its dates say, a
      paused one is paused whatever its schedule says, and only then do the
      dates get a vote. */
   const activePause = pauses.find(
@@ -445,7 +445,7 @@ export function buildSeries(
   );
 
   let status: SeriesStatus;
-  if (override.cancelled || parent.status === "Cancelled") status = "Cancelled";
+  if (override.canceled || parent.status === "Canceled") status = "Canceled";
   else if (activePause) status = "Paused";
   else if (endKey && endKey < todayKey) status = "Ended";
   else if (start > today) status = "Upcoming";
@@ -466,8 +466,8 @@ export function buildSeries(
     stalledReason = activePause?.toKey
       ? `Paused until ${DATE_FMT.format(dayFromKey(activePause.toKey))}`
       : "Paused — no resume date set";
-  } else if (status === "Cancelled") {
-    stalledReason = "Cancelled — the schedule is kept, generation stopped";
+  } else if (status === "Canceled") {
+    stalledReason = "Canceled — the schedule is kept, generation stopped";
   } else if (status === "Ended" || status === "Expired") {
     stalledReason = "Past its end date";
   } else if (!vendorLocked) {
@@ -530,7 +530,7 @@ export function buildSeries(
         date: twoLineDate(d, today),
         /* THE DOC'S OWN WORD: a generated order arrives ready for the partner,
            which in this module's vocabulary is Assigned. */
-        status: inPause ? "Cancelled" : "Assigned",
+        status: inPause ? "Canceled" : "Assigned",
         vendorId: parent.vendorId,
         lines: parent.lines,
         isParent: false,
@@ -546,7 +546,7 @@ export function buildSeries(
       (d) =>
         d.dateKey >= todayKey &&
         !isDelivered(d.status) &&
-        d.status !== "Cancelled"
+        d.status !== "Canceled"
     )?.dateKey ?? null;
 
   return {
@@ -567,7 +567,7 @@ export function buildSeries(
 export function upcomingCount(s: RecurringSeries, today: Date): number {
   const key = dateKeyOf(today);
   return s.deliveries.filter(
-    (d) => d.dateKey >= key && d.status !== "Cancelled" && !isDelivered(d.status)
+    (d) => d.dateKey >= key && d.status !== "Canceled" && !isDelivered(d.status)
   ).length;
 }
 

@@ -32,7 +32,7 @@ import type { GroupDim } from "@/components/tables-layout";
   WHY THIS IS ONE COMPONENT AND NOT FOUR. The traffic is identical on every
   entity: a row opens the sheet, saving closes it, creating prepends a record,
   archiving flips a status. Written four times, the fourth copy is the one
-  where a cancelled create leaves a half-made record in the list.
+  where a canceled create leaves a half-made record in the list.
 
   WHAT AN ENTITY STILL SUPPLIES is everything genuinely about ITS records —
   columns, cells, facets, the form's fields, what the sheet shows below them,

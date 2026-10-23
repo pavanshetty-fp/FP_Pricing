@@ -127,7 +127,7 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Active: "info",
   /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
   Paused: "caution",
-  Cancelled: "neutral",
+  Canceled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
 });
@@ -673,7 +673,7 @@ export function RecurringOrdersScreen({
     toast.success(`Paused ${s.parent.orderNo}`, {
       description:
         hit > 0
-          ? `${hit} unfinished ${hit === 1 ? "order" : "orders"} cancelled. Resuming brings them back.`
+          ? `${hit} unfinished ${hit === 1 ? "order" : "orders"} canceled. Resuming brings them back.`
           : "No orders were affected.",
     });
   };
@@ -682,7 +682,7 @@ export function RecurringOrdersScreen({
     patch(s.id, { pauses: [] });
     toast.success(`Resumed ${s.parent.orderNo}`, {
       description:
-        "Cancelled orders restored, then re-checked against the schedule.",
+        "Canceled orders restored, then re-checked against the schedule.",
     });
   };
 
@@ -690,20 +690,20 @@ export function RecurringOrdersScreen({
     patch(s.id, { endKey: todayKey });
     toast.success(`${s.parent.orderNo} ends ${DATE_FMT.format(today)}`, {
       description:
-        "Unfinished orders after that date are cancelled. Delivered ones stay.",
+        "Unfinished orders after that date are canceled. Delivered ones stay.",
     });
   };
 
   const cancelSeries = (s: RecurringSeries) => {
-    patch(s.id, { cancelled: true });
-    toast.success(`Cancelled ${s.parent.orderNo}`, {
+    patch(s.id, { canceled: true });
+    toast.success(`Canceled ${s.parent.orderNo}`, {
       description:
         "Generation stopped. The schedule stays here and can be restarted.",
     });
   };
 
   const restart = (s: RecurringSeries) => {
-    patch(s.id, { cancelled: false, endKey: null, pauses: [] });
+    patch(s.id, { canceled: false, endKey: null, pauses: [] });
     toast.success(`Restarted ${s.parent.orderNo}`);
   };
 
@@ -983,7 +983,7 @@ export function RecurringOrdersScreen({
                     </DropdownMenuItem>
                   </>
                 )}
-                {(s.status === "Cancelled" ||
+                {(s.status === "Canceled" ||
                   s.status === "Ended" ||
                   s.status === "Expired") && (
                   <DropdownMenuItem onSelect={() => restart(s)}>

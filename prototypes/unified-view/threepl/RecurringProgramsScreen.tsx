@@ -122,7 +122,7 @@ const SERIES_TONE = statusTones<SeriesStatus>({
   Active: "info",
   /* Waiting on somebody to resume it. NOT red: pausing is a decision. */
   Paused: "caution",
-  Cancelled: "neutral",
+  Canceled: "neutral",
   Ended: "neutral",
   Expired: "neutral",
 });
@@ -141,7 +141,7 @@ const uniq = (xs: string[]) => [...new Set(xs)].join(" / ");
 const COLUMNS: Col[] = [
   {
     key: "programNo",
-    label: "Programme # / Created",
+    label: "Program # / Created",
     width: 180,
     sort: (p) => p.programNo,
   },
@@ -305,7 +305,7 @@ const PROGRAM_SEARCH_FIELDS: {
   label: string;
   text: (p: RecurringProgram) => string;
 }[] = [
-  { key: "programNo", label: "Programme #", text: (p) => p.programNo },
+  { key: "programNo", label: "Program #", text: (p) => p.programNo },
   {
     key: "vendor",
     label: "Partner",
@@ -603,13 +603,13 @@ export function RecurringProgramsScreen({
 
   const exportCsv = () => {
     downloadCsv(
-      `recurring-programmes-${new Date().toISOString().slice(0, 10)}`,
+      `recurring-programs-${new Date().toISOString().slice(0, 10)}`,
       rows.flatMap((p) =>
         /* ONE CSV ROW PER LANE, not per programme. A spreadsheet of
            programmes with a "12 sites" cell is a spreadsheet nobody can
            pivot; the lane is the unit anybody exporting this wants. */
         p.targets.map((t) => ({
-          "Programme #": p.programNo,
+          "Program #": p.programNo,
           Partner: programVendors(p).map((v) => v.name).join(" / "),
           Product: p.products.join(" + "),
           Frequency: p.schedule.label,
@@ -788,7 +788,7 @@ export function RecurringProgramsScreen({
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={total} one="programme" many="programmes" />}
+          viewStatement={<ViewStatement count={total} one="program" many="programs" />}
           /* RECOMMENDATIONS ON THE LIST TOO (Pavan, 2026-10-06) — a rule's
              frequency and the ship-tos it fits, across customers; Review and
              Create Rule opens the form with both filled in. Next to the Filters button. */
@@ -814,7 +814,7 @@ export function RecurringProgramsScreen({
           }
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search programmes, partners, products, sites…"
+          searchPlaceholder="Search programs, partners, products, sites…"
           filters={
             <ListFilters
               facets={PROGRAM_FACETS.map((f) => ({
@@ -897,12 +897,12 @@ export function RecurringProgramsScreen({
                 {filtered ? <SearchX /> : <Network />}
               </EmptyMedia>
               <EmptyTitle>
-                {filtered ? "No programmes match" : "No programmes yet"}
+                {filtered ? "No programs match" : "No programs yet"}
               </EmptyTitle>
               <EmptyDescription>
                 {filtered
                   ? "Nothing found. Check the spelling, or clear the filters above."
-                  : "A programme starts with a partner — pick one, and the sites they can reach become the book you build from."}
+                  : "A program starts with a partner — pick one, and the sites they can reach become the book you build from."}
               </EmptyDescription>
             </EmptyHeader>
             {filtered && (
@@ -1031,7 +1031,7 @@ export function RecurringProgramsScreen({
           <Pill className="tabular-nums">
             {rows.reduce((s, p) => s + liveTargets(p).length, 0)} live lanes
           </Pill>
-          across {rows.length} {rows.length === 1 ? "programme" : "programmes"}
+          across {rows.length} {rows.length === 1 ? "program" : "programs"}
           {/* THE ARCHIVE IS TUCKED AWAY ON PURPOSE (Pavan, 2026-09-23). V1
               and V2 are kept to refer back to until they are kept or deleted
               for good — so the way in is the quietest thing on the screen,
@@ -1062,9 +1062,9 @@ export function RecurringProgramsScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Programmes"
-        noun="programmes"
-        nounOne="programme"
+        title="Export Programs"
+        noun="programs"
+        nounOne="program"
         count={rows.length}
         filtersControl={
           <ListFilters
@@ -1086,7 +1086,7 @@ export function RecurringProgramsScreen({
           if (format === "csv") exportCsv();
           else
             toast.success(
-              `Exporting ${rows.length} ${rows.length === 1 ? "programme" : "programmes"} as .${format}`
+              `Exporting ${rows.length} ${rows.length === 1 ? "program" : "programs"} as .${format}`
             );
         }}
       />

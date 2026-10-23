@@ -1,0 +1,1889 @@
+{
+  "name": "FPDS — FleetPanda Design System",
+  "owner": "pavanshetty@fleetpanda.com",
+  "gapMessage": "This unit needs a tweak in design/new design. Please contact the owner to get a design for this gap, pavanshetty@fleetpanda.com.",
+  "protocol": "docs/fpds/00-protocol.md",
+  "registryUrl": "https://pavanshetty-rgb.github.io/FP-DS-2026/r",
+  "generated": "2026-10-23",
+  "entries": [
+    {
+      "id": "atom.button",
+      "title": "Button",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:19",
+      "code": [
+        "src/components/ui/button.tsx"
+      ],
+      "registry": "fpds-button",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-button.json",
+      "purpose": "The one pressable action. Says what happens next.",
+      "useWhen": [
+        "Use when a press does something: commit, open, add, export."
+      ],
+      "dontUseWhen": [
+        "Don't use for a two-state choice (→ `atom.toggle` / `atom.toggle-group`), a chip (→ `atom.pill`), or an add on a table (→ `molecule.hanging-add`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.toggle",
+      "title": "Toggle",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:87",
+      "code": [
+        "src/components/ui/toggle.tsx"
+      ],
+      "registry": "fpds-toggle",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-toggle.json",
+      "purpose": "A single on/off pressable — a button that stays pressed.",
+      "useWhen": [
+        "Use for a single view option that is on or off."
+      ],
+      "dontUseWhen": [
+        "Don't use for a setting in a form (→ `atom.switch` in a menu, `atom.checkbox` in a table/form); for one of several (→ `atom.toggle-group`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.toggle-group",
+      "title": "Toggle group",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:134",
+      "code": [
+        "src/components/ui/toggle-group.tsx"
+      ],
+      "registry": "fpds-toggle-group",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-toggle-group.json",
+      "purpose": "A segment control: pick one (or several) of a few short options that change a view.",
+      "useWhen": [
+        "Use for 2–5 short scopes on a dashboard or list (line of service, version)."
+      ],
+      "dontUseWhen": [
+        "Don't use for a form field with many options (→ `atom.select` / `molecule.combobox`), or for switching between views of one record (→ `atom.tabs`). Not for line-of-service on lists — that is a filter."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.input",
+      "title": "Input",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:184",
+      "code": [
+        "src/components/ui/input.tsx"
+      ],
+      "registry": "fpds-input",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-input.json",
+      "purpose": "A one-line text or number field.",
+      "useWhen": [
+        "Use for free text, a number, an email, a phone."
+      ],
+      "dontUseWhen": [
+        "Don't use for prose (→ `atom.textarea`), a fixed list (→ `atom.select` / `molecule.combobox`), a date (→ `molecule.date-field`), or a read-only value (→ `molecule.copy-value`). Inside an editable table use the `TableCell*` cells, never a bare Input."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.textarea",
+      "title": "Textarea",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:234",
+      "code": [
+        "src/components/ui/textarea.tsx"
+      ],
+      "registry": "fpds-textarea",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-textarea.json",
+      "purpose": "Multi-line prose — notes, instructions, reasons.",
+      "useWhen": [
+        "Use for notes and free-form text longer than a line."
+      ],
+      "dontUseWhen": [
+        "Don't use for a single value (→ `atom.input`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.select",
+      "title": "Select",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:280",
+      "code": [
+        "src/components/ui/select.tsx"
+      ],
+      "registry": "fpds-select",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-select.json",
+      "purpose": "Pick one value from a short fixed list.",
+      "useWhen": [
+        "Use for a short, closed list where search adds nothing."
+      ],
+      "dontUseWhen": [
+        "Don't use when the list can grow, needs search, a second line per option, an empty choice or create (→ `molecule.combobox` — every list searches by default). In a table cell use `TableCellSelect`."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.checkbox",
+      "title": "Checkbox",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:330",
+      "code": [
+        "src/components/ui/checkbox.tsx"
+      ],
+      "registry": "fpds-checkbox",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-checkbox.json",
+      "purpose": "A boolean, or one pick in a multi-pick list.",
+      "useWhen": [
+        "Use for every boolean in a table or form (Top off, row select, facet options, multi-pick rows)."
+      ],
+      "dontUseWhen": [
+        "Don't use a switch or toggle for a table boolean."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.radio-group",
+      "title": "Radio group",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:379",
+      "code": [
+        "src/components/ui/radio-group.tsx"
+      ],
+      "registry": "fpds-radio-group",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-radio-group.json",
+      "purpose": "Pick one of 2–4 options that each need their words visible.",
+      "useWhen": [
+        "Use when every option should be read before choosing (fill type, scope of an edit)."
+      ],
+      "dontUseWhen": [
+        "Don't use for long lists (→ `atom.select` / `molecule.combobox`) or view scopes (→ `atom.toggle-group`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.switch",
+      "title": "Switch",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:426",
+      "code": [
+        "src/components/ui/switch.tsx"
+      ],
+      "registry": "fpds-switch",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-switch.json",
+      "purpose": "Turn a setting on or off immediately, outside a table.",
+      "useWhen": [
+        "Use in a menu of settings (card fields) or a settings row that applies at once."
+      ],
+      "dontUseWhen": [
+        "Don't use in a table cell or for a form boolean that a list compares (→ `atom.checkbox`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.slider",
+      "title": "Slider",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:473",
+      "code": [
+        "src/components/ui/slider.tsx"
+      ],
+      "registry": "fpds-slider",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-slider.json",
+      "purpose": "Choose a value or range on a continuous scale.",
+      "useWhen": [
+        "Use for a level that is felt rather than typed (Accessibility sliders) or as the track inside a window control."
+      ],
+      "dontUseWhen": [
+        "Don't use for a delivery window in a form (→ `DeliveryWindowTimeline` unit), or an exact number (→ `atom.input`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.label",
+      "title": "Label",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:520",
+      "code": [
+        "src/components/ui/label.tsx"
+      ],
+      "registry": "fpds-label",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-label.json",
+      "purpose": "Names a field.",
+      "useWhen": [
+        "Use above (or beside) every field and for a checkbox / radio's words."
+      ],
+      "dontUseWhen": [
+        "Don't use for section headings or helper text."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.calendar",
+      "title": "Calendar",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:566",
+      "code": [
+        "src/components/ui/calendar.tsx"
+      ],
+      "registry": "fpds-calendar",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-calendar.json",
+      "purpose": "The month grid inside the date picker.",
+      "useWhen": [
+        "Use only inside `DatePickerPanel` (via `molecule.date-field`, `DateRangePopover`, `DatePanel`)."
+      ],
+      "dontUseWhen": [
+        "Don't use a bare Popover + Calendar on a screen (→ `molecule.date-field`). Exception: the technician phone app's full-width calendar."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.badge",
+      "title": "Badge",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:616",
+      "code": [
+        "src/components/ui/badge.tsx"
+      ],
+      "registry": "fpds-badge",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-badge.json",
+      "purpose": "The DS's low-level chip geometry and the round counter (`BadgeNumber`).",
+      "useWhen": [
+        "Use `BadgeNumber` for a counter inside a button or nav item; `shape=\"disc\"` only through `atom.code-disc`; `verified` for the verified mark."
+      ],
+      "dontUseWhen": [
+        "Don't use Badge for a status, tag, flag or \"+N\" (→ `atom.pill` / `atom.status-chip`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.pill",
+      "title": "Pill",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:662",
+      "code": [
+        "src/components/ui/pill.tsx"
+      ],
+      "registry": "fpds-pill",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-pill.json",
+      "purpose": "The chip and badge of the system — a status, tag, flag, type or \"+N\".",
+      "useWhen": [
+        "Use for every chip/badge: status (via `atom.status-chip`), a table's Type column (full word), flags (Urgent, Over SLA), \"+N\"."
+      ],
+      "dontUseWhen": [
+        "Don't use for plain text values (products, driver names), counters in buttons (→ `BadgeNumber`), board-card type initials (→ `atom.code-disc`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.status-chip",
+      "title": "Status chip",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:722",
+      "code": [
+        "src/components/ui/status-chip.tsx"
+      ],
+      "registry": "fpds-status-chip",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-status-chip.json",
+      "purpose": "A status word, drawn as a pill in its kind's color.",
+      "useWhen": [
+        "Use in every status column, sheet header and board card."
+      ],
+      "dontUseWhen": [
+        "Don't use for tags / types (→ `atom.pill`). `variant=\"dot\"` only for a dense grid where coloured words would shout."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.avatar",
+      "title": "Avatar",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:771",
+      "code": [
+        "src/components/ui/avatar.tsx"
+      ],
+      "registry": "fpds-avatar",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-avatar.json",
+      "purpose": "A person's picture or initials.",
+      "useWhen": [
+        "Use for a person: profile, assignee stacks."
+      ],
+      "dontUseWhen": [
+        "Don't use as a type marker (→ `atom.code-disc`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.kbd",
+      "title": "Kbd",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:817",
+      "code": [
+        "src/components/ui/kbd.tsx"
+      ],
+      "registry": "fpds-kbd",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-kbd.json",
+      "purpose": "Shows a keyboard key or shortcut.",
+      "useWhen": [
+        "Use beside a command that has a shortcut (global search)."
+      ],
+      "dontUseWhen": [
+        "Don't use as a chip or tag."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.code-disc",
+      "title": "Code disc",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:863",
+      "code": [
+        "src/components/ui/code-disc.tsx"
+      ],
+      "registry": "fpds-code-disc",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-code-disc.json",
+      "purpose": "A type's initial in a 22px pastel circle, where only a letter fits.",
+      "useWhen": [
+        "Use **only on board cards**."
+      ],
+      "dontUseWhen": [
+        "Don't use in a table (→ `atom.pill` with the full word and `discTonePill(tone)`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.file-type-icon",
+      "title": "File type icon",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:910",
+      "code": [
+        "src/components/ui/file-type-icon.tsx"
+      ],
+      "registry": "fpds-file-type-icon",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-file-type-icon.json",
+      "purpose": "Shows a file's format beside its name.",
+      "useWhen": [
+        "Use left of every uploaded file's name."
+      ],
+      "dontUseWhen": [
+        "Don't use as a generic document icon in menus."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.metric-icon",
+      "title": "Metric icon (term icons)",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:957",
+      "code": [
+        "src/components/ui/term-icons.tsx"
+      ],
+      "registry": "fpds-metric-icon",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-metric-icon.json",
+      "purpose": "The tile a figure card wears, and the one icon per term.",
+      "useWhen": [
+        "Use `MetricIcon` on metric / figure cards and dashboard units; use `TERM_ICONS` wherever deliveries, products, gallons or ship-tos are named."
+      ],
+      "dontUseWhen": [
+        "Don't use trend lines on figure cards; don't draw a different icon for a term."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.quiet-pattern",
+      "title": "Quiet pattern",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1005",
+      "code": [
+        "src/components/ui/quiet-pattern.tsx"
+      ],
+      "registry": "fpds-quiet-pattern",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-quiet-pattern.json",
+      "purpose": "The one decorative fill for an empty stretch of a card.",
+      "useWhen": [
+        "Use as the last child of a card's flex column with leftover space."
+      ],
+      "dontUseWhen": [
+        "Don't place it in sheets by hand (`RecordSheet` does it when content ≤ 50% of the body); never behind text."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.tooltip",
+      "title": "Tooltip",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1053",
+      "code": [
+        "src/components/ui/tooltip.tsx"
+      ],
+      "registry": "fpds-tooltip",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-tooltip.json",
+      "purpose": "Names an icon-only control, or why something is disabled.",
+      "useWhen": [
+        "Use on every icon-only button and on a disabled control with a reason."
+      ],
+      "dontUseWhen": [
+        "Don't use to repeat visible text, or over a value someone may copy (`molecule.copy-value` has none)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.popover",
+      "title": "Popover",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1100",
+      "code": [
+        "src/components/ui/popover.tsx"
+      ],
+      "registry": "fpds-popover",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-popover.json",
+      "purpose": "A floating panel anchored to a control.",
+      "useWhen": [
+        "Use for pickers (combobox, date), breakdowns, filter panels."
+      ],
+      "dontUseWhen": [
+        "Don't use for a task that needs focus held (→ `atom.dialog`) or a record (→ `atom.sheet`). Not for the Accessibility panel (fixed, because zoom misplaces popovers)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.dropdown-menu",
+      "title": "Dropdown menu",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1148",
+      "code": [
+        "src/components/ui/dropdown-menu.tsx"
+      ],
+      "registry": "fpds-dropdown-menu",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-dropdown-menu.json",
+      "purpose": "A list of actions (or checkable options) from one trigger.",
+      "useWhen": [
+        "Use for a row's ⋯ actions, Group By, Show / hide columns, a hanging add with a choice of row."
+      ],
+      "dontUseWhen": [
+        "Don't use to pick a field's value (→ `atom.select` / `molecule.combobox`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.dialog",
+      "title": "Dialog",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1196",
+      "code": [
+        "src/components/ui/dialog.tsx"
+      ],
+      "registry": "fpds-dialog",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-dialog.json",
+      "purpose": "A focused task over the page that must be finished or dismissed.",
+      "useWhen": [
+        "Use for a short decision with inputs (bulk edit, award a quote)."
+      ],
+      "dontUseWhen": [
+        "Don't use for a record (→ `atom.sheet`) or a yes/no (→ `atom.alert-dialog`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.alert-dialog",
+      "title": "Alert dialog",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1244",
+      "code": [
+        "src/components/ui/alert-dialog.tsx"
+      ],
+      "registry": "fpds-alert-dialog",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-alert-dialog.json",
+      "purpose": "A yes/no that guards an irreversible or lossy act.",
+      "useWhen": [
+        "Use for \"Discard this order?\" on closing an unsaved create, cancelling an order, deleting a record."
+      ],
+      "dontUseWhen": [
+        "Don't use for row deletes in editable tables (→ inline ✕/✓ `TableRowRemove`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.sheet",
+      "title": "Sheet",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1291",
+      "code": [
+        "src/components/ui/sheet.tsx"
+      ],
+      "registry": "fpds-sheet",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-sheet.json",
+      "purpose": "The side panel primitive under every record sheet.",
+      "useWhen": [
+        "Use through `RecordSheet` (the unit), which sets width, depth, steps, footer and autosave."
+      ],
+      "dontUseWhen": [
+        "Don't build a record screen on a bare `SheetContent`."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.skeleton",
+      "title": "Skeleton",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1341",
+      "code": [
+        "src/components/ui/skeleton.tsx"
+      ],
+      "registry": "fpds-skeleton",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-skeleton.json",
+      "purpose": "Holds a part's place while it loads.",
+      "useWhen": [
+        "Use for each part of a loading page in its own place (title, tabs, toolbar, header, rows)."
+      ],
+      "dontUseWhen": [
+        "Don't use a spinner for a page."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.spinner",
+      "title": "Spinner",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1387",
+      "code": [
+        "src/components/ui/spinner.tsx"
+      ],
+      "registry": "fpds-spinner",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-spinner.json",
+      "purpose": "A small in-place \"working\" mark.",
+      "useWhen": [
+        "Use inside a button or a toast while one act runs."
+      ],
+      "dontUseWhen": [
+        "Don't use for loading a page or list (→ `atom.skeleton`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.progress",
+      "title": "Progress",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1433",
+      "code": [
+        "src/components/ui/progress.tsx"
+      ],
+      "registry": "fpds-progress",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-progress.json",
+      "purpose": "How far a known amount has got.",
+      "useWhen": [
+        "Use for a share of a whole with a known end."
+      ],
+      "dontUseWhen": [
+        "Don't use for a tank level (→ `molecule.level-gauge`) or a lifecycle (→ `molecule.stage-track`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.outline-shine",
+      "title": "Outline shine",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1479",
+      "code": [
+        "src/components/ui/outline-shine.tsx"
+      ],
+      "registry": "fpds-outline-shine",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-outline-shine.json",
+      "purpose": "A soft band sweeping across an element's outline (or face) to draw the eye without changing it.",
+      "useWhen": [
+        "Use on AlertBanner CTAs (white) and pills (sweep, `fill`) — added by the banner; on the dashboard \"Attention required\" tile (red); a nudge on a single button."
+      ],
+      "dontUseWhen": [
+        "Don't add it from a screen to an AlertBanner (the banner does it); don't use on a ghost button with no outline."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.separator",
+      "title": "Separator",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1528",
+      "code": [
+        "src/components/ui/separator.tsx"
+      ],
+      "registry": "fpds-separator",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-separator.json",
+      "purpose": "A structural divider.",
+      "useWhen": [
+        "Use between toolbar clusters and between menu groups."
+      ],
+      "dontUseWhen": [
+        "Don't use to separate stepped-form groups (the 40px gap does it) or as a card edge."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.scroll-area",
+      "title": "Scroll area",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1574",
+      "code": [
+        "src/components/ui/scroll-area.tsx"
+      ],
+      "registry": "fpds-scroll-area",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-scroll-area.json",
+      "purpose": "A scrolling region with a slim custom thumb.",
+      "useWhen": [
+        "Use rarely — the app hides scrollbars by default."
+      ],
+      "dontUseWhen": [
+        "Don't use to bring back visible scrollbars on lanes or lists."
+      ],
+      "match": []
+    },
+    {
+      "id": "atom.tabs",
+      "title": "Tabs",
+      "layer": "atom",
+      "doc": "docs/fpds/02-atoms.md:1620",
+      "code": [
+        "src/components/ui/tabs.tsx"
+      ],
+      "registry": "fpds-tabs",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-tabs.json",
+      "purpose": "Switch between views of one thing.",
+      "useWhen": [
+        "Use for views of one record or settings page; `line` variant for page-level tabs."
+      ],
+      "dontUseWhen": [
+        "Don't use for ordered steps (→ `molecule.stage-track` / Steps) or list views (the view row: All + saved views)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.search-field",
+      "title": "Search field",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:13",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx"
+      ],
+      "registry": "fpds-search-field",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-search-field.json",
+      "purpose": "Search every column of a list from the toolbar.",
+      "useWhen": [
+        "Use as the list toolbar's search — one per list, every list."
+      ],
+      "dontUseWhen": [
+        "Don't use to search one column (→ Search by column, the filter row under the header) or inside a picker (the Command input does that)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.filter-chip",
+      "title": "Filter chip",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:63",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx"
+      ],
+      "registry": "fpds-filter-chip",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-filter-chip.json",
+      "purpose": "Show which filters are on, one removable pill per facet, under the toolbar.",
+      "useWhen": [
+        "Use whenever a list has applied filters or an active column search."
+      ],
+      "dontUseWhen": [
+        "Don't use a count badge on the Filters button instead (\"Filters 7\" is not an answer)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.icon-tool",
+      "title": "Icon tool",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:116",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx"
+      ],
+      "registry": "fpds-icon-tool",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-icon-tool.json",
+      "purpose": "An icon-only toolbar control named by a tooltip — view switch and view tools.",
+      "useWhen": [
+        "Use for the display icons (Table · Board · Map) and the view's tools (Search by column, Show/hide columns, Card configuration)."
+      ],
+      "dontUseWhen": [
+        "Don't use for a labeled action (→ `atom.button` with text)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.status-pill",
+      "title": "Status pill",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:170",
+      "code": [
+        "src/components/ui/status-chip.tsx",
+        "prototypes/unified-view/statusKind.ts"
+      ],
+      "registry": "fpds-status-pill",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-status-pill.json",
+      "purpose": "A record's status in a cell, header or card — the status word in its kind's color.",
+      "useWhen": [
+        "Use in every status column, every sheet header status, every board card."
+      ],
+      "dontUseWhen": [
+        "Don't use for a type or tag (→ `atom.pill` with `color`), or where every row has the same value (render nothing)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.two-line-cell",
+      "title": "Two-line cell",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:219",
+      "code": [
+        "prototypes/unified-view/ListTable.tsx"
+      ],
+      "registry": "fpds-two-line-cell",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-two-line-cell.json",
+      "purpose": "A record's name with the one fact that tells it apart, in one cell.",
+      "useWhen": [
+        "Use for a customer + location, an order + product, a rule + schedule summary."
+      ],
+      "dontUseWhen": [
+        "Don't use to stack two unrelated values (give each its column)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.overflow-chip",
+      "title": "Overflow chip",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:266",
+      "code": [
+        "prototypes/unified-view/BreakdownCard.tsx",
+        "prototypes/unified-view/ListTable.tsx"
+      ],
+      "registry": "fpds-overflow-chip",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-overflow-chip.json",
+      "purpose": "Shows the first value and a \"+N\" pill that opens the rest.",
+      "useWhen": [
+        "Use when a cell holds a list (products, ship-tos, assets)."
+      ],
+      "dontUseWhen": [
+        "Don't use a hover list or a tooltip for the rest."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.breakdown-popover",
+      "title": "Breakdown popover",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:315",
+      "code": [
+        "prototypes/unified-view/BreakdownCard.tsx"
+      ],
+      "registry": "fpds-breakdown-popover",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-breakdown-popover.json",
+      "purpose": "What a \"+N\" chip or a total is made of.",
+      "useWhen": [
+        "Use behind any \"+N\" or figure that sums things (quantity, amount, level on fulfilment)."
+      ],
+      "dontUseWhen": [
+        "Don't use as a general popover form."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.trend-chip",
+      "title": "Trend chip",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:363",
+      "code": [
+        "src/components/ui/trend-chip.tsx"
+      ],
+      "registry": "fpds-trend-chip",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-trend-chip.json",
+      "purpose": "The one up / down marker for a change against a period.",
+      "useWhen": [
+        "Use after the figure on every figure card, with \"vs N the previous …\" under it."
+      ],
+      "dontUseWhen": [
+        "Don't use arrows in circles, orange, `destructive` red or trend lines on figure cards."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.copy-value",
+      "title": "Copy value",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:410",
+      "code": [
+        "src/components/ui/copy-value.tsx"
+      ],
+      "registry": "fpds-copy-value",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-copy-value.json",
+      "purpose": "A read-only value with its own copy button.",
+      "useWhen": [
+        "Use for contact facts someone pastes elsewhere: phone, email, IDs."
+      ],
+      "dontUseWhen": [
+        "Don't use a disabled input for read-only values; don't put one copy button over two values."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.combobox",
+      "title": "Combobox",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:461",
+      "code": [
+        "src/components/ui/combobox.tsx"
+      ],
+      "registry": "fpds-combobox",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-combobox.json",
+      "purpose": "A select you can type into — the default picker for any list of records.",
+      "useWhen": [
+        "Use for customers, ship-tos, products, vendors, technicians — any list that can grow; with `allowCreate` for open sets (roles, tags)."
+      ],
+      "dontUseWhen": [
+        "Don't use for several values in one field (→ `molecule.token-multi-select`) or inside an editable table (→ `TableCellCombobox`, with `multiple` when it adds rows)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.token-multi-select",
+      "title": "Token multi-select",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:517",
+      "code": [
+        "prototypes/unified-view/TokenMultiSelect.tsx"
+      ],
+      "registry": "fpds-token-multi-select",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-token-multi-select.json",
+      "purpose": "Several values for one field, shown as chips, added from a searchable list.",
+      "useWhen": [
+        "Use for tags, products on a bulk edit, products on a recurring program — values that live in ONE field."
+      ],
+      "dontUseWhen": [
+        "Don't use when each pick should become its own table row (→ `TableCellSelect multiple`, see \"Picking several makes rows\")."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.date-field",
+      "title": "Date field",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:568",
+      "code": [
+        "src/components/ui/date-picker.tsx"
+      ],
+      "registry": "fpds-date-field",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-date-field.json",
+      "purpose": "A form field that holds one date, opening the shared picker.",
+      "useWhen": [
+        "Use for every single date in a form (planned date, end date). `DateKeyField` when the value is stored as `YYYY-MM-DD` with an optional `min`."
+      ],
+      "dontUseWhen": [
+        "Don't use for a list's date range (→ `DateRangeFilter` / `DateRangePopover`) or a hand-built Popover + Calendar."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.time-window-slider",
+      "title": "Time-window slider",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:620",
+      "code": [
+        "src/components/form-layout/TimeWindowSlider.tsx"
+      ],
+      "registry": "fpds-time-window-slider",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-time-window-slider.json",
+      "purpose": "A time range on a drawn day, in 30-minute steps.",
+      "useWhen": [
+        "Use only where it stands today: the technician phone app (Service › TechnicianHome). Its formatters (`formatMinutes`, `formatWindow`, `formatSpan`) are shared.",
+        "**Don't use for a new delivery or scheduling window** — every window in every module is `DeliveryWindowTimeline` (preferred-time bars, hanging +). `(DS ui §10m, 2026-10-20)`"
+      ],
+      "dontUseWhen": [
+        "Don't use for a new delivery or scheduling window** — every window in every module is `DeliveryWindowTimeline` (preferred-time bars, hanging +). `(DS ui §10m, 2026-10-20)`"
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.hanging-add",
+      "title": "Hanging add",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:668",
+      "code": [
+        "prototypes/unified-view/HangingAdd.tsx"
+      ],
+      "registry": "fpds-hanging-add",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-hanging-add.json",
+      "purpose": "The add for a table that can grow — a tab off the card's bottom-left corner.",
+      "useWhen": [
+        "Use under every boxed table that adds rows (products, vendors, fees, preferred times)."
+      ],
+      "dontUseWhen": [
+        "Don't use a full-width \"add row\" band inside the card; don't render it on a fixed table."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.stage-track",
+      "title": "Stage track",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:719",
+      "code": [
+        "src/components/ui/stage-track.tsx",
+        "src/components/ui/steps.tsx"
+      ],
+      "registry": "fpds-stage-track",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-stage-track.json",
+      "purpose": "Where a record is in its lifecycle, or which step of a form you are on — one look for both.",
+      "useWhen": [
+        "Use `StageTrack` for a record's stages on its detail; `Steps` / `SheetSteps` for a stepped create form (passes `onStageClick`)."
+      ],
+      "dontUseWhen": [
+        "Don't use tabs for steps; don't show off-line states (Canceled, Blocked) as a position — nothing is current then."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.level-gauge",
+      "title": "Level gauge",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:770",
+      "code": [
+        "prototypes/customer-portal/TankLevel.tsx"
+      ],
+      "registry": "fpds-level-gauge",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-level-gauge.json",
+      "purpose": "A tank's level, its monitor's battery and its days to empty — each in its own cell.",
+      "useWhen": [
+        "Use in asset / tank columns where a monitor reports levels."
+      ],
+      "dontUseWhen": [
+        "Don't add band words (\"Low\"); don't propose level-triggered rules (Pavan raises those)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.stat-tile",
+      "title": "Stat tile",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:818",
+      "code": [
+        "prototypes/unified-view/DashboardParts.tsx"
+      ],
+      "registry": "fpds-stat-tile",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-stat-tile.json",
+      "purpose": "A headline number on a module dashboard that opens the rows it counts.",
+      "useWhen": [
+        "Use for headline counts on the 3PL and Sales dashboards."
+      ],
+      "dontUseWhen": [
+        "Don't use for a figure with a period change and term icon (→ figure card with `atom.metric-icon` + `molecule.trend-chip`)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.toast",
+      "title": "Toast",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:867",
+      "code": [
+        "src/components/ui/sonner.tsx"
+      ],
+      "registry": "fpds-toast",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-toast.json",
+      "purpose": "Confirms an act that leaves the screen, in one line.",
+      "useWhen": [
+        "Use after create, export, status change, cancel."
+      ],
+      "dontUseWhen": [
+        "Don't use for an in-place copy (`molecule.copy-value` ticks), autosave, or a validation error (pending bar)."
+      ],
+      "match": []
+    },
+    {
+      "id": "molecule.empty-state",
+      "title": "Empty state",
+      "layer": "molecule",
+      "doc": "docs/fpds/03-molecules.md:914",
+      "code": [
+        "src/components/ui/empty.tsx"
+      ],
+      "registry": "fpds-empty-state",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-empty-state.json",
+      "purpose": "Tells the reader why a whole region has nothing in it (variant E3).",
+      "useWhen": [
+        "Use when a whole list / region is empty and needs a reason (no results for the filters, nothing yet)."
+      ],
+      "dontUseWhen": [
+        "Don't use for an empty table inside a form (→ one blank row, or padded text E1); never a dashed box round an empty table (E2 is only an optional section that is off)."
+      ],
+      "match": []
+    },
+    {
+      "id": "template.list-page",
+      "title": "List page",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:12",
+      "code": [
+        "prototypes/unified-view/threepl/BrokerOrdersScreen.tsx",
+        "prototypes/unified-view/StandardList.tsx"
+      ],
+      "registry": "fpds-list-page",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-list-page.json",
+      "purpose": "Show many records of one kind, let the reader narrow, sort, group, save the narrowing as a view, switch between table, board and map, open a record and act on many at once.",
+      "useWhen": [
+        "Use when the job is \"find / scan / work through records of one kind\" — orders, quotes,",
+        "customers, vendors, parts, invoices, agreements, technicians…",
+        "Use the **table-only** variant (`StandardList`) when the records have no lifecycle",
+        "lanes or places (reference lists: Price Book, Parts, Invoices, Team & Access)."
+      ],
+      "dontUseWhen": [
+        "Don't use for a single record (→ Record sheet) or for figures over time (→ Dashboard)."
+      ],
+      "match": [
+        "list",
+        "table",
+        "index",
+        "browse",
+        "all orders",
+        "orders page",
+        "records",
+        "directory",
+        "kanban",
+        "board",
+        "pipeline",
+        "lanes",
+        "map view",
+        "invoices",
+        "customers",
+        "vendors",
+        "parts",
+        "technicians",
+        "agreements",
+        "quotes",
+        "assets",
+        "users"
+      ]
+    },
+    {
+      "id": "template.record-sheet",
+      "title": "Record sheet",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:90",
+      "code": [
+        "prototypes/unified-view/RecordSheet.tsx",
+        "prototypes/unified-view/threepl/BrokerOrderSheet.tsx"
+      ],
+      "registry": "fpds-record-sheet-page",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-record-sheet-page.json",
+      "purpose": "Create, edit or read ONE record in a side sheet over its list, without leaving the list.",
+      "useWhen": [
+        "Use for every create and every edit — orders, quotes, customers, assets, service",
+        "orders, rules, users — even for a record the product has never had before."
+      ],
+      "dontUseWhen": [
+        "Don't use for a dashboard drill (→ List page narrowed) or a bulk change (→ Bulk edit)."
+      ],
+      "match": [
+        "create",
+        "new",
+        "add",
+        "edit",
+        "form",
+        "detail",
+        "details",
+        "sheet",
+        "order sheet",
+        "update",
+        "request"
+      ]
+    },
+    {
+      "id": "template.directory-record",
+      "title": "Directory record",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:154",
+      "code": [
+        "prototypes/unified-view/threepl/DirectoryRecordSheet.tsx",
+        "prototypes/unified-view/threepl/CustomerRecord.tsx"
+      ],
+      "registry": "fpds-directory-record",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-directory-record.json",
+      "purpose": "Read and keep one master-data record — a customer, vendor, product or rental asset — with its properties, related records and activity.",
+      "useWhen": [
+        "Use for master data (customers, vendors, products, assets, ship-tos)."
+      ],
+      "dontUseWhen": [
+        "Don't use for transactional records like orders (→ Record sheet)."
+      ],
+      "match": [
+        "profile",
+        "master data",
+        "customer record",
+        "vendor record",
+        "product record",
+        "asset record"
+      ]
+    },
+    {
+      "id": "template.dashboard",
+      "title": "Dashboard",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:203",
+      "code": [
+        "prototypes/unified-view/threepl/ThreePLDashboard.tsx",
+        "prototypes/unified-view/DashboardParts.tsx",
+        "prototypes/customer-portal/DashboardScreen.tsx"
+      ],
+      "registry": "fpds-dashboard-page",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-dashboard-page.json",
+      "purpose": "Answer \"how are we doing today, and what needs me\" for one module, and send the reader to the records behind every number.",
+      "useWhen": [
+        "Use for a module's landing figures."
+      ],
+      "dontUseWhen": [
+        "Don't use for one record's figures (→ Directory record) or for analytics (later phase)."
+      ],
+      "match": [
+        "dashboard",
+        "overview",
+        "kpi",
+        "metrics",
+        "summary",
+        "today",
+        "analytics home"
+      ]
+    },
+    {
+      "id": "template.settings",
+      "title": "Settings page",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:251",
+      "code": [
+        "prototypes/unified-view/SettingsPage.tsx",
+        "prototypes/unified-view/SalesSettingsScreen.tsx"
+      ],
+      "registry": "fpds-settings",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-settings.json",
+      "purpose": "Set how a module behaves for the whole tenant.",
+      "useWhen": [
+        "Use for module-wide configuration."
+      ],
+      "dontUseWhen": [
+        "Don't use for personal preferences (→ Accessibility panel) or one record (→ Record sheet)."
+      ],
+      "match": [
+        "settings",
+        "configuration",
+        "configure",
+        "preferences for the module",
+        "setup"
+      ]
+    },
+    {
+      "id": "template.app-frame",
+      "title": "App frame",
+      "layer": "template",
+      "doc": "docs/fpds/05-templates.md:297",
+      "code": [
+        "prototypes/unified-view/UnifiedView.tsx",
+        "prototypes/customer-portal/CustomerPortal.tsx"
+      ],
+      "registry": "fpds-app-frame",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-app-frame.json",
+      "purpose": "The frame every page sits in: top bar, navigation, content layer.",
+      "useWhen": [
+        "Use for every page."
+      ],
+      "dontUseWhen": [
+        "Don't build a page without it."
+      ],
+      "match": [
+        "navigation",
+        "sidebar",
+        "shell",
+        "layout",
+        "top bar",
+        "header"
+      ]
+    },
+    {
+      "id": "unit.alert-banner",
+      "title": "Alert banner",
+      "layer": "unit",
+      "doc": "docs/fpds/units/alert-banner.md:3",
+      "code": [
+        "src/components/ui/alert-banner.tsx",
+        "src/components/ui/banner.tsx"
+      ],
+      "registry": "fpds-alert-banner",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-alert-banner.json",
+      "purpose": "Tells the reader what on this list needs attention now, and lets them act on it in place: narrow the list to it, step through several kinds, act on an item, snooze or dismiss. Answers \"what needs me on this page, and where is it?\"",
+      "useWhen": [
+        "Use when a banner ACTS on the page: it applies a filter, holds several kinds of alert, or lists items each with its own action. That is the B2 banner, `AlertBanner`, and it carries the whole anatomy.",
+        "Use on a list page for standing conditions (overdue, needs action, at risk, past due)."
+      ],
+      "dontUseWhen": [
+        "Don't use when the banner only says one thing with at most one action or a ✕ — use the B1 banner without interaction, `BannerCallout` (solid · soft) or `BannerInline` (same files, `banner.tsx`).",
+        "Don't dress a one-line message in B2 parts: no filter, no items and no stepping = B1.",
+        "Don't use for the dashboard's **Attention required** tiles — a different pattern by design (red outline shine on the banner), not an `AlertBanner`.",
+        "Don't use to explain why a control is disabled — that is a tooltip on the press (interactions §7b)."
+      ],
+      "match": [
+        "alert",
+        "banner",
+        "warning",
+        "attention"
+      ]
+    },
+    {
+      "id": "unit.app-shell",
+      "title": "App shell",
+      "layer": "unit",
+      "doc": "docs/fpds/units/app-shell.md:3",
+      "code": [
+        "src/components/app-shell",
+        "prototypes/unified-view/ModuleSidebar.tsx",
+        "src/components/top-bar/TopBar.tsx",
+        "prototypes/unified-view/GlobalSearch.tsx",
+        "src/components/theme/AccessibilityPanel.tsx",
+        "src/components/theme/AccessibilityIcon.tsx",
+        "src/components/theme/a11y.ts",
+        "prototypes/unified-view/ModuleSkeleton.tsx"
+      ],
+      "registry": "fpds-app-shell",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-app-shell.json",
+      "purpose": "The frame every page sits in: the top bar (brand, global search, notifications, account), the one-panel navigation (modules and their pages, Accessibility at its foot) and the content layer. It answers \"where am I, where can I go, and how do I find anything\".",
+      "useWhen": [
+        "Use when building any page of the Unified View (3PL, Sales, Service Work, Pricing, Lease) or the Customer Portal — the portal reuses `AppShell`, `TopBar` and `ModuleSidebar` with one module.",
+        "Use `ModuleSkeleton` for a module's page while its data loads after a module switch."
+      ],
+      "dontUseWhen": [
+        "Don't use the two-layer rail + drawer (`NavRail` + `NavigationDrawer`) — it is kept behind `NAV_STYLE = \"two-layer\"` and comes back only when Pavan says \"Bring in the two-layer navigation drawers\".",
+        "Don't put a theme toggle in the top bar — Light/Dark lives only in the Accessibility panel.",
+        "Don't put Profile or Settings in the navigation — they are in the account menu."
+      ],
+      "match": [
+        "navigation",
+        "sidebar",
+        "accessibility",
+        "global search",
+        "top bar"
+      ]
+    },
+    {
+      "id": "unit.board",
+      "title": "Board",
+      "layer": "unit",
+      "doc": "docs/fpds/units/board.md:3",
+      "code": [
+        "prototypes/unified-view/threepl/BrokerBoard.tsx",
+        "prototypes/unified-view/ListToolbar.tsx"
+      ],
+      "registry": "fpds-board",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-board.json",
+      "purpose": "Shows a list's records as cards in lanes, one lane per stage of the record's lifecycle, read left to right. Answers \"where is every order in the work, and which ones need me?\"",
+      "useWhen": [
+        "Use when the records move through a status workflow (orders, service work) and the list offers a board view (`ListToolbar boardView`).",
+        "Use when a stage's cards need to say different things per stage (card fields are per lane)."
+      ],
+      "dontUseWhen": [
+        "Don't use when the list has no workflow — Customers, Assets, Directory lists, standing arrangements (no lanes to put them in) → use the list table.",
+        "Don't use when the question is geographic (\"what else goes out near this one\") → use `unit.map`.",
+        "Don't use for a one-view list: no view switch, no board icon (ui §10h)."
+      ],
+      "match": [
+        "board",
+        "kanban",
+        "lanes",
+        "pipeline",
+        "swimlane"
+      ]
+    },
+    {
+      "id": "unit.bulk-bar",
+      "title": "Bulk bar & bulk edit",
+      "layer": "unit",
+      "doc": "docs/fpds/units/bulk-bar.md:3",
+      "code": [
+        "prototypes/unified-view/FuelOrdersBulkBar.tsx",
+        "src/components/tables-layout/BulkActionBar.tsx",
+        "src/components/bulk-edit/BulkEditDialog.tsx",
+        "src/components/bulk-edit/parts.tsx",
+        "prototypes/unified-view/BulkEditDialog.tsx"
+      ],
+      "registry": "fpds-bulk-bar",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-bulk-bar.json",
+      "purpose": "Acts on several ticked rows at once: change one field across them, or apply an action (archive, delete, export). Answers \"do this to all of these — and show me what will change before it does.\"",
+      "useWhen": [
+        "Use when a list table has row checkboxes and rows are ticked.",
+        "Use the field actions + `BulkEditDialog` when the edit changes a value per row (date, time, driver, products, tags).",
+        "Use `BulkActionBar` with its own `actions` for a list whose verbs are its own (3PL Directory)."
+      ],
+      "dontUseWhen": [
+        "Don't use on a board — row ticks live in the table (Sales › Orders shows the bar in the table view only).",
+        "Don't use for a property of the whole round (e.g. \"ask these for a price\") — that is a switch over the round, not a selection.",
+        "Don't build a second bar in place — pass `actions` to the one bar."
+      ],
+      "match": [
+        "bulk",
+        "select many",
+        "mass edit"
+      ]
+    },
+    {
+      "id": "unit.chip-shelf",
+      "title": "Chip shelf",
+      "layer": "unit",
+      "doc": "docs/fpds/units/chip-shelf.md:3",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx",
+        "src/index.css"
+      ],
+      "registry": "fpds-chip-shelf",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-chip-shelf.json",
+      "purpose": "The one-line strip under the toolbar that says out loud which filters are on, and takes them off. It answers \"why is this list shorter than I expect, and how do I undo it?\"",
+      "useWhen": [
+        "Use on every list that has a Filters panel — directly after `unit.toolbar`, inside the same `mt-4` shelf.",
+        "Use `ColumnSearchChip` as a child when the list still has the one-column search (popover form) — it joins the same shelf."
+      ],
+      "dontUseWhen": [
+        "Don't use for the column search row's boxes — those are visible in the table itself (`unit.data-table`).",
+        "Don't use in the Export sheet — that sheet lists narrowings as rows of chips per category (`unit.export-sheet`).",
+        "Don't use for form token chips — same pill recipe, different unit."
+      ],
+      "match": [
+        "chips",
+        "applied filters"
+      ]
+    },
+    {
+      "id": "unit.dashboard",
+      "title": "Dashboard tiles & cards",
+      "layer": "unit",
+      "doc": "docs/fpds/units/dashboard.md:3",
+      "code": [
+        "prototypes/unified-view/DashboardParts.tsx",
+        "src/components/ui/term-icons.tsx",
+        "src/components/ui/trend-chip.tsx",
+        "prototypes/unified-view/threepl/ThreePLDashboard.tsx",
+        "prototypes/unified-view/SalesDashboard.tsx",
+        "prototypes/customer-portal/DashboardScreen.tsx"
+      ],
+      "registry": "fpds-dashboard",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-dashboard.json",
+      "purpose": "A module's overview: a few figures, charts and short tables that say how much work there is, where it sits and what needs somebody now. In the Unified View every figure is a way into the list it counts; in the Customer Portal it is a few things for the customer to glance at, with \"Attention required\" first.",
+      "useWhen": [
+        "Use when a module needs an overview page — 3PL and Sales (Unified View, built from `DashboardParts`) or the Customer Portal landing page.",
+        "Use the figure-card style (figure · `TrendChip` · \"vs …\" line · `MetricIcon`) for any metric card that leads with a number, in any module."
+      ],
+      "dontUseWhen": [
+        "Don't use for a list's own filtering cards above a table — those are list overview cards, not a dashboard.",
+        "Don't use for a banner that acts on a list — use `unit.alert-banner`. The dashboard's \"Attention required\" is a different pattern by design.",
+        "Don't use for a report to generate and take away — Customer Portal \"Delivery performance\" is a report on the Reports page, not a dashboard card.",
+        "Don't build a cross-module dashboard; Lease and Pricing have none."
+      ],
+      "match": [
+        "tiles",
+        "stat",
+        "kpi",
+        "chart",
+        "metric"
+      ]
+    },
+    {
+      "id": "unit.data-table",
+      "title": "Data table",
+      "layer": "unit",
+      "doc": "docs/fpds/units/data-table.md:3",
+      "code": [
+        "prototypes/unified-view/ListTable.tsx",
+        "src/components/tables-layout/TableColumnHeader.tsx",
+        "src/components/tables-layout/useTableColumns.ts",
+        "src/components/tables-layout/useColumnOrder.ts",
+        "src/components/tables-layout/useColumnWidths.ts",
+        "src/components/tables-layout/GroupHeaderRow.tsx",
+        "src/index.css",
+        "docs/ds/ui/column-widths.md"
+      ],
+      "registry": "fpds-data-table",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-data-table.json",
+      "purpose": "The list's table: every record a row, every column sortable, movable and resizable, the whole row opening the record. It answers \"which records match, in what order — and let me open one.\"",
+      "useWhen": [
+        "Use for the table display of any list page (with `unit.view-bar` as its `topBar`).",
+        "Use `alignTop` when rows grow tall with stacked child lines (Customer Portal › Orders: one line per tank).",
+        "Use grouped rows (`nodes`) when the toolbar's Group by is on."
+      ],
+      "dontUseWhen": [
+        "Don't use for an editable table inside a sheet or form — that is the boxed table unit (ui §10f, `TableCell*`).",
+        "Don't use for a list with no list chrome — a table page always comes with the whole unit (ui §10c); prefer `unit.standard-list`."
+      ],
+      "match": [
+        "table",
+        "columns",
+        "sort",
+        "rows"
+      ]
+    },
+    {
+      "id": "unit.date-picker",
+      "title": "Date picker",
+      "layer": "unit",
+      "doc": "docs/fpds/units/date-picker.md:3",
+      "code": [
+        "src/components/ui/date-picker.tsx",
+        "prototypes/unified-view/threepl/DateRangeFilter.tsx",
+        "prototypes/unified-view/DateFilter.tsx"
+      ],
+      "registry": "fpds-date-picker",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-date-picker.json",
+      "purpose": "The one date picker for every screen that picks a date — a list's date filter and a form's date field alike: named presets, a calendar, typed dates, a live count, and nothing changes until Apply. It answers \"which day or window do I mean, and how many records fall in it?\"",
+      "useWhen": [
+        "Use the **range** form (default) for a list's date window: toolbar stepper `DateRangeFilter` (3PL › Delivery Orders, Sales › Orders, Service Work › Service Orders, Customer Portal › Orders) or `DateRangePopover` behind your own trigger.",
+        "Use the **single** form (`select=\"single\"`) for a field that holds one date: `DateField` (a `Date`), `DateKeyField` (a `YYYY-MM-DD` key, optional `min`), or `DatePopover` + `DatePanel` as a drop-in for a Popover + single Calendar in an existing form.",
+        "Use `DateFilter` (‹ one day ›) for a list scoped to one day (the toolbar's `dateScope`)."
+      ],
+      "dontUseWhen": [
+        "Don't use a bare `Calendar` in a popover, or any other picker.",
+        "Don't use in the technician phone app — it keeps its full-width calendar (no room for a rail)."
+      ],
+      "match": [
+        "date",
+        "date range",
+        "calendar",
+        "planned date",
+        "due date"
+      ]
+    },
+    {
+      "id": "unit.delivery-timeline",
+      "title": "Delivery window & preferred time",
+      "layer": "unit",
+      "doc": "docs/fpds/units/delivery-timeline.md:3",
+      "code": [
+        "prototypes/unified-view/DeliveryWindowTimeline.tsx",
+        "src/components/form-layout/TimeWindowSlider.tsx",
+        "prototypes/unified-view/HangingAdd.tsx"
+      ],
+      "registry": "fpds-delivery-timeline",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-delivery-timeline.json",
+      "purpose": "One day drawn once, full width: the delivery window as a range on a 24-hour track, and the customer's preferred times as bars on the same scale beneath it. It answers \"between when can we deliver, and when would they rather we came\".",
+      "useWhen": [
+        "Use for every delivery or scheduling window in every module — order sheets, recurring rules, a ship-to's default hours, a service order's scheduling window."
+      ],
+      "dontUseWhen": [
+        "Don't use `TimeWindowSlider` for a new window — it remains only in the technician mobile app (`TechnicianHome`); its formatters are still shared.",
+        "Don't use a dropdown of fixed windows — a window is two times, not a category.",
+        "Don't use where a module has no window (Sales orders).",
+        "Don't use for a single moment (a date) — use the DS date field in the record sheet's field row."
+      ],
+      "match": [
+        "delivery window",
+        "time window",
+        "preferred time"
+      ]
+    },
+    {
+      "id": "unit.documents-table",
+      "title": "Documents table",
+      "layer": "unit",
+      "doc": "docs/fpds/units/documents-table.md:3",
+      "code": [
+        "prototypes/unified-view/DocumentsTable.tsx",
+        "src/components/ui/file-type-icon.tsx"
+      ],
+      "registry": "fpds-documents-table",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-documents-table.json",
+      "purpose": "The one table for files kept on a record — BOLs, tickets, invoices, dispute evidence. It answers \"what files does this record have, when did they arrive, who added them?\" and, where allowed, lets the reader add one.",
+      "useWhen": [
+        "Use when any record keeps files (order, invoice dispute, order request)."
+      ],
+      "dontUseWhen": [
+        "Don't use a gallery, a card grid or an empty-state panel for documents.",
+        "Don't use it for lines or other editable rows — use `unit.lines-table` / the boxed table."
+      ],
+      "match": [
+        "documents",
+        "attachments",
+        "files",
+        "upload"
+      ]
+    },
+    {
+      "id": "unit.export-sheet",
+      "title": "Export sheet",
+      "layer": "unit",
+      "doc": "docs/fpds/units/export-sheet.md:3",
+      "code": [
+        "prototypes/unified-view/ExportSheet.tsx",
+        "prototypes/unified-view/RecordSheet.tsx"
+      ],
+      "registry": "fpds-export-sheet",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-export-sheet.json",
+      "purpose": "The side sheet that opens from a list's Export button and shows exactly what is about to leave — the same rows you are looking at, the narrowings that made them, how many — before you pick a format and export. It answers \"what am I exporting, and is that what I mean?\"",
+      "useWhen": [
+        "Use for every list's Export (the `Upload` icon at the right end of `unit.view-row`)."
+      ],
+      "dontUseWhen": [
+        "Don't export silently from the toolbar — the sheet is the only path.",
+        "Don't use for importing, for printing a single record, or for downloading a document from a row (Customer Portal › Invoices' Download column is its own cell).",
+        "Don't use as a place to build a different filter — it edits the list's own state."
+      ],
+      "match": [
+        "export",
+        "download csv"
+      ]
+    },
+    {
+      "id": "unit.filter-panel",
+      "title": "Filter panel",
+      "layer": "unit",
+      "doc": "docs/fpds/units/filter-panel.md:3",
+      "code": [
+        "prototypes/unified-view/ListFilters.tsx",
+        "prototypes/unified-view/filterMemory.ts"
+      ],
+      "registry": "fpds-filter-panel",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-filter-panel.json",
+      "purpose": "The faceted filter behind the toolbar's **Filters** button: pick values in one or more categories, see how many rows they leave, then apply. It answers \"show me only the rows with these values — and how many is that before I commit?\"",
+      "useWhen": [
+        "Use when a list has category columns worth narrowing by (status, type, customer, line of service, business…). Every list's Filters button opens this panel.",
+        "Use the same control with a full-width trigger (`fullWidth`) inside `unit.export-sheet` — it stages until Apply exactly as on the toolbar, and keeps no Recent history. (`ListFilterPanel`, the body alone, exists for a flat layout; no screen uses it today.)"
+      ],
+      "dontUseWhen": [
+        "Don't use for free text (that is the toolbar search or the column search row in `unit.data-table`), for numbers, amounts or dates (date → `unit.date-picker`).",
+        "Don't use for a split flipped many times a session that is exhaustive and short — that is a quick filter in `unit.toolbar` (ui §10c)."
+      ],
+      "match": [
+        "filter",
+        "filters",
+        "facets",
+        "recent history"
+      ]
+    },
+    {
+      "id": "unit.lines-table",
+      "title": "Lines table",
+      "layer": "unit",
+      "doc": "docs/fpds/units/lines-table.md:3",
+      "code": [
+        "prototypes/unified-view/threepl/BrokerOrderSheet.tsx",
+        "prototypes/customer-portal/OrderRequestSheet.tsx",
+        "prototypes/unified-view/ProductTable.tsx",
+        "src/components/form-layout/table-cells.tsx",
+        "prototypes/unified-view/HangingAdd.tsx",
+        "prototypes/customer-portal/TankLevel.tsx"
+      ],
+      "registry": "fpds-lines-table",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-lines-table.json",
+      "purpose": "The order's lines as an editable table: which tank or asset gets which product, and how much. It answers \"what is going onto this truck, into which tank\" — one row per asset, every cell typed into in place.",
+      "useWhen": [
+        "Use when a record holds a repeated line of asset · product · quantity — a fuel order, a recurring rule's ship-to, a portal order. Repeated inputs are a table by default; never a stack of fields.",
+        "Use the Sales variant (`ProductTable`: Product · Quantity, plus priced columns for a quote) where the line has no asset."
+      ],
+      "dontUseWhen": [
+        "Don't use for documents — use `unit.documents-table`.",
+        "Don't use for a one-off value (one product, one quantity) — that is a field row in the record sheet (`unit.record-sheet`).",
+        "Don't use for several values that belong in ONE cell (work types, categories) — that is `TableCellMultiSelect` inside a row, not rows."
+      ],
+      "match": [
+        "line items",
+        "products",
+        "tanks",
+        "quantity",
+        "top off",
+        "order lines"
+      ]
+    },
+    {
+      "id": "unit.map",
+      "title": "Map",
+      "layer": "unit",
+      "doc": "docs/fpds/units/map.md:3",
+      "code": [
+        "prototypes/unified-view/OrderMapView.tsx"
+      ],
+      "registry": "fpds-map",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-map.json",
+      "purpose": "Shows the list's orders as a list on the left and pins at their ship-to sites on the right, one selection across both. Answers \"what else is going out near this one?\" — a question no column can sort.",
+      "useWhen": [
+        "Use when the list's records are geographic (orders with a ship-to) and the toolbar offers `mapView`.",
+        "Use in the Customer Portal with live trucks for orders out for delivery."
+      ],
+      "dontUseWhen": [
+        "Don't use when records have no place (Customers, Directory lists) — `mapView` stays off; no dead icon.",
+        "Don't use for picking or placing one location on a record (ship-to / asset address) — that is the record sheet's own Leaflet map, not this unit.",
+        "Don't use for workflow stage → `unit.board`; for columns → the list table."
+      ],
+      "match": [
+        "map",
+        "location",
+        "trucks",
+        "pins",
+        "route"
+      ]
+    },
+    {
+      "id": "unit.pagination",
+      "title": "Pagination",
+      "layer": "unit",
+      "doc": "docs/fpds/units/pagination.md:3",
+      "code": [
+        "src/components/tables-layout/TablePagination.tsx",
+        "src/components/tables-layout/data.ts",
+        "src/components/tables-layout/GroupedListFooter.tsx"
+      ],
+      "registry": "fpds-pagination",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-pagination.json",
+      "purpose": "The footer under a list's table: where you are in the list, a way to the other pages, and how many rows a page holds. While the table is grouped, the grouped footer stands in and reports the list's shape instead. It answers \"which slice am I seeing, and how do I see the rest?\"",
+      "useWhen": [
+        "Use `TablePagination` under every paged list table, in its own `mt-4 shrink-0` block.",
+        "Use `GroupedListFooter` instead while Group by is on (the list scrolls whole)."
+      ],
+      "dontUseWhen": [
+        "Don't use under a board or map display.",
+        "Don't use for an editable table inside a sheet (those show all rows).",
+        "Don't replace it with a count (\"24 rules\") — a count is not a page position."
+      ],
+      "match": [
+        "pagination",
+        "pages",
+        "rows per page"
+      ]
+    },
+    {
+      "id": "unit.record-sheet",
+      "title": "Record sheet",
+      "layer": "unit",
+      "doc": "docs/fpds/units/record-sheet.md:3",
+      "code": [
+        "prototypes/unified-view/RecordSheet.tsx",
+        "prototypes/unified-view/PendingStrip.tsx",
+        "src/components/side-sheet/parts.tsx",
+        "src/components/side-sheet/form-steps.tsx"
+      ],
+      "registry": "fpds-record-sheet",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-record-sheet.json",
+      "purpose": "The right-hand side sheet that creates or edits ONE record — an order, a quote, a customer, an asset, a rule. It answers \"what is this record, what does it still need, and what is the next thing to do with it?\" Create and edit are the same sheet.",
+      "useWhen": [
+        "Use when a single record is created, read or edited from a list, board, map or dashboard tile.",
+        "Use `level={2}` when the sheet opens over another sheet (invite partner over an order, a vendor quote, a dispute over an invoice)."
+      ],
+      "dontUseWhen": [
+        "Don't use for a bulk change across many records — use `unit.bulk-bar` (Bulk edit).",
+        "Don't use for a list's filters/export controls as a form — those are a `compact` sheet of controls, not a record.",
+        "Don't build a page or modal for a record's create form — a separate create screen is how two descriptions of one record come to exist."
+      ],
+      "match": [
+        "sheet",
+        "form",
+        "create",
+        "edit",
+        "detail"
+      ]
+    },
+    {
+      "id": "unit.recurring-section",
+      "title": "Recurring section",
+      "layer": "unit",
+      "doc": "docs/fpds/units/recurring-section.md:3",
+      "code": [
+        "prototypes/unified-view/RecurringOrderSection.tsx",
+        "prototypes/unified-view/threepl/RuleFrequency.tsx",
+        "src/components/side-sheet/parts.tsx"
+      ],
+      "registry": "fpds-recurring-section",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-recurring-section.json",
+      "purpose": "An optional section on any order that can repeat: a dashed \"Add Recurring Order\" row until it is asked for, then the recurring rule's own frequency unit in a box. It answers \"does this order repeat, on which days or dates, how often, until when\" — set the same way wherever a repeat is set.",
+      "useWhen": [
+        "Use on every order sheet whose order can repeat (3PL Delivery Order, Customer Portal order).",
+        "Use the frequency unit alone (`RuleFrequencyPicker`, in a \"Frequency\" section) inside a recurring RULE form, where repeating is the whole point."
+      ],
+      "dontUseWhen": [
+        "Don't use on Service Work service orders (they don't repeat — Agreements/Maintenance do) or Sales orders.",
+        "Don't use on 3PL movement (asset) orders, or on a portal order made by a rule (the rule owns the repeating).",
+        "Don't use a checkbox + frequency dropdown or a list of cadences."
+      ],
+      "match": [
+        "recurring",
+        "repeat",
+        "frequency",
+        "schedule rule"
+      ]
+    },
+    {
+      "id": "unit.standard-list",
+      "title": "Standard list",
+      "layer": "unit",
+      "doc": "docs/fpds/units/standard-list.md:3",
+      "code": [
+        "prototypes/unified-view/StandardList.tsx",
+        "prototypes/unified-view/service/ServiceListScreen.tsx"
+      ],
+      "registry": "fpds-standard-list",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-standard-list.json",
+      "purpose": "A template-level composition written as a unit card — the whole list page in one piece, built from `unit.view-row`, `unit.toolbar`, `unit.filter-panel`, `unit.chip-shelf`, `unit.view-bar`, `unit.data-table`, `unit.export-sheet` and `unit.pagination`. Every table page, assembled the same way: the view row, the toolbar, the chip shelf, the view bar on the table, pagination, and an export that asks first. A screen hands it rows, columns, what each column prints, its facets and what Create and opening a row do. It answers \"show me this kind of record as a list I can search, filter, sort, save and export\" — identically on every page.",
+      "useWhen": [
+        "Use for any page whose content is one table of one kind of record with no board or map: Customer Portal lists, Service Work reference pages.",
+        "Use `ServiceListScreen` (a thin wrapper) for a reference page whose filters should come from its own columns automatically."
+      ],
+      "dontUseWhen": [
+        "Don't use when the list needs a board, a map, a date window, Group by or bulk selection — those lists compose the units directly (3PL › Delivery Orders, Sales › Orders, Service Work › Service Orders, Customer Portal › Orders).",
+        "Don't use inside a side sheet or for an editable table (boxed table unit, ui §10f)."
+      ],
+      "match": [
+        "simple list",
+        "reference list",
+        "catalog",
+        "price book"
+      ]
+    },
+    {
+      "id": "unit.status-and-awaiting",
+      "title": "Status & awaiting pills",
+      "layer": "unit",
+      "doc": "docs/fpds/units/status-and-awaiting.md:3",
+      "code": [
+        "prototypes/unified-view/statusKind.ts",
+        "src/components/ui/status-chip.tsx",
+        "src/components/ui/pill.tsx",
+        "prototypes/customer-portal/cells.tsx"
+      ],
+      "registry": "fpds-status-and-awaiting",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-status-and-awaiting.json",
+      "purpose": "Says what state a record is in, as its word in a pill coloured by what the reader should do about it. The Awaiting pill says a customer's ask (change or cancellation) is waiting on the tenant, without inventing a status. Flags say what is wrong or about to be.",
+      "useWhen": [
+        "Use the **status pill** (`StatusChip`, default variant) in every status column, sheet header, board card badge and map list row.",
+        "Use a **badge pill** (`Pill kind=…`) for flags and tags on a card: Urgent, Over SLA, Needs approval, Recurring, \"Best price\", \"+N\".",
+        "Use the **Awaiting pill** beside the status when a Customer Portal order carries a `changeRequest`.",
+        "Use **Flags as plain coloured text** in the Customer Portal Orders Flags column."
+      ],
+      "dontUseWhen": [
+        "Don't use `variant=\"dot\"` unless a dense grid is asked for it by name.",
+        "Don't use a pill for button / nav counters (`BadgeNumber`), the board lane count, or type initials (`CodeDisc`).",
+        "Don't make \"Change requested\" / \"Cancellation requested\" a status or a lane — use the Awaiting pill."
+      ],
+      "match": [
+        "status",
+        "pill",
+        "awaiting",
+        "confirmation",
+        "late"
+      ]
+    },
+    {
+      "id": "unit.summary-rail",
+      "title": "Summary rail & activity",
+      "layer": "unit",
+      "doc": "docs/fpds/units/summary-rail.md:3",
+      "code": [
+        "prototypes/unified-view/SheetCards.tsx"
+      ],
+      "registry": "fpds-summary-rail",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-summary-rail.json",
+      "purpose": "The read-only right column of a record sheet: the **Summary card** shows what the form computes (totals, counts, the headline figure), the **Activity card** shows the record's history. It answers \"what has this record become?\" and \"what happened to it, when, by whom?\".",
+      "useWhen": [
+        "Use when a record sheet has a derived side — figures computed from what is typed, or a history.",
+        "Use `RailCard` + `RailRow` for other read-only facts in the rail (e.g. Service Work \"Record\", \"Payment\", \"Visits\")."
+      ],
+      "dontUseWhen": [
+        "Don't use while CREATING a record — create sheets have no rail (exception: the Customer Portal order sheet keeps its summary on the right while creating).",
+        "Don't put editable values in the rail — they belong in the form (`unit.record-sheet`).",
+        "Don't build a bespoke summary block or activity list — always these two cards."
+      ],
+      "match": [
+        "summary",
+        "activity",
+        "history",
+        "audit log"
+      ]
+    },
+    {
+      "id": "unit.toolbar",
+      "title": "Toolbar",
+      "layer": "unit",
+      "doc": "docs/fpds/units/toolbar.md:3",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx",
+        "src/components/tables-layout/GroupByMenu.tsx",
+        "prototypes/unified-view/DateFilter.tsx",
+        "prototypes/unified-view/threepl/DateRangeFilter.tsx"
+      ],
+      "registry": "fpds-toolbar",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-toolbar.json",
+      "purpose": "The list's control row (Pavan's original \"Control unit\"): narrow the list on the left (search, Filters, Group by), scope and present it on the right (date, display switch). It answers \"how do I find the rows I want, and how do I want to see them?\"",
+      "useWhen": [
+        "Use when a page shows a list — always directly under `unit.view-row`, inside one `mt-4` shelf together with `unit.chip-shelf`.",
+        "Use the date control only on a list whose rows sit on a date (3PL › Delivery Orders, Sales › Orders, Service Work › Service Orders, Customer Portal › Orders). Omit it on lists with no date (Customers, Parts…).",
+        "Use the display switch only when a second display (board or map) exists."
+      ],
+      "dontUseWhen": [
+        "Don't use for the view's own tools (Search by column, Show/hide columns, Card configuration) — they live in `unit.view-bar`.",
+        "Don't use inside a side sheet — a sheet's tables use the boxed table unit (ui §10f)."
+      ],
+      "match": [
+        "search",
+        "filters",
+        "group by",
+        "display switch",
+        "toolbar"
+      ]
+    },
+    {
+      "id": "unit.view-bar",
+      "title": "View bar",
+      "layer": "unit",
+      "doc": "docs/fpds/units/view-bar.md:3",
+      "code": [
+        "prototypes/unified-view/ListToolbar.tsx",
+        "prototypes/unified-view/ListTable.tsx"
+      ],
+      "registry": "fpds-view-bar",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-view-bar.json",
+      "purpose": "A strip ON the view — above the table header or above the board's lanes — that says what is shown (\"62 orders · Thu, Oct 22, 2026\") and carries that view's own tools. It answers \"how many records am I looking at, over what window, and how do I adjust this view?\"",
+      "useWhen": [
+        "Use on every list with a table or a board (ui §10p — every list)."
+      ],
+      "dontUseWhen": [
+        "Don't use on a map view — the map has no view tools and the bar is not rendered for it.",
+        "Don't use for filters, search or the date — those are `unit.toolbar`.",
+        "Don't use inside a side sheet table."
+      ],
+      "match": [
+        "count",
+        "column settings",
+        "show hide columns",
+        "search by column",
+        "card configuration"
+      ]
+    },
+    {
+      "id": "unit.view-row",
+      "title": "View row",
+      "layer": "unit",
+      "doc": "docs/fpds/units/view-row.md:3",
+      "code": [
+        "prototypes/unified-view/FuelOrdersViewBar.tsx",
+        "prototypes/unified-view/useSavedViews.ts",
+        "prototypes/unified-view/filterMemory.ts"
+      ],
+      "registry": "fpds-view-row",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-view-row.json",
+      "purpose": "The first row of every list page: which saved narrowing you are on (All or a view you made), a way to save the current one, and the list's own actions (Create, Export). It answers \"which version of this list am I looking at, and how do I add to it or take it out?\"",
+      "useWhen": [
+        "Use when a page shows a list of records (table, board or map) — every list page has one, at the top of the content layer.",
+        "Use the Create CTA as a **menu** (`createMenu`) only when Create means several different records that take different forms (Sales › Orders: Fuel Order / Asset Order / Quote; 3PL › Delivery Orders: Delivery Order / Asset Order)."
+      ],
+      "dontUseWhen": [
+        "Don't use for page-level actions that no list control scopes — those stay in the page header (ux \"Action placement\").",
+        "Don't use the row for business / line-of-service presets — those are filters in the `unit.filter-panel` (ui §10p).",
+        "Don't build a whole list from parts by hand when it is a plain table page — use `unit.standard-list`, which already contains this row."
+      ],
+      "match": [
+        "saved view",
+        "views",
+        "tabs",
+        "export",
+        "create button"
+      ]
+    }
+  ]
+}

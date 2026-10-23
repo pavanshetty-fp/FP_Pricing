@@ -63,7 +63,7 @@ Measured 2026-10-21 in the preview, every row of every list, all dates. Same-nam
 | Item | 1 | 5 | CP-71 | 100 | 70 | -30 |
 | Job | 1 | 15 | Monitor install | 200 | 120 | -80 |
 | Jobs / Day | 1 | 1 | 5 | 120 | 110 | -10 |
-| Labour | 1 | 3 | 1.5 | 110 | 90 | -20 |
+| Labor | 1 | 3 | 1.5 | 110 | 90 | -20 |
 | Lanes Live | 1 | 22 | waiting on the partner | 160 | 150 | -10 |
 | Last cert | 1 | 12 | Nov 10, 2025 | 140 | 120 | -20 |
 | Last Delivery | 1 | 12 | Oct 21, 2026 | 140 | 120 | -20 |
@@ -101,7 +101,7 @@ Measured 2026-10-21 in the preview, every row of every list, all dates. Same-nam
 | Product and Code | 1 | 31 | Tank Inspection Recertification | 250 | 230 | -20 |
 | Product Compatibility | 1 | 9 | Additives | 200 | 170 | -30 |
 | Product(s) | 6 | 24 | 200* Diesel Onroad clear | 120–230 | 190 | -40 |
-| Programme # / Created | 1 | 12 | Oct 18, 2026 | 190 | 180 | -10 |
+| Program # / Created | 1 | 12 | Oct 18, 2026 | 190 | 180 | -10 |
 | Qty (gal) | 5 | 17 | 2,500 + 1 top off | 100–140 | 130 | -10 |
 | Quote # | 1 | 6 | Q-2050 | 110 | 90 | -20 |
 | Quote total | 1 | 10 | $25,670.50 | 130 | 110 | -20 |

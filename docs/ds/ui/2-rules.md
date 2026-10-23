@@ -1,4 +1,4 @@
-# UI · Rules & behaviour  *(canonical)*
+# UI · Rules & behavior  *(canonical)*
 
 The normative rules for the visual surface. **Single source** — Do's/Don'ts, Common
 mistakes, and Checks derive from these.
@@ -152,7 +152,7 @@ ribbons and accents, but **color usage is governed, not free**.
 - **Status semantics** (Success/Warning/Error etc.) exist as variants in the
   DS components, but render **neutral** in generated output until a usage
   rule defines which records get which color and why. This applies to:
-  order statuses (Unassigned · Active · Blocked · Cancelled · etc.), tag
+  order statuses (Unassigned · Active · Blocked · Canceled · etc.), tag
   chips (Gold/Silver/Platinum Customer, High/Less Priority, etc.), pricing
   flags (P/M), and severity banners (per §3 diagnostic disclosure — those
   WERE earned: warning/error/info already have a usage rule).
@@ -336,7 +336,7 @@ A two-tier header reads beautifully and takes three things away:
 the sort glyph, all of it — are unusable grouped, because the hook knows
 nothing about groups. Everything has to be rebuilt by hand and constrained.
 
-**So default to flat and equal, every column sorting.** V1.1's programme
+**So default to flat and equal, every column sorting.** V1.1's program
 list was the one exception (terms, coverage, economics) until Pavan flattened
 it too on 2026-10-01 — no table in the prototype is grouped now. Group only
 if he asks.
@@ -534,7 +534,7 @@ the list once per tank.
   categories, tags — the cell stays one cell (`TableCellMultiSelect`). Rows
   are made only when each pick is a row of its own.
 - **The checkbox is the DS checkbox, its tick in `primary-foreground`.** A
-  list row mutes bare icons; the tick names its colour so it never goes grey
+  list row mutes bare icons; the tick names its color so it never goes gray
   on the filled box.
 
 - **Every other picker in such a table is a value INSIDE a row** (a line's
@@ -704,7 +704,7 @@ The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
 
 **The style** — every icon, and any new one added to the set:
 - Lucide's **24 grid**, round caps and joins, `currentColor`.
-- A **soft fill of its own colour** (22%) inside the outline.
+- A **soft fill of its own color** (22%) inside the outline.
 - Anything that holds liquid fills **only to its level**, and the level is a
   **wave**, not a straight line — so it reads as liquid. Nothing else inside
   the shape (no ribs, no hatching).
@@ -722,23 +722,23 @@ The set lives in `src/components/ui/term-icons.tsx`; the DS showcase page is
 **A change against a period** — the chip after the figure:
 `bg-fp-trend-up-bg` / `text-fp-trend-up` (#3aac73 on #e7f6ef) with a small
 filled ▲ when up, `bg-fp-trend-down-bg` / `text-fp-trend-down` (#b74e6d on
-#fae7ec) with ▼ when down, `bg-muted` grey "Same" — and "vs N the previous …"
+#fae7ec) with ▼ when down, `bg-muted` gray "Same" — and "vs N the previous …"
 under it. The same green for a positive change everywhere in the app.
 
 **ONE marker, everywhere (Pavan, 2026-10-20)** — `<TrendChip>` in
 `src/components/ui/trend-chip.tsx`. Every figure card in every module uses
 it: no arrows in circles, no orange, no `destructive` red for a fall. Red is
-always `--fp-trend-down`. `good` sets the colour when down is good news (late
+always `--fp-trend-down`. `good` sets the color when down is good news (late
 orders down → green ▼). **No trend lines on figure cards** — the term's
 `MetricIcon` sits there instead (Orders overview, 2026-10-20).
 
 ## 10l. Alert banner motion — every pill sweeps, every CTA shines (Pavan, 2026-10-20)
 
 In the DS `AlertBanner` (Sales Orders, Service Work, Portal Orders and
-Invoices — one component, so one behaviour):
+Invoices — one component, so one behavior):
 - **Every pill sweeps** — the tag pill ("Needs action", "Overdue", "At risk")
   and the count pill — whatever its kind: a bar in a deeper shade of the
-  pill's own colour (red, orange, blue, green) moves through the fill. **Only
+  pill's own color (red, orange, blue, green) moves through the fill. **Only
   while the banner is collapsed**; opened, the list is the attention.
 - **Every CTA the banner carries shines** — the banner's own action and each
   item's action ("Create Order Request", "Order the rest") get the white
@@ -776,21 +776,19 @@ the first control of the Accessibility panel. Everything lives in the
 `ModuleSidebar`). Its panel opens beside the nav, changes the page live, and
 is saved:
 
-In this order (Pavan, 2026-10-21): Theme on top; Text size and Text colour
-together; Component stroke and Component background; a divider; Screen size.
+In this order (Pavan, 2026-10-21): Theme on top; Text size; Stroke contrast and Contrast (Text color removed, 2026-10-24); a divider; Display size. Text size and Display size are STEPS like Android's "Display size and text" (Pavan, 2026-10-23): − · a track with a dot per step · +. No preview card — the page itself is the preview.
 Reset is the header's icon alone.
 
 | Control | Range | Moves |
 |---|---|---|
 | Theme | Light · Dark | the same switch as the header's |
-| Text size | 100% – 130% | **the text only** — type ramp and weights; a unit widens only when the bigger text would be cut inside it; table headers wrap |
-| Text colour | Default → Maximum | main text (to pure black / white), secondary and coloured text, and orange text (`--fp-brand-ink`); past the middle, faded labels (main or muted text at 35–80%, e.g. nav items) come up to full. **The brand fill — the logo, brand buttons — never moves.** It never sits below Component background (rises with it) |
-| Component stroke | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border colour (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
-| Component background | Default → Maximum | **whites stay white, greys go darker** toward dark grey — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker grey**, not a deeper beige; the **selected nav item** goes much darker; text on those greys goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no grey between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
-| Screen size | stepped: 16″ · 24″ · 34″ · TV (100 · 110 · 125 · 150%), or Auto | everything, by one zoom |
-| Text on a colour fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
+| Text size | 6 steps, 100% – 130% | **the text only** — type ramp and weights. No box widens (nav, lanes, cards, sheets, table columns keep their width); text wraps onto the next line and the card or row grows taller — except record numbers and dates, which stay on one line and widen their table column just enough (2026-10-23) |
+| Stroke contrast | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border color (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
+| Contrast | Default → Maximum | **whites stay white, grays go darker** toward dark gray — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker gray**, not a deeper beige; the **selected nav item** goes much darker; text on those grays goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no gray between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
+| Display size | 5 steps: 50 · 75 · **100** · 125 · 150%, 100% in the middle; no Auto (2026-10-23) | everything, by one zoom |
+| Text on a color fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
 
-The WCAG point sits at each contrast slider's middle (not labelled); Maximum
+The WCAG point sits at each contrast slider's middle (not labeled); Maximum
 is its far end.
 
 **Maximum** (the far end, past WCAG — `.a11y-max` blocks) darkens every rim
@@ -801,21 +799,21 @@ and pushes text further while keeping it at 7:1 on the darker surfaces.
 pinned beside the nav at the window's foot (not a measured popover, which a
 zoomed page misplaces) and never wider or taller than the window. **Reset to
 default** sits at its top; the same reset is **⌘⌥0** (Ctrl+Alt+0) anywhere,
-and `?a11y=reset` in the address. When a Screen size leaves the window
+and `?a11y=reset` in the address. When a Display size leaves the window
 narrower than the app's 1280px layout, the **page scrolls sideways** (with a
 visible bar) instead of clipping — every control stays reachable.
 
 **The WCAG point** is the `.wcag:not(.dark)` / `.dark.wcag` blocks in
 `src/index.css`: text **AAA 7:1** on every surface, controls and graphics
 **AA 3:1**, every rim and divider **3:1+**, surfaces a full step apart (so
-cards hold up mirrored or projected). Each value is the nearest colour of
+cards hold up mirrored or projected). Each value is the nearest color of
 the **same hue** that clears the bar. `src/components/theme/a11y.ts` mixes
 each token between the two points either side of the slider; text on a fill
 switches at a quarter rather than blending.
 
 **Checked, not remembered.** `npm run eval` → `wcag-contrast` measures every
 pairing the screens actually use — each class string that sets a background
-and a text colour together, with their opacities (68 today) — plus a hand
+and a text color together, with their opacities (68 today) — plus a hand
 list for rims, dividers, lanes and charts, and fails any WCAG or Maximum pair
 under its bar; `npm run wcag` prints Light, Dark, WCAG and
 Maximum for each theme.
@@ -826,12 +824,12 @@ Maximum for each theme.
 **A new fixed width that holds text** is written `w-[calc(Npx*var(--fp-scale))]`
 (inside a sheet), or uses `--fp-nav-k` / `--fp-lane-k`; a new kind of unit is
 added to `UNITS` in `a11y.ts` so it's fitted too.
-**A new colour token** gets its WCAG light and dark values, a pair in
+**A new color token** gets its WCAG light and dark values, a pair in
 `scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts`'s Stroke, Background or
 Text list (or `ON_FILL` if it's text on a fill).
 
 **The nav item's icon** is `AccessibilityIcon` (`src/components/theme`) — a dot with
-five widening rays fanning right, filled in the text colour (Pavan, 2026-10-22).
+five widening rays fanning right, filled in the text color (Pavan, 2026-10-22).
 
 ## 10o. Dark theme layers — separated by default (Pavan, 2026-10-21)
 
@@ -869,14 +867,14 @@ there is none. **Save view** suggests a name from the filters on (placeholder; �
 takes it to type on; Save with the box empty saves it): the business (or the line of
 service when no business), then the other facets in panel order, at most three parts
 joined " · " — "Transport · Priya Raman". A saved view with changes shows an **update
-icon** beside its name — the two-arrow refresh glyph (`RefreshCw`), grey; tooltip
+icon** beside its name — the two-arrow refresh glyph (`RefreshCw`), gray; tooltip
 "Update changes". Logic: `filterMemory.ts`.
 
-**Sorted column, in greys.** Any `th` with `aria-sort` sits a shade darker
+**Sorted column, in grays.** Any `th` with `aria-sort` sits a shade darker
 (`--chip`) with a semibold, full-ink label (rule in `index.css`). The icon is an
 arrow (`ArrowUp` / `ArrowDown`), not a chevron; unsorted columns keep a faint
-`ChevronsUpDown`. ListTable gives the sorted column's cells a very light grey
-(`.fp-sorted-cell`, half the row hover). No brand colour, no underline.
+`ChevronsUpDown`. ListTable gives the sorted column's cells a very light gray
+(`.fp-sorted-cell`, half the row hover). No brand color, no underline.
 
 **Column widths come from the content, and the table always fills** (Pavan,
 2026-10-21/22). A column starts at its widest RENDERED cell — text, "+N" chips, pills,
@@ -888,6 +886,13 @@ contact takes the room (ListTable does this for every list). Wider than the fram
 table scrolls. Customer starts at 250, Ship-to / Ship-Tos 170; rule tables give Schedule
 and the column before it +20. Hand-tuned widths per module come from Pavan. Numbers:
 `docs/ds/ui/column-widths.md`.
+
+**Every table page is the standard list** (Pavan, 2026-10-22) — `StandardList`
+(`prototypes/unified-view/StandardList.tsx`): the view row (All, saved views, Export),
+search + Filters, the chip shelf, the view bar, the table, pagination. The Customer
+Portal's lists and Service Work's reference pages (Technicians, Price Book, Parts,
+Agreements, Maintenance, Compliance, Performance) use it; their Filters come from their
+own category columns (2–12 shared values, not the first column, not numbers/dates).
 
 **Everything is left-aligned** (Pavan, 2026-10-22) — every column, header and cell,
 numbers and money included, in every table (lists, nested and sheet tables, dashboard
@@ -905,8 +910,10 @@ after a trial on 3PL Delivery Orders): the view's tools sit in a bar ON the view
 above the table header (`ListTable topBar`, or the hand-built recurring tables' frame),
 or above the lanes (`BoardWithBar`). LEFT: a statement — "62 orders · Thu, Oct 22,
 2026" (table), "62 orders across 9 of 9 lanes · …" (board, replacing the footer line),
-"150 customers" where a list has no date. RIGHT: the view's tools — "Search by
-column", 24px, the settings icon for Show/Hide columns (table); Card fields (board).
+"150 customers" where a list has no date. RIGHT: the view's tools — Search by
+column, Show/hide columns 4px apart like the view icons (table); Card configuration (board) — each ICON ONLY,
+its name sliding out on hover or focus and STAYING out while the tool is on (column
+search open, its menu open), 12px in the muted gray (never black), no fill or outline.
 Wiring: `useViewBar()`, `ListToolbar viewToolsInto + viewStatement`, `ViewStatement`.
 
 **One date picker** — `src/components/ui/date-picker.tsx`, used by every screen that
@@ -929,7 +936,7 @@ picks a date (filters and form fields, every module):
 
 **The system has ONE accent: violet `#8b5cf6`** — tokens `accent-violet`,
 `accent-violet-foreground` (white), `accent-violet-soft` (12% wash),
-`accent-violet-ink` (readable text). It is the second colour after the brand,
+`accent-violet-ink` (readable text). It is the second color after the brand,
 and the two never trade jobs:
 
 - **The brand (orange) says "you chose this"** — selection (`--selected`),
@@ -945,17 +952,17 @@ and the two never trade jobs:
     `violet` pill).
 - **One violet.** `fp-lane-violet` and the `violet` pill map to the accent;
   never a second violet hex. `fp-lane-purple` (#6366f1) is an indigo LANE
-  colour, not the accent.
-- **`--accent` is not the accent.** It is shadcn's name for the grey hover and
+  color, not the accent.
+- **`--accent` is not the accent.** It is shadcn's name for the gray hover and
   keeps that job.
 
 ## 10b. The DS ships hues; the application binds meaning
 
 Added 2026-09-18. The DS already says a chip renders neutral until a usage rule
-binds a colour to a meaning (§9). This is the other half of it: **where that
+binds a color to a meaning (§9). This is the other half of it: **where that
 binding is written down.**
 
-- **Every application keeps ONE colour-mapping table**, in its own docs, listing
+- **Every application keeps ONE color-mapping table**, in its own docs, listing
   each hue against the single thing it means there. Lane fills, code-disc tones,
   status-chip channels, pastel badges — all of it, in one place, so a hue cannot
   come to mean two things in two modules of the same product.
@@ -965,7 +972,7 @@ binding is written down.**
   swatch.
 - **Four tone channels, and a lifecycle longer than four shares them.** That is
   allowed and is not a defect — the label always says which stage it is, so
-  colour is never the only carrier. What is NOT allowed is two stages sharing a
+  color is never the only carrier. What is NOT allowed is two stages sharing a
   channel when one of them is the exception: the failure channel belongs to the
   one state where something has gone wrong.
 - **A count of one meaning is a badge nobody needs.** "Normal" priority, a
@@ -987,15 +994,15 @@ status sits in its lifecycle.**
 | `info` | **simply true, asks nothing** — somebody is on it, it is under way, it exists | blue | Assigned · Ongoing · Scheduled · Active |
 | `success` | **done** — the thing it was for has happened | green | Completed · Delivered · Synced · Finalized |
 | `critical` | **a warning**, or a state important enough to change a plan | red | Blocked · Declined · Compliance expired · Over limit |
-| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | grey | Draft · Cancelled · Ended · Inactive |
+| `neutral` | **neither** — a record that exists and is not yet a state; an end that is not an outcome | gray | Draft · Canceled · Ended · Inactive |
 
-- **A column is a place, not a state.** Every badge grey made the lane the only
+- **A column is a place, not a state.** Every badge gray made the lane the only
   thing carrying meaning, and in one lane a job waiting on parts and a
   brand-new job looked identical. A dispatcher scans a board for the amber ones.
 - **Being active is `info`, not `success`.** Nothing has been achieved by a
   customer existing. Green is kept for a thing that is DONE, so that it means
   something when it appears.
-- **Cancelled is not red.** It is a terminal non-event, not a problem to solve,
+- **Canceled is not red.** It is a terminal non-event, not a problem to solve,
   and a lane of red badges would be the loudest thing on the board saying the
   least. Red stays for the state that genuinely goes wrong — and a lifecycle
   with no such state has no red, which is correct rather than an oversight.
@@ -1005,11 +1012,11 @@ status sits in its lifecycle.**
 - **A price in is not a thing done.** "Quotation received" is `caution`: it is
   now the dispatcher's turn to award. `success` is Finalized.
 - **The normal state says nothing.** Maintenance "OK" is `neutral`; the
-  exceptions carry the colour.
+  exceptions carry the color.
 
 **An application declares KINDS, never tones.** `StatusChip`'s tones are the
 DS's channels and their names are hues in disguise (`processing` is amber). A
-map written in them is a map written in colours — which is how "Assigned" came
+map written in them is a map written in colors — which is how "Assigned" came
 to be green in one module, amber in another and blue in a third, each author
 reaching for a swatch. The DS's `StatusChip` ships `info` (blue, on
 `--fp-banner-accent-info`) as its fifth channel for this rule.
@@ -1026,7 +1033,7 @@ Added 2026-09-17, from the 3PL vendor table. Enforced in `StatusChip`.
 - **No dot beside a status label.** `text` (the default) and `soft` both draw
   the pill since 2026-10-09 (§11b), so in both the dot repeated a tone the
   chip was already carrying and spent 12px of a control whose whole job is to be
-  small. The word is the status; the colour is a second channel on the same
+  small. The word is the status; the color is a second channel on the same
   word, not a third element beside it.
 - **The dot is asked for by name, never arrived at.** `variant="dot"` still
   exists, for the one case where the dot IS the tone — a dense grid where the
@@ -1051,10 +1058,10 @@ before it was written down. The component is `Pill` (`ui/pill.tsx`).
   draws the pill for `text` and `soft` alike, so a status reads the same in a
   table cell, a sheet header and on a board card. `variant="dot"` is unchanged
   and stays opt-in.
-- **Colour is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
-  `critical` — so the same kind is the same colour in every module. **The one
-  exception is a colour the user chooses**: where a module lets the user pick a
-  colour (Sales stages and order types, in Sales Settings), `color` takes the
+- **Color is by KIND** (§10b) — `neutral`, `info`, `caution`, `success`,
+  `critical` — so the same kind is the same color in every module. **The one
+  exception is a color the user chooses**: where a module lets the user pick a
+  color (Sales stages and order types, in Sales Settings), `color` takes the
   DS lane palette over the kind, and that choice is kept wherever the value
   shows.
 - **Not pills:** a counter inside a button or a nav item (`BadgeNumber`), a
@@ -1072,17 +1079,17 @@ before it was written down. The component is `Pill` (`ui/pill.tsx`).
 
 Red — a pill, a disc, a lane strip, a word — means **something is wrong or
 about to be** (Urgent, Late, Overdue, Unpaid, Blocked, Over SLA). A TYPE, a
-category, a lane that is just a place, Cancelled: never red. A categorical
-colour that would land on red takes another hue (the rose type disc's pill is
-pink; Service's Pump replace is green; Service's Cancelled lane is grey).
+category, a lane that is just a place, Canceled: never red. A categorical
+color that would land on red takes another hue (the rose type disc's pill is
+pink; Service's Pump replace is green; Service's Canceled lane is gray).
 
 ### A table's Type column is a pill (Pavan, 2026-10-16)
 
 Every list's **Type** column shows the type's FULL WORD in a pill of its
-colour — the Sales orders table's treatment — in 3PL Delivery Orders, Service
+color — the Sales orders table's treatment — in 3PL Delivery Orders, Service
 Work and wherever else a table lists a type. The round code disc (D, EM, M…)
 stays only on BOARD CARDS, where space is a letter; its hue carries over to the
-pill (`discTonePill`), so a type is the same colour on the card and in the row.
+pill (`discTonePill`), so a type is the same color on the card and in the row.
 
 ## 11c. Skeletons shimmer (Pavan, 2026-10-10)
 
@@ -1102,7 +1109,7 @@ shape it is about to take.
   centred on one of its corners), grouped 2 × 2 so they meet as half discs,
   full circles and loose quarters; no empty cells. Seeded — the same every
   time.
-- **Colour:** two very light greys only — the foreground at 5% and 3%.
+- **Color:** two very light grays only — the foreground at 5% and 3%.
   Never a hue.
 - **Size:** one scale (2.7). Do not resize it per card.
 - **Placement:** the last child of the card's flex column, `flex-1`; it

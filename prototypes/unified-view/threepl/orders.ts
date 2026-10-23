@@ -72,7 +72,7 @@ export type BrokerStatus =
   | "Synced"
   /* THE TERMINAL EXIT. Not a stage of the work — a way out of it — which is
      why it is last in the lane order rather than in sequence with the rest. */
-  | "Cancelled";
+  | "Canceled";
 
 /**
  * PAST THE DELIVERY. The stages where the run has happened and the order is
@@ -101,7 +101,7 @@ export const BROKER_STATUSES: BrokerStatus[] = [
   "Review",
   "Verified",
   "Synced",
-  "Cancelled",
+  "Canceled",
 ];
 
 /** What the dashboard's filter tabs split on (§5.2). NOT the Order Type field. */
@@ -1171,9 +1171,9 @@ export const YARDS = YARD_SITES.map((y) => y.name);
  * Statuses the FILTER offers, which is a longer list than the board's lanes.
  *
  * `BROKER_STATUSES` above is the LIFECYCLE — the lanes the board renders, in
- * order. Overdue, Cancelled and Partially Synced are filterable states
+ * order. Overdue, Canceled and Partially Synced are filterable states
  * that are not lanes: Overdue is a derived condition rather than a stage,
- * Cancelled is a terminal exit, and Partially Synced sits between two
+ * Canceled is a terminal exit, and Partially Synced sits between two
  * lanes. Keeping the two lists apart means adding a filter option never
  * silently adds a board lane.
  */
@@ -1187,7 +1187,7 @@ export const BROKER_STATUS_FILTERS = [
   "Verified",
   "Partially Synced",
   "Synced",
-  "Cancelled",
+  "Canceled",
   "Blocked",
 ];
 
@@ -2224,17 +2224,17 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
   rows.forEach((r, k) => {
     if (k % 11 !== 4) return;
     /* Past Completed the order has reached accounting and cannot be
-       cancelled. (Was `startsWith("Accounting")`, a name retired in the
-       status rename, so Verified and Synced orders were being cancelled.) */
+       canceled. (Was `startsWith("Accounting")`, a name retired in the
+       status rename, so Verified and Synced orders were being canceled.) */
     if (isDelivered(r.status)) return;
-    r.status = "Cancelled";
+    r.status = "Canceled";
     r.blockedReason = null;
     r.audit = [
       ...r.audit,
       {
         at: new Date(Date.now() - 3_600_000).toISOString(),
         by: CREATED_BY[k % CREATED_BY.length],
-        changes: ["Status: Quoting → Cancelled", "Cancelled by customer"],
+        changes: ["Status: Quoting → Canceled", "Canceled by customer"],
       },
     ];
   });
@@ -2252,7 +2252,7 @@ export function assertConsistent(rows: BrokerOrder[]): string[] {
     /* A CANCELLED ORDER IS A SNAPSHOT of whatever it was when it stopped, so
        the stage rules below do not apply to it — they describe work in
        progress, and there is none. */
-    if (r.status === "Cancelled") continue;
+    if (r.status === "Canceled") continue;
     if (r.kind === "Movement") {
       if (!r.orderNo.startsWith("M-")) problems.push(`${r.orderNo}: movement order without an M prefix`);
       if (r.orderType !== "Asset Movement") problems.push(`${r.orderNo}: movement order typed ${r.orderType}`);
@@ -2550,7 +2550,7 @@ export const BROKER_LANE_COLOR: Record<BrokerStatus, LaneColorName> = {
   Verified: "yellow",
   "Partially Synced": "yellow",
   Synced: "purple",
-  Cancelled: "grey",
+  Canceled: "grey",
 };
 
 /** The DS lane palette's key names. Kept as a local type so this data module
@@ -2591,7 +2591,7 @@ export const BROKER_STATUS_TONE = statusTones<BrokerStatus>({
   /* The sync was tried and failed. A problem to fix, not a step forward. */
   "Partially Synced": "critical",
   Synced: "success",
-  Cancelled: "neutral",
+  Canceled: "neutral",
 });
 
 /** Half-hour grid for the §5.3 start/end window selects. */

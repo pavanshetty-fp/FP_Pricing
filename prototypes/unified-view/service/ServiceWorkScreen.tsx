@@ -74,7 +74,7 @@ import { kindTone } from "../statusKind";
  *     numbers vs the money left the building).
  *  2. PARTS-PENDING IS IN SEQUENCE, not set apart. Waiting on a part is a
  *     normal thing for a job to be doing, and it is the lane a dispatcher
- *     works from first thing. Only Cancelled sits behind the rule.
+ *     works from first thing. Only Canceled sits behind the rule.
  *  3. THE BOARD OPENS ON A WEEK. A delivery IS a day; a reported fault from
  *     Tuesday is still a fault on Friday.
  */
@@ -117,7 +117,7 @@ const COLUMNS: ListColumn<Col>[] = [
   /* ── Available, not shown by default. ── */
   { key: "source", label: "Intake Source", width: 165, sortable: true },
   { key: "raisedBy", label: "Raised By", width: 160, sortable: true },
-  { key: "labor", label: "Labour", width: 110, sortable: true },
+  { key: "labor", label: "Labor", width: 110, sortable: true },
   { key: "invoice", label: "Invoice", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -195,13 +195,14 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
     {
       kind: "stack" as const,
       key: "customer",
-      heading: "Customer",
+      /* SHIP-TO FIRST, then where, then the customer small (Pavan, 2026-10-23). */
+      heading: "Ship-to Details",
       lines: [
-        ...(off.has("customer.account") ? [] : [{ text: r.customer, level: 1 as const }]),
-        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
+        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
         ...(off.has("customer.city") || !r.city
           ? []
-          : [{ text: `${r.city}, ${r.state}`, level: 3 as const }]),
+          : [{ text: `${r.city}, ${r.state}`, level: 2 as const }]),
+        ...(off.has("customer.account") ? [] : [{ text: r.customer, level: 3 as const }]),
       ],
     },
     {
@@ -300,10 +301,10 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
 }
 
 const CARD_UNITS = [
-  { key: "customer", label: "Customer" },
-  { key: "customer.account", label: "Account", group: "customer" },
-  { key: "customer.site", label: "Site", group: "customer" },
+  { key: "customer", label: "Ship-to Details" },
+  { key: "customer.site", label: "Ship-to name", group: "customer" },
   { key: "customer.city", label: "City and state", group: "customer" },
+  { key: "customer.account", label: "Customer", group: "customer" },
   { key: "asset", label: "Asset details" },
   { key: "asset.name", label: "Asset name", group: "asset" },
   { key: "asset.type", label: "Asset type", group: "asset" },

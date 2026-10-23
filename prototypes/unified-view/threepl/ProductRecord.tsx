@@ -111,7 +111,7 @@ export function productReadSections(
       key: "vendors",
       /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
       columns: [CELL.name, CELL.pick, CELL.text, CELL.flag, CELL.status],
-      title: "Vendors who can fulfil this",
+      title: "Vendors who can fulfill this",
       count: vendors.length,
       render: () => (
         <SheetTable

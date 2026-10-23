@@ -167,9 +167,9 @@ const TOGGLE_COLUMNS = SALES_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
 
 type CardUnit = { key: string; label: string; group?: string };
 const CUSTOMER_UNITS: CardUnit[] = [
-  { key: "customer", label: "Customer Details" },
-  { key: "customer.account", label: "Account", group: "customer" },
-  { key: "customer.site", label: "Ship-to site", group: "customer" },
+  { key: "customer", label: "Ship-to Details" },
+  { key: "customer.site", label: "Ship-to name", group: "customer" },
+  { key: "customer.account", label: "Customer", group: "customer" },
 ];
 const FUEL_UNITS: CardUnit[] = [
   { key: "schedule", label: "Schedule" },
@@ -251,12 +251,13 @@ function fuelCardUnits(r: FuelOrder, off: ReadonlySet<string>): BoardCardUnit[] 
     {
       kind: "stack",
       key: "customer",
-      heading: "Customer Details",
+      /* SHIP-TO FIRST, the customer small under it (Pavan, 2026-10-23). */
+      heading: "Ship-to Details",
       lines: [
-        ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 1 as const }]),
         ...(off.has("customer.site")
           ? []
-          : [{ text: r.customer.description, level: 2 as const }]),
+          : [{ text: r.customer.description, level: 1 as const }]),
+        ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 3 as const }]),
       ],
     },
     {
@@ -303,10 +304,10 @@ function assetCardUnits(r: AssetOrder, off: ReadonlySet<string>): BoardCardUnit[
     {
       kind: "stack",
       key: "customer",
-      heading: "Customer Details",
+      heading: "Ship-to Details",
       lines: [
-        ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 1 as const }]),
-        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 2 as const }]),
+        ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
+        ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 3 as const }]),
       ],
     },
     { kind: "inline", key: "date", heading: "Delivery Date", parts: [r.date.title] },
@@ -422,7 +423,7 @@ const approvalOf = (r: SalesOrderRow) =>
 const STAGE_EVENT: Record<string, string> = {
   Dispatched: "dispatched",
   Delivered: "delivered",
-  Cancelled: "cancelled",
+  Canceled: "canceled",
 };
 const announceMove = (orderNo: string, to: string) => {
   const event = STAGE_EVENT[to];
@@ -679,7 +680,7 @@ export function SalesOrdersScreen({
           /* AN ADDED STAGE IS A LANE, under its name (2026-10-07). */
           title: stageLabel(stage, settings),
           color: stageLaneColor(stage, settings),
-          apart: stage === "Cancelled",
+          apart: stage === "Canceled",
           emptyLabel: "No orders",
           cards: cards.map((r) => {
             /* OVER SLA IS A WARNING (critical); A MOVE WAITING ON APPROVAL

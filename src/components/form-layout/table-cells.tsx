@@ -314,7 +314,7 @@ export function TableCellInput({
     <label
       className={cn(
         "absolute inset-0 flex cursor-text items-center px-3 transition-colors",
-        moneyish ? "justify-end gap-1" : "gap-1.5",
+        moneyish ? "gap-1" : "gap-1.5",
         "hover:bg-accent",
         "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
         disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
@@ -345,7 +345,7 @@ export function TableCellInput({
         className={cn(
           "h-full min-w-0 bg-transparent text-sm text-foreground outline-none",
           "placeholder:text-muted-foreground disabled:cursor-not-allowed",
-          numeric && "text-right tabular-nums",
+          numeric && "tabular-nums",
           moneyish ? "w-auto field-sizing-content" : "w-full"
         )}
       />

@@ -251,7 +251,7 @@ const OPEN = new Set(["Drafted", "Parts pending", "Linked order", "Assigned", "Y
  * Quote attach: finished jobs that carried a quote.
  */
 export function performance(rows: ServiceOrder[]) {
-  const finished = rows.filter((r) => r.completedAt && r.status !== "Cancelled");
+  const finished = rows.filter((r) => r.completedAt && r.status !== "Canceled");
   const firstTime = finished.filter((r) => r.visits.length <= 1 && r.status !== "Completed — linked");
   const quoted = finished.filter((r) => r.quote);
   const invoiced = rows.filter((r) => r.invoiceCreated);

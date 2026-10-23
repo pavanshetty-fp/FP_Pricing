@@ -56,7 +56,7 @@ export function phoneSeed(all: ServiceOrder[]): ServiceOrder[] {
   const out = all.map((o) => ({ ...o }));
   for (const t of TECHNICIANS) {
     const mine = out
-      .filter((o) => o.technicianId === t.id && o.status !== "Cancelled")
+      .filter((o) => o.technicianId === t.id && o.status !== "Canceled")
       .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
     const reset = new Set(mine.slice(0, 2).map((o) => o.id));
     for (const o of mine) if (o.status === "Ongoing") reset.add(o.id);

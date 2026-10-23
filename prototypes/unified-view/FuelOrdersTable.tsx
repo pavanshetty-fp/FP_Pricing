@@ -45,7 +45,7 @@ export const STATUS_TONE: Record<FuelOrderStatus, StatusTone> = statusTones({
   Dispatched: "info",
   Delivered: "success",
   /* Not a warning — grey, never red. */
-  Cancelled: "neutral",
+  Canceled: "neutral",
 });
 
 /** Planned date over planned time. Em-dash when nothing is planned yet. */

@@ -223,7 +223,7 @@ function Products({ st }: { st: ReturnType<typeof todayStats> }) {
                 />
               </span>
             </span>
-            <span className="text-right text-sm whitespace-nowrap tabular-nums text-foreground">
+            <span className=" text-sm whitespace-nowrap tabular-nums text-foreground">
               {p.delivered.toLocaleString()}{" "}
               <span className="text-muted-foreground">of {p.requested.toLocaleString()} gal</span>
               {p.topOff > 0 && <span className="text-muted-foreground"> · {p.topOff} top off</span>}

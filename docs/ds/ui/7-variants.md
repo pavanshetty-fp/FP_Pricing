@@ -1,4 +1,4 @@
-# The variant catalogue
+# The variant catalog
 
 Added 2026-09-22. **Every element in this system has more than one form, and
 the mistake is not picking the wrong one — it is not knowing there was a
@@ -13,7 +13,7 @@ nobody chose, it says so.
 > **This file is counted, not just written.** `npm run eval` prints a census —
 > every sheet in the app against every option it takes, every table against
 > whether it is in a unit — and a run says how the numbers moved since the last
-> one. A catalogue nobody counts is a catalogue that is stale by the second
+> one. A catalog nobody counts is a catalog that is stale by the second
 > screen.
 
 ---
@@ -72,14 +72,14 @@ but neither passes `fit` nor is one of the full forms.
 ### Navigation — one panel (Unified View, Pavan, 2026-10-06)
 
 The Unified View's navigation is ONE left panel (`ModuleSidebar`), after the
-Lovable "unified UI" reference's menu (structure only — colours and type are
+Lovable "unified UI" reference's menu (structure only — colors and type are
 the DS's sidebar tokens). Every module is a row (icon · name · chevron); the
 module you are in is open, tinted `bg-sidebar-accent`, and under it are its
 pages: loose pages first; **an area that has pages of its own stays a page, its
 pages hanging under it on tree bars** (Pavan, 2026-10-15 — the portal's
 Orders, then everywhere): a vertical bar down from the area's icon and a short
 horizontal bar into each page; pressing the area opens its first page
-(`ModuleSidebar` `nested`). No second drawer. **Colours are the shell set** (`--fp-shell-*`, 2026-10-06, after an
+(`ModuleSidebar` `nested`). No second drawer. **Colors are the shell set** (`--fp-shell-*`, 2026-10-06, after an
 AirOps reference): ground #f2f2f2 (top bar included — the top bar has no fill
 of its own), the panel #fbfbfb in a borderless rounded box 8px clear of the
 edges, a selected page #f1f0ec with a green marker (#3a7760) on the guide
@@ -87,7 +87,7 @@ line (#e6e4e2); the open module takes weight, not a fill, and sits FIRST; the re
 module order **3PL · Sales · Service Work · Pricing · Lease** (Pavan,
 2026-10-09) —
 no ring, dot, chevron or divider marks it (Pavan, 2026-10-07). **Switching modules starts with a
-progress bar** (Pavan, 2026-10-08): a 2px bar in the BRAND colour (`bg-brand`, Pavan 2026-10-09)
+progress bar** (Pavan, 2026-10-08): a 2px bar in the BRAND color (`bg-brand`, Pavan 2026-10-09)
 fills the clicked row left to right (3s — a module takes 3–5s to load,
 2026-10-09 — CSS keyframe), with the PAGE in its loading state meanwhile — the title,
 view tabs, toolbar and table rows as shimmering skeletons in their own places
@@ -97,7 +97,7 @@ order** (Pavan, 2026-10-07): the open module FOLDS its pages (200ms), then the
 rows MOVE — the chosen module glides to the top, the old one back to its place
 (260ms, FLIP) — then the chosen module UNFOLDS (240ms). One curve,
 `cubic-bezier(0.2,0,0,1)`; none with reduced motion. The panel
-is 240px; **Collapse navigation** (a quiet grey mark in its top-right corner) folds it to a 56px icon rail —
+is 240px; **Collapse navigation** (a quiet gray mark in its top-right corner) folds it to a 56px icon rail —
 the open module's pages as icons with hairlines between sections, then the
 other modules — and the choice is remembered per browser.
 
@@ -125,9 +125,9 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   list is quiet (2026-10-05): **13px**, a bare number **8px** from its name, no
   disc and no fill, flush with the column's left edge; the current step's number
   and name take the selection ink (`text-selected-foreground`, the brand in
-  dark), the rest grey with lighter numbers. **Pressing a step scrolls to it**
+  dark), the rest gray with lighter numbers. **Pressing a step scrolls to it**
   and marks it once with `.fp-attention-fill-subtle` — a 5% foreground wash,
-  grey in both themes, never the ring tint.
+  gray in both themes, never the ring tint.
 - **The look inside a stepped form:** group headings lose their band —
   `text-base font-medium text-muted-foreground`; field sections become
   `plain`; a section that is a table becomes `outline` (plain heading over the
@@ -142,11 +142,11 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   tone="caution"`, an opaque 10% `--fp-banner-accent-caution` wash and rim)
   because it is the answer to a refused press. It resets each time a record
   opens. Where a strip simply stands on a sheet (no step column), it stays
-  grey.
+  gray.
 - **The step column is OFF on the 3PL order sheets (Pavan, 2026-10-06)** —
   detail and create, delivery and asset. The stepped look stays; only the
   column goes (`stepColumn={false}` on `RecordSheet`). Its design and
-  behaviour are archived in `archive/step-column.md`, with how to restore it.
+  behavior are archived in `archive/step-column.md`, with how to restore it.
 - **Not stepped:** level-2 sheets (a sheet over a sheet), Export
   (`stepNav={false}`), pickers and read drawers (they reset
   `FormStepsContext` to false).
@@ -157,12 +157,12 @@ uses `SteppedFormBody` directly (Sales `OrderSheet`).
   with anything typed asks **"Discard this order?"** — *Keep editing* /
   *Discard* — for every kind of order. Autosave is for records that exist.
 - **The stage track animates when the stage changes** (`StageTrack`,
-  2026-10-06): the travelled line runs on to the new stage, the stage left
+  2026-10-06): the traveled line runs on to the new stage, the stage left
   takes its tick, and the new pill fades and zooms in as the line arrives —
   under a second, never on first paint, off under `prefers-reduced-motion`.
 - **The step column's progress bar can end in one quiet control**
   (`stepsAction` on `RecordSheet` → `SteppedFormBody` → `FormStepsNav`
-  `headerAction`): a grey 24px ghost icon (`text-muted-foreground`, white on
+  `headerAction`): a gray 24px ghost icon (`text-muted-foreground`, white on
   hover), centred on the bar. Used for the order form's settings gear.
 
 ### Depth — two

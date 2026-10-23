@@ -1029,7 +1029,7 @@ function RequestsChart({ weeks }: { weeks: Week[] }) {
         fill
         weeks={weeks}
         series={series}
-        extra={(w) => [{ label: "Cancelled", value: num(w.cancelled) }]}
+        extra={(w) => [{ label: "Canceled", value: num(w.canceled) }]}
       />
     </Card>
   );
@@ -1368,7 +1368,7 @@ const dayKeyAhead = (n: number) => {
 function previousWeek(rows: OrderRequest[]) {
   const from = dayKeyAhead(-7);
   const to = dayKeyAhead(-1);
-  const gone: RequestStatus[] = ["Draft", "Cancelled"];
+  const gone: RequestStatus[] = ["Draft", "Canceled"];
   return orderListRows(rows).filter((r) => r.date >= from && r.date <= to && !gone.includes(r.status));
 }
 

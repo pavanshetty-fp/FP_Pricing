@@ -212,10 +212,10 @@ export function VendorQuoteSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Product</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
               </th>
               {/* ONE COLUMN FOR EVERYTHING ON TOP OF THE RATE, and it is read
@@ -225,11 +225,11 @@ export function VendorQuoteSheet({
                   after it. They are typed where they are compared — the order
                   sheet's Pricing unit, which lays the partner's figure beside
                   the broker's row for row. */}
-              <th className="px-3 py-2.5 text-right">
+              <th className="px-3 py-2.5">
                 <TableRequiredLabel>Adds/gal (C)</TableRequiredLabel>
               </th>
               <th
-                className="px-3 py-2.5 text-right"
+                className="px-3 py-2.5"
                 title="Total landing cost — requested gallons x (rate + everything added)"
               >
                 <TableRequiredLabel>TLC A×(B+C)</TableRequiredLabel>
@@ -245,7 +245,7 @@ export function VendorQuoteSheet({
                 <td className="truncate px-3 text-sm text-muted-foreground">
                   {line.product}
                 </td>
-                <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                <td className="px-3 text-sm tabular-nums text-muted-foreground">
                   {line.topOff ? "Top-off" : billableGal(line).toLocaleString()}
                 </td>
                 {editable ? (
@@ -262,7 +262,7 @@ export function VendorQuoteSheet({
                         }
                       />
                     </td>
-                    <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                    <td className="px-3 text-sm tabular-nums text-muted-foreground">
                       {ql
                         ? `$${quoteLineChargeRate(ql, line).toFixed(4)}`
                         : "—"}
@@ -270,17 +270,17 @@ export function VendorQuoteSheet({
                   </>
                 ) : (
                   <>
-                    <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                    <td className="px-3 text-sm tabular-nums text-muted-foreground">
                       {ql ? `$${ql.ratePerGal.toFixed(4)}` : "—"}
                     </td>
-                    <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                    <td className="px-3 text-sm tabular-nums text-muted-foreground">
                       {ql
                         ? `$${quoteLineChargeRate(ql, line).toFixed(4)}`
                         : "—"}
                     </td>
                   </>
                 )}
-                <td className="px-3 text-right text-sm font-medium tabular-nums text-foreground">
+                <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                   {ql ? money(quoteLineTotal(ql, line)) : money(0)}
                 </td>
               </tr>
@@ -311,7 +311,7 @@ export function VendorQuoteSheet({
                     />
                   </td>
                 ) : (
-                  <td className="px-3 text-right text-sm tabular-nums text-muted-foreground">
+                  <td className="px-3 text-sm tabular-nums text-muted-foreground">
                     {money(quote ? quote[c.key] : 0)}
                   </td>
                 )}
@@ -321,7 +321,7 @@ export function VendorQuoteSheet({
               <td colSpan={5} className="px-3 text-sm font-medium text-foreground">
                 Total landing cost
               </td>
-              <td className="px-3 text-right text-sm font-semibold tabular-nums text-foreground">
+              <td className="px-3 text-sm font-semibold tabular-nums text-foreground">
                 {money(total)}
               </td>
             </tr>

@@ -1,0 +1,18 @@
+# FPDS — paste into Lovable › Project knowledge
+
+You build UI for FleetPanda with FPDS, the FleetPanda Design System.
+
+1. Read docs/fpds/FPDS.md before building anything. It is binding.
+2. Follow the build protocol (FPDS.md › "the build protocol"): classify the request
+   (L1), match a template (L2), match every region to a unit (L3), compose only from
+   documented options (L4), check the UX and interaction rules (L5).
+3. Install code from the registry, never re-create it:
+   npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-theme.json  (once), then the unit you need,
+   e.g. npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-data-table.json
+4. Tokens only: no raw colours, sizes, radii or shadows.
+5. If a region fails all five checks, build everything else and put this message in its
+   place, with the use case, the missing component, the closest existing unit and the
+   checks you ran:
+   "This unit needs a tweak in design/new design. Please contact the owner to get a design for this gap, pavanshetty@fleetpanda.com."
+6. Not designed yet (always the message): new UX copy, new empty pages/states, new
+   highlight units, illustrations.

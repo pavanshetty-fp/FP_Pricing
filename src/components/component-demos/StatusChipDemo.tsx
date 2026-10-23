@@ -57,7 +57,7 @@ export function StatusChipDemo() {
         <SectionHeading
           as="h3"
           title="text — coloured dot and label, no fill"
-          description="Dot and label share one colour via bg-current. Use where the status is the point of the row rather than one column among many."
+          description="Dot and label share one color via bg-current. Use where the status is the point of the row rather than one column among many."
         />
         <div className="flex flex-wrap items-center gap-6">
           {TONES.map((tone) => (
@@ -87,7 +87,7 @@ export function StatusChipDemo() {
         <SectionHeading
           as="h3"
           title="Binding meaning"
-          description="Tones are visual channels, not statuses. The DS deliberately ships no status→tone map: a status carries no colour until a usage rule binds it, so each application declares its own. This table's binding lives in statusTone() in tables-layout/data.ts."
+          description="Tones are visual channels, not statuses. The DS deliberately ships no status→tone map: a status carries no color until a usage rule binds it, so each application declares its own. This table's binding lives in statusTone() in tables-layout/data.ts."
         />
         <div className="flex flex-wrap items-center gap-6">
           {SAMPLE_MAPPING.map(({ status, tone }) => (

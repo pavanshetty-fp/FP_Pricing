@@ -67,7 +67,7 @@ export function BreakdownCard({ title, rows, table, total, warnings }: Breakdown
           <thead>
             <tr className="text-xs text-muted-foreground">
               {table.columns.map((c) => (
-                <th key={c.label} className={cn("pb-1.5 font-medium", c.align === "right" ? "text-right" : "text-left")}>
+                <th key={c.label} className={cn("pb-1.5 font-medium", c.align === "right" ? "" : "text-left")}>
                   {c.label}
                 </th>
               ))}

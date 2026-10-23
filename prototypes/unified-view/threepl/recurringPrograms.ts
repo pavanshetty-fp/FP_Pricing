@@ -359,7 +359,7 @@ export function clashesFor(
 ): Clash[] {
   const out: Clash[] = [];
   for (const p of all) {
-    if (p.id === exceptProgramId || p.status === "Cancelled") continue;
+    if (p.id === exceptProgramId || p.status === "Canceled") continue;
     const theirs = p.targets.find((t) => t.shipTo === shipTo);
     if (!theirs) continue;
     const assets = theirs.lines
@@ -404,7 +404,7 @@ export function clashFor(
       (p) =>
         p.id !== exceptProgramId &&
         p.products.some((x) => products.includes(x)) &&
-        p.status !== "Cancelled" &&
+        p.status !== "Canceled" &&
         p.targets.some((t) => t.shipTo === shipTo)
     ) ?? null
   );

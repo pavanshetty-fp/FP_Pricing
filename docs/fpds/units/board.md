@@ -15,25 +15,25 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 ## Anatomy
 1. **View bar** (`BoardWithBar`) — the top strip of the board's own box, a line under it, the lanes below in the same box — attached like the table's bar (2026-10-25). Left: the statement ("62 orders across 9 of 9 lanes · …"). Right: the board's own tool, **Card fields**.
 2. **Lane row** — lanes side by side, scrolling sideways.
-3. **Apart rule** — a 3px vertical rule before the first lane that is not a step of the work (Canceled, Blocked); runs the board's full height.
-4. **Lane** — 4px color strip on top → header (title · count pill · lane sort icon) → scrollable card stack, or the empty label.
+3. **Apart line** — the first lane that is not a step of the work (Canceled, Blocked) has a 3px left line instead of the 1px one.
+4. **Lane** — a column of the board's box: header (title as a pill in the lane colour · count pill · lane sort icon) with a line under it → scrollable card stack, or the empty label. No colour strip (2026-10-25).
 5. **Card** (the whole card is the button):
    - Head: order number (mono) + type `CodeDisc` beside it · badges (pills) at the right · optional subtitle lines (e.g. a movement's route).
-   - **Units**, each divided by a rule: a 10px uppercase heading + one shape — `stack` (lines at three levels, optional figure at the right), `inline` (short values split by a hairline), `rows` (asset · product · qty, optional dashed-rule Total), `quotes` (vendor + price, "Best price"/"2nd best" pill, ‹ 1/N › stepper; price may open a breakdown popover).
+   - **Units**, grouped by spacing, no rules between them (2026-10-25): a 10px uppercase heading + one shape — `stack` (lines at three levels, optional figure at the right), `inline` (short values split by a hairline), `rows` (asset · product · qty, optional dashed-rule Total), `quotes` — a light green band edge to edge across the card (`-mx-3 bg-status-success/5 px-3 py-1`), heading inside, vendor + price, "Best price"/"2nd best" as text, ‹ 1/N › stepper centred at the bottom (24px targets); price may open a breakdown popover. As the last unit it closes the card, and the card drops its "N of N quotes — review pricing" alert.
    - **Alert strip** (optional) — info icon + text in the alert color, optional outline action at the right.
    - **Footer action** (optional) — one state label at the left (with a tick when waiting), the act that moves it on at the right.
 6. **Lane sort menu** — "Sort <lane> by", radio list: "Lane order" first, then the lane's own option, then the common options.
 7. **Card fields menu** (toolbar, board only) — scope select (All lanes / one lane) above the ticks, ticks per unit with child lines nested, "Show all", counter "shown/total".
 
 ## Look
-- Board: `gap-4` between lanes, horizontal scroll. Apart rule: 3px, `bg-fp-outline-2`, rounded, `mx-3`.
-- View bar: `rounded-md border border-border bg-fp-surface-1b`, `gap-3` above the lanes.
-- Lane: width `--fp-board-lane-width` (400px × `--fp-lane-k`, the text-size unit), `rounded-md`, ground `bg-fp-board-lane` (light = `--fp-card-1`; dark = `--fp-surface-base`). Strip `h-1` in `bg-fp-lane-<color>` (gray, blue, yellow, green, cyan, purple, violet, pink, orange, red).
-- Lane header `px-4 py-3`; title `text-sm font-semibold text-foreground`; count pill `bg-fp-card-1`, `text-[11px] font-medium`, neutral ink (never lane-coloured with white text). Sort icon `ArrowDownUp` size-4, `text-muted-foreground`, `text-foreground` when a sort is chosen.
-- Card stack `gap-3 px-3 pb-3`, `overflow-y-auto`; cards `shrink-0`.
-- Card: `rounded-md border border-fp-outline-1 bg-fp-surface-1b`; head `p-3.5`, number `font-mono text-sm font-semibold`; badges = DS `Pill` (h-7). Units `border-t border-fp-outline-1 p-3.5 gap-1.5`; unit heading `text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground`.
+- Board: the lanes edge to edge inside `BoardWithBar`'s box, horizontal scroll. Lanes `border-l border-border first:border-l-0`; apart lane `border-l-3 border-fp-outline-2`.
+- Box + view bar: `rounded-md border border-border bg-fp-surface-1b`; the bar is its top strip with `border-b border-fp-outline-1`.
+- Lane: width `--fp-board-lane-width` (340px × `--fp-lane-k`, Accessibility › Component size), square, `bg-fp-surface-1b`. Title pill `rounded-full px-2.5 py-0.5` in `bg-fp-lane-<color>-soft` (the lane colour 16% over the surface; gray, blue, yellow, green, cyan, purple, violet, pink, orange, red).
+- Lane header `border-b border-border px-5 py-3`; title `text-sm font-semibold text-foreground`; count pill `bg-fp-card-1`, `text-[11px] font-medium`, neutral ink (never lane-coloured with white text). Sort icon `ArrowDownUp` size-4, `text-muted-foreground`, `text-foreground` when a sort is chosen.
+- Card stack `gap-3 px-5 py-4` (20px either side of the cards), `overflow-y-auto`; cards `shrink-0`.
+- Card: `rounded-md border border-fp-outline-1 bg-fp-surface-1b`; `pb-3`; head `px-3 pt-3`, number `font-mono text-sm font-semibold`; badges = DS `Pill` (h-7). Units `px-3 pt-4 gap-1.5` — 12px inset, 16px between units, 6px inside; unit heading `text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground`.
 - Stack levels: 1 `text-sm font-semibold text-foreground` · 2 `text-[13px] font-medium text-muted-foreground` · 3 `text-xs text-muted-foreground`. Figures / quote price `text-lg font-semibold tabular-nums` (the largest thing on the card). Inline hairline `h-3.5 w-px bg-fp-outline-2`. Rows grid `1fr · 1.05fr · auto`, asset id `font-mono text-[11px]`, Top-off qty soft (`font-medium text-muted-foreground`).
-- Alert strip: `border-t border-fp-outline-1 px-3 py-2 text-xs`; text color `text-fp-banner-accent-caution` / `-warning` / `-success` or `text-foreground` (default); action `Button outline xs`.
+- Alert strip: `px-3 pt-4 text-xs`; text color `text-fp-banner-accent-caution` / `-warning` / `-success` or `text-foreground` (default); action `Button outline xs`.
 - Footer: `border-t border-fp-outline-1 px-3.5 py-2.5`, label `text-xs`; act `Button` variant `success` (filled) or `outline`, size `xs`.
 
 ## States
@@ -51,7 +51,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 | Trigger | Result |
 |---|---|
 | Click a card, or Enter / Space on a focused card | Opens the record's sheet (`onOpenCard(id)`). |
-| Click the alert strip's action (e.g. "Select Vendor", "Review", "View") | Runs that action only — the card does not also open (3PL opens the sheet scrolled to the vendor table; CP opens the order). |
+| Click the alert strip's action (e.g. "Select Vendor", "Review", "View") | Runs that action only — the card does not also open (CP opens the order). Clicking a card that carries quotes opens the 3PL sheet at the Pricing heading. |
 | Click the footer act (e.g. "Request invoice") | Runs the act; the card does not open. Lane does not change for invoice acts. |
 | Click ‹ / › on a quotes unit | Steps to the previous / next quote (cheapest first); the card does not open. |
 | Click a quote price with a breakdown (dotted underline) | Popover "Delivery Product Details" with the rows and total; the card does not open. |
@@ -74,7 +74,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - The board is not paged; the view bar states the total and its scope instead.
 
 ## Data contract
-- `lanes: BoardLane[]` — each `key`, `title`, `color` (lane palette name), `cards`, optional `emptyLabel`, optional `apart` (draw the rule before it).
+- `lanes: BoardLane[]` — each `key`, `title`, `color` (lane palette name), `cards`, optional `emptyLabel`, optional `apart` (its left line is 3px).
 - `BoardCard` — `id`, `title` (record number), optional `code` (`text`, `label`, `tone` for the CodeDisc), `badges[]` (`label`, `tone`: critical · neutral · caution · success · info), `subtitle[]`, `units[]` (stack / inline / rows / quotes), optional `alert` (`status`: default · caution · warning · success, `text`, `actionLabel`, `onAction`), optional `footerAction` (`label`, `actionLabel`, `actionVariant` success | outline, `onAction`, `waiting`).
 - `onOpenCard(id)` — reports the opened card.
 - `laneSortOptions(laneKey) → {key,label}[]`, `laneSort` (chosen per lane), `onLaneSortChange(laneKey, option | null)`.
@@ -83,22 +83,22 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 
 ## Rules
 1. **Lanes are the lifecycle, in order** — *sorting by status sorts by lane position; a board read left to right claims each lane follows the one before.* `(source: docs/unified-view/2-layouts.md §6)`
-2. **A lane that is not a step sits apart, behind a 3px rule** (Canceled, Blocked) — *a gap alone reads as a mistake; the rule tells the reader the lanes after it are somewhere else, not the end of the line.* `(source: interactions/2-rules.md §8.1b; BrokerBoard.tsx)`
+2. **A lane that is not a step sits apart, behind a 3px line** (Canceled, Blocked) — *a gap alone reads as a mistake; the rule tells the reader the lanes after it are somewhere else, not the end of the line.* `(source: interactions/2-rules.md §8.1b; BrokerBoard.tsx)`
 3. **No drag between lanes** — *a stage change is a workflow act with side effects (mail leaves, accounting push), not a reorder; stages change from the record's next-act control.* `(source: interactions/2-rules.md §8.1b)`
-4. **A card is ruled units, no field labels inside** — *the heading names the unit and weight carries the rest; a label per line spends a line saying what position already says.* `(source: interactions/2-rules.md §8.1b)`
+4. **A card is units grouped by spacing, no rules, no field labels inside** — *the heading names the unit and weight carries the rest; spacing groups without drawing lines (2026-10-25).* `(source: interactions/2-rules.md §8.1b)`
 5. **A heading with nothing under it is not a unit** — *it reads as a failure to load.* `(source: interactions/2-rules.md §8.1b)`
 6. **Card fields are per lane, scope control above the ticks** — *what a first-lane card should say is not what a last-lane card should; on All lanes a field is ON only when on in every lane.* `(source: interactions/2-rules.md §8.1b)`
 7. **An alert only on a card with something outstanding** — *an alert on every card is a border.* `(source: 2-layouts §6)`
 8. **Lane sort is per lane, named, and one option may belong to the lane** — *which end of a queue you work from has a reason; the reason is the label. "Lane order" is a choice, not the absence of one.* `(source: BrokerBoard.tsx; interactions §8.1b)`
 9. **The whole card is the button; no "View details" row** — *a strip naming that is a label for what the reader already stands on.* `(source: BrokerBoard.tsx)`
 10. **Every control on a card stops the click** — *otherwise stepping a quote or pressing an act also opens the order.* `(source: BrokerBoard.tsx)`
-11. **Count pill is neutral, the lane's color lives in the 4px strip** — *white on lane fills fails WCAG AA on five of the ten hues.* `(source: BrokerBoard.tsx DS follow-up 8)`
+11. **Count pill is neutral, the lane's color lives in the title pill's soft fill (dark text)** — *white on lane fills fails WCAG AA on five of the ten hues.* `(source: BrokerBoard.tsx DS follow-up 8)`
 12. **Cards never shrink; the lane scrolls** — *a compressed card clips its content silently.* `(source: BrokerBoard.tsx DS follow-up 7)`
 13. **Lane color = the status it ends on, by the binding table** (gray starts, red stops, green finishes, purple hands off) — *a hue must not mean two things in two modules.* `(source: docs/unified-view/1-components.md §5 Lane fills)`
 14. **Type is a code disc on board cards only** (tables use a pill with the full word) — *on a card space is a letter.* `(source: ui/2-rules.md §11b)`
 15. **Badges are pills coloured by kind; render the absence** — *a chip every card carries says nothing (no "Normal" priority, no status repeating the lane).* `(source: ui/2-rules.md §10b, §11b)`
 16. **Footer act is filled (`success`)** — *an outline read as one more thing to look at, not the thing to press.* `(source: BrokerBoard.tsx)`
-17. **Board view bar above the lanes, statement left, Card fields right** — *every list with a table or board has one; the statement replaces the footer total.* `(source: ui/2-rules.md §10p, 2026-10-22)`
+17. **Board view bar is the top strip of the board's box, statement left, Card fields right** — *every list with a table or board has one; the statement replaces the footer total.* `(source: ui/2-rules.md §10p, 2026-10-22)`
 18. **Lane ground one step darker (`--fp-card-1`)** — *on older laptops the lighter lane washed into the white layer.* `(source: src/index.css; memory 2026-10-22 darker board lanes)`
 
 ## Do / Don't
@@ -115,10 +115,13 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 
 ## Checks
 - `parity-shell` and `parity-sheets` (3PL guardrails on the list and the sheet the card opens); `status-kinds` (badge kinds); `wcag-contrast` (lane strip, count pill, ground); `tokens`.
-- By eye: lanes in lifecycle order, apart rule before Canceled/Blocked, card focus ring and Enter opening, card controls not opening the card, lanes scroll with full-height cards, card fields scope above ticks, view bar statement.
+- By eye: lanes in lifecycle order, 3px apart line before Canceled/Blocked, card focus ring and Enter opening, card controls not opening the card, lanes scroll with full-height cards, card fields scope above ticks, view bar statement.
 
 ## Reference
 - 3PL › Delivery Orders board (Orders · Quoting · Assigned · Completed · Review · Verified · Synced ┃ Canceled · Blocked).
 - Sales › Fuel Orders and Asset Orders board.
 - Service Work › Service Orders board.
 - Customer Portal › Orders board (lane per status, Canceled apart; Awaiting pill + caution strip with "View").
+
+
+> Earlier board designs (V1–V3) are archived in `docs/archive/board-versions-2026-10-25.md`.

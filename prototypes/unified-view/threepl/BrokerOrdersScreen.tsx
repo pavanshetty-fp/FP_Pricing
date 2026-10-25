@@ -51,7 +51,6 @@ import {
   type BoardCardBadge,
   type BoardCardUnit,
   type BoardLane,
-  type BoardVersion,
 } from "./BrokerBoard";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
@@ -1009,14 +1008,11 @@ const cardOffToArrays = (c: Record<string, Set<string>>) =>
   );
 
 export function BrokerOrdersScreen({
-  boardVersion = "v1",
   focus,
   startCreate,
   onCreateClose,
   drill = null,
 }: {
-  /** Which board design to draw (the title's V1 / V2 switch, 2026-10-25). */
-  boardVersion?: BoardVersion;
   focus?: { id: string; n: number } | null;
   /**
    * OPEN THE CREATE SHEET ON ARRIVAL. A nonce, not a boolean: the Recurring
@@ -2479,15 +2475,14 @@ export function BrokerOrdersScreen({
           {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
-            <BoardWithBar barRef={bar.ref} flush={boardVersion === "v4"}>
+            <BoardWithBar barRef={bar.ref}>
               <BrokerBoard
-                version={boardVersion}
                 lanes={lanes}
                 onOpenCard={(id) => {
-                  /* V4 HAS NO REVIEW BUTTON (Pavan, 2026-10-25) — a card
+                  /* NO REVIEW BUTTON ON THE CARD (Pavan, 2026-10-25) — a card
                      carrying quotes opens at the Pricing heading. */
                   const card = lanes.flatMap((l) => l.cards).find((c) => c.id === id);
-                  if (boardVersion === "v4" && card?.units.some((u) => u.kind === "quotes")) setSheetFocus("pricing");
+                  if (card?.units.some((u) => u.kind === "quotes")) setSheetFocus("pricing");
                   setOpenId(id);
                 }}
                 laneSortOptions={laneSortOptions}

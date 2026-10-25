@@ -1162,22 +1162,20 @@ export function ViewStatement({
 /**
  * A board and its view bar IN ONE BOX, like the table (Pavan, 2026-10-25):
  * the bar — count, card fields — is the box's top strip with a line under
- * it, the lanes below. A bar floating above the board read as a separate
- * unit. `flush` drops the inset for a board that draws its own columns.
+ * it, the lanes below as the box's columns, edge to edge. A bar floating
+ * above the board read as a separate unit.
  */
 export function BoardWithBar({
   barRef,
-  flush,
   children,
 }: {
   barRef: (el: HTMLDivElement | null) => void;
-  flush?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
       <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />
-      <div className={cn("min-h-0 flex-1", !flush && "px-4 pt-4 pb-3")}>{children}</div>
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   );
 }

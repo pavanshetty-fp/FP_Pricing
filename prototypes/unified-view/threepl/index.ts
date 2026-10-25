@@ -11,7 +11,7 @@ export {
   type DirectoryData,
 } from "./DirectoryScreens";
 export { type Navigator as DirectoryNavigator } from "./DirectoryEntityScreen";
-export { BrokerBoard, BOARD_VERSIONS, type BoardLane, type BoardCard, type BoardVersion } from "./BrokerBoard";
+export { BrokerBoard, type BoardLane, type BoardCard } from "./BrokerBoard";
 export { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
 export {
   BROKER_ORDERS,

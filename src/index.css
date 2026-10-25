@@ -429,7 +429,7 @@
   --color-fp-lane-pink: var(--fp-lane-pink);
   --color-fp-lane-orange: var(--fp-lane-orange);
   --color-fp-lane-red: var(--fp-lane-red);
-  /* LANE-TITLE PILLS — board V4 (Pavan, 2026-10-25): the lane colour as a
+  /* LANE-TITLE PILLS — the board (Pavan, 2026-10-25): the lane colour as a
      soft SOLID fill, 16% over the content layer, under foreground text so
      every lane reads (the full-strength fills fail AA under text). */
   --color-fp-lane-grey-soft: color-mix(in srgb, var(--color-fp-lane-grey) 16%, var(--fp-surface-1b));
@@ -664,12 +664,10 @@
   --fp-frame-ink: #ffffff;
   --fp-frame-ink-muted: #d0d4d9;
   --fp-frame-rim: #55555e;
-  --fp-board-lane-width: calc(400px * var(--fp-lane-k));
+  /* THE BOARD LANE (2026-10-25): 340px — the cards get 300 with 20px
+     either side. */
+  --fp-board-lane-width: calc(340px * var(--fp-lane-k));
   --fp-board-column-width: calc(320px * var(--fp-lane-k));
-  /* Board V2 and V3 (2026-10-25) — lanes 25% narrower. */
-  --fp-board-lane-width-v2: calc(300px * var(--fp-lane-k));
-  /* Board V4 — 40px wider, for 20px either side of the cards. */
-  --fp-board-lane-width-v4: calc(340px * var(--fp-lane-k));
   /* Lane accents — the same in light and dark; WCAG swaps them. */
   --fp-lane-grey: #64748b;
   --fp-lane-blue: #3b82f6;

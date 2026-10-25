@@ -892,7 +892,7 @@ export interface BrokerOrderSheetProps {
    * vendor table; landing at the top of a sheet that is four screens long and
    * leaving them to find it is answering a different request.
    */
-  focus?: "vendor" | null;
+  focus?: "vendor" | "pricing" | null;
 }
 
 /**
@@ -1563,8 +1563,10 @@ export function BrokerOrderSheet({
      four screens long and leaving them to find it answers a different
      request. 260ms lets the sheet's own opening finish first. */
   React.useEffect(() => {
-    if (!open || focus !== "vendor") return;
-    return scrollToSection(VENDOR_SECTION_ID, 260);
+    if (!open || !focus) return;
+    /* "pricing" — board V4's card lands on the Pricing heading (Pavan,
+       2026-10-25). */
+    return scrollToSection(focus === "pricing" ? PRICING_SECTION_ID : VENDOR_SECTION_ID, 260);
   }, [open, focus, order?.id]);
 
   /**
@@ -3585,40 +3587,54 @@ export function BrokerOrderSheet({
           id={VENDOR_COST_COLUMN_ID}
           data-blink={VENDOR_COST_COLUMN_ID}
           data-price-head
-          className={cn("flex min-w-0 flex-col gap-2 px-4 pt-4 pb-3 lg:border-l lg:border-border lg:px-6", PRICE_HEAD)}
+          className={cn(
+            "flex min-w-0 flex-col gap-2 px-4 pt-4 lg:border-l lg:border-border lg:px-6",
+            /* WITH TABS THE CELL HAS NO FOOT: the tabs sit on the header's
+               bottom rule, as the saved views sit on theirs. */
+            choosing && quotingPartners.length > 1 ? "pb-0" : "pb-3",
+            PRICE_HEAD
+          )}
         >
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <PricingColumnHead label="Vendor pricing" done={carrierCostDone} />
-            {choosing && quotingPartners.length > 1 ? (
-              <Combobox
-                className="h-7 w-[188px] shrink-0"
-                value={shownVendorId}
-                onValueChange={setShownQuote}
-                options={quotingPartners.map((vid) => ({
-                  value: vid,
-                  label: vendorById(vid)?.name ?? vid,
-                  /* THE STANDING STAYS IN THE MENU. It is what the choice is
-                     made on — which of them holds the order, which has priced
-                     it — and a menu is where a reader is choosing. */
-                  description:
-                    draft.vendorId === vid
-                      ? "Holds this order"
-                      : draft.vendorId
-                        ? "Not finalized"
-                        : quoteOf(vid)
-                          ? "Quotation shared"
-                          : "No quotation",
-                }))}
-                searchPlaceholder="Search partners…"
-              />
-            ) : (
-              /* ONE PARTNER NEEDS NO PICKER — a select of one is a question
-                 with its answer already in it. */
-              <span className="min-w-0 shrink truncate text-sm text-foreground">
-                {vendorById(shownVendorId)?.name ?? "No partner yet"}
-              </span>
-            )}
-          </div>
+          {/* THE LABEL ON THE HEADER LINE, LEVEL WITH PRODUCT, TYPE AND
+              CUSTOMER PRICING; THE PARTNERS AS TABS UNDER IT (Pavan,
+              2026-10-25). The dropdown hid every partner but one behind a
+              click; tabs show who has priced the order and swap this
+              column's figures in one press — Finalize vendor, at the foot of
+              the column, then takes the one on show. */}
+          <PricingColumnHead label="Vendor pricing" done={carrierCostDone} />
+          {choosing && quotingPartners.length > 1 ? (
+            /* THE SAVED-VIEWS TABS (FuelOrdersViewBar): plain words, the
+               chosen one with a 2px rule — laid ON the header's bottom line
+               (`-mb-px`, over the next row's top rule), so the table's own
+               line is the tabs' baseline. `-ml-3` puts the first name under
+               the column label. */
+            <div role="tablist" aria-label="Vendors who priced this order" className="-mb-px -ml-3 mt-auto flex min-w-0 overflow-x-auto">
+              {quotingPartners.map((vid) => {
+                const on = vid === shownVendorId;
+                return (
+                  <button
+                    key={vid}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setShownQuote(vid)}
+                    className={cn(
+                      "border-b-2 px-3 py-2 text-xs whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      on ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {vendorById(vid)?.name ?? vid}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* ONE PARTNER NEEDS NO TABS — a choice of one is a question with
+               its answer already in it. */
+            <span className="min-w-0 truncate text-sm text-foreground">
+              {vendorById(shownVendorId)?.name ?? "No partner yet"}
+            </span>
+          )}
           {/* SAID ONCE, NOT ONCE PER PRODUCT. With no quote there is nothing
               to put in this column's cells at all, and the reason is a fact
               about the order rather than about each line on it. */}

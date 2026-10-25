@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useA11y } from "@/components/theme/a11y";
 
 /*
   COLUMN WIDTH, AS A DRAGGABLE THING.
@@ -63,6 +64,10 @@ export function useColumnWidths({
   value,
   onChange,
 }: UseColumnWidthsOptions = {}): UseColumnWidthsResult {
+  /* COMPONENT SIZE (Accessibility, 2026-10-25) — every column is its
+     width times this; widths are stored at 100%, so a drag or an arrow
+     key moves the edge by what the reader sees. */
+  const k = useA11y().component;
   const [own, setOwn] = React.useState<Record<string, number>>({});
   const controlled = value !== undefined;
   const widths = controlled ? value : own;
@@ -122,7 +127,7 @@ export function useColumnWidths({
       onPointerMove: (e: React.PointerEvent) => {
         const d = drag.current;
         if (!d || d.key !== col.key) return;
-        setWidth(col.key, d.from + (e.clientX - d.x));
+        setWidth(col.key, d.from + (e.clientX - d.x) / k);
       },
       onPointerUp: (e: React.PointerEvent) => {
         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -143,14 +148,14 @@ export function useColumnWidths({
       onKeyDown: (e: React.KeyboardEvent) => {
         if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
         e.preventDefault();
-        setWidth(col.key, current + (e.key === "ArrowLeft" ? -16 : 16));
+        setWidth(col.key, current + (e.key === "ArrowLeft" ? -16 : 16) / k);
       },
       "data-resizing": resizing === col.key ? ("" as const) : undefined,
     };
   };
 
   return {
-    widthOf: (col) => widths[col.key] ?? col.width,
+    widthOf: (col) => Math.round((widths[col.key] ?? col.width) * k),
     resizeProps,
     isResizing: () => drag.current !== null,
     resizing,

@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep, textStepOf, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, type A11y } from "./a11y";
+import { COMPONENT_STEPS, DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep, textStepOf, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, type A11y } from "./a11y";
 
 /*
   THE ACCESSIBILITY PANEL (Pavan, 2026-10-21; DS ui §10n) — opened from the
@@ -14,6 +14,7 @@ import { DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep, textStepOf, isDe
 
     Theme                 Light | Dark, on top
     Text size             six steps, 100% – 130%; only the text grows
+    Component size        100% – 150%; lanes and table columns widen
     Stroke contrast       rims, dividers, field borders — Default → Maximum
     Contrast              grays go darker, whites stay white, text follows
                           — Default → Maximum
@@ -184,6 +185,15 @@ export function AccessibilityPanel() {
           steps={TEXT_STEPS}
           shown={`${Math.round(100 + a.text * 0.3)}%`}
           onChange={(v) => setA11y({ text: textOfStep(v) })}
+        />
+        {/* COMPONENT SIZE (Pavan, 2026-10-25) — lanes and table columns get
+            wider, the text stays; cut-off text shows in full once it fits. */}
+        <StepRow
+          label="Component size"
+          step={COMPONENT_STEPS.indexOf(a.component)}
+          steps={COMPONENT_STEPS.length - 1}
+          shown={`${Math.round(a.component * 100)}%`}
+          onChange={(v) => setA11y({ component: COMPONENT_STEPS[v] })}
         />
 
         {/* NO TEXT COLOR SLIDER (Pavan, 2026-10-24) — text contrast follows

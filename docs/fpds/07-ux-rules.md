@@ -926,7 +926,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 ## 13. Accessibility
 
-**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text size · Stroke contrast · Contrast · divider · Display size; Reset is the icon at its top.**
+**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text size · Component size · Stroke contrast · Contrast · divider · Display size; Reset is the icon at its top.**
 - **Why:** Pavan, 2026-10-21 — first theme modes, then "a lot more contrast" for external monitors, then one menu with sliders.
 - **Applies to:** every module.
 - **Check:** review

@@ -75,6 +75,8 @@ import {
   BrokerProductsScreen,
   BrokerRentalAssetsScreen,
   useDirectoryData,
+  BOARD_VERSIONS,
+  type BoardVersion,
   type DirectoryNavigator,
 } from "./threepl";
 import { ProfileScreen } from "./ProfileScreen";
@@ -438,6 +440,9 @@ export function UnifiedView({ only }: { only?: string } = {}) {
     kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
+  /* BOARD DESIGN VERSIONS (Pavan, 2026-10-25) — 3PL Delivery Orders' board
+     tried side by side until one is chosen; then the others are deleted. */
+  const [boardVersion, setBoardVersion] = React.useState<BoardVersion>("v1");
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -685,6 +690,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       case "3pl-delivery-orders":
         return (
           <BrokerOrdersScreen
+            boardVersion={boardVersion}
             focus={focus}
             drill={drill3pl}
             startCreate={startCreate}
@@ -766,6 +772,24 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                 screen that has two versions. It is not a filter and not a
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
+            {/* BOARD VERSIONS — compare, then delete the losers (2026-10-25). */}
+            {screenKey === "3pl-delivery-orders" && !loadingModule && (
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={boardVersion}
+                onValueChange={(v) => v && setBoardVersion(v as BoardVersion)}
+                aria-label="Board version"
+                className="shrink-0 self-center"
+              >
+                {BOARD_VERSIONS.map((v) => (
+                  <ToggleGroupItem key={v} value={v} aria-label={`Board version ${v.slice(1)}`}>
+                    {v.toUpperCase()}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            )}
             {screenKey === "3pl-recurring-orders" && recurringArchive && (
               <span className="flex shrink-0 items-center gap-2 self-center">
                 <span className="text-sm text-muted-foreground">Archive</span>

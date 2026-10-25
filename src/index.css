@@ -429,6 +429,19 @@
   --color-fp-lane-pink: var(--fp-lane-pink);
   --color-fp-lane-orange: var(--fp-lane-orange);
   --color-fp-lane-red: var(--fp-lane-red);
+  /* LANE-TITLE PILLS — board V4 (Pavan, 2026-10-25): the lane colour as a
+     soft SOLID fill, 16% over the content layer, under foreground text so
+     every lane reads (the full-strength fills fail AA under text). */
+  --color-fp-lane-grey-soft: color-mix(in srgb, var(--color-fp-lane-grey) 16%, var(--fp-surface-1b));
+  --color-fp-lane-blue-soft: color-mix(in srgb, var(--color-fp-lane-blue) 16%, var(--fp-surface-1b));
+  --color-fp-lane-yellow-soft: color-mix(in srgb, var(--color-fp-lane-yellow) 16%, var(--fp-surface-1b));
+  --color-fp-lane-green-soft: color-mix(in srgb, var(--color-fp-lane-green) 16%, var(--fp-surface-1b));
+  --color-fp-lane-cyan-soft: color-mix(in srgb, var(--color-fp-lane-cyan) 16%, var(--fp-surface-1b));
+  --color-fp-lane-purple-soft: color-mix(in srgb, var(--color-fp-lane-purple) 16%, var(--fp-surface-1b));
+  --color-fp-lane-violet-soft: color-mix(in srgb, var(--color-fp-lane-violet) 16%, var(--fp-surface-1b));
+  --color-fp-lane-pink-soft: color-mix(in srgb, var(--color-fp-lane-pink) 16%, var(--fp-surface-1b));
+  --color-fp-lane-orange-soft: color-mix(in srgb, var(--color-fp-lane-orange) 16%, var(--fp-surface-1b));
+  --color-fp-lane-red-soft: color-mix(in srgb, var(--color-fp-lane-red) 16%, var(--fp-surface-1b));
   /* Chart palette (449:6176) — categorical series colors, theme-independent.
      chart-1 = brand. Used by Recharts cards on the Dashboard. */
   /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
@@ -634,8 +647,8 @@
   --fp-vw: calc(100vw / var(--fp-zoom));
   --fp-vh: calc(100dvh / var(--fp-zoom));
   /* TEXT GROWS; BOXES DON'T (Pavan, 2026-10-23) — the Text size slider sets
-     --fp-text-scale and nothing widens: --fp-nav-k, --fp-lane-k and
-     --fp-scale stay 1. Bigger boxes are the Display size slider (zoom). */
+     --fp-text-scale and nothing widens. COMPONENT SIZE (2026-10-25) sets
+     --fp-lane-k (board lanes); --fp-nav-k and --fp-scale stay 1. */
   --fp-text-scale: 1;
   --fp-nav-k: 1;
   --fp-lane-k: 1;
@@ -653,6 +666,10 @@
   --fp-frame-rim: #55555e;
   --fp-board-lane-width: calc(400px * var(--fp-lane-k));
   --fp-board-column-width: calc(320px * var(--fp-lane-k));
+  /* Board V2 and V3 (2026-10-25) — lanes 25% narrower. */
+  --fp-board-lane-width-v2: calc(300px * var(--fp-lane-k));
+  /* Board V4 — 40px wider, for 20px either side of the cards. */
+  --fp-board-lane-width-v4: calc(340px * var(--fp-lane-k));
   /* Lane accents — the same in light and dark; WCAG swaps them. */
   --fp-lane-grey: #64748b;
   --fp-lane-blue: #3b82f6;

@@ -21,7 +21,7 @@ Left → right, in one 44px row:
 3. **Show/hide columns menu** — header "Columns" + shown/total, a list of every column in table order (grip + checkbox; child entries indented), footer **Show all**.
 4. **Card configuration menu** — header "Card fields" + shown/total, optional lane scope picker ("All lanes" or one lane), one switch per category with its fields as indented checkboxes while the category is on, footer **Show all**.
 
-Hosts: table → `ListTable topBar={bar.slot}` (inside the table frame, outside its scroll); board → `BoardWithBar barRef={bar.ref}` (a strip above the lanes).
+Hosts: table → `ListTable topBar={bar.slot}` (inside the table frame, outside its scroll); board → `BoardWithBar barRef={bar.ref}` (the top strip INSIDE the board's box, like the table — 2026-10-25).
 
 ## Look
 - Bar: `flex h-11 items-center justify-between gap-3 px-3`.

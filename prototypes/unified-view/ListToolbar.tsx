@@ -835,9 +835,11 @@ export function ListToolbar<K extends string>({
                 onChange={dateScope!.onDateChange}
               />
             )}
-            {/* SPACE, NOT A RULE (Pavan, 2026-10-05): 12px plus the row's 4px
-                gap each side — 20px between the date and the view switch. */}
-            <div className="w-3 shrink-0" aria-hidden />
+            {/* SPACE, NOT A RULE (Pavan, 2026-10-05) — 12px between the date
+                and the view switch, the same as between search, Filters and
+                Group by (2026-10-25): 4px here plus the row's 4px gap each
+                side. */}
+            <div className="w-1 shrink-0" aria-hidden />
           </>
         )}
 
@@ -1157,18 +1159,25 @@ export function ViewStatement({
   );
 }
 
-/** A board under its view bar — the bar a white strip, the lanes below. */
+/**
+ * A board and its view bar IN ONE BOX, like the table (Pavan, 2026-10-25):
+ * the bar — count, card fields — is the box's top strip with a line under
+ * it, the lanes below. A bar floating above the board read as a separate
+ * unit. `flush` drops the inset for a board that draws its own columns.
+ */
 export function BoardWithBar({
   barRef,
+  flush,
   children,
 }: {
   barRef: (el: HTMLDivElement | null) => void;
+  flush?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <div ref={barRef} className="shrink-0 rounded-md border border-border bg-fp-surface-1b" />
-      <div className="min-h-0 flex-1">{children}</div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
+      <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />
+      <div className={cn("min-h-0 flex-1", !flush && "px-4 pt-4 pb-3")}>{children}</div>
     </div>
   );
 }

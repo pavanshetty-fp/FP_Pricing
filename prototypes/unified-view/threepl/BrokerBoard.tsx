@@ -98,6 +98,20 @@ const LANE_BG: Record<LaneColor, string> = {
   red: "bg-fp-lane-red",
 };
 
+/** Board V4's lane-title pill — the lane colour, softened to a fill. */
+const LANE_SOFT: Record<LaneColor, string> = {
+  grey: "bg-fp-lane-grey-soft",
+  blue: "bg-fp-lane-blue-soft",
+  yellow: "bg-fp-lane-yellow-soft",
+  green: "bg-fp-lane-green-soft",
+  cyan: "bg-fp-lane-cyan-soft",
+  purple: "bg-fp-lane-purple-soft",
+  violet: "bg-fp-lane-violet-soft",
+  pink: "bg-fp-lane-pink-soft",
+  orange: "bg-fp-lane-orange-soft",
+  red: "bg-fp-lane-red-soft",
+};
+
 /** The DS's alert accents, verbatim. */
 export type AlertStatus = "default" | "caution" | "warning" | "success";
 
@@ -319,8 +333,27 @@ export interface LaneSortOption {
   label: string;
 }
 
+/* BOARD DESIGN VERSIONS (Pavan, 2026-10-25) — compared from the switch by
+   the page title until one is chosen; then the others are deleted.
+   v1  as it was.
+   v2  lanes and cards 25% narrower (400 → 300px); no rules between a card's
+       sections, spacing groups them (as v3); lanes on the navigation
+       menu's background (--fp-shell-panel); cards without an outline.
+   v3  v2's width; no rules between a card's sections — 12px inset, 16px
+       between sections, the section's own 6px inside; white lanes with the
+       surface shadow.
+   v4  ONE bordered box like a table: the lanes sit edge to edge as its
+       columns, one line between each; white lanes 340px with 20px either
+       side of the cards; outlined cards, no rules inside them; no colour
+       strip — the lane title is a pill in the lane's colour, and a line
+       under the heading parts it from the cards. The quote sits in a light
+       green band, edge to edge, its placing as text, the stepper under the price. */
+export type BoardVersion = "v1" | "v2" | "v3" | "v4";
+export const BOARD_VERSIONS: BoardVersion[] = ["v1", "v2", "v3", "v4"];
+
 export interface BrokerBoardProps {
   lanes: BoardLane[];
+  version?: BoardVersion;
   onOpenCard?: (id: string) => void;
   /**
    * THE WAYS THIS LANE CAN BE ORDERED, NAMED.
@@ -506,11 +539,16 @@ function CardQuotes({
   quotes,
   nameOff,
   breakdown,
+  boxed,
 }: {
   heading: string;
   quotes: BoardCardQuote[];
   nameOff?: boolean;
   breakdown?: { rows: BoardCardRow[]; total?: string };
+  /** Board V4 (Pavan, 2026-10-25): the quote sits in a light green band
+      across the card, its placing is plain text, and the stepper comes
+      under the price. */
+  boxed?: boolean;
 }) {
   const [i, setI] = React.useState(0);
   const at = Math.min(i, quotes.length - 1);
@@ -524,42 +562,57 @@ function CardQuotes({
   const chevron =
     "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
 
+  /* V4's STEPPER IS CENTRED AND ROOMIER (Pavan, 2026-10-25): 24px targets,
+     4px from the count — big enough to hit, close enough to read as one. */
+  const stepper = quotes.length > 1 && (
+    <span
+      className={cn(
+        "flex items-center tabular-nums text-muted-foreground",
+        boxed ? "gap-1 text-xs" : "gap-0.5 text-[10px]"
+      )}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        aria-label="Previous quote"
+        disabled={at === 0}
+        onClick={(e) => step(e, -1)}
+        onKeyDown={(e) => e.stopPropagation()}
+        className={cn(chevron, boxed && "p-1")}
+      >
+        <ChevronLeft className={boxed ? "size-4" : "size-3"} />
+      </button>
+      {at + 1}/{quotes.length}
+      <button
+        type="button"
+        aria-label="Next quote"
+        disabled={at === quotes.length - 1}
+        onClick={(e) => step(e, 1)}
+        onKeyDown={(e) => e.stopPropagation()}
+        className={cn(chevron, boxed && "p-1")}
+      >
+        <ChevronRight className={boxed ? "size-4" : "size-3"} />
+      </button>
+    </span>
+  );
+
   return (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <UnitHeading>{heading}</UnitHeading>
-        {quotes.length > 1 && (
-          <span
-            className="flex items-center gap-0.5 text-[10px] tabular-nums text-muted-foreground"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              aria-label="Previous quote"
-              disabled={at === 0}
-              onClick={(e) => step(e, -1)}
-              onKeyDown={(e) => e.stopPropagation()}
-              className={chevron}
-            >
-              <ChevronLeft className="size-3" />
-            </button>
-            {at + 1}/{quotes.length}
-            <button
-              type="button"
-              aria-label="Next quote"
-              disabled={at === quotes.length - 1}
-              onClick={(e) => step(e, 1)}
-              onKeyDown={(e) => e.stopPropagation()}
-              className={chevron}
-            >
-              <ChevronRight className="size-3" />
-            </button>
-          </span>
-        )}
-      </div>
+      {!boxed && (
+        <div className="flex items-center justify-between gap-2">
+          <UnitHeading>{heading}</UnitHeading>
+          {stepper}
+        </div>
+      )}
       {/* THE NAME AND THE FIGURE ON ONE LINE, the placing under the name —
           the two things being compared sit at the two edges, and the label
           that qualifies the name hangs off it rather than off the money. */}
+      {/* V4's QUOTE BAND runs edge to edge across the card (the unit's own
+          12px inset pulled back), its text on the card's text line; as the
+          card's last unit it runs to the bottom edge too. */}
+      <div className={cn("flex flex-col gap-1.5", boxed && "-mx-3 bg-status-success/5 px-3 py-1")}>
+      {/* …and the unit's heading comes inside it (2026-10-25). */}
+      {boxed && <UnitHeading>{heading}</UnitHeading>}
       <div className="flex min-w-0 items-start justify-between gap-2.5">
         <span className="flex min-w-0 flex-col gap-0.5">
           {!nameOff && (
@@ -574,11 +627,16 @@ function CardQuotes({
               the cheapest, because that is the only placing anyone acts on;
               the rest are neutral, so a board of chips does not turn into a
               ranking nobody asked to see. */}
-          {q.rank !== undefined && (
-          <Pill kind={q.rank === 1 ? "success" : "neutral"} className="self-start">
-            {rankLabel(q.rank)}
-          </Pill>
-          )}
+          {q.rank !== undefined &&
+            (boxed ? (
+              <span className={cn("text-xs", q.rank === 1 ? "font-medium text-status-success" : "text-muted-foreground")}>
+                {rankLabel(q.rank)}
+              </span>
+            ) : (
+              <Pill kind={q.rank === 1 ? "success" : "neutral"} className="self-start">
+                {rankLabel(q.rank)}
+              </Pill>
+            ))}
         </span>
         {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
             these cards get opened, and at 13px it was the same size as an
@@ -618,6 +676,8 @@ function CardQuotes({
           </span>
         )}
       </div>
+      {boxed && stepper && <div className="flex justify-center">{stepper}</div>}
+      </div>
     </>
   );
 }
@@ -627,11 +687,13 @@ function CardAlert({
   text,
   actionLabel,
   onAction,
-}: NonNullable<BoardCard["alert"]>) {
+  airy,
+}: NonNullable<BoardCard["alert"]> & { airy?: boolean }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 border-t border-fp-outline-1 px-3 py-2",
+        "flex items-center gap-2",
+        airy ? "px-3 pt-4" : "border-t border-fp-outline-1 px-3 py-2",
         actionLabel ? "justify-between" : "justify-center"
       )}
     >
@@ -656,7 +718,12 @@ function CardAlert({
   );
 }
 
-function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
+function Card({ card, onOpen, airy, bare, quoteBox }: { card: BoardCard; onOpen?: () => void; airy?: boolean; bare?: boolean; quoteBox?: boolean }) {
+  /* V4 — THE QUOTE BAND CLOSES THE CARD (Pavan, 2026-10-25): when quotes are
+     the last unit, the band meets the card's bottom edge and the alert row
+     ("2 of 2 quotes — review pricing") goes, its Review with it — the
+     order opens from the card itself. */
+  const bandLast = Boolean(quoteBox && card.units.at(-1)?.kind === "quotes" && !card.footerAction);
   return (
     <div
       role="button"
@@ -680,16 +747,20 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         // 188px of content, and the lane's scrollHeight equalled its height, so
         // nothing scrolled and nothing hinted that content was missing.
         "shrink-0",
-        "cursor-pointer overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
-        "hover:border-fp-outline-2 hover:shadow-fp-surface",
+        airy && !bandLast && "pb-3",
+        "cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
+        /* BOARD V2 CARDS HAVE NO OUTLINE (Pavan, 2026-10-25) — the white card
+           on the lane is the edge; hover still lifts it with the shadow. */
+        bare ? "hover:shadow-fp-surface" : "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
-        "active:border-fp-outline-2 active:bg-fp-card-1"
+        !bare && "active:border-fp-outline-2",
+        "active:bg-fp-card-1"
       )}
     >
       {/* UNITS ARE RULED. A rule per unit is affordable here because there are
           five of them and each holds ONE shape — the rules are what let the
           headings shrink to 10px and the field labels disappear entirely. */}
-      <div className="flex flex-col gap-1 p-3.5">
+      <div className={cn("flex flex-col gap-1", airy ? "px-3 pt-3" : "p-3.5")}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <h4 className="min-w-0 truncate font-mono text-sm font-semibold text-foreground">
@@ -724,7 +795,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       {card.units.map((u) => (
         <div
           key={u.key}
-          className="flex flex-col gap-1.5 border-t border-fp-outline-1 p-3.5"
+          className={cn("flex flex-col gap-1.5", airy ? "px-3 pt-4" : "border-t border-fp-outline-1 p-3.5")}
         >
           {/* The quotes unit draws its own heading row — the stepper sits
               on the line with the label, where a unit's controls belong. */}
@@ -734,6 +805,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               quotes={u.quotes}
               nameOff={u.nameOff}
               breakdown={u.breakdown}
+              boxed={quoteBox}
             />
           ) : (
             <>
@@ -751,10 +823,10 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           the reader was already standing on, and it cost every card a rule and
           25px to say it. What is left in this footer is what the card is
           waiting on: an alert, or the invoice row. */}
-      {card.alert && <CardAlert {...card.alert} />}
+      {card.alert && !bandLast && <CardAlert {...card.alert} airy={airy} />}
 
       {card.footerAction && (
-        <div className="flex items-center justify-between gap-2 border-t border-fp-outline-1 px-3.5 py-2.5">
+        <div className={cn("flex items-center justify-between gap-2", airy ? "px-3 pt-4" : "border-t border-fp-outline-1 px-3.5 py-2.5")}>
           {card.footerAction.waiting ? (
             <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="size-3.5 shrink-0" />
@@ -790,12 +862,17 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
 
 function Lane({
   lane,
+  version = "v1",
+  apart,
   onOpenCard,
   sortOptions,
   sortKey,
   onSortChange,
 }: {
   lane: BoardLane;
+  version?: BoardVersion;
+  /** V4 draws the group break as the lane's own heavier line. */
+  apart?: boolean;
   onOpenCard?: (id: string) => void;
   sortOptions?: LaneSortOption[];
   sortKey?: string;
@@ -807,10 +884,25 @@ function Lane({
        asset, product, quantity — and at 340 the first two truncated on any
        real pair of names. The lane widened to fit the content rather than the
        content being cut to fit the lane. */
-    <div data-fp-unit="lane" className="flex h-full w-(--fp-board-lane-width) shrink-0 flex-col overflow-hidden rounded-md bg-fp-board-lane">
-      <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} aria-hidden />
-      <div className="flex shrink-0 items-center gap-2 px-4 py-3">
-        <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
+    <div
+      data-fp-unit="lane"
+      className={cn(
+        "flex h-full shrink-0 flex-col overflow-hidden",
+        version === "v1" ? "w-(--fp-board-lane-width)" : version === "v4" ? "w-(--fp-board-lane-width-v4)" : "w-(--fp-board-lane-width-v2)",
+        version === "v3" ? "bg-fp-surface-1b shadow-fp-surface" : version === "v4" ? "bg-fp-surface-1b" : version === "v2" ? "bg-fp-shell-panel" : "bg-fp-board-lane",
+        /* V4 — a column of the board's box: square, one line before it (a
+           heavier one where the lanes change kind). */
+        version === "v4" ? (apart ? "border-l-3 border-fp-outline-2" : "border-l border-border first:border-l-0") : "rounded-md"
+      )}
+    >
+      {version !== "v4" && <div className={cn("h-1 w-full shrink-0", LANE_BG[lane.color])} aria-hidden />}
+      <div className={cn("flex shrink-0 items-center gap-2", version === "v4" ? "border-b border-border px-5 py-3" : "px-4 py-3")}>
+        <h3
+          className={cn(
+            "min-w-0 truncate text-sm font-semibold text-foreground",
+            version === "v4" && cn("rounded-full px-2.5 py-0.5", LANE_SOFT[lane.color])
+          )}
+        >
           {lane.title}
         </h3>
         {/* COUNT PILL — see DS FOLLOW-UP (8). The DS Kanban fills this pill with
@@ -872,14 +964,21 @@ function Lane({
           </DropdownMenu>
         )}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto", version === "v4" ? "px-5 py-4" : "px-3 pb-3")}>
         {lane.cards.length === 0 ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">
             {lane.emptyLabel ?? "Nothing here"}
           </p>
         ) : (
           lane.cards.map((card) => (
-            <Card key={card.id} card={card} onOpen={() => onOpenCard?.(card.id)} />
+            <Card
+              key={card.id}
+              card={card}
+              airy={version !== "v1"}
+              bare={version === "v2"}
+              quoteBox={version === "v4"}
+              onOpen={() => onOpenCard?.(card.id)}
+            />
           ))
         )}
       </div>
@@ -889,13 +988,20 @@ function Lane({
 
 export function BrokerBoard({
   lanes,
+  version = "v1",
   onOpenCard,
   laneSortOptions,
   laneSort,
   onLaneSortChange,
 }: BrokerBoardProps) {
   return (
-    <div className="flex h-full min-h-0 gap-4 overflow-x-auto pb-1">
+    <div
+      className={cn(
+        "flex h-full min-h-0 overflow-x-auto",
+        /* V4's box is BoardWithBar's — the lanes fill it edge to edge. */
+        version === "v4" ? "" : "gap-4 pb-1"
+      )}
+    >
       {lanes.map((lane) => (
         <React.Fragment key={lane.key}>
           {/* THE RULE IS THE BREAK, and the air around it is what makes it one:
@@ -904,7 +1010,7 @@ export function BrokerBoard({
               the full height of the board rather than the height of a lane,
               because it divides the BOARD — a rule that stopped where the
               tallest lane did would read as a border on the lane beside it. */}
-          {lane.apart && (
+          {lane.apart && version !== "v4" && (
             /* 3px AND THE STRONGER OUTLINE. A hairline is what separates two
                things of the same kind — a column from a column, a row from a
                row — and this separates two KINDS, so at 1px it read as a lane
@@ -917,6 +1023,8 @@ export function BrokerBoard({
           )}
           <Lane
             lane={lane}
+            version={version}
+            apart={lane.apart && version === "v4"}
             onOpenCard={onOpenCard}
             sortOptions={laneSortOptions?.(lane.key)}
             sortKey={laneSort?.[lane.key]}

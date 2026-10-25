@@ -982,7 +982,7 @@ the first control of the Accessibility panel. Everything lives in the
 `ModuleSidebar`). Its panel opens beside the nav, changes the page live, and
 is saved:
 
-In this order (Pavan, 2026-10-21): Theme on top; Text size; Stroke contrast and Contrast (Text color removed, 2026-10-24); a divider; Display size. Text size and Display size are STEPS like Android's "Display size and text" (Pavan, 2026-10-23): − · a track with a dot per step · +. No preview card — the page itself is the preview.
+In this order (Pavan, 2026-10-21): Theme on top; Text size; Component size; Stroke contrast and Contrast (Text color removed, 2026-10-24); a divider; Display size. Text size and Display size are STEPS like Android's "Display size and text" (Pavan, 2026-10-23): − · a track with a dot per step · +. No preview card — the page itself is the preview.
 Reset is the header's icon alone.
 
 | Control | Range | Moves |
@@ -991,6 +991,7 @@ Reset is the header's icon alone.
 | Text size | 6 steps, 100% – 130% | **the text only** — type ramp and weights. No box widens (nav, lanes, cards, sheets, table columns keep their width); text wraps onto the next line and the card or row grows taller — except record numbers and dates, which stay on one line and widen their table column just enough (2026-10-23) |
 | Stroke contrast | Default → Maximum | rims, dividers, field borders, focus/selection rims, lanes, charts — toward black. **Strokes only**: a field's fill (`--fp-field-fill`, `-hover`) and a switch's off-track (`--fp-switch-track`) used to borrow the field-border color (`dark:bg-input/30`) and now have their own fixed tokens — never fill with a stroke token |
 | Contrast | Default → Maximum | **whites stay white, grays go darker** toward dark gray — white cards on a dark lane; the last layer (behind everything) becomes a **plain darker gray**, not a deeper beige; the **selected nav item** goes much darker; text on those grays goes near black to keep 7:1. **At 80% and up (light theme) the frame jumps dark** — the shell ground behind everything and the selected/hovered nav item go near black and what sits straight on them (the FleetPanda name, the top bar's icons, the selected item's label) turns white. It jumps, not fades: no gray between ~#5a and #95 reads at 7:1 with black or white. Mark anything new that sits on the ground with `data-fp-on-frame` |
+| Component size | 6 steps: 100 – 150% (10% apart), Pavan 2026-10-25 | **widths only** — board lanes (`--fp-lane-k`; cards follow, padding unchanged) and every table column (`useColumnWidths`); the text stays its size, cut-off text shows once it fits; nav and sheets keep their widths |
 | Display size | 5 steps: 50 · 75 · **100** · 125 · 150%, 100% in the middle; no Auto (2026-10-23) | everything, by one zoom |
 | Text on a color fill | automatic | white or dark, whichever reads better. On the fixed brand orange it's held to AA (identity) |
 
@@ -1114,7 +1115,8 @@ tools' row — they rise into it beside the routed tools rather than starting be
 them (`[data-routed] + [data-filter-chips]` in index.css). **THE VIEW BAR — every list** (Pavan, 2026-10-22,
 after a trial on 3PL Delivery Orders): the view's tools sit in a bar ON the view —
 above the table header (`ListTable topBar`, or the hand-built recurring tables' frame),
-or above the lanes (`BoardWithBar`). LEFT: a statement — "62 orders · Thu, Oct 22,
+or as the top strip of the board's own box, the lanes below it in the same box
+(`BoardWithBar` — attached like the table's, 2026-10-25). LEFT: a statement — "62 orders · Thu, Oct 22,
 2026" (table), "62 orders across 9 of 9 lanes · …" (board, replacing the footer line),
 "150 customers" where a list has no date. RIGHT: the view's tools — Search by
 column, Show/hide columns 4px apart like the view icons (table); Card configuration (board) — each ICON ONLY,

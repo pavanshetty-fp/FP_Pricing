@@ -13,7 +13,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - Don't use for a one-view list: no view switch, no board icon (ui §10h).
 
 ## Anatomy
-1. **View bar** (`BoardWithBar`) — a white strip above the lanes. Left: the statement ("62 orders across 9 of 9 lanes · …"). Right: the board's own tool, **Card fields**.
+1. **View bar** (`BoardWithBar`) — the top strip of the board's own box, a line under it, the lanes below in the same box — attached like the table's bar (2026-10-25). Left: the statement ("62 orders across 9 of 9 lanes · …"). Right: the board's own tool, **Card fields**.
 2. **Lane row** — lanes side by side, scrolling sideways.
 3. **Apart rule** — a 3px vertical rule before the first lane that is not a step of the work (Canceled, Blocked); runs the board's full height.
 4. **Lane** — 4px color strip on top → header (title · count pill · lane sort icon) → scrollable card stack, or the empty label.

@@ -37,13 +37,20 @@ export interface A11y {
   ink: number;
   /** Display size — the page zoom, one of DISPLAY_STEPS. */
   display: number;
+  /** Component size — how wide lanes and table columns are, one of
+      COMPONENT_STEPS. The text stays its size; the boxes get room. */
+  component: number;
 }
-export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, background: 0, ink: 0, display: 1 };
+export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, background: 0, ink: 0, display: 1, component: 1 };
 
 /** THE TEXT SIZE STEPS — 100% to 130%, 5% apart (stored as 0–100). */
 export const TEXT_STEPS = 6;
 export const textStepOf = (text: number) => Math.round((text / 100) * TEXT_STEPS);
 export const textOfStep = (step: number) => Math.round((step / TEXT_STEPS) * 100);
+
+/** THE COMPONENT SIZE STEPS (Pavan, 2026-10-25) — 100% to 150%, 10% apart. */
+export const COMPONENT_STEPS = [1, 1.1, 1.2, 1.3, 1.4, 1.5];
+const nearestComponent = (k: number) => COMPONENT_STEPS.reduce((a, b) => (Math.abs(b - k) < Math.abs(a - k) ? b : a));
 
 /** THE DISPLAY SIZE STEPS — the page zoom; 100% is the middle one. */
 export const DISPLAY_STEPS = [0.5, 0.75, 1, 1.25, 1.5];
@@ -146,6 +153,7 @@ let a11y: A11y =
           background: n(o.background, n((o as { layers?: number }).layers, 0)),
           /* NO TEXT COLOR SLIDER (2026-10-24) — text follows Contrast. */
           ink: 0,
+          component: nearestComponent(n(o.component, 1)),
           /* THE OLD SCREEN SIZES land on the nearest step; Auto on 100%. */
           display: nearestDisplay(
             n(o.display, ({ monitor: 1.1, large: 1.25, tv: 1.5 } as Record<string, number>)[(o as { screen?: string }).screen ?? ""] ?? 1)
@@ -321,14 +329,18 @@ export const useA11y = () => React.useSyncExternalStore(subscribe, () => a11y, (
 
 /*
   TEXT GROWS, BOXES DON'T (Pavan, 2026-10-23) — no unit widens for bigger
-  text any more: the nav, a board lane, a sheet keep their width, the text
-  wraps onto the next line inside them and the card grows taller (CSS
-  `.a11y-text`). Making the boxes bigger is the Display size slider's job.
-  The width multipliers stay at 1 so anything still reading them holds.
+  text: the text wraps inside it and the card grows taller (CSS
+  `.a11y-text`). BOXES GROW WITH COMPONENT SIZE (2026-10-25): board lanes
+  widen by it (`--fp-lane-k`; the cards follow, their padding unchanged)
+  and table columns too (`useColumnWidths`). The nav and the sheets keep
+  their widths.
 */
 function fitUnits() {
   if (typeof document === "undefined") return;
-  ["--fp-nav-k", "--fp-lane-k", "--fp-scale"].forEach((k) => document.documentElement.style.setProperty(k, "1"));
+  const style = document.documentElement.style;
+  style.setProperty("--fp-lane-k", String(a11y.component));
+  style.setProperty("--fp-nav-k", "1");
+  style.setProperty("--fp-scale", "1");
 }
 
 /* ON LOAD — once the stylesheet is in, so both ends can be read. */

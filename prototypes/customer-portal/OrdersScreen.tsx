@@ -365,7 +365,7 @@ export function OrdersScreen({
   /*
     EVERY TANK IN THE ORDER'S OWN ROW (Pavan, 2026-10-21 — chose "A" over a
     band per tank): each tank is a line inside the row, and the tank columns
-    — tank, product, quantity, level, on fulfilment, days to empty, battery
+    — tank, product, quantity, level, on fulfillment, days to empty, battery
     — line up line for line; the order's own cells show once. No nested
     layer.
   */

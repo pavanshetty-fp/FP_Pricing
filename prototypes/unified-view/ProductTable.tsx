@@ -139,7 +139,7 @@ export function ProductTable<L extends ProductLine = ProductLine>({
                   <TableRequiredLabel required={c.required}>{c.label}</TableRequiredLabel>
                 </th>
               ))}
-              <th aria-hidden />
+              <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
             </tr>
           </thead>
           <tbody>
@@ -189,7 +189,7 @@ export function ProductTable<L extends ProductLine = ProductLine>({
                 {/* THE CONFIRM IS THE DS's NOW — `TableRowRemove`, the same ✕ / ✓
                     every table asks with. An order needs a product line, so
                     the last row keeps no bin. */}
-                <td className="relative p-0 text-center">
+                <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                   <TableRowRemove
                     aria-label={`Remove ${line.name || `product ${i + 1}`}`}
                     disabled={lines.length === 1}

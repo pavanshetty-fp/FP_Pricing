@@ -153,7 +153,7 @@ function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boole
             <TableRequiredLabel>Value</TableRequiredLabel>
           </th>
           {/* UNNAMED, like every row remove — DS ui §10f. */}
-          <th aria-hidden />
+          <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
         </tr>
       </thead>
       <tbody>
@@ -216,7 +216,7 @@ function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boole
                   </DropdownMenu>
                 </div>
               </td>
-              <td className="relative p-0 text-center">
+              <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                 {r.onRemove && (
                   <TableRowRemove
                     aria-label={`Remove ${name}`}

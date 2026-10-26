@@ -98,6 +98,19 @@ export function check() {
       const top = h.search(/Top off/);
       const qty = h.search(/Qty|Quantity/);
       if (top < 0 || qty < 0) continue;
+      /* TOP OFF LAST, ON PURPOSE (Pavan, 2026-10-26 — the 3PL order sheet):
+         a header marked \`data-top-off-last\` puts Qty right before Top off,
+         and Top off closes the row. */
+      if (/data-top-off-last/.test(h)) {
+        const after = h.slice(top);
+        const lastTh = h.lastIndexOf("<th");
+        const ok = qty < top && (h.slice(qty, top).match(/<th\b/g)?.length ?? 0) <= 1 && (after.match(/<th\b/g)?.length ?? 0) <= 1;
+        if (!ok || lastTh < 0) {
+          out.push(finding("L1", rel(file), src.slice(0, at + top).split("\n").length,
+            "Marked top-off-last: Qty right before Top off, and Top off the last column (§10i)", rule));
+        }
+        continue;
+      }
       /* TOP OFF FIRST, AND NO HEADER BETWEEN — Qty's own <th is the only one. */
       const between = top < qty ? (h.slice(top, qty).match(/<th\b/g)?.length ?? 0) : 0;
       if (top > qty || between > 1) {

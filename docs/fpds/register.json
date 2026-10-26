@@ -780,7 +780,7 @@
       "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-breakdown-popover.json",
       "purpose": "What a \"+N\" chip or a total is made of.",
       "useWhen": [
-        "Use behind any \"+N\" or figure that sums things (quantity, amount, level on fulfilment)."
+        "Use behind any \"+N\" or figure that sums things (quantity, amount, level on fulfillment)."
       ],
       "dontUseWhen": [
         "Don't use as a general popover form."

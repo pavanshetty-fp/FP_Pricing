@@ -30,6 +30,7 @@ import {
   TableRequiredLabel,
 } from "@/components/form-layout";
 import { TableRowRemove } from "@/components/form-layout/table-cells";
+import { siteTank } from "./tankMonitors";
 import { PendingStrip } from "../PendingStrip";
 import { dateKeyOf, startOfDay } from "../data";
 import { CUSTOMERS } from "../customers";
@@ -257,6 +258,11 @@ function TargetEditor({
     ),
   ];
   const [focusLine, setFocusLine] = React.useState<number | null>(null);
+  /** Does this asset at the ship-to report its level? */
+  const hasMonitor = (name: string) => {
+    const a = siteAssets.find((x) => x.name === name);
+    return a ? siteTank(target.shipTo, a.name, a.product, a.rental).monitor : true;
+  };
 
   const setLine = (i: number, patch: Partial<OrderLine>) =>
     onChange({
@@ -279,15 +285,16 @@ function TargetEditor({
           className="overflow-hidden rounded-md rounded-bl-none border border-fp-outline-1"
         >
           <table className="w-full table-fixed border-collapse">
-            {/* TOP OFF, THEN THE QUANTITY LAST — beside the number it
-                replaces (Pavan, 2026-10-20 — DS ui §10i). */}
+            {/* AS THE DELIVERY ORDER (Pavan, 2026-10-26): the quantity, then
+                TOP OFF LAST with its ticks right-aligned under the select-all;
+                the bin a sticky layer at the right edge. */}
             <colgroup>
               <col className={loads ? "w-[22%]" : "w-[34%]"} />
               <col className={loads ? "w-[18%]" : "w-[30%]"} />
               {loads && <col className="w-[18%]" />}
               {loads && <col className="w-[16%]" />}
-              <col className="w-[104px]" />
               <col />
+              <col className="w-[130px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
@@ -308,9 +315,12 @@ function TargetEditor({
                     <TableRequiredLabel>Supplier</TableRequiredLabel>
                   </th>
                 )}
+                <th className="px-3 py-2.5 text-left">
+                  <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+                </th>
                 {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under
                     this one (Pavan, 2026-10-16). */}
-                <th className="px-3 py-2.5">
+                <th className="px-3 py-2.5 text-left" data-top-off-last>
                   <span className="flex items-center justify-between gap-2">
                     <TableRequiredLabel>Top off</TableRequiredLabel>
                     <Checkbox
@@ -329,10 +339,7 @@ function TargetEditor({
                     />
                   </span>
                 </th>
-                <th className="px-3 py-2.5">
-                  <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-                </th>
-                <th aria-hidden />
+                <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
               </tr>
             </thead>
             <tbody>
@@ -356,6 +363,14 @@ function TargetEditor({
                         placeholder={target.shipTo ? "Select asset" : "Select a ship-to first"}
                         disabled={!target.shipTo}
                         creatable
+                        /* AS THE DELIVERY ORDER (Pavan, 2026-10-26) — only a
+                           tank without a monitor carries a tag; the tabs
+                           narrow the list first. */
+                        optionTag={(name) => (hasMonitor(name) ? null : <Pill className="shrink-0">No monitor</Pill>)}
+                        groups={[
+                          { label: "Tank monitor", has: (name) => hasMonitor(name) },
+                          { label: "No tank monitor", has: (name) => !hasMonitor(name) },
+                        ]}
                         autoFocus={i === focusLine}
                         aria-label={`Asset for line ${i + 1}`}
                         onChange={(name) => {
@@ -370,31 +385,32 @@ function TargetEditor({
                             rental: known?.rental ?? false,
                           });
                         }}
-                        /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f). */
-                        multiple={
-                          line.asset
-                            ? undefined
-                            : {
-                                onApply: (names) => {
-                                  const lines = [...target.lines];
-                                  lines.splice(
-                                    i,
-                                    1,
-                                    ...names.map((name) => {
-                                      const known = siteAssets.find((a) => a.name === name);
-                                      return {
-                                        ...blankLine(products),
-                                        topOff: line.topOff,
-                                        asset: name,
-                                        product: known && products.includes(known.product) ? known.product : line.product,
-                                        rental: known?.rental ?? false,
-                                      };
-                                    })
-                                  );
-                                  onChange({ ...target, lines });
-                                },
-                              }
-                        }
+                        /* SEVERAL AT ONCE MAKES ROWS, FROM ANY ROW (DS ui §10f;
+                           2026-10-26): the row's own asset opens ticked —
+                           kept, the row stays and the rest are added under it. */
+                        multiple={{
+                          onApply: (names) => {
+                            const lines = [...target.lines];
+                            const keeps = Boolean(line.asset) && names.includes(line.asset);
+                            const rest = keeps ? names.filter((n) => n !== line.asset) : names;
+                            lines.splice(
+                              i,
+                              1,
+                              ...(keeps ? [line] : []),
+                              ...rest.map((name) => {
+                                const known = siteAssets.find((a) => a.name === name);
+                                return {
+                                  ...blankLine(products),
+                                  topOff: line.topOff,
+                                  asset: name,
+                                  product: known && products.includes(known.product) ? known.product : line.product,
+                                  rental: known?.rental ?? false,
+                                };
+                              })
+                            );
+                            onChange({ ...target, lines });
+                          },
+                        }}
                       />
                     </td>
                     <td className="relative p-0">
@@ -442,8 +458,24 @@ function TargetEditor({
                         </>
                       );
                     })()}
+                    <td className="relative p-0">
+                      <TableCellInput
+                        value={
+                          line.topOff ? "" : line.gal != null ? String(line.gal) : ""
+                        }
+                        placeholder={line.topOff ? "Top-off" : "0"}
+                        disabled={line.topOff}
+                        numeric
+                        aria-label={`Gallons for line ${i + 1}`}
+                        onChange={(v) =>
+                          setLine(i, {
+                            gal: Number(v.replace(/[^0-9]/g, "")) || null,
+                          })
+                        }
+                      />
+                    </td>
                     <td className="px-3">
-                      <span className="flex">
+                      <span className="flex justify-end">
                       <Checkbox
                         checked={Boolean(line.topOff)}
                         onCheckedChange={(c) =>
@@ -456,24 +488,7 @@ function TargetEditor({
                       />
                       </span>
                     </td>
-                    <td className="relative p-0">
-                      <TableCellInput
-                        value={
-                          line.topOff ? "" : line.gal != null ? String(line.gal) : ""
-                        }
-                        placeholder={line.topOff ? "Top-off" : "0"}
-                        disabled={line.topOff}
-                        numeric
-                        suffix="gal"
-                        aria-label={`Gallons for line ${i + 1}`}
-                        onChange={(v) =>
-                          setLine(i, {
-                            gal: Number(v.replace(/[^0-9]/g, "")) || null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="relative p-0 text-center">
+                    <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                       <TableRowRemove
                         aria-label={`Remove ${line.asset || `line ${i + 1}`}`}
                         disabled={target.lines.length === 1}

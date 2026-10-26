@@ -159,7 +159,7 @@ function AssetsTable({
             {head("Longitude", true, "right")}
             {head("Rented")}
             {head("Activity log")}
-            <th aria-hidden />
+            <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
           </tr>
         </thead>
         <tbody>
@@ -297,7 +297,7 @@ function AssetsTable({
                   </Button>
                   )}
                 </td>
-                <td className="relative p-0 text-center">
+                <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                   {!ghost && <TableRowRemove
                     aria-label={`Remove ${name}`}
                     /* AN ASSET WITH AN ORDER ON ITS WAY STAYS. */

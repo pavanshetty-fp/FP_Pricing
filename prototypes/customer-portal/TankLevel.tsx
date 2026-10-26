@@ -161,13 +161,13 @@ export function LineLevel({ line }: { line: RequestLine }) {
   );
 }
 
-/* ------------------------------------------------- on fulfilment ---- */
+/* ------------------------------------------------- on fulfillment ---- */
 
 const gal = (n: number) => `${n.toLocaleString()} gal`;
 const dayFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
 /**
- * THE WORKED SUM behind one "on fulfilment" % (Pavan, 2026-10-18): the tank
+ * THE WORKED SUM behind one "on fulfillment" % (Pavan, 2026-10-18): the tank
  * keeps emptying until the planned day, so today's level is not the level
  * the delivery lands on. Today → less daily usage × days to the planned date
  * → left that day → plus what is delivered → the %. Once delivered, the
@@ -206,7 +206,7 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
             ]
           : []),
       ],
-      total: { label: "On fulfilment", value: `${line.levelAfter}%` },
+      total: { label: "On fulfillment", value: `${line.levelAfter}%` },
     };
   }
   /* NOT DELIVERED YET — to the planned date the tenant has now; past it and
@@ -214,7 +214,8 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
   const days = daysUntil(dateKey);
   const now = galNow(a);
   const left = galAtDelivery(a, days);
-  const into = line.topOff ? a.capacity - left : line.gal;
+  /* HELD TO WHAT FITS (2026-10-26) — never past full. */
+  const into = line.topOff ? a.capacity - left : Math.min(line.gal, a.capacity - left);
   const raw = now - a.dailyUse * days;
   const sum = left + into;
   const pct = pctAfterDelivery(a, days, line.gal, line.topOff);
@@ -233,19 +234,26 @@ function fulfilmentCard(a: Asset, line: RequestLine, dateKey: string, delivered:
      delivered, the tank is still the next problem. */
   if (raw >= 0 && pct < 25)
     warnings.push(`Low after delivery — only ${pct}% full once this arrives.`);
-  if (sum > a.capacity)
-    warnings.push(
-      `Tank overload — ${n(sum - a.capacity)} gal won't fit in the ${n(a.capacity)} gal tank. That overage might cause a penalty by the tenant.`
-    );
+  /* NO OVERLOAD WARNING (2026-10-26) — a quantity can no longer go past
+     full, so there is no overage to warn about. */
+  /* THE ANSWER FIRST, THE WORKING ON ASK (Pavan, 2026-10-26) — one
+     sentence, then "Show breakdown" opens it row by row instead of a
+     formula. */
+  const pctLeft = Math.round((left / a.capacity) * 100);
   return {
     title: `${a.name} — ${dateKey ? `planned for ${fmt(dateKey)}` : "no planned date yet"}`,
+    summary: `The tank level post delivery will be ${pct}%, based on your daily usage.`,
+    collapsible: true,
     rows: [
+      { label: "Current level", value: `${n(now)} gal · ${Math.round((now / a.capacity) * 100)}%` },
+      { label: "Requested", value: line.topOff ? `Top off · ${n(into)} gal` : `${n(into)} gal` },
       {
-        label: "This tank",
-        sub: `((${n(now)} − ${n(a.dailyUse)} × ${days}) + ${line.topOff ? `${n(into)} (top off)` : n(into)}) ÷ ${n(a.capacity)} = ${n(sum)} ÷ ${n(a.capacity)} = ${pct}%${raw < 0 ? " (empty before it arrives, so it starts from 0)" : ""}`,
+        label: "Days to deliver",
+        value: `${days} ${days === 1 ? "day" : "days"}`,
+        sub: `${n(a.dailyUse)} gal per day usage · level on day of delivery ${n(left)} gal (${pctLeft}%)`,
       },
     ],
-    total: { label: "On fulfilment", value: `${pct}% · ${gal(sum)}` },
+    total: { label: "On fulfillment", value: `${pct}% · ${gal(sum)}` },
     warnings,
   };
 }
@@ -274,7 +282,7 @@ function FulfilmentFigure({
   const pct = card.total!.value.split("%")[0];
   return (
     <BreakdownPopover
-      label={`How ${pct}% on fulfilment is worked out for ${a.name}`}
+      label={`How ${pct}% on fulfillment is worked out for ${a.name}`}
       width={380}
       card={card}
       className="rounded"
@@ -317,13 +325,13 @@ export function FulfilmentPct({ line, r }: { line: RequestLine; r: OrderRequest 
   return <FulfilmentFigure line={line} dateKey={r.date} delivered={DELIVERED.includes(r.status)} r={r} />;
 }
 
-/** "On fulfilment" and its ⓘ — what the column is, and how its sum runs. */
+/** "On fulfillment" and its ⓘ — what the column is, and how its sum runs. */
 export function FulfilmentHead({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      On fulfilment
+      On fulfillment
       <BreakdownPopover
-        label="What on fulfilment means"
+        label="What on fulfillment means"
         width={360}
         className="inline-flex text-muted-foreground hover:text-foreground"
         trigger={<Info className="size-3.5" />}
@@ -332,7 +340,7 @@ export function FulfilmentHead({ className }: { className?: string }) {
            64% is not what the truck finds. */
         card={{
           title: "Tank levels once delivered",
-          rows: [{ label: "Formula", sub: `On fulfilment = ${FORMULA_NOW}` }],
+          rows: [{ label: "Formula", sub: `On fulfillment = ${FORMULA_NOW}` }],
         }}
       />
     </span>

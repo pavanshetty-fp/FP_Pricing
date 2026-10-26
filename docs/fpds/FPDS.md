@@ -2535,7 +2535,7 @@ Customers (Ship-tos); Quotes (Products); 3PL › Directory.
 What a "+N" chip or a total is made of.
 
 ### Use when / Don't use when
-- Use behind any "+N" or figure that sums things (quantity, amount, level on fulfilment).
+- Use behind any "+N" or figure that sums things (quantity, amount, level on fulfillment).
 - Don't use as a general popover form.
 
 ### Anatomy
@@ -2571,7 +2571,7 @@ closed · open.
 By eye.
 
 ### Reference
-Customer Portal › Orders (level on fulfilment); Sales › Quotes (products).
+Customer Portal › Orders (level on fulfillment); Sales › Quotes (products).
 
 ---
 
@@ -3015,7 +3015,7 @@ no monitor · sufficient · moderate · low · urgent (blinking; steady with red
 
 ### Rules
 1. **Level is shown by color only, no band words.** `(2026-10-17)`
-2. **Separate cells, separate columns** (level, battery, days to empty, suggested, on fulfilment).
+2. **Separate cells, separate columns** (level, battery, days to empty, suggested, on fulfillment).
 3. **Urgent blinks and keeps blinking** — the tank is still nearly empty.
 
 ### Do / Don't
@@ -4559,7 +4559,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 
 ## Anatomy
 1. **Section header band** — the `SheetSection` title ("Delivery Order" in 3PL, "Tanks & assets" in the portal); the section is `flush`, so the table's edges are the card's edges.
-2. **Header row** — Asset · Product * · Current level · On fulfilment (with an ⓘ breakdown popover, `FulfilmentHead`) · Days to empty (while ordering only) · **Top off** + select-all checkbox · **Qty (gal)** · unnamed bin column.
+2. **Header row** — Asset · Product * · Current level · On fulfillment (with an ⓘ breakdown popover, `FulfilmentHead`) · Days to empty (while ordering only) · **Top off** + select-all checkbox · **Qty (gal)** · unnamed bin column.
 3. **Rows** — `TableCellSelect`/`TableCellCombobox` (asset, multi-pick from a blank row) · `TableCellSelect` (product, ONE VALUE) · `LevelReading` (gauge + %) · `AfterDelivery` / `FulfilmentPct` · `DaysToEmpty` · Top off checkbox (right-aligned) · `TableCellInput` (numeric, suffix "gal", suggestion placeholder) · `TableRowRemove`.
 4. **Total row** (`tfoot`) — "Total" label spanning every column before Qty; the sum under Qty, or "Top-off"/"Top off" when every line tops off.
 5. **Hanging add** — `HangingAdd` "Add asset" (3PL) / "Add tank or asset" (portal) off the card's squared bottom-left corner.
@@ -4586,7 +4586,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 - **suggestion** — empty Qty shows the suggested gallons as placeholder (monitored tank, while ordering).
 - **delete armed** — bin swaps for ✕ (keep) over ✓ (confirm, `bg-destructive`), cursor on ✕.
 - **last row** — bin disabled/hidden (an order needs a line).
-- **sent / locked** — portal: Days to empty column drops, On fulfilment shows the delivered %; the fieldset is disabled.
+- **sent / locked** — portal: Days to empty column drops, On fulfillment shows the delivered %; the fieldset is disabled.
 - **no total** — `tfoot` hidden until a row carries a value.
 - **multi-pick list** — checkboxes, items on other rows ticked and locked, footer "N selected" + Apply (disabled at 0).
 
@@ -4609,7 +4609,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 | Press bin | Bin swaps to ✕ / ✓ in place, focus on ✕ |
 | Press ✓ | Row removed |
 | Press ✕, Escape, or focus leaves | Pair closes, row kept |
-| Hover ⓘ on "On fulfilment" | Popover explains the reading |
+| Hover ⓘ on "On fulfillment" | Popover explains the reading |
 
 ## Outcomes
 - Lines added one per asset (several at once from one Apply).
@@ -4621,7 +4621,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 - Autosaved into the record (the sheet has no Save).
 
 ## Data contract
-- In: `lines` (each: asset id/name, product, gallons, topOff), the ship-to (its assets), `focusRow` (the row just added), `onChange(nextLines)`; portal also `live` (draft vs sent), `deliveryKey` (planned date, for suggestion / on-fulfilment / days to empty), `request` (sent order).
+- In: `lines` (each: asset id/name, product, gallons, topOff), the ship-to (its assets), `focusRow` (the row just added), `onChange(nextLines)`; portal also `live` (draft vs sent), `deliveryKey` (planned date, for suggestion / on-fulfillment / days to empty), `request` (sent order).
 - Assets carry monitor readings (level, capacity, daily use) when monitored.
 - Out: `onChange` with the full next list for every edit, multi-pick apply, top-off toggle and removal.
 - Sales `ProductTable`: `lines {name, gal}`, `options`, `onChange`, `focusRow`, `columns` (key, label, width, cell, total, required), `productLabel`, `qtyLabel`.
@@ -4665,6 +4665,8 @@ The order's lines as an editable table: which tank or asset gets which product, 
 - 3PL › Recurring Orders › Create rule — ship-to tab's asset table.
 - Customer Portal › Orders › order sheet — "Tanks & assets"; Customer Portal › Recurring Orders › rule sheet.
 - Sales › Orders and Sales › Quotes sheets — product table (`ProductTable`, Quote adds priced columns).
+
+> **Sticky delete layer (Pavan, 2026-10-26):** in every editable sheet table the row-remove column is pinned to the right edge (`sticky right-0 z-10 border-l bg-popover`, header `bg-fp-table-header`, no heading); the other columns scroll sideways behind it. The bin still shows on row hover.
 
 
 <!-- ===== docs/fpds/units/map.md ===== -->
@@ -7165,6 +7167,8 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 ---
 
+**UX-161. One highlighted card per sheet.** The tinted SummaryCard marks the single most important read-out — the order or quote summary, or what needs attention — and nothing else wears it; every other rail card (trip, records, notes, activity, the order in short) is a plain RailCard. — *"The highlighted card should be only one… the one that is the most important in terms of seeing information."* (Pavan, 2026-10-26) · Check: eval `sheets` flags a file with two.
+
 ## Index
 
 | Id | Rule |
@@ -7329,6 +7333,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-158 | A toast's title is the act |
 | UX-159 | Every act announces itself with a toast; typing does not — the autosave earns the chip |
 | UX-160 | Failure and error paths are not designed yet (today every toast is a success) |
+| UX-161 | One highlighted card per sheet — the most important read-out; the rest are plain RailCards |
 
 
 <!-- ===== docs/fpds/08-interaction-rules.md ===== -->

@@ -129,8 +129,12 @@ export function RailCard({
 }) {
   return (
     <section className="shrink-0 overflow-hidden rounded-lg border border-border">
-      <div className="flex items-center justify-between gap-3 border-b border-border bg-fp-surface-1a px-4 py-2.5">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+      {/* A QUIET HEADER (Pavan, 2026-10-26) — the band's fill and the
+          semibold made every read-out card shout as loud as the one that
+          changes (Invitations); now the title sits on the card's own ground,
+          medium weight, a hairline under it. */}
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+        <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
           {icon && <span className="[&_svg]:size-3.5">{icon}</span>}
           {title}
         </h3>

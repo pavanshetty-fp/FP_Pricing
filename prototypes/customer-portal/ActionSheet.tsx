@@ -1,10 +1,10 @@
 import { toast } from "sonner";
-import { ArrowRight, FileQuestion } from "lucide-react";
+import { ArrowRight, FileQuestion, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 import { RecordSheet } from "../unified-view/RecordSheet";
-import { RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { RailCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import {
   REQUEST_STATUS_TONE,
   TENANT,
@@ -92,15 +92,17 @@ export function ActionSheet({
           </div>
         </SummaryCard>
 
-        {/* THE ORDER, IN SHORT — what it is about; the rest is one press away. */}
-        <SummaryCard title="The order">
-          <dl className="flex flex-col">
+        {/* THE ORDER, IN SHORT — what it is about; the rest is one press away.
+            A PLAIN RAIL CARD (Pavan, 2026-10-26): one highlighted card per
+            sheet, and here it is what needs attention. */}
+        <RailCard title="The order" icon={<Package />}>
+          <dl className="flex flex-col px-4 py-2">
             <RailRow variant="line" label="Ship-to" value={r.shipTo} />
             <RailRow variant="line" label="Planned date" value={r.date ? `${printKey(r.date)}, ${windowText(r)}` : "No date"} />
             <RailRow variant="line" label="Quantity" value={quantityText(r.lines) ? `${quantityText(r.lines)} gal` : "—"} />
             <RailRow variant="line" label="Supplier" value={TENANT} />
           </dl>
-        </SummaryCard>
+        </RailCard>
       </div>
     </RecordSheet>
   );

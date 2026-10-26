@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
+import { Pill } from "@/components/ui/pill";
 import { toast } from "sonner";
-import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send } from "lucide-react";
+import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePanel } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,7 +39,7 @@ import { RecordLink, usePortalNav } from "./nav";
 import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
-import { ActivityCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { ActivityCard, RailCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
 import { RulePill } from "./cells";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading } from "./TankLevel";
 import { DeliveryWindowTimeline } from "../unified-view/DeliveryWindowTimeline";
@@ -60,6 +61,8 @@ import {
   requestChange,
   daysUntil,
   suggestedGal,
+  capGal,
+  maxGal,
   scheduleSummary,
   cancelRule,
   dateOfKey,
@@ -186,9 +189,9 @@ export function LinesTable({
   /** The tanks as they are now (a draft, a rule); false once the order is
       sent — then each line shows its level when ordered and after. */
   live?: boolean;
-  /** The delivery date — what the suggestion and "on fulfilment" look ahead to. */
+  /** The delivery date — what the suggestion and "on fulfillment" look ahead to. */
   deliveryKey?: string;
-  /** The sent order — its status says whether "on fulfilment" is done or expected. */
+  /** The sent order — its status says whether "on fulfillment" is done or expected. */
   request?: OrderRequest;
 }) {
   const days = daysUntil(deliveryKey);
@@ -203,21 +206,27 @@ export function LinesTable({
     /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
        than closing the asset and product cells. */
     <div className="overflow-x-auto">
-    <table className={cn("w-full table-fixed border-collapse", live ? "min-w-[calc(888px*var(--fp-scale))]" : "min-w-[calc(772px*var(--fp-scale))]")}>
+    <table
+      className="w-full table-fixed border-collapse"
+      style={{ minWidth: `calc(${live ? 1252 : 1112}px * var(--fp-scale))` }}
+    >
       {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order.
           WHAT THE ORDER DOES TO THE TANK FIRST (Pavan, 2026-10-17): its level
-          now, the % on fulfilment, and while ordering days to empty (the
-          suggested quantity is the Qty cell's placeholder, 2026-10-20). THEN TOP OFF, AND THE QUANTITY LAST (Pavan,
-          2026-10-20) — the figure the readings lead to, at the row's end. */}
+          now, the % on fulfillment, and while ordering days to empty (the
+          suggested quantity is the Qty cell's placeholder, 2026-10-20). AS THE
+          DELIVERY ORDER NOW (Pavan, 2026-10-26): days to empty, on
+          fulfillment right before the quantity, TOP OFF LAST with its ticks
+          right-aligned; every column its own width and the table scrolling
+          sideways; the bin a sticky layer at the right edge. */}
       <colgroup>
-        <col className="w-[calc(154px*var(--fp-scale))]" />
-        <col className="w-[calc(146px*var(--fp-scale))]" />
-        <col className="w-[calc(112px*var(--fp-scale))]" />
-        <col className="w-[calc(124px*var(--fp-scale))]" />
-        {live && <col className="w-[calc(108px*var(--fp-scale))]" />}
-        <col className="w-[calc(96px*var(--fp-scale))]" />
-        <col className="w-[calc(104px*var(--fp-scale))]" />
-        <col className="w-[calc(44px*var(--fp-scale))]" />
+        <col className="w-[calc(240px*var(--fp-scale))]" />
+        <col className="w-[calc(220px*var(--fp-scale))]" />
+        <col className="w-[calc(150px*var(--fp-scale))]" />
+        {live && <col className="w-[calc(140px*var(--fp-scale))]" />}
+        <col className="w-[calc(170px*var(--fp-scale))]" />
+        <col className="w-[calc(150px*var(--fp-scale))]" />
+        <col className="w-[calc(130px*var(--fp-scale))]" />
+        <col className="w-[calc(52px*var(--fp-scale))]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
@@ -230,18 +239,21 @@ export function LinesTable({
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Current level</TableRequiredLabel>
           </th>
-          <th className="px-3 py-2.5 text-left">
-            <TableRequiredLabel>
-              <FulfilmentHead />
-            </TableRequiredLabel>
-          </th>
           {live && (
             <th className="px-3 py-2.5 text-left">
               <TableRequiredLabel>Days to empty</TableRequiredLabel>
             </th>
           )}
-          {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
-          <th className="px-3 py-2.5">
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>
+              <FulfilmentHead />
+            </TableRequiredLabel>
+          </th>
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+          </th>
+          {/* TOP OFF LAST, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
+          <th className="px-3 py-2.5 text-left" data-top-off-last>
             <span className="flex items-center justify-between gap-2">
               <TableRequiredLabel>Top off</TableRequiredLabel>
               <Checkbox
@@ -251,10 +263,7 @@ export function LinesTable({
               />
             </span>
           </th>
-          <th className="px-3 py-2.5">
-            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-          </th>
-          <th aria-hidden />
+          <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
         </tr>
       </thead>
       <tbody>
@@ -268,13 +277,18 @@ export function LinesTable({
                   value={asset?.name ?? ""}
                   /* ONE ASSET, ONE LINE — those already on the request are
                      not offered again. */
-                  options={
-                    /* A filled row offers only what is free; a blank row's
-                       multi-pick lists all, those on other rows ticked. */
-                    l.assetId
-                      ? assets.filter((a) => a.id === l.assetId || !lines.some((x) => x.assetId === a.id)).map((a) => a.name)
-                      : assets.map((a) => a.name)
+                  /* EVERY ROW LISTS ALL — those on other rows ticked and
+                     locked (2026-10-26: multi-pick from any row). */
+                  options={assets.map((a) => a.name)}
+                  /* THE EXCEPTION IS MARKED (Pavan, 2026-10-26) — only a tank
+                     without a monitor carries a tag; the tabs narrow first. */
+                  optionTag={(n) =>
+                    assets.find((a) => a.name === n)?.monitor === false ? <Pill className="shrink-0">No monitor</Pill> : null
                   }
+                  groups={[
+                    { label: "Tank monitor", has: (n) => assets.find((a) => a.name === n)?.monitor !== false },
+                    { label: "No tank monitor", has: (n) => assets.find((a) => a.name === n)?.monitor === false },
+                  ]}
                   placeholder={shipTo ? "Select asset" : "Select a ship-to first"}
                   disabled={!shipTo}
                   autoFocus={i === focusRow && Boolean(shipTo)}
@@ -283,11 +297,15 @@ export function LinesTable({
                     const a = assets.find((x) => x.name === v);
                     if (a) update(i, { assetId: a.id, product: lastProductFor(a.id, allRequests()) ?? a.product });
                   }}
-                  /* SEVERAL AT ONCE, FROM A BLANK ROW (Pavan, 2026-10-15; DS
-                     ui §10f) — tick, Apply: the first fills this row, each
-                     other gets its own. A filled row swaps its one asset. */
-                  multiple={l.assetId ? undefined : {
-                    taken: lines.map((x) => assets.find((a) => a.id === x.assetId)?.name ?? "").filter(Boolean),
+                  /* SEVERAL AT ONCE, FROM ANY ROW (Pavan, 2026-10-15, 2026-10-26;
+                     DS ui §10f) — tick, Apply. A filled row opens with its own
+                     asset ticked: kept, it stays and each other pick gets its
+                     own row; unticked, the first pick takes the row. */
+                  multiple={{
+                    taken: lines
+                      .filter((_, j) => j !== i)
+                      .map((x) => assets.find((a) => a.id === x.assetId)?.name ?? "")
+                      .filter(Boolean),
                     onApply: (names) => {
                       /* THE PRODUCT LAST ORDERED FOR IT, else its own
                          (Pavan, 2026-10-13) — the customer can change it. */
@@ -295,7 +313,17 @@ export function LinesTable({
                         const a = assets.find((x) => x.name === n);
                         return a ? { assetId: a.id, product: lastProductFor(a.id, allRequests()) ?? a.product } : null;
                       };
-                      const [first, ...rest] = names.map(lineOf).filter(Boolean) as Partial<RequestLine>[];
+                      const own = assets.find((a) => a.id === l.assetId)?.name;
+                      const keeps = Boolean(own) && names.includes(own!);
+                      const [first, ...rest] = (keeps ? names.filter((n) => n !== own) : names)
+                        .map(lineOf)
+                        .filter(Boolean) as Partial<RequestLine>[];
+                      if (keeps) {
+                        const next = [...lines];
+                        next.splice(i + 1, 0, ...[first, ...rest].filter(Boolean).map((p) => ({ ...blankLine(), ...p })));
+                        onChange(next);
+                        return;
+                      }
                       if (!first) return;
                       const next = lines.map((x, j) => (j === i ? { ...x, ...first } : x));
                       next.splice(i + 1, 0, ...rest.map((p) => ({ ...blankLine(), ...p })));
@@ -318,14 +346,35 @@ export function LinesTable({
               <td className="px-3">
                 {l.assetId ? <LevelReading asset={asset} /> : <span className="text-sm text-muted-foreground">—</span>}
               </td>
-              <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
               {live && (
                 <td className="px-3">
                   <DaysToEmpty asset={asset} days={days} />
                 </td>
               )}
+              <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
+              <td className="relative p-0">
+                <TableCellInput
+                  value={l.topOff ? "" : l.gal ? String(capGal(asset, days, l.gal)) : ""}
+                  placeholder={l.topOff ? "Top-off" : "0"}
+                  /* THE SUGGESTION IS THE PLACEHOLDER (Pavan, 2026-10-20) —
+                     the tank full on the planned day; → takes it. */
+                  suggestion={live && !l.topOff && asset?.monitor && asset.capacity ? String(suggestedGal(asset, days)) : undefined}
+                  disabled={l.topOff}
+                  numeric
+                  max={asset?.monitor && asset.capacity ? maxGal(asset, days) : undefined}
+                  maxNote={
+                    asset?.monitor && asset.capacity
+                      ? `${name} has room for only ${maxGal(asset, days).toLocaleString()} gal on the planned day — more would overfill it.`
+                      : undefined
+                  }
+                  aria-label={`Gallons for ${name}`}
+                  /* NEVER PAST FULL (Pavan, 2026-10-26) — held to what the
+                     tank has room for on the planned day. */
+                  onChange={(v) => update(i, { gal: capGal(asset, days, Number(v.replace(/[^0-9]/g, "")) || 0) })}
+                />
+              </td>
               <td className="px-3">
-                <span className="flex ">
+                <span className="flex justify-end">
                   <Checkbox
                     checked={l.topOff}
                     onCheckedChange={(c) => update(i, { topOff: c === true })}
@@ -333,21 +382,7 @@ export function LinesTable({
                   />
                 </span>
               </td>
-              <td className="relative p-0">
-                <TableCellInput
-                  value={l.topOff ? "" : l.gal ? String(l.gal) : ""}
-                  placeholder={l.topOff ? "Top-off" : "0"}
-                  /* THE SUGGESTION IS THE PLACEHOLDER (Pavan, 2026-10-20) —
-                     the tank full on the planned day; → takes it. */
-                  suggestion={live && !l.topOff && asset?.monitor && asset.capacity ? String(suggestedGal(asset, days)) : undefined}
-                  disabled={l.topOff}
-                  numeric
-                  suffix="gal"
-                  aria-label={`Gallons for ${name}`}
-                  onChange={(v) => update(i, { gal: Number(v.replace(/[^0-9]/g, "")) || 0 })}
-                />
-              </td>
-              <td className="relative p-0 text-center">
+              <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                 {/* A request needs a line, so the last row keeps no bin. */}
                 <TableRowRemove
                   aria-label={`Remove ${asset?.name || `line ${i + 1}`}`}
@@ -363,13 +398,14 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={live ? 6 : 5} className="px-3 text-sm text-muted-foreground">
+            <td colSpan={live ? 5 : 4} className="px-3 text-sm text-muted-foreground">
               Total
             </td>
             <td className="px-3 text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
             <td aria-hidden />
+            <td aria-hidden className="sticky right-0 z-10 border-l border-border bg-popover" />
           </tr>
         </tfoot>
       )}
@@ -940,9 +976,13 @@ export function OrderRequestSheet({
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(var(--fp-vh)-10.25rem)]">
           <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} fill />
           {!creating && ["Out for delivery", "Partial delivery", "Delivered", "Invoiced", "Paid"].includes(request.status) && (
-            <SummaryCard title="Trip">
-              <TripTimeline r={request} />
-            </SummaryCard>
+            /* A PLAIN RAIL CARD (Pavan, 2026-10-26) — ONE HIGHLIGHTED CARD PER
+               SHEET, and here it is the order summary. */
+            <RailCard title="Trip" icon={<Truck />}>
+              <div className="p-4">
+                <TripTimeline r={request} />
+              </div>
+            </RailCard>
           )}
           {!creating && <ActivityCard entries={request.audit} />}
         </aside>

@@ -105,5 +105,20 @@ export function check() {
     }
   }
 
+  /* ONE HIGHLIGHTED CARD PER SHEET (Pavan, 2026-10-26). The tinted
+     SummaryCard marks the ONE thing most worth seeing — the order summary,
+     what needs attention. A second one beside it splits the eye; every
+     other card is a plain RailCard. Two in a file means two can show. */
+  for (const file of filesUnder(SCAN, [".tsx"])) {
+    const src = read(file);
+    const hits = [...src.matchAll(/<SummaryCard\b/g)];
+    if (hits.length > 1) {
+      out.push(finding("L1", rel(file),
+        src.slice(0, hits[1].index).split("\n").length,
+        `${hits.length} highlighted SummaryCards in one sheet — keep the most important, make the rest RailCards`,
+        "ux UX-161 — one highlighted card per sheet"));
+    }
+  }
+
   return out;
 }

@@ -1002,7 +1002,7 @@ export const REQUEST_COLUMNS: {
   /* THE TANKS' READINGS, IN THE ORDER'S ROW (Pavan, 2026-10-21 — trial of
      bringing the nested layer up; see OrdersScreen's TANK_LAYOUT). */
   { key: "level", label: "Current level", width: 150 },
-  { key: "fulfill", label: "On fulfilment", width: 140 },
+  { key: "fulfill", label: "On fulfillment", width: 140 },
   { key: "daysToEmpty", label: "Days to empty", width: 130 },
   { key: "battery", label: "Battery", width: 110 },
   { key: "date", label: "Planned date", width: 165, sortable: true },
@@ -1356,10 +1356,17 @@ export const galAtDelivery = (a: Asset, days: number) => Math.max(0, galNow(a) -
 /** Fill to full on the delivery day, to the nearest 10 gal. */
 export const suggestedGal = (a: Asset, days: number) =>
   Math.max(0, Math.round((a.capacity - galAtDelivery(a, days)) / 10) * 10);
-/* NOT CAPPED (Pavan, 2026-10-22): 1,200 gal into a 1,000 gal tank reads
-   120% — the overload is the figure, not hidden behind "full". */
+/** THE MOST A MONITORED TANK CAN TAKE on the delivery day — its room then. */
+export const maxGal = (a: Asset, days: number) => Math.max(0, a.capacity - galAtDelivery(a, days));
+/** A typed quantity, held to what fits (Pavan, 2026-10-26): with a monitor and
+    a capacity, nobody can order past full. */
+export const capGal = (a: Asset | undefined, days: number, gal: number) =>
+  a?.monitor && a.capacity ? Math.min(gal, maxGal(a, days)) : gal;
+/* NEVER PAST 100% (Pavan, 2026-10-26 — replaces the 2026-10-22 "not capped"):
+   with a monitor and a capacity the quantity is held to what fits, so the
+   level on fulfillment tops out at full, any which way. */
 export const pctAfterDelivery = (a: Asset, days: number, gal: number, topOff: boolean) =>
-  topOff ? 100 : Math.round(((galAtDelivery(a, days) + gal) / a.capacity) * 100);
+  topOff ? 100 : Math.min(100, Math.round(((galAtDelivery(a, days) + gal) / a.capacity) * 100));
 
 /**
  * WHEN THE ORDER WAS SENT TO THE TENANT (Pavan, 2026-10-19) — shown under its

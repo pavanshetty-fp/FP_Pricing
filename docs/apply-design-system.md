@@ -888,7 +888,7 @@ opens it **one layer down**, in the DS treatment (`tables-layout/DataTable`;
 **Stacked lines instead of a nested layer (Pavan, 2026-10-21).** Where a record's
 children are few and short (a Portal order's tanks), they are not nested: each child
 is a line INSIDE the record's row, and the child columns (tank, product, quantity,
-level, on fulfilment, days to empty, battery) line up line for line; the record's
+level, on fulfillment, days to empty, battery) line up line for line; the record's
 own cells show once, at the TOP of the row, level with the first child line
 (ListTable `alignTop`). Chosen over one band per child.
 

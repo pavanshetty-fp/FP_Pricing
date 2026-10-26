@@ -15,6 +15,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 
 /*
@@ -97,6 +98,10 @@ export interface TableCellSelectProps {
     taken?: string[];
     onApply: (picked: string[]) => void;
   };
+  /** A quiet mark at the end of an option — as TableCellCombobox (2026-10-26). */
+  optionTag?: (option: string) => React.ReactNode;
+  /** Category tabs above the list — as TableCellCombobox (2026-10-26). */
+  groups?: { label: string; has: (option: string) => boolean }[];
 }
 
 /**
@@ -118,15 +123,21 @@ export function TableCellSelect({
   "aria-label": ariaLabel,
   multiple,
   autoFocus,
+  optionTag,
+  groups,
 }: TableCellSelectProps) {
   const [open, setOpen] = React.useState(false);
   const showSearch = options.length >= searchThreshold;
+  const [group, setGroup] = React.useState(-1);
+  const shown = group < 0 || !groups?.[group] ? options : options.filter(groups[group].has);
   /* THE TICKS ARE THE POPOVER'S, not the record's. Nothing is written until
      Apply, so closing the list without pressing it changes nothing — which is
      the difference between choosing and having chosen. */
+  /* A FILLED ROW opens with its own value ticked (2026-10-26). */
   const [picked, setPicked] = React.useState<string[]>([]);
   React.useEffect(() => {
-    if (!open) setPicked([]);
+    setPicked(open && value && multiple ? [value] : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const toggle = (opt: string) =>
     setPicked((prev) =>
@@ -166,13 +177,35 @@ export function TableCellSelect({
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
+      <PopoverContent align="start" className={cn("p-0", groups || optionTag ? "w-80" : "w-64")}>
         <Command>
           {showSearch && <CommandInput placeholder="Search…" />}
+          {groups && groups.length > 0 && (
+            <div role="tablist" aria-label="Show" className="flex overflow-x-auto border-b border-border px-1">
+              {[{ label: "All" }, ...groups].map((g, gi) => {
+                const on = gi - 1 === group;
+                return (
+                  <button
+                    key={g.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setGroup(gi - 1)}
+                    className={cn(
+                      "-mb-px border-b-2 px-2.5 py-2 text-xs whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      on ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <CommandList>
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>
-              {options.map((opt) => {
+              {shown.map((opt) => {
                 const used = Boolean(multiple?.taken?.includes(opt)) && opt !== value;
                 return (
                 <CommandItem
@@ -198,7 +231,8 @@ export function TableCellSelect({
                       className="pointer-events-none"
                     />
                   )}
-                  {opt}
+                  <span className="min-w-0 flex-1 truncate">{opt}</span>
+                  {optionTag?.(opt)}
                 </CommandItem>
                 );
               })}
@@ -263,6 +297,12 @@ export interface TableCellInputProps {
    */
   autoFocus?: boolean;
   "aria-label"?: string;
+  /** THE MOST IT TAKES (numeric) — a figure typed past it is held to it as it
+      is typed, not after (Pavan, 2026-10-26: no order past a tank's room). */
+  max?: number;
+  /** WHY IT STOPPED (Pavan, 2026-10-26) — said under the cell the moment a
+      typed figure is held to `max`, until the figure fits or the cell is left. */
+  maxNote?: string;
 }
 
 /** A free-text cell filling the whole td. Same states as the select. */
@@ -277,7 +317,10 @@ export function TableCellInput({
   prefix,
   "aria-label": ariaLabel,
   autoFocus,
+  max,
+  maxNote,
 }: TableCellInputProps) {
+  const [capped, setCapped] = React.useState(false);
   /*
     WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
 
@@ -310,7 +353,7 @@ export function TableCellInput({
     cell's input still fills the width, which is where typing should start.
   */
   const moneyish = Boolean(numeric && prefix);
-  return (
+  const cell = (
     <label
       className={cn(
         "absolute inset-0 flex cursor-text items-center px-3 transition-colors",
@@ -327,10 +370,17 @@ export function TableCellInput({
         type="text"
         value={shown}
         onChange={(e) => {
-          setTyped(e.target.value);
-          onChange(e.target.value);
+          let v = e.target.value;
+          const over = numeric && max != null && Number(v.replace(/[^0-9.]/g, "")) > max;
+          if (over) v = String(max);
+          setCapped(Boolean(over));
+          setTyped(v);
+          onChange(v);
         }}
-        onBlur={() => setTyped(null)}
+        onBlur={() => {
+          setTyped(null);
+          setCapped(false);
+        }}
         onKeyDown={(e) => {
           if (suggestion && e.key === "ArrowRight" && shown === "") {
             e.preventDefault();
@@ -353,6 +403,17 @@ export function TableCellInput({
         <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span>
       )}
     </label>
+  );
+  if (!maxNote) return cell;
+  return (
+    <TooltipProvider>
+      <Tooltip open={capped}>
+        <TooltipTrigger asChild>{cell}</TooltipTrigger>
+        <TooltipContent side="bottom" align="start" className="max-w-64">
+          {maxNote}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -539,6 +600,17 @@ export interface TableCellComboboxProps {
   multiple?: {
     onApply: (picked: string[]) => void;
   };
+  /**
+   * A QUIET MARK AT THE END OF AN OPTION (Pavan, 2026-10-26) — for the
+   * exception only, e.g. "No monitor" on the one asset in ten without one.
+   */
+  optionTag?: (option: string) => React.ReactNode;
+  /**
+   * CATEGORY TABS ABOVE THE LIST (Pavan, 2026-10-26) — "All" first, then each
+   * named group; picking one narrows the list before the search does. The
+   * saved-views tab style: plain words, the chosen one underlined.
+   */
+  groups?: { label: string; has: (option: string) => boolean }[];
 }
 
 /**
@@ -562,19 +634,25 @@ export function TableCellCombobox({
   "aria-label": ariaLabel,
   autoFocus,
   multiple,
+  optionTag,
+  groups,
 }: TableCellComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  /* NOTHING IS WRITTEN UNTIL APPLY — as in TableCellSelect. */
+  const [group, setGroup] = React.useState(-1);
+  const inGroup = (o: string) => group < 0 || !groups?.[group] || groups[group].has(o);
+  /* NOTHING IS WRITTEN UNTIL APPLY — as in TableCellSelect. A FILLED ROW
+     opens with its own value ticked (2026-10-26), so adding more keeps it. */
   const [picked, setPicked] = React.useState<string[]>([]);
   React.useEffect(() => {
-    if (!open) setPicked([]);
+    setPicked(open && value ? [value] : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const toggle = (v: string) =>
     setPicked((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
 
-  const matches = options.filter((o) =>
-    o.toLowerCase().includes(query.trim().toLowerCase())
+  const matches = options.filter(
+    (o) => inGroup(o) && o.toLowerCase().includes(query.trim().toLowerCase())
   );
   const typedIsNew =
     Boolean(creatable) &&
@@ -618,13 +696,35 @@ export function TableCellCombobox({
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
+      <PopoverContent align="start" className={cn("p-0", groups || optionTag ? "w-80" : "w-64")}>
         <Command shouldFilter={false}>
           <CommandInput
             value={query}
             onValueChange={setQuery}
             placeholder={creatable ? "Type or pick…" : "Search…"}
           />
+          {groups && groups.length > 0 && (
+            <div role="tablist" aria-label="Show" className="flex overflow-x-auto border-b border-border px-1">
+              {[{ label: "All" }, ...groups].map((g, gi) => {
+                const on = gi - 1 === group;
+                return (
+                  <button
+                    key={g.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setGroup(gi - 1)}
+                    className={cn(
+                      "-mb-px border-b-2 px-2.5 py-2 text-xs whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      on ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <CommandList>
             {typedIsNew && (
               <CommandGroup>
@@ -675,6 +775,7 @@ export function TableCellCombobox({
                         />
                       )}
                       <span className="flex-1 truncate">{o}</span>
+                      {optionTag?.(o)}
                       {!multiple && (used || o === value) && (
                         <Check className="size-4 shrink-0" />
                       )}

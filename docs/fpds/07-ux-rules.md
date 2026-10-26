@@ -1032,6 +1032,8 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 ---
 
+**UX-161. One highlighted card per sheet.** The tinted SummaryCard marks the single most important read-out — the order or quote summary, or what needs attention — and nothing else wears it; every other rail card (trip, records, notes, activity, the order in short) is a plain RailCard. — *"The highlighted card should be only one… the one that is the most important in terms of seeing information."* (Pavan, 2026-10-26) · Check: eval `sheets` flags a file with two.
+
 ## Index
 
 | Id | Rule |
@@ -1196,3 +1198,4 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-158 | A toast's title is the act |
 | UX-159 | Every act announces itself with a toast; typing does not — the autosave earns the chip |
 | UX-160 | Failure and error paths are not designed yet (today every toast is a success) |
+| UX-161 | One highlighted card per sheet — the most important read-out; the rest are plain RailCards |

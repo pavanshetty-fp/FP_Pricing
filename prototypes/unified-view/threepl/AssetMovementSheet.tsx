@@ -1510,7 +1510,7 @@ export function AssetMovementSheet({
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Ownership status</TableRequiredLabel>
                     </th>
-                    <th aria-hidden />
+                    <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
                   </tr>
                 </thead>
                 <tbody>
@@ -1574,7 +1574,7 @@ export function AssetMovementSheet({
                           onChange={(v) => setPeripheral(i, { ownership: v })}
                         />
                       </td>
-                      <td className="relative p-0 text-center">
+                      <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                         <TableRowRemove
                           aria-label={`Remove ${p.name || `peripheral ${i + 1}`}`}
                           disabled={draft.peripherals.length === 1}
@@ -1675,7 +1675,7 @@ export function AssetMovementSheet({
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Unit</TableRequiredLabel>
                     </th>
-                    <th aria-hidden />
+                    <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
                   </tr>
                 </thead>
                 <tbody>
@@ -1713,7 +1713,7 @@ export function AssetMovementSheet({
                           onChange={(v) => setItem(i, { unit: v })}
                         />
                       </td>
-                      <td className="relative p-0 text-center">
+                      <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                         <TableRowRemove
                           aria-label={`Remove ${it.name || `item ${i + 1}`}`}
                           disabled={draft.customItems.length === 1}

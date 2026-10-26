@@ -397,7 +397,7 @@ function LineTable({
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
             )}
-            {!readOnly && <th aria-hidden />}
+            {!readOnly && <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />}
           </tr>
         </thead>
         <tbody>
@@ -510,7 +510,7 @@ function LineTable({
                 </td>
               )}
               {!readOnly && (
-                <td className="relative p-0 text-center">
+                <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                   <TableRowRemove
                     aria-label={`Remove ${r.name || `${nameLabel.toLowerCase()} ${i + 1}`}`}
                     onRemove={() => onRemove(i)}
@@ -2016,7 +2016,7 @@ export function ServiceOrderSheet({
                     often it is not a fault. Optional. */}
                 <TableRequiredLabel>Description</TableRequiredLabel>
               </th>
-              <th aria-hidden />
+              <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
             </tr>
           </thead>
           <tbody>
@@ -2115,7 +2115,7 @@ export function ServiceOrderSheet({
                     onChange={(v) => setAssetLine(i, { fault: v })}
                   />
                 </td>
-                <td className="relative p-0 text-center">
+                <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                   {/* QUIET UNTIL THE ROW IS REACHED FOR, like every other row
                       delete in this app. The last row keeps none — an empty
                       table has no way back but the add. */}
@@ -2171,7 +2171,7 @@ export function ServiceOrderSheet({
                         onChange={(v) => setSub({ fault: v })}
                       />
                     </td>
-                    <td className="relative p-0 text-center">
+                    <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                       {!assetsLocked && (
                         <TableRowRemove
                           aria-label={`Remove ${sj.workType || "work type"} from ${row.assetName || `asset ${i + 1}`}`}

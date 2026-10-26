@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert, ChevronDown } from "lucide-react";
 import * as React from "react";
 import { Pill } from "@/components/ui/pill";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -54,12 +54,35 @@ export interface BreakdownCardProps {
   /** WARNINGS, after the total (Pavan, 2026-10-20) — red, an alert mark each:
       what the figure means will go wrong. */
   warnings?: string[];
+  /** THE ANSWER IN ONE SENTENCE, under the title (Pavan, 2026-10-26). */
+  summary?: string;
+  /** THE WORKING ON ASK (Pavan, 2026-10-26) — the rows and total stay folded
+      behind "Show breakdown" until pressed. */
+  collapsible?: boolean;
 }
 
-export function BreakdownCard({ title, rows, table, total, warnings }: BreakdownCardProps) {
+export function BreakdownCard({ title, rows, table, total, warnings, summary, collapsible }: BreakdownCardProps) {
+  const [shown, setShown] = React.useState(!collapsible);
   return (
     <div className="flex w-full flex-col gap-4">
       <h4 className="text-base font-semibold">{title}</h4>
+      {summary && <p className="text-sm text-foreground">{summary}</p>}
+      {collapsible && (
+        <button
+          type="button"
+          aria-expanded={shown}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShown((v) => !v);
+          }}
+          className="flex items-center gap-1 self-start rounded-sm text-sm font-medium text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          {shown ? "Hide breakdown" : "Show breakdown"}
+          <ChevronDown className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
+        </button>
+      )}
+      {shown && (
+      <>
       <div className="border-t border-dashed border-border" />
 
       {table && (
@@ -140,6 +163,8 @@ export function BreakdownCard({ title, rows, table, total, warnings }: Breakdown
             <span className="tabular-nums">{total.value}</span>
           </div>
         </>
+      )}
+      </>
       )}
 
       {warnings && warnings.length > 0 && (

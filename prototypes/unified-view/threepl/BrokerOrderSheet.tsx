@@ -1,7 +1,7 @@
 import * as React from "react";
 import { siteTank } from "./tankMonitors";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, LevelReading } from "../../customer-portal/TankLevel";
-import { daysUntil, suggestedGal } from "../../customer-portal/orders";
+import { capGal, daysUntil, maxGal, suggestedGal } from "../../customer-portal/orders";
 import { DeliveryWindowTimeline, type TimeSpan } from "../DeliveryWindowTimeline";
 import { RecurringOrderSection } from "../RecurringOrderSection";
 import { decodeFrequency, encodeFrequency, frequencyFromLegacy, scheduleSummary, type RuleFrequency } from "./RuleFrequency";
@@ -452,6 +452,9 @@ function Fact({
 }
 
 const NOT_SET = <span className="text-muted-foreground">Not set</span>;
+
+/** A read unit's heading — the rail cards' voice (2026-10-26). */
+const READ_HEAD = "text-sm font-medium";
 
 /** Four across, because these are short answers and a column of them is a list. */
 function FactGrid({ children }: { children: React.ReactNode }) {
@@ -917,10 +920,15 @@ function BoxGallons({
   value,
   onChange,
   "aria-label": ariaLabel,
+  autoFocus,
+  onDone,
 }: {
   value: number;
   onChange: (v: number) => void;
   "aria-label": string;
+  autoFocus?: boolean;
+  /** Leaving the box (blur, Enter, Escape) — the caller folds it back. */
+  onDone?: () => void;
 }) {
   const [typed, setTyped] = React.useState<string | null>(null);
   return (
@@ -934,11 +942,70 @@ function BoxGallons({
           setTyped(e.target.value);
           onChange(num(e.target.value));
         }}
-        onBlur={() => setTyped(null)}
+        autoFocus={autoFocus}
+        onBlur={() => {
+          setTyped(null);
+          onDone?.();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "Escape") (e.currentTarget as HTMLInputElement).blur();
+        }}
         className="w-auto min-w-8 bg-transparent text-sm tabular-nums text-foreground outline-none field-sizing-content"
       />
       <span className="text-xs text-muted-foreground">gal</span>
     </label>
+  );
+}
+
+/**
+ * DELIVERED, READ UNTIL ADJUSTED (Pavan, 2026-10-26) — the figure, and a
+ * pencil beside it that says what pressing it is for; pressed, the figure
+ * becomes the box, and leaving the box folds it back.
+ */
+function DeliveredGallons({
+  value,
+  onChange,
+  product,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  product: string;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  if (editing)
+    return (
+      <BoxGallons
+        value={value}
+        autoFocus
+        aria-label={`Gallons delivered for ${product}`}
+        onChange={onChange}
+        onDone={() => setEditing(false)}
+      />
+    );
+  return (
+    /* THE PENCIL BEFORE THE FIGURE (Pavan, 2026-10-26), so the figure ends
+       on the same right edge as Requested's above it. */
+    <span className="flex items-center justify-end gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Make adjustments to the gallons delivered for ${product}`}
+            onClick={() => setEditing(true)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Pencil />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-56">
+          <span className="block font-medium">Make adjustments</span>
+          <span className="block opacity-80">If requested and delivered were different, adjust what was delivered.</span>
+        </TooltipContent>
+      </Tooltip>
+      <span className="text-sm tabular-nums text-foreground">{value.toLocaleString()} gal</span>
+    </span>
   );
 }
 
@@ -984,7 +1051,8 @@ function ChargeRow({
    * rate is what is being read and the gallons are the working.
    */
   per?: string;
-  total: string;
+  /** Omit when the field IS the value — the Delivered gallons (2026-10-26). */
+  total?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -1038,9 +1106,11 @@ function ChargeRow({
           {per}
         </span>
       )}
-      <dd className="ml-auto pl-2 text-sm tabular-nums text-foreground">
-        {total}
-      </dd>
+      {total != null && (
+        <dd className="ml-auto pl-2 text-sm tabular-nums text-foreground">
+          {total}
+        </dd>
+      )}
     </div>
   );
 }
@@ -1412,10 +1482,25 @@ export function BrokerOrderSheet({
     railCleanup.current = null;
     const port = rail?.closest<HTMLElement>(".overflow-auto");
     if (!rail || !port) return;
-    const fit = () => rail.style.setProperty("--rail-max", `${port.clientHeight}px`);
+    /* …AND NEVER PAST THE FORM BESIDE IT (Pavan, 2026-10-26): the rail ends
+       where the form (and its foot room) ends, so its last card meets the
+       full rule above Pricing; what doesn't fit scrolls inside the rail. */
+    /* …LEVEL WITH THE FORM'S LAST UNIT (Pavan, 2026-10-26): the rail's last
+       card bottoms out where the last unit on the left does (Vendor, Load
+       order), the form's 40px foot room below both, then the rule. `mb-10`
+       stops the pinned rail there; the cap keeps a short form's rail from
+       running past it. */
+    const form = rail.previousElementSibling as HTMLElement | null;
+    const fit = () => {
+      const foot = form ? parseFloat(getComputedStyle(form).paddingBottom) || 0 : 0;
+      const formH = form ? form.offsetHeight - foot : port.clientHeight;
+      rail.style.setProperty("--rail-max", `${Math.min(port.clientHeight, formH)}px`);
+      rail.style.marginBottom = `${foot}px`;
+    };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(port);
+    if (form) ro.observe(form);
     /* ITS OWN SCROLL, NEVER THE FORM'S. A wheel over the rail moves the rail
        or nothing — even when the rail is short enough not to scroll, or has
        hit its end, the form beside it stays where it is. */
@@ -1850,6 +1935,11 @@ export function BrokerOrderSheet({
   const plannedKey = draft.plannedDate ? dateKeyOf(draft.plannedDate) : "";
   const plannedDays = daysUntil(plannedKey);
 
+  /** Does this asset at the order's ship-to report its level? */
+  const hasMonitor = (name: string) => {
+    const a = siteAssets.find((x) => x.name === name);
+    return a ? siteTank(draft.shipTo, a.name, a.product, a.rental).monitor : true;
+  };
   const siteAssets = (() => {
     const listed = site?.assets ?? [];
     const extra = draft.lines
@@ -3785,15 +3875,17 @@ export function BrokerOrderSheet({
                       }
                     />
                     {deliveredEditable && (
-                      <ChargeRow
-                        label="Delivered"
-                        total={`${g.toLocaleString()} gal`}
-                      >
-                        <BoxGallons
-                          value={g}
-                          aria-label={`Gallons delivered for ${l.product}`}
-                          onChange={(v) => setLine(i, { deliveredGal: v })}
-                        />
+                      /* THE FIGURE, ADJUSTED ON ASK (Pavan, 2026-10-26) — read
+                         on the right edge where Requested's figure sits, a
+                         pencil to open the box. */
+                      <ChargeRow label="Delivered">
+                        <span className="ml-auto">
+                          <DeliveredGallons
+                            value={g}
+                            product={l.product}
+                            onChange={(v) => setLine(i, { deliveredGal: v })}
+                          />
+                        </span>
                       </ChargeRow>
                     )}
                   </dl>
@@ -3998,10 +4090,10 @@ export function BrokerOrderSheet({
             column's total belongs at the bottom of that column, on the same
             grid as the figures above it. The bar keeps the comparison. */}
         {/* NO FILL ON A TOTAL (2026-10-05). */}
-        <div className="flex min-w-0 items-center border-y border-border px-4 py-3 lg:pr-6">
+        <div className="flex min-w-0 items-center border-t border-border px-4 py-3 lg:pr-6">
           <span className="text-sm font-medium text-foreground">Total</span>
         </div>
-        <div className="flex min-w-0 items-center border-y border-border px-4 py-3 lg:border-l lg:border-border lg:px-4">
+        <div className="flex min-w-0 items-center border-t border-border px-4 py-3 lg:border-l lg:border-border lg:px-4">
           <span className="text-sm text-muted-foreground">
             {/* ESTIMATED UNTIL THE JOB IS DONE (Pavan, 2026-10-06) — finalizing
                 picks the vendor; the figures can still move. */}
@@ -4013,7 +4105,7 @@ export function BrokerOrderSheet({
             key={c.id}
             data-blink={c.editable ? VENDOR_COST_COLUMN_ID : undefined}
             className={cn(
-              "flex items-center justify-between gap-3 border-y border-border px-4 py-3 lg:border-l lg:border-border lg:px-6",
+              "flex items-center justify-between gap-3 border-t border-border px-4 py-3 lg:border-l lg:border-border lg:px-6",
             )}
           >
             {/* FINALIZE, IN THE PARTNER'S OWN COLUMN, beside the total it is
@@ -4056,7 +4148,7 @@ export function BrokerOrderSheet({
             </div>
           </div>
         ))}
-        <div className="flex items-center justify-end border-y border-border px-4 py-3 lg:border-l lg:border-border lg:pr-4 lg:pl-6">
+        <div className="flex items-center justify-end border-t border-border px-4 py-3 lg:border-l lg:border-border lg:pr-4 lg:pl-6">
           <span className="text-base font-semibold tabular-nums text-foreground">
             {money(billed)}
           </span>
@@ -4634,7 +4726,9 @@ export function BrokerOrderSheet({
             share a column they look identical, and the reader stops knowing
             which is which. */}
         <div className={cn("grid items-start gap-6", !inCreation && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
-        <div className="flex min-w-0 flex-col gap-10">
+        {/* THE FORM'S FOOT ROOM (2026-10-26) — 40px under its last unit, down
+            to the full rule above Pricing; the rail is cut to the same line. */}
+        <div className={cn("flex min-w-0 flex-col gap-10", !inCreation && showPricing && "lg:pb-10")}>
       {/* THE STAGE TRACK, IN THE FORM'S OWN COLUMN (Pavan, 2026-10-05): the
           sheet reads as three columns — steps, form, cards — and the track
           belongs to the middle one, end to end. Pinned while the form
@@ -5244,23 +5338,33 @@ export function BrokerOrderSheet({
               chip attached to the squared bottom-left corner. */}
           <div>
             {/* NO BORDER AND NO RADIUS OF ITS OWN — the card supplies both, and
-                its `overflow-hidden` clips these corners for us. */}
-            <div>
-              <table className="w-full table-fixed border-collapse">
+                its `overflow-hidden` clips these corners for us. SIDEWAYS
+                SCROLL when the sheet is narrower than the columns (2026-10-26). */}
+            <div className="overflow-x-auto">
+              <table
+                className="w-full table-fixed border-collapse"
+                style={{ minWidth: "calc(1252px * var(--fp-scale))" }}
+              >
                 {/* NARROW BY DESIGN (Pavan, 2026-10-15): names are short, a
-                    quantity is six digits. TOP OFF, THEN THE QUANTITY LAST —
-                    beside the number it replaces (Pavan, 2026-10-20 — DS ui §10i). */}
+                    quantity is six digits. ON FULFILMENT RIGHT BEFORE THE
+                    QUANTITY, TOP OFF LAST (Pavan, 2026-10-26 — this sheet
+                    only): the level the quantity lands at sits beside it, and
+                    the top-off tick closes the row, right-aligned under its
+                    select-all. */}
                 <colgroup>
-                  <col />
-                  <col />
+                  {/* ROOM TO BREATHE (Pavan, 2026-10-26): every column its own
+                      width, the table scrolling sideways when the sheet is
+                      narrower than all of them, rather than squeezed. */}
+                  <col className="w-[calc(240px*var(--fp-scale))]" />
+                  <col className="w-[calc(220px*var(--fp-scale))]" />
                   {/* THE TANK'S MONITOR READINGS (Pavan, 2026-10-20) — as on
-                      the portal's order: level now, on fulfilment, days to
+                      the portal's order: level now, on fulfillment, days to
                       empty. */}
-                  <col className="w-[calc(112px*var(--fp-scale))]" />
-                  <col className="w-[calc(124px*var(--fp-scale))]" />
-                  <col className="w-[calc(108px*var(--fp-scale))]" />
-                  <col className="w-[calc(104px*var(--fp-scale))]" />
-                  <col className="w-[calc(110px*var(--fp-scale))]" />
+                  <col className="w-[calc(150px*var(--fp-scale))]" />
+                  <col className="w-[calc(140px*var(--fp-scale))]" />
+                  <col className="w-[calc(170px*var(--fp-scale))]" />
+                  <col className="w-[calc(150px*var(--fp-scale))]" />
+                  <col className="w-[calc(130px*var(--fp-scale))]" />
                   <col className="w-[calc(52px*var(--fp-scale))]" />
                 </colgroup>
                 <thead>
@@ -5279,17 +5383,20 @@ export function BrokerOrderSheet({
                       <TableRequiredLabel>Current level</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Days to empty</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>
                         <FulfilmentHead />
                       </TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Days to empty</TableRequiredLabel>
+                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                     </th>
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Its select-all sits beside the label; every row's
                         tick is right-aligned under it. */}
-                    <th className="px-3 py-2.5">
+                    <th className="px-3 py-2.5 text-left" data-top-off-last>
                       <span className="flex items-center justify-between gap-2">
                         <TableRequiredLabel>Top off</TableRequiredLabel>
                         <Checkbox
@@ -5305,10 +5412,10 @@ export function BrokerOrderSheet({
                         />
                       </span>
                     </th>
-                    <th className="px-3 py-2.5">
-                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-                    </th>
-                    <th aria-hidden />
+                    {/* THE DELETE LAYER (Pavan, 2026-10-26) — the remove column is pinned to
+                        the table's right edge and the rest scroll behind it.
+                        No heading; its cells only show the bin on hover. */}
+                    <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
                   </tr>
                 </thead>
                 <tbody>
@@ -5332,7 +5439,8 @@ export function BrokerOrderSheet({
                           )}
                           <TableCellCombobox
                             value={line.asset}
-                            options={siteAssets.map((a) => a.name)}
+                            /* EACH NAME ONCE — a site can list one tank under two products. */
+                            options={[...new Set(siteAssets.map((a) => a.name))]}
                             /* An asset already on another line cannot be added
                                twice — one asset, one quantity. */
                             taken={draft.lines.map((l) => l.asset)}
@@ -5341,6 +5449,19 @@ export function BrokerOrderSheet({
                             }
                             disabled={!draft.shipTo}
                             creatable
+                            /* THE EXCEPTION IS MARKED, NOT THE RULE (Pavan,
+                               2026-10-26) — nine in ten tanks report a level,
+                               so only the ones that don't carry a tag, and the
+                               list can be narrowed to either kind first. */
+                            optionTag={(name) =>
+                              hasMonitor(name) ? null : (
+                                <Pill className="shrink-0">No monitor</Pill>
+                              )
+                            }
+                            groups={[
+                              { label: "Tank monitor", has: (name) => hasMonitor(name) },
+                              { label: "No tank monitor", has: (name) => !hasMonitor(name) },
+                            ]}
                             autoFocus={i === focusLine && Boolean(draft.shipTo)}
                             aria-label={`Asset for line ${i + 1}`}
                             /* Picking a known asset fills its product and its
@@ -5354,32 +5475,33 @@ export function BrokerOrderSheet({
                                 rental: known?.rental ?? false,
                               });
                             }}
-                            /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a
-                               blank row, the first fills it, each other gets
-                               its own line. */
-                            multiple={
-                              line.asset
-                                ? undefined
-                                : {
-                                    onApply: (names) =>
-                                      setDraft((d) => {
-                                        if (!d) return d;
-                                        const lineOf = (name: string) => {
-                                          const known = siteAssets.find((a) => a.name === name);
-                                          return {
-                                            ...line,
-                                            charges: defaultLineCharges(),
-                                            asset: name,
-                                            product: known?.product ?? line.product,
-                                            rental: known?.rental ?? false,
-                                          };
-                                        };
-                                        const lines = [...d.lines];
-                                        lines.splice(i, 1, ...names.map(lineOf));
-                                        return { ...d, lines };
-                                      }),
-                                  }
-                            }
+                            /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from
+                               ANY row, blank or filled (Pavan, 2026-10-26: the
+                               tabs must not cost the multi-pick). The row's own
+                               asset starts ticked; kept, the row stays as it is
+                               and each other pick gets its own line under it;
+                               unticked, the first pick takes the row. */
+                            multiple={{
+                              onApply: (names) =>
+                                setDraft((d) => {
+                                  if (!d) return d;
+                                  const lineOf = (name: string) => {
+                                    const known = siteAssets.find((a) => a.name === name);
+                                    return {
+                                      ...line,
+                                      charges: defaultLineCharges(),
+                                      asset: name,
+                                      product: known?.product ?? line.product,
+                                      rental: known?.rental ?? false,
+                                    };
+                                  };
+                                  const lines = [...d.lines];
+                                  const keeps = Boolean(line.asset) && names.includes(line.asset);
+                                  const rest = keeps ? names.filter((n) => n !== line.asset) : names;
+                                  lines.splice(i, 1, ...(keeps ? [line] : []), ...rest.map(lineOf));
+                                  return { ...d, lines };
+                                }),
+                            }}
                           />
                         </td>
                         <td className="relative p-0">
@@ -5399,6 +5521,9 @@ export function BrokerOrderSheet({
                           {tank ? <LevelReading asset={tank} /> : <span className="text-sm text-muted-foreground">—</span>}
                         </td>
                         <td className="px-3">
+                          <DaysToEmpty asset={tank} days={plannedDays} />
+                        </td>
+                        <td className="px-3">
                           {tank ? (
                             <AfterDelivery
                               asset={tank}
@@ -5409,24 +5534,10 @@ export function BrokerOrderSheet({
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="px-3">
-                          <DaysToEmpty asset={tank} days={plannedDays} />
-                        </td>
-                        {/* Checked = fill it. Unchecked = type a number. One
-                            control, so a row cannot claim both at once. */}
-                        <td className="px-3">
-                          <span className="flex ">
-                            <Checkbox
-                              checked={Boolean(line.topOff)}
-                              onCheckedChange={(c) => setTopOff(i, c === true)}
-                              aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                            />
-                          </span>
-                        </td>
                         <td className="relative p-0">
                           <TableCellInput
                             value={
-                              line.topOff ? "" : line.gal != null ? String(line.gal) : ""
+                              line.topOff ? "" : line.gal != null ? String(capGal(tank, plannedDays, line.gal)) : ""
                             }
                             placeholder={line.topOff ? "Top-off" : "0"}
                             /* THE SUGGESTION IS THE PLACEHOLDER — the tank full
@@ -5438,16 +5549,35 @@ export function BrokerOrderSheet({
                             }
                             disabled={line.topOff}
                             numeric
-                            suffix="gal"
+                            max={tank?.monitor && tank.capacity ? maxGal(tank, plannedDays) : undefined}
+                            maxNote={
+                              tank?.monitor && tank.capacity
+                                ? `${line.asset} has room for only ${maxGal(tank, plannedDays).toLocaleString()} gal on the planned day — more would overfill it.`
+                                : undefined
+                            }
                             aria-label={`Gallons for line ${i + 1}`}
+                            /* NEVER PAST FULL (Pavan, 2026-10-26) — held to
+                               what the tank has room for on the planned day.
+                               The header already says gal. */
                             onChange={(v) =>
                               setLine(i, {
-                                gal: Number(v.replace(/[^0-9]/g, "")) || null,
+                                gal: capGal(tank, plannedDays, Number(v.replace(/[^0-9]/g, "")) || 0) || null,
                               })
                             }
                           />
                         </td>
-                        <td className="relative p-0 text-center">
+                        {/* Checked = fill it. Unchecked = type a number. One
+                            control, so a row cannot claim both at once. */}
+                        <td className="px-3">
+                          <span className="flex justify-end">
+                            <Checkbox
+                              checked={Boolean(line.topOff)}
+                              onCheckedChange={(c) => setTopOff(i, c === true)}
+                              aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                            />
+                          </span>
+                        </td>
+                        <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                           <TableRowRemove
                             aria-label={`Remove ${line.asset || `asset line ${i + 1}`}`}
                             disabled={draft.lines.length === 1}
@@ -5471,7 +5601,7 @@ export function BrokerOrderSheet({
                   <tfoot>
                     <tr className="h-11 border-t border-border">
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-3 text-sm text-muted-foreground"
                       >
                         Total
@@ -5482,6 +5612,7 @@ export function BrokerOrderSheet({
                           : `${gal.toLocaleString()} gal`}
                       </td>
                       <td aria-hidden />
+                      <td aria-hidden className="sticky right-0 z-10 border-l border-border bg-popover" />
                     </tr>
                   </tfoot>
                 )}
@@ -5569,49 +5700,60 @@ export function BrokerOrderSheet({
           what the customer is billed is the broker's own business and is
           settled after the truck has been. */}
       {locked && (
-        <>
-          <SheetSection title="Order" variant="outline">
-            <FactGrid>
-              <Fact label="Job type">{draft.jobType}</Fact>
-              <Fact label="Order type">{draft.orderType}</Fact>
-              <Fact label="Customer">
-                {draft.customer || NOT_SET}
-                {draft.erpId && (
-                  <span className="block text-xs text-muted-foreground">
-                    {draft.erpId}
-                  </span>
-                )}
-              </Fact>
-              <Fact label="PO number">{draft.poNumber || NOT_SET}</Fact>
-              <Fact label="Ship-to" wide>
-                {draft.shipTo || NOT_SET}
-                {site && (
-                  <span className="block text-xs text-muted-foreground">
-                    {site.street}, {site.city}, {site.state} {site.zip}
-                  </span>
-                )}
-              </Fact>
-              <Fact label="Hub">{draft.hub || NOT_SET}</Fact>
-              <Fact label="Urgent">{draft.urgent ? "Yes" : "No"}</Fact>
-              <Fact label="Tags" wide>
-                {draft.tags.length > 0 ? (
-                  <span className="flex flex-wrap gap-1.5">
-                    {draft.tags.map((t) => (
-                      <Pill key={t}>
-                        {t}
-                      </Pill>
-                    ))}
-                  </span>
-                ) : (
-                  NOT_SET
-                )}
-              </Fact>
-            </FactGrid>
+        <div className="flex flex-col gap-6">
+          {/* THE RECORD, READ (Pavan, 2026-10-26) — its units closer together
+              (24px, not the form's 40) and named in the rail cards' voice:
+              14px medium, muted — the facts lead, not the headings. */}
+          <SheetSection title="Order" headingClassName={READ_HEAD} className="gap-2.5" variant="outline" flush>
+            {/* THREE GROUPS SIDE BY SIDE, RULED TOP TO BOTTOM (Pavan,
+                2026-10-26): what kind of order — who and where — its tags. */}
+            <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[1.2fr_1.4fr_0.8fr] lg:divide-x lg:divide-y-0">
+              <dl className="grid grid-cols-2 content-start gap-x-6 gap-y-4 p-4">
+                <Fact label="Job type">{draft.jobType}</Fact>
+                <Fact label="Order type">{draft.orderType}</Fact>
+                <Fact label="PO number">{draft.poNumber || NOT_SET}</Fact>
+                <Fact label="Urgent">{draft.urgent ? "Yes" : "No"}</Fact>
+              </dl>
+              <dl className="grid grid-cols-2 content-start gap-x-6 gap-y-4 p-4">
+                <Fact label="Customer">
+                  {draft.customer || NOT_SET}
+                  {draft.erpId && (
+                    <span className="block text-xs text-muted-foreground">
+                      {draft.erpId}
+                    </span>
+                  )}
+                </Fact>
+                <Fact label="Hub">{draft.hub || NOT_SET}</Fact>
+                <Fact label="Ship-to" wide>
+                  {draft.shipTo || NOT_SET}
+                  {site && (
+                    <span className="block text-xs text-muted-foreground">
+                      {site.street}, {site.city}, {site.state} {site.zip}
+                    </span>
+                  )}
+                </Fact>
+              </dl>
+              <dl className="flex flex-col gap-4 p-4">
+                <Fact label="Tags">
+                  {draft.tags.length > 0 ? (
+                    <span className="flex flex-wrap gap-1.5">
+                      {draft.tags.map((t) => (
+                        <Pill key={t}>
+                          {t}
+                        </Pill>
+                      ))}
+                    </span>
+                  ) : (
+                    NOT_SET
+                  )}
+                </Fact>
+              </dl>
+            </div>
           </SheetSection>
 
           {/* OFF UNLESS TURNED ON (Pavan, 2026-10-06) — see `useOrderFormFields`. */}
           {fields.poc && (
-          <SheetSection title="POC details" variant="outline">
+          <SheetSection title="POC details" headingClassName={READ_HEAD} className="gap-2.5" variant="outline">
             <FactGrid>
               <Fact label="Point of contact" wide>
                 {draft.primaryPoc || NOT_SET}
@@ -5643,7 +5785,7 @@ export function BrokerOrderSheet({
           </SheetSection>
           )}
 
-          <SheetSection title="Schedule" variant="outline">
+          <SheetSection title="Schedule" headingClassName={READ_HEAD} className="gap-2.5" variant="outline">
             <FactGrid>
               <Fact label="Planned delivery">
                 {draft.plannedDate ? DATE_FMT.format(draft.plannedDate) : NOT_SET}
@@ -5669,7 +5811,7 @@ export function BrokerOrderSheet({
           {/* THE TABLE STAYS A TABLE. What was ordered is read down a column,
               and turning four lines into a paragraph of facts would be the
               one place this view made something harder to read. */}
-          <SheetSection title="Delivery order" flush>
+          <SheetSection title="Delivery order" headingClassName={READ_HEAD} className="gap-2.5" flush>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-fp-table-header">
@@ -5742,7 +5884,7 @@ export function BrokerOrderSheet({
           {/* NO LOAD ORDER → NO UNIT; the banner at the top says it (Pavan,
               2026-10-06). */}
           {loadRows && (
-          <SheetSection title="Load order" flush>
+          <SheetSection title="Load order" headingClassName={READ_HEAD} className="gap-2.5" flush>
             {(
               <table className="w-full text-sm">
                 <thead>
@@ -5784,7 +5926,7 @@ export function BrokerOrderSheet({
             )}
           </SheetSection>
           )}
-        </>
+        </div>
       )}
 
 
@@ -5802,6 +5944,9 @@ export function BrokerOrderSheet({
       <SheetSection
         id={VENDOR_SECTION_ID}
         title="Vendor"
+        /* READ, IT SPEAKS AS THE OTHER READ UNITS (2026-10-26). */
+        headingClassName={locked ? READ_HEAD : undefined}
+        className={locked ? "gap-2.5" : undefined}
         flush
         action={vendorSettled ? undefined : partnerMenu}
         /* THE ADD HANGS OFF THE CARD — DS ui §10f. A BLOCK STOPS SENDING, NOT
@@ -6624,7 +6769,7 @@ export function BrokerOrderSheet({
              rail can outgrow the screen, and a pinned column taller than its
              scroller hides its own foot; capped at the scroller's height
              (`--rail-max`, measured) it scrolls itself instead. */
-          className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:max-h-(--rail-max) lg:overflow-y-auto lg:overscroll-contain lg:pb-10"
+          className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:max-h-(--rail-max) lg:overflow-y-auto lg:overscroll-contain"
         >
             {/* ── SUMMARY ──
                 IT SHOWS ITS FIGURES WHETHER OR NOT ANYBODY HAS QUOTED. Three
@@ -6893,19 +7038,11 @@ export function BrokerOrderSheet({
               </dl>
             </RailCard>
 
-            {/* ── ACTIVITY, LAST ──
-                It is the longest block and the one read least often, which is
-                exactly why it goes at the foot of the rail rather than behind
-                the header icon: in a column that scrolls with the form, "last"
-                costs nothing, and a drawer costs a click every time. */}
-            {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07) — moved to
-                ../SheetCards so every module's sheet draws this one. */}
-            <ActivityCard entries={order?.audit} />
-
             {/* ── NOTES, FROM THE START (Pavan, 2026-10-05) ──
                 The one card in the rail that is typed into: the gate code for
                 the driver and the note for nobody outside the building, as two
-                units in one card, below Activity. */}
+                units in one card — ABOVE Activity (Pavan, 2026-10-26): what
+                is typed into comes before the history nobody types. */}
             <RailCard title="Notes" icon={<StickyNote />}>
               <div className="p-4">
               <div className="flex flex-col gap-4">
@@ -6928,6 +7065,15 @@ export function BrokerOrderSheet({
               </div>
               </div>
             </RailCard>
+
+            {/* ── ACTIVITY, LAST ──
+                It is the longest block and the one read least often, which is
+                exactly why it goes at the foot of the rail rather than behind
+                the header icon: in a column that scrolls with the form, "last"
+                costs nothing, and a drawer costs a click every time. */}
+            {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07) — moved to
+                ../SheetCards so every module's sheet draws this one. */}
+            <ActivityCard entries={order?.audit} />
           </aside>
 
         )}        </div>
@@ -6951,6 +7097,11 @@ export function BrokerOrderSheet({
           which is how a price given on a call gets written down. Past Draft
           the unit is always there — the order exists, and what it is worth is
           a question anyone can ask of it. */}
+      {/* A FULL RULE BETWEEN THE RECORD AND ITS PRICING (Pavan, 2026-10-26)
+          — edge to edge (out through the sheet's 16px padding), right under
+          the form's 40px foot room and the rail's last card; the sheet's own
+          40px gap below it, to Pricing. */}
+      {showPricing && !inCreation && <div aria-hidden className="-mx-4 -mt-10 shrink-0 border-t border-border" />}
       {showPricing && pricingSections}
 
       {/* ── WHAT TRAVELS WITH THE ORDER ──────────────────────────────────

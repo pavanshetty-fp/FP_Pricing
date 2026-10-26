@@ -318,7 +318,7 @@ Customers (Ship-tos); Quotes (Products); 3PL › Directory.
 What a "+N" chip or a total is made of.
 
 ### Use when / Don't use when
-- Use behind any "+N" or figure that sums things (quantity, amount, level on fulfilment).
+- Use behind any "+N" or figure that sums things (quantity, amount, level on fulfillment).
 - Don't use as a general popover form.
 
 ### Anatomy
@@ -354,7 +354,7 @@ closed · open.
 By eye.
 
 ### Reference
-Customer Portal › Orders (level on fulfilment); Sales › Quotes (products).
+Customer Portal › Orders (level on fulfillment); Sales › Quotes (products).
 
 ---
 
@@ -798,7 +798,7 @@ no monitor · sufficient · moderate · low · urgent (blinking; steady with red
 
 ### Rules
 1. **Level is shown by color only, no band words.** `(2026-10-17)`
-2. **Separate cells, separate columns** (level, battery, days to empty, suggested, on fulfilment).
+2. **Separate cells, separate columns** (level, battery, days to empty, suggested, on fulfillment).
 3. **Urgent blinks and keeps blinking** — the tank is still nearly empty.
 
 ### Do / Don't

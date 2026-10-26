@@ -19,10 +19,13 @@ import {
 /*
   THE OVERVIEW (Pavan, 2026-10-13) — ONE card, two tiles ruled apart, after
   his "New subscriptions" reference: today's total — orders, and gallons to
-  be delivered — its change on the same weekday last week, and the term's
-  metric icon on the right (the trend line went, Pavan, 2026-10-20). How much is already delivered is in the details
-  sheet, not here (Pavan, 2026-10-13). Read-only; the one control is the
-  open icon in the corner, which brings up today's details.
+  be delivered — its change on the same weekday last week. How much is
+  already delivered is in the details sheet, not here (Pavan, 2026-10-13).
+
+  ICON LEADS, ARROW CLOSES, PER TILE (Pavan, 2026-10-26): the term's metric
+  icon on the left, as tall as the text beside it; the text as one block;
+  and each tile its own open arrow on the right, opening ITS sheet — today's
+  orders, or today's gallons.
 */
 
 const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "long" });
@@ -34,9 +37,8 @@ function Change({ now, then }: { now: number; then: number }) {
   return <TrendChip dir={d === 0 ? "same" : d > 0 ? "up" : "down"}>{d === 0 ? "Same" : `${Math.abs(d)}%`}</TrendChip>;
 }
 
-/* THE TERM'S ICON, NOT A TREND LINE (Pavan, 2026-10-20) — the dashboard
-   Schedule card's shape: figure, unit and change as one unit, the metric
-   icon beside it. */
+/* THE TERM'S ICON, NOT A TREND LINE (Pavan, 2026-10-20) — figure, unit and
+   change as one unit; the icon before the text, the open arrow after it. */
 function Tile({
   title,
   icon,
@@ -44,7 +46,7 @@ function Tile({
   unit,
   then,
   thenLabel,
-  className,
+  onOpen,
 }: {
   title: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -52,22 +54,30 @@ function Tile({
   unit: string;
   then: number;
   thenLabel: string;
-  className?: string;
+  onOpen: () => void;
 }) {
   return (
-    <section className={["flex min-w-0 flex-1 flex-col gap-1 px-4 py-3", className ?? ""].join(" ")}>
-      <h3 className="text-sm font-medium text-foreground">{title}</h3>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-3xl font-semibold tabular-nums text-foreground">{value.toLocaleString()}</span>
-            <span className="text-sm text-muted-foreground">{unit}</span>
-            <Change now={value} then={then} />
-          </p>
-          <p className="text-xs text-muted-foreground">compared to {thenLabel}</p>
-        </div>
-        <MetricIcon icon={icon} />
+    <section className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3">
+      <MetricIcon icon={icon} size="lg" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-3xl font-semibold tabular-nums text-foreground">{value.toLocaleString()}</span>
+          <span className="text-sm text-muted-foreground">{unit}</span>
+          <Change now={value} then={then} />
+        </p>
+        <p className="text-xs text-muted-foreground">compared to {thenLabel}</p>
       </div>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label={`View ${title.toLowerCase()}`}
+        title={`View ${title.toLowerCase()}`}
+        onClick={onOpen}
+        className="self-start rounded-full"
+      >
+        <ArrowUpRight />
+      </Button>
     </section>
   );
 }
@@ -77,7 +87,8 @@ export function OverviewCards({
   onDetails,
 }: {
   rows: OrderRequest[];
-  onDetails: () => void;
+  /** Opens today's sheet on the tile's own subject. */
+  onDetails: (about: "orders" | "gallons") => void;
 }) {
   const st = todayStats(rows);
   const today = new Date();
@@ -88,10 +99,7 @@ export function OverviewCards({
   };
   const thenLabel = `last ${WEEKDAY.format(day(7))}`;
   return (
-    <div className="relative shrink-0 rounded-xl border border-border bg-fp-surface-1b">
-      {/* THE RULE IS BETWEEN THE TWO TILES ONLY — the corner button sat in
-          the same divided row and drew a second line along the card's right
-          edge (Pavan, 2026-10-14). */}
+    <div className="shrink-0 rounded-xl border border-border bg-fp-surface-1b">
       <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
       <Tile
         title="Today’s orders"
@@ -100,29 +108,18 @@ export function OverviewCards({
         unit={st.due === 1 ? "order" : "orders"}
         then={PAST_WEEK.orders[0]}
         thenLabel={thenLabel}
+        onOpen={() => onDetails("orders")}
       />
       <Tile
         title="Gallons to be delivered today"
         icon={TERM_ICONS.gallons}
-        /* Room for the corner button. */
-        className="pr-12"
         value={st.galRequested}
         unit="gal"
         then={PAST_WEEK.gallons[0]}
         thenLabel={thenLabel}
+        onOpen={() => onDetails("gallons")}
       />
       </div>
-      {/* THE ONE CONTROL — opens today's details (Pavan, 2026-10-13). */}
-      <Button
-        variant="outline"
-        size="icon-sm"
-        aria-label="View today’s details"
-        title="View today’s details"
-        onClick={onDetails}
-        className="absolute top-2.5 right-2.5 rounded-full"
-      >
-        <ArrowUpRight />
-      </Button>
     </div>
   );
 }

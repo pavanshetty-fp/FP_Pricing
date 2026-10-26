@@ -1394,8 +1394,10 @@ function WeekChange({ now, then }: { now: number; then: number }) {
   );
 }
 
-/** One figure of the next 7 days, against the 7 days before. The term's
-    icon at the top right, in the accent (Pavan, 2026-10-20). */
+/** One figure of the next 7 days, against the 7 days before. ICON LEADS,
+    ARROW CLOSES, PER TILE (Pavan, 2026-10-26 — the Orders overview's shape,
+    in every module): the term's icon on the left, the text as one block,
+    the tile's own open arrow on the right. */
 function ScheduleTile({
   title,
   icon: Icon,
@@ -1404,7 +1406,7 @@ function ScheduleTile({
   format = (n: number) => n.toLocaleString(),
   unit,
   sub,
-  className,
+  onOpen,
 }: {
   title: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -1413,27 +1415,33 @@ function ScheduleTile({
   format?: (n: number) => string;
   unit?: string;
   sub?: string;
-  className?: string;
+  onOpen: () => void;
 }) {
   return (
-    <section className={cn("flex min-w-0 flex-1 flex-col gap-1 px-4 py-3", className)}>
-      <h3 className="text-sm font-medium text-foreground">{title}</h3>
-      {/* THE FIGURE, ITS CHANGE AND THE "VS" LINE ARE ONE UNIT; the icon,
-          larger, sits beside it, centred on it (Pavan, 2026-10-20). */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-3xl font-semibold tabular-nums text-foreground">{format(value)}</span>
-            {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-            <WeekChange now={value} then={then} />
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {sub ? `${sub} · ` : ""}vs {format(then)} the previous 7 days
-          </p>
-        </div>
-        {/* THE DS METRIC ICON (§10k). */}
-        <MetricIcon icon={Icon} />
+    <section className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3">
+      {/* THE DS METRIC ICON (§10k), leading. */}
+      <MetricIcon icon={Icon} size="lg" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-3xl font-semibold tabular-nums text-foreground">{format(value)}</span>
+          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+          <WeekChange now={value} then={then} />
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {sub ? `${sub} · ` : ""}vs {format(then)} the previous 7 days
+        </p>
       </div>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label={`View ${title.toLowerCase()}, next 7 days`}
+        title="View details"
+        onClick={onOpen}
+        className="self-start rounded-full"
+      >
+        <ArrowUpRight />
+      </Button>
     </section>
   );
 }
@@ -1462,11 +1470,12 @@ function ScheduleOverview({
   const shipTos = SHIP_TOS.filter((x) => x.status === "Active").length;
   return (
     <>
-      <div className="relative shrink-0 rounded-xl border border-border bg-fp-surface-1b">
-        {/* FOUR FIGURES, THE NEXT 7 DAYS (Pavan, 2026-10-19). */}
+      <div className="shrink-0 rounded-xl border border-border bg-fp-surface-1b">
+        {/* FOUR FIGURES, THE NEXT 7 DAYS (Pavan, 2026-10-19). Each opens the
+            next 7 days — the one sheet that holds all four. */}
         <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
-          <ScheduleTile title="Deliveries" icon={TERM_ICONS.deliveries} value={a.deliveries} then={b.deliveries} />
-          <ScheduleTile title="Products" icon={TERM_ICONS.products} value={a.products} then={b.products} />
+          <ScheduleTile title="Deliveries" icon={TERM_ICONS.deliveries} value={a.deliveries} then={b.deliveries} onOpen={() => setDetails(true)} />
+          <ScheduleTile title="Products" icon={TERM_ICONS.products} value={a.products} then={b.products} onOpen={() => setDetails(true)} />
           <ScheduleTile
             title="Gallons"
             icon={TERM_ICONS.gallons}
@@ -1475,28 +1484,17 @@ function ScheduleOverview({
             format={num}
             unit="gal"
             sub={a.q.topOff ? `+ ${a.q.topOff} top off` : undefined}
+            onOpen={() => setDetails(true)}
           />
-          {/* Room for the corner button. */}
           <ScheduleTile
             title="Ship-tos"
             icon={TERM_ICONS.shipTos}
             value={a.sites}
             then={b.sites}
             unit={`of ${shipTos}`}
-            className="pr-12"
+            onOpen={() => setDetails(true)}
           />
         </div>
-        {/* THE ONE CONTROL, IN THE CARD'S CORNER — as the Orders overview. */}
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="View the next 7 days"
-          title="View details"
-          onClick={() => setDetails(true)}
-          className="absolute top-2.5 right-2.5 rounded-full"
-        >
-          <ArrowUpRight />
-        </Button>
       </div>
       <RecordSheet
         fit={{ tables: [[CELL.date, CELL.pick, CELL.pick, CELL.pick, CELL.pick, CELL.number, CELL.pick, CELL.status]] }}

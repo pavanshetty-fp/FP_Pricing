@@ -1,9 +1,9 @@
 import * as React from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Clock, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OutlineShine } from "@/components/ui/outline-shine";
 import { Button } from "@/components/ui/button";
-import { PILL_SHAPE, pillColorClass, type PillKind } from "@/components/ui/pill";
+import { PILL_SHAPE } from "@/components/ui/pill";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BANNER_SNOOZE_OPTIONS,
-  calloutVariants,
   inlineAccent,
   type BannerStatus,
 } from "@/components/ui/banner";
@@ -38,6 +37,12 @@ import {
 
   DETAILS opens the kind's items, each with its own detail and action, and
   folds back with Collapse. Snooze is `BANNER_SNOOZE_OPTIONS`, everywhere.
+
+  THE BANNER IS BLUE; THE PILLS CARRY THE SEVERITY (Pavan, 2026-10-25): a
+  banner is information, so its fill and rim are always the info blue, and
+  each alert's tag/count pill keeps its own colour (red for overdue, amber
+  for a caution…). VIEW ALL (same day) lays every alert out as its own
+  banner, one under another; Collapse folds them back to one at a time.
 */
 
 export interface BannerAlertItem {
@@ -67,11 +72,27 @@ export interface BannerAlert {
   items?: BannerAlertItem[];
 }
 
-const TAG_KIND: Record<BannerStatus, PillKind> = {
-  warning: "critical",
-  caution: "caution",
-  info: "info",
-  success: "success",
+/* THE BANNER'S TAG PILLS ARE WHITE AND OUTLINED (Pavan, 2026-10-26) — the
+   severity is the words, the icon and a 1px rim in one ink; the fill is the
+   content layer's white. */
+const ALERT_PILL: Record<BannerStatus, string> = {
+  warning: "border border-fp-alert-pill-warning-ink bg-fp-surface-1b text-fp-alert-pill-warning-ink",
+  caution: "border border-fp-alert-pill-caution-ink bg-fp-surface-1b text-fp-alert-pill-caution-ink",
+  info: "border border-fp-alert-pill-info-ink bg-fp-surface-1b text-fp-alert-pill-info-ink",
+  success: "border border-fp-alert-pill-success-ink bg-fp-surface-1b text-fp-alert-pill-success-ink",
+};
+
+/* THE COUNT PILL IS A REGULAR PILL (Pavan, 2026-10-26) — neutral grey with
+   dark text, no sweep: it counts, the tag already says how serious. */
+const COUNT_PILL = "bg-muted text-foreground";
+
+/* THE COUNT INSIDE THE TAG — a very light fill of the tag's own colour
+   (Pavan, 2026-10-26). */
+const TAG_COUNT: Record<BannerStatus, string> = {
+  warning: "bg-fp-alert-pill-warning",
+  caution: "bg-fp-alert-pill-caution",
+  info: "bg-fp-alert-pill-info",
+  success: "bg-fp-alert-pill-success",
 };
 
 /* THE SWEEP'S BAR PER KIND — a deeper shade of the pill's own colour
@@ -230,28 +251,114 @@ export function AlertBanner({
   className?: string;
 }) {
   const [at, setAt] = React.useState(0);
-  const [open, setOpen] = React.useState(false);
+  const [all, setAll] = React.useState(false);
   const i = Math.min(at, Math.max(alerts.length - 1, 0));
   React.useEffect(() => {
     if (at > alerts.length - 1) setAt(Math.max(alerts.length - 1, 0));
   }, [at, alerts.length]);
+  /* One alert left — nothing to lay out; back to the single banner. */
+  React.useEffect(() => {
+    if (alerts.length < 2) setAll(false);
+  }, [alerts.length]);
   if (alerts.length === 0) return null;
-  const a = alerts[i];
+  const line = { onSnooze, onDismiss, appliedId, onClearApplied, ctaMode };
+  const chevron =
+    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
+  const textBtn =
+    "flex h-6 shrink-0 items-center gap-1 rounded-sm px-1.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-3.5";
+
+  /* VIEW ALL — every alert its own banner, one under another; the first
+     carries Collapse where the stepper was. */
+  if (all) {
+    return (
+      <div className={cn("flex flex-col gap-2", className)}>
+        {alerts.map((a, n) => (
+          <AlertLine
+            key={a.id}
+            a={a}
+            {...line}
+            nav={
+              n === 0 ? (
+                <button type="button" onClick={() => setAll(false)} className={textBtn}>
+                  <ChevronUp />
+                  Collapse
+                </button>
+              ) : undefined
+            }
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <AlertLine
+      key={alerts[i].id}
+      a={alerts[i]}
+      {...line}
+      className={className}
+      nav={
+        alerts.length > 1 && (
+          <>
+            {/* ONE KIND AT A TIME — the Pending strip's stepper. */}
+            <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+              <button type="button" aria-label="Previous alert" disabled={i === 0} onClick={() => setAt(i - 1)} className={chevron}>
+                <ChevronLeft className="size-3.5" />
+              </button>
+              {i + 1} of {alerts.length}
+              <button
+                type="button"
+                aria-label="Next alert"
+                disabled={i >= alerts.length - 1}
+                onClick={() => setAt(i + 1)}
+                className={chevron}
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </span>
+            <button type="button" onClick={() => setAll(true)} className={textBtn}>
+              View all
+            </button>
+          </>
+        )
+      }
+    />
+  );
+}
+
+/** ONE ALERT AS A BANNER — the info-blue banner with its severity pill. */
+function AlertLine({
+  a,
+  nav,
+  onSnooze,
+  onDismiss,
+  appliedId,
+  onClearApplied,
+  ctaMode = true,
+  className,
+}: {
+  a: BannerAlert;
+  /** The stepper and View all, or Collapse — sits before snooze and ✕. */
+  nav?: React.ReactNode;
+  onSnooze?: (id: string, ms: number) => void;
+  onDismiss?: (id: string) => void;
+  appliedId?: string | null;
+  onClearApplied?: () => void;
+  ctaMode?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
   const hasItems = Boolean(a.items && a.items.length > 0);
   /* THIS ALERT WEARS THE CTA ANATOMY — only when it has a filter to apply. */
   const cta = ctaMode && Boolean(a.onApply);
-  const go = (n: number) => {
-    setAt(n);
-    setOpen(false);
-  };
-  const chevron =
-    "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
 
   return (
     <div
       role="status"
       data-status={a.status}
-      className={cn(calloutVariants({ status: a.status, variant: "soft" }), "flex-col items-stretch gap-0 p-0", className)}
+      /* ALWAYS THE INFO BLUE, SOLID AND LIGHT — the pills say how serious
+         (2026-10-25). */
+      className={cn("flex flex-col items-stretch rounded-md border border-fp-alert-banner-rim bg-fp-alert-banner", className)}
     >
       <div className="flex min-h-11 items-center gap-2.5 px-3 py-1.5">
         {/* THE ICON RIDES IN THE TAG (Pavan, 2026-10-13); alone only when
@@ -262,7 +369,7 @@ export function AlertBanner({
           <span
             className={cn(
               PILL_SHAPE,
-              pillColorClass(TAG_KIND[a.status]),
+              ALERT_PILL[a.status],
               "relative h-6 gap-1.5 overflow-hidden px-2 text-[11px] font-medium tracking-wide uppercase [&_svg]:size-3.5 [&_svg]:shrink-0"
             )}
           >
@@ -276,7 +383,7 @@ export function AlertBanner({
             <span className="relative">{a.tag}</span>
             {/* THE COUNT IN THE TAG — a pill inside the pill (ctaMode). */}
             {cta && a.count != null && (
-              <span className="relative -mr-1 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-background/80 px-1 text-[10px] font-semibold tabular-nums tracking-normal">
+              <span className={cn("relative -mr-1 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums tracking-normal", TAG_COUNT[a.status])}>
                 {a.count}
               </span>
             )}
@@ -316,17 +423,15 @@ export function AlertBanner({
                   onClick={() => setOpen((o) => !o)}
                   className={cn(
                     PILL_SHAPE,
-                    pillColorClass(TAG_KIND[a.status]),
+                    COUNT_PILL,
                     "relative h-6 gap-1 overflow-hidden px-2 tabular-nums outline-none transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring/50"
                   )}
                 >
-                  {!open && <OutlineShine fill color={SWEEP[a.status]} band="30%" />}
                   <span className="relative">{a.count ?? a.items!.length}</span>
                   <ChevronDown className={cn("relative size-3.5 transition-transform", open && "rotate-180")} />
                 </button>
               ) : (
-                <span className={cn(PILL_SHAPE, pillColorClass(TAG_KIND[a.status]), "relative h-6 overflow-hidden px-2 tabular-nums")}>
-                  <OutlineShine fill color={SWEEP[a.status]} band="30%" />
+                <span className={cn(PILL_SHAPE, COUNT_PILL, "relative h-6 overflow-hidden px-2 tabular-nums")}>
                   <span className="relative">{a.count}</span>
                 </span>
               )}
@@ -372,24 +477,7 @@ export function AlertBanner({
           </div>
         )}
 
-        {/* ONE KIND AT A TIME — the Pending strip's stepper. */}
-        {alerts.length > 1 && (
-          <span className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
-            <button type="button" aria-label="Previous alert" disabled={i === 0} onClick={() => go(i - 1)} className={chevron}>
-              <ChevronLeft className="size-3.5" />
-            </button>
-            {i + 1} of {alerts.length}
-            <button
-              type="button"
-              aria-label="Next alert"
-              disabled={i >= alerts.length - 1}
-              onClick={() => go(i + 1)}
-              className={chevron}
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
-          </span>
-        )}
+        {nav}
         {/* SNOOZE BESIDE THE STEPPER (Pavan, 2026-10-13). */}
         {onSnooze && <BannerSnooze onSnooze={(ms) => onSnooze(a.id, ms)} />}
         {onDismiss && (

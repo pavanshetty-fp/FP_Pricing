@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -87,7 +88,20 @@ export function StatTile({
         CARD
       )}
     >
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      {/* THE OPEN ARROW ON EVERY FIGURE TILE (Pavan, 2026-10-26 — the CP
+          overview's shape in every module). The tile is the button, so the
+          arrow is drawn, not a second control. */}
+      <span className="flex w-full items-start justify-between gap-3">
+        <span className="text-sm font-medium text-foreground">{label}</span>
+        {onOpen && (
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-input bg-transparent text-foreground dark:bg-fp-field-fill [&_svg]:size-4"
+          >
+            <ArrowUpRight />
+          </span>
+        )}
+      </span>
       <span className="text-3xl font-semibold tabular-nums text-foreground">{value}</span>
       {note && <span className="text-xs text-muted-foreground">{note}</span>}
     </button>

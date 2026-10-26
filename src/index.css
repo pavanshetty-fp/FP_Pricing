@@ -399,6 +399,22 @@
   --color-fp-banner-success: var(--fp-banner-success);
   --color-fp-banner-accent-info: var(--fp-banner-accent-info);
   --color-fp-banner-accent-caution: var(--fp-banner-accent-caution);
+  /* THE ALERT BANNER, SOLID (Pavan, 2026-10-25) — fills mixed with the
+     content layer, not opacities. The banner: the info blue at 4% (lighter,
+     less blue than the /10 wash it replaces), its rim at 16%. Each alert
+     tag pill: white, with its severity ink as words, icon and 1px rim
+     (2026-10-26; caution is the lane yellow — "due soon" reads yellow). */
+  --color-fp-alert-banner: color-mix(in srgb, var(--fp-banner-accent-info) 4%, var(--fp-surface-1b));
+  --color-fp-alert-banner-rim: color-mix(in srgb, var(--fp-banner-accent-info) 16%, var(--fp-surface-1b));
+  --color-fp-alert-pill-warning-ink: var(--status-failed);
+  --color-fp-alert-pill-caution-ink: color-mix(in oklab, var(--fp-lane-yellow) 60%, var(--foreground));
+  --color-fp-alert-pill-info-ink: var(--fp-banner-accent-info);
+  --color-fp-alert-pill-success-ink: var(--status-success);
+  /* THE COUNT INSIDE A TAG (2026-10-26) — a very light fill of its ink. */
+  --color-fp-alert-pill-warning: color-mix(in srgb, var(--status-failed) 12%, var(--fp-surface-1b));
+  --color-fp-alert-pill-caution: color-mix(in srgb, var(--fp-lane-yellow) 20%, var(--fp-surface-1b));
+  --color-fp-alert-pill-info: color-mix(in srgb, var(--fp-banner-accent-info) 12%, var(--fp-surface-1b));
+  --color-fp-alert-pill-success: color-mix(in srgb, var(--status-success) 12%, var(--fp-surface-1b));
   --color-fp-banner-accent-warning: var(--fp-banner-accent-warning);
   --color-fp-banner-accent-success: var(--fp-banner-accent-success);
   --color-pastel-blue: var(--pastel-blue);

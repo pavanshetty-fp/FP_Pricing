@@ -80,7 +80,7 @@ Inherits every unit's look. Its own values:
 7. **Every change to the narrowing resets to page 1.** — `(source: docs/unified-view/3-interactions.md §7)`
 8. **No CTA where the user doesn't create** (Customer Portal › Invoices). — `(source: StandardList.tsx; ui §10c)`
 9. **A saved view stores the display it opens in** (`mode`), with everything else. — `(source: ui §10p)`
-10. **Banner placement is open**: StandardList puts it under the toolbar shelf ("right above the table"); `docs/unified-view/3-interactions.md` (2026-10-11) says a list's alert banner sits ABOVE the toolbar. Code is followed here; confirm with Pavan before changing either. — `(source: StandardList.tsx; 3-interactions.md "A list's alert banner sits above its controls")`
+10. **Banner under the toolbar shelf, right above the table — every module** (Pavan, 2026-10-25).
 
 ## Do / Don't
 - ✅ Hand it `text` that returns exactly what the cell shows.

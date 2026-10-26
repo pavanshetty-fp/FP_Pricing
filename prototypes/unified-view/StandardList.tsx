@@ -82,7 +82,7 @@ export interface StandardListProps<R, K extends string> {
   onCreate?: () => void;
   /** Above the view row — a page's overview cards (Orders' layout). */
   above?: React.ReactNode;
-  /** The alert banner — above the toolbar, as in every module (2026-10-23). */
+  /** The alert banner — under the toolbar, as in every module (2026-10-25). */
   banner?: React.ReactNode;
   /**
    * Sets the facet filter from outside — a banner title applies its filter.
@@ -316,7 +316,6 @@ export function StandardList<R, K extends string>({
         onSegmentChange={onSegmentChange}
       />
 
-      {banner && <div className="mt-4 shrink-0">{banner}</div>}
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -387,6 +386,10 @@ export function StandardList<R, K extends string>({
       </div>
 
 
+      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
+          module): the tools first, then what needs attention, then the list
+          it narrows. */}
+      {banner && <div className="mt-4 shrink-0">{banner}</div>}
       <div className="relative mt-4 min-h-0 flex-1">
         {nothing ? (
           <Empty className="h-full">

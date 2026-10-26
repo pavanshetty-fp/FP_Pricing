@@ -103,16 +103,27 @@ export const TERM_ICONS: Record<"deliveries" | "products" | "gallons" | "shipTos
   same style (Lucide's grid and line, a soft fill of its own colour, a wavy
   level for anything that holds liquid) and is added to `TERM_ICONS`.
 */
-export function MetricIcon({ icon: Icon, className }: { icon: React.ComponentType<IconProps>; className?: string }) {
+export function MetricIcon({
+  icon: Icon,
+  size = "md",
+  className,
+}: {
+  icon: React.ComponentType<IconProps>;
+  /** `lg` (64px) stands as tall as a tile's title, figure and comparison
+      together — for an icon that LEADS the tile (CP Orders, 2026-10-26). */
+  size?: "md" | "lg";
+  className?: string;
+}) {
   return (
     <span
       aria-hidden
       className={[
-        "flex size-12 shrink-0 items-center justify-center rounded-lg bg-accent-violet/6 text-accent-violet",
+        "flex shrink-0 items-center justify-center rounded-lg bg-accent-violet/6 text-accent-violet",
+        size === "lg" ? "size-16" : "size-12",
         className ?? "",
       ].join(" ")}
     >
-      <Icon className="size-7" strokeWidth={1.75} />
+      <Icon className={size === "lg" ? "size-9" : "size-7"} strokeWidth={1.75} />
     </span>
   );
 }

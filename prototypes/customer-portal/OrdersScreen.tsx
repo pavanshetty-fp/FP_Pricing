@@ -186,6 +186,7 @@ export function OrdersScreen({
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = React.useState(false);
   const [todayOpen, setTodayOpen] = React.useState(false);
+  const [todayAbout, setTodayAbout] = React.useState<"orders" | "gallons">("orders");
   /* THE LINE SWITCH (3PL's, "All" first) and THE DATE RANGE — a request's
      record is a delivery day, so the list opens on today (2-layouts §4). */
   const today = startOfDay(new Date());
@@ -506,6 +507,10 @@ export function OrdersScreen({
       tag: "Needs action",
       title: `${plural(tanks.length, "tank is", "tanks are")} nearly empty with no order placed`,
       count: tanks.length,
+      /* THE SAME SHAPE AS THE OTHER ALERTS (Pavan, 2026-10-26) — the count
+         in the tag and View details, which narrows the list to the ship-tos
+         those tanks are at. */
+      onApply: () => narrowTo([...new Set(tanks.map((t) => `shipTo:${t.shipTo}`))], "any"),
       items: tanks.map((t) => ({
         id: t.asset.id,
         title: t.asset.name,
@@ -756,9 +761,9 @@ export function OrdersScreen({
       {/* THE DAY'S DELIVERIES ARE THE ORDERS' (Pavan, 2026-10-19) — counted
           from orders on both segments, so the page does not jump on a switch. */}
       <div className="-mt-3.5 shrink-0">
-        <OverviewCards rows={orderRows} onDetails={() => setTodayOpen(true)} />
+        <OverviewCards rows={orderRows} onDetails={(about) => (setTodayAbout(about), setTodayOpen(true))} />
       </div>
-      <TodaySheet rows={orderRows} open={todayOpen} onOpenChange={setTodayOpen} />
+      <TodaySheet rows={orderRows} about={todayAbout} open={todayOpen} onOpenChange={setTodayOpen} />
 
       {/* AIR BETWEEN THE OVERVIEW AND THE CONTROLS (Pavan, 2026-10-13). */}
       <div className="mt-8 shrink-0">
@@ -771,24 +776,6 @@ export function OrdersScreen({
       />
       </div>
 
-      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›;
-          pressing an alert applies the filter it describes. ABOVE THE TOOLBAR,
-          as everywhere in the Unified View (Pavan, 2026-10-23 — one place for
-          the banner in every module): what needs attention is read before
-          the tools to act on it. */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={alerts}
-          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
-          appliedId={applied && applied.key === stateKey ? applied.id : null}
-          onClearApplied={() => {
-            narrowTo([], "today");
-            setApplied(null);
-          }}
-        />
-      )}
 
       <div className="mt-4 shrink-0">
         <ListToolbar
@@ -911,6 +898,25 @@ export function OrdersScreen({
         )}
       </div>
 
+
+      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
+          module): the tools first, then what needs attention, then the list
+          it narrows. */}
+      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›
+          and View all; pressing an alert applies the filter it describes. */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+          appliedId={applied && applied.key === stateKey ? applied.id : null}
+          onClearApplied={() => {
+            narrowTo([], "today");
+            setApplied(null);
+          }}
+        />
+      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

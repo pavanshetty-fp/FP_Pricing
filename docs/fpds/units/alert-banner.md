@@ -98,7 +98,9 @@ Under the line (open, item alerts only): **item rows** — title (pressable when
 10. **Padding stays 12px sides / 6px top-bottom** — *white fill and 6px/4px were tried and reverted* — `(source: memory feedback_banner_final 2026-10-14)`
 11. **Every pill sweeps (collapsed only); every CTA shines — added by the banner, not by screens** — *one component, one behavior across modules; when open, the list is the attention* — `(source: ui §10l, Pavan 2026-10-20)`
 12. **Opened items sit on white inside the banner's coloured outline; rich facts are the record's own readings in equal columns** — *a tank is drawn the way the app draws it everywhere* — `(source: alert-banner.tsx, Pavan 2026-10-20)`
-13. **On a Unified View list the banner sits under the view row and ABOVE the toolbar** — *what needs attention is read before the tools to act on it* — `(source: docs/unified-view/3-interactions.md, Pavan 2026-10-11)`. Customer Portal Orders places it below the toolbar and chips, right above the list (portal only, Pavan 2026-10-14).
+13. **On every list the banner sits under the toolbar (search, Filters, chips), right above the table or board** — *the tools first, then what needs attention, then the list it narrows* — `(source: Pavan 2026-10-25)`.
+14. **The banner is always the info blue; the pills carry the severity** (red Overdue/Needs action, amber caution…) — *a banner is information; the pill says how serious* — `(source: Pavan 2026-10-25)`.
+15. **View all** beside ‹ 1 of N › lays every alert out as its own banner, one under another; the first carries **Collapse** to fold them back to one at a time — `(source: Pavan 2026-10-25)`.
 
 ## Do / Don't
 - ✅ Pass `onApply` for every alert that is about a slice of the list; let the banner render "View details".

@@ -237,10 +237,14 @@ function Products({ st }: { st: ReturnType<typeof todayStats> }) {
 
 export function TodaySheet({
   rows,
+  about = "orders",
   open,
   onOpenChange,
 }: {
   rows: OrderRequest[];
+  /** ONE SHEET PER TILE (Pavan, 2026-10-26): today's orders — the split
+      and the schedule — or today's gallons, by product. */
+  about?: "orders" | "gallons";
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -253,7 +257,7 @@ export function TodaySheet({
       open={open}
       onOpenChange={onOpenChange}
       mode="edit"
-      editTitle="Today’s deliveries"
+      editTitle={about === "orders" ? "Today’s orders" : "Gallons to be delivered today"}
       createTitle=""
       createAction=""
       headerSubtitle={formatFullDate(startOfDay(new Date()))}
@@ -261,19 +265,24 @@ export function TodaySheet({
       onSubmit={() => {}}
       footerPrimary={null}
     >
-      <SheetSection title="Orders">
-        <OrdersSplit st={st} />
-      </SheetSection>
-      <SheetSection title="Delivery schedule">
-        {st.todays.length ? (
-          <Schedule todays={st.todays} />
-        ) : (
-          <p className="text-sm text-muted-foreground">No orders today.</p>
-        )}
-      </SheetSection>
-      <SheetSection title="Gallons by product">
-        <Products st={st} />
-      </SheetSection>
+      {about === "orders" ? (
+        <>
+          <SheetSection title="Orders">
+            <OrdersSplit st={st} />
+          </SheetSection>
+          <SheetSection title="Delivery schedule">
+            {st.todays.length ? (
+              <Schedule todays={st.todays} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No orders today.</p>
+            )}
+          </SheetSection>
+        </>
+      ) : (
+        <SheetSection title="Gallons by product">
+          <Products st={st} />
+        </SheetSection>
+      )}
     </RecordSheet>
   );
 }

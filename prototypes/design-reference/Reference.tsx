@@ -166,7 +166,7 @@ export function Reference() {
   const page = PAGES.find((p) => p.key === current)!;
   const shown = PAGES.filter((p) => !q || `${p.label} ${p.key}`.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="flex h-screen flex-col bg-fp-surface-1b text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
         <span className="text-base font-semibold">FPDS</span>
         <span className="hidden truncate text-sm text-muted-foreground sm:inline">FleetPanda Design System — design reference</span>

@@ -199,7 +199,7 @@ export function SummaryCard({
   fill?: boolean;
 }) {
   return (
-    <section className={`${fill ? "flex min-h-64 flex-1 flex-col" : "shrink-0"} rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]`}>
+    <section className={`${fill ? "flex min-h-64 flex-1 flex-col" : "shrink-0"} rounded-xl bg-fp-highlight p-1`}>
       <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">{title}</h3>
       <div className={`flex flex-col gap-3 rounded-lg border border-border bg-fp-surface-1b p-3${fill ? " min-h-0 flex-1 overflow-auto" : ""}`}>
         {children}

@@ -1298,21 +1298,16 @@ export function RecurringProgramCreate({
                                 autoFocus={newLoadRow === i}
                                 aria-label={`Loading account ${i + 1}`}
                                 onChange={(v) => setLoadAccount(i, v)}
-                                /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) —
-                                   from a blank row; accounts on other rows
-                                   show ticked and locked. */
-                                multiple={
-                                  row.loadingAccount
-                                    ? undefined
-                                    : {
-                                        taken: [...taken],
-                                        onApply: (names) => {
-                                          const next = [...loadRows];
-                                          next.splice(i, 1, ...names.map((n) => ({ loadingAccount: n })));
-                                          set("loadRows", next);
-                                        },
-                                      }
-                                }
+                                /* SEVERAL AT ONCE MAKES ROWS, FROM ANY ROW (DS ui §10f; Pavan 2026-10-26) — the row's own value opens ticked; kept, the row stays as it is;
+                                   accounts on other rows show ticked and locked. */
+                                multiple={{
+                                  taken: [...taken].filter((t) => t !== row.loadingAccount),
+                                  onApply: (names) => {
+                                    const next = [...loadRows];
+                                    next.splice(i, 1, ...names.map((n) => (n === row.loadingAccount ? row : { loadingAccount: n })));
+                                    set("loadRows", next);
+                                  },
+                                }}
                               />
                             </td>
                             {/* READ-ONLY: what the account loads from, every

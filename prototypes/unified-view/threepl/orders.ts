@@ -1216,7 +1216,7 @@ export const SHIP_TO_SITES = [
     latLng: "36.81120, -119.83450",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
-    assets: [{ name: "180 asset", product: "Dyed Diesel", rental: true }, { name: "180 asset", product: "Clear Diesel #2", rental: false }, { name: "Asset 1", product: "Unleaded 87", rental: true }, { name: "VEND TANK", product: "Dyed Diesel", rental: false }, { name: "Lube Skid 2", product: "Engine Oil 15W-40", rental: true }, { name: "LP Tank 500", product: "Propane HD-5", rental: true }],
+    assets: [{ name: "180 asset", product: "Dyed Diesel", rental: true }, { name: "181 asset", product: "Clear Diesel #2", rental: false }, { name: "Asset 1", product: "Unleaded 87", rental: true }, { name: "VEND TANK", product: "Dyed Diesel", rental: false }, { name: "Lube Skid 2", product: "Engine Oil 15W-40", rental: true }, { name: "LP Tank 500", product: "Propane HD-5", rental: true }],
   },
   {
     name: "Bray Depot 2",

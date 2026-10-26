@@ -573,7 +573,7 @@ function CardQuotes({
       {/* V4's QUOTE BAND runs edge to edge across the card (the unit's own
           12px inset pulled back), its text on the card's text line; as the
           card's last unit it runs to the bottom edge too. */}
-      <div className="-mx-3 flex flex-col gap-1.5 bg-status-success/5 px-3 py-1">
+      <div className="-mx-3 flex flex-col gap-1.5 bg-fp-quote-band px-3 py-1">
       {/* …and the unit's heading comes inside it (2026-10-25). */}
       <UnitHeading>{heading}</UnitHeading>
       <div className="flex min-w-0 items-start justify-between gap-2.5">

@@ -4243,21 +4243,21 @@ export function BrokerOrderSheet({
                     options={[...ORDER_FEE_TYPES]}
                     aria-label={`Type for row ${i + 1}`}
                     onChange={(v) => setFee(i, { type: v as OrderFeeType })}
-                    /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a row not
-                       yet filled in: one fee row per type picked. */
-                    multiple={
-                      f.label || f.amount
-                        ? undefined
-                        : {
-                            onApply: (types) =>
-                              setDraft((d) => {
-                                if (!d) return d;
-                                const fees = [...d.orderFees];
-                                fees.splice(i, 1, ...types.map((t) => ({ ...f, type: t as OrderFeeType })));
-                                return { ...d, orderFees: fees };
-                              }),
-                          }
-                    }
+                    /* SEVERAL AT ONCE MAKES ROWS, FROM ANY ROW (DS ui §10f; Pavan 2026-10-26) — the row's own value opens ticked; kept, the row stays as it is;
+                       each other type picked is a new, empty fee row. */
+                    multiple={{
+                      onApply: (types) =>
+                        setDraft((d) => {
+                          if (!d) return d;
+                          const fees = [...d.orderFees];
+                          fees.splice(
+                            i,
+                            1,
+                            ...types.map((t) => (t === f.type ? f : { type: t as OrderFeeType, label: "", amount: 0 }))
+                          );
+                          return { ...d, orderFees: fees };
+                        }),
+                    }}
                   />
                 </td>
                 {/* PICK IT OR TYPE IT. The list is what the business already
@@ -6297,32 +6297,25 @@ export function BrokerOrderSheet({
                                   const picked = eligible.find((x) => x.name === name);
                                   if (picked) setPartnerAt(i, picked.id);
                                 }}
-                                /* SEVERAL AT ONCE, BUT ONLY FROM A BLANK ROW.
-                                   On an empty row "these five" is a sensible
-                                   thing to say and it fills five rows. On a row
-                                   that already names a partner the question is
-                                   "which one instead", and a list that could
-                                   answer it with three would be replacing one
-                                   row with three under a reader who asked to
-                                   change one. */
-                                multiple={
-                                  v
-                                    ? undefined
-                                    : {
-                                        /* Looked up across every partner, not
-                                           just the eligible ones: the list can
-                                           only offer names it was given, and a
-                                           lookup narrower than the list is how
-                                           a pick silently resolves to nothing. */
-                                        onApply: (names) =>
-                                          applyPartnersAt(
-                                            i,
-                                            names
-                                              .map((n) => vendorByName(n)?.id)
-                                              .filter((x): x is string => Boolean(x))
-                                          ),
-                                      }
-                                }
+                                /* SEVERAL AT ONCE, FROM ANY ROW (Pavan,
+                                   2026-10-26 — supersedes "only from a blank
+                                   row"): the row's partner opens ticked; kept,
+                                   it stays and the others are added under it;
+                                   unticked, the first pick takes the row. */
+                                multiple={{
+                                  /* Looked up across every partner, not just
+                                     the eligible ones: the list can only offer
+                                     names it was given, and a lookup narrower
+                                     than the list is how a pick silently
+                                     resolves to nothing. */
+                                  onApply: (names) =>
+                                    applyPartnersAt(
+                                      i,
+                                      names
+                                        .map((n) => vendorByName(n)?.id)
+                                        .filter((x): x is string => Boolean(x))
+                                    ),
+                                }}
                               />
                             </td>
                             <td className="truncate px-3 text-sm text-muted-foreground">
@@ -6799,7 +6792,7 @@ export function BrokerOrderSheet({
                 wants is who has been asked. The summary takes over once the
                 first quote lands. */}
             {draft.status === "Draft" && !draft.vendorId && quotes.length === 0 ? (
-            <section className="shrink-0 rounded-xl bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] p-1 dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]">
+            <section className="shrink-0 rounded-xl bg-fp-highlight p-1">
               <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
                 Invitations
               </h3>
@@ -7764,7 +7757,7 @@ export function BrokerOrderSheet({
             {/* THE WASH, as its own layer so it can fade into the bar. */}
             <div
               aria-hidden
-              className={cn("absolute inset-0 transition-opacity", ease, m ? "opacity-0" : "opacity-100", "bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet)_55%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose)_30%,var(--fp-surface-1a))_28%,var(--fp-surface-1a)_60%)] dark:bg-[linear-gradient(170deg,color-mix(in_oklab,var(--pastel-violet-foreground)_70%,var(--fp-surface-1a))_0%,color-mix(in_oklab,var(--pastel-rose-foreground)_35%,var(--fp-surface-1a))_30%,var(--fp-surface-1a)_65%)]")}
+              className={cn("absolute inset-0 transition-opacity", ease, m ? "opacity-0" : "opacity-100", "bg-fp-highlight")}
             />
             <div className="relative flex items-center px-4 py-3">
               <div className={cn("flex shrink-0 flex-col", squeeze(!m), m ? "mr-0" : "mr-8")}>

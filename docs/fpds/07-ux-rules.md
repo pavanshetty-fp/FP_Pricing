@@ -1040,7 +1040,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 **UX-164. A change is verified at every stage the screen appears in, with a blank and a filled row, in both themes; every miss is logged** (`evals/misses.json`) with its pattern and its guard. — *Most misses repeated one of nine patterns.* (Pavan, 2026-10-26) · Check: eval `misses`.
 
-**UX-165. Icons are grayscale.** Metric/figure icons, the AI sparkle and every other icon use the muted grey, quietly — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
+**UX-165. Icons never wear the accent.** Metric/figure icons, the AI sparkle and any decorative icon use the muted grey, quietly (status icons keep their status colour — green done, red failed) — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
 
 ## Index
 
@@ -1210,4 +1210,4 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-162 | US English everywhere a user reads |
 | UX-163 | Closest existing pattern before any generic component |
 | UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
-| UX-165 | Icons are grayscale; the accent is for highlights only |
+| UX-165 | Icons never wear the violet accent (decorative icons grey; status icons keep status colour); the accent is for highlights only |

@@ -368,6 +368,9 @@
   /* THE QUIET ICON INK (Pavan, 2026-10-26) — the metric icons' line, halfway
      from the muted ink to the tile it sits on: half as dark, still a solid
      colour, in both themes. */
+  /* THE BOARD QUOTE BAND (2026-10-26) — a SOLID 5% green over the card, not
+     an opacity wash (misses M-002). */
+  --color-fp-quote-band: color-mix(in oklab, var(--status-success) 5%, var(--fp-surface-1b));
   --color-fp-icon-quiet: color-mix(in oklab, var(--muted-foreground) 50%, var(--muted));
   --color-fp-table-header: var(--fp-table-header);
   --color-fp-viz-1: var(--fp-viz-1);
@@ -1571,3 +1574,33 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
   margin-top: -1.75rem;
   padding-right: var(--fp-routed-w, 0px);
 }
+
+/* ── THE HIGHLIGHTED CARD'S WASH (Pavan, 2026-10-26) ─────────────────────
+   One gradient for the one highlighted card per sheet (UX-161): lilac into
+   rose, fading to the inner-panel surface. Dark used the pastels' deep
+   foreground shades and read as dull; it now takes the SAME light pastels as
+   light mode, mixed lighter over the dark surface — it glows, it doesn't
+   shout. */
+.bg-fp-highlight {
+  background-image: linear-gradient(
+    170deg,
+    color-mix(in oklab, var(--pastel-violet) 55%, var(--fp-surface-1a)) 0%,
+    color-mix(in oklab, var(--pastel-rose) 30%, var(--fp-surface-1a)) 28%,
+    var(--fp-surface-1a) 60%
+  );
+}
+/* DARK TAKES PAVAN'S OWN WASH (Figma FP-Screen-References 54:243, style
+   "FP/Highlight wash/Dark", 2026-10-26): deep violet into plum into indigo
+   across the whole shell — trialled on the 3PL sheet, then made the default. */
+.dark .bg-fp-highlight {
+  --fp-highlight-wash-1: #2e1e51;
+  --fp-highlight-wash-2: #371c4b;
+  --fp-highlight-wash-3: #2c2458;
+  background-image: linear-gradient(
+    156deg,
+    var(--fp-highlight-wash-1) 15%,
+    var(--fp-highlight-wash-2) 47%,
+    var(--fp-highlight-wash-3) 112%
+  );
+}
+

@@ -1531,19 +1531,15 @@ export function AssetMovementSheet({
                           autoFocus={i === focusPeripheral}
                           aria-label={`Peripheral ${i + 1}`}
                           onChange={(v) => setPeripheral(i, { name: v })}
-                          /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f). */
-                          multiple={
-                            p.name
-                              ? undefined
-                              : {
-                                  onApply: (names) =>
-                                    setDraft((d) => {
-                                      const peripherals = [...d.peripherals];
-                                      peripherals.splice(i, 1, ...names.map((name) => ({ ...blankPeripheral(), name })));
-                                      return { ...d, peripherals };
-                                    }),
-                                }
-                          }
+                          /* SEVERAL AT ONCE MAKES ROWS, FROM ANY ROW (DS ui §10f; Pavan 2026-10-26) — the row's own value opens ticked; kept, the row stays as it is. */
+                          multiple={{
+                            onApply: (names) =>
+                              setDraft((d) => {
+                                const peripherals = [...d.peripherals];
+                                peripherals.splice(i, 1, ...names.map((name) => (name === p.name ? p : { ...blankPeripheral(), name })));
+                                return { ...d, peripherals };
+                              }),
+                          }}
                         />
                       </td>
                       <td className="relative p-0">

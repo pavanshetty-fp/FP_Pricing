@@ -2082,12 +2082,10 @@ export function ServiceOrderSheet({
                         assetType: a?.type ?? "",
                       });
                     }}
-                    /* SEVERAL AT ONCE MAKES ROWS (DS ui §10f) — from a blank
-                       row; each asset keeps this row's work types. */
-                    multiple={
-                      row.assetName
-                        ? undefined
-                        : {
+                    /* SEVERAL AT ONCE MAKES ROWS, FROM ANY ROW (DS ui §10f; Pavan 2026-10-26) — the row's own value opens ticked; kept, the row stays as it is;
+                       each new asset takes this row's work types. */
+                    /* The cell is disabled while the assets are locked. */
+                    multiple={{
                             onApply: (names) =>
                               setDraft((x) => {
                                 if (!x) return x;
@@ -2096,14 +2094,14 @@ export function ServiceOrderSheet({
                                   i,
                                   1,
                                   ...names.map((v) => {
+                                    if (v === row.assetName) return row;
                                     const a = siteAssets.find((s) => s.name === v);
                                     return { ...row, assetId: a?.id ?? "", assetName: v, assetType: a?.type ?? "" };
                                   })
                                 );
                                 return syncPrimaryAsset({ ...x, assets });
                               }),
-                          }
-                    }
+                          }}
                   />
                 </td>
                 <td className="relative p-0">

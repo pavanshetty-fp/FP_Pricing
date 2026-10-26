@@ -7215,7 +7215,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 **UX-164. A change is verified at every stage the screen appears in, with a blank and a filled row, in both themes; every miss is logged** (`evals/misses.json`) with its pattern and its guard. — *Most misses repeated one of nine patterns.* (Pavan, 2026-10-26) · Check: eval `misses`.
 
-**UX-165. Icons are grayscale.** Metric/figure icons, the AI sparkle and every other icon use the muted grey, quietly — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
+**UX-165. Icons never wear the accent.** Metric/figure icons, the AI sparkle and any decorative icon use the muted grey, quietly (status icons keep their status colour — green done, red failed) — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
 
 ## Index
 
@@ -7385,7 +7385,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-162 | US English everywhere a user reads |
 | UX-163 | Closest existing pattern before any generic component |
 | UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
-| UX-165 | Icons are grayscale; the accent is for highlights only |
+| UX-165 | Icons never wear the violet accent (decorative icons grey; status icons keep status colour); the accent is for highlights only |
 
 
 <!-- ===== docs/fpds/08-interaction-rules.md ===== -->
@@ -8141,7 +8141,7 @@ FPDS is checked at five levels. Levels 1–4 are scripts and run with `npm run e
 | 3 · Units in code | `fpds-units`, `table-rows`, `fields-fill`, `boxed-tables`, `sheets`, `status-kinds`, `field-reach` | The units are used as their cards say — view bar on every list, left-aligned columns, one date picker, no preset view tabs, top off then qty, sheets carry the shared cards… | script |
 | 4 · Pages & rules | `parity-lists`, `parity-tables`, `parity-sheets`, `parity-shell`, `fpds-rules`, `microcopy`, `fpds-gaps` | Pages match the reference pages; domain rules hold (Customer Portal: ORD numbers, no quotes, asks as pills); the golden prompts resolve to the right template/units and the gap message appears only for real gaps | script |
 | 5 · Outcome | golden prompts, by tool | The same request gives the same screen in Lovable, Cursor and Claude | by hand, rubric below |
-| Misses | `misses`, `us-spelling`, `th-align`, `banner-position`, `multipick-any-row`, `css-tokens`, `double-stroke` | Every miss Pavan had to point out is logged in `misses.json` with its pattern and its guard; built guards keep it from coming back; proposed guards show as open findings; the run prints misses per week (goal 0) | script — see `misses.md` |
+| Misses | `misses`, `us-spelling`, `th-align`, `banner-position`, `banner-anatomy`, `multipick-any-row`, `css-tokens`, `double-stroke`, `alpha-fill`, `registry-links`, `toolbar-gaps`, `unique-options`, `read-head` | Every miss Pavan had to point out is logged in `misses.json` with its pattern and its guard; built guards keep it from coming back; proposed guards show as open findings; the run prints misses per week (goal 0) | script — see `misses.md` |
 
 ## The misses log
 

@@ -10,7 +10,7 @@ FPDS is checked at five levels. Levels 1–4 are scripts and run with `npm run e
 | 3 · Units in code | `fpds-units`, `table-rows`, `fields-fill`, `boxed-tables`, `sheets`, `status-kinds`, `field-reach` | The units are used as their cards say — view bar on every list, left-aligned columns, one date picker, no preset view tabs, top off then qty, sheets carry the shared cards… | script |
 | 4 · Pages & rules | `parity-lists`, `parity-tables`, `parity-sheets`, `parity-shell`, `fpds-rules`, `microcopy`, `fpds-gaps` | Pages match the reference pages; domain rules hold (Customer Portal: ORD numbers, no quotes, asks as pills); the golden prompts resolve to the right template/units and the gap message appears only for real gaps | script |
 | 5 · Outcome | golden prompts, by tool | The same request gives the same screen in Lovable, Cursor and Claude | by hand, rubric below |
-| Misses | `misses`, `us-spelling`, `th-align`, `banner-position`, `multipick-any-row`, `css-tokens`, `double-stroke` | Every miss Pavan had to point out is logged in `misses.json` with its pattern and its guard; built guards keep it from coming back; proposed guards show as open findings; the run prints misses per week (goal 0) | script — see `misses.md` |
+| Misses | `misses`, `us-spelling`, `th-align`, `banner-position`, `banner-anatomy`, `multipick-any-row`, `css-tokens`, `double-stroke`, `alpha-fill`, `registry-links`, `toolbar-gaps`, `unique-options`, `read-head` | Every miss Pavan had to point out is logged in `misses.json` with its pattern and its guard; built guards keep it from coming back; proposed guards show as open findings; the run prints misses per week (goal 0) | script — see `misses.md` |
 
 ## The misses log
 

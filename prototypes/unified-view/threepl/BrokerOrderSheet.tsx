@@ -4215,7 +4215,7 @@ export function BrokerOrderSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Label</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
               {/* UNNAMED, LIKE EVERY OTHER ROW REMOVE — DS ui §10f. A named
@@ -6019,7 +6019,7 @@ export function BrokerOrderSheet({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-fp-table-header">
-                    <th className="w-11 px-3 py-2.5">
+                    <th className="w-11 px-3 py-2.5 text-left">
                       <Checkbox
                         aria-label="Select every partner"
                         checked={
@@ -6062,7 +6062,7 @@ export function BrokerOrderSheet({
                         controls side by side on a priced row, and squeezed
                         they wrapped or truncated the only words on the row
                         that say what pressing them does. */}
-                    <th className="w-[280px] px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                    <th className="w-[280px] px-3 py-2.5 text-xs font-medium text-muted-foreground text-left">
                       Action
                     </th>
                   </tr>
@@ -6167,7 +6167,7 @@ export function BrokerOrderSheet({
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border bg-fp-table-header">
-                      <th className="px-3 py-2.5">
+                      <th className="px-3 py-2.5 text-left">
                         <Checkbox
                           checked={headerChecked}
                           onCheckedChange={(c) => selectAllPartners(c === true)}

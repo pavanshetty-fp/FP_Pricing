@@ -125,4 +125,4 @@ A module's overview: a few figures, charts and short tables that say how much wo
 - Customer Portal › Dashboard (`DashboardScreen`) — Attention required, Schedule for the next 7 days (metric tiles), Tank monitor readings, Spend, Billing & credit.
 - DS showcase › Metric Icons.
 
-> **Figure tiles (Pavan, 2026-10-26):** the metric icon LEADS the tile (MetricIcon `size="lg"`, 64px) with the title, figure and comparison as one block beside it, and EVERY tile carries its own open arrow (outline, round) at the right that opens its own sheet or list. Unified View tiles without a term icon keep the arrow (the tile is the button).
+> **Figure tiles (Pavan, 2026-10-26):** NO metric icon — the title, figure and comparison as one block, and EVERY tile carries its own open arrow (outline, round) at the right that opens its own sheet or list. (An icon leading the tile was tried and removed the same day.)

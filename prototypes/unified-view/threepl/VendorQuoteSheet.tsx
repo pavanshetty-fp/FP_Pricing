@@ -212,10 +212,10 @@ export function VendorQuoteSheet({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Product</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Req. gal (A)</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Rate/gal (B)</TableRequiredLabel>
               </th>
               {/* ONE COLUMN FOR EVERYTHING ON TOP OF THE RATE, and it is read
@@ -225,11 +225,11 @@ export function VendorQuoteSheet({
                   after it. They are typed where they are compared — the order
                   sheet's Pricing unit, which lays the partner's figure beside
                   the broker's row for row. */}
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Adds/gal (C)</TableRequiredLabel>
               </th>
               <th
-                className="px-3 py-2.5"
+                className="px-3 py-2.5 text-left"
                 title="Total landing cost — requested gallons x (rate + everything added)"
               >
                 <TableRequiredLabel>TLC A×(B+C)</TableRequiredLabel>

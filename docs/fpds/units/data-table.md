@@ -103,6 +103,7 @@ The list's table: every record a row, every column sortable, movable and resizab
 13. **A missing value prints `–` (applies, not filled) or `N/A` (does not apply)** — never a blank cell. — `(source: interactions 2-rules §4c)`
 14. **Flat headers — no two-tier column groups** unless Pavan asks. — `(source: ui §10e)`
 15. **Full content width, never capped.** — `(source: docs/ds/ux/2-rules.md "Tables — full width…"; parity-tables G43)`
+16. **Every header declares its alignment** (`text-left` unless Pavan names a screen) — a bare `<th>` centres — `(source: misses M-005; eval th-align)`
 
 ## Do / Don't
 - ✅ Measure real rendered cells when adding a column; set `width` from that.

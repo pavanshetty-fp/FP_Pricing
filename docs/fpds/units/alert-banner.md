@@ -90,17 +90,20 @@ Under the line (open, item alerts only): **item rows** — title (pressable when
 2. **The banner is a filter** — its CTA applies exactly the narrowing its words describe, onto the list's own filters — *so the chips show it and Clear all undoes it* — `(source: interactions §7a; alert-banner.tsx header)`
 3. **Filtering alerts: count inside the tag, plain title, ghost "View details" → "✕ Clear filter"; no count pill, no list** — *tried on portal Invoices, then made standard everywhere* — `(source: interactions §7a, Pavan 2026-10-15)`
 4. **Clear filter returns the list to its default and the banner stays until its own ✕** — *clearing the filter is not dismissing the alert* — `(source: alert-banner.tsx appliedId, Pavan 2026-10-14)`
-5. **One kind at a time, most serious first, ‹ 1 of N ›; the banner wears the shown kind's color** — *a red kind and an amber one look like what they are; same stepper as the sheet's Pending strip* — `(source: interactions §7a)`
+5. **One kind at a time, most serious first, ‹ 1 of N ›** — the banner itself stays the info blue (rule 14); the shown kind's severity is in its tag — *same stepper as the sheet's Pending strip* — `(source: interactions §7a; Pavan 2026-10-25)`
 6. **✕ is always last on the right; snooze sits beside the stepper** — *dismissing is the way out, so it sits at the edge* — `(source: alert-banner.tsx, Pavan 2026-10-13)`
 7. **Snooze = `BANNER_SNOOZE_OPTIONS` + Custom… (hours and minutes, no calendar)** — *the Sales Orders set became the one standard* — `(source: banner.tsx; interactions §7a)`
 8. **Title pressable with no underline** (pointer + slight fade) — *the underline was rejected; pointer and fade say it acts* — `(source: alert-banner.tsx PRESSABLE, Pavan 2026-10-13)`
-9. **Warning is half as loud in light (/5 wash, /20 rim)** — *a /10 red wash read as an alarm on white* — `(source: banner.tsx, Pavan 2026-10-13)`
+9. **Fills are SOLID, never opacity** — banner = the info blue at 4% mixed into the content surface, rim at 16% — *see-through washes read differently on every ground* — `(source: Pavan 2026-10-25)`
 10. **Padding stays 12px sides / 6px top-bottom** — *white fill and 6px/4px were tried and reverted* — `(source: memory feedback_banner_final 2026-10-14)`
-11. **Every pill sweeps (collapsed only); every CTA shines — added by the banner, not by screens** — *one component, one behavior across modules; when open, the list is the attention* — `(source: ui §10l, Pavan 2026-10-20)`
+11. **Tag pills sweep (collapsed only); every CTA shines — added by the banner, not by screens; the count pill does NOT sweep** — *one component, one behavior across modules* — `(source: ui §10l, Pavan 2026-10-20, 2026-10-26)`
 12. **Opened items sit on white inside the banner's coloured outline; rich facts are the record's own readings in equal columns** — *a tank is drawn the way the app draws it everywhere* — `(source: alert-banner.tsx, Pavan 2026-10-20)`
 13. **On every list the banner sits under the toolbar (search, Filters, chips), right above the table or board** — *the tools first, then what needs attention, then the list it narrows* — `(source: Pavan 2026-10-25)`.
 14. **The banner is always the info blue; the pills carry the severity** (red Overdue/Needs action, amber caution…) — *a banner is information; the pill says how serious* — `(source: Pavan 2026-10-25)`.
 15. **View all** beside ‹ 1 of N › lays every alert out as its own banner, one under another; the first carries **Collapse** to fold them back to one at a time — `(source: Pavan 2026-10-25)`.
+16. **Every alert wears the same anatomy** — tag pill (icon · label · count inside) · title · ghost "View details" that filters the list → "✕ Clear filter". An alert with items still filters; no count/chevron pill outside the tag — *"Needs action" looked different from the rest* — `(source: Pavan 2026-10-26; misses M-003)`
+17. **Tag pills are WHITE with the severity ink** for the words, the icon and a 1px rim (red for Overdue/Needs action/Exception, the lane yellow for At risk/Due soon); the count inside the tag sits on a very light fill of the tag colour (12%) — *the banner is blue; the pill alone says how serious* — `(source: Pavan 2026-10-26)`
+18. **A count pill outside a tag (non-filtering alerts) is a regular neutral pill** — grey fill, dark text, no sweep — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Pass `onApply` for every alert that is about a slice of the list; let the banner render "View details".

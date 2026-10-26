@@ -106,6 +106,12 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 19. **Removing an optional section is a minus, never a bin**; confirm only when it has content — `(source: ux/2-rules SheetSectionRemove)`.
 20. **No helper text that explains a control** — state and consequence only — `(source: ux/2-rules helper text; feedback_no_unrequested_ui)`.
 21. **Closing a new order with anything typed asks "Discard this order?"** — `(source: ui/7-variants §1 stepped form, Pavan 2026-10-06)`.
+22. **A read stage speaks quietly** (3PL from Assigned on): every unit heading 14px medium muted — the rail cards' voice — units 24px apart, heading → box 10px; facts, not disabled fields — `(source: Pavan 2026-10-26)`
+23. **Order facts in three groups side by side, ruled top to bottom** — what kind (job type · order type · PO · urgent) | who and where (customer · hub · ship-to) | tags — `(source: Pavan 2026-10-26)`
+24. **A full-width unit under the form + rail (Pricing) is preceded by an edge-to-edge rule** through the sheet padding — 40px from the form's last unit to the rule, 40px from the rule to the unit — `(source: Pavan 2026-10-26)`
+25. **Several partners priced → saved-views underline tabs on the column header's bottom rule**, the label level with the sibling headings; Finalize takes the tab on show — `(source: Pavan 2026-10-26)`
+26. **A total row draws `border-t` only** — `border-y` stacks on the card rim — `(source: misses M-017; eval double-stroke)`
+27. **A field that IS a value is read until adjusted** — a pencil BEFORE the figure (tooltip "Make adjustments" + why), the figure on the same right edge as its siblings; pressed, the box replaces it, right-aligned; never the box and the same figure side by side — `(source: Pavan 2026-10-26; misses M-018)`
 
 ## Do / Don't
 - ✅ Pass `fit` with `CELL` widths whenever the sheet holds a table; pass the current step's tables.

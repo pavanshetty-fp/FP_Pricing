@@ -228,9 +228,10 @@ export function AiSparkle({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" aria-hidden className={className}>
       <defs>
         <linearGradient id={id} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="color-mix(in oklab, var(--color-accent-violet) 55%, white)" />
-          <stop offset="0.5" stopColor="var(--color-accent-violet)" />
-          <stop offset="1" stopColor="var(--fp-viz-7)" />
+          {/* GRAYSCALE (Pavan, 2026-10-26) — icons don't wear the accent. */}
+          <stop offset="0" stopColor="color-mix(in oklab, var(--color-muted-foreground) 55%, white)" />
+          <stop offset="0.5" stopColor="var(--color-muted-foreground)" />
+          <stop offset="1" stopColor="var(--color-foreground)" />
         </linearGradient>
       </defs>
       <path d={spark(10, 13.5, 8.5)} fill={`url(#${id})`} />
@@ -376,7 +377,7 @@ export function RuleRecommendations({
                             <th className="px-2.5 py-2 text-left">
                               <TableRequiredLabel>Products</TableRequiredLabel>
                             </th>
-                            <th className="px-2.5 py-2">
+                            <th className="px-2.5 py-2 text-left">
                               <TableRequiredLabel>Total (gal)</TableRequiredLabel>
                             </th>
                           </tr>

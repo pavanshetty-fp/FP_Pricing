@@ -40,8 +40,30 @@ export interface A11y {
   /** Component size — how wide lanes and table columns are, one of
       COMPONENT_STEPS. The text stays its size; the boxes get room. */
   component: number;
+  /** Text weight — 0…WEIGHT_STEPS; every weight heavier by the same step,
+      so medium stays heavier than regular (Pavan, 2026-10-26). */
+  weight: number;
+  /** The screen the app is shown on — a zoom on top of Display size. */
+  screen: ScreenKey;
 }
-export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, background: 0, ink: 0, display: 1, component: 1 };
+export const A11Y_DEFAULT: A11y = { text: 0, stroke: 0, background: 0, ink: 0, display: 1, component: 1, weight: 0, screen: "default" };
+
+/** THE TEXT WEIGHT STEPS — each adds 25 to every weight (400 → 525 at the top). */
+export const WEIGHT_STEPS = 5;
+const WEIGHT_PER_STEP = 25;
+
+/** THE SCREEN (Pavan, 2026-10-26) — Default changes nothing; each screen sets
+    the zoom it is read at, multiplied with Display size. */
+export type ScreenKey = "default" | "laptop" | "tablet" | "monitor" | "large" | "tv";
+export const SCREENS: { key: ScreenKey; label: string; zoom: number }[] = [
+  { key: "default", label: "Default", zoom: 1 },
+  { key: "laptop", label: "Laptop", zoom: 1 },
+  { key: "tablet", label: "Tablet", zoom: 0.9 },
+  { key: "monitor", label: "Monitor", zoom: 1.1 },
+  { key: "large", label: "Large monitor", zoom: 1.25 },
+  { key: "tv", label: "TV or projector", zoom: 1.5 },
+];
+const screenZoom = (k: ScreenKey) => SCREENS.find((x) => x.key === k)?.zoom ?? 1;
 
 /** THE TEXT SIZE STEPS — 100% to 130%, 5% apart (stored as 0–100). */
 export const TEXT_STEPS = 6;
@@ -154,6 +176,10 @@ let a11y: A11y =
           /* NO TEXT COLOR SLIDER (2026-10-24) — text follows Contrast. */
           ink: 0,
           component: nearestComponent(n(o.component, 1)),
+          weight: Math.max(0, Math.min(WEIGHT_STEPS, Math.round(n(o.weight, 0)))),
+          screen: SCREENS.some((x) => x.key === (o as { screen?: string }).screen)
+            ? ((o as { screen?: string }).screen as ScreenKey)
+            : "default",
           /* THE OLD SCREEN SIZES land on the nearest step; Auto on 100%. */
           display: nearestDisplay(
             n(o.display, ({ monitor: 1.1, large: 1.25, tv: 1.5 } as Record<string, number>)[(o as { screen?: string }).screen ?? ""] ?? 1)
@@ -184,11 +210,13 @@ export function applySettings() {
   /* TYPE — 100%–130%; the units around it are fitted after. */
   const scale = 1 + (a11y.text / 100) * 0.3;
   style.setProperty("--fp-text-scale", String(scale));
-  root.classList.toggle("a11y-text", a11y.text > 0);
+  /* TEXT WEIGHT — every weight up by the same step (index.css .a11y-text). */
+  style.setProperty("--fp-weight-add", String(a11y.weight * WEIGHT_PER_STEP));
+  root.classList.toggle("a11y-text", a11y.text > 0 || a11y.weight > 0);
   fitUnits();
 
-  /* DISPLAY SIZE — one zoom for the whole page. */
-  const zoom = a11y.display;
+  /* DISPLAY SIZE × THE SCREEN — one zoom for the whole page. */
+  const zoom = Math.round(a11y.display * screenZoom(a11y.screen) * 1000) / 1000;
   if (zoom === 1) style.removeProperty("zoom");
   else style.setProperty("zoom", String(zoom));
   root.classList.toggle("a11y-zoom", zoom !== 1);

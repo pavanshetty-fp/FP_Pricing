@@ -434,7 +434,7 @@ function AssetPickerSheet({
                       />
                     </span>
                   </th>
-                  <th className="px-3 py-2.5">
+                  <th className="px-3 py-2.5 text-left">
                     <span className="flex items-center gap-1">
                       <TableRequiredLabel>Capacity</TableRequiredLabel>
                       <HeaderRangeFilter
@@ -449,7 +449,7 @@ function AssetPickerSheet({
                       />
                     </span>
                   </th>
-                  <th className="px-3 py-2.5" />
+                  <th className="px-3 py-2.5 text-left" />
                 </tr>
               </thead>
               <tbody>
@@ -1669,7 +1669,7 @@ export function AssetMovementSheet({
                     <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel required>Item</TableRequiredLabel>
                     </th>
-                    <th className="px-3 py-2.5">
+                    <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Qty</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">

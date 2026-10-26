@@ -926,7 +926,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 ## 13. Accessibility
 
-**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text size · Component size · Stroke contrast · Contrast · divider · Display size; Reset is the icon at its top.**
+**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text weight · Text size · Component width & space · Stroke contrast · Fill contrast · divider · Display size · Screen; Reset is the icon at its top.**
 - **Why:** Pavan, 2026-10-21 — first theme modes, then "a lot more contrast" for external monitors, then one menu with sliders.
 - **Applies to:** every module.
 - **Check:** review
@@ -1033,6 +1033,14 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 ---
 
 **UX-161. One highlighted card per sheet.** The tinted SummaryCard marks the single most important read-out — the order or quote summary, or what needs attention — and nothing else wears it; every other rail card (trip, records, notes, activity, the order in short) is a plain RailCard. — *"The highlighted card should be only one… the one that is the most important in terms of seeing information."* (Pavan, 2026-10-26) · Check: eval `sheets` flags a file with two.
+
+**UX-162. US English everywhere a user reads** (canceled, program, color, fulfillment, catalog, license…). — *"Let's go with US English."* (Pavan, 2026-10-23) · Check: eval `us-spelling`.
+
+**UX-163. Reach for the closest pattern already in the product before any generic component** — partner tabs are the saved-views tabs, a read value with an edit is the pencil pattern. — *The vendor picker was first built as segmented tabs.* (Pavan, 2026-10-26)
+
+**UX-164. A change is verified at every stage the screen appears in, with a blank and a filled row, in both themes; every miss is logged** (`evals/misses.json`) with its pattern and its guard. — *Most misses repeated one of nine patterns.* (Pavan, 2026-10-26) · Check: eval `misses`.
+
+**UX-165. Icons are grayscale.** Metric/figure icons, the AI sparkle and every other icon use the muted grey, quietly — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
 
 ## Index
 
@@ -1199,3 +1207,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-159 | Every act announces itself with a toast; typing does not — the autosave earns the chip |
 | UX-160 | Failure and error paths are not designed yet (today every toast is a success) |
 | UX-161 | One highlighted card per sheet — the most important read-out; the rest are plain RailCards |
+| UX-162 | US English everywhere a user reads |
+| UX-163 | Closest existing pattern before any generic component |
+| UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
+| UX-165 | Icons are grayscale; the accent is for highlights only |

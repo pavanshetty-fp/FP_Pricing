@@ -82,6 +82,9 @@ RIGHT cluster (`gap-1`):
 8. **The date control is a stepper whose arrows move by the window's length.** — *stepping never silently changes how much you are looking at.* — `(source: DateRangeFilter.tsx)`
 9. **20px of space, not a rule, between the date and the display switch.** — `(source: ListToolbar.tsx, Pavan 2026-10-05)`
 10. **A control the current view can't act on is hidden, not disabled.** — *a control on screen that does nothing teaches people to stop reaching for it.* — `(source: ui §10)`
+11. **One gap, 12px, between every control group** — search ↔ Filters ↔ Group by, and date ↔ view switch — `(source: Pavan 2026-10-25; misses M-012)`
+12. **The view switch is one bordered segmented control** — list · kanban (two upright columns side by side, a gap between) · map icons; the selected segment a grey fill — `(source: Pavan 2026-10-23)`
+13. **Export is an outlined square as tall as the Create CTA** (24 × 24, the icon centred, the CTA's corner radius) — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Wrap toolbar + chip shelf in one `mt-4 shrink-0` shelf (ui §10c composition).

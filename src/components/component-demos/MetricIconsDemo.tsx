@@ -24,7 +24,7 @@ export function MetricIconsDemo() {
 
       <Stack space="title">
         <SectionHeading as="h3" title="The icons" />
-        <div className="flex flex-wrap gap-6 text-accent-violet">
+        <div className="flex flex-wrap gap-6 text-muted-foreground">
           {items.map(({ key, label, icon: Icon }) => (
             <div key={key} className="flex flex-col items-center gap-2">
               <Icon className="size-12" strokeWidth={1.75} />

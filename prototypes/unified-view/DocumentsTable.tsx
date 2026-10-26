@@ -53,7 +53,7 @@ export function DocumentsTable({
               {h}
             </th>
           ))}
-          <th className="w-10 px-3 py-2" />
+          <th className="w-10 px-3 py-2 text-left" />
         </tr>
       </thead>
       <tbody>

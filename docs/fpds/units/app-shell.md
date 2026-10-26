@@ -18,7 +18,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 3. **`ModuleSidebar`** (left, in a box): collapse button in the top-right corner · module rows (open module first, then the rest in `APP_MODULES` order: 3PL · Sales · Service Work · Pricing · Lease) · under the open module its pages on a guide line — loose pages, small uppercase section headings for areas with sub-pages (3PL Orders, Directory), or a **tree** (`nested`) where a page keeps its row and its pages hang under it on bars (Customer Portal Orders; UV `SUB_NAV`) · a divider · **Accessibility** item (`AccessibilityIcon` + "Accessibility") always in view at the foot.
 4. **Collapsed rail**: expand button · rule · the open module's pages as icons (sections split by short rules) · rule · other modules as icons · Accessibility icon at the bottom; every icon has a right-side tooltip.
 5. **Module-switch progress**: a 2px bar along the bottom of the chosen row + "Loading data for this module." under it.
-6. **Accessibility panel** (fixed, pinned beside the nav at the window's foot): header "Accessibility" + Reset icon · Theme (Light | Dark) · Text size (steps, − / +) · Component size (steps 100–150%, − / +: lanes and table columns widen) · Stroke contrast · Contrast · divider · Display size (steps 50–150%, − / +).
+6. **Accessibility panel** (fixed, pinned beside the nav at the window's foot): header "Accessibility" + Reset icon · Theme (Light | Dark) · Text weight (steps) · Text size (steps, − / +) · Component width & space (steps 100–150%: lanes and table columns widen) · Stroke contrast · Fill contrast · divider · Display size (steps 50–150%, − / +) · Screen (Default / Laptop / Tablet / Monitor / Large monitor / TV).
 7. **Content layer**: page title (`h1 text-xl font-semibold`) + muted count outside the container; the page body inside (see the page units).
 8. **`GlobalSearch`** dialog (opens from the top-bar field or ⌘K): query row (`Search` icon · input · `Esc`) · scope tabs + live count · results grouped by kind (icon tile · title · subtitle · kind `Pill`) · keyboard-hint footer.
 9. **`ModuleSkeleton`**: tabs + right controls · toolbar · table header + 9 rows, all shimmering `Skeleton` blocks; the page title is a `Skeleton` too.
@@ -92,8 +92,8 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 6. **A page with sub-pages stays a page row, its pages on tree bars** (`nested`) — `(source: project_nav_style 2026-10-15)`.
 7. **Module order 3PL · Sales · Service Work · Pricing · Lease** — `(source: project_nav_style 2026-10-09)`.
 8. **Accessibility lives at the foot of the navigation in every module; no header theme icon** — `(source: ui §10n; memory feedback_wcag_modes)`.
-9. **Panel order: Theme · Text size · Stroke contrast · Contrast · divider · Display size; Reset is the icon alone** — `(source: ui §10n, Pavan 2026-10-21)`.
-10. **Text size grows the text only** — a unit widens only when bigger text would be cut inside it (`fitUnits`) — *"text size should increase text only"* — `(source: a11y.ts; feedback_wcag_modes)`.
+9. **Panel order: Theme · Text weight · Text size · Component width & space · Stroke contrast · Fill contrast · divider · Display size · Screen; Reset is the icon alone** — no Text color slider (text follows Fill contrast) — `(source: ui §10n, Pavan 2026-10-21 → 2026-10-26)`
+10. **Text size grows the text only** — no box widens; text wraps inside its box and the box grows taller; record numbers and dates never wrap — their table column widens just enough — *"only the text size should increase without the card size increasing"* — `(source: Pavan 2026-10-23)`
 11. **Always reachable, always resettable** — panel pinned beside the nav, never wider/taller than the window; ⌘⌥0 and `?a11y=reset`; a narrow zoomed window scrolls sideways — `(source: ui §10n)`.
 12. **The brand fill never moves** with Contrast — `(source: feedback_wcag_modes 2026-10-21)`.
 13. **Anything sized to the window uses `var(--fp-vw)` / `var(--fp-vh)`** — *a zoomed page multiplies viewport units* — `(source: ui §10n)`.
@@ -101,6 +101,11 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 15. **Anything new that sits straight on the shell ground gets `data-fp-on-frame`** — it turns white when the frame goes dark at Contrast ≥ 80 — `(source: ui §10n)`.
 16. **Profile and Settings are account destinations** — in the account menu, never in the navigation — `(source: docs/unified-view/2-layouts.md §2)`.
 17. **Title and primary CTA sit outside the content container; everything that acts on the data inside** — `(source: 2-layouts.md §1)`.
+18. **Sizes are STEPS with − and +** (a dot per step), like Android's "Display size and text"; no preview card — the page is the preview — `(source: Pavan 2026-10-23)`
+19. **Component width & space (100–150%, 10% steps) widens board lanes and table columns** — cards follow the lane and keep their padding; cut-off text shows once it fits; nav and sheets keep their width — `(source: Pavan 2026-10-25)`
+20. **Display size (50 · 75 · 100 · 125 · 150%, 100 in the middle) zooms everything together; no Auto, not tied to monitors** — `(source: Pavan 2026-10-23)`
+21. **Text weight sits on top: six steps, each adding 25 to every weight together** — regular, medium, semibold and bold rise by the same amount, so the hierarchy holds — `(source: Pavan 2026-10-26)`
+22. **Screen (after Display size): Default · Laptop · Tablet · Monitor · Large monitor · TV or projector** — Default changes nothing; each screen sets the zoom it is read at (×1, ×1, ×0.9, ×1.1, ×1.25, ×1.5), multiplied with Display size — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Reuse `ModuleSidebar` + `TopBar` + `AppShell` for any new module, the portal included.

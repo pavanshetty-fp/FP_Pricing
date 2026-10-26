@@ -126,12 +126,12 @@ export function StatementView({
           </colgroup>
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-border bg-fp-table-header text-left text-xs font-medium text-muted-foreground">
-              <th className="px-4 py-2.5 font-medium">Date</th>
-              <th className="px-3 py-2.5 font-medium">Document</th>
-              <th className="px-3 py-2.5 font-medium">Description</th>
-              <th className="px-3 py-2.5 font-medium">Charges</th>
-              <th className="px-3 py-2.5 font-medium">Payments</th>
-              <th className="px-4 py-2.5 font-medium">Balance</th>
+              <th className="px-4 py-2.5 font-medium text-left">Date</th>
+              <th className="px-3 py-2.5 font-medium text-left">Document</th>
+              <th className="px-3 py-2.5 font-medium text-left">Description</th>
+              <th className="px-3 py-2.5 font-medium text-left">Charges</th>
+              <th className="px-3 py-2.5 font-medium text-left">Payments</th>
+              <th className="px-4 py-2.5 font-medium text-left">Balance</th>
             </tr>
           </thead>
           <tbody>

@@ -131,11 +131,11 @@ export function ProductTable<L extends ProductLine = ProductLine>({
               <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel required>{productLabel}</TableRequiredLabel>
               </th>
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel required>{qtyLabel}</TableRequiredLabel>
               </th>
               {columns.map((c) => (
-                <th key={c.key} className="px-3 py-2.5">
+                <th key={c.key} className="px-3 py-2.5 text-left">
                   <TableRequiredLabel required={c.required}>{c.label}</TableRequiredLabel>
                 </th>
               ))}

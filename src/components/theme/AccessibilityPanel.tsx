@@ -2,10 +2,11 @@ import * as React from "react";
 import { Minus, Moon, Plus, RotateCcw, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { COMPONENT_STEPS, DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep, textStepOf, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, type A11y } from "./a11y";
+import { COMPONENT_STEPS, DISPLAY_STEPS, RESET_SHORTCUT, SCREENS, TEXT_STEPS, WEIGHT_STEPS, textOfStep, textStepOf, isDefaultA11y, resetA11y, setA11y, setTheme, useA11y, useTheme, type A11y, type ScreenKey } from "./a11y";
 
 /*
   THE ACCESSIBILITY PANEL (Pavan, 2026-10-21; DS ui §10n) — opened from the
@@ -14,9 +15,10 @@ import { COMPONENT_STEPS, DISPLAY_STEPS, RESET_SHORTCUT, TEXT_STEPS, textOfStep,
 
     Theme                 Light | Dark, on top
     Text size             six steps, 100% – 130%; only the text grows
-    Component size        100% – 150%; lanes and table columns widen
+    Text weight           on top — six steps, every weight up together
+    Component width & space  100% – 150%; lanes and table columns widen
     Stroke contrast       rims, dividers, field borders — Default → Maximum
-    Contrast              grays go darker, whites stay white, text follows
+    Fill contrast         grays go darker, whites stay white, text follows
                           — Default → Maximum
                           (renamed and Text color removed, Pavan, 2026-10-24)
     ── divider ──
@@ -179,6 +181,15 @@ export function AccessibilityPanel() {
           </ToggleGroupItem>
         </ToggleGroup>
 
+        {/* TEXT WEIGHT, ON TOP (Pavan, 2026-10-26) — every weight heavier by
+            the same step, so the hierarchy between them holds. */}
+        <StepRow
+          label="Text weight"
+          step={a.weight}
+          steps={WEIGHT_STEPS}
+          shown={a.weight === 0 ? "Default" : `+${a.weight}`}
+          onChange={(v) => setA11y({ weight: v })}
+        />
         <StepRow
           label="Text size"
           step={textStepOf(a.text)}
@@ -186,10 +197,11 @@ export function AccessibilityPanel() {
           shown={`${Math.round(100 + a.text * 0.3)}%`}
           onChange={(v) => setA11y({ text: textOfStep(v) })}
         />
-        {/* COMPONENT SIZE (Pavan, 2026-10-25) — lanes and table columns get
-            wider, the text stays; cut-off text shows in full once it fits. */}
+        {/* COMPONENT WIDTH & SPACE (Pavan, 2026-10-25; named 2026-10-26) —
+            lanes and table columns get wider, the text stays; cut-off text
+            shows in full once it fits. */}
         <StepRow
-          label="Component size"
+          label="Component width & space"
           step={COMPONENT_STEPS.indexOf(a.component)}
           steps={COMPONENT_STEPS.length - 1}
           shown={`${Math.round(a.component * 100)}%`}
@@ -200,7 +212,7 @@ export function AccessibilityPanel() {
             Contrast (a11y.ts), so the two never pull apart. */}
         <div className="flex flex-col gap-4">
           <Row label="Stroke contrast" value={a.stroke} shown={pct(a.stroke)} onChange={set("stroke")} ends={["Default", "Maximum"]} />
-          <Row label="Contrast" value={a.background} shown={pct(a.background)} onChange={set("background")} ends={["Default", "Maximum"]} />
+          <Row label="Fill contrast" value={a.background} shown={pct(a.background)} onChange={set("background")} ends={["Default", "Maximum"]} />
         </div>
 
         <Separator />
@@ -213,6 +225,25 @@ export function AccessibilityPanel() {
           shown={`${Math.round(a.display * 100)}%`}
           onChange={(v) => setA11y({ display: DISPLAY_STEPS[v] })}
         />
+        {/* THE SCREEN (Pavan, 2026-10-26) — Default changes nothing; each
+            screen sets the zoom it is read at, on top of Display size. */}
+        <div className="flex flex-col gap-2">
+          <span id="a11y-screen" className="text-sm font-medium text-foreground">
+            Screen
+          </span>
+          <Select value={a.screen} onValueChange={(v) => setA11y({ screen: v as ScreenKey })}>
+            <SelectTrigger aria-labelledby="a11y-screen" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SCREENS.map((sc) => (
+                <SelectItem key={sc.key} value={sc.key}>
+                  {sc.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

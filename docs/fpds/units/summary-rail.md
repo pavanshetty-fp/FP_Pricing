@@ -69,6 +69,10 @@ The read-only right column of a record sheet: the **Summary card** shows what th
 8. **What changed leads, who and when follow** — *the reader is looking for the event* — `(source: SheetCards ActivityCard)`.
 9. **No rail while creating** — `(source: feedback_ui_rules)`; the Customer Portal order sheet keeps its summary on the right while creating — `(source: project_customer_portal 2026-10-13)`.
 10. **Customer Portal order summary fills the rail's full height in every state**; trip + activity keep their own height below — `(source: project_customer_portal 2026-10-20)`.
+11. **One highlighted card per sheet** — the tinted SummaryCard goes to the single most important read-out (the order/quote summary, or what needs attention); every other rail card is a plain RailCard — `(source: UX-161, Pavan 2026-10-26; eval sheets)`
+12. **RailCard headers are quiet** — no fill band; title 14px medium muted with its icon; a hairline under it — `(source: Pavan 2026-10-26)`
+13. **Notes above Activity; Activity is the last card** — `(source: Pavan 2026-10-26)`
+14. **The rail ends level with the form's last unit** — pinned, capped to the scroller, its foot aligned with the last unit on the left (the form's 40px foot room below both); what doesn't fit scrolls inside the rail — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Give every computed figure a `breakdown` when it is made of parts.

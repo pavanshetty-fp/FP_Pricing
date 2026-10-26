@@ -215,16 +215,22 @@ export function build({ write = true } = {}) {
 2. Follow the build protocol (FPDS.md › "the build protocol"): classify the request
    (L1), match a template (L2), match every region to a unit (L3), compose only from
    documented options (L4), check the UX and interaction rules (L5).
-3. Install code from the registry, never re-create it:
-   npx shadcn@latest add ${REGISTRY_URL}/fpds-theme.json  (once), then the unit you need,
-   e.g. npx shadcn@latest add ${REGISTRY_URL}/fpds-data-table.json
-4. Tokens only: no raw colours, sizes, radii or shadows.
+3. Use the real code, never re-create it. The org-level package is being set up; until
+   it is published, copy each unit from the code path named on its card (FPDS.md › the
+   unit's id line) and the theme from src/index.css. Once published:
+   npx shadcn@latest add ${REGISTRY_URL}/fpds-theme.json  (once), then the unit you need.
+4. Tokens only: no raw colours, sizes, radii or shadows. Solid fills, never opacity washes.
+   US English in everything a user reads.
 5. If a region fails all five checks, build everything else and put this message in its
    place, with the use case, the missing component, the closest existing unit and the
    checks you ran:
    "${GAP_MESSAGE}"
 6. Not designed yet (always the message): new UX copy, new empty pages/states, new
    highlight units, illustrations.
+7. Reuse the closest pattern already in the product before any generic component.
+8. Look before you report (UX-164): check every stage the screen appears in, a blank
+   and a filled row, light and dark, and the edges (last rows, card rims, repeated
+   values). Read the patterns in docs/fpds/evals/misses.md.
 `;
   writeFileSync(join(instDir, "AGENTS.md"), `# FPDS — rules for any coding agent\n\n${rules}`);
   writeFileSync(join(instDir, "CLAUDE.md"), `# FPDS — rules for Claude\n\n${rules}`);

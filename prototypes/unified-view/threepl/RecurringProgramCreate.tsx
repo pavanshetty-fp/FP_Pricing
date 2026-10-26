@@ -1026,7 +1026,7 @@ export function RecurringProgramCreate({
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-fp-table-header">
                     <tr className="border-b border-fp-outline-1">
-                      <th className="w-9 px-3 py-2" />
+                      <th className="w-9 px-3 py-2 text-left" />
                       {["Partner", "Base", "Covers", "Sites in range", "Safety"].map(
                         (h) => (
                           <th

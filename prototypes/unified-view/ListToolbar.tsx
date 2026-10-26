@@ -255,11 +255,13 @@ function Reveal({ children }: { children: React.ReactNode }) {
 }
 
 /** STACKED CARDS — the board's icon in the display switch (Pavan's reference). */
+/* THE BOARD READS AS A KANBAN (Pavan, 2026-10-26) — two columns standing
+   side by side with air between them, not two cards stacked. */
 function CardsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="4" y="3.5" width="16" height="7.5" rx="2.5" />
-      <rect x="4" y="13" width="16" height="7.5" rx="2.5" />
+      <rect x="3.5" y="4" width="7" height="16" rx="2.5" />
+      <rect x="13.5" y="4" width="7" height="16" rx="2.5" />
     </svg>
   );
 }

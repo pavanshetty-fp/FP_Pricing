@@ -22,7 +22,8 @@
     "fpds:build": "node scripts/fpds/build.mjs",
     "fpds:resolve": "node scripts/fpds/resolve.mjs",
     "dev:reference": "REFERENCE=1 vite",
-    "build:reference": "tsc -b && REFERENCE=1 vite build"
+    "build:reference": "tsc -b && REFERENCE=1 vite build",
+    "misses": "node scripts/misses.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

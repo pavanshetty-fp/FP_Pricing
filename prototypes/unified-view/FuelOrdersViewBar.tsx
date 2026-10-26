@@ -561,13 +561,15 @@ export function FuelOrdersViewBar({
         */}
         <Tooltip>
           <TooltipTrigger asChild>
+            {/* AN OUTLINED SQUARE AS TALL AS THE CTA (Pavan, 2026-10-26) —
+                24 × 24, the icon centred, the CTA's own corner. */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon-xs"
               aria-label="Export"
               onClick={onExport}
               className={cn(
-                "mr-1 mb-3 self-end",
+                "mr-1 mb-3 self-end rounded-[4px]",
                 // Takes over pushing the right cluster right when there is no CTA.
                 onCreateOrder || createMenu || segments?.length ? "ml-1.5" : "ml-auto"
               )}

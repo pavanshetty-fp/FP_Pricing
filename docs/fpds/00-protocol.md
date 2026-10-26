@@ -73,3 +73,8 @@ Alert banner and status/awaiting pills, and **illustrations** (see `09-later.md`
 
 Run the checks in `evals/README.md` that apply (`fpds-*` always; the repo's `npm run
 eval` when working in this repo). A failing check is fixed, not explained.
+
+Then look before you report (UX-164): **every stage** the screen appears in (draft,
+assigned, completed…), **a blank and a filled row**, **light and dark**, and the
+**edges** — last rows, card rims, repeated values. Read the patterns in
+`evals/misses.md`; if the owner has to point something out, log it there.

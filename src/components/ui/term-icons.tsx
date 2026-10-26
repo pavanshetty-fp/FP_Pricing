@@ -97,8 +97,9 @@ export const TERM_ICONS: Record<"deliveries" | "products" | "gallons" | "shipTos
 /*
   METRIC ICON — THE TILE A FIGURE CARD WEARS (Pavan, 2026-10-20; DS ui §10k).
   For metric / figure cards on dashboards and overviews: a 48px rounded-lg
-  tile in a very soft wash of the accent (violet at 6%), the term's icon at
-  28px in the accent, a 1.75 line. It sits beside the figure, centred on the
+  tile (64px leading a tile, `size="lg"`) in the muted grey, the term's icon
+  at 28px in the quiet icon ink (`text-fp-icon-quiet`, half the muted ink), a 1.75 line — GRAYSCALE since 2026-10-26 (Pavan:
+  no accent on icons). It sits beside the figure, centred on the
   figure-and-change unit. A new metric that needs an icon draws one in the
   same style (Lucide's grid and line, a soft fill of its own colour, a wavy
   level for anything that holds liquid) and is added to `TERM_ICONS`.
@@ -118,7 +119,9 @@ export function MetricIcon({
     <span
       aria-hidden
       className={[
-        "flex shrink-0 items-center justify-center rounded-lg bg-accent-violet/6 text-accent-violet",
+        /* GRAYSCALE AND QUIET (Pavan, 2026-10-26) — icons don't wear the
+           accent; the figure beside it leads. */
+        "flex shrink-0 items-center justify-center rounded-lg bg-muted text-fp-icon-quiet",
         size === "lg" ? "size-16" : "size-12",
         className ?? "",
       ].join(" ")}

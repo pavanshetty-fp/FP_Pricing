@@ -36,7 +36,6 @@ import {
 import { OrderRequestSheet } from "./OrderRequestSheet";
 import { TankHealthCard } from "./TankHealth";
 import { OutlineShine } from "@/components/ui/outline-shine";
-import { MetricIcon, TERM_ICONS } from "@/components/ui/term-icons";
 import { TrendChip } from "@/components/ui/trend-chip";
 import { SHIP_TOS } from "./orders";
 import { ActionSheet } from "./ActionSheet";
@@ -1394,13 +1393,11 @@ function WeekChange({ now, then }: { now: number; then: number }) {
   );
 }
 
-/** One figure of the next 7 days, against the 7 days before. ICON LEADS,
-    ARROW CLOSES, PER TILE (Pavan, 2026-10-26 — the Orders overview's shape,
-    in every module): the term's icon on the left, the text as one block,
-    the tile's own open arrow on the right. */
+/** One figure of the next 7 days, against the 7 days before — the text as
+    one block and the tile's own open arrow on the right; no metric icon
+    (Pavan, 2026-10-26). */
 function ScheduleTile({
   title,
-  icon: Icon,
   value,
   then,
   format = (n: number) => n.toLocaleString(),
@@ -1409,7 +1406,6 @@ function ScheduleTile({
   onOpen,
 }: {
   title: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   value: number;
   then: number;
   format?: (n: number) => string;
@@ -1419,8 +1415,6 @@ function ScheduleTile({
 }) {
   return (
     <section className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3">
-      {/* THE DS METRIC ICON (§10k), leading. */}
-      <MetricIcon icon={Icon} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1474,11 +1468,10 @@ function ScheduleOverview({
         {/* FOUR FIGURES, THE NEXT 7 DAYS (Pavan, 2026-10-19). Each opens the
             next 7 days — the one sheet that holds all four. */}
         <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
-          <ScheduleTile title="Deliveries" icon={TERM_ICONS.deliveries} value={a.deliveries} then={b.deliveries} onOpen={() => setDetails(true)} />
-          <ScheduleTile title="Products" icon={TERM_ICONS.products} value={a.products} then={b.products} onOpen={() => setDetails(true)} />
+          <ScheduleTile title="Deliveries" value={a.deliveries} then={b.deliveries} onOpen={() => setDetails(true)} />
+          <ScheduleTile title="Products" value={a.products} then={b.products} onOpen={() => setDetails(true)} />
           <ScheduleTile
             title="Gallons"
-            icon={TERM_ICONS.gallons}
             value={a.q.gal}
             then={b.q.gal}
             format={num}
@@ -1488,7 +1481,6 @@ function ScheduleOverview({
           />
           <ScheduleTile
             title="Ship-tos"
-            icon={TERM_ICONS.shipTos}
             value={a.sites}
             then={b.sites}
             unit={`of ${shipTos}`}

@@ -143,10 +143,10 @@ export function DisputeSheet({
                   <th className="px-3 py-2.5 text-left">
                     <TableRequiredLabel>Item</TableRequiredLabel>
                   </th>
-                  <th className="px-3 py-2.5">
+                  <th className="px-3 py-2.5 text-left">
                     <TableRequiredLabel>Charged</TableRequiredLabel>
                   </th>
-                  <th className="px-3 py-2.5">
+                  <th className="px-3 py-2.5 text-left">
                     <TableRequiredLabel>Should be</TableRequiredLabel>
                   </th>
                 </tr>

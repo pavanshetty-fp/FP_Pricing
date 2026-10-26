@@ -105,7 +105,7 @@ export function vendorReadSections(v: Vendor): RecordReadSection[] {
           <ReadField label="Compliance status" value={v.complianceStatus} />
           <ReadField label="Valid until" value={formatDate(v.complianceValidTo)} />
           <ReadField label="Insurance expiry" value={formatDate(v.insuranceExpiry)} />
-          <ReadField label="Licences" value={<TagRow tags={v.licenseNumbers} />} />
+          <ReadField label="Licenses" value={<TagRow tags={v.licenseNumbers} />} />
           <ReadField label="Live orders" value={assignedOrderCount(v.id)} />
           <ReadField label="Safety score" value={`${v.safetyScore} / 100`} />
           <ReadField label="Distance from yard" value={`${v.distanceMi} mi`} />

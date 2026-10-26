@@ -365,6 +365,10 @@
   --color-chip: var(--chip);
   --color-fp-lane: var(--fp-lane);
   --color-fp-board-lane: var(--fp-board-lane);
+  /* THE QUIET ICON INK (Pavan, 2026-10-26) — the metric icons' line, halfway
+     from the muted ink to the tile it sits on: half as dark, still a solid
+     colour, in both themes. */
+  --color-fp-icon-quiet: color-mix(in oklab, var(--muted-foreground) 50%, var(--muted));
   --color-fp-table-header: var(--fp-table-header);
   --color-fp-viz-1: var(--fp-viz-1);
   --color-fp-viz-2: var(--fp-viz-2);
@@ -1196,11 +1200,12 @@
   --text-sm: calc(0.875rem * var(--fp-text-scale));
   --text-base: calc(1rem * var(--fp-text-scale));
   --text-lg: calc(1.125rem * var(--fp-text-scale));
-  /* HEAVIER AS IT GROWS — Geist is variable: +75 at 130%. */
-  --font-weight-normal: calc(400 + (var(--fp-text-scale) - 1) * 250);
-  --font-weight-medium: calc(500 + (var(--fp-text-scale) - 1) * 250);
-  --font-weight-semibold: calc(600 + (var(--fp-text-scale) - 1) * 250);
-  --font-weight-bold: calc(700 + (var(--fp-text-scale) - 1) * 250);
+  /* HEAVIER AS IT GROWS — Geist is variable: +75 at 130% — plus the Text
+     weight slider's own step (--fp-weight-add, 2026-10-26). */
+  --font-weight-normal: calc(400 + (var(--fp-text-scale) - 1) * 250 + var(--fp-weight-add, 0));
+  --font-weight-medium: calc(500 + (var(--fp-text-scale) - 1) * 250 + var(--fp-weight-add, 0));
+  --font-weight-semibold: calc(600 + (var(--fp-text-scale) - 1) * 250 + var(--fp-weight-add, 0));
+  --font-weight-bold: calc(700 + (var(--fp-text-scale) - 1) * 250 + var(--fp-weight-add, 0));
 }
 .a11y-text body {
   font-weight: var(--font-weight-normal);

@@ -51,12 +51,18 @@ import * as fieldsFill from "./eval/fields-fill.mjs";
 import * as wcagContrast from "./eval/wcag-contrast.mjs";
 /* FPDS (2026-10-23) — the new layered design system's own checks. */
 import * as fpds from "./eval/fpds.mjs";
+/* THE MISSES LOG (2026-10-26) — guards born from misses, and the log itself. */
+import * as guards from "./eval/guards.mjs";
+import * as misses from "./eval/misses.mjs";
 
 const CHECKS = [
   tokens, boxedTables, sheets, microcopy, statusKinds, tableRows,
   parityLists, paritySheets, parityTables, parityShell, fieldReach, fieldsFill, wcagContrast,
   ...fpds.ALL,
+  ...guards.ALL,
+  misses,
 ];
+misses.setCheckNames(CHECKS.map((c) => c.name));
 const RESULTS = join(ROOT, "docs/unified-view/evals/results");
 
 /** The segments that no script covers, so the report can say so out loud. */
@@ -150,6 +156,9 @@ if (previous) {
 } else {
   say(`  ${all.length} scripted finding${all.length === 1 ? "" : "s"} · first run, this is the baseline`);
 }
+
+say("");
+for (const l of misses.summary()) say(l);
 
 say("\n  NOT COVERED BY ANY SCRIPT — read these against the segment files:");
 for (const [seg, what] of Object.entries(MANUAL)) {

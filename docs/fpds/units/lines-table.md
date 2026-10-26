@@ -97,6 +97,14 @@ The order's lines as an editable table: which tank or asset gets which product, 
 13. **The suggestion is the Qty placeholder; → takes it; Qty starts empty; Top off never pre-ticked** — *no separate Suggested column (Pavan, 2026-10-20)* — `(source: memory project_customer_portal 2026-10-20)`
 14. **Column widths are `CELL` px, matched by the sheet's `fit`; everything left-aligned** — *the sheet is only as wide as its tables; right-aligned Qty misaligned with its header* — `(source: memory feedback_ui_rules sheet width; ui §10p 2026-10-22)`
 15. **One row is always there; never an empty message instead of rows** — `(source: ux/2-rules "Tables — one row is always there" 2026-10-14)`
+16. **Tank lines read: Asset · Product · Current level · Days to empty · On fulfillment · Qty · Top off LAST** — the level the quantity lands at sits beside it; Top off's select-all and every row tick share one right edge; the header carries `data-top-off-last` (3PL DO, CP order, 3PL recurring). Other line tables keep Top off · Qty last — `(source: Pavan 2026-10-26)`
+17. **Every header declares `text-left`** — a bare `<th>` centres — `(source: misses M-005; eval th-align)`
+18. **Every column its own width; the table scrolls sideways rather than squeezing; no unit suffix in the Qty cell** (the header says "(gal)") — `(source: Pavan 2026-10-26)`
+19. **The row delete is a sticky layer at the right edge** — `sticky right-0 z-10 border-l bg-popover`, header cell `bg-fp-table-header`, no heading; the bin shows on row hover; the columns scroll behind it — `(source: Pavan 2026-10-26)`
+20. **A monitored tank never takes more than its room on the planned day** — the Qty cell holds the figure to the max AS it is typed and a tooltip says why ("<asset> has room for only N gal on the planned day — more would overfill it."); On fulfillment never exceeds 100% — `(source: Pavan 2026-10-26; misses M-013)`
+21. **The On fulfillment card answers first** — "The tank level post delivery will be X%, based on your daily usage." — then **Show breakdown** opens Current level · Requested · Days to deliver (sub: per-day usage · level on the day of delivery) · On fulfillment total; no formula — `(source: Pavan 2026-10-26)`
+22. **The asset picker marks the exception and sorts first** — a "No monitor" pill only on assets without a tank monitor; tabs **All · Tank monitor · No tank monitor** above the list (saved-views underline tabs); the list names each asset once — `(source: Pavan 2026-10-26)`
+23. **Multi-pick from ANY row** — the row's own value opens ticked; kept, the row stays and each other pick adds a row under it; unticked, the first pick takes the row — `(source: Pavan 2026-10-26; misses M-015; eval multipick-any-row)`
 
 ## Do / Don't
 - ✅ Asset · Product · (readings) · Top off · Qty · bin, in that order, in every module.

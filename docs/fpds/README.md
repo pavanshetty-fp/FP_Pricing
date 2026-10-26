@@ -22,6 +22,7 @@ Owner: Pavan Shetty · pavanshetty@fleetpanda.com
 | — | Interaction rules | `08-interaction-rules.md` | How things respond — hover, staging, autosave, motion… |
 | — | Not designed yet | `09-later.md` | UX copy, empty pages, highlight units, illustrations |
 | — | Checks | `evals/README.md` | Five levels of evals, golden prompts |
+| — | Misses log | `evals/misses.md` | Every miss the owner had to point out, its pattern and its guard — read before reporting |
 
 Every atom, molecule, unit and template is a **spec card** with the same twelve sections
 (`_spec-card-template.md`): Purpose · Use when / Don't use when · Anatomy · Look · States ·
@@ -39,7 +40,10 @@ Interactions · Outcomes · Data contract · Rules · Do / Don't · Checks · Re
 | Claude / Claude Code | `install/CLAUDE.md` → project `CLAUDE.md` |
 | Any other agent | `install/AGENTS.md` → project `AGENTS.md` |
 
-**Code** — install from the registry (shadcn format), never re-create:
+**Code** — use the real code, never re-create it. **The org-level package is being set
+up (2026-10-25); until it is published, copy each unit from the code path on its card
+and the theme from `src/index.css`.** Once published, install from the registry (shadcn
+format):
 
 ```bash
 npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-theme.json

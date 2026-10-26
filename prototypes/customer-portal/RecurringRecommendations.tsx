@@ -149,7 +149,7 @@ export function RecurringRecommendations({ onCreate }: { onCreate: (r: PortalRec
                         <th className="px-2.5 py-2 text-left">
                           <TableRequiredLabel>Product</TableRequiredLabel>
                         </th>
-                        <th className="px-2.5 py-2">
+                        <th className="px-2.5 py-2 text-left">
                           <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                         </th>
                       </tr>

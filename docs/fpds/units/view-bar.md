@@ -80,6 +80,7 @@ Hosts: table → `ListTable topBar={bar.slot}` (inside the table frame, outside 
 7. **The columns menu follows the table's order and can reorder it.** — *the column you want is usually the one scrolled off the right edge.* — `(source: ListToolbar.tsx; parity G3)`
 8. **Card fields: a switch per category, a tick per field, per lane or all lanes; no ordering.** — *the category is the decision; a card's order is its design.* — `(source: ListToolbar.tsx, Pavan 2026-09-23; ui §10)`
 9. **Closing the column search row clears every box.** — *a narrowing with nothing on screen is not allowed.* — `(source: ui §10g)`
+10. **On a board the view bar is the top strip of the board's own box** (`BoardWithBar`), a line under it — attached like the table's, never a separate box — `(source: Pavan 2026-10-25; misses M-011)`
 
 ## Do / Don't
 - ✅ Wire all three: `useViewBar()`, `viewToolsInto` + `viewStatement`, `topBar` / `BoardWithBar`.

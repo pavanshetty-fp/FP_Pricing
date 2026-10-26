@@ -1,6 +1,4 @@
-import * as React from "react";
 import { ArrowUpRight, Truck } from "lucide-react";
-import { MetricIcon, TERM_ICONS } from "@/components/ui/term-icons";
 import { TrendChip } from "@/components/ui/trend-chip";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
@@ -22,10 +20,9 @@ import {
   be delivered — its change on the same weekday last week. How much is
   already delivered is in the details sheet, not here (Pavan, 2026-10-13).
 
-  ICON LEADS, ARROW CLOSES, PER TILE (Pavan, 2026-10-26): the term's metric
-  icon on the left, as tall as the text beside it; the text as one block;
-  and each tile its own open arrow on the right, opening ITS sheet — today's
-  orders, or today's gallons.
+  TEXT AND AN ARROW, PER TILE (Pavan, 2026-10-26): no metric icon (removed
+  the same day); the text as one block and each tile its own open arrow on
+  the right, opening ITS sheet — today's orders, or today's gallons.
 */
 
 const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "long" });
@@ -38,10 +35,9 @@ function Change({ now, then }: { now: number; then: number }) {
 }
 
 /* THE TERM'S ICON, NOT A TREND LINE (Pavan, 2026-10-20) — figure, unit and
-   change as one unit; the icon before the text, the open arrow after it. */
+   change as one unit, the open arrow after it. */
 function Tile({
   title,
-  icon,
   value,
   unit,
   then,
@@ -49,7 +45,6 @@ function Tile({
   onOpen,
 }: {
   title: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   value: number;
   unit: string;
   then: number;
@@ -58,7 +53,6 @@ function Tile({
 }) {
   return (
     <section className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3">
-      <MetricIcon icon={icon} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -103,7 +97,6 @@ export function OverviewCards({
       <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
       <Tile
         title="Today’s orders"
-        icon={TERM_ICONS.deliveries}
         value={st.due}
         unit={st.due === 1 ? "order" : "orders"}
         then={PAST_WEEK.orders[0]}
@@ -112,7 +105,6 @@ export function OverviewCards({
       />
       <Tile
         title="Gallons to be delivered today"
-        icon={TERM_ICONS.gallons}
         value={st.galRequested}
         unit="gal"
         then={PAST_WEEK.gallons[0]}

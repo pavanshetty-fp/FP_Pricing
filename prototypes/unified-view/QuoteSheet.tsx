@@ -149,7 +149,7 @@ function PricingTable({ rows, disabled }: { rows: PricingRow[]; disabled?: boole
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Charge</TableRequiredLabel>
           </th>
-          <th className="px-3 py-2.5">
+          <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Value</TableRequiredLabel>
           </th>
           {/* UNNAMED, like every row remove — DS ui §10f. */}

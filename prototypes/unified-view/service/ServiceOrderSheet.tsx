@@ -380,20 +380,20 @@ function LineTable({
               <TableRequiredLabel>{nameLabel}</TableRequiredLabel>
             </th>
             {withQty && (
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Qty</TableRequiredLabel>
               </th>
             )}
             {showFitted && (
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Fitted</TableRequiredLabel>
               </th>
             )}
-            <th className="px-3 py-2.5">
+            <th className="px-3 py-2.5 text-left">
               <TableRequiredLabel>{withQty ? "Unit" : "Amount"}</TableRequiredLabel>
             </th>
             {withQty && (
-              <th className="px-3 py-2.5">
+              <th className="px-3 py-2.5 text-left">
                 <TableRequiredLabel>Amount</TableRequiredLabel>
               </th>
             )}

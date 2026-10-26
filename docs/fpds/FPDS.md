@@ -29,6 +29,7 @@ Owner: Pavan Shetty · pavanshetty@fleetpanda.com
 | — | Interaction rules | `08-interaction-rules.md` | How things respond — hover, staging, autosave, motion… |
 | — | Not designed yet | `09-later.md` | UX copy, empty pages, highlight units, illustrations |
 | — | Checks | `evals/README.md` | Five levels of evals, golden prompts |
+| — | Misses log | `evals/misses.md` | Every miss the owner had to point out, its pattern and its guard — read before reporting |
 
 Every atom, molecule, unit and template is a **spec card** with the same twelve sections
 (`_spec-card-template.md`): Purpose · Use when / Don't use when · Anatomy · Look · States ·
@@ -46,7 +47,10 @@ Interactions · Outcomes · Data contract · Rules · Do / Don't · Checks · Re
 | Claude / Claude Code | `install/CLAUDE.md` → project `CLAUDE.md` |
 | Any other agent | `install/AGENTS.md` → project `AGENTS.md` |
 
-**Code** — install from the registry (shadcn format), never re-create:
+**Code** — use the real code, never re-create it. **The org-level package is being set
+up (2026-10-25); until it is published, copy each unit from the code path on its card
+and the theme from `src/index.css`.** Once published, install from the registry (shadcn
+format):
 
 ```bash
 npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-theme.json
@@ -144,6 +148,11 @@ Alert banner and status/awaiting pills, and **illustrations** (see `09-later.md`
 
 Run the checks in `evals/README.md` that apply (`fpds-*` always; the repo's `npm run
 eval` when working in this repo). A failing check is fixed, not explained.
+
+Then look before you report (UX-164): **every stage** the screen appears in (draft,
+assigned, completed…), **a blank and a filled row**, **light and dark**, and the
+**edges** — last rows, card rims, repeated values. Read the patterns in
+`evals/misses.md`; if the owner has to point something out, log it there.
 
 
 <!-- ===== docs/fpds/01-foundations.md ===== -->
@@ -3266,17 +3275,20 @@ Under the line (open, item alerts only): **item rows** — title (pressable when
 2. **The banner is a filter** — its CTA applies exactly the narrowing its words describe, onto the list's own filters — *so the chips show it and Clear all undoes it* — `(source: interactions §7a; alert-banner.tsx header)`
 3. **Filtering alerts: count inside the tag, plain title, ghost "View details" → "✕ Clear filter"; no count pill, no list** — *tried on portal Invoices, then made standard everywhere* — `(source: interactions §7a, Pavan 2026-10-15)`
 4. **Clear filter returns the list to its default and the banner stays until its own ✕** — *clearing the filter is not dismissing the alert* — `(source: alert-banner.tsx appliedId, Pavan 2026-10-14)`
-5. **One kind at a time, most serious first, ‹ 1 of N ›; the banner wears the shown kind's color** — *a red kind and an amber one look like what they are; same stepper as the sheet's Pending strip* — `(source: interactions §7a)`
+5. **One kind at a time, most serious first, ‹ 1 of N ›** — the banner itself stays the info blue (rule 14); the shown kind's severity is in its tag — *same stepper as the sheet's Pending strip* — `(source: interactions §7a; Pavan 2026-10-25)`
 6. **✕ is always last on the right; snooze sits beside the stepper** — *dismissing is the way out, so it sits at the edge* — `(source: alert-banner.tsx, Pavan 2026-10-13)`
 7. **Snooze = `BANNER_SNOOZE_OPTIONS` + Custom… (hours and minutes, no calendar)** — *the Sales Orders set became the one standard* — `(source: banner.tsx; interactions §7a)`
 8. **Title pressable with no underline** (pointer + slight fade) — *the underline was rejected; pointer and fade say it acts* — `(source: alert-banner.tsx PRESSABLE, Pavan 2026-10-13)`
-9. **Warning is half as loud in light (/5 wash, /20 rim)** — *a /10 red wash read as an alarm on white* — `(source: banner.tsx, Pavan 2026-10-13)`
+9. **Fills are SOLID, never opacity** — banner = the info blue at 4% mixed into the content surface, rim at 16% — *see-through washes read differently on every ground* — `(source: Pavan 2026-10-25)`
 10. **Padding stays 12px sides / 6px top-bottom** — *white fill and 6px/4px were tried and reverted* — `(source: memory feedback_banner_final 2026-10-14)`
-11. **Every pill sweeps (collapsed only); every CTA shines — added by the banner, not by screens** — *one component, one behavior across modules; when open, the list is the attention* — `(source: ui §10l, Pavan 2026-10-20)`
+11. **Tag pills sweep (collapsed only); every CTA shines — added by the banner, not by screens; the count pill does NOT sweep** — *one component, one behavior across modules* — `(source: ui §10l, Pavan 2026-10-20, 2026-10-26)`
 12. **Opened items sit on white inside the banner's coloured outline; rich facts are the record's own readings in equal columns** — *a tank is drawn the way the app draws it everywhere* — `(source: alert-banner.tsx, Pavan 2026-10-20)`
 13. **On every list the banner sits under the toolbar (search, Filters, chips), right above the table or board** — *the tools first, then what needs attention, then the list it narrows* — `(source: Pavan 2026-10-25)`.
 14. **The banner is always the info blue; the pills carry the severity** (red Overdue/Needs action, amber caution…) — *a banner is information; the pill says how serious* — `(source: Pavan 2026-10-25)`.
 15. **View all** beside ‹ 1 of N › lays every alert out as its own banner, one under another; the first carries **Collapse** to fold them back to one at a time — `(source: Pavan 2026-10-25)`.
+16. **Every alert wears the same anatomy** — tag pill (icon · label · count inside) · title · ghost "View details" that filters the list → "✕ Clear filter". An alert with items still filters; no count/chevron pill outside the tag — *"Needs action" looked different from the rest* — `(source: Pavan 2026-10-26; misses M-003)`
+17. **Tag pills are WHITE with the severity ink** for the words, the icon and a 1px rim (red for Overdue/Needs action/Exception, the lane yellow for At risk/Due soon); the count inside the tag sits on a very light fill of the tag colour (12%) — *the banner is blue; the pill alone says how serious* — `(source: Pavan 2026-10-26)`
+18. **A count pill outside a tag (non-filtering alerts) is a regular neutral pill** — grey fill, dark text, no sweep — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Pass `onApply` for every alert that is about a slice of the list; let the banner render "View details".
@@ -3322,7 +3334,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 3. **`ModuleSidebar`** (left, in a box): collapse button in the top-right corner · module rows (open module first, then the rest in `APP_MODULES` order: 3PL · Sales · Service Work · Pricing · Lease) · under the open module its pages on a guide line — loose pages, small uppercase section headings for areas with sub-pages (3PL Orders, Directory), or a **tree** (`nested`) where a page keeps its row and its pages hang under it on bars (Customer Portal Orders; UV `SUB_NAV`) · a divider · **Accessibility** item (`AccessibilityIcon` + "Accessibility") always in view at the foot.
 4. **Collapsed rail**: expand button · rule · the open module's pages as icons (sections split by short rules) · rule · other modules as icons · Accessibility icon at the bottom; every icon has a right-side tooltip.
 5. **Module-switch progress**: a 2px bar along the bottom of the chosen row + "Loading data for this module." under it.
-6. **Accessibility panel** (fixed, pinned beside the nav at the window's foot): header "Accessibility" + Reset icon · Theme (Light | Dark) · Text size (steps, − / +) · Component size (steps 100–150%, − / +: lanes and table columns widen) · Stroke contrast · Contrast · divider · Display size (steps 50–150%, − / +).
+6. **Accessibility panel** (fixed, pinned beside the nav at the window's foot): header "Accessibility" + Reset icon · Theme (Light | Dark) · Text weight (steps) · Text size (steps, − / +) · Component width & space (steps 100–150%: lanes and table columns widen) · Stroke contrast · Fill contrast · divider · Display size (steps 50–150%, − / +) · Screen (Default / Laptop / Tablet / Monitor / Large monitor / TV).
 7. **Content layer**: page title (`h1 text-xl font-semibold`) + muted count outside the container; the page body inside (see the page units).
 8. **`GlobalSearch`** dialog (opens from the top-bar field or ⌘K): query row (`Search` icon · input · `Esc`) · scope tabs + live count · results grouped by kind (icon tile · title · subtitle · kind `Pill`) · keyboard-hint footer.
 9. **`ModuleSkeleton`**: tabs + right controls · toolbar · table header + 9 rows, all shimmering `Skeleton` blocks; the page title is a `Skeleton` too.
@@ -3396,8 +3408,8 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 6. **A page with sub-pages stays a page row, its pages on tree bars** (`nested`) — `(source: project_nav_style 2026-10-15)`.
 7. **Module order 3PL · Sales · Service Work · Pricing · Lease** — `(source: project_nav_style 2026-10-09)`.
 8. **Accessibility lives at the foot of the navigation in every module; no header theme icon** — `(source: ui §10n; memory feedback_wcag_modes)`.
-9. **Panel order: Theme · Text size · Stroke contrast · Contrast · divider · Display size; Reset is the icon alone** — `(source: ui §10n, Pavan 2026-10-21)`.
-10. **Text size grows the text only** — a unit widens only when bigger text would be cut inside it (`fitUnits`) — *"text size should increase text only"* — `(source: a11y.ts; feedback_wcag_modes)`.
+9. **Panel order: Theme · Text weight · Text size · Component width & space · Stroke contrast · Fill contrast · divider · Display size · Screen; Reset is the icon alone** — no Text color slider (text follows Fill contrast) — `(source: ui §10n, Pavan 2026-10-21 → 2026-10-26)`
+10. **Text size grows the text only** — no box widens; text wraps inside its box and the box grows taller; record numbers and dates never wrap — their table column widens just enough — *"only the text size should increase without the card size increasing"* — `(source: Pavan 2026-10-23)`
 11. **Always reachable, always resettable** — panel pinned beside the nav, never wider/taller than the window; ⌘⌥0 and `?a11y=reset`; a narrow zoomed window scrolls sideways — `(source: ui §10n)`.
 12. **The brand fill never moves** with Contrast — `(source: feedback_wcag_modes 2026-10-21)`.
 13. **Anything sized to the window uses `var(--fp-vw)` / `var(--fp-vh)`** — *a zoomed page multiplies viewport units* — `(source: ui §10n)`.
@@ -3405,6 +3417,11 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 15. **Anything new that sits straight on the shell ground gets `data-fp-on-frame`** — it turns white when the frame goes dark at Contrast ≥ 80 — `(source: ui §10n)`.
 16. **Profile and Settings are account destinations** — in the account menu, never in the navigation — `(source: docs/unified-view/2-layouts.md §2)`.
 17. **Title and primary CTA sit outside the content container; everything that acts on the data inside** — `(source: 2-layouts.md §1)`.
+18. **Sizes are STEPS with − and +** (a dot per step), like Android's "Display size and text"; no preview card — the page is the preview — `(source: Pavan 2026-10-23)`
+19. **Component width & space (100–150%, 10% steps) widens board lanes and table columns** — cards follow the lane and keep their padding; cut-off text shows once it fits; nav and sheets keep their width — `(source: Pavan 2026-10-25)`
+20. **Display size (50 · 75 · 100 · 125 · 150%, 100 in the middle) zooms everything together; no Auto, not tied to monitors** — `(source: Pavan 2026-10-23)`
+21. **Text weight sits on top: six steps, each adding 25 to every weight together** — regular, medium, semibold and bold rise by the same amount, so the hierarchy holds — `(source: Pavan 2026-10-26)`
+22. **Screen (after Display size): Default · Laptop · Tablet · Monitor · Large monitor · TV or projector** — Default changes nothing; each screen sets the zoom it is read at (×1, ×1, ×0.9, ×1.1, ×1.25, ×1.5), multiplied with Display size — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Reuse `ModuleSidebar` + `TopBar` + `AppShell` for any new module, the portal included.
@@ -3901,7 +3918,7 @@ A module's overview: a few figures, charts and short tables that say how much wo
 - Customer Portal › Dashboard (`DashboardScreen`) — Attention required, Schedule for the next 7 days (metric tiles), Tank monitor readings, Spend, Billing & credit.
 - DS showcase › Metric Icons.
 
-> **Figure tiles (Pavan, 2026-10-26):** the metric icon LEADS the tile (MetricIcon `size="lg"`, 64px) with the title, figure and comparison as one block beside it, and EVERY tile carries its own open arrow (outline, round) at the right that opens its own sheet or list. Unified View tiles without a term icon keep the arrow (the tile is the button).
+> **Figure tiles (Pavan, 2026-10-26):** NO metric icon — the title, figure and comparison as one block, and EVERY tile carries its own open arrow (outline, round) at the right that opens its own sheet or list. (An icon leading the tile was tried and removed the same day.)
 
 
 <!-- ===== docs/fpds/units/data-table.md ===== -->
@@ -4011,6 +4028,7 @@ The list's table: every record a row, every column sortable, movable and resizab
 13. **A missing value prints `–` (applies, not filled) or `N/A` (does not apply)** — never a blank cell. — `(source: interactions 2-rules §4c)`
 14. **Flat headers — no two-tier column groups** unless Pavan asks. — `(source: ui §10e)`
 15. **Full content width, never capped.** — `(source: docs/ds/ux/2-rules.md "Tables — full width…"; parity-tables G43)`
+16. **Every header declares its alignment** (`text-left` unless Pavan names a screen) — a bare `<th>` centres — `(source: misses M-005; eval th-align)`
 
 ## Do / Don't
 - ✅ Measure real rendered cells when adding a column; set `width` from that.
@@ -4642,6 +4660,14 @@ The order's lines as an editable table: which tank or asset gets which product, 
 13. **The suggestion is the Qty placeholder; → takes it; Qty starts empty; Top off never pre-ticked** — *no separate Suggested column (Pavan, 2026-10-20)* — `(source: memory project_customer_portal 2026-10-20)`
 14. **Column widths are `CELL` px, matched by the sheet's `fit`; everything left-aligned** — *the sheet is only as wide as its tables; right-aligned Qty misaligned with its header* — `(source: memory feedback_ui_rules sheet width; ui §10p 2026-10-22)`
 15. **One row is always there; never an empty message instead of rows** — `(source: ux/2-rules "Tables — one row is always there" 2026-10-14)`
+16. **Tank lines read: Asset · Product · Current level · Days to empty · On fulfillment · Qty · Top off LAST** — the level the quantity lands at sits beside it; Top off's select-all and every row tick share one right edge; the header carries `data-top-off-last` (3PL DO, CP order, 3PL recurring). Other line tables keep Top off · Qty last — `(source: Pavan 2026-10-26)`
+17. **Every header declares `text-left`** — a bare `<th>` centres — `(source: misses M-005; eval th-align)`
+18. **Every column its own width; the table scrolls sideways rather than squeezing; no unit suffix in the Qty cell** (the header says "(gal)") — `(source: Pavan 2026-10-26)`
+19. **The row delete is a sticky layer at the right edge** — `sticky right-0 z-10 border-l bg-popover`, header cell `bg-fp-table-header`, no heading; the bin shows on row hover; the columns scroll behind it — `(source: Pavan 2026-10-26)`
+20. **A monitored tank never takes more than its room on the planned day** — the Qty cell holds the figure to the max AS it is typed and a tooltip says why ("<asset> has room for only N gal on the planned day — more would overfill it."); On fulfillment never exceeds 100% — `(source: Pavan 2026-10-26; misses M-013)`
+21. **The On fulfillment card answers first** — "The tank level post delivery will be X%, based on your daily usage." — then **Show breakdown** opens Current level · Requested · Days to deliver (sub: per-day usage · level on the day of delivery) · On fulfillment total; no formula — `(source: Pavan 2026-10-26)`
+22. **The asset picker marks the exception and sorts first** — a "No monitor" pill only on assets without a tank monitor; tabs **All · Tank monitor · No tank monitor** above the list (saved-views underline tabs); the list names each asset once — `(source: Pavan 2026-10-26)`
+23. **Multi-pick from ANY row** — the row's own value opens ticked; kept, the row stays and each other pick adds a row under it; unticked, the first pick takes the row — `(source: Pavan 2026-10-26; misses M-015; eval multipick-any-row)`
 
 ## Do / Don't
 - ✅ Asset · Product · (readings) · Top off · Qty · bin, in that order, in every module.
@@ -4970,6 +4996,12 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 19. **Removing an optional section is a minus, never a bin**; confirm only when it has content — `(source: ux/2-rules SheetSectionRemove)`.
 20. **No helper text that explains a control** — state and consequence only — `(source: ux/2-rules helper text; feedback_no_unrequested_ui)`.
 21. **Closing a new order with anything typed asks "Discard this order?"** — `(source: ui/7-variants §1 stepped form, Pavan 2026-10-06)`.
+22. **A read stage speaks quietly** (3PL from Assigned on): every unit heading 14px medium muted — the rail cards' voice — units 24px apart, heading → box 10px; facts, not disabled fields — `(source: Pavan 2026-10-26)`
+23. **Order facts in three groups side by side, ruled top to bottom** — what kind (job type · order type · PO · urgent) | who and where (customer · hub · ship-to) | tags — `(source: Pavan 2026-10-26)`
+24. **A full-width unit under the form + rail (Pricing) is preceded by an edge-to-edge rule** through the sheet padding — 40px from the form's last unit to the rule, 40px from the rule to the unit — `(source: Pavan 2026-10-26)`
+25. **Several partners priced → saved-views underline tabs on the column header's bottom rule**, the label level with the sibling headings; Finalize takes the tab on show — `(source: Pavan 2026-10-26)`
+26. **A total row draws `border-t` only** — `border-y` stacks on the card rim — `(source: misses M-017; eval double-stroke)`
+27. **A field that IS a value is read until adjusted** — a pencil BEFORE the figure (tooltip "Make adjustments" + why), the figure on the same right edge as its siblings; pressed, the box replaces it, right-aligned; never the box and the same figure side by side — `(source: Pavan 2026-10-26; misses M-018)`
 
 ## Do / Don't
 - ✅ Pass `fit` with `CELL` widths whenever the sheet holds a table; pass the current step's tables.
@@ -5392,6 +5424,10 @@ The read-only right column of a record sheet: the **Summary card** shows what th
 8. **What changed leads, who and when follow** — *the reader is looking for the event* — `(source: SheetCards ActivityCard)`.
 9. **No rail while creating** — `(source: feedback_ui_rules)`; the Customer Portal order sheet keeps its summary on the right while creating — `(source: project_customer_portal 2026-10-13)`.
 10. **Customer Portal order summary fills the rail's full height in every state**; trip + activity keep their own height below — `(source: project_customer_portal 2026-10-20)`.
+11. **One highlighted card per sheet** — the tinted SummaryCard goes to the single most important read-out (the order/quote summary, or what needs attention); every other rail card is a plain RailCard — `(source: UX-161, Pavan 2026-10-26; eval sheets)`
+12. **RailCard headers are quiet** — no fill band; title 14px medium muted with its icon; a hairline under it — `(source: Pavan 2026-10-26)`
+13. **Notes above Activity; Activity is the last card** — `(source: Pavan 2026-10-26)`
+14. **The rail ends level with the form's last unit** — pinned, capped to the scroller, its foot aligned with the last unit on the left (the form's 40px foot room below both); what doesn't fit scrolls inside the rail — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Give every computed figure a `breakdown` when it is made of parts.
@@ -5500,6 +5536,9 @@ RIGHT cluster (`gap-1`):
 8. **The date control is a stepper whose arrows move by the window's length.** — *stepping never silently changes how much you are looking at.* — `(source: DateRangeFilter.tsx)`
 9. **20px of space, not a rule, between the date and the display switch.** — `(source: ListToolbar.tsx, Pavan 2026-10-05)`
 10. **A control the current view can't act on is hidden, not disabled.** — *a control on screen that does nothing teaches people to stop reaching for it.* — `(source: ui §10)`
+11. **One gap, 12px, between every control group** — search ↔ Filters ↔ Group by, and date ↔ view switch — `(source: Pavan 2026-10-25; misses M-012)`
+12. **The view switch is one bordered segmented control** — list · kanban (two upright columns side by side, a gap between) · map icons; the selected segment a grey fill — `(source: Pavan 2026-10-23)`
+13. **Export is an outlined square as tall as the Create CTA** (24 × 24, the icon centred, the CTA's corner radius) — `(source: Pavan 2026-10-26)`
 
 ## Do / Don't
 - ✅ Wrap toolbar + chip shelf in one `mt-4 shrink-0` shelf (ui §10c composition).
@@ -5607,6 +5646,7 @@ Hosts: table → `ListTable topBar={bar.slot}` (inside the table frame, outside 
 7. **The columns menu follows the table's order and can reorder it.** — *the column you want is usually the one scrolled off the right edge.* — `(source: ListToolbar.tsx; parity G3)`
 8. **Card fields: a switch per category, a tick per field, per lane or all lanes; no ordering.** — *the category is the decision; a card's order is its design.* — `(source: ListToolbar.tsx, Pavan 2026-09-23; ui §10)`
 9. **Closing the column search row clears every box.** — *a narrowing with nothing on screen is not allowed.* — `(source: ui §10g)`
+10. **On a board the view bar is the top strip of the board's own box** (`BoardWithBar`), a line under it — attached like the table's, never a separate box — `(source: Pavan 2026-10-25; misses M-011)`
 
 ## Do / Don't
 - ✅ Wire all three: `useViewBar()`, `viewToolsInto` + `viewStatement`, `topBar` / `BoardWithBar`.
@@ -7061,7 +7101,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 ## 13. Accessibility
 
-**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text size · Component size · Stroke contrast · Contrast · divider · Display size; Reset is the icon at its top.**
+**UX-145. Accessibility lives in the "Accessibility" item at the foot of the main navigation in every module (UV and CP). There is no header theme icon. Panel order: Theme · Text weight · Text size · Component width & space · Stroke contrast · Fill contrast · divider · Display size · Screen; Reset is the icon at its top.**
 - **Why:** Pavan, 2026-10-21 — first theme modes, then "a lot more contrast" for external monitors, then one menu with sliders.
 - **Applies to:** every module.
 - **Check:** review
@@ -7168,6 +7208,14 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 ---
 
 **UX-161. One highlighted card per sheet.** The tinted SummaryCard marks the single most important read-out — the order or quote summary, or what needs attention — and nothing else wears it; every other rail card (trip, records, notes, activity, the order in short) is a plain RailCard. — *"The highlighted card should be only one… the one that is the most important in terms of seeing information."* (Pavan, 2026-10-26) · Check: eval `sheets` flags a file with two.
+
+**UX-162. US English everywhere a user reads** (canceled, program, color, fulfillment, catalog, license…). — *"Let's go with US English."* (Pavan, 2026-10-23) · Check: eval `us-spelling`.
+
+**UX-163. Reach for the closest pattern already in the product before any generic component** — partner tabs are the saved-views tabs, a read value with an edit is the pencil pattern. — *The vendor picker was first built as segmented tabs.* (Pavan, 2026-10-26)
+
+**UX-164. A change is verified at every stage the screen appears in, with a blank and a filled row, in both themes; every miss is logged** (`evals/misses.json`) with its pattern and its guard. — *Most misses repeated one of nine patterns.* (Pavan, 2026-10-26) · Check: eval `misses`.
+
+**UX-165. Icons are grayscale.** Metric/figure icons, the AI sparkle and every other icon use the muted grey, quietly — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
 
 ## Index
 
@@ -7334,6 +7382,10 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-159 | Every act announces itself with a toast; typing does not — the autosave earns the chip |
 | UX-160 | Failure and error paths are not designed yet (today every toast is a success) |
 | UX-161 | One highlighted card per sheet — the most important read-out; the rest are plain RailCards |
+| UX-162 | US English everywhere a user reads |
+| UX-163 | Closest existing pattern before any generic component |
+| UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
+| UX-165 | Icons are grayscale; the accent is for highlights only |
 
 
 <!-- ===== docs/fpds/08-interaction-rules.md ===== -->
@@ -8089,6 +8141,15 @@ FPDS is checked at five levels. Levels 1–4 are scripts and run with `npm run e
 | 3 · Units in code | `fpds-units`, `table-rows`, `fields-fill`, `boxed-tables`, `sheets`, `status-kinds`, `field-reach` | The units are used as their cards say — view bar on every list, left-aligned columns, one date picker, no preset view tabs, top off then qty, sheets carry the shared cards… | script |
 | 4 · Pages & rules | `parity-lists`, `parity-tables`, `parity-sheets`, `parity-shell`, `fpds-rules`, `microcopy`, `fpds-gaps` | Pages match the reference pages; domain rules hold (Customer Portal: ORD numbers, no quotes, asks as pills); the golden prompts resolve to the right template/units and the gap message appears only for real gaps | script |
 | 5 · Outcome | golden prompts, by tool | The same request gives the same screen in Lovable, Cursor and Claude | by hand, rubric below |
+| Misses | `misses`, `us-spelling`, `th-align`, `banner-position`, `multipick-any-row`, `css-tokens`, `double-stroke` | Every miss Pavan had to point out is logged in `misses.json` with its pattern and its guard; built guards keep it from coming back; proposed guards show as open findings; the run prints misses per week (goal 0) | script — see `misses.md` |
+
+## The misses log
+
+`misses.json` (source) → `misses.md` (generated, `npm run misses`). **Claude adds an
+entry the moment Pavan points something out** — what, where, the pattern, why it
+happened, and the guard (`built` / `proposed` / `manual` / `process`). A guard that
+can be scripted goes in `scripts/eval/guards.mjs`. Every eval run prints the weekly
+count and the share guarded by a script; the target is zero misses a week.
 
 ## Commands
 

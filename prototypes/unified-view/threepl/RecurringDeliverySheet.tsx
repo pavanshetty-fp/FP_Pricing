@@ -317,7 +317,7 @@ export function RecurringDeliverySheet({
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                   Asset
                 </th>
-                <th className="w-[104px] px-3 py-2 text-xs font-medium text-muted-foreground">
+                <th className="w-[104px] px-3 py-2 text-xs font-medium text-muted-foreground text-left">
                   {/* TOP OFF, THEN ITS SELECT-ALL; ticks right-aligned under it (DS ui §10i). */}
                   <span className="flex items-center justify-between gap-2">
                     Top off
@@ -330,7 +330,7 @@ export function RecurringDeliverySheet({
                     )}
                   </span>
                 </th>
-                <th className="w-[150px] px-3 py-2 text-xs font-medium text-muted-foreground">
+                <th className="w-[150px] px-3 py-2 text-xs font-medium text-muted-foreground text-left">
                   Quantity (gal)
                 </th>
               </tr>

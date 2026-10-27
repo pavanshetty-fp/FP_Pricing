@@ -1063,11 +1063,23 @@ works after finalizing.** **"Estimated"** stays on the Total row until
 Completed.
 
 **Orders-lane cards.** The footer carries the pending step:
-*Pending: Vendor not selected* + **Select Vendor**, or *Awaiting quotation —
+*Vendor not selected* + **Select Vendor** (no "Pending:", text 4px from the icon — 2026-10-27), or *Awaiting quotation —
 N invited* + **View sent invitations** (both open the order at the vendor
 table). No Draft chip, no Awaiting Quotation chip, no Vendor line when the
 footer says it. A shortlist is not kept: vendors picked but never sent come
 back unselected.
+
+**Delivery Details unit (2026-10-27).** One line — *N assets · N products ·
+N gal* ("+ top-off" when some lines are top-offs) — under ONE dotted
+underline; hover it for a hover card of ONE FIXED HEIGHT: the Asset ·
+Product · Quantity table on the left and a small map on the right, the
+same height. Every row shows, total included — 2 rows tall at least (one
+row leaves space), 4.5 at most, then the table scrolls. Map 120 wide, 144
+past 3 assets. In dark the card is white like the tooltip (`.fp-surface-light`). The map has NO site pin — just the ship-to
+radius (dashed violet circle) and EVERY asset at the site: the order's in
+violet, the rest dimmed grey (hover a dot for name and lat/lng).
+No map on the card itself. Movements keep
+their one asset row. Field switches: Products, Quantity (Total is gone).
 
 **Order detail.**
 - Stage track's first step reads **Orders** (the lane's name).

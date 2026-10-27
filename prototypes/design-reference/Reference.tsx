@@ -59,7 +59,7 @@ function Live({ id }: { id: string }) {
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Live — the real FPDS code</h3>
-      <div className="rounded-lg border border-border bg-background p-4">
+      <div className="rounded-lg border border-border bg-fp-surface-1b p-4">
         <Boundary>
           <Comp />
         </Boundary>

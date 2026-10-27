@@ -329,6 +329,19 @@
         "id": "test-hygiene",
         "status": "process"
       }
+    },
+    {
+      "id": "M-025",
+      "date": "2026-10-27",
+      "title": "\"Pending: Vendor not selected\" truncated on the narrower cards",
+      "where": "3PL board, Orders lane",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "Narrowed the lanes to 340px without re-checking the longest footer text on every lane.",
+      "check": {
+        "id": "card-footer-fit",
+        "status": "manual"
+      }
     }
   ]
 }

@@ -21,8 +21,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
+import { SiteMiniMap, type MiniMapPoint } from "./SiteMiniMap";
 
 /**
  * Kanban board, generic over its lanes and cards.
@@ -86,17 +92,21 @@ export type LaneColor =
   | "red";
 
 /** The lane-title pill — the lane colour, softened to a fill. */
-const LANE_SOFT: Record<LaneColor, string> = {
-  grey: "bg-fp-lane-grey-soft",
-  blue: "bg-fp-lane-blue-soft",
-  yellow: "bg-fp-lane-yellow-soft",
-  green: "bg-fp-lane-green-soft",
-  cyan: "bg-fp-lane-cyan-soft",
-  purple: "bg-fp-lane-purple-soft",
-  violet: "bg-fp-lane-violet-soft",
-  pink: "bg-fp-lane-pink-soft",
-  orange: "bg-fp-lane-orange-soft",
-  red: "bg-fp-lane-red-soft",
+
+/* VIVID LANE TITLES (Pavan, 2026-10-27, after a ClickUp board — trialled on
+   3PL, then every board): a saturated fill per lane, white text (dark on
+   yellow), the same in both themes; deeper at the WCAG end. */
+const LANE_VIVID: Record<LaneColor, string> = {
+  grey: "bg-fp-lane-grey-vivid text-fp-lane-grey-vivid-ink",
+  blue: "bg-fp-lane-blue-vivid text-fp-lane-blue-vivid-ink",
+  yellow: "bg-fp-lane-yellow-vivid text-fp-lane-yellow-vivid-ink",
+  green: "bg-fp-lane-green-vivid text-fp-lane-green-vivid-ink",
+  cyan: "bg-fp-lane-cyan-vivid text-fp-lane-cyan-vivid-ink",
+  purple: "bg-fp-lane-purple-vivid text-fp-lane-purple-vivid-ink",
+  violet: "bg-fp-lane-violet-vivid text-fp-lane-violet-vivid-ink",
+  pink: "bg-fp-lane-pink-vivid text-fp-lane-pink-vivid-ink",
+  orange: "bg-fp-lane-orange-vivid text-fp-lane-orange-vivid-ink",
+  red: "bg-fp-lane-red-vivid text-fp-lane-red-vivid-ink",
 };
 
 /** The DS's alert accents, verbatim. */
@@ -149,7 +159,8 @@ export interface BoardCardRow {
 
     stack   lines at three levels        customer details · delivery partner
     inline  short values, hairline-split schedule — window | cadence
-    rows    asset · product · quantity   delivery product details
+    rows    asset · product · quantity   a movement's asset
+    delivery  "6 assets · 4 products"   delivery details, hover → table + map
 
   `rows` is the one that swaps by kind. A delivery lists its tanks and what goes
   in each; a movement lists the one asset, its type and its capacity. Same three
@@ -177,6 +188,23 @@ export type BoardCardUnit =
       rows: BoardCardRow[];
       /** Only when more than one row states a number — see `CardRows`. */
       total?: string;
+    }
+  | {
+      /**
+       * DELIVERY DETAILS (Pavan, 2026-10-27) — the order in one line, "6
+       * assets · 4 products · 8,000 gal", one dotted underline under all of
+       * it; hover it for the asset · product · quantity table and the
+       * ship-to's map — its radius, a dot per asset inside it.
+       */
+      kind: "delivery";
+      key: string;
+      heading: string;
+      /** The parts of the one line, already worded. */
+      summary: string[];
+      rows: BoardCardRow[];
+      total?: string;
+      site?: { lat: number; lng: number };
+      points: MiniMapPoint[];
     }
   | {
       kind: "quotes";
@@ -478,6 +506,100 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
   );
 }
 
+/** The breakdown as a table: asset · product · quantity, the total last. */
+function RowsTable({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
+  return (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="sticky top-0 bg-fp-table-header text-muted-foreground">
+          <th className="px-2 py-1 text-left font-medium">Asset</th>
+          <th className="px-2 py-1 text-left font-medium">Product</th>
+          <th className="px-2 py-1 text-left font-medium">Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={`${r.asset}-${i}`} className="border-t border-border">
+            <td className="px-2 py-1 font-medium text-foreground">{r.asset}</td>
+            <td className="px-2 py-1 text-muted-foreground">{r.product}</td>
+            <td
+              className={cn(
+                "px-2 py-1 tabular-nums whitespace-nowrap",
+                r.qtySoft ? "text-muted-foreground" : "text-foreground"
+              )}
+            >
+              {r.qty}
+            </td>
+          </tr>
+        ))}
+        {total && (
+          <tr className="border-t border-border">
+            <td colSpan={2} className="px-2 py-1 font-medium text-foreground">Total</td>
+            <td className="px-2 py-1 font-semibold tabular-nums whitespace-nowrap text-foreground">{total}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+/* ONE TABLE ROW IS 25px, ITS HEADING 24.5px, ITS RIM 2px. */
+const ROW_PX = 25;
+const deliveryHeight = (bodyRows: number) =>
+  24.5 + 2 + ROW_PX * Math.min(Math.max(bodyRows, 2), 4.5);
+
+function CardDelivery({
+  heading,
+  summary,
+  rows,
+  total,
+  site,
+  points,
+}: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key">) {
+  const big = new Set(rows.map((r) => r.asset)).size > 3;
+  return (
+    <div className="flex min-w-0">
+      <HoverCard openDelay={150} closeDelay={100}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            /* THE CARD IS THE BUTTON — this one only explains itself. */
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="min-w-0 rounded-sm text-left text-[13px] font-medium text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {summary.join(" · ")}
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          align="start"
+          className="fp-surface-light w-md p-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <UnitHeading>{heading}</UnitHeading>
+          {/* TABLE LEFT, MAP RIGHT, ONE HEIGHT (Pavan, 2026-10-27). Every
+              row shows, total included, from two rows tall (one row just
+              leaves space) up to four and a half; past that the
+              table scrolls, the half row saying there is more. The map takes
+              the same height. */}
+          <div className="mt-2 flex gap-3" style={{ height: deliveryHeight(rows.length + (total ? 1 : 0)) }}>
+            <div className="min-w-0 flex-1 overflow-y-auto rounded-md border border-border">
+              <RowsTable rows={rows} total={total} />
+            </div>
+            {site && points.length > 0 && (
+              <SiteMiniMap
+                site={site}
+                points={points}
+                className={cn("h-full shrink-0", big ? "w-36" : "w-30")}
+              />
+            )}
+          </div>
+        </HoverCardContent>
+      </HoverCard>
+    </div>
+  );
+}
+
 /**
  * WHAT THE PARTNERS HAVE QUOTED, one at a time.
  *
@@ -534,7 +656,7 @@ function CardQuotes({
   const chevron =
     "rounded-sm p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-30";
 
-  /* V4's STEPPER IS CENTRED AND ROOMIER (Pavan, 2026-10-25): 24px targets,
+  /* V4's STEPPER IS ROOMY (Pavan, 2026-10-25; right-aligned 2026-10-27): 24px targets,
      4px from the count — big enough to hit, close enough to read as one. */
   const stepper = quotes.length > 1 && (
     <span
@@ -573,7 +695,10 @@ function CardQuotes({
       {/* V4's QUOTE BAND runs edge to edge across the card (the unit's own
           12px inset pulled back), its text on the card's text line; as the
           card's last unit it runs to the bottom edge too. */}
-      <div className="-mx-3 flex flex-col gap-1.5 bg-fp-quote-band px-3 py-1">
+      {/* TUCKED IN, NOT EDGE TO EDGE (Pavan, 2026-10-27) — 4px from the
+          card's sides (and its bottom, when last), the text kept on the
+          card's 12px line by the band's own 8px. */}
+      <div className="-mx-2 flex flex-col gap-1.5 rounded-sm bg-fp-quote-band px-2 py-1">
       {/* …and the unit's heading comes inside it (2026-10-25). */}
       <UnitHeading>{heading}</UnitHeading>
       <div className="flex min-w-0 items-start justify-between gap-2.5">
@@ -622,9 +747,9 @@ function CardQuotes({
               {/* THE UNIT'S OWN HEADING COMES WITH IT. Opened from a figure
                   with no name on it, a bare list of tanks is three numbers
                   belonging to nothing. */}
-              <UnitHeading>Delivery Product Details</UnitHeading>
-              <div className="mt-2">
-                <CardRows rows={breakdown.rows} total={breakdown.total} />
+              <UnitHeading>Delivery Details</UnitHeading>
+              <div className="mt-2 overflow-hidden rounded-md border border-border">
+                <RowsTable rows={breakdown.rows} total={breakdown.total} />
               </div>
             </PopoverContent>
           </Popover>
@@ -634,7 +759,9 @@ function CardQuotes({
           </span>
         )}
       </div>
-      {stepper && <div className="flex justify-center">{stepper}</div>}
+      {/* RIGHT, UNDER THE PRICE (Pavan, 2026-10-27) — the chevron's own 4px
+          pulled back so its glyph meets the figure's edge. */}
+      {stepper && <div className="-mr-1 flex justify-end">{stepper}</div>}
       </div>
     </>
   );
@@ -654,7 +781,8 @@ function CardAlert({
         actionLabel ? "justify-between" : "justify-center"
       )}
     >
-      <span className={cn("flex min-w-0 items-center gap-2 text-xs", ALERT_ACCENT[status])}>
+      {/* THE WORDS SIT ON THE ICON (Pavan, 2026-10-27) — 4px, not 8. */}
+      <span className={cn("flex min-w-0 items-center gap-1 text-xs", ALERT_ACCENT[status])}>
         <Info className="size-4 shrink-0" />
         <span className="truncate">{text}</span>
       </span>
@@ -704,7 +832,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         // 188px of content, and the lane's scrollHeight equalled its height, so
         // nothing scrolled and nothing hinted that content was missing.
         "shrink-0",
-        !bandLast && "pb-3",
+        bandLast ? "pb-1" : "pb-3",
         "cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
         "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
@@ -766,6 +894,16 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               {u.kind === "stack" && <CardStack lines={u.lines} figure={u.figure} />}
               {u.kind === "inline" && <CardInline parts={u.parts} />}
               {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
+              {u.kind === "delivery" && (
+                <CardDelivery
+                  heading={u.heading}
+                  summary={u.summary}
+                  rows={u.rows}
+                  total={u.total}
+                  site={u.site}
+                  points={u.points}
+                />
+              )}
             </>
           )}
         </div>
@@ -845,7 +983,12 @@ function Lane({
       )}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-3">
-        <h3 className={cn("min-w-0 truncate rounded-full px-2.5 py-0.5 text-sm font-semibold text-foreground", LANE_SOFT[lane.color])}>
+        <h3
+          className={cn(
+            "min-w-0 truncate rounded-full px-2.5 py-0.5 text-sm font-semibold",
+            LANE_VIVID[lane.color]
+          )}
+        >
           {lane.title}
         </h3>
         {/* COUNT PILL — see DS FOLLOW-UP (8). The DS Kanban fills this pill with
@@ -864,7 +1007,7 @@ function Lane({
             the `sr-only` count below already says it. */}
         <span
           aria-hidden
-          className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-fp-card-1 px-1 text-[11px] font-medium tabular-nums text-foreground"
+          className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-fp-lane-count px-1 text-[11px] font-medium tabular-nums text-foreground"
         >
           {lane.cards.length}
         </span>

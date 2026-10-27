@@ -169,6 +169,83 @@ function completedLabel(iso: string): string {
   return `${DATE_FMT.format(at)} · ${COMPLETED_TIME_FMT.format(at)}`;
 }
 
+/** "36.81120, -119.83450" → numbers, or undefined. */
+function parseLatLng(s: string | undefined): { lat: number; lng: number } | undefined {
+  const m = s?.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : undefined;
+}
+
+/**
+ * WHERE AN ASSET STANDS AT ITS SHIP-TO. The sample sites carry one point for
+ * the yard and none per tank, so each asset gets a steady spot 30–120 m from
+ * the site's pin, worked from its name — the same asset lands in the same
+ * place on every card.
+ */
+function assetPoint(site: { lat: number; lng: number }, name: string) {
+  let h = 2166136261;
+  for (const c of name) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const angle = ((h >>> 0) % 360) * (Math.PI / 180);
+  const metres = 30 + ((h >>> 9) % 90);
+  return {
+    name,
+    lat: Number((site.lat + (metres * Math.cos(angle)) / 111320).toFixed(5)),
+    lng: Number(
+      (site.lng + (metres * Math.sin(angle)) / (111320 * Math.cos((site.lat * Math.PI) / 180))).toFixed(5)
+    ),
+  };
+}
+
+/**
+ * DELIVERY DETAILS (Pavan, 2026-10-27): the order in one line — how many
+ * assets, how many products, how many gallons — the rows behind a hover, and
+ * the ship-to's map with each asset on it.
+ */
+function deliveryUnit(
+  r: BrokerOrder,
+  shipTo: (typeof SHIP_TO_SITES)[number] | undefined,
+  off: ReadonlySet<string>,
+  showTotal: boolean
+): BoardCardUnit {
+  const named = r.lines.filter((l) => l.asset);
+  const assets = [...new Set(named.map((l) => l.asset))];
+  const products = [...new Set(r.lines.map((l) => l.product).filter(Boolean))];
+  const numbered = r.lines.filter((l) => !l.topOff && l.gal != null);
+  const gal = totalGal(r.lines);
+  const plural = (n: number, one: string) => `${n.toLocaleString()} ${n === 1 ? one : `${one}s`}`;
+  const qty =
+    numbered.length === 0
+      ? r.lines.some((l) => l.topOff)
+        ? "Top-off"
+        : ""
+      : `${gal.toLocaleString()} gal${numbered.length < r.lines.length ? " + top-off" : ""}`;
+  const site = parseLatLng(shipTo?.latLng);
+  return {
+    kind: "delivery",
+    key: "product",
+    heading: "Delivery Details",
+    summary: [
+      assets.length ? plural(assets.length, "asset") : "No asset",
+      ...(off.has("product.product") || !products.length ? [] : [plural(products.length, "product")]),
+      ...(off.has("product.qty") || !qty ? [] : [qty]),
+    ],
+    rows: r.lines.map((l) => ({
+      asset: l.asset || "No asset",
+      product: l.product,
+      qty: l.topOff ? "Top-off" : `${(l.gal ?? 0).toLocaleString()} gal`,
+      qtySoft: l.topOff,
+    })),
+    total: showTotal ? `${gal.toLocaleString()} gal` : undefined,
+    site,
+    /* EVERY ASSET AT THE SHIP-TO, the order's own highlighted. */
+    points: site
+      ? [...new Set([...(shipTo?.assets ?? []).map((a) => a.name), ...assets])].map((a) => ({
+          ...assetPoint(site, a),
+          selected: assets.includes(a),
+        }))
+      : [],
+  };
+}
+
 function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[] {
   const site = SHIP_TO_SITES.find((x) => x.name === r.shipTo);
   const vendor = r.vendorId ? vendorById(r.vendorId) : undefined;
@@ -186,7 +263,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         return {
           kind: "rows",
           key: "product",
-          heading: "Delivery Product Details",
+          heading: "Delivery Details",
           rows: [
             {
               asset: r.lines[0]?.asset || "Asset not chosen",
@@ -202,29 +279,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
           ],
         };
       })()
-    : {
-        kind: "rows",
-        key: "product",
-        heading: "Delivery Product Details",
-        rows: r.lines.map((l) => ({
-          asset: l.asset || "No asset",
-          /* THE ASSET NAME IS THE ROW, so it is not a switch. Turn off the
-             product and the quantity and you still have a list of what is
-             being filled; turn off the name and the columns beside it have
-             nothing to belong to. */
-          product: off.has("product.product") ? "" : l.product,
-          qty: off.has("product.qty")
-            ? ""
-            : l.topOff
-              ? "Top-off"
-              : `${(l.gal ?? 0).toLocaleString()} gal`,
-          qtySoft: l.topOff,
-        })),
-        total:
-          showTotal && !off.has("product.total")
-            ? `${totalGal(r.lines).toLocaleString()} gal`
-            : undefined,
-      };
+    : deliveryUnit(r, site, off, showTotal);
 
   /* CHEAPEST FIRST, and the total is the SAME arithmetic the sheet's Carrier
      cost column does — including the load-order rule, which strikes the
@@ -363,7 +418,10 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
                 r.acceptedVendorIds.length > 0
                   ? `${r.acceptedVendorIds.length} accepted — no quote taken yet`
                   : r.sentVendorIds.filter(Boolean).length > 0
-                    ? "Out for acknowledgment"
+                    ? /* THE WAIT, SAID UNDER THE HEADING (Pavan, 2026-10-27)
+                         — it was "Out for acknowledgment" here and the same
+                         wait again in the footer; now once, here. */
+                      `Awaiting acknowledgment — ${r.invitedVendorIds.length || r.sentVendorIds.filter(Boolean).length} invited`
                     : r.invitedVendorIds.length > 0
                       ? `${r.invitedVendorIds.length} selected, not sent`
                       : "Not assigned",
@@ -637,7 +695,7 @@ function laneCardAlert(
   if (step === "select") {
     return {
       status: "caution",
-      text: "Pending: Vendor not selected",
+      text: "Vendor not selected",
       actionLabel: "Select Vendor",
       onAction: onOpen,
     };
@@ -667,10 +725,8 @@ function laneCardAlert(
         onAction: onOpen,
       };
     }
-    return {
-      status: "caution",
-      text: `Awaiting acknowledgment — ${n} invited`,
-    };
+    /* NO FOOTER (Pavan, 2026-10-27) — the Vendor unit says it. */
+    return undefined;
   }
   /* NOTHING TO REVIEW ON ASSIGNED (Pavan, 2026-10-06) — the vendor has the
      job; the card waits for it to be done, so it carries no quote footer. */
@@ -721,10 +777,9 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "completed", label: "Completed on" },
   { key: "completed.when", label: "Date and time", group: "completed" },
   { key: "completed.cadence", label: "Cadence", group: "completed" },
-  { key: "product", label: "Delivery Product Details" },
-  { key: "product.product", label: "Product", group: "product" },
+  { key: "product", label: "Delivery Details" },
+  { key: "product.product", label: "Products", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },
-  { key: "product.total", label: "Total", group: "product" },
   { key: "partner", label: "Vendor" },
   { key: "partner.name", label: "Partner name", group: "partner" },
   { key: "partner.detail", label: "Base · safety · distance", group: "partner" },

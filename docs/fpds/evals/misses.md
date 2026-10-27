@@ -16,16 +16,16 @@ Every time Pavan has to point out something that should already have been right 
 | Week of | Misses |
 |---|---|
 | 2026-10-18 | 9 |
-| 2026-10-25 | 15 |
+| 2026-10-25 | 16 |
 
-**24 misses** · found by Pavan 18 · by Claude 6 · guarded by a script 13 · guard proposed 0 · needs eyes 7 · process rule 4
+**25 misses** · found by Pavan 19 · by Claude 6 · guarded by a script 13 · guard proposed 0 · needs eyes 8 · process rule 4
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 5 |
-| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 4 |
+| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 5 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 3 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 2 |
@@ -38,6 +38,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-025 | 2026-10-27 | "Pending: Vendor not selected" truncated on the narrower cards | 3PL board, Orders lane | Pavan | `edges` | Narrowed the lanes to 340px without re-checking the longest footer text on every lane. | `card-footer-fit` · manual |
 | M-024 | 2026-10-26 | Stray draft autosaved while testing the CP create form | CP Orders | Claude | `unsafe-edit` | Opened a create form to inspect it; autosave made a draft. | `test-hygiene` · process |
 | M-023 | 2026-10-26 | Read-only card headers too loud | All rail cards | Pavan | `partial-unify` | Visual weight never compared against the one card that should lead. | `rail-weight` · manual |
 | M-022 | 2026-10-26 | Vendor picker built as segmented tabs, not the saved-views tabs | 3PL pricing | Pavan | `generic-over-existing` | Picked a generic component over the closest existing pattern. | `closest-pattern` · process |

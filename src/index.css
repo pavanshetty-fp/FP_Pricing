@@ -370,7 +370,8 @@
      colour, in both themes. */
   /* THE BOARD QUOTE BAND (2026-10-26) — a SOLID 5% green over the card, not
      an opacity wash (misses M-002). */
-  --color-fp-quote-band: color-mix(in oklab, var(--status-success) 5%, var(--fp-surface-1b));
+  --color-fp-quote-band: var(--fp-quote-band);
+  --color-fp-lane-count: var(--fp-lane-count);
   --color-fp-icon-quiet: color-mix(in oklab, var(--muted-foreground) 50%, var(--muted));
   --color-fp-table-header: var(--fp-table-header);
   --color-fp-viz-1: var(--fp-viz-1);
@@ -465,6 +466,30 @@
   --color-fp-lane-pink-soft: color-mix(in srgb, var(--color-fp-lane-pink) 16%, var(--fp-surface-1b));
   --color-fp-lane-orange-soft: color-mix(in srgb, var(--color-fp-lane-orange) 16%, var(--fp-surface-1b));
   --color-fp-lane-red-soft: color-mix(in srgb, var(--color-fp-lane-red) 16%, var(--fp-surface-1b));
+  /* VIVID LANE TITLES — EVERY BOARD (Pavan, 2026-10-27,
+     after a ClickUp board): a saturated fill per lane with white text —
+     yellow takes a dark ink — the same in both themes. Each fill is the
+     brightest that still keeps white text at AA (4.5:1). */
+  --color-fp-lane-grey-vivid: var(--fp-lane-grey-vivid);
+  --color-fp-lane-grey-vivid-ink: var(--fp-lane-grey-vivid-ink);
+  --color-fp-lane-blue-vivid: var(--fp-lane-blue-vivid);
+  --color-fp-lane-blue-vivid-ink: var(--fp-lane-blue-vivid-ink);
+  --color-fp-lane-yellow-vivid: var(--fp-lane-yellow-vivid);
+  --color-fp-lane-yellow-vivid-ink: var(--fp-lane-yellow-vivid-ink);
+  --color-fp-lane-green-vivid: var(--fp-lane-green-vivid);
+  --color-fp-lane-green-vivid-ink: var(--fp-lane-green-vivid-ink);
+  --color-fp-lane-cyan-vivid: var(--fp-lane-cyan-vivid);
+  --color-fp-lane-cyan-vivid-ink: var(--fp-lane-cyan-vivid-ink);
+  --color-fp-lane-purple-vivid: var(--fp-lane-purple-vivid);
+  --color-fp-lane-purple-vivid-ink: var(--fp-lane-purple-vivid-ink);
+  --color-fp-lane-violet-vivid: var(--fp-lane-violet-vivid);
+  --color-fp-lane-violet-vivid-ink: var(--fp-lane-violet-vivid-ink);
+  --color-fp-lane-pink-vivid: var(--fp-lane-pink-vivid);
+  --color-fp-lane-pink-vivid-ink: var(--fp-lane-pink-vivid-ink);
+  --color-fp-lane-orange-vivid: var(--fp-lane-orange-vivid);
+  --color-fp-lane-orange-vivid-ink: var(--fp-lane-orange-vivid-ink);
+  --color-fp-lane-red-vivid: var(--fp-lane-red-vivid);
+  --color-fp-lane-red-vivid-ink: var(--fp-lane-red-vivid-ink);
   /* Chart palette (449:6176) — categorical series colors, theme-independent.
      chart-1 = brand. Used by Recharts cards on the Dashboard. */
   /* Surface elevation (28679:1109 → drop-shadow/lg): the content layer lifts
@@ -1286,6 +1311,16 @@
 
 /* ── WCAG light ───────────────────────────────────────────────────────── */
 .wcag:not(.dark) {
+  /* Vivid lane titles: fills deepen until white text holds AAA. */
+  --fp-lane-grey-vivid: #515772;
+  --fp-lane-blue-vivid: #3451ad;
+  --fp-lane-green-vivid: #1c643a;
+  --fp-lane-cyan-vivid: #0e616a;
+  --fp-lane-purple-vivid: #8e279e;
+  --fp-lane-violet-vivid: #763f9a;
+  --fp-lane-pink-vivid: #9b2c68;
+  --fp-lane-orange-vivid: #8c440f;
+  --fp-lane-red-vivid: #a52732;
   /* text — 7:1 */
   --fp-ink-3: #3a424e; /* muted text and placeholders; was 5.1 */
   --fp-danger: #8c1515;
@@ -1346,6 +1381,16 @@
 
 /* ── WCAG dark ────────────────────────────────────────────────────────── */
 .dark.wcag {
+  /* Vivid lane titles: fills deepen until white text holds AAA. */
+  --fp-lane-grey-vivid: #515772;
+  --fp-lane-blue-vivid: #3451ad;
+  --fp-lane-green-vivid: #1c643a;
+  --fp-lane-cyan-vivid: #0e616a;
+  --fp-lane-purple-vivid: #8e279e;
+  --fp-lane-violet-vivid: #763f9a;
+  --fp-lane-pink-vivid: #9b2c68;
+  --fp-lane-orange-vivid: #8c440f;
+  --fp-lane-red-vivid: #a52732;
   /* text — 7:1 */
   --fp-ink-3: #cfd3d8; /* was 4.6 */
   --fp-danger: #fcc5c5;
@@ -1588,6 +1633,64 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
     color-mix(in oklab, var(--pastel-rose) 30%, var(--fp-surface-1a)) 28%,
     var(--fp-surface-1a) 60%
   );
+}
+:root {
+  /* Vivid lane titles — white text at AA. */
+  --fp-lane-grey-vivid: #6a7296;
+  --fp-lane-grey-vivid-ink: #ffffff;
+  --fp-lane-blue-vivid: #3f62d0;
+  --fp-lane-blue-vivid-ink: #ffffff;
+  --fp-lane-yellow-vivid: #f5c84c;
+  --fp-lane-yellow-vivid-ink: #2b2104;
+  --fp-lane-green-vivid: #24804b;
+  --fp-lane-green-vivid-ink: #ffffff;
+  --fp-lane-cyan-vivid: #13808b;
+  --fp-lane-cyan-vivid-ink: #ffffff;
+  --fp-lane-purple-vivid: #9228a3;
+  --fp-lane-purple-vivid-ink: #ffffff;
+  --fp-lane-violet-vivid: #8346ab;
+  --fp-lane-violet-vivid-ink: #ffffff;
+  --fp-lane-pink-vivid: #bf3680;
+  --fp-lane-pink-vivid-ink: #ffffff;
+  --fp-lane-orange-vivid: #b85a14;
+  --fp-lane-orange-vivid-ink: #ffffff;
+  --fp-lane-red-vivid: #c92f3d;
+  --fp-lane-red-vivid-ink: #ffffff;
+}
+:root {
+  /* THE LANE COUNT PILL (Pavan, 2026-10-27) — a step darker than the
+     inset fill in light, a step lighter in dark, so the number stands off
+     the lane. */
+  --fp-lane-count: #dde1e7;
+}
+.dark {
+  --fp-lane-count: #3d4550;
+}
+:root {
+  --fp-quote-band: color-mix(in oklab, var(--status-success) 5%, var(--fp-surface-1b));
+}
+/* THE QUOTE BAND IN DARK (Pavan, 2026-10-27) — the success green at 5% went
+   murky on the dark card; the soft pastel green reads as a calm sage. (The
+   deeper reference green #2d443c was tried and was too much.) */
+.dark {
+  --fp-quote-band: color-mix(in oklab, var(--pastel-green) 14%, var(--fp-surface-1b));
+}
+/* A LIGHT SURFACE INSIDE DARK (Pavan, 2026-10-27) — the board's Delivery
+   details hover card sat on the dark board and all but vanished; in dark it
+   turns white like the tooltip, by taking the light theme's values for the
+   tokens it draws with. Light mode is untouched. */
+.dark .fp-surface-light {
+  --foreground: #030405;
+  --muted-foreground: #596475;
+  --border: #d4d4d8;
+  --popover: #ffffff;
+  --popover-foreground: #030405;
+  --fp-table-header: #fafafa;
+  --fp-outline-1: #e2e5ea;
+  --fp-outline-2: #c4c4c9;
+  --fp-surface-1a: #f4f5f8;
+  --fp-surface-1b: #ffffff;
+  color-scheme: light;
 }
 /* DARK TAKES PAVAN'S OWN WASH (Figma FP-Screen-References 54:243, style
    "FP/Highlight wash/Dark", 2026-10-26): deep violet into plum into indigo

@@ -510,8 +510,9 @@ From the 3PL and Service Work boards. Where this contradicts 8.1, this wins.
   reorder. Dragging a card into the next lane would have to mean "do that on
   somebody's behalf", which is a decision, not a gesture. Stages change from
   the record's own next-act control.
-- **A LANE THAT IS NOT A STEP SITS APART**, behind a 3px rule, not in sequence
-  and not in a tinted tray: Canceled, Blocked. A lane that is a normal thing
+- **A LANE THAT IS NOT A STEP SITS APART**, on a second board — the board
+  breaks before it, a 20px strip of the page ground (2026-10-27; was a 3px
+  rule) — not in sequence and not in a tinted tray: Canceled, Blocked. A lane that is a normal thing
   for work to be doing — waiting on a part — stays in sequence.
 - **A CARD IS RULED UNITS**, not a property grid. Each unit is one heading and
   one shape, divided from the next by a rule, and three shapes cover every

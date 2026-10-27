@@ -138,6 +138,7 @@ export function ModuleSidebar({
   onLoadingChange,
   onNavigate,
   nested,
+  flushTop = false,
 }: {
   modules: SidebarModule[];
   moduleNav: Record<string, NavItem[]>;
@@ -154,6 +155,8 @@ export function ModuleSidebar({
   /** Areas whose sub-pages hang under the page as a tree instead of turning
       it into a heading. Default none — 3PL's headings stay. */
   nested?: string[];
+  /** Start right under the top bar — see AppShell's `flushTop`. */
+  flushTop?: boolean;
 }) {
   const [collapsed, setCollapsed] = React.useState(() => {
     try {
@@ -298,7 +301,7 @@ export function ModuleSidebar({
           : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
       );
     return (
-      <div className={BOX_WRAP}>
+      <div className={cn(BOX_WRAP, flushTop && "pt-0")}>
         <nav
           aria-label="Primary"
           className={cn(BOX, "w-14 items-center gap-1 overflow-y-auto py-3")}
@@ -370,7 +373,7 @@ export function ModuleSidebar({
 
   /* ── EXPANDED ── */
   return (
-    <div className={BOX_WRAP}>
+    <div className={cn(BOX_WRAP, flushTop && "pt-0")}>
       <nav aria-label="Primary" className={cn(BOX, "relative w-(--fp-nav-width)")}>
         {/* IN THE CORNER, AND QUIET (Pavan, 2026-10-06) — a light grey mark
           that says the box folds, not a row of its own. */}

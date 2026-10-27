@@ -336,8 +336,9 @@ export interface BoardLane {
    * A BOARD IS READ LEFT TO RIGHT, and that reading is a claim — that each
    * lane follows from the one before it. Where that stops being true the board
    * has to say so, or the lanes after the break are read as the end of the
-   * line rather than as somewhere else entirely. A gap alone does not do it:
-   * lanes are already separated by one, so a wider one reads as a mistake.
+   * line rather than as somewhere else entirely. The board breaks there: a
+   * 20px strip of the page's ground, and the lanes after it read as a second
+   * board (Pavan, 2026-10-27 — it was a 3px line).
    */
   apart?: boolean;
 }
@@ -970,15 +971,12 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
 
 function Lane({
   lane,
-  apart,
   onOpenCard,
   sortOptions,
   sortKey,
   onSortChange,
 }: {
   lane: BoardLane;
-  /** The group break is the lane's own heavier line. */
-  apart?: boolean;
   onOpenCard?: (id: string) => void;
   sortOptions?: LaneSortOption[];
   sortKey?: string;
@@ -994,9 +992,8 @@ function Lane({
       data-fp-unit="lane"
       className={cn(
         "flex h-full w-(--fp-board-lane-width) shrink-0 flex-col overflow-hidden bg-fp-surface-1b",
-        /* A column of the board's box: one line before it, a heavier one
-           where the lanes change kind. */
-        apart ? "border-l-3 border-fp-outline-2" : "border-l border-border first:border-l-0"
+        /* A column of the board's box: one line before it. */
+        "border-l border-border first:border-l-0"
       )}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-3">
@@ -1093,11 +1090,15 @@ export function BrokerBoard({
     /* THE BOX IS BoardWithBar's — the lanes fill it edge to edge. */
     <div className="flex h-full min-h-0 overflow-x-auto">
       {lanes.map((lane) => (
-        /* THE BREAK BETWEEN LANE GROUPS is the lane's own 3px line. */
+        <React.Fragment key={lane.key}>
+        {/* THE BOARD BREAKS BETWEEN LANE GROUPS (Pavan, 2026-10-27) — not a
+            heavier line: a 20px strip of the page's ground, so Canceled and
+            Blocked read as a second board beside the first. */}
+        {lane.apart && (
+          <div aria-hidden className="w-5 shrink-0 border-l border-border bg-background" />
+        )}
         <Lane
-          key={lane.key}
           lane={lane}
-          apart={lane.apart}
           onOpenCard={onOpenCard}
           sortOptions={laneSortOptions?.(lane.key)}
           sortKey={laneSort?.[lane.key]}
@@ -1105,6 +1106,7 @@ export function BrokerBoard({
             onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
           }
         />
+        </React.Fragment>
       ))}
     </div>
   );

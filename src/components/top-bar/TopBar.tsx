@@ -50,6 +50,8 @@ export interface TopBarProps {
   onProfile?: () => void;
   onSettings?: () => void;
   onLogout?: () => void;
+  /** The hairline under the bar. Off = the bar runs straight into the panels below. */
+  divider?: boolean;
 }
 
 /**
@@ -65,6 +67,7 @@ export function TopBar({
   onProfile,
   onSettings,
   onLogout,
+  divider = true,
 }: TopBarProps) {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
 
@@ -87,7 +90,7 @@ export function TopBar({
     /* `data-fp-frame` / `data-fp-on-frame` — at the far end of the
        Accessibility panel's Component background the shell ground goes near
        black, and what sits straight on it turns white (DS ui §10n). */
-    <header data-fp-frame className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-transparent px-3">
+    <header data-fp-frame className={cn("flex h-12 shrink-0 items-center gap-3 bg-transparent px-3", divider && "border-b border-border")}>
       {/* Left — brand logo */}
       <div className="flex flex-1 items-center gap-2">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground [&_svg]:size-5">

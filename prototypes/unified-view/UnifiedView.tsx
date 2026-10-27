@@ -461,6 +461,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const [subKey, setSubKey] = React.useState<string | null>(
     () => boot?.sub ?? firstSubKey(landingKey(startModule))
   );
+  /* NO LINE UNDER THE TOP BAR (Pavan, 2026-10-27 — tried on 3PL Delivery
+     Orders, then every page): the hairline goes and the drawer and the
+     content start right under the bar, 8px taller. */
+  const flushTop = true;
 
   /** Selecting a rail item lands on the first destination inside its drawer. */
   const goToArea = (key: string) => {
@@ -799,8 +803,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         /* THE SHELL GROUND (Pavan, 2026-10-06, after the AirOps reference) —
            everything but the content layer, the top bar included. */
         className="bg-fp-shell-ground"
+        flushTop={flushTop}
         topBar={
           <TopBar
+            divider={!flushTop}
             user={user}
             unread={3 + salesUnread}
             searchPlaceholder="Search everything"
@@ -818,6 +824,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
               /* SUB-PAGES HANG UNDER THEIR PAGE ON TREE BARS (Pavan,
                  2026-10-15 — the portal's Orders, everywhere). */
               nested={Object.keys(SUB_NAV)}
+              flushTop={flushTop}
               activeModule={moduleKey}
               activeArea={accountTitle ? "" : navKey}
               activeSub={subKey}

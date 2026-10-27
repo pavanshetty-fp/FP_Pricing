@@ -15,7 +15,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 ## Anatomy
 1. **View bar** (`BoardWithBar`) — the top strip of the board's own box, a line under it, the lanes below in the same box — attached like the table's bar (2026-10-25). Left: the statement ("62 orders across 9 of 9 lanes · …"). Right: the board's own tool, **Card fields**.
 2. **Lane row** — lanes side by side, scrolling sideways.
-3. **Apart line** — the first lane that is not a step of the work (Canceled, Blocked) has a 3px left line instead of the 1px one.
+3. **Board break** — before the first lane that is not a step of the work (Canceled, Blocked) the board breaks: a 20px strip of the page ground, and those lanes read as a second board (2026-10-27; was a 3px line).
 4. **Lane** — a column of the board's box: header (title as a pill in the lane colour · count pill · lane sort icon) with a line under it → scrollable card stack, or the empty label. No colour strip (2026-10-25).
 5. **Card** (the whole card is the button):
    - Head: order number (mono) + type `CodeDisc` beside it · badges (pills) at the right · optional subtitle lines (e.g. a movement's route).
@@ -26,7 +26,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 7. **Card fields menu** (toolbar, board only) — scope select (All lanes / one lane) above the ticks, ticks per unit with child lines nested, "Show all", counter "shown/total".
 
 ## Look
-- Board: the lanes edge to edge inside `BoardWithBar`'s box, horizontal scroll. Lanes `border-l border-border first:border-l-0`; apart lane `border-l-3 border-fp-outline-2`.
+- Board: the lanes edge to edge inside `BoardWithBar`'s box, horizontal scroll. Lanes `border-l border-border first:border-l-0`; an apart lane starts a second board: a 20px strip of the page ground (`w-5 border-l border-border bg-background`) before it, no heavier line (2026-10-27).
 - Box + view bar: `rounded-md border border-border bg-fp-surface-1b`; the bar is its top strip with `border-b border-fp-outline-1`.
 - Lane: width `--fp-board-lane-width` (340px × `--fp-lane-k`, Accessibility › Component size), square, `bg-fp-surface-1b`. Title pill `rounded-full px-2.5 py-0.5` in `bg-fp-lane-<color>-vivid text-fp-lane-<color>-vivid-ink` (2026-10-27, after a ClickUp board: a saturated fill, white text — dark on yellow — the same in both themes, white at AA; deeper at the WCAG end for AAA; gray, blue, yellow, green, cyan, purple, violet, pink, orange, red).
 - Lane header `border-b border-border px-5 py-3`; title `text-sm font-semibold`; count pill `bg-fp-lane-count` (#dde1e7 light / #3d4550 dark — a step off the lane, 2026-10-27), `text-[11px] font-medium`, neutral ink (never lane-coloured with white text). Sort icon `ArrowDownUp` size-4, `text-muted-foreground`, `text-foreground` when a sort is chosen.
@@ -75,7 +75,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - The board is not paged; the view bar states the total and its scope instead.
 
 ## Data contract
-- `lanes: BoardLane[]` — each `key`, `title`, `color` (lane palette name), `cards`, optional `emptyLabel`, optional `apart` (its left line is 3px).
+- `lanes: BoardLane[]` — each `key`, `title`, `color` (lane palette name), `cards`, optional `emptyLabel`, optional `apart` (the board breaks before it — a 20px strip).
 - `BoardCard` — `id`, `title` (record number), optional `code` (`text`, `label`, `tone` for the CodeDisc), `badges[]` (`label`, `tone`: critical · neutral · caution · success · info), `subtitle[]`, `units[]` (stack / inline / rows / quotes), optional `alert` (`status`: default · caution · warning · success, `text`, `actionLabel`, `onAction`), optional `footerAction` (`label`, `actionLabel`, `actionVariant` success | outline, `onAction`, `waiting`).
 - `onOpenCard(id)` — reports the opened card.
 - `laneSortOptions(laneKey) → {key,label}[]`, `laneSort` (chosen per lane), `onLaneSortChange(laneKey, option | null)`.
@@ -84,7 +84,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 
 ## Rules
 1. **Lanes are the lifecycle, in order** — *sorting by status sorts by lane position; a board read left to right claims each lane follows the one before.* `(source: docs/unified-view/2-layouts.md §6)`
-2. **A lane that is not a step sits apart, behind a 3px line** (Canceled, Blocked) — *a gap alone reads as a mistake; the rule tells the reader the lanes after it are somewhere else, not the end of the line.* `(source: interactions/2-rules.md §8.1b; BrokerBoard.tsx)`
+2. **A lane that is not a step sits on a second board** (Canceled, Blocked) — *a 20px break of the page ground tells the reader the lanes after it are somewhere else, not the end of the line (Pavan, 2026-10-27; was a 3px line).* `(source: interactions/2-rules.md §8.1b; BrokerBoard.tsx)`
 3. **No drag between lanes** — *a stage change is a workflow act with side effects (mail leaves, accounting push), not a reorder; stages change from the record's next-act control.* `(source: interactions/2-rules.md §8.1b)`
 4. **A card is units grouped by spacing, no rules, no field labels inside** — *the heading names the unit and weight carries the rest; spacing groups without drawing lines (2026-10-25).* `(source: interactions/2-rules.md §8.1b)`
 5. **A heading with nothing under it is not a unit** — *it reads as a failure to load.* `(source: interactions/2-rules.md §8.1b)`
@@ -116,7 +116,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 
 ## Checks
 - `parity-shell` and `parity-sheets` (3PL guardrails on the list and the sheet the card opens); `status-kinds` (badge kinds); `wcag-contrast` (lane strip, count pill, ground); `tokens`.
-- By eye: lanes in lifecycle order, 3px apart line before Canceled/Blocked, card focus ring and Enter opening, card controls not opening the card, lanes scroll with full-height cards, card fields scope above ticks, view bar statement.
+- By eye: lanes in lifecycle order, 20px board break before Canceled/Blocked, card focus ring and Enter opening, card controls not opening the card, lanes scroll with full-height cards, card fields scope above ticks, view bar statement.
 
 ## Reference
 - 3PL › Delivery Orders board (Orders · Quoting · Assigned · Completed · Review · Verified · Synced ┃ Canceled · Blocked).

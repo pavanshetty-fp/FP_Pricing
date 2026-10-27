@@ -4,6 +4,12 @@ import { cn } from "@/lib/utils";
 export interface AppShellProps {
   /** Global top bar — a full-width chrome band above the rail + content. Optional. */
   topBar?: React.ReactNode;
+  /**
+   * NO GAP UNDER THE TOP BAR (Pavan, 2026-10-27 — every app's shell): with the bar's hairline off, the panels start right under it, so
+   * the content layer and the drawer gain its 8px. Pair with
+   * `<TopBar divider={false}>`.
+   */
+  flushTop?: boolean;
   /** Tier-1 icon rail (52px, flush, full height). Self-contained (owns its surface). */
   rail?: React.ReactNode;
   /** Tier-2 contextual sidebar (256px). Optional. Self-contained. */
@@ -102,6 +108,7 @@ export function AppShell({
   inset = true,
   compactHeader = false,
   headerDivider = true,
+  flushTop = false,
   className,
 }: AppShellProps) {
   const titleEl =
@@ -254,6 +261,7 @@ export function AppShell({
         <div
           className={cn(
             "relative flex min-w-0 flex-1 gap-2 p-2",
+            flushTop && "pt-0",
             peeking && "overflow-hidden"
           )}
         >
@@ -267,6 +275,7 @@ export function AppShell({
               ref={drawerBox}
               className={cn(
                 "absolute inset-y-2 left-2 z-20 rounded-lg transition-transform duration-200 ease-out",
+                flushTop && "top-0",
                 expanded
                   ? "translate-x-0 shadow-xl"
                   : "pointer-events-none -translate-x-[calc(100%+0.75rem)]"

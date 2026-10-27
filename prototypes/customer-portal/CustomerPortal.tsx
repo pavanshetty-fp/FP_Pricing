@@ -114,6 +114,8 @@ export function CustomerPortal() {
     <PortalNavContext.Provider value={{ openOrder, openInvoice }}>
     <TooltipProvider>
       <AppShell
+        /* No line under the top bar, panels right under it (2026-10-27). */
+        flushTop
         title={
           <h1 className="truncate text-xl font-semibold leading-none text-foreground">
             {active.label}
@@ -123,6 +125,7 @@ export function CustomerPortal() {
         className="bg-fp-shell-ground"
         topBar={
           <TopBar
+            divider={false}
             user={{
               name: "Pavan Shetty",
               email: "pavanshetty@fleetpanda.com",
@@ -133,6 +136,7 @@ export function CustomerPortal() {
         }
         rail={
           <ModuleSidebar
+            flushTop
             modules={[MODULE]}
             moduleNav={{ [MODULE.key]: NAV }}
             subNav={SUB_NAV}

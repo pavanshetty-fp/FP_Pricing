@@ -662,7 +662,7 @@ function CardQuotes({
      4px from the count — big enough to hit, close enough to read as one. */
   const stepper = quotes.length > 1 && (
     <span
-      className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground"
+      className="flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground"
       onClick={(e) => e.stopPropagation()}
     >
       <button
@@ -673,7 +673,7 @@ function CardQuotes({
         onKeyDown={(e) => e.stopPropagation()}
         className={cn(chevron, "p-1")}
       >
-        <ChevronLeft className="size-4" />
+        <ChevronLeft className="size-3.5" />
       </button>
       {at + 1}/{quotes.length}
       <button
@@ -684,7 +684,7 @@ function CardQuotes({
         onKeyDown={(e) => e.stopPropagation()}
         className={cn(chevron, "p-1")}
       >
-        <ChevronRight className="size-4" />
+        <ChevronRight className="size-3.5" />
       </button>
     </span>
   );
@@ -697,10 +697,9 @@ function CardQuotes({
       {/* V4's QUOTE BAND runs edge to edge across the card (the unit's own
           12px inset pulled back), its text on the card's text line; as the
           card's last unit it runs to the bottom edge too. */}
-      {/* TUCKED IN, NOT EDGE TO EDGE (Pavan, 2026-10-27) — 4px from the
-          card's sides (and its bottom, when last), the text kept on the
-          card's 12px line by the band's own 8px. */}
-      <div className="-mx-2 flex flex-col gap-1.5 rounded-sm bg-fp-quote-band px-2 py-1">
+      {/* NO BAND (Pavan, 2026-10-27) — the unit sits on the white card like
+          the others; the grey and the greens before it were tried. */}
+      <div className="flex flex-col gap-1.5 py-1">
       {/* …and the unit's heading comes inside it (2026-10-25). */}
       <UnitHeading>{heading}</UnitHeading>
       <div className="flex min-w-0 items-start justify-between gap-2.5">
@@ -710,13 +709,8 @@ function CardQuotes({
               {q.vendor}
             </span>
           )}
-          {/* THE PLACING IS A CHIP, not a caption. It is a verdict on the
-              figure beside it — the one thing on the unit that says whether
-              this price is the one to take — and as loose text under the
-              carrier's name it read as a second line of the name. Green for
-              the cheapest, because that is the only placing anyone acts on;
-              the rest are neutral, so a board of chips does not turn into a
-              ranking nobody asked to see. */}
+          {/* THE PLACING, RIGHT UNDER THE NAME — green for the cheapest, the
+              only placing anyone acts on; the rest neutral. */}
           {q.rank !== undefined && (
             <span className={cn("text-xs", q.rank === 1 ? "font-medium text-status-success" : "text-muted-foreground")}>
               {rankLabel(q.rank)}
@@ -761,9 +755,10 @@ function CardQuotes({
           </span>
         )}
       </div>
-      {/* RIGHT, UNDER THE PRICE (Pavan, 2026-10-27) — the chevron's own 4px
-          pulled back so its glyph meets the figure's edge. */}
-      {stepper && <div className="-mr-1 flex justify-end">{stepper}</div>}
+      {/* THE STEPPER, A LITTLE BELOW, AT THE RIGHT (Pavan, 2026-10-27) —
+          the chevron's own 4px pulled back so its glyph meets the figure's
+          edge. */}
+      {stepper && <div className="-mr-1 mt-1 flex justify-end">{stepper}</div>}
       </div>
     </>
   );
@@ -851,7 +846,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         // 188px of content, and the lane's scrollHeight equalled its height, so
         // nothing scrolled and nothing hinted that content was missing.
         "shrink-0",
-        bandLast || waitLast ? "pb-1" : "pb-3",
+        waitLast ? "pb-1" : bandLast ? "pb-2" : "pb-3",
         "cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
         "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",

@@ -501,7 +501,7 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
               {r.asset}
             </span>
             {r.assetId && (
-              <span className={cn("truncate font-mono text-muted-foreground", compact ? "text-xs" : "text-[11px]")}>
+              <span className={cn("truncate text-muted-foreground", compact ? "text-xs" : "text-[11px]")}>
                 {r.assetId}
               </span>
             )}
@@ -543,7 +543,7 @@ export function ShipToLine({
   heading: string;
   lines: BoardCardLine[];
   className?: string;
-  /** Version 2 (Pavan, 2026-10-27): the info icon leads the name. */
+  /** Versions 2 and 3 (Pavan, 2026-10-27): the info icon leads the name. */
   iconFirst?: boolean;
 }) {
   const [name, ...rest] = lines;
@@ -638,7 +638,7 @@ export function CardDelivery({
   points,
   iconTrigger,
 }: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key"> & {
-  /** Version 2 (Pavan, 2026-10-27): an info icon, then the summary as
+  /** Versions 2 and 3 (Pavan, 2026-10-27): an info icon, then the summary as
    *  plain text that wraps — no underline; hover the icon. */
   iconTrigger?: boolean;
 }) {
@@ -671,7 +671,7 @@ export function CardDelivery({
           )}
         </HoverCardTrigger>
         {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
-        {iconTrigger && <span className="min-w-0">{summary.join(" · ")}</span>}
+        {iconTrigger && <span className={cn("min-w-0", compact && "text-xs text-foreground")}>{summary.join(" · ")}</span>}
         <HoverCardContent
           align="start"
           className="fp-surface-light w-md p-3"
@@ -821,6 +821,9 @@ function CardQuotes({
         {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
             these cards get opened, and at 13px it was the same size as an
             asset name. `text-lg` is the nearest step on the scale. */}
+        {/* Compact: THE STEPPER ON THE PRICE'S LINE, in the card's right
+            corner (Pavan, 2026-10-27) — there is room beside the figure. */}
+        <div className={cn(compact && "-mr-1 flex items-center justify-between self-stretch")}>
         {breakdown ? (
           <Popover>
             <PopoverTrigger asChild>
@@ -855,11 +858,13 @@ function CardQuotes({
             {q.total}
           </span>
         )}
+        {compact && stepper}
+        </div>
       </div>
       {/* THE STEPPER, A LITTLE BELOW, AT THE RIGHT (Pavan, 2026-10-27) —
           the chevron's own 4px pulled back so its glyph meets the figure's
           edge. */}
-      {stepper && <div className="-mr-1 mt-1 flex justify-end">{stepper}</div>}
+      {stepper && !compact && <div className="-mr-1 mt-1 flex justify-end">{stepper}</div>}
       </div>
     </>
   );
@@ -966,7 +971,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         {/* Compact: the chips drop under the number rather than squeeze it. */}
         <div className={cn("flex items-start justify-between gap-2", compact && "flex-wrap gap-y-1")}>
           <div className={cn("flex items-center gap-1.5", compact ? "shrink-0" : "min-w-0")}>
-            <h4 className={cn("min-w-0 truncate font-mono font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
+            <h4 className={cn("min-w-0 truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
               {card.title}
             </h4>
             {card.code && (
@@ -1014,7 +1019,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               {!compact && <UnitHeading>{u.heading}</UnitHeading>}
               {u.kind === "stack" &&
                 (compact && u.key === "customer" ? (
-                  <ShipToLine heading={u.heading} lines={u.lines} className={LEVEL_CLASS_COMPACT[1]} />
+                  <ShipToLine iconFirst heading={u.heading} lines={u.lines} className={LEVEL_CLASS_COMPACT[1]} />
                 ) : (
                   <CardStack lines={u.lines} figure={u.figure} />
                 ))}
@@ -1028,6 +1033,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                   total={u.total}
                   site={u.site}
                   points={u.points}
+                  iconTrigger={compact}
                 />
               )}
             </>

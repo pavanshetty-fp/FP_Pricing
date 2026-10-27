@@ -1081,6 +1081,18 @@ violet, the rest dimmed grey (hover a dot for name and lat/lng).
 No map on the card itself. Movements keep
 their one asset row. Field switches: Products, Quantity (Total is gone).
 
+**Board versions (2026-10-27, trial — 3PL Delivery Orders only).** A
+*Version 1 · 2 · 3* switch above the board, kept per browser
+(`fp-3pl-board-version`). **1** = the V4 board. **2** = after HubSpot's deal
+board (`BoardV2.tsx`): grey trays with gaps, bold stage name + count, white
+rimmed cards, the number in link blue, values with no labels, chips wrapping
+under the number, CTAs full width, "Total amount" at each column foot, 7.5
+lanes in view. **3** = Version 1 compact (`BrokerBoard compact`): no unit
+headings, two text sizes (13px subject / 12px rest, weight for hierarchy),
+prices 13px bold under the vendor, Version 1's gutters and gaps, 6.5 lanes in
+view. Versions 2 and 3 show the ship-to as its name + an info icon whose hover
+card holds the address and customer.
+
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:
 *Awaiting acknowledgment — N invited* under the Vendor heading, no footer.
 The quote band is grey — the Recurring pill's `--muted`, both themes — tucked

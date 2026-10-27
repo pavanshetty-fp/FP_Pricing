@@ -338,7 +338,7 @@ export interface BoardLane {
    * lane follows from the one before it. Where that stops being true the board
    * has to say so, or the lanes after the break are read as the end of the
    * line rather than as somewhere else entirely. The board breaks there: a
-   * 20px strip of the page's ground, and the lanes after it read as a second
+   * 20px white strip between two rules, and the lanes after it read as a second
    * board (Pavan, 2026-10-27 — it was a 3px line).
    */
   apart?: boolean;
@@ -379,7 +379,14 @@ export interface BrokerBoardProps {
   /** Chosen option per lane key. Absent = the lane's own order. */
   laneSort?: Record<string, string | undefined>;
   onLaneSortChange?: (laneKey: string, option: string | null) => void;
+  /** Version 3: smaller text, no unit headings on the cards. */
+  compact?: boolean;
 }
+
+/* VERSION 3 — COMPACT (Pavan, 2026-10-27): the V1 board with smaller text
+   and no unit headings on the card. Popovers keep their headings. */
+const Compact = React.createContext(false);
+const useCompact = () => React.useContext(Compact);
 
 /** The unit heading — the only label left on the card. */
 function UnitHeading({ children }: { children: React.ReactNode }) {
@@ -395,9 +402,19 @@ const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
   2: "text-[13px] font-medium text-muted-foreground",
   3: "text-xs text-muted-foreground",
 };
+/* TWO SIZES ON A COMPACT CARD (Pavan, 2026-10-27): 13px for what a line is
+   about ("Bray North Yard", the vendor, the price), 12px for everything
+   else ("6:00 AM – 10:00 AM"); weight carries the rest of the hierarchy. */
+const LEVEL_CLASS_COMPACT: Record<1 | 2 | 3, string> = {
+  1: "text-[13px] font-semibold text-foreground",
+  2: "text-xs font-medium text-muted-foreground",
+  3: "text-xs text-muted-foreground",
+};
 
 /** Lines at three levels. Hierarchy does the work a field label used to. */
 function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string }) {
+  const compact = useCompact();
+  const levels = compact ? LEVEL_CLASS_COMPACT : LEVEL_CLASS;
   const stack = (
     <div className="flex min-w-0 flex-col">
       {/* KEYED BY POSITION, NOT BY TEXT. Two lines in a unit can legitimately
@@ -405,7 +422,7 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
           — and React then drops one of them and warns about it. Position is
           what a stack's identity actually is: these lines never reorder. */}
       {lines.map((l, i) => (
-        <span key={i} className={cn("truncate", LEVEL_CLASS[l.level ?? 1])} title={l.text}>
+        <span key={i} className={cn("truncate", levels[l.level ?? 1])} title={l.text}>
           {l.text}
         </span>
       ))}
@@ -416,9 +433,11 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
      them — a finished order's price is the same fact as a quote's, one stage
      on, and it would be strange for it to sit somewhere else on the card. */
   return (
-    <div className="flex min-w-0 items-start justify-between gap-2.5">
+    /* Compact: the figure sits under the name — a narrow lane has no room
+       for both on one line. */
+    <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col gap-0.5" : "items-start justify-between")}>
       {stack}
-      <span className="text-lg font-semibold tabular-nums whitespace-nowrap text-foreground">
+      <span className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
         {figure}
       </span>
     </div>
@@ -433,6 +452,7 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
  * as punctuation inside a single value.
  */
 function CardInline({ parts }: { parts: string[] }) {
+  const t = useCompact() ? "text-xs" : "text-[13px]";
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {parts.map((p, i) => (
@@ -442,8 +462,8 @@ function CardInline({ parts }: { parts: string[] }) {
             className={cn(
               "truncate",
               i === 0
-                ? "text-[13px] font-medium whitespace-nowrap text-foreground"
-                : "text-[13px] text-muted-foreground"
+                ? cn(t, "font-medium whitespace-nowrap text-foreground")
+                : cn(t, "text-muted-foreground")
             )}
             title={p}
           >
@@ -465,6 +485,7 @@ function CardInline({ parts }: { parts: string[] }) {
  * a top-off there is nothing to add.
  */
 function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
+  const compact = useCompact();
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {rows.map((r, i) => (
@@ -480,7 +501,7 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
               {r.asset}
             </span>
             {r.assetId && (
-              <span className="truncate font-mono text-[11px] text-muted-foreground">
+              <span className={cn("truncate font-mono text-muted-foreground", compact ? "text-xs" : "text-[11px]")}>
                 {r.assetId}
               </span>
             )}
@@ -503,6 +524,61 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
           <span className="text-xs text-muted-foreground">Total</span>
           <span className="text-[13px] font-semibold tabular-nums text-foreground">{total}</span>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * THE SHIP-TO IN ONE LINE (Pavan, 2026-10-27 — Versions 2 and 3): its name
+ * and an info icon; hover the icon for the rest of the unit — the address,
+ * the customer — in the same white hover card as Delivery Details.
+ */
+export function ShipToLine({
+  heading,
+  lines,
+  className,
+}: {
+  heading: string;
+  lines: BoardCardLine[];
+  className?: string;
+}) {
+  const [name, ...rest] = lines;
+  if (!name) return null;
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className={cn("truncate", className)} title={name.text}>
+        {name.text}
+      </span>
+      {rest.length > 0 && (
+        <HoverCard openDelay={150} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${name.text} — address and customer`}
+              /* THE CARD IS THE BUTTON — this one only explains itself. */
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="shrink-0 rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Info className="size-3.5" />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent
+            align="start"
+            className="fp-surface-light w-72 p-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <UnitHeading>{heading}</UnitHeading>
+            <div className="mt-2 flex flex-col gap-0.5">
+              {lines.map((l, i) => (
+                <span key={i} className={LEVEL_CLASS[l.level ?? 1]}>
+                  {l.text}
+                </span>
+              ))}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       )}
     </div>
   );
@@ -550,7 +626,7 @@ const ROW_PX = 25;
 const deliveryHeight = (bodyRows: number) =>
   24.5 + 2 + ROW_PX * Math.min(Math.max(bodyRows, 2), 4.5);
 
-function CardDelivery({
+export function CardDelivery({
   heading,
   summary,
   rows,
@@ -559,6 +635,7 @@ function CardDelivery({
   points,
 }: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key">) {
   const big = new Set(rows.map((r) => r.asset)).size > 3;
+  const compact = useCompact();
   return (
     <div className="flex min-w-0">
       <HoverCard openDelay={150} closeDelay={100}>
@@ -568,7 +645,7 @@ function CardDelivery({
             /* THE CARD IS THE BUTTON — this one only explains itself. */
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
-            className="min-w-0 rounded-sm text-left text-[13px] font-medium text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            className={cn(compact ? "text-xs" : "text-[13px]", "min-w-0 rounded-sm text-left font-medium text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50")}
           >
             {summary.join(" · ")}
           </button>
@@ -646,6 +723,7 @@ function CardQuotes({
   nameOff?: boolean;
   breakdown?: { rows: BoardCardRow[]; total?: string };
 }) {
+  const compact = useCompact();
   const [i, setI] = React.useState(0);
   const at = Math.min(i, quotes.length - 1);
   const q = quotes[at];
@@ -662,7 +740,7 @@ function CardQuotes({
      4px from the count — big enough to hit, close enough to read as one. */
   const stepper = quotes.length > 1 && (
     <span
-      className="flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground"
+      className={cn("flex items-center gap-0.5 tabular-nums text-muted-foreground", compact ? "text-xs" : "text-[11px]")}
       onClick={(e) => e.stopPropagation()}
     >
       <button
@@ -701,11 +779,12 @@ function CardQuotes({
           the others; the grey and the greens before it were tried. */}
       <div className="flex flex-col gap-1.5 py-1">
       {/* …and the unit's heading comes inside it (2026-10-25). */}
-      <UnitHeading>{heading}</UnitHeading>
-      <div className="flex min-w-0 items-start justify-between gap-2.5">
+      {!compact && <UnitHeading>{heading}</UnitHeading>}
+      {/* Compact: name, placing, then the price under them. */}
+      <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col items-start gap-0.5" : "items-start justify-between")}>
         <span className="flex min-w-0 flex-col gap-0.5">
           {!nameOff && (
-            <span className="truncate text-sm font-semibold text-foreground" title={q.vendor}>
+            <span className={cn("truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")} title={q.vendor}>
               {q.vendor}
             </span>
           )}
@@ -730,7 +809,7 @@ function CardQuotes({
                 onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
                 aria-label={`${q.total} — what this is for`}
-                className="rounded-sm text-lg font-semibold tabular-nums whitespace-nowrap text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", "rounded-sm tabular-nums whitespace-nowrap text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50")}
               >
                 {q.total}
               </button>
@@ -750,7 +829,7 @@ function CardQuotes({
             </PopoverContent>
           </Popover>
         ) : (
-          <span className="text-lg font-semibold tabular-nums whitespace-nowrap text-foreground">
+          <span className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
             {q.total}
           </span>
         )}
@@ -770,12 +849,13 @@ function CardAlert({
   actionLabel,
   onAction,
 }: NonNullable<BoardCard["alert"]>) {
+  const top = useCompact() ? "pt-2.5" : "pt-4";
   /* A WAIT IN A GREY BOX (Pavan, 2026-10-27) — "Awaiting accounting" and the
      like: nothing to press, so it sits in the quote band's grey, tucked 4px
      inside the card, its text left on the card's 12px line. */
   if (status === "default" && !actionLabel)
     return (
-      <div className="px-1 pt-4">
+      <div className={cn("px-1", top)}>
         <div className="flex items-center justify-start rounded-sm bg-fp-wait-box px-2 py-1.5">
           <span className={cn("flex min-w-0 items-center gap-1 text-xs", ALERT_ACCENT[status])}>
             <Info className="size-4 shrink-0" />
@@ -788,7 +868,8 @@ function CardAlert({
     <div
       className={cn(
         "flex items-center gap-2",
-        "px-3 pt-4",
+        "px-3",
+        top,
         actionLabel ? "justify-between" : "justify-center"
       )}
     >
@@ -815,6 +896,9 @@ function CardAlert({
 }
 
 function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
+  const compact = useCompact();
+  /* Compact cards pull their units closer — there is no heading to clear. */
+  const gapTop = compact ? "pt-2.5" : "pt-4";
   /* THE QUOTE BAND CLOSES THE CARD (Pavan, 2026-10-25): when quotes are
      the last unit, the band meets the card's bottom edge and the alert row
      ("2 of 2 quotes — review pricing") goes, its Review with it — the
@@ -857,9 +941,10 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           five of them and each holds ONE shape — the rules are what let the
           headings shrink to 10px and the field labels disappear entirely. */}
       <div className="flex flex-col gap-1 px-3 pt-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <h4 className="min-w-0 truncate font-mono text-sm font-semibold text-foreground">
+        {/* Compact: the chips drop under the number rather than squeeze it. */}
+        <div className={cn("flex items-start justify-between gap-2", compact && "flex-wrap gap-y-1")}>
+          <div className={cn("flex items-center gap-1.5", compact ? "shrink-0" : "min-w-0")}>
+            <h4 className={cn("min-w-0 truncate font-mono font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
               {card.title}
             </h4>
             {card.code && (
@@ -872,7 +957,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             )}
           </div>
           {card.badges && card.badges.length > 0 && (
-            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+            <div className={cn("flex flex-wrap gap-1", compact ? "min-w-0" : "shrink-0 justify-end")}>
               {card.badges.map((b) => (
                 <Pill key={b.label} kind={b.tone ?? "neutral"}>
                   {b.label}
@@ -891,7 +976,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       {card.units.map((u) => (
         <div
           key={u.key}
-          className="flex flex-col gap-1.5 px-3 pt-4"
+          className={cn("flex flex-col gap-1.5 px-3", gapTop)}
         >
           {/* The quotes unit draws its own heading row — the stepper sits
               on the line with the label, where a unit's controls belong. */}
@@ -904,8 +989,13 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             />
           ) : (
             <>
-              <UnitHeading>{u.heading}</UnitHeading>
-              {u.kind === "stack" && <CardStack lines={u.lines} figure={u.figure} />}
+              {!compact && <UnitHeading>{u.heading}</UnitHeading>}
+              {u.kind === "stack" &&
+                (compact && u.key === "customer" ? (
+                  <ShipToLine heading={u.heading} lines={u.lines} className={LEVEL_CLASS_COMPACT[1]} />
+                ) : (
+                  <CardStack lines={u.lines} figure={u.figure} />
+                ))}
               {u.kind === "inline" && <CardInline parts={u.parts} />}
               {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
               {u.kind === "delivery" && (
@@ -931,7 +1021,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       {card.alert && !bandLast && <CardAlert {...card.alert} />}
 
       {card.footerAction && (
-        <div className="flex items-center justify-between gap-2 px-3 pt-4">
+        <div className={cn("flex items-center justify-between gap-2 px-3", gapTop)}>
           {card.footerAction.waiting ? (
             <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="size-3.5 shrink-0" />
@@ -1081,17 +1171,37 @@ export function BrokerBoard({
   laneSortOptions,
   laneSort,
   onLaneSortChange,
+  compact = false,
 }: BrokerBoardProps) {
+  /* COMPACT LANE WIDTH (Pavan, 2026-10-27) — the board's width over 6.5, so
+     six lanes and half of the seventh show; never under 240px. The lane's
+     gutters and the gaps between cards are Version 1's. */
+  const box = React.useRef<HTMLDivElement>(null);
+  const [laneW, setLaneW] = React.useState<number>();
+  React.useLayoutEffect(() => {
+    const el = box.current;
+    if (!compact || !el) return setLaneW(undefined);
+    const fit = () => setLaneW(Math.max(240, Math.floor(el.clientWidth / 6.5)));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [compact]);
   return (
-    /* THE BOX IS BoardWithBar's — the lanes fill it edge to edge. */
-    <div className="flex h-full min-h-0 overflow-x-auto">
+    <Compact.Provider value={compact}>
+    {/* THE BOX IS BoardWithBar's — the lanes fill it edge to edge. */}
+    <div
+      ref={box}
+      className="flex h-full min-h-0 overflow-x-auto"
+      style={laneW ? ({ "--fp-board-lane-width": `${laneW}px` } as React.CSSProperties) : undefined}
+    >
       {lanes.map((lane) => (
         <React.Fragment key={lane.key}>
         {/* THE BOARD BREAKS BETWEEN LANE GROUPS (Pavan, 2026-10-27) — not a
-            heavier line: a 20px strip of the page's ground, so Canceled and
-            Blocked read as a second board beside the first. */}
+            heavier line: a 20px white strip between two rules, so Canceled
+            and Blocked read as a second board beside the first. */}
         {lane.apart && (
-          <div aria-hidden className="w-5 shrink-0 border-l border-border bg-background" />
+          <div aria-hidden className="w-5 shrink-0 border-l border-border bg-fp-surface-1b" />
         )}
         <Lane
           lane={lane}
@@ -1105,5 +1215,6 @@ export function BrokerBoard({
         </React.Fragment>
       ))}
     </div>
+    </Compact.Provider>
   );
 }

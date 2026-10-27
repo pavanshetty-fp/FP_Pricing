@@ -52,6 +52,8 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
+import { BoardV2 } from "./BoardV2";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -1159,6 +1161,25 @@ export function BrokerOrdersScreen({
   // Board-first, per §5.2. This is the one list in the prototype that does not
   // open as a table.
   const [view, setView] = React.useState<ListView>("board");
+  /* BOARD VERSIONS (Pavan, 2026-10-27) — 1 is the V4 board, 2 the trial after
+     HubSpot's deal board, 3 the V4 board compact (smaller text, no unit
+     headings). The choice is kept for this browser. */
+  const [boardVersion, setBoardVersionState] = React.useState<"1" | "2" | "3">(() => {
+    try {
+      const v = localStorage.getItem("fp-3pl-board-version");
+      return v === "2" || v === "3" ? v : "1";
+    } catch {
+      return "1";
+    }
+  });
+  const setBoardVersion = (v: "1" | "2" | "3") => {
+    setBoardVersionState(v);
+    try {
+      localStorage.setItem("fp-3pl-board-version", v);
+    } catch {
+      // Storage blocked — the switch still works for this visit.
+    }
+  };
   /** Which view the column control is speaking for. */
   const board = view === "board";
   /* The filter panel's selection, as `facetKey:option` ids. This is what the
@@ -1463,6 +1484,13 @@ export function BrokerOrdersScreen({
       }),
     [filtered, laneSort, requestInvoice, setOpenId, cardOff]
   );
+  /* NO REVIEW BUTTON ON THE CARD (Pavan, 2026-10-25) — a card carrying
+     quotes opens at the Pricing heading. Both board versions open this way. */
+  const openBoardCard = (id: string) => {
+    const card = lanes.flatMap((l) => l.cards).find((c) => c.id === id);
+    if (card?.units.some((u) => u.kind === "quotes")) setSheetFocus("pricing");
+    setOpenId(id);
+  };
 
 
   const onSort = (key: BrokerColumnKey) => {
@@ -2530,21 +2558,37 @@ export function BrokerOrdersScreen({
           {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
           ) : view === "board" ? (
-            <BoardWithBar barRef={bar.ref}>
-              <BrokerBoard
-                lanes={lanes}
-                onOpenCard={(id) => {
-                  /* NO REVIEW BUTTON ON THE CARD (Pavan, 2026-10-25) — a card
-                     carrying quotes opens at the Pricing heading. */
-                  const card = lanes.flatMap((l) => l.cards).find((c) => c.id === id);
-                  if (card?.units.some((u) => u.kind === "quotes")) setSheetFocus("pricing");
-                  setOpenId(id);
-                }}
-                laneSortOptions={laneSortOptions}
-                laneSort={laneSort}
-                onLaneSortChange={setLaneSortKey}
-              />
-            </BoardWithBar>
+            <div className="flex h-full min-h-0 flex-col gap-2">
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={boardVersion}
+                onValueChange={(v) => v && setBoardVersion(v as "1" | "2" | "3")}
+                aria-label="Board version"
+                className="self-start"
+              >
+                <ToggleGroupItem value="1" className="px-3">Version 1</ToggleGroupItem>
+                <ToggleGroupItem value="2" className="px-3">Version 2</ToggleGroupItem>
+                <ToggleGroupItem value="3" className="px-3">Version 3</ToggleGroupItem>
+              </ToggleGroup>
+              <div className="min-h-0 flex-1">
+                <BoardWithBar barRef={bar.ref}>
+                  {boardVersion === "2" ? (
+                    <BoardV2 lanes={lanes} onOpenCard={openBoardCard} />
+                  ) : (
+                    <BrokerBoard
+                      lanes={lanes}
+                      onOpenCard={openBoardCard}
+                      laneSortOptions={laneSortOptions}
+                      laneSort={laneSort}
+                      onLaneSortChange={setLaneSortKey}
+                      compact={boardVersion === "3"}
+                    />
+                  )}
+                </BoardWithBar>
+              </div>
+            </div>
           ) : view === "map" ? (
             /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a
                property of a table; half the day's work missing from a map

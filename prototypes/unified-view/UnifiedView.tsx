@@ -61,6 +61,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+type BoardVersion = "1" | "2" | "3" | "4";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -438,6 +440,27 @@ export function UnifiedView({ only }: { only?: string } = {}) {
     kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
+  /* 3PL BOARD VERSIONS (Pavan, 2026-10-27) — V1 to V4 beside the title, on
+     the board and the table alike; picking one opens that board. Kept for
+     this browser. */
+  const [boardVersion, setBoardVersionState] = React.useState<BoardVersion>(() => {
+    try {
+      const v = localStorage.getItem("fp-3pl-board-version");
+      return v === "2" || v === "3" || v === "4" ? v : "1";
+    } catch {
+      return "1";
+    }
+  });
+  const [boardPick, setBoardPick] = React.useState(0);
+  const pickBoardVersion = (v: BoardVersion) => {
+    setBoardVersionState(v);
+    setBoardPick((n) => n + 1);
+    try {
+      localStorage.setItem("fp-3pl-board-version", v);
+    } catch {
+      // Storage blocked — the switch still works for this visit.
+    }
+  };
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -689,6 +712,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       case "3pl-delivery-orders":
         return (
           <BrokerOrdersScreen
+            boardVersion={boardVersion}
+            boardPick={boardPick}
             focus={focus}
             drill={drill3pl}
             startCreate={startCreate}
@@ -770,6 +795,29 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                 screen that has two versions. It is not a filter and not a
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
+            {screenKey === "3pl-delivery-orders" && (
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={boardVersion}
+                /* A second press of the same version still opens its board. */
+                onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
+                aria-label="Board version"
+                className="shrink-0 self-center"
+              >
+                {(["1", "2", "3", "4"] as const).map((v) => (
+                  <ToggleGroupItem
+                    key={v}
+                    value={v}
+                    aria-label={`Board version ${v}`}
+                    className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
+                  >
+                    V{v}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            )}
             {screenKey === "3pl-recurring-orders" && recurringArchive && (
               <span className="flex shrink-0 items-center gap-2 self-center">
                 <span className="text-sm text-muted-foreground">Archive</span>

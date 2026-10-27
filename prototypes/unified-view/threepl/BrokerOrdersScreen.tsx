@@ -53,7 +53,6 @@ import {
   type BoardLane,
 } from "./BrokerBoard";
 import { BoardV2, CardV2 } from "./BoardV2";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -66,6 +65,7 @@ import { DateRangeFilter, type DateRange } from "./DateRangeFilter";
 import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
+  DRIVERS,
   BROKER_HIDDEN_BY_DEFAULT,
   BROKER_LANE_COLOR,
   BROKER_STATUSES,
@@ -251,6 +251,7 @@ function deliveryUnit(
 function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[] {
   const site = SHIP_TO_SITES.find((x) => x.name === r.shipTo);
   const vendor = r.vendorId ? vendorById(r.vendorId) : undefined;
+  const driver = DRIVERS.find((d) => d.name === r.driver);
 
   /* THE TOTAL EARNS ITS ROW or is not drawn. With one line the quantity IS the
      total; with every line a top-off there is nothing to add. It appears only
@@ -290,19 +291,6 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
   const heldQuote = vendor
     ? r.quotes.find((q) => q.vendorId === vendor.id)
     : undefined;
-  const ranked = vendor
-    ? []
-    : r.quotes
-        .map((q) => ({
-          vendorId: q.vendorId,
-          total: quoteTotal(q, r.lines, !r.loadOrder),
-        }))
-        .sort((a, b) => a.total - b.total);
-
-  /* RANKS ARE FOR COMPARING, which happens before a vendor is chosen. From
-     Assigned on, no "Best price". */
-  const comparing = r.status === "Draft" || r.status === "Quoting";
-
   const units: BoardCardUnit[] = [
     {
       kind: "stack",
@@ -358,32 +346,30 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
        fold behind the price on Assigned, which left the Delivery Product
        Details switch on and nothing showing. The switch decides. */
     productUnit,
-    /* WHAT THE PARTNERS HAVE QUOTED beats what they have agreed to. Until one
-       of them holds the order, the card's Vendor unit is about the PRICES that
-       have come back: it said "2 accepted — no quote taken yet" while two
-       priced quotes sat in the order, which is the card contradicting the
-       sheet. With prices in, the unit becomes the quote stepper; with none, it
-       falls back to saying where the invitations have got to. */
-    ranked.length > 0
-      ? {
-          kind: "quotes" as const,
-          key: "partner",
-          heading: "Vendor",
-          nameOff: off.has("partner.name"),
-          quotes: ranked.map((q, i) => ({
-            vendor: vendorName(q.vendorId),
-            total: money(q.total),
-            rank: comparing ? i + 1 : undefined,
-          })),
-        }
-      : {
+    /* THE DRIVER, WITH THE SHIP-TO AND THE DELIVERY (Pavan, 2026-10-27) —
+       once the vendor has put one on the order; truck and phone under the
+       name (on hover in Versions 3 and 4). */
+    {
+      kind: "stack" as const,
+      key: "driver",
+      heading: "Driver",
+      lines: driver
+        ? [
+            ...(off.has("driver.name") ? [] : [{ text: driver.name, level: 1 as const }]),
+            ...(off.has("driver.detail")
+              ? []
+              : [{ text: `${driver.truck} · ${driver.phone}`, level: 3 as const }]),
+          ]
+        : [],
+    },
+    /* NO QUOTES ON THE BOARD (Pavan, 2026-10-27) — the dispatcher enters
+       each vendor's details and moves the order on; the quote stepper and
+       its footers are kept in docs/archive/3pl-board-quoting-2026-10-27.md. */
+    {
       kind: "stack",
       key: "partner",
       heading: "Vendor",
-      /* WHAT THE ORDER COST, once one partner holds it. The quote stepper
-         carries a figure per partner while the round is open; after the award
-         there is one, and a finished card that shows who ran the job and not
-         what it came to is half an answer. */
+      /* WHAT THE ORDER COST, once one partner holds it. */
       figure:
         vendor && !off.has("partner.price") && heldQuote
           ? money(quoteTotal(heldQuote, r.lines, !r.loadOrder))
@@ -402,34 +388,8 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
                   },
                 ]),
           ]
-        : draftStep(r)
-          ? /* THE FOOTER CARRIES IT, so no Vendor unit — select, send and
-               awaiting all sit where Quoting cards put theirs (Pavan,
-               2026-10-06). See `laneCardAlert`. */
-            []
-          : [
-            {
-              /* OUT MEANS SENT, NOT SELECTED (Pavan, 2026-09-22). This read
-                 "Out for acknowledgement" off `invitedVendorIds`, which is the
-                 broker's shortlist and not a thing anybody outside the
-                 building has seen — so a card could say it was waiting on
-                 partners who had never been written to, directly under a badge
-                 saying Draft. Sending is the act; `sentVendorIds` is its
-                 record. */
-              text:
-                r.acceptedVendorIds.length > 0
-                  ? `${r.acceptedVendorIds.length} accepted — no quote taken yet`
-                  : r.sentVendorIds.filter(Boolean).length > 0
-                    ? /* THE WAIT, SAID UNDER THE HEADING (Pavan, 2026-10-27)
-                         — it was "Out for acknowledgment" here and the same
-                         wait again in the footer; now once, here. */
-                      `Awaiting acknowledgment — ${r.invitedVendorIds.length || r.sentVendorIds.filter(Boolean).length} invited`
-                    : r.invitedVendorIds.length > 0
-                      ? `${r.invitedVendorIds.length} selected, not sent`
-                      : "Not assigned",
-              level: 3 as const,
-            },
-          ],
+        : /* THE FOOTER CARRIES IT — "Vendor not selected · Select Vendor". */
+          [],
     },
   ];
   /* A HEADING WITH NOTHING UNDER IT IS NOT A UNIT. Switching off every line
@@ -458,13 +418,10 @@ const TYPE_CODE: Record<
   BrokerOrderType,
   { text: string; tone: CodeDiscTone }
 > = {
-  Core: { text: "C", tone: "pastel-slate" },
-  Emergency: { text: "EM", tone: "pastel-rose" },
+  Fuel: { text: "F", tone: "pastel-blue" },
+  Lubricants: { text: "L", tone: "pastel-amber" },
   "Asset Movement": { text: "M", tone: "pastel-violet" },
-  Delivery: { text: "D", tone: "pastel-blue" },
-  Extraction: { text: "E", tone: "pastel-amber" },
-  "Pump Out": { text: "P", tone: "pastel-teal" },
-  Transport: { text: "T", tone: "pastel-green" },
+  Other: { text: "O", tone: "pastel-slate" },
 };
 
 function laneCardCode(r: BrokerOrder) {
@@ -486,10 +443,10 @@ function laneCardCode(r: BrokerOrder) {
  * picked but never sent are not kept, so there is no step between the two.
  * `null` once a partner accepted or priced, or off Draft.
  */
-function draftStep(r: BrokerOrder): "select" | "awaiting" | null {
-  if (r.status !== "Draft" || r.vendorId) return null;
-  if (r.acceptedVendorIds.length > 0 || r.quotes.length > 0) return null;
-  return r.sentVendorIds.filter(Boolean).length > 0 ? "awaiting" : "select";
+function needsVendor(r: BrokerOrder): boolean {
+  /* NO QUOTING STEP (Pavan, 2026-10-27) — an order with no vendor in the
+     Orders lane needs one picked, whatever went out before. */
+  return (r.status === "Draft" || r.status === "Quoting") && !r.vendorId;
 }
 
 function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
@@ -503,42 +460,10 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
   /* THE DISPATCHER AGREED IT FOR THE VENDOR (Pavan, 2026-10-06). */
   if (r.vendorId && r.quotes.some((q) => q.vendorId === r.vendorId && q.byDispatcher))
     out.push({ label: "Added by dispatcher" });
-  /* THREE STATES IN THE ORDERS LANE, AND THEY ARE ABOUT THE PARTNER (Pavan,
-     2026-09-22). The reader of this lane is not waiting on the form, they are
-     waiting on a price:
-
-       Draft                  nothing has been sent
-       Awaiting Quotation     sent, and nobody has priced it — CAUTION
-       N Quotations Received  at least one price is in — CAUTION: now the
-                              dispatcher's turn (was SUCCESS until 2026-09-23)
-
-     `sentVendorIds` is the record of the asking (invited is a selection, sent
-     is the act) and `quotes` is the record of the answer. THE COUNT IS ON THE
-     BADGE because on an order out to five partners, one price back and four
-     are different situations and the lane should not make you open the order
-     to find out which. Both tones take the DS's soft recipe — a /10 tint of
-     the tone's own hue — because a lane of eight cards should read as a lane
-     and not as a set of traffic lights. */
-  if (r.status === "Draft") {
-    const quotes = r.quotes.length;
-    const stage: BoardCardBadge | null =
-      quotes > 0
-        ? {
-            label: `${quotes} Quotation${quotes === 1 ? "" : "s"} Received`,
-            /* CAUTION, NOT SUCCESS (2026-09-23, the status-kind rule). A price
-               in is not a thing done — it is the dispatcher's turn to award. */
-            tone: "caution",
-          }
-        : r.sentVendorIds.filter(Boolean).length > 0
-          ? /* NO CHIP (Pavan, 2026-10-06) — the footer says it's awaiting. */
-            null
-          : /* NO DRAFT CHIP WHEN THE FOOTER SAYS WHAT'S PENDING (Pavan,
-               2026-10-06) — the footer already marks it unfinished. */
-            draftStep(r)
-            ? null
-            : { label: "Draft" };
-    if (stage) out.push(stage);
-  }
+  /* A DRAFT THAT HAS ITS VENDOR still says Draft — one without says so in
+     the footer (Pavan, 2026-10-27; the quotation chips are retired, see
+     docs/archive/3pl-board-quoting-2026-10-27.md). */
+  if (r.status === "Draft" && r.vendorId) out.push({ label: "Draft" });
   /* WHERE IN SYNCED. The Synced lane is the one that still holds two statuses
      — fully and partly — so the card is what says which. Only the partial one
      gets a badge: on a lane called Synced, a card saying "Synced" is a label
@@ -662,8 +587,10 @@ const BOARD_LANES: {
      in it and the card's badge had to contradict the heading to say so. The
      STATUS is still Draft; this is the lane's name, and the badge below is
      what tells the two apart. */
-  { key: "Draft", title: "Orders", statuses: ["Draft"] },
-  { key: "Quoting", statuses: ["Quoting"] },
+  /* NO QUOTING LANE (Pavan, 2026-10-27) — the dispatcher enters the
+     vendors' details for them and moves the order to Assigned once one is
+     final; until then it waits here, unassigned. */
+  { key: "Draft", title: "Orders", statuses: ["Draft", "Quoting"] },
   { key: "Assigned", statuses: ["Assigned"] },
   { key: "Completed", statuses: ["Completed"] },
   /* THE OPTIONAL HOLD between delivery and accounting (Pavan, 2026-09-24). */
@@ -692,43 +619,14 @@ function laneCardAlert(
   /* A MISSING VENDOR IS THE NEXT STEP, NOT A FACT (Pavan, 2026-10-06).
      "Not assigned" under the Vendor heading read as a state; the footer says
      what to do next, the same slot Quoting cards use for theirs. */
-  /* Each opens on the vendor table, as Review does on a Quoting card. */
-  const step = draftStep(r);
-  if (step === "select") {
+  /* Opens on the vendor table. */
+  if (needsVendor(r)) {
     return {
       status: "caution",
       text: "Vendor not selected",
       actionLabel: "Select Vendor",
       onAction: onOpen,
     };
-  }
-  if (step === "awaiting") {
-    const n = r.sentVendorIds.filter(Boolean).length;
-    return {
-      status: "caution",
-      text: `Awaiting quotation — ${n} invited`,
-      actionLabel: "View sent invitations",
-      onAction: onOpen,
-    };
-  }
-  if (r.status === "Quoting") {
-    const n = r.invitedVendorIds.length;
-    /* PRICES BEAT SILENCE. An order with two quotes in it was still being
-       announced as awaiting acknowledgement, because this branch only ever
-       counted invitations — so the footer denied what the card above it was
-       showing. Once anything has been priced, the count that matters is how
-       many of the invitations have come back with a figure. */
-    const priced = r.quotes.length;
-    if (priced > 0) {
-      return {
-        status: "caution",
-        text: `${priced} of ${n} ${priced === 1 ? "quote" : "quotes"} in — review pricing`,
-        actionLabel: "Review",
-        onAction: onOpen,
-      };
-    }
-    /* NO FOOTER (Pavan, 2026-10-27) — the Vendor unit says it. */
-    return undefined;
   }
   /* NOTHING TO REVIEW ON ASSIGNED (Pavan, 2026-10-06) — the vendor has the
      job; the card waits for it to be done, so it carries no quote footer. */
@@ -782,6 +680,9 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "product", label: "Delivery Details" },
   { key: "product.product", label: "Products", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },
+  { key: "driver", label: "Driver" },
+  { key: "driver.name", label: "Name", group: "driver" },
+  { key: "driver.detail", label: "Truck · phone", group: "driver" },
   { key: "partner", label: "Vendor" },
   { key: "partner.name", label: "Partner name", group: "partner" },
   { key: "partner.detail", label: "Base · safety · distance", group: "partner" },
@@ -1069,7 +970,13 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
+  boardVersion = "1",
+  boardPick = 0,
 }: {
+  /** The board version, picked beside the page title (Pavan, 2026-10-27). */
+  boardVersion?: "1" | "2" | "3" | "4";
+  /** A nonce — each pick opens the board, from the table too. */
+  boardPick?: number;
   focus?: { id: string; n: number } | null;
   /**
    * OPEN THE CREATE SHEET ON ARRIVAL. A nonce, not a boolean: the Recurring
@@ -1162,24 +1069,12 @@ export function BrokerOrdersScreen({
   // open as a table.
   const [view, setView] = React.useState<ListView>("board");
   /* BOARD VERSIONS (Pavan, 2026-10-27) — 1 is the V4 board, 2 the trial after
-     HubSpot's deal board, 3 the V4 board compact (smaller text, no unit
-     headings). The choice is kept for this browser. */
-  const [boardVersion, setBoardVersionState] = React.useState<"1" | "2" | "3">(() => {
-    try {
-      const v = localStorage.getItem("fp-3pl-board-version");
-      return v === "2" || v === "3" ? v : "1";
-    } catch {
-      return "1";
-    }
-  });
-  const setBoardVersion = (v: "1" | "2" | "3") => {
-    setBoardVersionState(v);
-    try {
-      localStorage.setItem("fp-3pl-board-version", v);
-    } catch {
-      // Storage blocked — the switch still works for this visit.
-    }
-  };
+     HubSpot's deal board, 3 Version 1's lanes with Version 2's cards, 4
+     Version 1 with no labels and a pin / truck / driver icon leading its
+     lines. The switch is beside the page title; a pick opens the board. */
+  React.useEffect(() => {
+    if (boardPick) setView("board");
+  }, [boardPick]);
   /** Which view the column control is speaking for. */
   const board = view === "board";
   /* The filter panel's selection, as `facetKey:option` ids. This is what the
@@ -1484,13 +1379,9 @@ export function BrokerOrdersScreen({
       }),
     [filtered, laneSort, requestInvoice, setOpenId, cardOff]
   );
-  /* NO REVIEW BUTTON ON THE CARD (Pavan, 2026-10-25) — a card carrying
-     quotes opens at the Pricing heading. Both board versions open this way. */
-  const openBoardCard = (id: string) => {
-    const card = lanes.flatMap((l) => l.cards).find((c) => c.id === id);
-    if (card?.units.some((u) => u.kind === "quotes")) setSheetFocus("pricing");
-    setOpenId(id);
-  };
+  /* THE CARD OPENS THE ORDER — no quotes on the board to open at
+     Pricing for (Pavan, 2026-10-27). */
+  const openBoardCard = (id: string) => setOpenId(id);
 
 
   const onSort = (key: BrokerColumnKey) => {
@@ -1828,7 +1719,7 @@ export function BrokerOrdersScreen({
            one everywhere, or the badge and the filter disagree. */
         orderNo: `D-${nextNo}`,
         kind: draft.recurring ? "Recurring" : "Regular",
-        orderType: draft.orderType === "Asset Movement" ? "Core" : draft.orderType,
+        orderType: draft.orderType === "Asset Movement" ? "Fuel" : draft.orderType,
         customer: { title: draft.customer, description: draft.erpId },
         shipTo: draft.shipTo,
         date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
@@ -2047,8 +1938,13 @@ export function BrokerOrdersScreen({
         const c = laneCardCode(row);
         return <Pill color={discTonePill(c.tone)}>{c.label}</Pill>;
       }
+      /* NO ERP ID UNDER THE NAME (Pavan, 2026-10-27) — it is on the order. */
       case "customer":
-        return <TwoLineCell {...row.customer} q={f} />;
+        return (
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.customer.title} q={f} />
+          </span>
+        );
       case "shipTo":
         return (
           <span className="truncate text-sm text-foreground">
@@ -2115,6 +2011,14 @@ export function BrokerOrdersScreen({
           <span className="truncate text-sm text-muted-foreground">
             <Hit text={row.createdBy} q={f} />
           </span>
+        );
+      case "driver":
+        return row.driver ? (
+          <span className="truncate text-sm text-foreground">
+            <Hit text={row.driver} q={f} />
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
         );
       case "vendor":
         // Three genuinely different states, and collapsing them would hide the
@@ -2559,19 +2463,6 @@ export function BrokerOrdersScreen({
             emptyBody
           ) : view === "board" ? (
             <div className="flex h-full min-h-0 flex-col gap-2">
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={boardVersion}
-                onValueChange={(v) => v && setBoardVersion(v as "1" | "2" | "3")}
-                aria-label="Board version"
-                className="self-start"
-              >
-                <ToggleGroupItem value="1" className="px-3">Version 1</ToggleGroupItem>
-                <ToggleGroupItem value="2" className="px-3">Version 2</ToggleGroupItem>
-                <ToggleGroupItem value="3" className="px-3">Version 3</ToggleGroupItem>
-              </ToggleGroup>
               <div className="min-h-0 flex-1">
                 <BoardWithBar barRef={bar.ref}>
                   {boardVersion === "2" ? (
@@ -2584,6 +2475,7 @@ export function BrokerOrdersScreen({
                       laneSort={laneSort}
                       onLaneSortChange={setLaneSortKey}
                       compact={boardVersion === "3"}
+                      bare={boardVersion === "4"}
                       renderCard={
                         boardVersion === "3"
                           ? (card, onOpen) => <CardV2 flat card={card} onOpen={onOpen} />

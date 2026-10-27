@@ -598,7 +598,7 @@ export const RECURRING_PROGRAMS: RecurringProgram[] = (() => {
         product === "Engine Oil 15W-40" ? "Lubricants" : "Fuel",
       business:
         product === "Engine Oil 15W-40" ? "Packaged Goods" : "Transport",
-      orderType: "Core",
+      orderType: "Fuel",
       signatureOnDelivery: i % 2 === 0,
       schedule,
       startKey,

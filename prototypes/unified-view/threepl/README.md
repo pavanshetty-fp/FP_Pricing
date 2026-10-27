@@ -1100,6 +1100,23 @@ right corner. Every board's order number is in Geist (no monospace).
 board — lane pills, gutters, rims, no shadow — with each card laid out exactly
 as Version 2 (values only, info icons first, 6px groups, a divider above the
 footer and its full-width CTA). `BrokerBoard renderCard` + `CardV2 flat`.
+**Version 4 = Version 1 bare (2026-10-27):** Version 1's widths, sizes and
+spacing with no unit labels; the ship-to is its name behind a pin and the
+delivery its one line behind a truck — hover either icon for the address and
+customer, or the table + map. `BrokerBoard bare`.
+
+**2026-10-27, later.** The switch is now **V1 · V2 · V3 · V4**, tiny, beside
+the *Delivery Orders* title (`UnifiedView.tsx`), on the table too — a pick
+opens that board. **No quoting on the board**: no Quoting lane (its orders sit
+in Orders until a vendor is final, then Assigned), no quotes unit or quotation
+chips/footers — kept in `docs/archive/3pl-board-quoting-2026-10-27.md`. Cards
+gain a **Driver** unit (`DRIVERS` in `orders.ts`, set once a vendor holds the
+order): name, then truck · phone; in Versions 2–4 the name behind an icon
+(a person in V4) with the rest on hover. The V4 rule now sits over the
+vendor. **Table:** no ERP ID under the customer, no Created By column (it is
+on the order's Associated records card, with the driver), a **Driver**
+column after Vendor. **Types** are now Fuel · Lubricants · Asset Movement ·
+Other — from the products' line (Propane → Other). **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:
 *Awaiting acknowledgment — N invited* under the Vendor heading, no footer.

@@ -5,6 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  MapPin,
+  UserRound,
+  Truck,
+  type LucideIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -381,6 +385,9 @@ export interface BrokerBoardProps {
   onLaneSortChange?: (laneKey: string, option: string | null) => void;
   /** Version 3: smaller text, no unit headings on the cards. */
   compact?: boolean;
+  /** Version 4: Version 1 with no labels; the ship-to and delivery lines lead
+   *  with a pin and a truck whose hover holds the details. */
+  bare?: boolean;
   /** Version 3 (Pavan, 2026-10-27): the lanes stay this board's, the card
    *  inside is drawn by the caller — Version 2's arrangement. */
   renderCard?: (card: BoardCard, onOpen: () => void) => React.ReactNode;
@@ -390,6 +397,11 @@ export interface BrokerBoardProps {
    and no unit headings on the card. Popovers keep their headings. */
 const Compact = React.createContext(false);
 const useCompact = () => React.useContext(Compact);
+/* VERSION 4 — BARE (Pavan, 2026-10-27): Version 1's sizes, widths and
+   spacing, with every unit label gone and the ship-to and delivery cut to
+   one line each behind a meaningful icon — a pin, a truck. */
+const Bare = React.createContext(false);
+const useBare = () => React.useContext(Bare);
 
 /** The unit heading — the only label left on the card. */
 function UnitHeading({ children }: { children: React.ReactNode }) {
@@ -440,7 +452,7 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
        for both on one line. */
     <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col gap-0.5" : "items-start justify-between")}>
       {stack}
-      <span className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
+      <span className={cn(compact ? "text-[13px] font-bold" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
         {figure}
       </span>
     </div>
@@ -454,7 +466,7 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
  * and a cadence — not one list. The hairline reads as a boundary; a dot reads
  * as punctuation inside a single value.
  */
-function CardInline({ parts }: { parts: string[] }) {
+function CardInline({ parts, quiet }: { parts: string[]; quiet?: boolean }) {
   const t = useCompact() ? "text-xs" : "text-[13px]";
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -464,9 +476,13 @@ function CardInline({ parts }: { parts: string[] }) {
           <span
             className={cn(
               "truncate",
-              i === 0
-                ? cn(t, "font-medium whitespace-nowrap text-foreground")
-                : cn(t, "text-muted-foreground")
+              /* Quiet (Version 4): one size, one colour — secondary to the
+                 ship-to name above it. */
+              quiet
+                ? cn("text-xs text-muted-foreground", i === 0 && "whitespace-nowrap")
+                : i === 0
+                  ? cn(t, "font-medium whitespace-nowrap text-foreground")
+                  : cn(t, "text-muted-foreground")
             )}
             title={p}
           >
@@ -537,15 +553,24 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
  * and an info icon; hover the icon for the rest of the unit — the address,
  * the customer — in the same white hover card as Delivery Details.
  */
+
+/* THE GREY PILL ON A HOVERED DARK CARD — its fill is the card's hover step,
+   so it would vanish; it goes one step further (Pavan, 2026-10-27). */
+export const CARD_HOVER_PILL = (tone?: string) =>
+  (tone ?? "neutral") === "neutral" ? "dark:group-hover/card:bg-fp-card-1" : undefined;
+
 export function ShipToLine({
   heading,
   lines,
   className,
   iconFirst,
+  icon: Icon = Info,
 }: {
   heading: string;
   lines: BoardCardLine[];
   className?: string;
+  /** Version 4: a pin instead of the info icon. */
+  icon?: LucideIcon;
   /** Versions 2 and 3 (Pavan, 2026-10-27): the info icon leads the name. */
   iconFirst?: boolean;
 }) {
@@ -567,7 +592,7 @@ export function ShipToLine({
               onKeyDown={(e) => e.stopPropagation()}
               className="shrink-0 rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Info className="size-3.5" />
+              <Icon className="size-3.5" />
             </button>
           </HoverCardTrigger>
           <HoverCardContent
@@ -640,7 +665,10 @@ export function CardDelivery({
   site,
   points,
   iconTrigger,
+  icon: Icon = Info,
 }: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key"> & {
+  /** Version 4: a truck instead of the info icon. */
+  icon?: LucideIcon;
   /** Versions 2 and 3 (Pavan, 2026-10-27): an info icon, then the summary as
    *  plain text that wraps — no underline; hover the icon. */
   iconTrigger?: boolean;
@@ -659,7 +687,7 @@ export function CardDelivery({
               onKeyDown={(e) => e.stopPropagation()}
               className="mt-px mr-1 shrink-0 self-start rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Info className="size-3.5" />
+              <Icon className="size-3.5" />
             </button>
           ) : (
           <button
@@ -674,7 +702,11 @@ export function CardDelivery({
           )}
         </HoverCardTrigger>
         {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
-        {iconTrigger && <span className={cn("min-w-0", compact && "text-xs text-foreground")}>{summary.join(" · ")}</span>}
+        {iconTrigger && (
+          <span className={cn("min-w-0 text-foreground", compact ? "text-xs" : "text-[13px] font-medium")}>
+            {summary.join(" · ")}
+          </span>
+        )}
         <HoverCardContent
           align="start"
           className="fp-surface-light w-md p-3"
@@ -749,6 +781,7 @@ function CardQuotes({
   breakdown?: { rows: BoardCardRow[]; total?: string };
 }) {
   const compact = useCompact();
+  const bare = useBare();
   const [i, setI] = React.useState(0);
   const at = Math.min(i, quotes.length - 1);
   const q = quotes[at];
@@ -804,7 +837,7 @@ function CardQuotes({
           the others; the grey and the greens before it were tried. */}
       <div className="flex flex-col gap-1.5 py-1">
       {/* …and the unit's heading comes inside it (2026-10-25). */}
-      {!compact && <UnitHeading>{heading}</UnitHeading>}
+      {!compact && !bare && <UnitHeading>{heading}</UnitHeading>}
       {/* Compact: name, placing, then the price under them. */}
       <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col items-start gap-0.5" : "items-start justify-between")}>
         <span className="flex min-w-0 flex-col gap-0.5">
@@ -821,9 +854,8 @@ function CardQuotes({
             </span>
           )}
         </span>
-        {/* BIGGER THAN ANYTHING ELSE ON THE CARD. The figure is the reason
-            these cards get opened, and at 13px it was the same size as an
-            asset name. `text-lg` is the nearest step on the scale. */}
+        {/* THE PRICE AT THE VENDOR NAME'S SIZE (Pavan, 2026-10-27) — 14px
+            semibold, the same as the name it belongs to; it was text-lg. */}
         {/* Compact: THE STEPPER ON THE PRICE'S LINE, in the card's right
             corner (Pavan, 2026-10-27) — there is room beside the figure. */}
         <div className={cn(compact && "-mr-1 flex items-center justify-between self-stretch")}>
@@ -837,7 +869,7 @@ function CardQuotes({
                 onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
                 aria-label={`${q.total} — what this is for`}
-                className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", "rounded-sm tabular-nums whitespace-nowrap text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50")}
+                className={cn(compact ? "text-[13px] font-bold" : "text-sm font-semibold", "rounded-sm tabular-nums whitespace-nowrap text-foreground underline decoration-fp-outline-1 decoration-dotted underline-offset-4 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50")}
               >
                 {q.total}
               </button>
@@ -857,7 +889,7 @@ function CardQuotes({
             </PopoverContent>
           </Popover>
         ) : (
-          <span className={cn(compact ? "text-[13px] font-bold" : "text-lg font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
+          <span className={cn(compact ? "text-[13px] font-bold" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
             {q.total}
           </span>
         )}
@@ -878,8 +910,10 @@ function CardAlert({
   text,
   actionLabel,
   onAction,
-}: NonNullable<BoardCard["alert"]>) {
-  const top = useCompact() ? "pt-2.5" : "pt-4";
+  topClass,
+}: NonNullable<BoardCard["alert"]> & { topClass?: string }) {
+  const compact = useCompact();
+  const top = topClass ?? (compact ? "pt-2.5" : "pt-4");
   /* A WAIT IN A GREY BOX (Pavan, 2026-10-27) — "Awaiting accounting" and the
      like: nothing to press, so it sits in the quote band's grey, tucked 4px
      inside the card, its text left on the card's 12px line. */
@@ -925,10 +959,21 @@ function CardAlert({
   );
 }
 
-function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
+/* VERSION 4 SPACING TRIAL (Pavan, 2026-10-27) — every lane's first card
+   with the 16px between units cut by 4 (12px), the second by 6 (10px), the
+   rest at 16, to pick one. */
+const SPACE: Record<number, { pt: string; mt: string }> = {
+  16: { pt: "pt-4", mt: "mt-4" },
+  12: { pt: "pt-3", mt: "mt-3" },
+  10: { pt: "pt-2.5", mt: "mt-2.5" },
+};
+
+function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => void; space?: 16 | 12 | 10 }) {
   const compact = useCompact();
+  const bare = useBare();
   /* Compact cards pull their units closer — there is no heading to clear. */
-  const gapTop = compact ? "pt-2.5" : "pt-4";
+  const gapTop = compact ? "pt-2.5" : SPACE[space].pt;
+  const ruleTop = SPACE[space].mt;
   /* THE QUOTE BAND CLOSES THE CARD (Pavan, 2026-10-25): when quotes are
      the last unit, the band meets the card's bottom edge and the alert row
      ("2 of 2 quotes — review pricing") goes, its Review with it — the
@@ -961,8 +1006,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         // nothing scrolled and nothing hinted that content was missing.
         "shrink-0",
         waitLast ? "pb-1" : bandLast ? "pb-2" : "pb-3",
-        "cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
+        "group/card cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,background-color,border-color,box-shadow]",
         "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
+        /* DARK HOVER FILLS (Pavan, 2026-10-27) — the rim alone was too quiet;
+           one card step up (--muted is --fp-card-2 in dark). The grey pills step up with it (CARD_HOVER_PILL). */
+        "dark:hover:bg-muted",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
         "active:border-fp-outline-2 active:bg-fp-card-1"
       )}
@@ -972,7 +1020,8 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           headings shrink to 10px and the field labels disappear entirely. */}
       <div className="flex flex-col gap-1 px-3 pt-3">
         {/* Compact: the chips drop under the number rather than squeeze it. */}
-        <div className={cn("flex items-start justify-between gap-2", compact && "flex-wrap gap-y-1")}>
+        {/* Version 4: the number and its chips centred on one line. */}
+        <div className={cn("flex justify-between gap-2", bare ? "items-center" : "items-start", compact && "flex-wrap gap-y-1")}>
           <div className={cn("flex items-center gap-1.5", compact ? "shrink-0" : "min-w-0")}>
             <h4 className={cn("min-w-0 truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
               {card.title}
@@ -989,7 +1038,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           {card.badges && card.badges.length > 0 && (
             <div className={cn("flex flex-wrap gap-1", compact ? "min-w-0" : "shrink-0 justify-end")}>
               {card.badges.map((b) => (
-                <Pill key={b.label} kind={b.tone ?? "neutral"}>
+                <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
                   {b.label}
                 </Pill>
               ))}
@@ -1003,10 +1052,17 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         ))}
       </div>
 
-      {card.units.map((u) => (
+      {card.units.map((u, ui) => (
+        <React.Fragment key={u.key}>
+        {/* VERSION 4: A RULE OVER THE VENDOR (Pavan, 2026-10-27) — between
+            what is going where (and who drives it) and who is taking it, on
+            Version 1's 16px rhythm. */}
+        {bare && ui > 0 && u.key === "partner" && (
+          <div aria-hidden className={cn("mx-3 border-t border-border", ruleTop)} />
+        )}
         <div
-          key={u.key}
-          className={cn("flex flex-col gap-1.5 px-3", gapTop)}
+          /* Version 4: the schedule hangs 4px under the ship-to name. */
+          className={cn("flex flex-col gap-1.5 px-3", bare && u.key === "schedule" ? "pt-1" : gapTop)}
         >
           {/* The quotes unit draws its own heading row — the stepper sits
               on the line with the label, where a unit's controls belong. */}
@@ -1019,14 +1075,37 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             />
           ) : (
             <>
-              {!compact && <UnitHeading>{u.heading}</UnitHeading>}
+              {!compact && !bare && <UnitHeading>{u.heading}</UnitHeading>}
               {u.kind === "stack" &&
-                (compact && u.key === "customer" ? (
-                  <ShipToLine iconFirst heading={u.heading} lines={u.lines} className={LEVEL_CLASS_COMPACT[1]} />
+                ((compact || bare) && (u.key === "customer" || u.key === "driver") ? (
+                  /* The driver reads like the ship-to: the name, the rest on
+                     hover (Pavan, 2026-10-27). */
+                  <ShipToLine
+                    iconFirst
+                    icon={bare ? (u.key === "driver" ? UserRound : MapPin) : undefined}
+                    heading={u.heading}
+                    lines={u.lines}
+                    className={bare ? LEVEL_CLASS[1] : LEVEL_CLASS_COMPACT[1]}
+                  />
                 ) : (
                   <CardStack lines={u.lines} figure={u.figure} />
                 ))}
-              {u.kind === "inline" && <CardInline parts={u.parts} />}
+              {u.kind === "inline" &&
+                (bare && u.key === "schedule" ? (
+                  /* VERSION 4'S SCHEDULE (Pavan, 2026-10-27) — under the
+                     ship-to name, starting where the name starts (past the
+                     pin and its 4px), 2px smaller, all in the secondary grey;
+                     the date first, then the window. */
+                  /* One phrase: "Oct 27 2026, 6:00 AM – 10:00 AM". */
+                  <span className="truncate pl-4.5 text-xs text-muted-foreground">
+                    {[...u.parts]
+                      .reverse()
+                      .map((p) => p.replace(/^(\w{3} \d{1,2}),( \d{4})$/, "$1$2"))
+                      .join(", ")}
+                  </span>
+                ) : (
+                  <CardInline parts={u.parts} />
+                ))}
               {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
               {u.kind === "delivery" && (
                 <CardDelivery
@@ -1036,20 +1115,30 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                   total={u.total}
                   site={u.site}
                   points={u.points}
-                  iconTrigger={compact}
+                  iconTrigger={compact || bare}
+                  icon={bare ? Truck : undefined}
                 />
               )}
             </>
           )}
         </div>
+        </React.Fragment>
       ))}
+      {/* …and with no vendor unit, the rule comes before the footer —
+          "Vendor not selected · Select Vendor" and the like. */}
+      {bare &&
+        card.units.length > 0 &&
+        card.units.at(-1)?.key !== "partner" &&
+        ((card.alert && !bandLast) || card.footerAction) && (
+          <div aria-hidden className={cn("mx-3 border-t border-border", ruleTop)} />
+        )}
 
       {/* NO "VIEW DETAILS" ROW. The whole card opens the order — it is the
           button — so a strip at the bottom naming that was a label for a thing
           the reader was already standing on, and it cost every card a rule and
           25px to say it. What is left in this footer is what the card is
           waiting on: an alert, or the invoice row. */}
-      {card.alert && !bandLast && <CardAlert {...card.alert} />}
+      {card.alert && !bandLast && <CardAlert {...card.alert} topClass={space !== 16 ? gapTop : undefined} />}
 
       {card.footerAction && (
         <div className={cn("flex items-center justify-between gap-2 px-3", gapTop)}>
@@ -1101,6 +1190,7 @@ function Lane({
   sortKey?: string;
   onSortChange?: (option: string | null) => void;
 }) {
+  const bare = useBare();
   const chosen = sortOptions?.find((o) => o.key === sortKey);
   return (
     /* 400px, not the DS's 340. The card's product unit is three columns —
@@ -1189,11 +1279,16 @@ function Lane({
             {lane.emptyLabel ?? "Nothing here"}
           </p>
         ) : (
-          lane.cards.map((card) =>
+          lane.cards.map((card, ci) =>
             renderCard ? (
               <React.Fragment key={card.id}>{renderCard(card, () => onOpenCard?.(card.id))}</React.Fragment>
             ) : (
-              <Card key={card.id} card={card} onOpen={() => onOpenCard?.(card.id)} />
+              <Card
+                key={card.id}
+                card={card}
+                onOpen={() => onOpenCard?.(card.id)}
+                space={bare && ci === 0 ? 12 : bare && ci === 1 ? 10 : 16}
+              />
             )
           )
         )}
@@ -1209,6 +1304,7 @@ export function BrokerBoard({
   laneSort,
   onLaneSortChange,
   compact = false,
+  bare = false,
   renderCard,
 }: BrokerBoardProps) {
   /* COMPACT LANE WIDTH (Pavan, 2026-10-27) — the board's width over 6.5, so
@@ -1227,6 +1323,7 @@ export function BrokerBoard({
   }, [compact]);
   return (
     <Compact.Provider value={compact}>
+    <Bare.Provider value={bare}>
     {/* THE BOX IS BoardWithBar's — the lanes fill it edge to edge. */}
     <div
       ref={box}
@@ -1254,6 +1351,7 @@ export function BrokerBoard({
         </React.Fragment>
       ))}
     </div>
+    </Bare.Provider>
     </Compact.Provider>
   );
 }

@@ -293,7 +293,7 @@ function makeVendor(spec: VendorSeed & { seed: number; id: string; index: number
 
     businessLines: spec.businessLines,
     supportedProductIds: [],
-    supportedOrderTypes: someOf(r, ["Delivery", "Core", "Emergency", "Transport", "Asset Movement", "Pump Out"] as const, 4),
+    supportedOrderTypes: someOf(r, ["Fuel", "Lubricants", "Asset Movement", "Other"] as const, 4),
     topOffCapable: r() < 0.62,
     assetHandlingCapable: spec.businessLines.includes("Asset Movement") || r() < 0.2,
     afterHoursCapable: spec.businessLines.includes("Emergency Response") || r() < 0.35,

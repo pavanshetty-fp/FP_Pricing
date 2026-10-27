@@ -7,6 +7,7 @@ import { CodeDisc } from "@/components/ui/code-disc";
 import {
   CardDelivery,
   ShipToLine,
+  CARD_HOVER_PILL,
   type BoardCard,
   type BoardCardUnit,
   type BoardLane,
@@ -37,6 +38,7 @@ const LABEL: Record<string, string> = {
   schedule: "Schedule",
   completed: "Completed",
   product: "Delivery",
+  driver: "Driver",
   partner: "Vendor",
 };
 
@@ -68,9 +70,9 @@ function Property({ label, children }: { label: string; children: React.ReactNod
 
 /* ONE UNIT, ONE GROUP — its own lines 4px apart; the gap between groups
    is the card's to set. */
-function UnitGroup({ u }: { u: BoardCardUnit }) {
+function UnitGroup({ u, ruled }: { u: BoardCardUnit; ruled?: boolean }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className={cn("flex min-w-0 flex-col gap-1", ruled && "mt-0.5 border-t border-border pt-2")}>
       <UnitProperties u={u} />
     </div>
   );
@@ -79,7 +81,8 @@ function UnitGroup({ u }: { u: BoardCardUnit }) {
 function UnitProperties({ u }: { u: BoardCardUnit }) {
   const label = LABEL[u.key] ?? u.heading;
   /* THE SHIP-TO: its name and an info icon; the rest on hover. */
-  if (u.kind === "stack" && u.key === "customer")
+  /* …and the driver the same way (Pavan, 2026-10-27). */
+  if (u.kind === "stack" && (u.key === "customer" || u.key === "driver"))
     return <ShipToLine iconFirst heading={u.heading} lines={u.lines} className="text-xs text-foreground" />;
   if (u.kind === "stack") {
     const [first, ...rest] = u.lines;
@@ -155,10 +158,13 @@ export function CardV2({
         }
       }}
       className={cn(
-        "flex shrink-0 cursor-pointer flex-col gap-2 rounded-md border bg-fp-surface-1b p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        /* 10px INSIDE (Pavan, 2026-10-27 — was 12). */
+        "group/card flex shrink-0 cursor-pointer flex-col gap-2 rounded-md border bg-fp-surface-1b p-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        /* Dark hover fills one card step, --muted (Pavan, 2026-10-27). */
+        "dark:hover:bg-muted",
         flat
-          ? "border-fp-outline-1 transition-[border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface active:border-fp-outline-2 active:bg-fp-card-1"
-          : "border-border shadow-xs transition-shadow hover:shadow-md"
+          ? "border-fp-outline-1 transition-[background-color,border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface active:border-fp-outline-2 active:bg-fp-card-1"
+          : "border-border shadow-xs transition-[background-color,box-shadow] hover:shadow-md"
       )}
     >
       {/* NARROW LANES WRAP, NOT CLIP (Pavan, 2026-10-27) — the number never
@@ -176,7 +182,7 @@ export function CardV2({
         {card.badges && card.badges.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {card.badges.map((b) => (
-              <Pill key={b.label} kind={b.tone ?? "neutral"}>
+              <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
                 {b.label}
               </Pill>
             ))}
@@ -190,8 +196,10 @@ export function CardV2({
       ))}
       {/* 6px BETWEEN GROUPS (Pavan, 2026-10-27) — tried 4, 6, 8, 12, 16. */}
       <div className="flex min-w-0 flex-col gap-1.5">
-        {card.units.map((u) => (
-          <UnitGroup key={u.key} u={u} />
+        {card.units.map((u, i) => (
+          /* Versions 2 and 3 (Pavan, 2026-10-27): a rule sets the vendor apart
+             from the ship-to and delivery above it — 8px each side. */
+          <UnitGroup key={u.key} u={u} ruled={u.key === "partner" && i > 0} />
         ))}
       </div>
       {card.alert && (

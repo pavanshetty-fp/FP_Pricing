@@ -32,13 +32,13 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - Lane header `border-b border-border px-5 py-3`; title `text-sm font-semibold`; count pill `bg-fp-lane-count` (#dde1e7 light / #3d4550 dark — a step off the lane, 2026-10-27), `text-[11px] font-medium`, neutral ink (never lane-coloured with white text). Sort icon `ArrowDownUp` size-4, `text-muted-foreground`, `text-foreground` when a sort is chosen.
 - Card stack `gap-3 px-5 py-4` (20px either side of the cards), `overflow-y-auto`; cards `shrink-0`.
 - Card: `rounded-md border border-fp-outline-1 bg-fp-surface-1b`; `pb-3`; head `px-3 pt-3`, number `text-sm font-semibold` (Geist — no mono); badges = DS `Pill` (h-7). Units `px-3 pt-4 gap-1.5` — 12px inset, 16px between units, 6px inside; unit heading `text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground`.
-- Stack levels: 1 `text-sm font-semibold text-foreground` · 2 `text-[13px] font-medium text-muted-foreground` · 3 `text-xs text-muted-foreground`. Figures / quote price `text-lg font-semibold tabular-nums` (the largest thing on the card). Inline hairline `h-3.5 w-px bg-fp-outline-2`. Rows grid `1fr · 1.05fr · auto`, asset id `text-[11px]`, Top-off qty soft (`font-medium text-muted-foreground`).
+- Stack levels: 1 `text-sm font-semibold text-foreground` · 2 `text-[13px] font-medium text-muted-foreground` · 3 `text-xs text-muted-foreground`. Figures / quote price `text-sm font-semibold tabular-nums` — the vendor name's size (2026-10-27; was text-lg). Inline hairline `h-3.5 w-px bg-fp-outline-2`. Rows grid `1fr · 1.05fr · auto`, asset id `text-[11px]`, Top-off qty soft (`font-medium text-muted-foreground`).
 - Alert strip: `px-3 pt-4 text-xs`; text color `text-fp-banner-accent-caution` / `-warning` / `-success` or `text-foreground` (default); action `Button outline xs`.
 - Footer: `border-t border-fp-outline-1 px-3.5 py-2.5`, label `text-xs`; act `Button` variant `success` (filled) or `outline`, size `xs`.
 
 ## States
 - **Card default** — outline-1 rim on surface-1b.
-- **Card hover** — rim `fp-outline-2` + `shadow-fp-surface`.
+- **Card hover** — rim `fp-outline-2` + `shadow-fp-surface`; in dark the fill also steps up one card step (`bg-muted` = `--fp-card-2`), and grey pills on the card step to `fp-card-1` so they stay visible (`CARD_HOVER_PILL`, 2026-10-27).
 - **Card focus** — `border-ring` + 2px `ring-ring/50`.
 - **Card active/pressed** — rim outline-2, fill `bg-fp-card-1`.
 - **Lane empty** — the stack is replaced by `emptyLabel` in `text-xs text-muted-foreground` ("No orders in quoting"; default "Nothing here").
@@ -119,7 +119,7 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - By eye: lanes in lifecycle order, 20px board break before Canceled/Blocked, card focus ring and Enter opening, card controls not opening the card, lanes scroll with full-height cards, card fields scope above ticks, view bar statement.
 
 ## Reference
-- 3PL › Delivery Orders board (Orders · Quoting · Assigned · Completed · Review · Verified · Synced ┃ Canceled · Blocked).
+- 3PL › Delivery Orders board (Orders · Assigned · Completed · Review · Verified · Synced ┃ Canceled · Blocked). No Quoting lane or quotes unit since 2026-10-27 — the dispatcher enters vendors' details; the whole quoting concept is in `docs/archive/3pl-board-quoting-2026-10-27.md`. Cards carry a Driver unit (name; truck · phone) between the delivery and the vendor.
 - Sales › Fuel Orders and Asset Orders board.
 - Service Work › Service Orders board.
 - Customer Portal › Orders board (lane per status, Canceled apart; Awaiting pill + caution strip with "View").

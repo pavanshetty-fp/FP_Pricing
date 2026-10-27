@@ -127,6 +127,7 @@ import {
   HUBS,
   JOB_TYPES,
   LISTING_TYPES,
+  DRIVERS,
   ORDER_TAGS,
   POCS,
   POC_DIRECTORY,
@@ -688,7 +689,7 @@ function emptyDraft(): BrokerOrderDraft {
     windowEnd: "12:00 PM",
     preferred: [],
     poNumber: "",
-    orderType: "Core",
+    orderType: "Fuel",
     recurring: false,
     recurrenceFrom: null,
     recurrenceFrequency: RECURRENCE_FREQUENCIES[0],
@@ -7027,6 +7028,28 @@ export function BrokerOrderSheet({
                     </dd>
                   )}
                 </div>
+                )}
+                {/* THE DRIVER AND WHO RAISED IT (Pavan, 2026-10-27) — off the
+                    table, so here on the order. */}
+                {order && (
+                  <>
+                    <div className="flex flex-col">
+                      <dt className="text-xs text-muted-foreground">Driver</dt>
+                      <dd className="truncate text-sm text-foreground">{order.driver || "—"}</dd>
+                      {order.driver && DRIVERS.some((d) => d.name === order.driver) && (
+                        <dd className="truncate text-xs text-muted-foreground">
+                          {(() => {
+                            const d = DRIVERS.find((x) => x.name === order.driver)!;
+                            return `${d.truck} · ${d.phone}`;
+                          })()}
+                        </dd>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <dt className="text-xs text-muted-foreground">Created by</dt>
+                      <dd className="truncate text-sm text-foreground">{order.createdBy}</dd>
+                    </div>
+                  </>
                 )}
               </dl>
             </RailCard>

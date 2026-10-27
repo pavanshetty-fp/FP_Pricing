@@ -114,14 +114,10 @@ export const ORDER_KINDS: OrderKind[] = ["Regular", "Recurring", "Movement"];
  * Emergency, Core)"). Movement orders are auto-set to "Asset Movement" and it is
  * the only type they can take (§5.20), which `assertConsistent` enforces.
  */
-export type BrokerOrderType =
-  | "Core"
-  | "Emergency"
-  | "Asset Movement"
-  | "Delivery"
-  | "Extraction"
-  | "Pump Out"
-  | "Transport";
+/* FOUR TYPES (Pavan, 2026-10-27) — what is being moved: fuel, lubricants,
+   an asset, or anything else. Was Core / Emergency / Delivery / Extraction /
+   Pump Out / Transport. */
+export type BrokerOrderType = "Fuel" | "Lubricants" | "Asset Movement" | "Other";
 
 /**
  * §5.20 — AN ASSET ORDER IS A ROUTE BETWEEN TWO PLACES, and there are only two
@@ -643,6 +639,9 @@ export interface BrokerOrder {
   zip: string;
   state: string;
   createdBy: string;
+  /** Who drives it — set once a vendor holds the order (Pavan, 2026-10-27).
+   *  A `DRIVERS` name. */
+  driver?: string;
   tags: string[];
   /** Every save that changed something, newest last. */
   audit: AuditEntry[];
@@ -994,6 +993,7 @@ export type BrokerColumnKey =
   | "vendor"
   | "status"
   | "createdBy"
+  | "driver"
   /* OFF BY DEFAULT. Eleven columns is what fits and what most people want; the
      rest are real fields that some readers need and most do not, so they wait
      in the column menu rather than in the table. A list that shipped every
@@ -1037,8 +1037,9 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
   { key: "products", label: "Products", width: 170, sortable: true },
   { key: "qty", label: "Qty (Gal)", width: 100, sortable: true },
   { key: "vendor", label: "Vendor", width: 200, sortable: true },
+  { key: "driver", label: "Driver", width: 160, sortable: true },
   { key: "status", label: "Status", width: 140, sortable: true },
-  { key: "createdBy", label: "Created By", width: 160, sortable: true },
+  /* CREATED BY LIVES ON THE ORDER (Pavan, 2026-10-27) — off the table. */
   /* ── Available, not shown. See `BROKER_HIDDEN_BY_DEFAULT`. ── */
   { key: "business", label: "Business", width: 140, sortable: true },
   { key: "orderType", label: "Order Type", width: 140, sortable: true },
@@ -1098,12 +1099,9 @@ export const SALES_CONTACTS: Record<string, string> = {
  * bug waiting to be reported.
  */
 export const LISTING_TYPES: BrokerOrderType[] = [
-  "Core",
-  "Emergency",
-  "Delivery",
-  "Pump Out",
-  "Transport",
-  "Extraction",
+  "Fuel",
+  "Lubricants",
+  "Other",
   "Asset Movement",
 ];
 
@@ -1331,10 +1329,9 @@ export const ORDER_TYPE_FILTERS = [
   "Urgent Orders",
   "Recurring",
   "Movement",
-  "Core",
-  "Delivery",
-  "Emergency",
-  "Extraction",
+  "Fuel",
+  "Lubricants",
+  "Other",
 ];
 
 /* WHAT THE ACCOUNTING SYSTEM SAYS WHEN A SYNC FAILS. INVENTED — plausible
@@ -1352,6 +1349,16 @@ export const CREATED_BY = [
   "Marcus Reed",
   "Alicia Bray",
   "System — Recurring",
+];
+
+/* THE VENDORS' DRIVERS (Pavan, 2026-10-27) — on the card, the table and
+   the order. INVENTED. */
+export const DRIVERS: { name: string; phone: string; truck: string }[] = [
+  { name: "Luis Ortega", phone: "+1-559-555-0131", truck: "Truck 214" },
+  { name: "Kendra Mills", phone: "+1-661-555-0157", truck: "Truck 108" },
+  { name: "Omar Haddad", phone: "+1-916-555-0176", truck: "Truck 322" },
+  { name: "Jess Carver", phone: "+1-559-555-0192", truck: "Truck 047" },
+  { name: "Ben Tran", phone: "+1-713-555-0115", truck: "Truck 509" },
 ];
 
 export const ORDER_TAGS = [
@@ -1970,15 +1977,14 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       id: `bo-${i}`,
       orderNo: `${isMovement ? "M" : "D"}-${FIRST_ORDER_NO + i * 7}`,
       kind,
+      /* THE TYPE FOLLOWS THE PRODUCTS' LINE (Pavan, 2026-10-27). The old
+         draws are still taken, so the rest of the fixture is unchanged. */
       orderType: isMovement
         ? "Asset Movement"
-        : pick() < 0.14
-          ? "Emergency"
-          : pick() < 0.3
-            ? "Delivery"
-            : pick() < 0.42
-              ? "Extraction"
-              : "Core",
+        : (void (pick() < 0.14 || pick() < 0.3 || pick() < 0.42),
+          ({ Fuel: "Fuel", Lubricants: "Lubricants", Propane: "Other" } as const)[
+            lines.length > 0 ? lineOfProduct(lines[0].product) : wanted
+          ]),
       customer: { title: cust.name, description: cust.erpId },
       shipTo,
       date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
@@ -2239,8 +2245,18 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
     ];
   });
 
+  /* A DRIVER ONCE A VENDOR HOLDS IT (Pavan, 2026-10-27) — by index, no draw. */
+  rows.forEach((r, k) => {
+    if (r.vendorId && isDriven(r.status)) r.driver = DRIVERS[k % DRIVERS.length].name;
+  });
+
   return rows;
 })();
+
+/** Statuses where the vendor has put a driver on the order. */
+export function isDriven(s: BrokerStatus): boolean {
+  return s === "Assigned" || isDelivered(s);
+}
 
 /*
   Invariants. Asserted rather than trusted, because every one of them is a rule
@@ -2389,6 +2405,8 @@ function sortValue(r: BrokerOrder, key: BrokerColumnKey): string | number {
       return (r.lines[0]?.product ?? "").toLowerCase();
     case "createdBy":
       return r.createdBy.toLowerCase();
+    case "driver":
+      return (r.driver ?? "").toLowerCase();
     case "business":
       return businessOf(r) ?? "";
     case "orderType":
@@ -2502,6 +2520,8 @@ export function brokerColumnText(r: BrokerOrder, key: BrokerColumnKey): string {
       return r.status;
     case "createdBy":
       return r.createdBy;
+    case "driver":
+      return r.driver ?? "";
     case "business":
       return r.business ?? "";
     case "orderType":

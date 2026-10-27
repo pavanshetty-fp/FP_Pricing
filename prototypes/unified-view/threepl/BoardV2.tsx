@@ -131,12 +131,16 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
   );
 }
 
-function CardV2({
+export function CardV2({
   card,
   onOpen,
+  flat,
 }: {
   card: BoardCard;
   onOpen?: () => void;
+  /** Version 3 (Pavan, 2026-10-27): Version 1's flat shell — its rim and
+   *  hover, no shadow — around this card's arrangement. */
+  flat?: boolean;
 }) {
   return (
     <div
@@ -150,7 +154,12 @@ function CardV2({
           onOpen?.();
         }
       }}
-      className="flex shrink-0 cursor-pointer flex-col gap-2 rounded-md border border-border bg-fp-surface-1b p-3 shadow-xs outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/50"
+      className={cn(
+        "flex shrink-0 cursor-pointer flex-col gap-2 rounded-md border bg-fp-surface-1b p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        flat
+          ? "border-fp-outline-1 transition-[border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface active:border-fp-outline-2 active:bg-fp-card-1"
+          : "border-border shadow-xs transition-shadow hover:shadow-md"
+      )}
     >
       {/* NARROW LANES WRAP, NOT CLIP (Pavan, 2026-10-27) — the number never
           truncates and neither does a chip: chips that do not fit beside the

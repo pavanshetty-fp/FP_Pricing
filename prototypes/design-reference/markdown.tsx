@@ -17,7 +17,7 @@ function inline(text: string, key = 0): React.ReactNode[] {
     if (m.index > last) out.push(text.slice(last, m.index));
     const t = m[0];
     const k = `${key}-${i++}`;
-    if (t.startsWith("`")) out.push(<code key={k} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground">{t.slice(1, -1)}</code>);
+    if (t.startsWith("`")) out.push(<code key={k} className="rounded bg-muted px-1 py-0.5 text-[0.85em] text-foreground">{t.slice(1, -1)}</code>);
     else if (t.startsWith("**")) out.push(<strong key={k} className="font-semibold text-foreground">{inline(t.slice(2, -2), i)}</strong>);
     else if (t.startsWith("[")) {
       const mm = t.match(/\[([^\]]+)\]\(([^)]+)\)/)!;

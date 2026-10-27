@@ -43,7 +43,7 @@ function LawCard({ law }: { law: Law }) {
       <div className="min-w-0">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           {law.name}
-          <span className="font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {law.id}
           </span>
         </span>

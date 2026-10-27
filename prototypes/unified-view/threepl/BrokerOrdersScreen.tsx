@@ -52,7 +52,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
-import { BoardV2 } from "./BoardV2";
+import { BoardV2, CardV2 } from "./BoardV2";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
@@ -2584,6 +2584,11 @@ export function BrokerOrdersScreen({
                       laneSort={laneSort}
                       onLaneSortChange={setLaneSortKey}
                       compact={boardVersion === "3"}
+                      renderCard={
+                        boardVersion === "3"
+                          ? (card, onOpen) => <CardV2 flat card={card} onOpen={onOpen} />
+                          : undefined
+                      }
                     />
                   )}
                 </BoardWithBar>

@@ -102,7 +102,7 @@ plus FP-only deltas — `--rail`, `--drawer`, `--fp-surface-1a/1b`, `--fp-card-1
 `--fp-lane`, `--fp-outline-1/2`, `--fp-surface-base`, `--status-*`, `--verified`,
 `--fp-banner-*`, `--color-chart-1..5`, `--fp-lane-*`. Scales: radius `sm 6 · md 8 ·
 lg 10 · xl 14` (anchored to `--radius`), heading styles `text-heading-sm..xl`
-(24/36/48/60), named spacing. Font: **Geist** (400/500/600). Numbers `tabular-nums`.
+(24/36/48/60), named spacing. Font: **Geist** (400/500/600) — the only typeface; never mono or serif. Numbers `tabular-nums`.
 
 ## Surface & elevation stack
 A stack of surfaces that step in lightness. **Nothing in the shell casts a

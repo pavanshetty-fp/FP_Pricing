@@ -508,7 +508,7 @@ function ServiceRequestsTab({
           <ServiceIllustration />
           {/* BIG AND SERIF (Pavan, 2026-10-13) — the DS has no serif face,
               so the system's (New York / Georgia). */}
-          <h2 className="font-serif text-5xl font-medium tracking-tight text-foreground">Coming soon</h2>
+          <h2 className="text-5xl font-medium tracking-tight text-foreground">Coming soon</h2>
         </div>
         <section aria-label="What to expect" className="flex w-full max-w-3xl flex-col items-center gap-4">
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">What to expect</h3>

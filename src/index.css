@@ -253,6 +253,10 @@
 
 @theme inline {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  /* ONE TYPEFACE (Pavan, 2026-10-27) — Geist everywhere: weights and sizes
+     carry the hierarchy, never a second family. Mono and serif point at it. */
+  --font-mono: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Geist", ui-sans-serif, system-ui, sans-serif;
 
   /*
     Radius scale — Style Guide "Radius" (21322:119). --radius 0.625rem (10px).
@@ -1173,6 +1177,12 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
+  }
+  /* …and nothing else brings its own: code samples, form controls and the
+     map's tooltips (Leaflet ships Helvetica) all take Geist. */
+  code, kbd, pre, samp, input, button, select, textarea, optgroup,
+  body .leaflet-container, body .leaflet-tooltip, body .leaflet-popup-content-wrapper {
+    font-family: var(--font-sans);
   }
 
   /*

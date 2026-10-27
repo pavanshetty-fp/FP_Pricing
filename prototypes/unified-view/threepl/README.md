@@ -1096,6 +1096,10 @@ same way — the info icon first, then the line as plain text that wraps (no und
 and the groups (ship-to, delivery, vendor …) sit 6px apart.
 Version 3's quote stepper (‹ 1/2 ›) sits on the price's line at the card's
 right corner. Every board's order number is in Geist (no monospace).
+**Version 3 = Version 1's lanes, Version 2's cards (2026-10-27):** the flat V1
+board — lane pills, gutters, rims, no shadow — with each card laid out exactly
+as Version 2 (values only, info icons first, 6px groups, a divider above the
+footer and its full-width CTA). `BrokerBoard renderCard` + `CardV2 flat`.
 
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:
 *Awaiting acknowledgment — N invited* under the Vendor heading, no footer.

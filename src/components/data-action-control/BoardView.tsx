@@ -30,7 +30,7 @@ function Card({ row }: { row: TableRow }) {
       <p className="mt-1 truncate text-xs text-muted-foreground">{row.descriptive.title}</p>
       <div className="mt-3 flex items-center justify-between">
         <span className="rounded bg-fp-card-1 px-1.5 py-0.5 text-[11px] text-muted-foreground">{row.badge}</span>
-        <span className="font-mono text-sm tabular-nums text-foreground">{money(row.amount)}</span>
+        <span className="text-sm tabular-nums text-foreground">{money(row.amount)}</span>
       </div>
     </div>
   );

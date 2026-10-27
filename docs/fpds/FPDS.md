@@ -361,7 +361,7 @@ Lane accents move too (WCAG light: yellow `#a67f06`, green `#1a9848`, cyan `#059
 
 ## 2. Type
 
-**Font:** Geist (variable, 100–900 loaded), `font-sans`. Weights used: 400 regular, 500 `font-medium`, 600 `font-semibold`, 700 only in the file-type tag. **All numbers that compare** (`tabular-nums`): counts, money, dates in tables, percentages.
+**Font:** Geist (variable, 100–900 loaded), `font-sans`. **Geist is the only typeface (Pavan, 2026-10-27)** — no monospace, no serif, anywhere (order numbers, IDs, code samples, map tooltips included); hierarchy comes from weight and size. `--font-mono` and `--font-serif` point at Geist; eval `one-font` guards it. Weights used: 400 regular, 500 `font-medium`, 600 `font-semibold`, 700 only in the file-type tag. **All numbers that compare** (`tabular-nums`): counts, money, dates in tables, percentages.
 
 | Utility | Size / line | Use |
 |---|---|---|
@@ -3481,8 +3481,8 @@ Shows a list's records as cards in lanes, one lane per stage of the record's lif
 - Lane: width `--fp-board-lane-width` (340px × `--fp-lane-k`, Accessibility › Component size), square, `bg-fp-surface-1b`. Title pill `rounded-full px-2.5 py-0.5`: LIGHT `bg-fp-lane-<color>-soft text-foreground` (the lane colour 16% over the surface); DARK `bg-fp-lane-<color>-vivid text-fp-lane-<color>-vivid-ink` (2026-10-27, after a ClickUp board: a saturated fill, white text — dark on yellow — white at AA; deeper at the WCAG end for AAA; gray, blue, yellow, green, cyan, purple, violet, pink, orange, red).
 - Lane header `border-b border-border px-5 py-3`; title `text-sm font-semibold`; count pill `bg-fp-lane-count` (#dde1e7 light / #3d4550 dark — a step off the lane, 2026-10-27), `text-[11px] font-medium`, neutral ink (never lane-coloured with white text). Sort icon `ArrowDownUp` size-4, `text-muted-foreground`, `text-foreground` when a sort is chosen.
 - Card stack `gap-3 px-5 py-4` (20px either side of the cards), `overflow-y-auto`; cards `shrink-0`.
-- Card: `rounded-md border border-fp-outline-1 bg-fp-surface-1b`; `pb-3`; head `px-3 pt-3`, number `font-mono text-sm font-semibold`; badges = DS `Pill` (h-7). Units `px-3 pt-4 gap-1.5` — 12px inset, 16px between units, 6px inside; unit heading `text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground`.
-- Stack levels: 1 `text-sm font-semibold text-foreground` · 2 `text-[13px] font-medium text-muted-foreground` · 3 `text-xs text-muted-foreground`. Figures / quote price `text-lg font-semibold tabular-nums` (the largest thing on the card). Inline hairline `h-3.5 w-px bg-fp-outline-2`. Rows grid `1fr · 1.05fr · auto`, asset id `font-mono text-[11px]`, Top-off qty soft (`font-medium text-muted-foreground`).
+- Card: `rounded-md border border-fp-outline-1 bg-fp-surface-1b`; `pb-3`; head `px-3 pt-3`, number `text-sm font-semibold` (Geist — no mono); badges = DS `Pill` (h-7). Units `px-3 pt-4 gap-1.5` — 12px inset, 16px between units, 6px inside; unit heading `text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground`.
+- Stack levels: 1 `text-sm font-semibold text-foreground` · 2 `text-[13px] font-medium text-muted-foreground` · 3 `text-xs text-muted-foreground`. Figures / quote price `text-lg font-semibold tabular-nums` (the largest thing on the card). Inline hairline `h-3.5 w-px bg-fp-outline-2`. Rows grid `1fr · 1.05fr · auto`, asset id `text-[11px]`, Top-off qty soft (`font-medium text-muted-foreground`).
 - Alert strip: `px-3 pt-4 text-xs`; text color `text-fp-banner-accent-caution` / `-warning` / `-success` or `text-foreground` (default); action `Button outline xs`.
 - Footer: `border-t border-fp-outline-1 px-3.5 py-2.5`, label `text-xs`; act `Button` variant `success` (filled) or `outline`, size `xs`.
 
@@ -4723,7 +4723,7 @@ Shows the list's orders as a list on the left and pins at their ship-to sites on
    - **Unmapped note** — bottom-right "N without a mapped site".
 
 ## Look
-- Layout `flex gap-4`, full height. List `w-[340px] rounded-md border border-border`, rows `px-3 py-2.5 border-b border-border`; number `font-mono text-sm font-semibold`; status `StatusChip variant="soft"` (the pill, by kind; Sales may pass a chosen `color`); subtitle + site `text-xs text-muted-foreground`, `MapPin` size-3.
+- Layout `flex gap-4`, full height. List `w-[340px] rounded-md border border-border`, rows `px-3 py-2.5 border-b border-border`; number `text-sm font-semibold` (Geist — no mono); status `StatusChip variant="soft"` (the pill, by kind; Sales may pass a chosen `color`); subtitle + site `text-xs text-muted-foreground`, `MapPin` size-3.
 - Plot `rounded-md border border-border bg-fp-surface-1a`, no tiles.
 - Pin fill by the first order's tone: success `bg-status-success` · processing (caution) `bg-fp-banner-accent-caution` · failed (critical) `bg-status-failed` · info `bg-fp-banner-accent-info` · neutral `bg-muted-foreground`. Size-5 (size-7 + scale-110 lit), `text-[10px] font-semibold` count in white, `ring-2 ring-fp-surface-1a`.
 - Site label `text-[10px]`, lit: `bg-selected text-selected-foreground`.

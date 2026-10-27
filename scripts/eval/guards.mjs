@@ -294,4 +294,29 @@ export const readHead = {
   },
 };
 
-ALL.push(alphaFill, bannerAnatomy, registryLinks, toolbarGaps, uniqueOptions, readHead);
+/* ── one-font ─────────────────────────────────────────────────────────────
+   Geist is the only typeface (Pavan, 2026-10-27): weights and sizes carry the
+   hierarchy. No mono or serif utility, no inline font family, and every
+   font-family in the stylesheet resolves to Geist. */
+export const oneFont = {
+  name: "one-font",
+  segment: "1-components",
+  rule: "Geist only — no second typeface anywhere",
+  check() {
+    const out = [];
+    for (const f of tsx())
+      read(f).split("\n").forEach((l, i) => {
+        const hit = l.match(/\bfont-(mono|serif)\b|fontFamily\s*:/);
+        if (hit) out.push(finding("L1", rel(f), i + 1, `second typeface: ${hit[0]}`, this.rule));
+      });
+    const css = filesUnder(["src"], [".css"]);
+    for (const f of css)
+      read(f).split("\n").forEach((l, i) => {
+        const m = l.match(/(?:^|[;{\s])(--font-(?:sans|mono|serif)|font-family)\s*:\s*([^;]+)/);
+        if (m && !/Geist|var\(--font-sans\)|inherit/.test(m[2])) out.push(finding("L1", rel(f), i + 1, `font not Geist: ${m[2].trim()}`, this.rule));
+      });
+    return out;
+  },
+};
+
+ALL.push(alphaFill, bannerAnatomy, registryLinks, toolbarGaps, uniqueOptions, readHead, oneFont);

@@ -23,7 +23,7 @@ Shows the list's orders as a list on the left and pins at their ship-to sites on
    - **Unmapped note** — bottom-right "N without a mapped site".
 
 ## Look
-- Layout `flex gap-4`, full height. List `w-[340px] rounded-md border border-border`, rows `px-3 py-2.5 border-b border-border`; number `font-mono text-sm font-semibold`; status `StatusChip variant="soft"` (the pill, by kind; Sales may pass a chosen `color`); subtitle + site `text-xs text-muted-foreground`, `MapPin` size-3.
+- Layout `flex gap-4`, full height. List `w-[340px] rounded-md border border-border`, rows `px-3 py-2.5 border-b border-border`; number `text-sm font-semibold` (Geist — no mono); status `StatusChip variant="soft"` (the pill, by kind; Sales may pass a chosen `color`); subtitle + site `text-xs text-muted-foreground`, `MapPin` size-3.
 - Plot `rounded-md border border-border bg-fp-surface-1a`, no tiles.
 - Pin fill by the first order's tone: success `bg-status-success` · processing (caution) `bg-fp-banner-accent-caution` · failed (critical) `bg-status-failed` · info `bg-fp-banner-accent-info` · neutral `bg-muted-foreground`. Size-5 (size-7 + scale-110 lit), `text-[10px] font-semibold` count in white, `ring-2 ring-fp-surface-1a`.
 - Site label `text-[10px]`, lit: `bg-selected text-selected-foreground`.

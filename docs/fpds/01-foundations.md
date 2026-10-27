@@ -202,7 +202,7 @@ Lane accents move too (WCAG light: yellow `#a67f06`, green `#1a9848`, cyan `#059
 
 ## 2. Type
 
-**Font:** Geist (variable, 100–900 loaded), `font-sans`. Weights used: 400 regular, 500 `font-medium`, 600 `font-semibold`, 700 only in the file-type tag. **All numbers that compare** (`tabular-nums`): counts, money, dates in tables, percentages.
+**Font:** Geist (variable, 100–900 loaded), `font-sans`. **Geist is the only typeface (Pavan, 2026-10-27)** — no monospace, no serif, anywhere (order numbers, IDs, code samples, map tooltips included); hierarchy comes from weight and size. `--font-mono` and `--font-serif` point at Geist; eval `one-font` guards it. Weights used: 400 regular, 500 `font-medium`, 600 `font-semibold`, 700 only in the file-type tag. **All numbers that compare** (`tabular-nums`): counts, money, dates in tables, percentages.
 
 | Utility | Size / line | Use |
 |---|---|---|

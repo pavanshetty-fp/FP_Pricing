@@ -381,6 +381,9 @@ export interface BrokerBoardProps {
   onLaneSortChange?: (laneKey: string, option: string | null) => void;
   /** Version 3: smaller text, no unit headings on the cards. */
   compact?: boolean;
+  /** Version 3 (Pavan, 2026-10-27): the lanes stay this board's, the card
+   *  inside is drawn by the caller — Version 2's arrangement. */
+  renderCard?: (card: BoardCard, onOpen: () => void) => React.ReactNode;
 }
 
 /* VERSION 3 — COMPACT (Pavan, 2026-10-27): the V1 board with smaller text
@@ -1089,9 +1092,11 @@ function Lane({
   sortOptions,
   sortKey,
   onSortChange,
+  renderCard,
 }: {
   lane: BoardLane;
   onOpenCard?: (id: string) => void;
+  renderCard?: BrokerBoardProps["renderCard"];
   sortOptions?: LaneSortOption[];
   sortKey?: string;
   onSortChange?: (option: string | null) => void;
@@ -1184,9 +1189,13 @@ function Lane({
             {lane.emptyLabel ?? "Nothing here"}
           </p>
         ) : (
-          lane.cards.map((card) => (
-            <Card key={card.id} card={card} onOpen={() => onOpenCard?.(card.id)} />
-          ))
+          lane.cards.map((card) =>
+            renderCard ? (
+              <React.Fragment key={card.id}>{renderCard(card, () => onOpenCard?.(card.id))}</React.Fragment>
+            ) : (
+              <Card key={card.id} card={card} onOpen={() => onOpenCard?.(card.id)} />
+            )
+          )
         )}
       </div>
     </div>
@@ -1200,6 +1209,7 @@ export function BrokerBoard({
   laneSort,
   onLaneSortChange,
   compact = false,
+  renderCard,
 }: BrokerBoardProps) {
   /* COMPACT LANE WIDTH (Pavan, 2026-10-27) — the board's width over 6.5, so
      six lanes and half of the seventh show; never under 240px. The lane's
@@ -1236,6 +1246,7 @@ export function BrokerBoard({
           onOpenCard={onOpenCard}
           sortOptions={laneSortOptions?.(lane.key)}
           sortKey={laneSort?.[lane.key]}
+          renderCard={renderCard}
           onSortChange={
             onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
           }

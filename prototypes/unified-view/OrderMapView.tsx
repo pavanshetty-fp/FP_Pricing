@@ -183,7 +183,7 @@ export function OrderMapView({
               <span className="flex items-center justify-between gap-2">
                 <span
                   className={cn(
-                    "font-mono text-sm font-semibold",
+                    "text-sm font-semibold",
                     on ? "text-selected-foreground" : "text-foreground"
                   )}
                 >

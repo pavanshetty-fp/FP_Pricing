@@ -83,12 +83,12 @@ function CardPage({ e }: { e: Entry }) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="rounded-full bg-chip px-2 py-0.5 font-medium text-foreground">{e.layer}</span>
-        <code className="font-mono">{e.id}</code>
+        <code>{e.id}</code>
         <span>·</span>
         <span>{e.doc}</span>
       </div>
       <div className="flex items-center gap-2 rounded-md border border-border bg-fp-table-header px-3 py-2">
-        <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">{e.install}</code>
+        <code className="min-w-0 flex-1 truncate text-xs text-foreground">{e.install}</code>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -129,9 +129,9 @@ function RegisterPage() {
               <tr key={e.id} className="border-b border-border align-top last:border-b-0">
                 <td className="px-3 py-2 font-medium text-foreground">{e.title}</td>
                 <td className="px-3 py-2">{e.layer}</td>
-                <td className="px-3 py-2 font-mono text-xs">{e.id}</td>
+                <td className="px-3 py-2 text-xs">{e.id}</td>
                 <td className="px-3 py-2 text-muted-foreground">{e.useWhen.slice(0, 2).join(" ")}</td>
-                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{e.code.join(", ")}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{e.code.join(", ")}</td>
               </tr>
             ))}
           </tbody>

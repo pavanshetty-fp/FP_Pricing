@@ -372,6 +372,7 @@
      an opacity wash (misses M-002). */
   --color-fp-quote-band: var(--fp-quote-band);
   --color-fp-lane-count: var(--fp-lane-count);
+  --color-fp-wait-box: var(--fp-wait-box);
   --color-fp-icon-quiet: color-mix(in oklab, var(--muted-foreground) 50%, var(--muted));
   --color-fp-table-header: var(--fp-table-header);
   --color-fp-viz-1: var(--fp-viz-1);
@@ -1666,14 +1667,16 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
 .dark {
   --fp-lane-count: #3d4550;
 }
+/* THE WAIT BOX on a board card (Pavan, 2026-10-27) — the quote band's grey,
+   the Recurring pill's `--muted`. */
 :root {
-  --fp-quote-band: color-mix(in oklab, var(--status-success) 5%, var(--fp-surface-1b));
+  --fp-wait-box: var(--muted);
 }
-/* THE QUOTE BAND IN DARK (Pavan, 2026-10-27) — the success green at 5% went
-   murky on the dark card; the soft pastel green reads as a calm sage. (The
-   deeper reference green #2d443c was tried and was too much.) */
-.dark {
-  --fp-quote-band: color-mix(in oklab, var(--pastel-green) 14%, var(--fp-surface-1b));
+/* THE QUOTE BAND IS GREY (Pavan, 2026-10-27) — the same grey as the
+   Recurring pill (`--muted`), in both themes; the greens (success 5%, a
+   pastel sage, a deep reference green) were tried first. */
+:root {
+  --fp-quote-band: var(--muted);
 }
 /* A LIGHT SURFACE INSIDE DARK (Pavan, 2026-10-27) — the board's Delivery
    details hover card sat on the dark board and all but vanished; in dark it

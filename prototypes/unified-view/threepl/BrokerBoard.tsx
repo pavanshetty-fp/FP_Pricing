@@ -773,6 +773,20 @@ function CardAlert({
   actionLabel,
   onAction,
 }: NonNullable<BoardCard["alert"]>) {
+  /* A WAIT IN A GREY BOX (Pavan, 2026-10-27) — "Awaiting accounting" and the
+     like: nothing to press, so it sits in the quote band's grey, tucked 4px
+     inside the card, its text left on the card's 12px line. */
+  if (status === "default" && !actionLabel)
+    return (
+      <div className="px-1 pt-4">
+        <div className="flex items-center justify-start rounded-sm bg-fp-wait-box px-2 py-1.5">
+          <span className={cn("flex min-w-0 items-center gap-1 text-xs", ALERT_ACCENT[status])}>
+            <Info className="size-4 shrink-0" />
+            <span className="truncate">{text}</span>
+          </span>
+        </div>
+      </div>
+    );
   return (
     <div
       className={cn(
@@ -809,6 +823,9 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
      ("2 of 2 quotes — review pricing") goes, its Review with it — the
      order opens from the card itself. */
   const bandLast = card.units.at(-1)?.kind === "quotes" && !card.footerAction;
+  /* …and so does a wait's grey box. */
+  const waitLast =
+    !bandLast && card.alert?.status === "default" && !card.alert.actionLabel && !card.footerAction;
   return (
     <div
       role="button"
@@ -832,7 +849,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         // 188px of content, and the lane's scrollHeight equalled its height, so
         // nothing scrolled and nothing hinted that content was missing.
         "shrink-0",
-        bandLast ? "pb-1" : "pb-3",
+        bandLast || waitLast ? "pb-1" : "pb-3",
         "cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,border-color,box-shadow]",
         "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",

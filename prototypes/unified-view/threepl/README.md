@@ -1081,6 +1081,13 @@ violet, the rest dimmed grey (hover a dot for name and lat/lng).
 No map on the card itself. Movements keep
 their one asset row. Field switches: Products, Quantity (Total is gone).
 
+**Card footers and bands (2026-10-27).** Quoting with nothing priced:
+*Awaiting acknowledgment — N invited* under the Vendor heading, no footer.
+The quote band is grey — the Recurring pill's `--muted`, both themes — tucked
+4px inside the card, text on the 12px line, the ‹ 1/N › stepper bottom right.
+A wait with nothing to press (*Awaiting accounting*) sits in the same grey
+(`--fp-wait-box` = `--muted`), tucked 4px in, text left-aligned. Lane titles are vivid fills, white text.
+
 **Order detail.**
 - Stage track's first step reads **Orders** (the lane's name).
 - **Invitations** card replaces Quotation summary in the Orders lane until a

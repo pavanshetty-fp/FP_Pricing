@@ -93,20 +93,21 @@ export type LaneColor =
 
 /** The lane-title pill — the lane colour, softened to a fill. */
 
-/* VIVID LANE TITLES (Pavan, 2026-10-27, after a ClickUp board — trialled on
-   3PL, then every board): a saturated fill per lane, white text (dark on
-   yellow), the same in both themes; deeper at the WCAG end. */
-const LANE_VIVID: Record<LaneColor, string> = {
-  grey: "bg-fp-lane-grey-vivid text-fp-lane-grey-vivid-ink",
-  blue: "bg-fp-lane-blue-vivid text-fp-lane-blue-vivid-ink",
-  yellow: "bg-fp-lane-yellow-vivid text-fp-lane-yellow-vivid-ink",
-  green: "bg-fp-lane-green-vivid text-fp-lane-green-vivid-ink",
-  cyan: "bg-fp-lane-cyan-vivid text-fp-lane-cyan-vivid-ink",
-  purple: "bg-fp-lane-purple-vivid text-fp-lane-purple-vivid-ink",
-  violet: "bg-fp-lane-violet-vivid text-fp-lane-violet-vivid-ink",
-  pink: "bg-fp-lane-pink-vivid text-fp-lane-pink-vivid-ink",
-  orange: "bg-fp-lane-orange-vivid text-fp-lane-orange-vivid-ink",
-  red: "bg-fp-lane-red-vivid text-fp-lane-red-vivid-ink",
+/* LANE TITLES (Pavan, 2026-10-27). LIGHT keeps the DS soft tint — the lane
+   colour 16% over the surface, dark text. DARK takes the vivid fills, after a
+   ClickUp board: a saturated fill per lane, white text (dark on yellow),
+   deeper at the WCAG end. */
+const LANE_TITLE: Record<LaneColor, string> = {
+  grey: "bg-fp-lane-grey-soft text-foreground dark:bg-fp-lane-grey-vivid dark:text-fp-lane-grey-vivid-ink",
+  blue: "bg-fp-lane-blue-soft text-foreground dark:bg-fp-lane-blue-vivid dark:text-fp-lane-blue-vivid-ink",
+  yellow: "bg-fp-lane-yellow-soft text-foreground dark:bg-fp-lane-yellow-vivid dark:text-fp-lane-yellow-vivid-ink",
+  green: "bg-fp-lane-green-soft text-foreground dark:bg-fp-lane-green-vivid dark:text-fp-lane-green-vivid-ink",
+  cyan: "bg-fp-lane-cyan-soft text-foreground dark:bg-fp-lane-cyan-vivid dark:text-fp-lane-cyan-vivid-ink",
+  purple: "bg-fp-lane-purple-soft text-foreground dark:bg-fp-lane-purple-vivid dark:text-fp-lane-purple-vivid-ink",
+  violet: "bg-fp-lane-violet-soft text-foreground dark:bg-fp-lane-violet-vivid dark:text-fp-lane-violet-vivid-ink",
+  pink: "bg-fp-lane-pink-soft text-foreground dark:bg-fp-lane-pink-vivid dark:text-fp-lane-pink-vivid-ink",
+  orange: "bg-fp-lane-orange-soft text-foreground dark:bg-fp-lane-orange-vivid dark:text-fp-lane-orange-vivid-ink",
+  red: "bg-fp-lane-red-soft text-foreground dark:bg-fp-lane-red-vivid dark:text-fp-lane-red-vivid-ink",
 };
 
 /** The DS's alert accents, verbatim. */
@@ -1000,7 +1001,7 @@ function Lane({
         <h3
           className={cn(
             "min-w-0 truncate rounded-full px-2.5 py-0.5 text-sm font-semibold",
-            LANE_VIVID[lane.color]
+            LANE_TITLE[lane.color]
           )}
         >
           {lane.title}

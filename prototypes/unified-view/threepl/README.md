@@ -1091,7 +1091,9 @@ lanes in view. **3** = Version 1 compact (`BrokerBoard compact`): no unit
 headings, two text sizes (13px subject / 12px rest, weight for hierarchy),
 prices 13px bold under the vendor, Version 1's gutters and gaps, 6.5 lanes in
 view. Versions 2 and 3 show the ship-to as its name + an info icon whose hover
-card holds the address and customer.
+card holds the address and customer. In Version 2 the delivery line works the
+same way — the info icon first, then the line as plain text that wraps (no underline, never cut), the icon opening the table + map; in Version 2 the ship-to icon also comes first —
+and the groups (ship-to, delivery, vendor …) sit 6px apart.
 
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:
 *Awaiting acknowledgment — N invited* under the Vendor heading, no footer.

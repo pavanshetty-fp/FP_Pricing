@@ -66,11 +66,21 @@ function Property({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
+/* ONE UNIT, ONE GROUP — its own lines 4px apart; the gap between groups
+   is the card's to set. */
+function UnitGroup({ u }: { u: BoardCardUnit }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <UnitProperties u={u} />
+    </div>
+  );
+}
+
 function UnitProperties({ u }: { u: BoardCardUnit }) {
   const label = LABEL[u.key] ?? u.heading;
   /* THE SHIP-TO: its name and an info icon; the rest on hover. */
   if (u.kind === "stack" && u.key === "customer")
-    return <ShipToLine heading={u.heading} lines={u.lines} className="text-xs text-foreground" />;
+    return <ShipToLine iconFirst heading={u.heading} lines={u.lines} className="text-xs text-foreground" />;
   if (u.kind === "stack") {
     const [first, ...rest] = u.lines;
     return (
@@ -92,8 +102,9 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
     return (
       <div className="flex min-w-0 items-baseline text-xs">
         <span className="sr-only">{label}: </span>
-        <span className="min-w-0 [&_button]:text-xs [&_button]:font-normal">
+        <span className="min-w-0 text-foreground">
           <CardDelivery
+            iconTrigger
             heading={u.heading}
             summary={u.summary}
             rows={u.rows}
@@ -120,7 +131,13 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
   );
 }
 
-function CardV2({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
+function CardV2({
+  card,
+  onOpen,
+}: {
+  card: BoardCard;
+  onOpen?: () => void;
+}) {
   return (
     <div
       role="button"
@@ -162,9 +179,10 @@ function CardV2({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           {line}
         </span>
       ))}
-      <div className="flex min-w-0 flex-col gap-1">
+      {/* 6px BETWEEN GROUPS (Pavan, 2026-10-27) — tried 4, 6, 8, 12, 16. */}
+      <div className="flex min-w-0 flex-col gap-1.5">
         {card.units.map((u) => (
-          <UnitProperties key={u.key} u={u} />
+          <UnitGroup key={u.key} u={u} />
         ))}
       </div>
       {card.alert && (

@@ -538,15 +538,18 @@ export function ShipToLine({
   heading,
   lines,
   className,
+  iconFirst,
 }: {
   heading: string;
   lines: BoardCardLine[];
   className?: string;
+  /** Version 2 (Pavan, 2026-10-27): the info icon leads the name. */
+  iconFirst?: boolean;
 }) {
   const [name, ...rest] = lines;
   if (!name) return null;
   return (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className={cn("flex min-w-0 items-center gap-1", iconFirst && "flex-row-reverse justify-end")}>
       <span className={cn("truncate", className)} title={name.text}>
         {name.text}
       </span>
@@ -633,13 +636,29 @@ export function CardDelivery({
   total,
   site,
   points,
-}: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key">) {
+  iconTrigger,
+}: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key"> & {
+  /** Version 2 (Pavan, 2026-10-27): an info icon, then the summary as
+   *  plain text that wraps — no underline; hover the icon. */
+  iconTrigger?: boolean;
+}) {
   const big = new Set(rows.map((r) => r.asset)).size > 3;
   const compact = useCompact();
   return (
     <div className="flex min-w-0">
       <HoverCard openDelay={150} closeDelay={100}>
         <HoverCardTrigger asChild>
+          {iconTrigger ? (
+            <button
+              type="button"
+              aria-label={`${heading} — assets and quantities`}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="mt-px mr-1 shrink-0 self-start rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Info className="size-3.5" />
+            </button>
+          ) : (
           <button
             type="button"
             /* THE CARD IS THE BUTTON — this one only explains itself. */
@@ -649,7 +668,10 @@ export function CardDelivery({
           >
             {summary.join(" · ")}
           </button>
+          )}
         </HoverCardTrigger>
+        {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
+        {iconTrigger && <span className="min-w-0">{summary.join(" · ")}</span>}
         <HoverCardContent
           align="start"
           className="fp-surface-light w-md p-3"

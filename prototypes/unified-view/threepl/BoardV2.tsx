@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Info } from "lucide-react";
+import { Check, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
@@ -224,7 +224,19 @@ export function CardV2({
           )}
         </div>
       )}
-      {card.footerAction && (
+      {card.footerAction?.waiting ? (
+        /* A done ask in a subtle green box, how long ago on the right
+           (Pavan, 2026-10-28). */
+        <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-alert-pill-success px-2 py-1.5 text-xs">
+          <span className="flex min-w-0 items-center gap-1 text-fp-alert-pill-success-ink">
+            <Check className="size-3.5 shrink-0" />
+            <span className="truncate">{card.footerAction.label}</span>
+          </span>
+          {card.footerAction.meta && (
+            <span className="shrink-0 whitespace-nowrap text-muted-foreground">{card.footerAction.meta}</span>
+          )}
+        </div>
+      ) : card.footerAction && (
         /* THE CTA RUNS END TO END (Pavan, 2026-10-27) — the words above it. */
         <div className="flex flex-col gap-1.5 border-t border-border pt-2">
           <span className="text-xs text-muted-foreground">{card.footerAction.label}</span>

@@ -1118,6 +1118,16 @@ on the order's Associated records card, with the driver), a **Driver**
 column after Vendor. **Types** are now Fuel · Lubricants · Asset Movement ·
 Other — from the products' line (Propane → Other). **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
+**2026-10-28.** Version 4: units 8px apart (the 12 / 10 / 16 trial is
+gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.
+**A date in every lane**: Assigned keeps its schedule (no longer off by
+default, all versions); from Completed on, *Completed on* hangs under the
+ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"
+— and wraps rather than truncates. **Invoice requested** sits in a subtle
+green box (`bg-fp-alert-pill-success`), tick and words left, how long ago
+right (`invoiceRequestedAt`, `timeAgo`). A brighter Recurring pill was tried
+and reverted.
+
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:
 *Awaiting acknowledgment — N invited* under the Vendor heading, no footer.
 The quote band is grey — the Recurring pill's `--muted`, both themes — tucked

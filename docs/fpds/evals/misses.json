@@ -342,6 +342,19 @@
         "id": "card-footer-fit",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-026",
+      "date": "2026-10-28",
+      "title": "V4 Completed date styled unlike the Orders schedule line, truncated; Assigned had no date",
+      "where": "3PL board, Version 4",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "Restyled the schedule unit only, not the Completed on unit that plays the same role in later lanes; never checked every lane for a date.",
+      "check": {
+        "id": "card-date-every-lane",
+        "status": "manual"
+      }
     }
   ]
 }

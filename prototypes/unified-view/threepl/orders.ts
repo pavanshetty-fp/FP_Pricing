@@ -633,6 +633,9 @@ export interface BrokerOrder {
    * pricing" and "ask for the bill" at the same time.
    */
   invoiceState: InvoiceState;
+  /** When the invoice was asked for — the board card says how long ago
+   *  (Pavan, 2026-10-28). Set with `invoiceState: "requested"`. */
+  invoiceRequestedAt?: Date;
   urgent: boolean;
   signatureOnDelivery: boolean;
   poNumber: string;
@@ -2026,6 +2029,10 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
                 { type: "Fee" as const, label: "Wait time", amount: 60 },
               ],
       invoiceState,
+      /* BY INDEX — 3 to 70 hours back, so the card reads hours and days. */
+      ...(invoiceState === "requested"
+        ? { invoiceRequestedAt: new Date(Date.now() - (3 + ((i * 17) % 68)) * 3_600_000) }
+        : {}),
       serviceLine: lines.length > 0 ? lineOfProduct(lines[0].product) : wanted,
       /* BY INDEX, NOT FROM THE RANDOM STREAM — a draw here would shift every
          value after it and reshuffle the whole fixture. Two in five are

@@ -501,6 +501,17 @@ function laneCardSubtitle(r: BrokerOrder): string[] | undefined {
  * Only stages with something OUTSTANDING get one. An alert on every card is not
  * an alert, it is a border — so Draft, Assigned, Completed and Synced carry none.
  */
+/** "Just now" · "5 min ago" · "18 hours ago" · "2 days ago". */
+function timeAgo(at: Date): string {
+  const min = Math.max(0, Math.round((Date.now() - at.getTime()) / 60_000));
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min} min ago`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} ${d === 1 ? "day" : "days"} ago`;
+}
+
 /**
  * The invoice row: where the vendor's bill has got to, in one line.
  *
@@ -525,7 +536,13 @@ function laneCardInvoice(
   if (laneCardAlert(r, onOpen)) return undefined;
 
   if (r.invoiceState === "requested") {
-    return { label: "Invoice requested", waiting: true };
+    /* A SUBTLE GREEN ROW (Pavan, 2026-10-28) — the ask is done; how long
+       ago it went sits on the right. */
+    return {
+      label: "Invoice requested",
+      waiting: true,
+      meta: r.invoiceRequestedAt ? timeAgo(r.invoiceRequestedAt) : undefined,
+    };
   }
   if (r.invoiceState === "received") {
     return {
@@ -777,7 +794,8 @@ const SCHEDULE_FIELDS = ["schedule", "schedule.window", "schedule.when"];
 
 const LANE_FIELD_DEFAULTS: Record<string, string[]> = {
   Quoting: SCHEDULE_FIELDS,
-  Assigned: SCHEDULE_FIELDS,
+  /* Assigned keeps its date (Pavan, 2026-10-28): every lane shows one —
+     the schedule until the delivery, "Completed on" after it. */
   Completed: SCHEDULE_FIELDS,
   Review: SCHEDULE_FIELDS,
   Verified: SCHEDULE_FIELDS,
@@ -1338,7 +1356,9 @@ export function BrokerOrdersScreen({
   const requestInvoice = React.useCallback(
     (id: string) =>
       setRows((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, invoiceState: "requested" } : r))
+        prev.map((r) =>
+          r.id === id ? { ...r, invoiceState: "requested", invoiceRequestedAt: new Date() } : r
+        )
       ),
     []
   );

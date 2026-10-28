@@ -325,6 +325,8 @@ export interface BoardCard {
     onAction?: () => void;
     /** Quiet, with a tick — the ball is not in our court. */
     waiting?: boolean;
+    /** Right-hand note on a waiting row — "2 days ago". */
+    meta?: string;
   };
 }
 
@@ -426,10 +428,19 @@ const LEVEL_CLASS_COMPACT: Record<1 | 2 | 3, string> = {
   3: "text-xs text-muted-foreground",
 };
 
+/* VERSION 4 READS AT ONE WEIGHT (Pavan, 2026-10-28) — the ship-to, the
+   driver, the vendor and the price take the Delivery line's 13px medium, so no
+   line on the card shouts over another; only the order number stays bold. */
+const LEVEL_CLASS_BARE: Record<1 | 2 | 3, string> = {
+  ...LEVEL_CLASS,
+  1: "text-[13px] font-medium text-foreground",
+};
+
 /** Lines at three levels. Hierarchy does the work a field label used to. */
 function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string }) {
   const compact = useCompact();
-  const levels = compact ? LEVEL_CLASS_COMPACT : LEVEL_CLASS;
+  const bare = useBare();
+  const levels = compact ? LEVEL_CLASS_COMPACT : bare ? LEVEL_CLASS_BARE : LEVEL_CLASS;
   const stack = (
     <div className="flex min-w-0 flex-col">
       {/* KEYED BY POSITION, NOT BY TEXT. Two lines in a unit can legitimately
@@ -452,7 +463,7 @@ function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string 
        for both on one line. */
     <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col gap-0.5" : "items-start justify-between")}>
       {stack}
-      <span className={cn(compact ? "text-[13px] font-bold" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
+      <span className={cn(compact ? "text-[13px] font-bold" : bare ? "text-[13px] font-medium" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
         {figure}
       </span>
     </div>
@@ -959,21 +970,19 @@ function CardAlert({
   );
 }
 
-/* VERSION 4 SPACING TRIAL (Pavan, 2026-10-27) — every lane's first card
-   with the 16px between units cut by 4 (12px), the second by 6 (10px), the
-   rest at 16, to pick one. */
-const SPACE: Record<number, { pt: string; mt: string }> = {
-  16: { pt: "pt-4", mt: "mt-4" },
-  12: { pt: "pt-3", mt: "mt-3" },
-  10: { pt: "pt-2.5", mt: "mt-2.5" },
-};
+/* The units Version 4 hangs under the ship-to name as one grey line. */
+const WHEN_KEYS = new Set(["schedule", "completed"]);
+/** "Oct 27, 2026" → "Oct 27 2026" — the comma is kept for between the parts. */
+const shortDate = (p: string) => p.replace(/^(\w{3} \d{1,2}),( \d{4})/, "$1$2");
 
-function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => void; space?: 16 | 12 | 10 }) {
+/* VERSION 4 SETS ITS UNITS 8px APART (Pavan, 2026-10-28) — picked after
+   a 12 / 10 / 16 trial; Version 1 keeps 16. */
+function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
   const compact = useCompact();
   const bare = useBare();
   /* Compact cards pull their units closer — there is no heading to clear. */
-  const gapTop = compact ? "pt-2.5" : SPACE[space].pt;
-  const ruleTop = SPACE[space].mt;
+  const gapTop = compact ? "pt-2.5" : bare ? "pt-2" : "pt-4";
+  const ruleTop = bare ? "mt-2" : "mt-4";
   /* THE QUOTE BAND CLOSES THE CARD (Pavan, 2026-10-25): when quotes are
      the last unit, the band meets the card's bottom edge and the alert row
      ("2 of 2 quotes — review pricing") goes, its Review with it — the
@@ -981,7 +990,8 @@ function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => vo
   const bandLast = card.units.at(-1)?.kind === "quotes" && !card.footerAction;
   /* …and so does a wait's grey box. */
   const waitLast =
-    !bandLast && card.alert?.status === "default" && !card.alert.actionLabel && !card.footerAction;
+    (!bandLast && card.alert?.status === "default" && !card.alert.actionLabel && !card.footerAction) ||
+    !!card.footerAction?.waiting;
   return (
     <div
       role="button"
@@ -1062,7 +1072,7 @@ function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => vo
         )}
         <div
           /* Version 4: the schedule hangs 4px under the ship-to name. */
-          className={cn("flex flex-col gap-1.5 px-3", bare && u.key === "schedule" ? "pt-1" : gapTop)}
+          className={cn("flex flex-col gap-1.5 px-3", bare && WHEN_KEYS.has(u.key) ? "pt-1" : gapTop)}
         >
           {/* The quotes unit draws its own heading row — the stepper sits
               on the line with the label, where a unit's controls belong. */}
@@ -1085,23 +1095,25 @@ function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => vo
                     icon={bare ? (u.key === "driver" ? UserRound : MapPin) : undefined}
                     heading={u.heading}
                     lines={u.lines}
-                    className={bare ? LEVEL_CLASS[1] : LEVEL_CLASS_COMPACT[1]}
+                    className={bare ? LEVEL_CLASS_BARE[1] : LEVEL_CLASS_COMPACT[1]}
                   />
                 ) : (
                   <CardStack lines={u.lines} figure={u.figure} />
                 ))}
               {u.kind === "inline" &&
-                (bare && u.key === "schedule" ? (
+                (bare && WHEN_KEYS.has(u.key) ? (
                   /* VERSION 4'S SCHEDULE (Pavan, 2026-10-27) — under the
                      ship-to name, starting where the name starts (past the
                      pin and its 4px), 2px smaller, all in the secondary grey;
-                     the date first, then the window. */
-                  /* One phrase: "Oct 27 2026, 6:00 AM – 10:00 AM". */
-                  <span className="truncate pl-4.5 text-xs text-muted-foreground">
-                    {[...u.parts]
-                      .reverse()
-                      .map((p) => p.replace(/^(\w{3} \d{1,2}),( \d{4})$/, "$1$2"))
-                      .join(", ")}
+                     the date first, then the window. One phrase:
+                     "Oct 27 2026, 6:00 AM – 10:00 AM".
+                     COMPLETED ON READS THE SAME (Pavan, 2026-10-28):
+                     "Oct 28 2026, 3:28 PM · Weekly on Thursday". Never
+                     truncated — a long line wraps. */
+                  <span className="pl-4.5 text-xs text-muted-foreground">
+                    {u.key === "schedule"
+                      ? [...u.parts].reverse().map(shortDate).join(", ")
+                      : u.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")}
                   </span>
                 ) : (
                   <CardInline parts={u.parts} />
@@ -1138,16 +1150,26 @@ function Card({ card, onOpen, space = 16 }: { card: BoardCard; onOpen?: () => vo
           the reader was already standing on, and it cost every card a rule and
           25px to say it. What is left in this footer is what the card is
           waiting on: an alert, or the invoice row. */}
-      {card.alert && !bandLast && <CardAlert {...card.alert} topClass={space !== 16 ? gapTop : undefined} />}
+      {card.alert && !bandLast && <CardAlert {...card.alert} topClass={bare ? gapTop : undefined} />}
 
-      {card.footerAction && (
-        <div className={cn("flex items-center justify-between gap-2 px-3", gapTop)}>
-          {card.footerAction.waiting ? (
-            <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="size-3.5 shrink-0" />
+      {card.footerAction?.waiting ? (
+        /* A DONE ASK IN A SUBTLE GREEN BOX (Pavan, 2026-10-28) — tucked 4px
+           inside the card like the grey wait box, the words on the left, how
+           long ago on the right. */
+        <div className={cn("px-1", gapTop)}>
+          <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-alert-pill-success px-2 py-1.5 text-xs">
+            <span className="flex min-w-0 items-center gap-1 text-fp-alert-pill-success-ink">
+              <Check className="size-4 shrink-0" />
               <span className="truncate">{card.footerAction.label}</span>
             </span>
-          ) : (
+            {card.footerAction.meta && (
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground">{card.footerAction.meta}</span>
+            )}
+          </div>
+        </div>
+      ) : card.footerAction && (
+        <div className={cn("flex items-center justify-between gap-2 px-3", gapTop)}>
+          {(
             <span className="truncate text-xs text-foreground">
               {card.footerAction.label}
             </span>
@@ -1190,7 +1212,6 @@ function Lane({
   sortKey?: string;
   onSortChange?: (option: string | null) => void;
 }) {
-  const bare = useBare();
   const chosen = sortOptions?.find((o) => o.key === sortKey);
   return (
     /* 400px, not the DS's 340. The card's product unit is three columns —
@@ -1279,16 +1300,11 @@ function Lane({
             {lane.emptyLabel ?? "Nothing here"}
           </p>
         ) : (
-          lane.cards.map((card, ci) =>
+          lane.cards.map((card) =>
             renderCard ? (
               <React.Fragment key={card.id}>{renderCard(card, () => onOpenCard?.(card.id))}</React.Fragment>
             ) : (
-              <Card
-                key={card.id}
-                card={card}
-                onOpen={() => onOpenCard?.(card.id)}
-                space={bare && ci === 0 ? 12 : bare && ci === 1 ? 10 : 16}
-              />
+              <Card key={card.id} card={card} onOpen={() => onOpenCard?.(card.id)} />
             )
           )
         )}

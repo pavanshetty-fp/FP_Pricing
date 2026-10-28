@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Info } from "lucide-react";
+import { Check, Handshake, Info, MapPin, Truck, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type BoardLane,
   type BrokerBoardProps,
 } from "./BrokerBoard";
+import { shortLabel } from "./unitLabels";
 
 /*
   BOARD — VERSION 2, AFTER HUBSPOT'S DEAL BOARD (Pavan, 2026-10-27).
@@ -32,15 +33,6 @@ import {
   accent, the rims are the hairline.
 */
 
-/* "Ship-to Details" → "Ship-to" — a property label, not a section heading. */
-const LABEL: Record<string, string> = {
-  customer: "Ship-to",
-  schedule: "Schedule",
-  completed: "Completed",
-  product: "Delivery",
-  driver: "Driver",
-  partner: "Vendor",
-};
 
 const moneyOf = (s?: string) => {
   const n = s ? Number(s.replace(/[^0-9.-]/g, "")) : NaN;
@@ -57,13 +49,23 @@ function amountOf(card: BoardCard): string | undefined {
   return undefined;
 }
 
+/* VERSIONS 2 AND 3 — VERSION 4'S ICONS (Pavan, 2026-10-28; what was
+   Version 2.1 became Version 2, the old Version 2 removed): a pin, a truck,
+   a person and a handshake lead the ship-to, delivery, driver and vendor,
+   no labels; the schedule hangs under the ship-to name; the vendor's
+   handshake holds its address, its price beside the name. */
+/* VERSION 2 TRUNCATES NOTHING (Pavan, 2026-10-28) — every line on the card
+   wraps to the next instead. Version 3's card still truncates. */
+const Wrap = React.createContext(false);
+
 /* NO LABELS (Pavan, 2026-10-27) — each fact is its value alone; `label`
    stays for screen readers. */
-function Property({ label, children }: { label: string; children: React.ReactNode }) {
+function Property({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  const wrap = React.useContext(Wrap);
   return (
-    <div className="flex min-w-0 items-baseline text-xs">
+    <div className={cn("flex min-w-0 items-baseline text-xs", className)}>
       <span className="sr-only">{label}: </span>
-      <span className="min-w-0 truncate text-foreground">{children}</span>
+      <span className={cn("min-w-0 text-foreground", wrap ? "break-words" : "truncate")}>{children}</span>
     </div>
   );
 }
@@ -79,11 +81,45 @@ function UnitGroup({ u, ruled }: { u: BoardCardUnit; ruled?: boolean }) {
 }
 
 function UnitProperties({ u }: { u: BoardCardUnit }) {
-  const label = LABEL[u.key] ?? u.heading;
+  const label = shortLabel(u);
+  const wrap = React.useContext(Wrap);
   /* THE SHIP-TO: its name and an info icon; the rest on hover. */
   /* …and the driver the same way (Pavan, 2026-10-27). */
   if (u.kind === "stack" && (u.key === "customer" || u.key === "driver"))
-    return <ShipToLine iconFirst heading={u.heading} lines={u.lines} className="text-xs text-foreground" />;
+    return (
+      <ShipToLine
+        iconFirst
+        icon={u.key === "driver" ? UserRound : MapPin}
+        wrap={wrap}
+        heading={u.heading}
+        lines={u.lines}
+        className="text-xs text-foreground"
+      />
+    );
+  /* THE VENDOR (Pavan, 2026-10-28) — a handshake leads the name and holds
+     the address on hover; the price beside it. */
+  if (u.kind === "stack" && u.key === "partner" && u.lines[0]) {
+    return (
+      <div className="flex min-w-0 items-baseline justify-between gap-2.5 text-xs">
+        <span className="sr-only">{label}: </span>
+        <ShipToLine
+          iconFirst
+          icon={Handshake}
+          wrap={wrap}
+          hoverLabel="address"
+          heading={u.heading}
+          lines={[u.lines[0], ...(u.hover ?? [])]}
+          className="text-xs text-foreground"
+        />
+        {u.figure && (
+          <span className="shrink-0 tabular-nums whitespace-nowrap text-foreground">
+            <span className="sr-only">Amount: </span>
+            {u.figure}
+          </span>
+        )}
+      </div>
+    );
+  }
   if (u.kind === "stack") {
     const [first, ...rest] = u.lines;
     return (
@@ -98,7 +134,13 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
       </>
     );
   }
-  if (u.kind === "inline") return <Property label={label}>{u.parts.join(" · ")}</Property>;
+  /* Version 3: the schedule starts where the ship-to name starts, past the pin. */
+  if (u.kind === "inline")
+    return (
+      <Property label={label} className="pl-4.5">
+        {u.parts.join(" · ")}
+      </Property>
+    );
   if (u.kind === "rows")
     return <Property label={label}>{u.rows.map((r) => r.asset).join(", ")}</Property>;
   if (u.kind === "delivery")
@@ -108,6 +150,7 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
         <span className="min-w-0 text-foreground">
           <CardDelivery
             iconTrigger
+            icon={Truck}
             heading={u.heading}
             summary={u.summary}
             rows={u.rows}
@@ -145,6 +188,7 @@ export function CardV2({
    *  hover, no shadow — around this card's arrangement. */
   flat?: boolean;
 }) {
+  const wrap = React.useContext(Wrap);
   return (
     <div
       role="button"
@@ -163,7 +207,9 @@ export function CardV2({
         /* Dark hover fills one card step, --muted (Pavan, 2026-10-27). */
         "dark:hover:bg-muted",
         flat
-          ? "border-fp-outline-1 transition-[background-color,border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface active:border-fp-outline-2 active:bg-fp-card-1"
+          ? /* Dark: Version 4's brighter rim, halfway to the strong one
+               (Pavan, 2026-10-28); hover still goes to the strong rim. */
+            "border-fp-outline-1 transition-[background-color,border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface active:border-fp-outline-2 active:bg-fp-card-1 dark:border-[color-mix(in_srgb,var(--fp-outline-1)_50%,var(--fp-outline-2))] dark:hover:border-fp-outline-2"
           : "border-border shadow-xs transition-[background-color,box-shadow] hover:shadow-md"
       )}
     >
@@ -182,7 +228,13 @@ export function CardV2({
         {card.badges && card.badges.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {card.badges.map((b) => (
-              <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
+              /* SMALLER PILLS ON VERSION 2 (Pavan, 2026-10-28) — 2px
+                 above and below the text, not the 28px height. */
+              <Pill
+                key={b.label}
+                kind={b.tone ?? "neutral"}
+                className={cn(CARD_HOVER_PILL(b.tone), !flat && "h-auto py-0.5", wrap && "whitespace-normal [&>span]:whitespace-normal")}
+              >
                 {b.label}
               </Pill>
             ))}
@@ -190,7 +242,7 @@ export function CardV2({
         )}
       </div>
       {card.subtitle?.map((line) => (
-        <span key={line} className="-mt-1 truncate text-xs text-muted-foreground">
+        <span key={line} className={cn("-mt-1 text-xs text-muted-foreground", wrap ? "break-words" : "truncate")}>
           {line}
         </span>
       ))}
@@ -230,7 +282,7 @@ export function CardV2({
         <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-alert-pill-success px-2 py-1.5 text-xs">
           <span className="flex min-w-0 items-center gap-1 text-fp-alert-pill-success-ink">
             <Check className="size-3.5 shrink-0" />
-            <span className="truncate">{card.footerAction.label}</span>
+            <span className={wrap ? "break-words" : "truncate"}>{card.footerAction.label}</span>
           </span>
           {card.footerAction.meta && (
             <span className="shrink-0 whitespace-nowrap text-muted-foreground">{card.footerAction.meta}</span>
@@ -303,14 +355,17 @@ function LaneV2({
   );
 }
 
-/* SEVEN AND A HALF LANES AT A GLANCE (Pavan, 2026-10-27) — the lane width
-   is the board's width over 7.5, gaps and padding taken out first, so the
+/* FIVE AND A HALF LANES AT A GLANCE (Pavan, 2026-10-28; was 7.5, 6.5, 4.5) — the lane width
+   is the board's width over 5.5, gaps and padding taken out first, so the
    half lane says the board scrolls on. Never under 160px. */
-const LANES_IN_VIEW = 7.5;
+const LANES_IN_VIEW = 5.5;
 const GAP = 8;
 const PAD = 12;
 
-export function BoardV2({ lanes, onOpenCard }: Pick<BrokerBoardProps, "lanes" | "onOpenCard">) {
+export function BoardV2({
+  lanes,
+  onOpenCard,
+}: Pick<BrokerBoardProps, "lanes" | "onOpenCard">) {
   const box = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState<number>();
   React.useLayoutEffect(() => {
@@ -326,10 +381,12 @@ export function BoardV2({ lanes, onOpenCard }: Pick<BrokerBoardProps, "lanes" | 
     return () => ro.disconnect();
   }, []);
   return (
+    <Wrap.Provider value>
     <div ref={box} className="flex h-full min-h-0 gap-2 overflow-x-auto bg-fp-surface-1b p-3">
       {lanes.map((lane) => (
         <LaneV2 key={lane.key} lane={lane} onOpenCard={onOpenCard} width={width} />
       ))}
     </div>
+    </Wrap.Provider>
   );
 }

@@ -379,17 +379,21 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
             ...(off.has("partner.name")
               ? []
               : [{ text: vendor.name, level: 1 as const }]),
-            ...(off.has("partner.detail")
-              ? []
-              : [
-                  {
-                    text: `${vendor.base} · Safety ${vendor.safetyScore} · ${vendor.distanceMi} mi`,
-                    level: 3 as const,
-                  },
-                ]),
+            /* THE NAME ALONE (Pavan, 2026-10-28) — nothing under the vendor on
+               any version; the price sits beside it where there is one. */
           ]
         : /* THE FOOTER CARRIES IT — "Vendor not selected · Select Vendor". */
           [],
+      /* THE ADDRESS, on hover of Version 4's vendor icon (Pavan, 2026-10-28). */
+      hover: vendor
+        ? [
+            vendor.addressLine1,
+            vendor.addressLine2,
+            [vendor.city, [vendor.state, vendor.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+          ]
+            .filter((t): t is string => !!t)
+            .map((text) => ({ text, level: 2 as const }))
+        : undefined,
     },
   ];
   /* A HEADING WITH NOTHING UNDER IT IS NOT A UNIT. Switching off every line
@@ -702,7 +706,6 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
   { key: "driver.detail", label: "Truck · phone", group: "driver" },
   { key: "partner", label: "Vendor" },
   { key: "partner.name", label: "Partner name", group: "partner" },
-  { key: "partner.detail", label: "Base · safety · distance", group: "partner" },
   /* What the partner holding the order is charging. Before the award there is
      no single figure — the quote stepper carries one per partner — so this is
      a delivered order's line. */
@@ -992,7 +995,7 @@ export function BrokerOrdersScreen({
   boardPick = 0,
 }: {
   /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "1" | "2" | "3" | "4";
+  boardVersion?: "1" | "1.1" | "2" | "3" | "4";
   /** A nonce — each pick opens the board, from the table too. */
   boardPick?: number;
   focus?: { id: string; n: number } | null;
@@ -2496,6 +2499,7 @@ export function BrokerOrdersScreen({
                       onLaneSortChange={setLaneSortKey}
                       compact={boardVersion === "3"}
                       bare={boardVersion === "4"}
+                      iconed={boardVersion === "1.1"}
                       renderCard={
                         boardVersion === "3"
                           ? (card, onOpen) => <CardV2 flat card={card} onOpen={onOpen} />

@@ -96,6 +96,7 @@ const STROKE = [
   ...["grey", "blue", "yellow", "green", "cyan", "purple", "pink", "orange", "red"].map((l) => `--fp-lane-${l}`),
   ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `--fp-viz-${n}`),
 ];
+const PASTELS = ["blue", "amber", "violet", "rose", "slate", "teal", "green"];
 /** Secondary and coloured text — the Text slider. */
 const INK = [
   "--fp-ink-3",
@@ -135,6 +136,14 @@ const BACKGROUND = [
   "--fp-board-lane",
   "--fp-row-hover",
   "--fp-banner-caution",
+  /* BOARD FILLS (Pavan, 2026-10-28) — the lane-count bubble, the dark
+     theme's vivid lane titles, the code discs' pastels, and the dark
+     buttons' and fields' fill. */
+  "--fp-lane-count",
+  "--fp-field-fill",
+  "--fp-field-fill-hover",
+  ...["grey", "blue", "green", "cyan", "purple", "violet", "pink", "orange", "red"].map((l) => `--fp-lane-${l}-vivid`),
+  ...PASTELS.map((p) => `--pastel-${p}`),
 ];
 /** TEXT ON A FILL — chosen, never blended: white or dark, whichever reads
     better on the fill as the sliders left it. [text token, its fill]. */
@@ -146,6 +155,7 @@ const ON_FILL: [string, string][] = [
   ["--status-success-foreground", "--status-success"],
   ["--status-foreground", "--status-success"],
   ["--destructive-foreground", "--destructive"],
+  ...PASTELS.map((p): [string, string] => [`--pastel-${p}-foreground`, `--pastel-${p}`]),
 ];
 const LIGHT_INK = "white";
 const DARK_INK = "black";
@@ -229,6 +239,9 @@ export function applySettings() {
   all.forEach((t) => style.removeProperty(t));
   if (a11y.stroke !== 0 || a11y.background !== 0 || a11y.ink !== 0) mixContrast(root, all);
   if (a11y.background !== 0 || a11y.ink !== 0) textOnFills(root);
+  /* THE LANE-TITLE TINT — 16% → 40% with Fill contrast (index.css). */
+  if (a11y.background === 0) style.removeProperty("--fp-lane-soft-pct");
+  else style.setProperty("--fp-lane-soft-pct", `${16 + a11y.background * 0.24}%`);
   /* THE DARK FRAME — Contrast 80%+ in the light theme: the shell
      ground and the selected nav item jump to near black, white text on them
      (Pavan, 2026-10-21 — no grey between ~#5a and #95 reads at 7:1 either

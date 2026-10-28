@@ -355,6 +355,19 @@
         "id": "card-date-every-lane",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-027",
+      "date": "2026-10-28",
+      "title": "Fill contrast slider skipped board fills: lane titles, count bubbles, code discs, dark buttons/fields",
+      "where": "Accessibility panel → every board and toolbar",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "New fill tokens (lane soft/vivid titles, lane count, pastels, field fill) were added without WCAG/max values or a place in a11y.ts BACKGROUND; never swept the page for fills that stay put at 100%.",
+      "check": {
+        "id": "fill-contrast-sweep",
+        "status": "manual"
+      }
     }
   ]
 }

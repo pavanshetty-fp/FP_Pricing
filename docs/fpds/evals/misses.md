@@ -16,15 +16,15 @@ Every time Pavan has to point out something that should already have been right 
 | Week of | Misses |
 |---|---|
 | 2026-10-18 | 9 |
-| 2026-10-25 | 17 |
+| 2026-10-25 | 18 |
 
-**26 misses** · found by Pavan 20 · by Claude 6 · guarded by a script 13 · guard proposed 0 · needs eyes 9 · process rule 4
+**27 misses** · found by Pavan 21 · by Claude 6 · guarded by a script 13 · guard proposed 0 · needs eyes 10 · process rule 4
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
-| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 6 |
+| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 7 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 5 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 3 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
@@ -38,6 +38,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-027 | 2026-10-28 | Fill contrast slider skipped board fills: lane titles, count bubbles, code discs, dark buttons/fields | Accessibility panel → every board and toolbar | Pavan | `partial-unify` | New fill tokens (lane soft/vivid titles, lane count, pastels, field fill) were added without WCAG/max values or a place in a11y.ts BACKGROUND; never swept the page for fills that stay put at 100%. | `fill-contrast-sweep` · manual |
 | M-026 | 2026-10-28 | V4 Completed date styled unlike the Orders schedule line, truncated; Assigned had no date | 3PL board, Version 4 | Pavan | `partial-unify` | Restyled the schedule unit only, not the Completed on unit that plays the same role in later lanes; never checked every lane for a date. | `card-date-every-lane` · manual |
 | M-025 | 2026-10-27 | "Pending: Vendor not selected" truncated on the narrower cards | 3PL board, Orders lane | Pavan | `edges` | Narrowed the lanes to 340px without re-checking the longest footer text on every lane. | `card-footer-fit` · manual |
 | M-024 | 2026-10-26 | Stray draft autosaved while testing the CP create form | CP Orders | Claude | `unsafe-edit` | Opened a create form to inspect it; autosave made a draft. | `test-hygiene` · process |

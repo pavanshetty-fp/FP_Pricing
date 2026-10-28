@@ -1086,10 +1086,10 @@ their one asset row. Field switches: Products, Quantity (Total is gone).
 (`fp-3pl-board-version`). **1** = the V4 board. **2** = after HubSpot's deal
 board (`BoardV2.tsx`): grey trays with gaps, bold stage name + count, white
 rimmed cards, the number in link blue, values with no labels, chips wrapping
-under the number, CTAs full width, "Total amount" at each column foot, 7.5
+under the number, CTAs full width, "Total amount" at each column foot, 5.5
 lanes in view. **3** = Version 1 compact (`BrokerBoard compact`): no unit
 headings, two text sizes (13px subject / 12px rest, weight for hierarchy),
-prices 13px bold under the vendor, Version 1's gutters and gaps, 6.5 lanes in
+prices 13px bold under the vendor, Version 1's gutters and gaps, 5.5 lanes in
 view. Versions 2 and 3 show the ship-to as its name + an info icon whose hover
 card holds the address and customer. In Version 2 the delivery line works the
 same way — the info icon first, then the line as plain text that wraps (no underline, never cut), the icon opening the table + map; the ship-to icon also comes first; Version 3 does the same (2026-10-27) —
@@ -1125,7 +1125,7 @@ default, all versions); from Completed on, *Completed on* hangs under the
 ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"
 — and wraps rather than truncates. **Invoice requested** sits in a subtle
 green box (`bg-fp-alert-pill-success`), tick and words left, how long ago
-right (`invoiceRequestedAt`, `timeAgo`). A brighter Recurring pill was tried
+right (`invoiceRequestedAt`, `timeAgo`); on Version 4 it is the grey wait box (`bg-fp-wait-box`). **Icons (2026-10-28):** Versions 2, 3 and 4 have the pin, truck and person icons, no unit labels. On Versions 1 and 1.1 the vendor's label reads "Vendor", not "VENDOR"; the other V1 labels stay in capitals. Nothing sits under the vendor name on any version. The vendor unit: on Versions 1 and 1.1 a building icon plus "Vendor" label (`VendorUnitLabel`); on Versions 2, 3 and 4 no label — a handshake icon leads the name and holds the address on hover. **V2** took over what was V2.1 (the old V2, with info icons and no wrap, was removed 2026-10-28): those icons, smaller pills, and nothing truncates — every line, pill and the invoice box wraps; **V1.1** (`BrokerBoard iconed`) is Version 1 with an icon in place of the Ship-to, Schedule, Delivery and Driver headings (pin, calendar, truck, person). The Delivery Details hover shows the table only — the map beside it was removed. A brighter Recurring pill was tried
 and reverted.
 
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:

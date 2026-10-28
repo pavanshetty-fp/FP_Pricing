@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-type BoardVersion = "1" | "2" | "3" | "4";
+type BoardVersion = "1" | "1.1" | "2" | "3" | "4";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -446,7 +446,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const [boardVersion, setBoardVersionState] = React.useState<BoardVersion>(() => {
     try {
       const v = localStorage.getItem("fp-3pl-board-version");
-      return v === "2" || v === "3" || v === "4" ? v : "1";
+      /* 2.1 BECAME 2 (Pavan, 2026-10-28). */
+      if (v === "2.1") return "2";
+      return v === "1.1" || v === "2" || v === "3" || v === "4" ? v : "1";
     } catch {
       return "1";
     }
@@ -806,7 +808,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                 aria-label="Board version"
                 className="shrink-0 self-center"
               >
-                {(["1", "2", "3", "4"] as const).map((v) => (
+                {(["1", "1.1", "2", "3", "4"] as const).map((v) => (
                   <ToggleGroupItem
                     key={v}
                     value={v}

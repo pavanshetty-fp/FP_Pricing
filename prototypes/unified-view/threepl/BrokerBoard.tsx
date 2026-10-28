@@ -8,6 +8,9 @@ import {
   MapPin,
   UserRound,
   Truck,
+  CalendarDays,
+  Building2,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -32,7 +35,7 @@ import {
 } from "@/components/ui/hover-card";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
-import { SiteMiniMap, type MiniMapPoint } from "./SiteMiniMap";
+import { type MiniMapPoint } from "./SiteMiniMap";
 
 /**
  * Kanban board, generic over its lanes and cards.
@@ -184,6 +187,9 @@ export type BoardCardUnit =
        * the same fact arriving one stage later.
        */
       figure?: string;
+      /** Version 4: what the icon before the first line holds on hover — the
+       *  vendor's address (Pavan, 2026-10-28). */
+      hover?: BoardCardLine[];
     }
   | { kind: "inline"; key: string; heading: string; parts: string[] }
   | {
@@ -390,6 +396,8 @@ export interface BrokerBoardProps {
   /** Version 4: Version 1 with no labels; the ship-to and delivery lines lead
    *  with a pin and a truck whose hover holds the details. */
   bare?: boolean;
+  /** Version 1.1: Version 1 with an icon in place of each unit label. */
+  iconed?: boolean;
   /** Version 3 (Pavan, 2026-10-27): the lanes stay this board's, the card
    *  inside is drawn by the caller — Version 2's arrangement. */
   renderCard?: (card: BoardCard, onOpen: () => void) => React.ReactNode;
@@ -404,7 +412,35 @@ const useCompact = () => React.useContext(Compact);
    one line each behind a meaningful icon — a pin, a truck. */
 const Bare = React.createContext(false);
 const useBare = () => React.useContext(Bare);
+/* VERSION 1.1 — ICONS FOR LABELS (Pavan, 2026-10-28): Version 1 as it is,
+   the ship-to, schedule, delivery and driver headings each swapped for an
+   icon leading the unit. */
+const Iconed = React.createContext(false);
+const useIconed = () => React.useContext(Iconed);
+const UNIT_ICON: Record<string, LucideIcon> = {
+  customer: MapPin,
+  schedule: CalendarDays,
+  completed: CalendarDays,
+  product: Truck,
+  driver: UserRound,
+};
 
+/* THE SENTENCE-CASE LABEL (Pavan, 2026-10-28) — "Vendor", not "VENDOR": the
+   vendor's label on Versions 1 and 1.1. */
+export function UnitLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: LucideIcon }) {
+  if (!Icon) return <span className="text-xs font-medium text-muted-foreground">{children}</span>;
+  return (
+    <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+      <Icon aria-hidden className="size-3.5 shrink-0" />
+      {children}
+    </span>
+  );
+}
+/* THE VENDOR'S LABEL, EVERY VERSION (Pavan, 2026-10-28) — a building icon
+   and "Vendor". */
+export function VendorUnitLabel() {
+  return <UnitLabel icon={Building2}>Vendor</UnitLabel>;
+}
 /** The unit heading — the only label left on the card. */
 function UnitHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -437,11 +473,38 @@ const LEVEL_CLASS_BARE: Record<1 | 2 | 3, string> = {
 };
 
 /** Lines at three levels. Hierarchy does the work a field label used to. */
-function CardStack({ lines, figure }: { lines: BoardCardLine[]; figure?: string }) {
+function CardStack({
+  lines,
+  figure,
+  lead,
+}: {
+  lines: BoardCardLine[];
+  figure?: string;
+  /** Version 4: the first line holds the rest of the unit on hover. */
+  lead?: { heading: string; hover: BoardCardLine[] };
+}) {
   const compact = useCompact();
   const bare = useBare();
   const levels = compact ? LEVEL_CLASS_COMPACT : bare ? LEVEL_CLASS_BARE : LEVEL_CLASS;
-  const stack = (
+  const stack = lead ? (
+    /* VERSION 4'S VENDOR (Pavan, 2026-10-28) — a handshake leads the name,
+       no label; the icon holds the address on hover, like the pin. */
+    <div className="flex min-w-0 flex-col">
+      <ShipToLine
+        iconFirst
+        icon={Handshake}
+        hoverLabel="address"
+        heading={lead.heading}
+        lines={[lines[0], ...lead.hover]}
+        className={levels[1]}
+      />
+      {lines.slice(1).map((l, i) => (
+        <span key={i} className={cn("truncate", levels[l.level ?? 1])} title={l.text}>
+          {l.text}
+        </span>
+      ))}
+    </div>
+  ) : (
     <div className="flex min-w-0 flex-col">
       {/* KEYED BY POSITION, NOT BY TEXT. Two lines in a unit can legitimately
           read the same — an asset called "Lube Skid" whose type is "Lube Skid"
@@ -569,14 +632,19 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
    so it would vanish; it goes one step further (Pavan, 2026-10-27). */
 export const CARD_HOVER_PILL = (tone?: string) =>
   (tone ?? "neutral") === "neutral" ? "dark:group-hover/card:bg-fp-card-1" : undefined;
-
 export function ShipToLine({
   heading,
   lines,
   className,
   iconFirst,
   icon: Icon = Info,
+  hoverLabel = "address and customer",
+  wrap,
 }: {
+  /** Version 2 (Pavan, 2026-10-28): the name wraps, never truncates. */
+  wrap?: boolean;
+  /** What the icon's hover holds, for its accessible name. */
+  hoverLabel?: string;
   heading: string;
   lines: BoardCardLine[];
   className?: string;
@@ -587,9 +655,25 @@ export function ShipToLine({
 }) {
   const [name, ...rest] = lines;
   if (!name) return null;
+  const details = (
+    <HoverCardContent
+      align="start"
+      className="fp-surface-light w-72 p-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <UnitHeading>{heading}</UnitHeading>
+      <div className="mt-2 flex flex-col gap-0.5">
+        {lines.map((l, i) => (
+          <span key={i} className={LEVEL_CLASS[l.level ?? 1]}>
+            {l.text}
+          </span>
+        ))}
+      </div>
+    </HoverCardContent>
+  );
   return (
-    <div className={cn("flex min-w-0 items-center gap-1", iconFirst && "flex-row-reverse justify-end")}>
-      <span className={cn("truncate", className)} title={name.text}>
+    <div className={cn("flex min-w-0 gap-1", wrap ? "items-start" : "items-center", iconFirst && "flex-row-reverse justify-end")}>
+      <span className={cn(wrap ? "min-w-0 break-words" : "truncate", className)} title={name.text}>
         {name.text}
       </span>
       {rest.length > 0 && (
@@ -597,29 +681,16 @@ export function ShipToLine({
           <HoverCardTrigger asChild>
             <button
               type="button"
-              aria-label={`${name.text} — address and customer`}
+              aria-label={`${name.text} — ${hoverLabel}`}
               /* THE CARD IS THE BUTTON — this one only explains itself. */
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              className="shrink-0 rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              className={cn("shrink-0 rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50", wrap && "mt-px")}
             >
               <Icon className="size-3.5" />
             </button>
           </HoverCardTrigger>
-          <HoverCardContent
-            align="start"
-            className="fp-surface-light w-72 p-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <UnitHeading>{heading}</UnitHeading>
-            <div className="mt-2 flex flex-col gap-0.5">
-              {lines.map((l, i) => (
-                <span key={i} className={LEVEL_CLASS[l.level ?? 1]}>
-                  {l.text}
-                </span>
-              ))}
-            </div>
-          </HoverCardContent>
+          {details}
         </HoverCard>
       )}
     </div>
@@ -673,8 +744,6 @@ export function CardDelivery({
   summary,
   rows,
   total,
-  site,
-  points,
   iconTrigger,
   icon: Icon = Info,
 }: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key"> & {
@@ -684,7 +753,6 @@ export function CardDelivery({
    *  plain text that wraps — no underline; hover the icon. */
   iconTrigger?: boolean;
 }) {
-  const big = new Set(rows.map((r) => r.asset)).size > 3;
   const compact = useCompact();
   return (
     <div className="flex min-w-0">
@@ -724,22 +792,15 @@ export function CardDelivery({
           onClick={(e) => e.stopPropagation()}
         >
           <UnitHeading>{heading}</UnitHeading>
-          {/* TABLE LEFT, MAP RIGHT, ONE HEIGHT (Pavan, 2026-10-27). Every
-              row shows, total included, from two rows tall (one row just
-              leaves space) up to four and a half; past that the
-              table scrolls, the half row saying there is more. The map takes
-              the same height. */}
-          <div className="mt-2 flex gap-3" style={{ height: deliveryHeight(rows.length + (total ? 1 : 0)) }}>
-            <div className="min-w-0 flex-1 overflow-y-auto rounded-md border border-border">
-              <RowsTable rows={rows} total={total} />
-            </div>
-            {site && points.length > 0 && (
-              <SiteMiniMap
-                site={site}
-                points={points}
-                className={cn("h-full shrink-0", big ? "w-36" : "w-30")}
-              />
-            )}
+          {/* THE TABLE ALONE (Pavan, 2026-10-28; the map beside it is gone).
+              Every row shows, total included, from two rows tall up to four
+              and a half; past that it scrolls, the half row saying there is
+              more. */}
+          <div
+            className="mt-2 overflow-y-auto rounded-md border border-border"
+            style={{ height: deliveryHeight(rows.length + (total ? 1 : 0)) }}
+          >
+            <RowsTable rows={rows} total={total} />
           </div>
         </HoverCardContent>
       </HoverCard>
@@ -983,12 +1044,94 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
   /* Compact cards pull their units closer — there is no heading to clear. */
   const gapTop = compact ? "pt-2.5" : bare ? "pt-2" : "pt-4";
   const ruleTop = bare ? "mt-2" : "mt-4";
+  const iconed = useIconed();
+  /* One unit's content — beside its icon on Version 1.1, alone elsewhere. */
+  const unitBody = (u: BoardCardUnit) => (
+    <>
+
+          {/* The quotes unit draws its own heading row — the stepper sits
+              on the line with the label, where a unit's controls belong. */}
+          {u.kind === "quotes" ? (
+            <CardQuotes
+              heading={u.heading}
+              quotes={u.quotes}
+              nameOff={u.nameOff}
+              breakdown={u.breakdown}
+            />
+          ) : (
+            <>
+              {/* VERSION 4 KEEPS ITS ICONS; ONLY THE VENDOR TAKES A LABEL
+                  (Pavan, 2026-10-28) — sentence case, "Vendor" not "VENDOR". */}
+              {bare ? (
+                null
+              ) : !compact && !(iconed && UNIT_ICON[u.key]) && (
+                u.key === "partner" ? <VendorUnitLabel /> : <UnitHeading>{u.heading}</UnitHeading>
+              )}
+              {u.kind === "stack" &&
+                ((compact || bare) && (u.key === "customer" || u.key === "driver") ? (
+                  /* The driver reads like the ship-to: the name, the rest on
+                     hover (Pavan, 2026-10-27). */
+                  <ShipToLine
+                    iconFirst
+                    icon={bare ? (u.key === "driver" ? UserRound : MapPin) : undefined}
+                    heading={u.heading}
+                    lines={u.lines}
+                    className={bare ? LEVEL_CLASS_BARE[1] : LEVEL_CLASS_COMPACT[1]}
+                  />
+                ) : (
+                  <CardStack
+                    lines={u.lines}
+                    figure={u.figure}
+                    lead={
+                      bare && u.key === "partner" && u.hover?.length && u.lines.length
+                        ? { heading: u.heading, hover: u.hover }
+                        : undefined
+                    }
+                  />
+                ))}
+              {u.kind === "inline" &&
+                (bare && WHEN_KEYS.has(u.key) ? (
+                  /* VERSION 4'S SCHEDULE (Pavan, 2026-10-27) — under the
+                     ship-to name, starting where the name starts (past the
+                     pin and its 4px), 2px smaller, all in the secondary grey;
+                     the date first, then the window. One phrase:
+                     "Oct 27 2026, 6:00 AM – 10:00 AM".
+                     COMPLETED ON READS THE SAME (Pavan, 2026-10-28):
+                     "Oct 28 2026, 3:28 PM · Weekly on Thursday". Never
+                     truncated — a long line wraps.
+                     */
+                  <span className="pl-4.5 text-xs text-muted-foreground">
+                    {u.key === "schedule"
+                      ? [...u.parts].reverse().map(shortDate).join(", ")
+                      : u.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")}
+                  </span>
+                ) : (
+                  <CardInline parts={u.parts} />
+                ))}
+              {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
+              {u.kind === "delivery" && (
+                <CardDelivery
+                  heading={u.heading}
+                  summary={u.summary}
+                  rows={u.rows}
+                  total={u.total}
+                  site={u.site}
+                  points={u.points}
+                  iconTrigger={compact || bare}
+                  icon={bare ? Truck : undefined}
+                />
+              )}
+            </>
+          )}
+    </>
+  );
   /* THE QUOTE BAND CLOSES THE CARD (Pavan, 2026-10-25): when quotes are
      the last unit, the band meets the card's bottom edge and the alert row
      ("2 of 2 quotes — review pricing") goes, its Review with it — the
      order opens from the card itself. */
   const bandLast = card.units.at(-1)?.kind === "quotes" && !card.footerAction;
   /* …and so does a wait's grey box. */
+  const manyChips = bare && (card.badges?.length ?? 0) > 1;
   const waitLast =
     (!bandLast && card.alert?.status === "default" && !card.alert.actionLabel && !card.footerAction) ||
     !!card.footerAction?.waiting;
@@ -1021,6 +1164,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         /* DARK HOVER FILLS (Pavan, 2026-10-27) — the rim alone was too quiet;
            one card step up (--muted is --fp-card-2 in dark). The grey pills step up with it (CARD_HOVER_PILL). */
         "dark:hover:bg-muted",
+        /* VERSION 4, DARK: THE CARD RIM CLEARS THE LANE'S STROKES (Pavan,
+           2026-10-28) — halfway from the quiet rim to the strong one; hover
+           still goes to the strong rim. */
+        bare &&
+          "dark:border-[color-mix(in_srgb,var(--fp-outline-1)_50%,var(--fp-outline-2))] dark:hover:border-fp-outline-2",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
         "active:border-fp-outline-2 active:bg-fp-card-1"
       )}
@@ -1031,8 +1179,19 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       <div className="flex flex-col gap-1 px-3 pt-3">
         {/* Compact: the chips drop under the number rather than squeeze it. */}
         {/* Version 4: the number and its chips centred on one line. */}
+        {/* VERSION 4, TWO CHIPS OR MORE (Pavan, 2026-10-28) — the number is
+            never cut at rest: it and the first two chips run on one line and
+            what does not fit is clipped at the card's edge. On hover the
+            number gives way (truncates) and both chips show whole. A third
+            chip and on go to the next line. */}
         <div className={cn("flex justify-between gap-2", bare ? "items-center" : "items-start", compact && "flex-wrap gap-y-1")}>
-          <div className={cn("flex items-center gap-1.5", compact ? "shrink-0" : "min-w-0")}>
+          <div
+            className={cn(
+              "flex items-center gap-1.5",
+              compact ? "shrink-0" : "min-w-0",
+              manyChips && "shrink-0 group-hover/card:shrink"
+            )}
+          >
             <h4 className={cn("min-w-0 truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
               {card.title}
             </h4>
@@ -1046,8 +1205,18 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             )}
           </div>
           {card.badges && card.badges.length > 0 && (
-            <div className={cn("flex flex-wrap gap-1", compact ? "min-w-0" : "shrink-0 justify-end")}>
-              {card.badges.map((b) => (
+            <div
+              className={cn(
+                "flex gap-1",
+                manyChips
+                  ? /* Clipped at the card's stroke, not its 12px padding
+                       (Pavan, 2026-10-28) — the row runs into the padding at
+                       rest and steps back out of it on hover. */
+                    "-mr-3 min-w-0 flex-nowrap overflow-hidden group-hover/card:mr-0 group-hover/card:shrink-0"
+                  : cn("flex-wrap", compact ? "min-w-0" : "shrink-0 justify-end")
+              )}
+            >
+              {(manyChips ? card.badges.slice(0, 2) : card.badges).map((b) => (
                 <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
                   {b.label}
                 </Pill>
@@ -1055,6 +1224,15 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
             </div>
           )}
         </div>
+        {manyChips && card.badges!.length > 2 && (
+          <div className="flex flex-wrap justify-end gap-1">
+            {card.badges!.slice(2).map((b) => (
+              <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
+                {b.label}
+              </Pill>
+            ))}
+          </div>
+        )}
         {card.subtitle?.map((line) => (
           <span key={line} className="truncate text-xs text-muted-foreground" title={line}>
             {line}
@@ -1074,65 +1252,16 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
           /* Version 4: the schedule hangs 4px under the ship-to name. */
           className={cn("flex flex-col gap-1.5 px-3", bare && WHEN_KEYS.has(u.key) ? "pt-1" : gapTop)}
         >
-          {/* The quotes unit draws its own heading row — the stepper sits
-              on the line with the label, where a unit's controls belong. */}
-          {u.kind === "quotes" ? (
-            <CardQuotes
-              heading={u.heading}
-              quotes={u.quotes}
-              nameOff={u.nameOff}
-              breakdown={u.breakdown}
-            />
-          ) : (
-            <>
-              {!compact && !bare && <UnitHeading>{u.heading}</UnitHeading>}
-              {u.kind === "stack" &&
-                ((compact || bare) && (u.key === "customer" || u.key === "driver") ? (
-                  /* The driver reads like the ship-to: the name, the rest on
-                     hover (Pavan, 2026-10-27). */
-                  <ShipToLine
-                    iconFirst
-                    icon={bare ? (u.key === "driver" ? UserRound : MapPin) : undefined}
-                    heading={u.heading}
-                    lines={u.lines}
-                    className={bare ? LEVEL_CLASS_BARE[1] : LEVEL_CLASS_COMPACT[1]}
-                  />
-                ) : (
-                  <CardStack lines={u.lines} figure={u.figure} />
-                ))}
-              {u.kind === "inline" &&
-                (bare && WHEN_KEYS.has(u.key) ? (
-                  /* VERSION 4'S SCHEDULE (Pavan, 2026-10-27) — under the
-                     ship-to name, starting where the name starts (past the
-                     pin and its 4px), 2px smaller, all in the secondary grey;
-                     the date first, then the window. One phrase:
-                     "Oct 27 2026, 6:00 AM – 10:00 AM".
-                     COMPLETED ON READS THE SAME (Pavan, 2026-10-28):
-                     "Oct 28 2026, 3:28 PM · Weekly on Thursday". Never
-                     truncated — a long line wraps. */
-                  <span className="pl-4.5 text-xs text-muted-foreground">
-                    {u.key === "schedule"
-                      ? [...u.parts].reverse().map(shortDate).join(", ")
-                      : u.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")}
-                  </span>
-                ) : (
-                  <CardInline parts={u.parts} />
-                ))}
-              {u.kind === "rows" && <CardRows rows={u.rows} total={u.total} />}
-              {u.kind === "delivery" && (
-                <CardDelivery
-                  heading={u.heading}
-                  summary={u.summary}
-                  rows={u.rows}
-                  total={u.total}
-                  site={u.site}
-                  points={u.points}
-                  iconTrigger={compact || bare}
-                  icon={bare ? Truck : undefined}
-                />
-              )}
-            </>
-          )}
+          {iconed && UNIT_ICON[u.key] ? (
+            /* Version 1.1: the icon in the heading's place, the unit beside it. */
+            <div className="flex min-w-0 gap-2">
+              {React.createElement(UNIT_ICON[u.key], {
+                "aria-label": u.heading,
+                className: "mt-0.5 size-4 shrink-0 text-muted-foreground",
+              })}
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">{unitBody(u)}</div>
+            </div>
+          ) : unitBody(u)}
         </div>
         </React.Fragment>
       ))}
@@ -1155,10 +1284,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       {card.footerAction?.waiting ? (
         /* A DONE ASK IN A SUBTLE GREEN BOX (Pavan, 2026-10-28) — tucked 4px
            inside the card like the grey wait box, the words on the left, how
-           long ago on the right. */
+           long ago on the right. Version 4 takes the grey wait box instead
+           (Pavan, 2026-10-28). */
         <div className={cn("px-1", gapTop)}>
-          <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-alert-pill-success px-2 py-1.5 text-xs">
-            <span className="flex min-w-0 items-center gap-1 text-fp-alert-pill-success-ink">
+          <div className={cn("flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-xs", bare ? "bg-fp-wait-box" : "bg-fp-alert-pill-success")}>
+            <span className={cn("flex min-w-0 items-center gap-1", bare ? ALERT_ACCENT.default : "text-fp-alert-pill-success-ink")}>
               <Check className="size-4 shrink-0" />
               <span className="truncate">{card.footerAction.label}</span>
             </span>
@@ -1321,17 +1451,19 @@ export function BrokerBoard({
   onLaneSortChange,
   compact = false,
   bare = false,
+  iconed = false,
   renderCard,
 }: BrokerBoardProps) {
-  /* COMPACT LANE WIDTH (Pavan, 2026-10-27) — the board's width over 6.5, so
-     six lanes and half of the seventh show; never under 240px. The lane's
+  /* COMPACT LANE WIDTH (Pavan, 2026-10-27; 5.5 since 2026-10-28) — the
+     board's width over 5.5, so five lanes and half of the sixth show; never
+     under 160px (240px before, which held a 1440px screen to 4.7 lanes). The lane's
      gutters and the gaps between cards are Version 1's. */
   const box = React.useRef<HTMLDivElement>(null);
   const [laneW, setLaneW] = React.useState<number>();
   React.useLayoutEffect(() => {
     const el = box.current;
     if (!compact || !el) return setLaneW(undefined);
-    const fit = () => setLaneW(Math.max(240, Math.floor(el.clientWidth / 6.5)));
+    const fit = () => setLaneW(Math.max(160, Math.floor(el.clientWidth / 5.5)));
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
@@ -1340,6 +1472,7 @@ export function BrokerBoard({
   return (
     <Compact.Provider value={compact}>
     <Bare.Provider value={bare}>
+    <Iconed.Provider value={iconed}>
     {/* THE BOX IS BoardWithBar's — the lanes fill it edge to edge. */}
     <div
       ref={box}
@@ -1367,6 +1500,7 @@ export function BrokerBoard({
         </React.Fragment>
       ))}
     </div>
+    </Iconed.Provider>
     </Bare.Provider>
     </Compact.Provider>
   );

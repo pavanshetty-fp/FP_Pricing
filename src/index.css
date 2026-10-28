@@ -461,16 +461,16 @@
   /* LANE-TITLE PILLS — the board (Pavan, 2026-10-25): the lane colour as a
      soft SOLID fill, 16% over the content layer, under foreground text so
      every lane reads (the full-strength fills fail AA under text). */
-  --color-fp-lane-grey-soft: color-mix(in srgb, var(--color-fp-lane-grey) 16%, var(--fp-surface-1b));
-  --color-fp-lane-blue-soft: color-mix(in srgb, var(--color-fp-lane-blue) 16%, var(--fp-surface-1b));
-  --color-fp-lane-yellow-soft: color-mix(in srgb, var(--color-fp-lane-yellow) 16%, var(--fp-surface-1b));
-  --color-fp-lane-green-soft: color-mix(in srgb, var(--color-fp-lane-green) 16%, var(--fp-surface-1b));
-  --color-fp-lane-cyan-soft: color-mix(in srgb, var(--color-fp-lane-cyan) 16%, var(--fp-surface-1b));
-  --color-fp-lane-purple-soft: color-mix(in srgb, var(--color-fp-lane-purple) 16%, var(--fp-surface-1b));
-  --color-fp-lane-violet-soft: color-mix(in srgb, var(--color-fp-lane-violet) 16%, var(--fp-surface-1b));
-  --color-fp-lane-pink-soft: color-mix(in srgb, var(--color-fp-lane-pink) 16%, var(--fp-surface-1b));
-  --color-fp-lane-orange-soft: color-mix(in srgb, var(--color-fp-lane-orange) 16%, var(--fp-surface-1b));
-  --color-fp-lane-red-soft: color-mix(in srgb, var(--color-fp-lane-red) 16%, var(--fp-surface-1b));
+  --color-fp-lane-grey-soft: color-mix(in srgb, var(--color-fp-lane-grey) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-blue-soft: color-mix(in srgb, var(--color-fp-lane-blue) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-yellow-soft: color-mix(in srgb, var(--color-fp-lane-yellow) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-green-soft: color-mix(in srgb, var(--color-fp-lane-green) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-cyan-soft: color-mix(in srgb, var(--color-fp-lane-cyan) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-purple-soft: color-mix(in srgb, var(--color-fp-lane-purple) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-violet-soft: color-mix(in srgb, var(--color-fp-lane-violet) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-pink-soft: color-mix(in srgb, var(--color-fp-lane-pink) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-orange-soft: color-mix(in srgb, var(--color-fp-lane-orange) var(--fp-lane-soft-pct), var(--fp-surface-1b));
+  --color-fp-lane-red-soft: color-mix(in srgb, var(--color-fp-lane-red) var(--fp-lane-soft-pct), var(--fp-surface-1b));
   /* VIVID LANE TITLES — EVERY BOARD (Pavan, 2026-10-27,
      after a ClickUp board): a saturated fill per lane with white text —
      yellow takes a dark ink — the same in both themes. Each fill is the
@@ -1322,6 +1322,23 @@
 
 /* ── WCAG light ───────────────────────────────────────────────────────── */
 .wcag:not(.dark) {
+  /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
+     their initial goes black at 7:1; the lane count steps on. */
+  --pastel-blue: #88a8cc;
+  --pastel-blue-foreground: #000000;
+  --pastel-amber: #cfa884;
+  --pastel-amber-foreground: #000000;
+  --pastel-violet: #a697cf;
+  --pastel-violet-foreground: #000000;
+  --pastel-rose: #d19494;
+  --pastel-rose-foreground: #000000;
+  --pastel-slate: #a6adb7;
+  --pastel-slate-foreground: #000000;
+  --pastel-teal: #83b7b3;
+  --pastel-teal-foreground: #000000;
+  --pastel-green: #96bd8d;
+  --pastel-green-foreground: #000000;
+  --fp-lane-count: #c9ced6;
   /* Vivid lane titles: fills deepen until white text holds AAA. */
   --fp-lane-grey-vivid: #515772;
   --fp-lane-blue-vivid: #3451ad;
@@ -1392,6 +1409,26 @@
 
 /* ── WCAG dark ────────────────────────────────────────────────────────── */
 .dark.wcag {
+  /* BUTTONS AND FIELDS IN DARK fill up with Fill contrast (Pavan, 2026-10-28). */
+  --fp-field-fill: color-mix(in oklab, #474f5b 60%, transparent);
+  --fp-field-fill-hover: color-mix(in oklab, #474f5b 80%, transparent);
+  /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
+     their initial goes black at 7:1; the lane count steps on. */
+  --pastel-blue: #88a8cc;
+  --pastel-blue-foreground: #000000;
+  --pastel-amber: #cfa884;
+  --pastel-amber-foreground: #000000;
+  --pastel-violet: #a697cf;
+  --pastel-violet-foreground: #000000;
+  --pastel-rose: #d19494;
+  --pastel-rose-foreground: #000000;
+  --pastel-slate: #a6adb7;
+  --pastel-slate-foreground: #000000;
+  --pastel-teal: #83b7b3;
+  --pastel-teal-foreground: #000000;
+  --pastel-green: #96bd8d;
+  --pastel-green-foreground: #000000;
+  --fp-lane-count: #444c59;
   /* Vivid lane titles: fills deepen until white text holds AAA. */
   --fp-lane-grey-vivid: #515772;
   --fp-lane-blue-vivid: #3451ad;
@@ -1446,6 +1483,23 @@
    the middle → this. Text still 7:1 on every (darker) surface; rims and
    dividers 5:1 and more. Tokens not named here stay at their WCAG value. */
 .a11y-max:not(.dark) {
+  /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
+     their initial goes white at 7:1; the lane count steps on. */
+  --pastel-blue: #3c5979;
+  --pastel-blue-foreground: #ffffff;
+  --pastel-amber: #764f2f;
+  --pastel-amber-foreground: #ffffff;
+  --pastel-violet: #5e4e87;
+  --pastel-violet-foreground: #ffffff;
+  --pastel-rose: #834646;
+  --pastel-rose-foreground: #ffffff;
+  --pastel-slate: #4f5864;
+  --pastel-slate-foreground: #ffffff;
+  --pastel-teal: #30605c;
+  --pastel-teal-foreground: #ffffff;
+  --pastel-green: #3c6135;
+  --pastel-green-foreground: #ffffff;
+  --fp-lane-count: #a3a9b2;
   /* WHITES STAY WHITE, GREYS GO DARK (Pavan, 2026-10-21) — at the far end
      of Component background every grey surface heads toward dark grey, so a
      white card on its lane, a white panel on the ground, read at a glance.
@@ -1507,6 +1561,25 @@
   --ring: #2f1300;
 }
 .dark.a11y-max {
+  /* BUTTONS AND FIELDS IN DARK fill up with Fill contrast (Pavan, 2026-10-28). */
+  --fp-field-fill: color-mix(in oklab, #474f5b 85%, transparent);
+  --fp-field-fill-hover: color-mix(in oklab, #474f5b 100%, transparent);
+  /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
+     their initial goes white at 7:1; the lane count steps on. */
+  --pastel-blue: #3c5979;
+  --pastel-blue-foreground: #ffffff;
+  --pastel-amber: #764f2f;
+  --pastel-amber-foreground: #ffffff;
+  --pastel-violet: #5e4e87;
+  --pastel-violet-foreground: #ffffff;
+  --pastel-rose: #834646;
+  --pastel-rose-foreground: #ffffff;
+  --pastel-slate: #4f5864;
+  --pastel-slate-foreground: #ffffff;
+  --pastel-teal: #30605c;
+  --pastel-teal-foreground: #ffffff;
+  --pastel-green: #3c6135;
+  --pastel-green-foreground: #ffffff;
   --fp-ink-3: #e6e8eb;
   --fp-danger: #fee1e1;
   --status-success: #bdf4d1;
@@ -1673,6 +1746,9 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
      inset fill in light, a step lighter in dark, so the number stands off
      the lane. */
   --fp-lane-count: #dde1e7;
+  /* THE LANE-TITLE PILL'S TINT — 16% at rest; Fill contrast takes it to 40%
+     (a11y.ts), foreground text holding 7:1 the whole way (Pavan, 2026-10-28). */
+  --fp-lane-soft-pct: 16%;
 }
 .dark {
   --fp-lane-count: #3d4550;

@@ -1284,11 +1284,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
       {card.footerAction?.waiting ? (
         /* A DONE ASK IN A SUBTLE GREEN BOX (Pavan, 2026-10-28) — tucked 4px
            inside the card like the grey wait box, the words on the left, how
-           long ago on the right. Version 4 takes the grey wait box instead
-           (Pavan, 2026-10-28). */
+           long ago on the right. EVERY VERSION TAKES THE GREY WAIT BOX,
+           both themes (Pavan, 2026-10-28). */
         <div className={cn("px-1", gapTop)}>
-          <div className={cn("flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-xs", bare ? "bg-fp-wait-box" : "bg-fp-alert-pill-success")}>
-            <span className={cn("flex min-w-0 items-center gap-1", bare ? ALERT_ACCENT.default : "text-fp-alert-pill-success-ink")}>
+          <div className={cn("flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-xs", "bg-fp-wait-box")}>
+            <span className={cn("flex min-w-0 items-center gap-1", ALERT_ACCENT.default)}>
               <Check className="size-4 shrink-0" />
               <span className="truncate">{card.footerAction.label}</span>
             </span>

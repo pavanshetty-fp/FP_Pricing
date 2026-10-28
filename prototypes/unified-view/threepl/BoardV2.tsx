@@ -277,10 +277,10 @@ export function CardV2({
         </div>
       )}
       {card.footerAction?.waiting ? (
-        /* A done ask in a subtle green box, how long ago on the right
-           (Pavan, 2026-10-28). */
-        <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-alert-pill-success px-2 py-1.5 text-xs">
-          <span className="flex min-w-0 items-center gap-1 text-fp-alert-pill-success-ink">
+        /* A done ask in the grey wait box, how long ago on the right
+           (Pavan, 2026-10-28 — grey on every version, both themes). */
+        <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-wait-box px-2 py-1.5 text-xs">
+          <span className="flex min-w-0 items-center gap-1 text-foreground">
             <Check className="size-3.5 shrink-0" />
             <span className={wrap ? "break-words" : "truncate"}>{card.footerAction.label}</span>
           </span>

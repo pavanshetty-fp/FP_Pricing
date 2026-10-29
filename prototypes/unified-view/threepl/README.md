@@ -1166,6 +1166,15 @@ gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.
 **2026-10-29:** those lines and the Delivery line are now 14px regular;
 the order number stays 14px semibold, the date 12px regular. Dark-theme
 main text is pure white (`--fp-ink-1` #ffffff, was #e8eaed).
+**Standard-screen colours (2026-10-29)** — tried as V5 (V4 + new colours),
+then made the default for every version, module and page; V5 folded back
+into V4. For dim, low-contrast Windows and laptop panels, neighbouring fills
+and borders keep a minimum contrast step against the card (card border 1.5,
+hover border 2.2, lines 1.6, field borders 3, grey fills 1.2, pressed fills
+1.3; dark a little higher), lane-title tint 26%, secondary text 7:1, dark
+page #101216 (was #07080a). The lane under the cursor tints (light: the
+sorted table column's grey; dark: #232831); a hovered card on it is the
+level above. Values and rule: `src/index.css` ("STANDARD-SCREEN COLOURS").
 **A date in every lane**: Assigned keeps its schedule (no longer off by
 default, all versions); from Completed on, *Completed on* hangs under the
 ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"

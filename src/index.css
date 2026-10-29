@@ -567,7 +567,7 @@
      ------------------------------------------------------------------ */
   --fp-ink-1: #030405; /* body text */
   --fp-ink-2: #090c0f; /* text on an emphasis fill */
-  --fp-ink-3: #596475; /* secondary text */
+  --fp-ink-3: #4f5968; /* secondary text — 7.1:1 (was #596475, 2026-10-29) */
   --fp-ink-inverse: #f0f2f5; /* text on the primary fill */
   /* THE GROUND IS WARM, AND EVERYTHING ON IT IS COOL. That is a deliberate
      pairing, not a mismatch: the content layer, the card steps and the strokes
@@ -581,7 +581,7 @@
      separating that the 12/255 of lightness cannot, which is also why the
      tier-2 drawer beside it can be a near-white and still read as its own
      panel. */
-  --fp-surface-base: #efefeb; /* the app ground */
+  --fp-surface-base: #e8e8e4; /* 1.23 against white (was #efefeb, 2026-10-29) */ /* the app ground */
   /* THE INNER PANEL IS A STEP, NOT MORE WHITE. It was #ffffff — identical to
      the content layer it sits on and to --card, which aliases it — so a card
      had nothing to separate by except its border, and the whole theme read as
@@ -601,15 +601,15 @@
   --fp-shell-selected: #f1f0ec;
   --fp-shell-guide: #e6e4e2;
   --fp-shell-marker: #3a7760;
-  --fp-card-1: #e9ecf1; /* raised card / inset block */
-  --fp-card-2: #f4f5f8; /* the quieter card step (Figma FP/Card 2) */
+  --fp-card-1: #dee1e7; /* raised card / inset block */
+  --fp-card-2: #e8eaed; /* the quieter card step (Figma FP/Card 2) */
   --fp-card-3: #fafafa; /* the faintest step — a board lane's ground */
   /* SELECTION / control emphasis. Light value owned by the Figma sync on main
      (base/accent, base/sidebar-accent -> gray/200). That sync also split this
      family in two: it puts --accent/--sidebar-accent on gray/200 but
      --secondary/--muted on zinc/100, which one primitive cannot hold, hence
      --fp-emphasis-quiet below. In dark both still resolve here. */
-  --fp-emphasis: #e5e7eb;
+  --fp-emphasis: #dee0e5;
   /* SELECTION IS A HUE, NOT A GREY. --fp-emphasis on the content layer is
      1.14:1 — a tint the eye cannot find, which is why every selected row, tab,
      nav item and segment read as unselected. A tint of a DIFFERENT colour is
@@ -628,7 +628,7 @@
   /* The quieter half of the emphasis split — base/secondary and base/muted,
      zinc/100. Exists only because light needs two values where dark needs one;
      in dark --secondary re-aliases --fp-emphasis and --muted --fp-card-2. */
-  --fp-emphasis-quiet: #f4f4f5;
+  --fp-emphasis-quiet: #e9eaeb;
   /* Hover, one step under selection. NOT retuned by the Figma sync — nothing in
      the Figma collection covers it — but the sync moved --fp-emphasis to
      gray/200, which narrowed the gap between the two from [-12,-12,-12] to
@@ -637,8 +637,8 @@
      the opposite way round from --fp-row-hover/--fp-row-selected, which go
      [11,9,7] lighter. Both predate this merge; left as-is rather than inventing
      a value. */
-  --fp-emphasis-hover: #eceef2;
-  --fp-outline-1: #e2e5ea; /* quiet rim */
+  --fp-emphasis-hover: #e4e6ea;
+  --fp-outline-1: #cfd3d9; /* quiet rim — 1.5:1 (was #e2e5ea, 2026-10-29) */
   /* STRONGER RIM — and it now actually is stronger.
      It was #ededed, which measured 1.17:1 on white against --fp-outline-1's
      1.26: the "stronger" rim was the WEAKER of the two, so every Kanban card
@@ -651,7 +651,7 @@
      one is a rim (border, and a 1px connector fill in five places), that one
      is a field's only boundary. Two jobs, two tokens, so retuning one never
      drags the other. */
-  --fp-outline-2: #c4c4c9;
+  --fp-outline-2: #adaeb4;
   /* THE HAIRLINE FAMILY — THREE WEIGHTS, THREE JOBS.
        --fp-outline-1     #e2e5ea  1.26:1  a card's own rim
        --fp-stroke-hairline #d4d4d8  1.48:1  a structural divider
@@ -676,8 +676,8 @@
      ramp meets it — zinc/400 did not either — so this was never an accessible
      vs not choice, only a weight one. Worth revisiting with a filled input,
      which is the fix that would actually close it. */
-  --fp-stroke-hairline: #d4d4d8; /* structural divider — base/border, zinc/300 */
-  --fp-stroke-field: #c4c4c9; /* field boundary — base/input, off-ramp by design */
+  --fp-stroke-hairline: #c8c9cd; /* structural divider — base/border, zinc/300 */
+  --fp-stroke-field: #91949b; /* field boundary — base/input, off-ramp by design */
   /* A FIELD'S FILL, A SWITCH'S TRACK — the field-border colour as it was,
      fixed, so only strokes answer Component stroke (Pavan, 2026-10-21). */
   --fp-field-fill: color-mix(in oklab, #c4c4c9 30%, transparent);
@@ -818,7 +818,7 @@
      data" table — tried on the portal's Orders, then made the header for
      every table. Row hover keeps card-2, so the header and a hovered row
      now differ. Dark is unchanged. */
-  --fp-table-header: #fafafa;
+  --fp-table-header: #f1f2f2;
   --fp-row-hover: var(--fp-card-2);
   /* THE APP GROUND IS THE RAIL'S OWN COLOUR, in light as it already is in dark.
      Set to #ffffff it was identical to --card, --popover and both content
@@ -1033,9 +1033,9 @@
   /* LAYER 1 — the same primitives, dark values. */
   --fp-ink-1: #ffffff; /* body text — pure white (Pavan, 2026-10-29; was #e8eaed) */
   --fp-ink-2: #ffffff; /* text on an emphasis fill */
-  --fp-ink-3: #a0a7b0; /* secondary text */
+  --fp-ink-3: #adb3bb; /* secondary text */
   --fp-ink-inverse: #0f1216; /* text on the primary fill */
-  --fp-surface-base: #07080a; /* the app ground */
+  --fp-surface-base: #101216; /* the app ground */
   --fp-surface-1a: #272c35; /* inner panel */
   /* DARK SELECTS IN GREY. Light gets the brand, dark does not: any orange dark
      enough to sit quietly on a near-black ground has gone brown by the time it
@@ -1059,15 +1059,15 @@
   --fp-shell-selected: var(--fp-card-1);
   --fp-shell-guide: var(--fp-outline-2);
   --fp-shell-marker: #6fbf9f;
-  --fp-card-1: #2e343e; /* raised card / inset block */
-  --fp-card-2: #23282f;
+  --fp-card-1: #353b45; /* raised card / inset block */
+  --fp-card-2: #2b3036;
   --fp-card-3: #21262d; /* the faintest step — had no dark value */ /* the quieter card step (Figma FP/Card 2) */
-  --fp-emphasis: #2e343e; /* SELECTION / control emphasis */
-  --fp-emphasis-hover: #363d48; /* hover, one step under selection */
-  --fp-outline-1: #3d4550; /* quiet rim — NONE in dark (Pavan, 2026-10-05): cards separate by fill; dividers use --fp-stroke-hairline */
-  --fp-outline-2: #555e6b; /* stronger rim */
-  --fp-stroke-hairline: #343b45; /* global hairline */
-  --fp-stroke-field: #474f5b;
+  --fp-emphasis: #353b45; /* SELECTION / control emphasis */
+  --fp-emphasis-hover: #3a414c; /* hover, one step under selection */
+  --fp-outline-1: #474e59; /* quiet rim — NONE in dark (Pavan, 2026-10-05): cards separate by fill; dividers use --fp-stroke-hairline */
+  --fp-outline-2: #5f6874; /* stronger rim */
+  --fp-stroke-hairline: #3d444d; /* global hairline */
+  --fp-stroke-field: #656c76;
   --fp-field-fill: color-mix(in oklab, #474f5b 30%, transparent);
   --fp-field-fill-hover: color-mix(in oklab, #474f5b 50%, transparent);
   --fp-switch-track: color-mix(in oklab, #474f5b 80%, transparent); /* field border */
@@ -1745,13 +1745,13 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
   /* THE LANE COUNT PILL (Pavan, 2026-10-27) — a step darker than the
      inset fill in light, a step lighter in dark, so the number stands off
      the lane. */
-  --fp-lane-count: #dde1e7;
+  --fp-lane-count: #d3d7de;
   /* THE LANE-TITLE PILL'S TINT — 16% at rest; Fill contrast takes it to 40%
      (a11y.ts), foreground text holding 7:1 the whole way (Pavan, 2026-10-28). */
-  --fp-lane-soft-pct: 16%;
+  --fp-lane-soft-pct: 26%;
 }
 .dark {
-  --fp-lane-count: #3d4550;
+  --fp-lane-count: #474e59;
 }
 /* THE WAIT BOX on a board card (Pavan, 2026-10-27) — the quote band's grey,
    the Recurring pill's `--muted`. */
@@ -1770,13 +1770,13 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
    tokens it draws with. Light mode is untouched. */
 .dark .fp-surface-light {
   --foreground: #030405;
-  --muted-foreground: #596475;
-  --border: #d4d4d8;
+  --muted-foreground: #4f5968;
+  --border: #c8c9cd;
   --popover: #ffffff;
   --popover-foreground: #030405;
-  --fp-table-header: #fafafa;
-  --fp-outline-1: #e2e5ea;
-  --fp-outline-2: #c4c4c9;
+  --fp-table-header: #f1f2f2;
+  --fp-outline-1: #cfd3d9;
+  --fp-outline-2: #adaeb4;
   --fp-surface-1a: #f4f5f8;
   --fp-surface-1b: #ffffff;
   color-scheme: light;
@@ -1796,3 +1796,34 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
   );
 }
 
+
+/* ------------------------------------------------------------------
+   STANDARD-SCREEN COLOURS (Pavan, 2026-10-29; tried as the 3PL board's V5,
+   then made the default everywhere). Cheap, dim and Windows sRGB panels
+   flatten colours that sit close together, so neighbours keep a minimum
+   step, measured as contrast against the card they sit on (#ffffff light,
+   #1d222a dark):
+     card border ≥ 1.5 (1.9 dark) · hover border ≥ 2.2 (2.8 dark)
+     structural lines ≥ 1.6 · field borders ≥ 3 (WCAG non-text)
+     grey fills inside a card ≥ 1.2 · selected/pressed fills ≥ 1.3 (1.4 dark)
+     lane-title tint 26% · secondary text ≥ 7 · dark page #101216, off black.
+   Every colour is plain sRGB hex. The values live in :root and .dark above.
+   ------------------------------------------------------------------ */
+:root {
+  /* The lane under the cursor — the sorted table column's grey
+     (`.fp-sorted-cell`); the card on it stays white, its hover the strong
+     border and lift, one level up. */
+  --fp-lane-hover: color-mix(in oklab, var(--fp-row-hover) 55%, var(--fp-surface-1b));
+}
+.dark {
+  /* 1.08 against the lane; a hovered card goes to --muted, 1.13 above. */
+  --fp-lane-hover: #232831;
+}
+/* THE LANE UNDER THE CURSOR TINTS (Pavan, 2026-10-29) — so you can see
+   which lane you are in; the card under the cursor is the level above it. */
+[data-fp-unit="lane"] {
+  transition: background-color 120ms ease;
+}
+[data-fp-unit="lane"]:hover {
+  background-color: var(--fp-lane-hover);
+}

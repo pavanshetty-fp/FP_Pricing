@@ -448,6 +448,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       const v = localStorage.getItem("fp-3pl-board-version");
       /* 2.1 BECAME 2 (Pavan, 2026-10-28). */
       if (v === "2.1") return "2";
+      /* V5'S COLOURS BECAME EVERYONE'S (Pavan, 2026-10-29), so V5 is V4. */
+      if (v === "5") return "4";
       return v === "1.1" || v === "2" || v === "3" || v === "4" ? v : "1";
     } catch {
       return "1";

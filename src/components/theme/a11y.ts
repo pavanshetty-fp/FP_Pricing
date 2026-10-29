@@ -239,9 +239,9 @@ export function applySettings() {
   all.forEach((t) => style.removeProperty(t));
   if (a11y.stroke !== 0 || a11y.background !== 0 || a11y.ink !== 0) mixContrast(root, all);
   if (a11y.background !== 0 || a11y.ink !== 0) textOnFills(root);
-  /* THE LANE-TITLE TINT — 16% → 40% with Fill contrast (index.css). */
+  /* THE LANE-TITLE TINT — 26% → 40% with Fill contrast (index.css). */
   if (a11y.background === 0) style.removeProperty("--fp-lane-soft-pct");
-  else style.setProperty("--fp-lane-soft-pct", `${16 + a11y.background * 0.24}%`);
+  else style.setProperty("--fp-lane-soft-pct", `${26 + a11y.background * 0.14}%`);
   /* THE DARK FRAME — Contrast 80%+ in the light theme: the shell
      ground and the selected nav item jump to near black, white text on them
      (Pavan, 2026-10-21 — no grey between ~#5a and #95 reads at 7:1 either

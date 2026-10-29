@@ -193,8 +193,8 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 
 | Utility | Token | Light | Dark | Means / use |
 |---|---|---|---|---|
-| `bg-background` · `bg-rail` · `bg-fp-surface-base` | `--background` → `--fp-surface-base` | `#efefeb` | `#07080a` | The app ground. Warm gray under cool paper in light — the temperature does the separating. The rail is the ground and disappears into it |
-| `bg-fp-shell-ground` | `--fp-shell-ground` | `#f2f2f2` | `#07080a` | The ground the whole app sits on, top bar included (the top bar has no fill of its own) |
+| `bg-background` · `bg-rail` · `bg-fp-surface-base` | `--background` → `--fp-surface-base` | `#e8e8e4` | `#101216` | The app ground. Warm gray under cool paper in light — the temperature does the separating. The rail is the ground and disappears into it |
+| `bg-fp-shell-ground` | `--fp-shell-ground` | `#f2f2f2` | `#101216` | The ground the whole app sits on, top bar included (the top bar has no fill of its own) |
 | `bg-fp-shell-panel` | `--fp-shell-panel` | `#fbfbfb` | `#23282f` | The navigation's box |
 | `bg-fp-shell-selected` | `--fp-shell-selected` | `#f1f0ec` | `#2e343e` | The selected page in the nav |
 | `bg-fp-surface-1b` | `--fp-surface-1b` | `#ffffff` | `#1d222a` | **The content layer**, and the fill inside every field (fields are white wells) |
@@ -202,18 +202,18 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 | `bg-card` · `bg-fp-surface-1a` | `--card` → `--fp-surface-1a` | `#f4f5f8` | `#272c35` | Card / inner panel — one step under the content layer |
 | `bg-drawer` | `--drawer` | `#fafbf8` | `#272c35` | Tier-2 drawer (two-layer nav only) |
 | `bg-sidebar` | `--sidebar` | `#fafbf8` | `#181c22` | Sidebar surface. Deliberately a quiet edge in light |
-| `bg-fp-card-1` | `--fp-card-1` | `#e9ecf1` | `#2e343e` | Raised inner card, inset block, pressed tint |
-| `bg-fp-card-2` (via `--muted` in dark) | `--fp-card-2` | `#f4f5f8` | `#23282f` | The quieter card step |
+| `bg-fp-card-1` | `--fp-card-1` | `#dee1e7` | `#353b45` | Raised inner card, inset block, pressed tint |
+| `bg-fp-card-2` (via `--muted` in dark) | `--fp-card-2` | `#e8eaed` | `#2b3036` | The quieter card step |
 | `--fp-card-3` | `--fp-card-3` | `#fafafa` | `#21262d` | The faintest step |
-| `bg-fp-board-lane` | `--fp-board-lane` | `#e9ecf1` (card-1) | `#07080a` (ground) | **Board lane ground — one token, every board.** Light darkened one step on 2026-10-22 for washed-out monitors; in dark the lane is a well, so cards sit lighter on it |
-| `bg-fp-lane` | `--fp-lane` | `#f4f5f8` | `#2e343e` | Band behind a **grouped table's** header row. Not a board lane |
+| `bg-fp-board-lane` | `--fp-board-lane` | `#dee1e7` (card-1) | `#101216` (ground) | **Board lane ground — one token, every board.** Light darkened one step on 2026-10-22 for washed-out monitors; in dark the lane is a well, so cards sit lighter on it |
+| `bg-fp-lane` | `--fp-lane` | `#e8eaed` | `#353b45` | Band behind a **grouped table's** header row. Not a board lane |
 | `bg-fp-table-header` | `--fp-table-header` | `#fafafa` | `#23282f` | Every table header row; also the hanging add and the selected pagination page |
-| `bg-fp-row-hover` | `--fp-row-hover` | `#f4f5f8` | `#252a32` | Table row hover. Differs from the header on purpose |
+| `bg-fp-row-hover` | `--fp-row-hover` | `#e8eaed` | `#252a32` | Table row hover. Differs from the header on purpose |
 | `bg-fp-row-selected` | `--fp-row-selected` → `--selected` | `#fee8d9` | `#2e343e` | A ticked row |
 | `.fp-sorted-cell` | mix of row hover 55% | — | — | Cells of the sorted column (half the row hover) |
 | `bg-chip` | `--chip` | `#efefeb` | `#2e343e` | Chip fill, active view icon, sorted header (`th[aria-sort]`) |
-| `bg-muted` | `--muted` | `#f4f4f5` | `#23282f` | Neutral pill tint, removable chips, the on state of segment controls |
-| `bg-secondary` | `--secondary` | `#f4f4f5` | `#2e343e` | Secondary button fill |
+| `bg-muted` | `--muted` | `#e9eaeb` | `#2b3036` | Neutral pill tint, removable chips, the on state of segment controls |
+| `bg-secondary` | `--secondary` | `#e9eaeb` | `#353b45` | Secondary button fill |
 | `bg-fp-field-fill` / `-hover` | `--fp-field-fill` | `#c4c4c9` @30% / 50% | `#474f5b` @30% / 50% | Dark-theme fill of fields and outline buttons (`dark:bg-fp-field-fill`) |
 | `bg-fp-switch-track` | `--fp-switch-track` | `#c4c4c9` | `#474f5b` @80% | A switch's off track |
 
@@ -225,7 +225,7 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 |---|---|---|---|---|
 | `text-foreground` | `--foreground` → `--fp-ink-1` | `#030405` | `#ffffff` | Body text, values, the row's own thing |
 | `text-secondary-foreground` · `text-accent-foreground` | `--fp-ink-2` | `#090c0f` | `#ffffff` | Text on an emphasis fill |
-| `text-muted-foreground` | `--fp-ink-3` | `#596475` | `#a0a7b0` | Labels, secondary values, placeholders, sub-lines, muted icons |
+| `text-muted-foreground` | `--fp-ink-3` | `#4f5968` | `#adb3bb` | Labels, secondary values, placeholders, sub-lines, muted icons |
 | `text-primary-foreground` | `--fp-ink-inverse` | `#f0f2f5` | `#0f1216` | Text on the primary fill |
 | `text-brand` | `--fp-brand-ink` | `#fa6400` | `#fa6400` | Orange TEXT only — Contrast can darken it while the brand fill stays |
 
@@ -233,10 +233,10 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 
 | Utility | Token | Light | Dark | Job |
 |---|---|---|---|---|
-| `border-fp-outline-1` | `--fp-outline-1` | `#e2e5ea` (1.26:1) | `#3d4550` | **A card's own rim.** Not negotiable per component |
-| `border-border` (default `*` border) | `--border` → `--fp-stroke-hairline` | `#d4d4d8` (1.48:1) | `#343b45` | Structural divider: page header, tab strip, table edge and row rules, sidebar edge, separators |
-| `border-input` | `--input` → `--fp-stroke-field` | `#c4c4c9` (1.74:1) | `#474f5b` | **A field's boundary** (inputs, selects, outline buttons, checkboxes, radios) |
-| `border-fp-outline-2` | `--fp-outline-2` | `#c4c4c9` | `#555e6b` | The hover / active rim that must beat a card's rim |
+| `border-fp-outline-1` | `--fp-outline-1` | `#cfd3d9` (1.5:1) | `#474e59` | **A card's own rim.** Not negotiable per component |
+| `border-border` (default `*` border) | `--border` → `--fp-stroke-hairline` | `#c8c9cd` (1.65:1) | `#3d444d` | Structural divider: page header, tab strip, table edge and row rules, sidebar edge, separators |
+| `border-input` | `--input` → `--fp-stroke-field` | `#91949b` (3:1) | `#656c76` | **A field's boundary** (inputs, selects, outline buttons, checkboxes, radios) |
+| `border-fp-outline-2` | `--fp-outline-2` | `#adaeb4` | `#5f6874` | The hover / active rim that must beat a card's rim |
 | `border-sidebar-border` | `--sidebar-border` | hairline | `#ffffff` @7% (`#ffffff12`) | Sidebar edge |
 | `--fp-shell-rim` · `--fp-shell-guide` | | `#e5e3e1` · `#e6e4e2` | `#555e6b` · `#555e6b` | Nav box rim · the guide line down a module's pages |
 | `--fp-shell-marker` | | `#3a7760` | `#6fbf9f` | Green marker on the guide line beside the current page |
@@ -251,8 +251,8 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 | `bg-selected` | `--selected` → `--fp-selected` | `#fee8d9` (brand 15%) | `#2e343e` (gray) | **"You chose this."** Selected preset, ticked row, chosen item |
 | `text-selected-foreground` | `--fp-selected-strong` | `#a33f00` | `#ffffff` | Its label, icon, indicator (underline tabs) |
 | `border-selected-border` | `--fp-selected-border` | `#fdb98c` | `#555e6b` | Its rim |
-| `bg-accent` · `text-accent-foreground` | `--accent` → `--fp-emphasis` | `#e5e7eb` | `#2e343e` | **The gray hover — "the pointer is here."** Not the accent color |
-| `bg-sidebar-accent` | | `#e5e7eb` | `#2e343e` | The nav's current module — neutral, not brand |
+| `bg-accent` · `text-accent-foreground` | `--accent` → `--fp-emphasis` | `#dee0e5` | `#353b45` | **The gray hover — "the pointer is here."** Not the accent color |
+| `bg-sidebar-accent` | | `#dee0e5` | `#353b45` | The nav's current module — neutral, not brand |
 
 ### 1.5 Accent violet = highlight
 
@@ -275,7 +275,7 @@ A module declares **kinds**; `KIND_TONE` in `statusKind.ts` is the only place a 
 | `info` | Simply true, asks nothing — Assigned, Scheduled, Active | `info` | `bg-fp-banner-accent-info/10 text-fp-banner-accent-info` | `#1d4ed8` | `#a5b4fc` |
 | `success` | Done — Completed, Delivered, Synced | `success` | `bg-status-success/10 text-status-success` | `#15803d` | `#22c55e` |
 | `critical` | A warning — Blocked, Declined, Over limit | `failed` | `bg-status-failed/10 text-status-failed` | `#dc2626` | `#f87171` |
-| `neutral` | Neither — Draft, Canceled, Ended, Inactive | `neutral` | `bg-muted text-muted-foreground` | `#596475` | `#a0a7b0` |
+| `neutral` | Neither — Draft, Canceled, Ended, Inactive | `neutral` | `bg-muted text-muted-foreground` | `#4f5968` | `#adb3bb` |
 
 Active / inactive records: `ACTIVE_KIND(active)` → `info` / `neutral`.
 
@@ -356,6 +356,7 @@ Lane accents move too (WCAG light: yellow `#a67f06`, green `#1a9848`, cyan `#059
 12. **Board lanes use `bg-fp-board-lane`, grouped-table bands `bg-fp-lane`.** Two tokens even when equal. — *Retuning one must never drag the other.*
 13. **Categorical hues are the same in both themes.** — *A series that changes color with the theme changes identity.*
 14. **Orange TEXT uses `text-brand` (→ `--fp-brand-ink`); the brand fill is never moved by an accessibility setting.** — *Text color once recoloured the logo.* (2026-10-21)
+15. **Neighbouring colours keep a minimum step, for standard screens.** Measured as contrast against the card they sit on: card rim ≥ 1.5 (1.9 dark), hover rim ≥ 2.2 (2.8 dark), dividers ≥ 1.6, field borders ≥ 3, grey fills inside a card ≥ 1.2, pressed/selected fills ≥ 1.3 (1.4 dark), secondary text ≥ 7; dark ground #101216, not black; sRGB hex only. The lane under the cursor tints (`--fp-lane-hover`, light = the sorted column's grey). — *Colours that read on a MacBook merged on dim Windows and laptop panels; tried as the board's V5, then made the default everywhere.* (2026-10-29)
 
 ---
 

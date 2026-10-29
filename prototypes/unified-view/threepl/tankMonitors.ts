@@ -28,19 +28,28 @@ function capacityOf(name: string, r: () => number): number {
   if (/Tote/i.test(name)) return 330;
   if (/Skid/i.test(name)) return 120;
   if (/Drum|Rack/i.test(name)) return 220;
+  if (/Pail|Case|Jug/i.test(name)) return 50;
   return [500, 1000, 1000, 2000, 3000][Math.floor(r() * 5)];
 }
 
 const cache = new Map<string, Asset>();
 
 /** The tank at a ship-to, with its monitor's last reading. */
-export function siteTank(shipTo: string, assetName: string, product: string, rental = false): Asset {
+export function siteTank(
+  shipTo: string,
+  assetName: string,
+  product: string,
+  rental = false,
+  /** Pinned by the site's asset list; unset, the seeded draw decides. */
+  pinnedMonitor?: boolean
+): Asset {
   const key = `${shipTo}::${assetName}`;
   const hit = cache.get(key);
   if (hit) return { ...hit, product, products: [product] };
   const r = rng(hash(key));
   const capacity = capacityOf(assetName, r);
-  const monitor = r() < 0.9;
+  const drawn = r() < 0.9;
+  const monitor = pinnedMonitor ?? drawn;
   const tank: Asset = {
     id: `3pl:${key}`,
     name: assetName,

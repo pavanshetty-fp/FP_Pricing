@@ -1115,8 +1115,35 @@ order): name, then truck · phone; in Versions 2–4 the name behind an icon
 (a person in V4) with the rest on hover. The V4 rule now sits over the
 vendor. **Table:** no ERP ID under the customer, no Created By column (it is
 on the order's Associated records card, with the driver), a **Driver**
-column after Vendor. **Types** are now Fuel · Lubricants · Asset Movement ·
-Other — from the products' line (Propane → Other). **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
+column after Vendor. **Types** (2026-10-29, back to the reference) are Core · Delivery ·
+Emergency · Extraction; movement orders keep Asset Movement (never offered
+on a delivery). The create sheet also has **BOL number** (beside PO number;
+hidden table column, searchable) and the ship-to's **ERP ID** at the head of
+the ship-to read-out. **Asset picker** (create + detail, Delivery Order
+table): top tabs Fuel · Bulk Lubricants · Packaged Products (Fuel chosen on
+open); under Fuel a row of RADIOS (not tabs, 2026-10-29) All · Tank
+Monitors · No Tank Monitors. Planned Delivery Date is one third wide, under PO number.
+Category comes from the asset's product line — lube drums/totes/jugs/pails
+are Packaged, other lube assets Bulk, everything else (incl. DEF, propane)
+Fuel. `TableCellCombobox categories`. Every ship-to now carries a full range (`fullRange` in
+orders.ts): 3 monitored + 3 unmonitored fuel tanks, 3 bulk lube, 3 packaged
+(drum rack, pail shelf, case cage), so no tab is ever empty (min 3). A site
+asset can pin `monitor`; `siteTank` honours it. Tabbed dropdowns are a fixed
+360px tall.
+
+**2026-10-29 (order sheet batch).** Pickers (`TableCellSelect`): the tick
+sits right after the chosen name, chosen = medium + full ink, others muted.
+Planned Delivery Date: calendar only (`DatePanel calendarOnly`), tomorrow by
+default, a click picks and closes. Delivery window: preferred bar 16px,
+`bg-pastel-blue`; each end is a handle — the dashed line plus a black
+stroke the bar's height either side of it (four strokes per bar), the whole
+handle lighting up on hover; times sit 8px under the bar. Qty column: the unit sits in the
+cell behind a divider (`TableCellInput unit`) — Fuel gal only; Bulk
+Lubricants gal / mL / oz; Packaged EA / LB / QT / Tube / gal / mL / oz;
+total prints one figure per unit. Vendor tables: address takes the slack
+(full street address), partner/vendor name fixed. Loading accounts are
+alphanumeric numbers (GKM-50431 …); every product now loads at ≥2 terminals
+on ≥3 accounts. Eval guard `no-empty-options` keeps every picker filled. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
 **2026-10-28.** Version 4: units 8px apart (the 12 / 10 / 16 trial is
 gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.
@@ -1125,7 +1152,7 @@ default, all versions); from Completed on, *Completed on* hangs under the
 ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"
 — and wraps rather than truncates. **Invoice requested** sits in the grey
 wait box (`bg-fp-wait-box`) on every version, both themes, tick and words left, how long ago
-right (`invoiceRequestedAt`, `timeAgo`). **Icons (2026-10-28):** Versions 2, 3 and 4 have the pin, truck and person icons, no unit labels. On Versions 1 and 1.1 the vendor's label reads "Vendor", not "VENDOR"; the other V1 labels stay in capitals. Nothing sits under the vendor name on any version. The vendor unit: on Versions 1 and 1.1 a building icon plus "Vendor" label (`VendorUnitLabel`); on Versions 2, 3 and 4 no label — a handshake icon leads the name and holds the address on hover. **V2** took over what was V2.1 (the old V2, with info icons and no wrap, was removed 2026-10-28): those icons, smaller pills, and nothing truncates — every line, pill and the invoice box wraps; **V1.1** (`BrokerBoard iconed`) is Version 1 with an icon in place of the Ship-to, Schedule, Delivery and Driver headings (pin, calendar, truck, person). The Delivery Details hover shows the table only — the map beside it was removed. A brighter Recurring pill was tried
+right (`invoiceRequestedAt`, `timeAgo`). **Icons (2026-10-28):** Versions 2, 3 and 4 have the pin, truck and person icons, no unit labels. On Versions 1 and 1.1 the vendor's label reads "Vendor", not "VENDOR"; the other V1 labels stay in capitals. Nothing sits under the vendor name on any version. The vendor unit: on Versions 1 and 1.1 a handshake icon plus "Vendor" label (`VendorUnitLabel`); on Versions 2, 3 and 4 no label — a handshake icon leads the name and holds the address on hover. **V2** took over what was V2.1 (the old V2, with info icons and no wrap, was removed 2026-10-28): those icons, smaller pills, and nothing truncates — every line, pill and the invoice box wraps; **V1.1** (`BrokerBoard iconed`) is Version 1 with an icon in place of the Ship-to, Schedule, Delivery and Driver headings (pin, calendar, truck, person). The Delivery Details hover shows the table only — the map beside it was removed. A brighter Recurring pill was tried
 and reverted.
 
 **Card footers and bands (2026-10-27).** Quoting with nothing priced:

@@ -71,7 +71,7 @@ export interface ShipToSite {
   city: string;
   state: string;
   zip: string;
-  assets: { name: string; product: string; rental?: boolean }[];
+  assets: { name: string; product: string; rental?: boolean; monitor?: boolean }[];
 }
 
 /**
@@ -598,7 +598,7 @@ export const RECURRING_PROGRAMS: RecurringProgram[] = (() => {
         product === "Engine Oil 15W-40" ? "Lubricants" : "Fuel",
       business:
         product === "Engine Oil 15W-40" ? "Packaged Goods" : "Transport",
-      orderType: "Fuel",
+      orderType: "Core",
       signatureOnDelivery: i % 2 === 0,
       schedule,
       startKey,

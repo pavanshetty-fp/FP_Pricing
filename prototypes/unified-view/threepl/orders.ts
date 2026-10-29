@@ -117,7 +117,16 @@ export const ORDER_KINDS: OrderKind[] = ["Regular", "Recurring", "Movement"];
 /* FOUR TYPES (Pavan, 2026-10-27) — what is being moved: fuel, lubricants,
    an asset, or anything else. Was Core / Emergency / Delivery / Extraction /
    Pump Out / Transport. */
-export type BrokerOrderType = "Fuel" | "Lubricants" | "Asset Movement" | "Other";
+/* BACK TO THE REFERENCE'S FOUR (Pavan, 2026-10-29) — Core · Delivery ·
+   Emergency · Extraction, in that order. Fuel / Lubricants / Propane /
+   Packaged Goods / Other (2026-10-27/29) are gone. Asset Movement stays as
+   the type a movement order is given; it is never offered on a delivery. */
+export type BrokerOrderType =
+  | "Core"
+  | "Delivery"
+  | "Emergency"
+  | "Extraction"
+  | "Asset Movement";
 
 /**
  * §5.20 — AN ASSET ORDER IS A ROUTE BETWEEN TWO PLACES, and there are only two
@@ -181,8 +190,13 @@ export const MOVEMENT_DIRECTIONS: MovementDirection[] = [
 export interface OrderLine {
   asset: string;
   product: string;
-  /** Requested gallons, or `null` when the line is a top-off. */
+  /** Requested quantity, in `unit` (gallons unless said), or `null` when
+   *  the line is a top-off. */
   gal: number | null;
+  /** WHAT THE QUANTITY COUNTS (Pavan, 2026-10-29) — `gal` when unset. Fuel
+   *  is always gal; lubes and packaged products pick theirs in the cell. See
+   *  `unitsFor`. */
+  unit?: QtyUnit;
   /**
    * Fill this asset rather than deliver a stated quantity — the "Top off"
    * column in the Delivery Order table. It is the checkbox itself, not a mode
@@ -308,9 +322,13 @@ export interface LoadingAccount {
   products: string[];
 }
 
+/* LOADING ACCOUNTS ARE NUMBERS (Pavan, 2026-10-29) — an alphanumeric account
+   number (terminal code + digits), never a name. */
+const ALL_LOAD_PRODUCTS = ["Dyed Diesel", "Clear Diesel #2", "Unleaded 87", "Unleaded 91", "DEF Bulk", "Hydraulic Oil AW-46", "Engine Oil 15W-40", "Propane HD-5", "Propane Commercial"];
+
 export const LOADING_ACCOUNTS: LoadingAccount[] = [
   {
-    name: "Greensbro Premium",
+    name: "GKM-50431",
     terminal: "Greensbro KM2",
     supplier: "Liberty P56",
     terminals: ["Greensbro KM2", "Lib Washington 124"],
@@ -318,37 +336,70 @@ export const LOADING_ACCOUNTS: LoadingAccount[] = [
     products: ["Dyed Diesel", "Clear Diesel #2"],
   },
   {
-    name: "Greensbro Bulk",
+    name: "GKM-50478",
     terminal: "Greensbro KM2",
     supplier: "Pioneer Distributing",
     products: ["Unleaded 87", "Unleaded 91"],
   },
   {
-    name: "Liberty Standard",
+    name: "LP56-61209",
     terminal: "Liberty P56",
     supplier: "Liberty P56",
     products: ["Clear Diesel #2", "DEF Bulk"],
   },
   {
-    name: "Washington Contract",
+    name: "LW124-70316",
     terminal: "Lib Washington 124",
     supplier: "Sunrise Energy",
     suppliers: ["Sunrise Energy", "Liberty P56"],
     products: ["Dyed Diesel", "Unleaded 87", "DEF Bulk"],
   },
   {
-    name: "Kern Premium",
+    name: "KRT4-80122",
     terminal: "Kern River T4",
     supplier: "Pioneer Distributing",
     products: ["Hydraulic Oil AW-46", "Clear Diesel #2"],
   },
   {
-    name: "Kern Retail",
+    name: "KRT4-80167",
     terminal: "Kern River T4",
     supplier: "Sunrise Energy",
     terminals: ["Kern River T4", "Bakersfield Rack 2"],
     suppliers: ["Sunrise Energy", "Pioneer Distributing", "Valley Fuels"],
     products: ["Unleaded 87", "Unleaded 91", "Dyed Diesel"],
+  },
+  /* EVERY PRODUCT LOADS SOMEWHERE (Pavan, 2026-10-29) — lubes and propane had
+     no account, so their Terminal said "No options". Each product now has at
+     least three accounts across at least two terminals. INVENTED. */
+  {
+    name: "KRT4-80245",
+    terminal: "Kern River T4",
+    supplier: "Valley Fuels",
+    products: ["Engine Oil 15W-40", "Hydraulic Oil AW-46"],
+  },
+  {
+    name: "BR2-90311",
+    terminal: "Bakersfield Rack 2",
+    supplier: "Pioneer Distributing",
+    products: ["Engine Oil 15W-40", "Hydraulic Oil AW-46", "Propane HD-5", "Propane Commercial"],
+  },
+  {
+    name: "GKM-50590",
+    terminal: "Greensbro KM2",
+    supplier: "Sunrise Energy",
+    products: ALL_LOAD_PRODUCTS,
+  },
+  {
+    name: "LP56-61354",
+    terminal: "Liberty P56",
+    supplier: "Valley Fuels",
+    products: ALL_LOAD_PRODUCTS,
+  },
+  {
+    name: "LW124-70482",
+    terminal: "Lib Washington 124",
+    supplier: "Pioneer Distributing",
+    products: ["Propane HD-5", "Propane Commercial", "Engine Oil 15W-40", "Unleaded 91"],
   },
 ];
 
@@ -639,6 +690,8 @@ export interface BrokerOrder {
   urgent: boolean;
   signatureOnDelivery: boolean;
   poNumber: string;
+  /** Bill of lading number (Pavan, 2026-10-29). Optional, typed. */
+  bolNumber: string;
   zip: string;
   state: string;
   createdBy: string;
@@ -729,8 +782,28 @@ export function totalGal(lines: OrderLine[]): number {
      decided at the tank. It may still carry the number someone typed before
      ticking the box, which is kept so unticking hands it back; summing that
      would put gallons into a total nobody promised. */
-  return lines.reduce((sum, l) => sum + (l.topOff ? 0 : (l.gal ?? 0)), 0);
+  return lines.reduce((sum, l) => sum + (l.topOff || (l.unit ?? "gal") !== "gal" ? 0 : (l.gal ?? 0)), 0);
 }
+
+/* QUANTITY UNITS BY KIND OF ASSET (Pavan, 2026-10-29). Fuel only ever in
+   gallons; bulk lubricants gal / mL / oz; packaged products add each, pounds,
+   quarts and tubes. */
+export const QTY_UNITS = ["gal", "EA", "LB", "QT", "Tube", "mL", "oz"] as const;
+export type QtyUnit = (typeof QTY_UNITS)[number];
+export type AssetCategory = "Fuel" | "Bulk Lubricants" | "Packaged Products";
+/** WHICH TAB AN ASSET SITS UNDER — by what it holds. A lube asset that is a
+ *  drum, tote, jug, pail or case is packaged; any other lube asset is bulk;
+ *  everything else (fuel, DEF, propane) is Fuel. */
+export const categoryOfAsset = (name: string, product: string | undefined): AssetCategory => {
+  if ((product ? lineOfProduct(product) : "Fuel") !== "Lubricants") return "Fuel";
+  return /drum|tote|jug|pail|case/i.test(name) ? "Packaged Products" : "Bulk Lubricants";
+};
+export const unitsFor = (c: AssetCategory): readonly QtyUnit[] =>
+  c === "Fuel"
+    ? ["gal"]
+    : c === "Bulk Lubricants"
+      ? ["gal", "mL", "oz"]
+      : ["EA", "LB", "QT", "Tube", "gal", "mL", "oz"];
 
 /** True when every line is a top-off, so the Qty cell reads "Top-off", not "0". */
 export function isAllTopOff(lines: OrderLine[]): boolean {
@@ -1004,6 +1077,7 @@ export type BrokerColumnKey =
   | "business"
   | "orderType"
   | "poNumber"
+  | "bolNumber"
   | "hub"
   | "salesperson"
   | "tags"
@@ -1047,6 +1121,7 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
   { key: "business", label: "Business", width: 140, sortable: true },
   { key: "orderType", label: "Order Type", width: 140, sortable: true },
   { key: "poNumber", label: "PO Number", width: 140, sortable: true },
+  { key: "bolNumber", label: "BOL Number", width: 140, sortable: true },
   { key: "hub", label: "Hub", width: 160, sortable: true },
   { key: "salesperson", label: "Sales Person", width: 170, sortable: true },
   { key: "tags", label: "Tags", width: 160, sortable: true },
@@ -1058,6 +1133,7 @@ export const BROKER_HIDDEN_BY_DEFAULT: BrokerColumnKey[] = [
   "business",
   "orderType",
   "poNumber",
+  "bolNumber",
   "hub",
   "salesperson",
   "tags",
@@ -1102,10 +1178,10 @@ export const SALES_CONTACTS: Record<string, string> = {
  * bug waiting to be reported.
  */
 export const LISTING_TYPES: BrokerOrderType[] = [
-  "Fuel",
-  "Lubricants",
-  "Other",
-  "Asset Movement",
+  "Core",
+  "Delivery",
+  "Emergency",
+  "Extraction",
 ];
 
 /**
@@ -1207,13 +1283,15 @@ export const formatWindow = (w: { start: string; end: string }) =>
  * INVENTED — real sites were never captured. Spread across six states so the
  * ship-to facets have something to be judged on.
  */
-export const SHIP_TO_SITES = [
+const LISTED_SITES = [
   {
     name: "Bray North Yard",
     street: "4820 N Golden State Blvd",
     city: "Fresno",
     state: "California",
     zip: "93706",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34007",
     latLng: "36.81120, -119.83450",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1225,6 +1303,8 @@ export const SHIP_TO_SITES = [
     city: "Bakersfield",
     state: "California",
     zip: "93307",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34014",
     latLng: "35.34210, -118.94860",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1236,6 +1316,8 @@ export const SHIP_TO_SITES = [
     city: "Sacramento",
     state: "California",
     zip: "95815",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34021",
     latLng: "38.60130, -121.48210",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1247,6 +1329,8 @@ export const SHIP_TO_SITES = [
     city: "Houston",
     state: "Texas",
     zip: "77029",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34028",
     latLng: "29.78440, -95.23110",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1258,6 +1342,8 @@ export const SHIP_TO_SITES = [
     city: "Tulsa",
     state: "Oklahoma",
     zip: "74107",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34035",
     latLng: "36.08320, -96.00410",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1269,6 +1355,8 @@ export const SHIP_TO_SITES = [
     city: "Toledo",
     state: "Ohio",
     zip: "43605",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34042",
     latLng: "41.64470, -83.51190",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1280,6 +1368,8 @@ export const SHIP_TO_SITES = [
     city: "Fargo",
     state: "North Dakota",
     zip: "58102",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34049",
     latLng: "46.83190, -96.85640",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
@@ -1291,12 +1381,47 @@ export const SHIP_TO_SITES = [
     city: "Savannah",
     state: "Georgia",
     zip: "31408",
+    /** The ship-to's own ERP ID (Pavan, 2026-10-29). INVENTED. */
+    erpId: "ST-34056",
     latLng: "32.10650, -81.19980",
     /* The assets standing AT this site. The order sheet lists these to be
        ticked; it never asks anyone to type an asset name. */
     assets: [{ name: "Depot Bulk", product: "Clear Diesel #2", rental: false }, { name: "Depot Lube", product: "Hydraulic Oil AW-46", rental: true }, { name: "Depot 87", product: "Unleaded 87", rental: false }],
   },
 ];
+
+/** One asset standing at a site. `monitor` pins whether it reports a level;
+ *  unset, the seeded draw in `siteTank` decides. */
+export interface SiteAsset {
+  name: string;
+  product: string;
+  rental: boolean;
+  monitor?: boolean;
+}
+
+/* A FULL RANGE AT EVERY SITE (Pavan, 2026-10-29) — every tab of the asset
+   picker (Fuel with and without a tank monitor, Bulk Lubricants, Packaged
+   Products) has at least three assets at every ship-to. INVENTED; the
+   products rotate by site so no two sites read alike. */
+const FUEL_ROTATION = ["Dyed Diesel", "Clear Diesel #2", "Unleaded 87", "Unleaded 91", "DEF Bulk"];
+const LUBE_ROTATION = ["Hydraulic Oil AW-46", "Engine Oil 15W-40"];
+const fullRange = (i: number): SiteAsset[] => {
+  const fuel = (k: number) => FUEL_ROTATION[(i + k) % FUEL_ROTATION.length];
+  const lube = (k: number) => LUBE_ROTATION[(i + k) % LUBE_ROTATION.length];
+  return [
+    ...[1, 2, 3].map((n) => ({ name: `Bulk Tank ${n}`, product: fuel(n), rental: (i + n) % 3 === 0, monitor: true })),
+    ...[1, 2, 3].map((n) => ({ name: `Day Tank ${n}`, product: fuel(n + 2), rental: (i + n) % 4 === 0, monitor: false })),
+    ...[1, 2, 3].map((n) => ({ name: `Lube Bulk ${n}`, product: lube(n), rental: (i + n) % 3 === 1 })),
+    { name: "Drum Rack 1", product: lube(0), rental: false },
+    { name: "Pail Shelf 1", product: lube(1), rental: false },
+    { name: "Case Cage 1", product: lube(0), rental: i % 2 === 0 },
+  ];
+};
+
+export const SHIP_TO_SITES = LISTED_SITES.map((s, i) => ({
+  ...s,
+  assets: [...(s.assets as SiteAsset[]), ...fullRange(i)],
+}));
 
 /** Every asset name known across sites — what the Add Asset combobox offers. */
 export const ALL_ASSET_NAMES = [
@@ -1332,9 +1457,10 @@ export const ORDER_TYPE_FILTERS = [
   "Urgent Orders",
   "Recurring",
   "Movement",
-  "Fuel",
-  "Lubricants",
-  "Other",
+  "Core",
+  "Delivery",
+  "Emergency",
+  "Extraction",
 ];
 
 /* WHAT THE ACCOUNTING SYSTEM SAYS WHEN A SYNC FAILS. INVENTED — plausible
@@ -1980,14 +2106,15 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       id: `bo-${i}`,
       orderNo: `${isMovement ? "M" : "D"}-${FIRST_ORDER_NO + i * 7}`,
       kind,
-      /* THE TYPE FOLLOWS THE PRODUCTS' LINE (Pavan, 2026-10-27). The old
-         draws are still taken, so the rest of the fixture is unchanged. */
       orderType: isMovement
         ? "Asset Movement"
-        : (void (pick() < 0.14 || pick() < 0.3 || pick() < 0.42),
-          ({ Fuel: "Fuel", Lubricants: "Lubricants", Propane: "Other" } as const)[
-            lines.length > 0 ? lineOfProduct(lines[0].product) : wanted
-          ]),
+        : pick() < 0.14
+          ? "Emergency"
+          : pick() < 0.3
+            ? "Delivery"
+            : pick() < 0.42
+              ? "Extraction"
+              : "Core",
       customer: { title: cust.name, description: cust.erpId },
       shipTo,
       date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
@@ -2047,6 +2174,8 @@ export const BROKER_ORDERS: BrokerOrder[] = (() => {
       urgent: pick() < 0.14,
       signatureOnDelivery: pick() < 0.4,
       poNumber: pick() < 0.7 ? `PO-${70_000 + i * 13}` : "",
+      /* No draw — the rest of the fixture stays as it was. */
+      bolNumber: i % 3 === 0 ? "" : `BOL-${52_000 + i * 11}`,
       zip: site.zip,
       state: site.state,
       createdBy:
@@ -2423,6 +2552,8 @@ function sortValue(r: BrokerOrder, key: BrokerColumnKey): string | number {
       // has or has not, and sorting the empty ones to the top on one press
       // buries every row that answers the question.
       return r.poNumber ? r.poNumber.toLowerCase() : "\uffff";
+    case "bolNumber":
+      return r.bolNumber ? r.bolNumber.toLowerCase() : "\uffff";
     case "hub":
       return r.hub.toLowerCase();
     case "salesperson":
@@ -2459,6 +2590,7 @@ export function matchesBrokerOrder(r: BrokerOrder, q: string): boolean {
     r.kind,
     r.orderType,
     r.poNumber,
+    r.bolNumber,
     r.hub,
     r.primaryPoc,
     r.salesperson,
@@ -2487,6 +2619,7 @@ export const BROKER_SEARCH_FIELDS = [
   },
   { key: "status", label: "Status", text: (r: BrokerOrder) => r.status },
   { key: "poNumber", label: "PO Number", text: (r: BrokerOrder) => r.poNumber },
+  { key: "bolNumber", label: "BOL Number", text: (r: BrokerOrder) => r.bolNumber },
 ];
 
 /**
@@ -2535,6 +2668,8 @@ export function brokerColumnText(r: BrokerOrder, key: BrokerColumnKey): string {
       return r.orderType;
     case "poNumber":
       return r.poNumber;
+    case "bolNumber":
+      return r.bolNumber;
     case "hub":
       return r.hub;
     case "salesperson":

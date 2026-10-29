@@ -103,7 +103,7 @@ function CommandSeparator({
  * Command item — Figma "Command / Item" (430:20061). Beyond the raw cmdk item,
  * this surfaces the component's documented properties as ergonomic props:
  *   - `icon`        → leading slot (the "Icon" variant; an INSTANCE_SWAP in Figma)
- *   - `selected`    → trailing ✓ (the "Selected" variant)
+ *   - `selected`    → ✓ right after the name, name in medium weight (the "Selected" variant)
  *   - `shortcut`    → trailing shortcut text (the "Shortcut Text" property)
  *   - `showShortcut`→ toggles the shortcut (the "Show Shortcut" BOOLEAN, default true)
  * The Default/Hover/Disabled "State" variant is left to cmdk (it drives
@@ -154,8 +154,21 @@ function CommandItem({
       {structured ? (
         <>
           {icon}
-          <span className="flex-1 truncate">{children}</span>
-          {selected && <CheckIcon className="ml-auto size-4 text-foreground" />}
+          {/* THE TICKS STAND IN ONE COLUMN, 40 characters in from where the
+              names start — a narrower list puts it at its right edge (Pavan,
+              2026-10-29, after "right next to the name"). The chosen name is
+              medium weight in full ink, the rest muted. */}
+          <span
+            className={cn(
+              "min-w-0 shrink basis-[40ch] truncate",
+              selected === true && "font-medium text-foreground",
+              selected === false && "text-muted-foreground"
+            )}
+          >
+            {children}
+          </span>
+          {selected && <CheckIcon className="size-4 text-foreground" />}
+          <span aria-hidden className="flex-1" />
           {shortcut != null && showShortcut && (
             <CommandShortcut>{shortcut}</CommandShortcut>
           )}

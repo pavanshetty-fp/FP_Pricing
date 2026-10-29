@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 /*
   Editable table cells — Figma "Input / Dropdown Tables Layout"
@@ -178,7 +179,9 @@ export function TableCellSelect({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className={cn("p-0", groups || optionTag ? "w-80" : "w-64")}>
-        <Command>
+        {/* TABS MEAN A FIXED HEIGHT (Pavan, 2026-10-29) — switching tabs must
+            not resize the dropdown or make it jump; the list scrolls inside. */}
+        <Command className={cn(groups && groups.length > 0 && TABBED_HEIGHT)}>
           {showSearch && <CommandInput placeholder="Search…" />}
           {groups && groups.length > 0 && (
             <div role="tablist" aria-label="Show" className="flex overflow-x-auto border-b border-border px-1">
@@ -202,11 +205,12 @@ export function TableCellSelect({
               })}
             </div>
           )}
-          <CommandList>
+          <CommandList className={cn(groups && groups.length > 0 && TABBED_LIST)}>
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>
               {shown.map((opt) => {
                 const used = Boolean(multiple?.taken?.includes(opt)) && opt !== value;
+                const on = (o: string) => (multiple ? used || picked.includes(o) : o === value);
                 return (
                 <CommandItem
                   key={opt}
@@ -222,16 +226,21 @@ export function TableCellSelect({
                     setOpen(false);
                   }}
                 >
-                  {multiple && (
-                    <Checkbox
-                      checked={used || picked.includes(opt)}
-                      /* The row is the control; the box reports it. */
-                      tabIndex={-1}
-                      aria-hidden
-                      className="pointer-events-none"
-                    />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">{opt}</span>
+                  {/* THE TICK SITS RIGHT AFTER THE NAME, and a chosen name is
+                      set in full ink and medium weight while the rest stay
+                      muted (Pavan, 2026-10-29) — the box at the far left was
+                      too far from the word to read as its answer. */}
+                  {/* …in one column 40 characters in (2026-10-29) — see CommandItem. */}
+                  <span
+                    className={cn(
+                      "min-w-0 shrink basis-[40ch] truncate",
+                      on(opt) ? "font-medium text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {opt}
+                  </span>
+                  {on(opt) && <Check aria-hidden className="size-4 shrink-0 text-foreground" />}
+                  <span className="flex-1" />
                   {optionTag?.(opt)}
                 </CommandItem>
                 );
@@ -281,6 +290,13 @@ export interface TableCellInputProps {
   /** Unit shown after the value, e.g. `gal`. Not part of the value. */
   suffix?: string;
   /**
+   * A UNIT YOU CAN CHANGE, IN THE CELL (Pavan, 2026-10-29) — set off from the
+   * figure by a thin divider at the cell's right end: the chosen unit, and a
+   * chevron to pick another when there is more than one. One option prints
+   * the unit with no chevron.
+   */
+  unit?: { value: string; options: readonly string[]; onChange: (u: string) => void };
+  /**
    * Unit shown BEFORE the value, e.g. `$`. Not part of the value.
    *
    * It pins to the cell's left edge while the figure stays right-aligned,
@@ -319,8 +335,10 @@ export function TableCellInput({
   autoFocus,
   max,
   maxNote,
+  unit,
 }: TableCellInputProps) {
   const [capped, setCapped] = React.useState(false);
+  const [unitOpen, setUnitOpen] = React.useState(false);
   /*
     WHAT WAS TYPED, UNTIL IT IS FINISHED BEING TYPED.
 
@@ -353,10 +371,11 @@ export function TableCellInput({
     cell's input still fills the width, which is where typing should start.
   */
   const moneyish = Boolean(numeric && prefix);
-  const cell = (
+  const field = (
     <label
       className={cn(
         "absolute inset-0 flex cursor-text items-center px-3 transition-colors",
+        unit && "right-[calc(64px*var(--fp-scale))]",
         moneyish ? "gap-1" : "gap-1.5",
         "hover:bg-accent",
         "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
@@ -404,17 +423,64 @@ export function TableCellInput({
       )}
     </label>
   );
-  if (!maxNote) return cell;
-  return (
+  const unitCls =
+    "absolute inset-y-0 right-0 flex w-[calc(64px*var(--fp-scale))] items-center justify-between gap-1 border-l border-border/70 my-2 px-2 text-xs text-muted-foreground";
+  /* THE HELD-AT-MAX NOTE hangs off the figure, not the unit. */
+  const tipped = !maxNote ? (
+    field
+  ) : (
     <TooltipProvider>
       <Tooltip open={capped}>
-        <TooltipTrigger asChild>{cell}</TooltipTrigger>
+        <TooltipTrigger asChild>{field}</TooltipTrigger>
         <TooltipContent side="bottom" align="start" className="max-w-64">
           {maxNote}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
+  const cell = !unit ? (
+    tipped
+  ) : (
+    <>
+      {tipped}
+      {unit.options.length > 1 && !disabled ? (
+        <Popover open={unitOpen} onOpenChange={setUnitOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Unit, ${unit.value}`}
+              className={cn(unitCls, "outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50")}
+            >
+              <span className="truncate">{unit.value}</span>
+              <ChevronDown className="size-3.5 shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-28 p-1">
+            {unit.options.map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => {
+                  unit.onChange(u);
+                  setUnitOpen(false);
+                }}
+                className={cn(
+                  "flex h-8 w-full items-center gap-1.5 rounded-sm px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent",
+                  u === unit.value ? "font-medium text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {u}
+                {u === unit.value && <Check aria-hidden className="size-4 shrink-0" />}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <span className={unitCls}>{unit.value}</span>
+      )}
+    </>
+  );
+  return cell;
 }
 
 export interface TableCellMultiSelectProps {
@@ -556,6 +622,10 @@ export function TableCellMultiSelect({
   );
 }
 
+/** A tabbed dropdown keeps one height whatever tab is picked. */
+const TABBED_HEIGHT = "h-[calc(360px*var(--fp-scale))]";
+const TABBED_LIST = "min-h-0 max-h-none flex-1";
+
 export interface TableCellComboboxProps {
   value: string;
   options: string[];
@@ -611,6 +681,16 @@ export interface TableCellComboboxProps {
    * saved-views tab style: plain words, the chosen one underlined.
    */
   groups?: { label: string; has: (option: string) => boolean }[];
+  /**
+   * TWO TIERS OF TABS (Pavan, 2026-10-29) — a top row of categories with no
+   * "All" (the first is chosen on open), and under a category that has its own
+   * `groups` a second row: "All", then those groups. Use instead of `groups`.
+   */
+  categories?: {
+    label: string;
+    has: (option: string) => boolean;
+    groups?: { label: string; has: (option: string) => boolean }[];
+  }[];
 }
 
 /**
@@ -635,12 +715,18 @@ export function TableCellCombobox({
   autoFocus,
   multiple,
   optionTag,
-  groups,
+  groups: flatGroups,
+  categories,
 }: TableCellComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [category, setCategory] = React.useState(0);
+  const radioId = React.useId();
   const [group, setGroup] = React.useState(-1);
-  const inGroup = (o: string) => group < 0 || !groups?.[group] || groups[group].has(o);
+  const cat = categories?.[category];
+  const groups = categories ? cat?.groups : flatGroups;
+  const inGroup = (o: string) =>
+    (!cat || cat.has(o)) && (group < 0 || !groups?.[group] || groups[group].has(o));
   /* NOTHING IS WRITTEN UNTIL APPLY — as in TableCellSelect. A FILLED ROW
      opens with its own value ticked (2026-10-26), so adding more keeps it. */
   const [picked, setPicked] = React.useState<string[]>([]);
@@ -696,14 +782,65 @@ export function TableCellCombobox({
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className={cn("p-0", groups || optionTag ? "w-80" : "w-64")}>
-        <Command shouldFilter={false}>
+      <PopoverContent align="start" className={cn("p-0", categories || groups || optionTag ? "w-80" : "w-64")}>
+        {/* Fixed height with tabs — see TableCellSelect. */}
+        <Command
+          shouldFilter={false}
+          className={cn((categories?.length || flatGroups?.length) && TABBED_HEIGHT)}
+        >
           <CommandInput
             value={query}
             onValueChange={setQuery}
             placeholder={creatable ? "Type or pick…" : "Search…"}
           />
-          {groups && groups.length > 0 && (
+          {categories && categories.length > 0 && (
+            <div role="tablist" aria-label="Category" className="flex overflow-x-auto border-b border-border px-1">
+              {categories.map((c, ci) => {
+                const on = ci === category;
+                return (
+                  <button
+                    key={c.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => {
+                      setCategory(ci);
+                      setGroup(-1);
+                    }}
+                    className={cn(
+                      "-mb-px border-b-2 px-2.5 py-2 text-xs whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                      on ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* UNDER A CATEGORY, RADIOS — NOT A SECOND ROW OF TABS (Pavan,
+              2026-10-29): two tab rows read as one; a radio says "a narrowing
+              of the tab above", and which one is on. */}
+          {categories && groups && groups.length > 0 && (
+            <RadioGroup
+              aria-label="Show"
+              value={String(group)}
+              onValueChange={(v) => setGroup(Number(v))}
+              className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border px-3 py-2"
+            >
+              {[{ label: "All" }, ...groups].map((g, gi) => {
+                const id = `${radioId}-${gi}`;
+                const on = gi - 1 === group;
+                return (
+                  <label key={g.label} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap">
+                    <RadioGroupItem id={id} value={String(gi - 1)} />
+                    <span className={on ? "font-medium text-foreground" : "text-muted-foreground"}>{g.label}</span>
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          )}
+          {!categories && groups && groups.length > 0 && (
             <div role="tablist" aria-label="Show" className="flex overflow-x-auto border-b border-border px-1">
               {[{ label: "All" }, ...groups].map((g, gi) => {
                 const on = gi - 1 === group;
@@ -725,7 +862,7 @@ export function TableCellCombobox({
               })}
             </div>
           )}
-          <CommandList>
+          <CommandList className={cn((categories?.length || flatGroups?.length) && TABBED_LIST)}>
             {typedIsNew && (
               <CommandGroup>
                 {/* WHAT WAS TYPED ON THE LEFT, THE ACT ON THE RIGHT (Pavan,

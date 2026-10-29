@@ -100,6 +100,7 @@ export function ordersFromPrograms(
           urgent: false,
           signatureOnDelivery: p.signatureOnDelivery,
           poNumber: t.poNumber,
+          bolNumber: "",
           zip: site?.zip ?? "",
           state: site?.state ?? t.state,
           createdBy: "System — Recurring",

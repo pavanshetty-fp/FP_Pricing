@@ -457,13 +457,36 @@ export function DatePanel({
   selected,
   onSelect,
   disabled,
+  calendarOnly,
 }: {
   selected?: Date;
   onSelect: (d: Date | undefined) => void;
   disabled?: Matcher | Matcher[];
+  /**
+   * JUST THE CALENDAR (Pavan, 2026-10-29) — no presets, no typed date, no
+   * Apply: clicking a day picks it and closes. For a date with a sensible
+   * default already filled (Planned Delivery Date opens on tomorrow).
+   */
+  calendarOnly?: boolean;
 }) {
   const close = React.useContext(CloseCtx);
   const value = selected ? { from: sod(selected), to: sod(selected) } : null;
+  if (calendarOnly) {
+    return (
+      <div className="px-3 py-1">
+        <Calendar
+          mode="single"
+          defaultMonth={selected}
+          selected={selected}
+          onSelect={(_: unknown, d: Date) => {
+            onSelect(sod(d));
+            close?.();
+          }}
+          disabled={disabled}
+        />
+      </div>
+    );
+  }
   return (
     <DatePickerPanel
       select="single"

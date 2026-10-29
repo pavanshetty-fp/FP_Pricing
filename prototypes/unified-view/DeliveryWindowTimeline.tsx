@@ -42,6 +42,13 @@ export interface TimeSpan {
 
 const DAY = 24 * 60;
 const STEP = 30;
+/* Time between two preferred times — none: they may meet (Pavan, 2026-10-29).
+   Where they meet, the two handles are drawn apart instead — see SPLIT. */
+const GAP = 0;
+/* WHERE TWO BARS MEET, THEIR DOTTED LINES DO NOT (Pavan, 2026-10-29): each
+   handle steps 2.5px away from the shared time, so the two inner strokes
+   touch and the two dotted lines stand 5px apart. */
+const SPLIT = 2.5;
 /** Every third hour labelled, as the reference. */
 const TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 const pct = (m: number) => `${(m / DAY) * 100}%`;
@@ -120,11 +127,11 @@ export function DeliveryWindowTimeline({
     return {
       lo: Math.max(
         start,
-        ...others.filter((q) => q.end <= at.start).map((q) => q.end),
+        ...others.filter((q) => q.end <= at.start).map((q) => q.end + GAP),
       ),
       hi: Math.min(
         end,
-        ...others.filter((q) => q.start >= at.end).map((q) => q.start),
+        ...others.filter((q) => q.start >= at.end).map((q) => q.start - GAP),
       ),
     };
   };
@@ -174,16 +181,17 @@ export function DeliveryWindowTimeline({
     /* THE FIRST FREE STRETCH OF HALF AN HOUR OR MORE, up to two hours. */
     const taken = [...preferred].sort((a, b) => a.start - b.start);
     let at = start;
-    for (const q of [...taken, { start: end, end }]) {
-      if (q.start - at >= STEP) {
+    for (const [k, q] of [...taken, { start: end + GAP, end }].entries()) {
+      const stop = q.start - GAP;
+      if (stop - at >= STEP) {
         setFocusNew(preferred.length);
         onPreferredChange([
           ...preferred,
-          { start: at, end: Math.min(q.start, at + 120) },
+          { start: at, end: Math.min(stop, at + 120) },
         ]);
         return;
       }
-      at = Math.max(at, q.end);
+      if (k < taken.length) at = Math.max(at, q.end + GAP);
     }
     setFull(true);
   };
@@ -193,7 +201,7 @@ export function DeliveryWindowTimeline({
     if (e <= s) return "End after the start";
     if (s < start || e > end)
       return `Inside the delivery window, ${formatWindow(start, end)}`;
-    if (preferred.some((q, j) => j !== i && s < q.end && e > q.start))
+    if (preferred.some((q, j) => j !== i && s < q.end + GAP && e > q.start - GAP))
       return "Overlaps another preferred time";
     return null;
   };
@@ -240,7 +248,7 @@ export function DeliveryWindowTimeline({
           {/* THE SCALE — track, hours, then the preferred bars on the same day. */}
           <div
             ref={scale}
-            className={cn("relative", has ? "h-[78px]" : "h-10")}
+            className={cn("relative", has ? "h-[92px]" : "h-10")}
             onPointerMove={onMove}
             onPointerUp={onUp}
           >
@@ -287,15 +295,43 @@ export function DeliveryWindowTimeline({
               const shared = preferred.some(
                 (q, j) => j !== i && q.start === p.end,
               );
+              const shift = {
+                start: preferred.some((q, j) => j !== i && q.end === p.start) ? SPLIT : 0,
+                end: shared ? -SPLIT : 0,
+              };
               return (
                 <React.Fragment key={i}>
-                  {[p.start, p.end].map((m, k) => (
+                  {/* EACH END IS ONE HANDLE (Pavan, 2026-10-29): the dashed
+                      line from the track, and a black stroke the bar's height
+                      on either side of it. Hovered, the whole handle — line
+                      and strokes — lights up, saying it can be dragged. */}
+                  {(["start", "end"] as const).map((side) => (
                     <span
-                      key={k}
+                      key={side}
                       aria-hidden
-                      className="absolute top-4 h-7 border-l border-dashed border-muted-foreground/60"
-                      style={{ left: pct(m) }}
-                    />
+                      onPointerDown={(e) => onDown(e, i, side)}
+                      className={cn(
+                        "group/end absolute top-4 z-10 h-11 w-3 -translate-x-1/2",
+                        !disabled && "cursor-ew-resize",
+                      )}
+                      style={{ left: `calc(${pct(side === "start" ? p.start : p.end)} + ${shift[side]}px)` }}
+                    >
+                      <span
+                        className={cn(
+                          "absolute inset-y-0 left-1/2 border-l border-dashed border-muted-foreground/60",
+                          !disabled && "group-hover/end:border-solid group-hover/end:border-foreground",
+                        )}
+                      />
+                      {!disabled &&
+                        /* 1px strokes, 1px clear of the 1px line each side. */
+                        [-2, 2].map((dx) => (
+                          <span
+                            key={dx}
+                            className="absolute bottom-0 h-4 w-px bg-foreground"
+                            style={{ left: `calc(50% + ${dx}px)` }}
+                          />
+                        ))}
+                    </span>
                   ))}
                   <div
                     role="group"
@@ -311,27 +347,21 @@ export function DeliveryWindowTimeline({
                     onKeyDown={(e) => !disabled && onKey(e, i)}
                     onPointerDown={(e) => onDown(e, i, "move")}
                     className={cn(
-                      "group/bar absolute top-11 h-2.5 rounded-xs bg-fp-lane-blue/30 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                      /* THICKER, PASTEL BLUE (Pavan, 2026-10-29). */
+                      "group/bar absolute top-11 h-4 rounded-none bg-pastel-blue outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                       !disabled &&
-                        "cursor-grab active:cursor-grabbing hover:bg-fp-lane-blue/45",
+                        "cursor-grab active:cursor-grabbing hover:brightness-95",
                     )}
-                    /* 1px of air each side, so two bars that meet stay two. */
+                    /* FLUSH WITH THE INNER STROKES, square ends (Pavan,
+                       2026-10-29): from the start's inner stroke (line +3px)
+                       to the end's (line −2px). */
                     style={{
-                      left: `calc(${pct(p.start)} + 1px)`,
-                      width: `calc(${pct(p.end - p.start)} - 2px)`,
+                      left: `calc(${pct(p.start)} + ${3 + shift.start}px)`,
+                      width: `calc(${pct(p.end - p.start)} - ${5 - shift.end + shift.start}px)`,
                     }}
                   >
                     {!disabled && (
                       <>
-                        {/* THE ENDS SIZE IT — a grip wider than the line. */}
-                        <span
-                          onPointerDown={(e) => onDown(e, i, "start")}
-                          className="absolute inset-y-[-4px] -left-1.5 w-3 cursor-ew-resize"
-                        />
-                        <span
-                          onPointerDown={(e) => onDown(e, i, "end")}
-                          className="absolute inset-y-[-4px] -right-1.5 w-3 cursor-ew-resize"
-                        />
                         <button
                           type="button"
                           aria-label={`Remove preferred time ${formatWindow(p.start, p.end)}`}
@@ -433,7 +463,7 @@ function TimeLabel({
   const label = (
     <span
       className={cn(
-        "absolute top-[59px] text-xs leading-none tabular-nums text-foreground",
+        "absolute top-[70px] text-xs leading-none tabular-nums text-foreground",
         className,
       )}
       style={{ left: pct(m) }}
@@ -449,7 +479,7 @@ function TimeLabel({
           type="button"
           aria-label={`Type the preferred time, ${short(m)}`}
           className={cn(
-            "absolute top-[57px] -ml-0.5 rounded-sm px-0.5 py-0.5 text-xs leading-none tabular-nums text-foreground underline decoration-current/40 decoration-dotted underline-offset-2 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50",
+            "absolute top-[68px] -ml-0.5 rounded-sm px-0.5 py-0.5 text-xs leading-none tabular-nums text-foreground underline decoration-current/40 decoration-dotted underline-offset-2 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50",
             className,
           )}
           style={{ left: pct(m) }}

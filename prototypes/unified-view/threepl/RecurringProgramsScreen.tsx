@@ -1138,7 +1138,7 @@ export function RecurringProgramsScreen({
             /* Under "All" the program takes its first product's line. */
             serviceLine: lineOfProduct(d.products[0] ?? ""),
             business: LINE_BUSINESSES[lineOfProduct(d.products[0] ?? "")][0] ?? null,
-            orderType: "Fuel",
+            orderType: "Core",
             signatureOnDelivery: d.signatureOnDelivery,
             schedule,
             frequency: d.frequency,

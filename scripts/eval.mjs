@@ -90,7 +90,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 /* ───────────────────────────────────────────────────────────────── run ── */
 
-const results = CHECKS.map((c) => ({ check: c, findings: c.check() }));
+const results = await Promise.all(CHECKS.map(async (c) => ({ check: c, findings: await c.check() })));
 const all = results.flatMap((r) => r.findings);
 const l1 = all.filter((f) => f.layer === "L1");
 

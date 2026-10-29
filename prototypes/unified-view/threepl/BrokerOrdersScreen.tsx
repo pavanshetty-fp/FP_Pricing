@@ -422,10 +422,11 @@ const TYPE_CODE: Record<
   BrokerOrderType,
   { text: string; tone: CodeDiscTone }
 > = {
-  Fuel: { text: "F", tone: "pastel-blue" },
-  Lubricants: { text: "L", tone: "pastel-amber" },
+  Core: { text: "C", tone: "pastel-slate" },
+  Delivery: { text: "D", tone: "pastel-blue" },
+  Emergency: { text: "EM", tone: "pastel-rose" },
+  Extraction: { text: "E", tone: "pastel-amber" },
   "Asset Movement": { text: "M", tone: "pastel-violet" },
-  Other: { text: "O", tone: "pastel-slate" },
 };
 
 function laneCardCode(r: BrokerOrder) {
@@ -1524,6 +1525,7 @@ export function BrokerOrdersScreen({
               window: { start: draft.windowStart, end: draft.windowEnd },
               preferred: draft.preferred,
               poNumber: draft.poNumber,
+              bolNumber: draft.bolNumber,
               orderType: draft.orderType,
               hub: draft.hub,
               urgent: draft.urgent,
@@ -1742,7 +1744,7 @@ export function BrokerOrdersScreen({
            one everywhere, or the badge and the filter disagree. */
         orderNo: `D-${nextNo}`,
         kind: draft.recurring ? "Recurring" : "Regular",
-        orderType: draft.orderType === "Asset Movement" ? "Fuel" : draft.orderType,
+        orderType: draft.orderType === "Asset Movement" ? "Core" : draft.orderType,
         customer: { title: draft.customer, description: draft.erpId },
         shipTo: draft.shipTo,
         date: { title: DATE_FMT.format(when), description: relativeLabel(offset, when) },
@@ -1777,6 +1779,7 @@ export function BrokerOrdersScreen({
         urgent: draft.urgent,
         signatureOnDelivery: draft.signatureOnDelivery,
         poNumber: draft.poNumber,
+        bolNumber: draft.bolNumber,
         /* The create sheet has no geography fields, so a new order takes the
            first site rather than leaving the ship-to facets blank for it. */
         /* The site carries its own geography, so a new order reads it from the
@@ -1897,6 +1900,7 @@ export function BrokerOrdersScreen({
         urgent: draft.urgent,
         signatureOnDelivery: draft.signature,
         poNumber: draft.poNumber,
+        bolNumber: "",
         zip: chosenSite?.zip ?? SHIP_TO_SITES[0].zip,
         state: chosenSite?.state ?? SHIP_TO_SITES[0].state,
         createdBy: "Dana Whitfield",
@@ -2089,6 +2093,14 @@ export function BrokerOrdersScreen({
         return row.poNumber ? (
           <span className="truncate text-sm tabular-nums text-foreground">
             <Hit text={row.poNumber} q={f} />
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      case "bolNumber":
+        return row.bolNumber ? (
+          <span className="truncate text-sm tabular-nums text-foreground">
+            <Hit text={row.bolNumber} q={f} />
           </span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>

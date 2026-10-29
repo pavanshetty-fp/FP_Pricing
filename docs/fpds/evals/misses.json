@@ -368,6 +368,71 @@
         "id": "fill-contrast-sweep",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-028",
+      "date": "2026-10-28",
+      "title": "V1/V1.1 vendor kept the building icon after the handshake change",
+      "where": "3PL board, Versions 1 and 1.1",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "Swapped the vendor icon to a handshake on V2–V4 only; the V1 label helper kept the old icon.",
+      "check": {
+        "id": "vendor-icon-every-version",
+        "status": "manual"
+      }
+    },
+    {
+      "id": "M-029",
+      "date": "2026-10-29",
+      "title": "Tabbed asset dropdown resized and jumped when switching tabs",
+      "where": "3PL order sheet → Delivery Order → Asset picker",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "Added tabs without fixing the popover height; a list that grows and shrinks per tab moves the dropdown (and can flip it).",
+      "check": {
+        "id": "tabbed-dropdown-fixed-height",
+        "status": "manual"
+      }
+    },
+    {
+      "id": "M-030",
+      "date": "2026-10-29",
+      "title": "Load Order Terminal said \"No options\" for lubes and propane — sample data ran out again",
+      "where": "3PL order sheet → Load Order",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "Seeded loading accounts for fuel only; never checked every product (or every picker) had something to pick. Second time in a day after the empty asset tabs.",
+      "check": {
+        "id": "no-empty-options",
+        "status": "built"
+      }
+    },
+    {
+      "id": "M-031",
+      "date": "2026-10-29",
+      "title": "Asked to move the Tags tick next to the text; changed the fee Type (\"tax\") picker instead",
+      "where": "3PL order sheet → Basic Details → Tags",
+      "foundBy": "pavan",
+      "pattern": "one-case",
+      "why": "Read \"tag\" as \"tax\" and never found a tax picker with a tick to confirm the guess; fixed only the table picker, not the shared dropdown row (CommandItem) every picker uses.",
+      "check": {
+        "id": "tick-after-name",
+        "status": "manual"
+      }
+    },
+    {
+      "id": "M-032",
+      "date": "2026-10-29",
+      "title": "Preferred-time labels stayed stuck to the thicker bar",
+      "where": "Order sheet → Delivery window & preferred time",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "Thickened the bar and moved the read-only label's offset, but not the pressable label (the one every editable sheet shows); never measured the gap after.",
+      "check": {
+        "id": "preferred-label-gap",
+        "status": "manual"
+      }
     }
   ]
 }

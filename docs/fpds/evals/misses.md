@@ -16,17 +16,17 @@ Every time Pavan has to point out something that should already have been right 
 | Week of | Misses |
 |---|---|
 | 2026-10-18 | 9 |
-| 2026-10-25 | 18 |
+| 2026-10-25 | 23 |
 
-**27 misses** · found by Pavan 21 · by Claude 6 · guarded by a script 13 · guard proposed 0 · needs eyes 10 · process rule 4
+**32 misses** · found by Pavan 26 · by Claude 6 · guarded by a script 14 · guard proposed 0 · needs eyes 14 · process rule 4
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
-| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 7 |
-| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 5 |
-| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 3 |
+| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 9 |
+| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 7 |
+| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 2 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
@@ -38,6 +38,11 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-032 | 2026-10-29 | Preferred-time labels stayed stuck to the thicker bar | Order sheet → Delivery window & preferred time | Pavan | `partial-unify` | Thickened the bar and moved the read-only label's offset, but not the pressable label (the one every editable sheet shows); never measured the gap after. | `preferred-label-gap` · manual |
+| M-031 | 2026-10-29 | Asked to move the Tags tick next to the text; changed the fee Type ("tax") picker instead | 3PL order sheet → Basic Details → Tags | Pavan | `one-case` | Read "tag" as "tax" and never found a tax picker with a tick to confirm the guess; fixed only the table picker, not the shared dropdown row (CommandItem) every picker uses. | `tick-after-name` · manual |
+| M-030 | 2026-10-29 | Load Order Terminal said "No options" for lubes and propane — sample data ran out again | 3PL order sheet → Load Order | Pavan | `edges` | Seeded loading accounts for fuel only; never checked every product (or every picker) had something to pick. Second time in a day after the empty asset tabs. | `no-empty-options` · built |
+| M-029 | 2026-10-29 | Tabbed asset dropdown resized and jumped when switching tabs | 3PL order sheet → Delivery Order → Asset picker | Pavan | `edges` | Added tabs without fixing the popover height; a list that grows and shrinks per tab moves the dropdown (and can flip it). | `tabbed-dropdown-fixed-height` · manual |
+| M-028 | 2026-10-28 | V1/V1.1 vendor kept the building icon after the handshake change | 3PL board, Versions 1 and 1.1 | Pavan | `partial-unify` | Swapped the vendor icon to a handshake on V2–V4 only; the V1 label helper kept the old icon. | `vendor-icon-every-version` · manual |
 | M-027 | 2026-10-28 | Fill contrast slider skipped board fills: lane titles, count bubbles, code discs, dark buttons/fields | Accessibility panel → every board and toolbar | Pavan | `partial-unify` | New fill tokens (lane soft/vivid titles, lane count, pastels, field fill) were added without WCAG/max values or a place in a11y.ts BACKGROUND; never swept the page for fills that stay put at 100%. | `fill-contrast-sweep` · manual |
 | M-026 | 2026-10-28 | V4 Completed date styled unlike the Orders schedule line, truncated; Assigned had no date | 3PL board, Version 4 | Pavan | `partial-unify` | Restyled the schedule unit only, not the Completed on unit that plays the same role in later lanes; never checked every lane for a date. | `card-date-every-lane` · manual |
 | M-025 | 2026-10-27 | "Pending: Vendor not selected" truncated on the narrower cards | 3PL board, Orders lane | Pavan | `edges` | Narrowed the lanes to 340px without re-checking the longest footer text on every lane. | `card-footer-fit` · manual |

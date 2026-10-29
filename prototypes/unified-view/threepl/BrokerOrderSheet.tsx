@@ -132,6 +132,11 @@ import {
   POCS,
   POC_DIRECTORY,
   PRODUCTS,
+  categoryOfAsset,
+  type SiteAsset,
+  type AssetCategory,
+  type QtyUnit,
+  unitsFor,
   RECURRENCE_FREQUENCIES,
   SALESPEOPLE,
   SALES_CONTACTS,
@@ -500,6 +505,7 @@ export interface BrokerOrderDraft {
   /** Preferred times inside the window, minutes from midnight. */
   preferred: TimeSpan[];
   poNumber: string;
+  bolNumber: string;
   orderType: BrokerOrderType;
   hub: string;
   urgent: boolean;
@@ -604,6 +610,7 @@ function draftFrom(o: BrokerOrder): BrokerOrderDraft {
     documents: [],
     images: [],
     poNumber: o.poNumber,
+    bolNumber: o.bolNumber,
     orderType: o.orderType,
     hub: o.hub,
     urgent: o.urgent,
@@ -689,7 +696,8 @@ function emptyDraft(): BrokerOrderDraft {
     windowEnd: "12:00 PM",
     preferred: [],
     poNumber: "",
-    orderType: "Fuel",
+    bolNumber: "",
+    orderType: "Core",
     recurring: false,
     recurrenceFrom: null,
     recurrenceFrequency: RECURRENCE_FREQUENCIES[0],
@@ -1939,11 +1947,19 @@ export function BrokerOrderSheet({
   /** Does this asset at the order's ship-to report its level? */
   const hasMonitor = (name: string) => {
     const a = siteAssets.find((x) => x.name === name);
-    return a ? siteTank(draft.shipTo, a.name, a.product, a.rental).monitor : true;
+    return a ? siteTank(draft.shipTo, a.name, a.product, a.rental, a.monitor).monitor : true;
+  };
+  /** Which asset-picker tab an asset sits under — see `categoryOfAsset`. */
+  const assetCategory = (name: string): AssetCategory =>
+    categoryOfAsset(name, siteAssets.find((x) => x.name === name)?.product);
+  /** The line's unit — its own if its asset takes it, else the asset's first. */
+  const unitOf = (l: OrderLine): QtyUnit => {
+    const allowed = unitsFor(assetCategory(l.asset));
+    return l.unit && allowed.includes(l.unit) ? l.unit : allowed[0];
   };
   const siteAssets = (() => {
-    const listed = site?.assets ?? [];
-    const extra = draft.lines
+    const listed: SiteAsset[] = site?.assets ?? [];
+    const extra: SiteAsset[] = draft.lines
       .filter((l) => l.asset && !listed.some((a) => a.name === l.asset))
       .map((l) => ({ name: l.asset, product: l.product, rental: l.rental ?? false }));
     return [...listed, ...extra];
@@ -2011,6 +2027,17 @@ export function BrokerOrderSheet({
 
   const isMovement = order?.kind === "Movement";
   const gal = totalGal(draft.lines);
+  /* ONE FIGURE PER UNIT — gallons and eaches do not add up. */
+  const qtyTotals = (() => {
+    const by = new Map<QtyUnit, number>();
+    for (const l of draft.lines) {
+      if (l.topOff || !l.asset) continue;
+      const u = unitOf(l);
+      by.set(u, (by.get(u) ?? 0) + (l.gal ?? 0));
+    }
+    if (!by.size) by.set("gal", 0);
+    return [...by].map(([u, n]) => `${n.toLocaleString()} ${u}`).join(" · ");
+  })();
   /** The distinct products on the order, in line order. */
   const productNames = [
     ...new Set(draft.lines.map((l) => l.product).filter((p) => p.trim())),
@@ -2710,7 +2737,10 @@ export function BrokerOrderSheet({
               {v.id === bestQuoteId && <BestChip />}
             </span>
           </td>
-          <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{v.base}</td>
+          {/* THE FULL ADDRESS now there is room for it (Pavan, 2026-10-29). */}
+          <td className="px-3 py-2.5 text-muted-foreground">
+            {[v.addressLine1, v.addressLine2, `${v.base}${v.zip ? ` ${v.zip}` : ""}`].filter(Boolean).join(", ")}
+          </td>
           <td className="w-[84px] px-3 py-2.5 whitespace-nowrap tabular-nums text-muted-foreground">
             {v.distanceMi} mi
           </td>
@@ -4916,6 +4946,14 @@ export function BrokerOrderSheet({
         <div className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5">
           {site ? (
             <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
+              {/* THE SHIP-TO'S ERP ID leads (Pavan, 2026-10-29). */}
+              <span className="text-muted-foreground">
+                ERP ID{" "}
+                <span className="tabular-nums text-foreground">{site.erpId}</span>
+              </span>
+              <span aria-hidden className="text-fp-outline-1">
+                |
+              </span>
               <span className="tabular-nums text-foreground">{site.latLng}</span>
               <span aria-hidden className="text-fp-outline-1">
                 |
@@ -4932,12 +4970,21 @@ export function BrokerOrderSheet({
         </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <SheetField label="PO number">
             <Input
               value={draft.poNumber}
               placeholder="Enter PO Number"
               onChange={(e) => set("poNumber", e.target.value)}
+            />
+          </SheetField>
+          {/* BOL NUMBER (Pavan, 2026-10-29) — from the reference's Order
+              Details; typed, optional. */}
+          <SheetField label="BOL number">
+            <Input
+              value={draft.bolNumber}
+              placeholder="Enter BOL Number"
+              onChange={(e) => set("bolNumber", e.target.value)}
             />
           </SheetField>
           {/* Admin-configured in the product — the values below are the ones
@@ -4948,7 +4995,7 @@ export function BrokerOrderSheet({
               value={draft.orderType}
               onValueChange={(v) => set("orderType", v as BrokerOrderType)}
               disabled={isMovement}
-              options={[...LISTING_TYPES]}
+              options={isMovement ? ["Asset Movement"] : [...LISTING_TYPES]}
               placeholder="Select order type"
               searchPlaceholder="Search types…"
             />
@@ -5186,8 +5233,10 @@ export function BrokerOrderSheet({
 
       <FormStep label={CREATE_STEPS.schedule}>
       <SheetSection title="Schedule Details">
-        <div className="grid grid-cols-9 gap-4">
-          <SheetField label="Planned Delivery Date" required className="col-span-4">
+        {/* THE SAME THIRDS AS PO NUMBER · BOL NUMBER · ORDER TYPE (Pavan,
+            2026-10-29) — the date lines up under PO number, same width. */}
+        <div className="grid grid-cols-3 gap-4">
+          <SheetField label="Planned Delivery Date" required>
             <DatePopover>
               <PopoverTrigger asChild>
                 <Button
@@ -5201,7 +5250,10 @@ export function BrokerOrderSheet({
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
+                {/* CALENDAR ONLY (Pavan, 2026-10-29) — tomorrow is already
+                    filled; pick another day and it closes. */}
                 <DatePanel
+                  calendarOnly
                   selected={draft.plannedDate ?? undefined}
                   onSelect={(d) => set("plannedDate", d ?? null)}
                 />
@@ -5392,7 +5444,7 @@ export function BrokerOrderSheet({
                       </TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+                      <TableRequiredLabel>Qty</TableRequiredLabel>
                     </th>
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Its select-all sits beside the label; every row's
@@ -5422,7 +5474,8 @@ export function BrokerOrderSheet({
                 <tbody>
                   {draft.lines.map((line, i) => {
                     const asset = siteAssets.find((a) => a.name === line.asset);
-                    const tank = line.asset ? siteTank(draft.shipTo, line.asset, line.product, asset?.rental) : undefined;
+                    const inGal = unitOf(line) === "gal";
+                    const tank = line.asset ? siteTank(draft.shipTo, line.asset, line.product, asset?.rental, asset?.monitor) : undefined;
                     return (
                       <tr
                         key={i}
@@ -5459,9 +5512,19 @@ export function BrokerOrderSheet({
                                 <Pill className="shrink-0">No monitor</Pill>
                               )
                             }
-                            groups={[
-                              { label: "Tank monitor", has: (name) => hasMonitor(name) },
-                              { label: "No tank monitor", has: (name) => !hasMonitor(name) },
+                            /* FUEL · BULK LUBRICANTS · PACKAGED PRODUCTS first
+                               (Pavan, 2026-10-29); Fuel then splits by monitor. */
+                            categories={[
+                              {
+                                label: "Fuel",
+                                has: (name) => assetCategory(name) === "Fuel",
+                                groups: [
+                                  { label: "Tank Monitors", has: (name) => hasMonitor(name) },
+                                  { label: "No Tank Monitors", has: (name) => !hasMonitor(name) },
+                                ],
+                              },
+                              { label: "Bulk Lubricants", has: (name) => assetCategory(name) === "Bulk Lubricants" },
+                              { label: "Packaged Products", has: (name) => assetCategory(name) === "Packaged Products" },
                             ]}
                             autoFocus={i === focusLine && Boolean(draft.shipTo)}
                             aria-label={`Asset for line ${i + 1}`}
@@ -5538,21 +5601,28 @@ export function BrokerOrderSheet({
                         <td className="relative p-0">
                           <TableCellInput
                             value={
-                              line.topOff ? "" : line.gal != null ? String(capGal(tank, plannedDays, line.gal)) : ""
+                              line.topOff ? "" : line.gal != null ? String(inGal ? capGal(tank, plannedDays, line.gal) : line.gal) : ""
                             }
                             placeholder={line.topOff ? "Top-off" : "0"}
                             /* THE SUGGESTION IS THE PLACEHOLDER — the tank full
                                on the planned day; → takes it (as the portal). */
                             suggestion={
-                              !line.topOff && tank?.monitor && tank.capacity
+                              !line.topOff && inGal && tank?.monitor && tank.capacity
                                 ? String(suggestedGal(tank, plannedDays))
                                 : undefined
                             }
                             disabled={line.topOff}
                             numeric
-                            max={tank?.monitor && tank.capacity ? maxGal(tank, plannedDays) : undefined}
+                            /* THE UNIT, IN THE CELL (Pavan, 2026-10-29) —
+                               fuel is gal only; lubes and packaged pick. */
+                            unit={{
+                              value: unitOf(line),
+                              options: unitsFor(assetCategory(line.asset)),
+                              onChange: (u) => setLine(i, { unit: u as QtyUnit }),
+                            }}
+                            max={inGal && tank?.monitor && tank.capacity ? maxGal(tank, plannedDays) : undefined}
                             maxNote={
-                              tank?.monitor && tank.capacity
+                              inGal && tank?.monitor && tank.capacity
                                 ? `${line.asset} has room for only ${maxGal(tank, plannedDays).toLocaleString()} gal on the planned day — more would overfill it.`
                                 : undefined
                             }
@@ -5562,7 +5632,10 @@ export function BrokerOrderSheet({
                                The header already says gal. */
                             onChange={(v) =>
                               setLine(i, {
-                                gal: capGal(tank, plannedDays, Number(v.replace(/[^0-9]/g, "")) || 0) || null,
+                                gal: inGal
+                                  ? capGal(tank, plannedDays, Number(v.replace(/[^0-9]/g, "")) || 0) || null
+                                  : Number(v.replace(/[^0-9]/g, "")) || null,
+                                unit: unitOf(line),
                               })
                             }
                           />
@@ -5610,7 +5683,7 @@ export function BrokerOrderSheet({
                       <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                         {isAllTopOff(draft.lines)
                           ? "Top-off"
-                          : `${gal.toLocaleString()} gal`}
+                          : qtyTotals}
                       </td>
                       <td aria-hidden />
                       <td aria-hidden className="sticky right-0 z-10 border-l border-border bg-popover" />
@@ -5713,6 +5786,7 @@ export function BrokerOrderSheet({
                 <Fact label="Job type">{draft.jobType}</Fact>
                 <Fact label="Order type">{draft.orderType}</Fact>
                 <Fact label="PO number">{draft.poNumber || NOT_SET}</Fact>
+                <Fact label="BOL number">{draft.bolNumber || NOT_SET}</Fact>
                 <Fact label="Urgent">{draft.urgent ? "Yes" : "No"}</Fact>
               </dl>
               <dl className="grid grid-cols-2 content-start gap-x-6 gap-y-4 p-4">
@@ -5729,7 +5803,7 @@ export function BrokerOrderSheet({
                   {draft.shipTo || NOT_SET}
                   {site && (
                     <span className="block text-xs text-muted-foreground">
-                      {site.street}, {site.city}, {site.state} {site.zip}
+                      {site.erpId} · {site.street}, {site.city}, {site.state} {site.zip}
                     </span>
                   )}
                 </Fact>
@@ -6048,11 +6122,11 @@ export function BrokerOrderSheet({
                         key={h}
                         className={cn(
                           "whitespace-nowrap px-3 py-2.5 text-left text-xs font-medium text-muted-foreground",
-                          /* THE PARTNER TAKES THE SLACK, THE ADDRESS A FIXED
-                             its own width, on one line (Pavan, 2026-10-05) — the name now carries
-                             "Best" and must not be squeezed. */
-                          k === 0 && "w-full",
-                          k === 1 && "whitespace-nowrap",
+                          /* THE ADDRESS TAKES THE SLACK, the partner a fixed
+                             220 (Pavan, 2026-10-29 — reversed from
+                             2026-10-05: names are short, addresses long). */
+                          k === 0 && "w-[220px]",
+                          k === 1 && "w-full whitespace-nowrap",
                           k === 2 && "w-[84px]"
                         )}
                       >
@@ -6152,11 +6226,11 @@ export function BrokerOrderSheet({
                 <table className="w-full table-fixed border-collapse">
                   <colgroup>
                     <col className="w-[44px]" />
-                    {/* FIXED, THE VENDOR TAKES THE REST (Pavan, 2026-10-15) —
-                        the sheet is now as wide as this table, so no column
-                        may be a share that shrinks to nothing. */}
+                    {/* THE ADDRESS TAKES THE REST, the vendor name a fixed
+                        200 (Pavan, 2026-10-29 — was the other way round:
+                        names are short, addresses are long). */}
+                    <col className="w-[200px]" />
                     <col />
-                    <col className="w-[160px]" />
                     <col className="w-[160px]" />
                     <col className="w-[110px]" />
                     {/* 132, not 148: the status lost its dot and the 14px it

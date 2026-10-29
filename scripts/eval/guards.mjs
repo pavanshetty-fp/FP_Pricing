@@ -319,4 +319,64 @@ export const oneFont = {
   },
 };
 
-ALL.push(alphaFill, bannerAnatomy, registryLinks, toolbarGaps, uniqueOptions, readHead, oneFont);
+/* ── no-empty-options (M-030) ─────────────────────────────────────────────
+   EVERY PICKER ON A CREATE FORM HAS SOMETHING IN IT (Pavan, 2026-10-29: "add
+   data for everything … nothing should be blank … I don't have to tell this
+   again and again"). Loads the 3PL sample data itself and checks:
+   - every exported option list has at least 3 entries (JOB_TYPES excepted);
+   - every product loads somewhere: ≥2 terminals, ≥3 loading accounts, and
+     every terminal → supplier → account step offers at least one;
+   - loading accounts are alphanumeric numbers, never names;
+   - every ship-to has ≥3 assets on every asset-picker tab (Fuel with and
+     without a monitor, Bulk Lubricants, Packaged Products). */
+const TWO_IS_FINE = new Set(["JOB_TYPES"]);
+export const noEmptyOptions = {
+  name: "no-empty-options",
+  segment: "4-content",
+  rule: "misses M-030 — every create-form picker has ≥3 things to pick, at every step",
+  async check() {
+    const { createJiti } = await import("jiti");
+    const path = await import("node:path");
+    const root = process.cwd();
+    const jiti = createJiti(import.meta.url, { alias: { "@": path.join(root, "src") }, jsx: true });
+    const dir = "prototypes/unified-view/threepl";
+    const load = (f) => jiti.import(path.join(root, dir, f));
+    const out = [];
+    for (const f of ["orders.ts", "vendors.ts", "directory.ts", "recurringPrograms.ts", "recurringRules.ts"]) {
+      const m = await load(f);
+      for (const [k, v] of Object.entries(m))
+        if (Array.isArray(v) && v.length < 3 && !TWO_IS_FINE.has(k))
+          out.push(finding("L1", `${dir}/${f}`, null, `${k} offers only ${v.length}`, this.rule));
+    }
+    const o = await load("orders.ts");
+    const { siteTank } = await load("tankMonitors.ts");
+    for (const p of o.PRODUCTS) {
+      const all = o.loadOptions([p]);
+      if (all.terminals.length < 2 || all.accounts.length < 3)
+        out.push(finding("L1", `${dir}/orders.ts`, null, `${p}: ${all.terminals.length} terminals, ${all.accounts.length} loading accounts`, this.rule));
+      for (const t of all.terminals) {
+        const byT = o.loadOptions([p], t);
+        if (!byT.suppliers.length) out.push(finding("L1", `${dir}/orders.ts`, null, `${p} at ${t}: no supplier`, this.rule));
+        for (const s of byT.suppliers)
+          if (!o.loadOptions([p], t, s).accounts.length)
+            out.push(finding("L1", `${dir}/orders.ts`, null, `${p} at ${t} from ${s}: no loading account`, this.rule));
+      }
+    }
+    for (const a of o.LOADING_ACCOUNTS)
+      if (!/^[A-Z0-9]+-\d{3,}$/.test(a.name))
+        out.push(finding("L1", `${dir}/orders.ts`, null, `loading account "${a.name}" is not an alphanumeric number`, this.rule));
+    for (const site of o.SHIP_TO_SITES) {
+      const n = { "Fuel · monitor": 0, "Fuel · no monitor": 0, "Bulk Lubricants": 0, "Packaged Products": 0 };
+      for (const a of site.assets) {
+        const c = o.categoryOfAsset(a.name, a.product);
+        if (c === "Fuel") n[siteTank(site.name, a.name, a.product, a.rental, a.monitor).monitor ? "Fuel · monitor" : "Fuel · no monitor"]++;
+        else n[c]++;
+      }
+      for (const [tab, k] of Object.entries(n))
+        if (k < 3) out.push(finding("L1", `${dir}/orders.ts`, null, `${site.name}: ${tab} has ${k} assets`, this.rule));
+    }
+    return out;
+  },
+};
+
+ALL.push(alphaFill, bannerAnatomy, registryLinks, toolbarGaps, uniqueOptions, readHead, oneFont, noEmptyOptions);

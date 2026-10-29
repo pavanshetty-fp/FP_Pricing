@@ -261,7 +261,7 @@ function TargetEditor({
   /** Does this asset at the ship-to report its level? */
   const hasMonitor = (name: string) => {
     const a = siteAssets.find((x) => x.name === name);
-    return a ? siteTank(target.shipTo, a.name, a.product, a.rental).monitor : true;
+    return a ? siteTank(target.shipTo, a.name, a.product, a.rental, a.monitor).monitor : true;
   };
 
   const setLine = (i: number, patch: Partial<OrderLine>) =>

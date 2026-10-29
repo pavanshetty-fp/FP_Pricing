@@ -73,7 +73,7 @@ export const RECOMMENDATIONS: Recommendation[] = [
   {
     id: "clear-tue-fri",
     loadOrder: true,
-    loadingAccounts: ["Liberty Standard"],
+    loadingAccounts: ["LP56-61209"],
     suppliers: [],
     product: "Clear Diesel #2",
     targets: [
@@ -110,7 +110,7 @@ export const RECOMMENDATIONS: Recommendation[] = [
   {
     id: "unleaded-first-week",
     loadOrder: true,
-    loadingAccounts: ["Washington Contract"],
+    loadingAccounts: ["LW124-70316"],
     suppliers: [],
     product: "Unleaded 87",
     targets: [
@@ -126,7 +126,7 @@ export const RECOMMENDATIONS: Recommendation[] = [
   {
     id: "dyed-mwf",
     loadOrder: true,
-    loadingAccounts: ["Greensbro Premium"],
+    loadingAccounts: ["GKM-50431"],
     suppliers: [],
     product: "Dyed Diesel",
     targets: [

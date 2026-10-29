@@ -9,7 +9,6 @@ import {
   UserRound,
   Truck,
   CalendarDays,
-  Building2,
   Handshake,
   type LucideIcon,
 } from "lucide-react";
@@ -439,7 +438,7 @@ export function UnitLabel({ children, icon: Icon }: { children: React.ReactNode;
 /* THE VENDOR'S LABEL, EVERY VERSION (Pavan, 2026-10-28) — a building icon
    and "Vendor". */
 export function VendorUnitLabel() {
-  return <UnitLabel icon={Building2}>Vendor</UnitLabel>;
+  return <UnitLabel icon={Handshake}>Vendor</UnitLabel>;
 }
 /** The unit heading — the only label left on the card. */
 function UnitHeading({ children }: { children: React.ReactNode }) {

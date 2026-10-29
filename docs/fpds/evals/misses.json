@@ -485,6 +485,19 @@
         "id": "pending-step-per-state",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-037",
+      "date": "2026-10-29",
+      "title": "List view kept the Pricing totals bar while the rail's summary card was already on screen",
+      "where": "3PL List view (docked order sheet)",
+      "foundBy": "pavan",
+      "pattern": "one-case",
+      "why": "The bar was tuned for the slide-in sheet only; docking changed what is on screen and the bar was not re-checked against the 'never both summaries' rule.",
+      "check": {
+        "id": "one-summary-on-screen",
+        "status": "manual"
+      }
     }
   ]
 }

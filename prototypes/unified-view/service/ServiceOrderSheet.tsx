@@ -1722,7 +1722,7 @@ export function ServiceOrderSheet({
       }}
     >
       {/* ── TWO COLUMNS: WHAT YOU FILL IN, AND WHAT THAT MAKES ───────────── */}
-      <div className={cn("grid items-start gap-6", !newVisit && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+      <div className={cn("grid items-start gap-6", !newVisit && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
         <div className="flex min-w-0 flex-col gap-10">
       {/* NO-APP FLOW: THE ASSESSMENT IS THE FIRST THING RECORDED (Pavan,
           2026-09-25), so it leads the form once "Job completed" is confirmed. */}

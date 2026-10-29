@@ -106,7 +106,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { CELL, DockedSheet, DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { BLINK_MS, PendingStrip, attend, blinkGroup } from "../PendingStrip";
 import { HangingAdd } from "../HangingAdd";
 import { ActivityCard, RailCard, RailRow, SummaryCard } from "../SheetCards";
@@ -1603,6 +1603,8 @@ export function BrokerOrderSheet({
      then, so the sheet only turns into the order — rail, stage bar — once
      Create has made it one. */
   const inCreation = creating;
+  /** Shown in the list view, beside its row. */
+  const docked = React.useContext(DockedSheet);
   /* THE TOTALS BAR (Pavan, 2026-10-29 — final). The rail's summary card is
      the summary; Pricing's totals bar unfolds at the foot, full width and on
      the sheet's own surface, once the rule above Pricing has scrolled up past
@@ -4629,15 +4631,16 @@ export function BrokerOrderSheet({
             not anyone is looking. Once an editable number and a computed one
             share a column they look identical, and the reader stops knowing
             which is which. */}
-        <div className={cn("grid items-start gap-6", !inCreation && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+        <div className={cn("grid items-start gap-6", !inCreation && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
         {/* THE FORM'S FOOT ROOM (2026-10-26) — 40px under its last unit, down
             to the full rule above Pricing; the rail is cut to the same line. */}
         <div className={cn("flex min-w-0 flex-col gap-10", !inCreation && showPricing && "lg:pb-10")}>
       {/* THE STAGE TRACK, IN THE FORM'S OWN COLUMN (Pavan, 2026-10-05): the
           sheet reads as three columns — steps, form, cards — and the track
           belongs to the middle one, end to end. Pinned while the form
-          scrolls under it. */}
-      {!inCreation && (
+          scrolls under it. NOT IN THE LIST VIEW (Pavan, 2026-10-29) — there
+          the docked sheet is just the form; the row already says the status. */}
+      {!inCreation && !docked && (
         <div
           data-form-sticky
           className="sticky -top-4 z-10 -mt-4 -mb-4 bg-popover pt-4 pb-3"
@@ -7370,8 +7373,9 @@ export function BrokerOrderSheet({
       {/* PRICING'S TOTALS BAR — the last thing in the form, so it pins at the
           foot for the whole scroll; it unfolds once the rule above Pricing
           passes (see `totalsUp`). Figures only, equal thirds, the profit
-          flush right. */}
-      {shownQuote && !inCreation && (
+          flush right. NOT IN THE LIST VIEW (Pavan, 2026-10-29): there the
+          rail's summary card stays on screen, so the bar would say it twice. */}
+      {shownQuote && !inCreation && !docked && (
         <div className="sticky -bottom-4 z-30 -mx-4 -mb-4">
           <div
             className={cn(

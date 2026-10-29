@@ -700,7 +700,7 @@ export function OrderSheet({
         onSubmit={() => {}}
         footerPrimary={footerPrimary}
       >
-        <div className={cn("grid items-start gap-6", !creating && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+        <div className={cn("grid items-start gap-6", !creating && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
           <div className="flex min-w-0 flex-col gap-10">
             <ConfiguredForm
               kind="fuel"

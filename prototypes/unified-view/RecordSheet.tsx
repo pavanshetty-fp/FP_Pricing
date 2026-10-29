@@ -681,7 +681,10 @@ function DockedContent({
   return (
     <div
       role="region"
-      style={style}
+      /* THE RAIL 13% NARROWER IN THE LIST VIEW (Pavan, 2026-10-29) — 296px
+         for 340, so the form in the middle leads instead of three columns
+         competing. Every record sheet's grid reads `--fp-rail-w`. */
+      style={{ ...style, "--fp-rail-w": "296px" } as React.CSSProperties}
       className={cn(className, "flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden bg-popover sm:max-w-none")}
     >
       {children}

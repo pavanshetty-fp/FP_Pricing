@@ -776,12 +776,9 @@ function VendorRow({ id }: { id: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <div className="flex min-w-0 items-center gap-2">
+        {/* NO "LINK ONLY" PILL (Pavan, 2026-10-29) — how the vendor gets the
+            order is the vendor record's business, not this order's. */}
         <span className="truncate text-sm font-medium text-foreground">{v.name}</span>
-        {!v.hasAccount && (
-          <Pill className="shrink-0">
-            Link only
-          </Pill>
-        )}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
         <span className="truncate">{v.base}</span>
@@ -5920,8 +5917,14 @@ export function BrokerOrderSheet({
                         key={`${l.asset}-${i}`}
                         className="border-b border-border last:border-0"
                       >
+                        {/* THE KIND BESIDE THE ASSET (Pavan, 2026-10-29) —
+                            Fuel, Bulk Lubricants or Packaged Products — and
+                            the quantity in the line's own unit. */}
                         <td className="px-3 py-2.5 text-foreground">
-                          {l.asset}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate">{l.asset}</span>
+                            <Pill className="shrink-0">{assetCategory(l.asset)}</Pill>
+                          </span>
                         </td>
                         <td className="px-3 py-2.5 text-muted-foreground">
                           {l.product}
@@ -5929,7 +5932,7 @@ export function BrokerOrderSheet({
                         <td className="px-3 py-2.5 tabular-nums text-foreground">
                           {l.topOff
                             ? "Top off"
-                            : `${(l.gal ?? 0).toLocaleString()} gal`}
+                            : `${(l.gal ?? 0).toLocaleString()} ${unitOf(l)}`}
                         </td>
                       </tr>
                     ))
@@ -5949,7 +5952,7 @@ export function BrokerOrderSheet({
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-foreground">
-                    {totalGal(draft.lines).toLocaleString()} gal
+                    {qtyTotals}
                   </td>
                 </tr>
               </tfoot>
@@ -6695,8 +6698,9 @@ export function BrokerOrderSheet({
           /* NOT A TABLE — the awarded-partner branch is a card and a field, so
              it takes the card's insets back. */
           <SheetSectionInset>
-            <div className="flex items-start gap-2 rounded-md border border-fp-outline-1 p-3">
-              <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
+            {/* NO BOX, NO TICK (Pavan, 2026-10-29) — the unit is the
+                vendor; a rule parts who they are from what they cost. */}
+            <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <VendorRow id={holdingVendorId} />
                 {quoteOf(holdingVendorId)?.byDispatcher && (
@@ -6726,18 +6730,14 @@ export function BrokerOrderSheet({
               const q = quotes.find((x) => x.vendorId === holdingVendorId);
               if (!q) return null;
               return (
-                <SheetField label="Vendor cost">
-                  {/* ONE MONEY HELPER — DS ui §10i. It was a hand-rolled
-                      `$` and a `toLocaleString`, which is how `$147` and
-                      `$147.00` ended up on two screens. */}
-                  <p className="text-sm tabular-nums text-foreground">
-                    {money(quoteTotal(q, draft.lines, chargesBase))}{" "}
-                    <span className="text-muted-foreground">
-                      across {q.lines.length}{" "}
-                      {q.lines.length === 1 ? "line" : "lines"}
-                    </span>
-                  </p>
-                </SheetField>
+                /* VENDOR COST LEFT, THE PRICE RIGHT, under a divider (Pavan,
+                   2026-10-29). ONE MONEY HELPER — DS ui §10i. */
+                <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3 text-sm">
+                  <span className="text-muted-foreground">Vendor cost</span>
+                  <span className="font-medium tabular-nums text-foreground">
+                    {money(quoteTotal(q, draft.lines, chargesBase))}
+                  </span>
+                </div>
               );
             })()}
             {/* THE STAGE CTAs LIVE IN THE FOOTER, on the next-act ladder.

@@ -1143,7 +1143,12 @@ Lubricants gal / mL / oz; Packaged EA / LB / QT / Tube / gal / mL / oz;
 total prints one figure per unit. Vendor tables: address takes the slack
 (full street address), partner/vendor name fixed. Loading accounts are
 alphanumeric numbers (GKM-50431 …); every product now loads at ≥2 terminals
-on ≥3 accounts. Eval guard `no-empty-options` keeps every picker filled. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
+on ≥3 accounts. Eval guard `no-empty-options` keeps every picker filled. Read-only Delivery order
+table (Assigned on): a kind pill (Fuel / Bulk Lubricants / Packaged Products)
+beside each asset, quantities in the line's unit, totals per unit. Vendor
+unit once settled: no box, no tick, no "Link only" pill; a rule, then
+Vendor cost left / price right. Order-type disc beside the order number is 14px tall (the number's
+type size), 10px letter; "EM" makes a capsule. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
 **2026-10-28.** Version 4: units 8px apart (the 12 / 10 / 16 trial is
 gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.

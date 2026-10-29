@@ -48,7 +48,7 @@ const badgeVariants = cva(
       /**
        * Geometry, independent of colour.
        *   pill — the default badge.
-       *   disc — a 16px circle carrying one or two characters (a "code disc").
+       *   disc — a 14px circle carrying one or two characters (a "code disc").
        *          Prefer the CodeDisc component over `shape="disc"` directly: it
        *          enforces the tooltip + aria-label that stop the letter being
        *          the only carrier of meaning.
@@ -60,7 +60,11 @@ const badgeVariants = cva(
            proportion the disc has always had — "EM", the widest code, is 18.1px
            at this size and fills 82% of the circle, against 85% before. At 20
            it would have had less than a pixel of air on each side. */
-        disc: "size-5.5 justify-center rounded-full p-0 text-xs font-semibold",
+        /* AS TALL AS THE ORDER NUMBER'S TYPE (Pavan, 2026-10-29) — 14px, the
+           text-sm it sits beside; 22 stood taller than the line. The letter
+           drops to 10px to fit; "EM" stretches it into a capsule rather than
+           shrinking further. */
+        disc: "h-3.5 min-w-3.5 justify-center rounded-full px-0.5 py-0 text-[10px] leading-none font-semibold",
       },
     },
     defaultVariants: {

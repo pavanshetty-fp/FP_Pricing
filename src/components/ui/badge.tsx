@@ -62,9 +62,9 @@ const badgeVariants = cva(
            it would have had less than a pixel of air on each side. */
         /* AS TALL AS THE ORDER NUMBER'S TYPE (Pavan, 2026-10-29) — 14px, the
            text-sm it sits beside; 22 stood taller than the line. The letter
-           drops to 10px to fit; "EM" stretches it into a capsule rather than
+           is 11px (Pavan, 2026-10-29); "EM" stretches it into a capsule rather than
            shrinking further. */
-        disc: "h-3.5 min-w-3.5 justify-center rounded-full px-0.5 py-0 text-[10px] leading-none font-semibold",
+        disc: "h-3.5 min-w-3.5 justify-center rounded-full px-0.5 py-0 text-[11px] leading-none font-semibold",
       },
     },
     defaultVariants: {

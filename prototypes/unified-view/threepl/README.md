@@ -1148,7 +1148,7 @@ table (Assigned on): a kind pill (Fuel / Bulk Lubricants / Packaged Products)
 beside each asset, quantities in the line's unit, totals per unit. Vendor
 unit once settled: no box, no tick, no "Link only" pill; a rule, then
 Vendor cost left / price right. Order-type disc beside the order number is 14px tall (the number's
-type size), 10px letter; "EM" makes a capsule. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
+type size), 11px letter; "EM" makes a capsule. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
 **2026-10-28.** Version 4: units 8px apart (the 12 / 10 / 16 trial is
 gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.

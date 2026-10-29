@@ -22,7 +22,7 @@ import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
-import { ListSplitView, listSplitCount, type ListSplitItem } from "../ListSplitView";
+import { ListSplitView, type ListSplitItem } from "../ListSplitView";
 import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
 import { ServiceOrderSheet, SECTION_TECH } from "./ServiceOrderSheet";
@@ -1305,7 +1305,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
+          viewStatement={<ViewStatement count={sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           listView
           searchValue={search}

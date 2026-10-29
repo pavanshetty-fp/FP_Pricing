@@ -469,6 +469,10 @@ const LEVEL_CLASS_COMPACT: Record<1 | 2 | 3, string> = {
    shouts over another; only the order number stays bold. 14px REGULAR
    (Pavan, 2026-10-29 — tried on one card first; was 13px medium). */
 const BARE_LINE = "text-sm font-normal text-foreground";
+/* THE ORDER NUMBER IN BLUE, AS VERSION 2 HAS IT (Pavan, 2026-10-29) — the
+   link colour, on every board card (3PL, Sales, Service) and the list view's
+   rows (UX-166). */
+const ORDER_NO = "text-fp-banner-accent-info";
 const LEVEL_CLASS_BARE: Record<1 | 2 | 3, string> = {
   ...LEVEL_CLASS,
   1: BARE_LINE,
@@ -1201,7 +1205,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               manyChips && "shrink-0 group-hover/card:shrink"
             )}
           >
-            <h4 className={cn("min-w-0 truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
+            <h4 className={cn("min-w-0 truncate font-semibold", ORDER_NO, compact ? "text-[13px]" : "text-sm")}>
               {card.title}
             </h4>
             {card.code && (
@@ -1530,7 +1534,10 @@ export function BoardRowList({
   onSelect,
   onPending,
   whatIcon: WhatIcon = Truck,
+  hideStatus,
 }: {
+  /** A status pill is picked — every row has that status, so the chip goes. */
+  hideStatus?: boolean;
   /** The icon before the "what goes" line — a truck for a delivery. */
   whatIcon?: LucideIcon;
   /** `when` / `what` override the line read off the card's units, for a
@@ -1607,11 +1614,22 @@ export function BoardRowList({
               on && "bg-fp-table-header hover:bg-fp-table-header"
             )}
           >
+            {/* THE NUMBER AND ITS TYPE AS THE V3 CARD DRAWS THEM (Pavan,
+                2026-10-29) — the blue number, the coloured initial (the
+                type's word on hover); never a different form of the same
+                fact. */}
             <span className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-semibold text-foreground">{card.title}</span>
-              <StatusChip tone={tone} variant="soft">
-                {status}
-              </StatusChip>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className={cn("truncate text-sm font-semibold", ORDER_NO)}>{card.title}</span>
+                {card.code && (
+                  <CodeDisc code={card.code.text} label={card.code.label} tone={card.code.tone} className="shrink-0" />
+                )}
+              </span>
+              {!hideStatus && (
+                <StatusChip tone={tone} variant="soft">
+                  {status}
+                </StatusChip>
+              )}
             </span>
             {shipTo?.kind === "stack" && shipTo.lines[0] && (
               <span className="flex min-w-0 items-center gap-1 text-sm font-normal text-foreground">

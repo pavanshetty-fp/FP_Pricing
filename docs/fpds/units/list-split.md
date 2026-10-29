@@ -11,16 +11,17 @@ Shows a board's records as a slim list on the left and the picked record's own s
 - Don't use for lists without a sheet to dock, or without status steps → the table.
 
 ## Anatomy
-1. **Left pane** (320px, `BoardWithBar` box with the view bar on top):
+One `BoardWithBar` box, like the table's and the board's: the view bar across the top, then
+1. **Left pane** (320px, `border-r border-fp-outline-1`):
    - **Status pills** — one row, scrolled sideways: All, then every status step in board order, each with its count.
-   - **Rows** (`BoardRowList`) — order number + status chip · ship-to (pin) · planned date and window · what goes (truck; wrench in Service) · the pending step.
-2. **Detail** (fills the rest) — the record's own sheet inside `DockedSheet`: same header, body and footer, no overlay, no close.
+   - **Rows** (`BoardRowList`) — order number in blue (`text-fp-banner-accent-info`, as the V3 card) + the type's `CodeDisc` initial (as the card) + status chip — the chip hidden while a status pill other than All is picked · ship-to (pin) · planned date and window · what goes (truck; wrench in Service) · the pending step.
+2. **Detail** (fills the rest of the box) — the record's own sheet inside `DockedSheet`: same header, body and footer, no overlay, no close, no border of its own.
 
 ## Look
 - Pills: `Pill` shape; rest = `bg-transparent text-muted-foreground ring-1 ring-inset ring-fp-outline-1`; picked = the neutral pill (`bg-muted`) `font-medium text-foreground`; a 0-count step `opacity-40`.
-- Rows `px-3 py-2.5 border-b border-fp-outline-1`; number `text-sm font-semibold`; ship-to and what-goes `text-sm font-normal`; date `text-xs text-muted-foreground`; icons size-3.5 `text-muted-foreground`; pending step `text-xs` in its alert accent.
+- Rows `px-3 py-2.5 border-b border-fp-outline-1`; number `text-sm font-semibold text-fp-banner-accent-info`; ship-to and what-goes `text-sm font-normal`; date `text-xs text-muted-foreground`; icons size-3.5 `text-muted-foreground`; pending step `text-xs` in its alert accent.
 - Picked row `bg-fp-table-header` (the lightest grey); hover `bg-fp-row-hover`. No brand or status colour on selection.
-- Docked sheet `rounded-lg border border-border bg-popover`, `gap-3` from the pane.
+- One outer box (`BoardWithBar`); list and form split by a 1px `border-fp-outline-1` rule; the docked sheet `bg-popover`, no border.
 
 ## States
 - **Row default / hover / picked / focus** — as Look; focus 2px `ring-ring/50` inset.
@@ -33,13 +34,13 @@ Shows a board's records as a slim list on the left and the picked record's own s
 |---|---|
 | Click a row | Its record fills the detail; the detail keeps its scroll position (same section). |
 | ↑ / ↓ in the list | Previous / next row, picked and focused. |
-| Click a pill | Only that status's rows; the view bar's count follows. One at a time; All is the way back. |
+| Click a pill | Only that status's rows. One at a time; All is the way back. The view bar's count stays the total — each pill carries its own. |
 | Click a pending step that names a section (3PL "Vendor not selected") | Picks the row and scrolls the docked form to that section (`attend`). |
 | Edit in the detail | The sheet's own autosave. |
 
 ## Outcomes
 - The detail shows the picked record; edits save as they do in the sheet.
-- A narrowed list by status; the view bar says how many.
+- A narrowed list by status; the pill says how many.
 
 ## Data contract
 - `items: ListSplitItem[]` — `card` (the board card), `status` (pill key), `label`, `tone`, optional `when` / `what` overrides.
@@ -56,6 +57,8 @@ Shows a board's records as a slim list on the left and the picked record's own s
 4. **Pills are neutral, one row, one at a time** — *fewer colours; All is the way back.* `(source: Pavan 2026-10-29)`
 5. **The detail keeps its scroll across picks** — *the reader stays on the section they were comparing.* `(source: Dynamics 365 List view; Pavan 2026-10-29)`
 6. **Second in the display switch: Table · List · Board · Map.** `(source: Pavan 2026-10-29)`
+7. **One box, like the table and the board** — *the view bar on top, list and form side by side, a rule between.* `(source: Pavan 2026-10-29)`
+8. **The view bar's count does not follow the pill** — *each pill already says its count.* `(source: Pavan 2026-10-29)`
 
 ## Do / Don't
 - ✅ Feed it the board's own cards so rows say what cards say.

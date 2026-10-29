@@ -11,7 +11,7 @@ import { BoardRowList, type BoardCard } from "./threepl/BrokerBoard";
   LIST VIEW — ONE UNIT, EVERY BOARD MODULE (Pavan, 2026-10-29, after
   Dynamics 365's List view). Left: one sideways row of status pills (All plus
   every step, with counts; one at a time, All is the way back) over the
-  records as rows. Right: the picked record's own sheet, docked
+  records as rows, a rule, then the picked record's own sheet, docked
   (`DockedSheet`), keeping its scroll as the pick changes.
 
   The pills are neutral — outlined at rest, the grey pill when picked — and the
@@ -63,61 +63,57 @@ export function ListSplitView({
     { key: null as string | null, label: "All", n: items.length },
     ...steps.map((s) => ({ ...s, n: items.filter((i) => i.status === s.key).length })),
   ];
+  /* ONE BOX, LIKE THE TABLE AND THE BOARD (Pavan, 2026-10-29): the view bar
+     across the top, then the list and the form side by side, a rule between. */
   return (
-    <div className="flex h-full min-h-0 gap-3">
-      <div className="w-80 shrink-0">
-        <BoardWithBar barRef={barRef}>
-          <div className="flex h-full min-h-0 flex-col">
-            <div
-              role="group"
-              aria-label="Filter by status"
-              className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-fp-outline-1 p-3 [scrollbar-width:thin]"
-            >
-              {pills.map(({ key, label, n }) => {
-                const on = status === key;
-                return (
-                  <button
-                    key={key ?? "all"}
-                    type="button"
-                    aria-pressed={on}
-                    disabled={n === 0 && !on}
-                    onClick={() => onStatusChange(key)}
-                    className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-40"
+    <BoardWithBar barRef={barRef}>
+      <div className="flex h-full min-h-0">
+        <div className="flex w-80 shrink-0 flex-col border-r border-fp-outline-1">
+          <div
+            role="group"
+            aria-label="Filter by status"
+            className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-fp-outline-1 p-3 [scrollbar-width:thin]"
+          >
+            {pills.map(({ key, label, n }) => {
+              const on = status === key;
+              return (
+                <button
+                  key={key ?? "all"}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={n === 0 && !on}
+                  onClick={() => onStatusChange(key)}
+                  className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-40"
+                >
+                  <Pill
+                    className={cn(
+                      "gap-1.5 transition-colors",
+                      on
+                        ? "font-medium text-foreground"
+                        : "bg-transparent text-muted-foreground ring-1 ring-inset ring-fp-outline-1 hover:text-foreground hover:ring-fp-outline-2"
+                    )}
                   >
-                    <Pill
-                      className={cn(
-                        "gap-1.5 transition-colors",
-                        on
-                          ? "font-medium text-foreground"
-                          : "bg-transparent text-muted-foreground ring-1 ring-inset ring-fp-outline-1 hover:text-foreground hover:ring-fp-outline-2"
-                      )}
-                    >
-                      {label} <span className="tabular-nums">{n}</span>
-                    </Pill>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="min-h-0 flex-1">
-              <BoardRowList
-                items={shown.map(({ card, label, tone, when, what }) => ({ card, status: label, tone, when, what }))}
-                selectedId={picked?.card.id ?? null}
-                onSelect={onSelect}
-                onPending={onPending}
-                whatIcon={whatIcon}
-              />
-            </div>
+                    {label} <span className="tabular-nums">{n}</span>
+                  </Pill>
+                </button>
+              );
+            })}
           </div>
-        </BoardWithBar>
+          <div className="min-h-0 flex-1">
+            <BoardRowList
+              items={shown.map(({ card, label, tone, when, what }) => ({ card, status: label, tone, when, what }))}
+              selectedId={picked?.card.id ?? null}
+              onSelect={onSelect}
+              onPending={onPending}
+              whatIcon={whatIcon}
+              hideStatus={status !== null}
+            />
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          {picked && <DockedSheet.Provider value>{renderDetail(picked.card.id)}</DockedSheet.Provider>}
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        {picked && <DockedSheet.Provider value>{renderDetail(picked.card.id)}</DockedSheet.Provider>}
-      </div>
-    </div>
+    </BoardWithBar>
   );
-}
-
-/** How many rows the list shows under a pill — for the view bar's count. */
-export function listSplitCount(items: { status: string }[], status: string | null) {
-  return status ? items.filter((i) => i.status === status).length : items.length;
 }

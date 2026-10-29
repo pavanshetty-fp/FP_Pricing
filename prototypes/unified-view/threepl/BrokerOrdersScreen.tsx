@@ -56,7 +56,7 @@ import { BoardV2 } from "./BoardV2";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, VENDOR_SECTION_ID, type BrokerOrderDraft } from "./BrokerOrderSheet";
-import { ListSplitView, listSplitCount, type ListSplitItem } from "../ListSplitView";
+import { ListSplitView, type ListSplitItem } from "../ListSplitView";
 import { attend } from "../PendingStrip";
 import {
   AssetMovementSheet,
@@ -2434,7 +2434,7 @@ export function BrokerOrdersScreen({
           viewToolsInto={bar.into}
           viewStatement={
             <ViewStatement
-              count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length}
+              count={sorted.length}
               one="order"
               many="orders"
               rest={

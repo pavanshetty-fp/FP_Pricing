@@ -1599,15 +1599,16 @@ export function BrokerOrderSheet({
      then, so the sheet only turns into the order — rail, stage bar — once
      Create has made it one. */
   const inCreation = creating;
-  /* QUOTATION SUMMARY, TWO WAYS (Pavan, 2026-10-06 — trying it out on
-     D-104634). Option 1: the card in the rail. Option 2: a banner pinned to
-     the foot of the form that hands over to Pricing's own totals bar once
-     Pricing scrolls into view. */
-  const [summaryMode, setSummaryMode] = React.useState<"card" | "banner">("card");
+  /* QUOTATION SUMMARY — CARD AND BANNER, FINAL (Pavan, 2026-10-29; was the
+     D-104634 try-out's Option 3, now every order). The card stays in the
+     rail; the banner rises at the foot once the Vendor unit scrolls in, and
+     widens into Pricing's totals bar once Pricing does. */
   const [pricingInView, setPricingInView] = React.useState(false);
+  const [vendorReached, setVendorReached] = React.useState(false);
   React.useEffect(() => {
-    if (!open || summaryMode !== "banner") return;
+    if (!open) return;
     let io: IntersectionObserver | null = null;
+    let unscroll: (() => void) | undefined;
     const t = window.setTimeout(() => {
       const el = document.getElementById(PRICING_SECTION_ID);
       const port = el?.closest<HTMLElement>(".overflow-auto");
@@ -1618,12 +1619,27 @@ export function BrokerOrderSheet({
       );
       /* PRICING AND ADDITIONAL FEES — the span the totals bar covers. */
       io.observe(el.parentElement ?? el);
+      /* REACHED, NOT JUST VISIBLE — the Vendor unit's top has come up past
+         the foot of the view, and stays reached as it scrolls on up.
+         Read on scroll, not by an observer: a jump straight past the unit
+         (back to the top, or another order picked) crosses no threshold. */
+      const vendor = document.getElementById(VENDOR_SECTION_ID);
+      if (vendor) {
+        const read = () =>
+          setVendorReached(vendor.getBoundingClientRect().top < port.getBoundingClientRect().bottom);
+        read();
+        port.addEventListener("scroll", read, { passive: true });
+        unscroll = () => port.removeEventListener("scroll", read);
+      }
     }, 300);
     return () => {
       window.clearTimeout(t);
       io?.disconnect();
+      unscroll?.();
     };
-  }, [open, summaryMode, order?.id]);
+  }, [open, order?.id]);
+  /** The banner is up from the Vendor unit on. */
+  const bannerUp = vendorReached || pricingInView;
   /* CLOSING AN UNCREATED ORDER ASKS FIRST — it is about to be thrown away. */
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const requestClose = (o: boolean) => {
@@ -4311,77 +4327,8 @@ export function BrokerOrderSheet({
         </table>
     </SheetSection>
 
-    {/* ── THE BAR THE WHOLE UNIT EXISTS TO PRODUCE ──────────────────────
-        ONLY THE BAR IS LEFT DOWN HERE (Pavan, 2026-09-22). What belongs to no
-        product, and each column's own total, went back INTO the table, under
-        the columns they are about — a column's total belongs at the bottom of
-        that column, on the same grid as the figures above it. What is left is
-        the comparison: cost against revenue against what is between them, and
-        that is no column's own.
-
-        IT SITS BELOW ADDITIONAL FEES, because the customer figure INCLUDES
-        them and a total that stands above half of what it counts is a total
-        the reader has to take on trust.
-
-        IT IS SCOPED TO THE PRICING PAIR. Pricing, Additional fees and this are
-        one `flex flex-col` — so the bar pins from the moment Pricing arrives
-        and releases at the end of the fees, rather than hanging over the whole
-        sheet the way a child of the body would.
-
-        EDGE TO EDGE AND NO SHADOW. `-mx-4` cancels the sheet body's padding so
-        the bar runs the full width of the sheet, and `-bottom-4` pins it past
-        the body's bottom padding — otherwise that 16px is a gap for the next
-        row of figures to show through. A top rule says it is pinned; a shadow
-        under a full-bleed bar reads as a second edge.
-
-        A SURFACE OF ITS OWN — `bg-fp-card-1`, the DS's raised/inset step
-        (Pavan, 2026-09-22). It was `bg-popover`, which is the SHEET's own
-        fill: opaque, so nothing scrolled through it, but identical to the
-        ground behind it — so while it was pinned there was nothing to say it
-        was pinned, and the top rule read as one more row rule in a sheet full
-        of them. `--fp-card-1` steps AWAY from the content layer in both
-        themes — lighter in dark, darker in light — so the bar reads as a
-        layer over the form rather than as part of it.
-
-        FIGURES ONLY. It was a banner with a sentence and a percentage in it,
-        which is a paragraph where a reader wants a row of numbers. Equal
-        thirds, with the profit's figure flush to the right edge so the row
-        spans the bar instead of trailing off before it does. */}
-    {/* Option 2's banner becomes this bar instead (see the banner). */}
-    {shownQuote && summaryMode !== "banner" && (
-      <div className="sticky -bottom-4 z-30 -mx-4 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-border bg-popover px-4 py-3 lg:grid-cols-3">
-        {[
-          { label: "Vendor pricing", value: carrierTotal },
-          { label: "Customer pricing", value: billed },
-        ].map((f) => (
-          <div key={f.label} className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">{f.label}</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">
-              {money(f.value)}
-            </span>
-          </div>
-        ))}
-        <div className="flex flex-col gap-0.5 lg:items-end lg:text-right">
-          <span className="text-xs text-muted-foreground">Expected profit</span>
-          {/* THE SIGN IS THE COLOUR. This is the one figure on the bar that
-              can be bad news, and "bad" here is not a shade of the same thing
-              — a negative expected profit is the order costing money to run.
-              Exactly zero takes neither, since it is neither. */}
-          <span
-            className={cn(
-              "text-sm font-semibold tabular-nums",
-              margin < 0
-                ? "text-destructive"
-                : margin > 0
-                  ? "text-status-success"
-                  : "text-foreground"
-            )}
-          >
-            {money(margin)}
-          </span>
-        </div>
-      </div>
-    )}
+    {/* PRICING'S TOTALS BAR IS THE SUMMARY BANNER, widened (Pavan,
+        2026-10-29) — see the banner at the foot of the sheet. */}
     </div>
   );
 
@@ -4485,22 +4432,6 @@ export function BrokerOrderSheet({
           {/* ONE CHIP. "Draft" and "Saved" were two elements saying one thing
               between them — what state this order is in. */}
           {draft.urgent && <Pill kind="critical">Urgent</Pill>}
-          {/* THE TRY-OUT SWITCH — D-104634 only, for now. */}
-          {order?.orderNo === "D-104634" && (
-            <Tabs value={summaryMode} onValueChange={(v) => setSummaryMode(v as "card" | "banner")}>
-              <TabsList className="h-7">
-                {(["card", "banner"] as const).map((k, i) => (
-                  <TabsTrigger
-                    key={k}
-                    value={k}
-                    className="px-2 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-border dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground"
-                  >
-                    Option {i + 1}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          )}
           {/* SAVE STATE LAST in the group, after anything about the order
               itself (Pavan, 2026-10-05). */}
           <DraftStatusChip
@@ -6621,7 +6552,7 @@ export function BrokerOrderSheet({
                 )}
               </div>
             </section>
-            ) : summaryMode === "banner" ? null : (
+            ) : (
             /* THE SHARED SUMMARY CARD (Pavan, 2026-10-07) — ../SheetCards. */
             <SummaryCard title="Quotation summary">
                 {quotes.length === 0 && (
@@ -7457,7 +7388,7 @@ export function BrokerOrderSheet({
           the three money figures spread across — rather than leaving and
           letting a second bar arrive. Pricing's own bar stands down in this
           mode; this is it. */}
-      {summaryMode === "banner" && shownQuote && !inCreation && (() => {
+      {shownQuote && !inCreation && (() => {
         const m = pricingInView;
         const ease = "duration-300 ease-out";
         const fold = (open: boolean) =>
@@ -7476,6 +7407,9 @@ export function BrokerOrderSheet({
             m ? "lg:-mr-4" : "lg:mr-87"
           )}
         >
+          {/* OPTION 3 RISES INTO PLACE when the Vendor unit arrives. */}
+          <div className={fold(bannerUp)}>
+          <div className="overflow-hidden">
           {/* THE VENDORS ON A BAND OF THEIR OWN, above the coloured card. */}
           {choosing && quotedIds.length > 1 && (
             <div className={fold(!m)}>
@@ -7564,6 +7498,8 @@ export function BrokerOrderSheet({
               </dl>
             </div>
           </section>
+          </div>
+          </div>
         </div>
         );
       })()}

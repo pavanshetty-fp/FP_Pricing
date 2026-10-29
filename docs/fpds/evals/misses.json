@@ -459,6 +459,19 @@
         "id": "picked-card-uses-card-states",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-035",
+      "date": "2026-10-29",
+      "title": "List view drew the order type as a word pill; the board card shows the coloured initial (CodeDisc)",
+      "where": "List view rows (3PL, Sales, Service)",
+      "foundBy": "pavan",
+      "pattern": "generic-over-existing",
+      "why": "Took the table's Type pill instead of the card the rows were built from; the rows are the card's content, so its parts come with them.",
+      "check": {
+        "id": "one-fact-one-form",
+        "status": "manual"
+      }
     }
   ]
 }

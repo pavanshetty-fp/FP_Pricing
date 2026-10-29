@@ -1042,6 +1042,8 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 **UX-165. Icons never wear the accent.** Metric/figure icons, the AI sparkle and any decorative icon use the muted grey, quietly (status icons keep their status colour — green done, red failed) — a metric icon's line is the quiet icon ink (`text-fp-icon-quiet`, half the muted ink, a solid mix); the violet accent is for highlights (selected days, the current stage, recommendations' outline), never an icon's colour. — *"Everywhere else we have used accent color for icons should be replaced with the grayscale color."* (Pavan, 2026-10-26)
 
+**UX-166. One fact, one form — across every unit.** When a unit shows something another unit already shows (an order number, its type, a status, a date, a ship-to), it draws it the same way: same component, colour, size and weight. A new view built from an existing one (List view from the board card) copies its parts, never re-draws them. Differ only where Pavan has said so explicitly. — *The List view showed the order type as a word pill while the board card shows the coloured initial.* (Pavan, 2026-10-29) · Check: review; misses M-035.
+
 ## Index
 
 | Id | Rule |
@@ -1211,3 +1213,4 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-163 | Closest existing pattern before any generic component |
 | UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
 | UX-165 | Icons never wear the violet accent (decorative icons grey; status icons keep status colour); the accent is for highlights only |
+| UX-166 | One fact, one form across every unit — copy the existing unit's parts; differ only when Pavan says so |

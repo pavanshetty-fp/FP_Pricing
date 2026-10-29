@@ -27,7 +27,7 @@ import {
   type BoardLane,
 } from "./threepl/BrokerBoard";
 import { OrderMapView } from "./OrderMapView";
-import { ListSplitView, listSplitCount, type ListSplitItem } from "./ListSplitView";
+import { ListSplitView, type ListSplitItem } from "./ListSplitView";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import { AssetOrderSheet, type AssetOrderDraft } from "./AssetOrderSheet";
@@ -1356,7 +1356,7 @@ export function SalesOrdersScreen({
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
+          viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           mapView
           listView

@@ -673,7 +673,7 @@ function DockedContent({
     <div
       role="region"
       style={style}
-      className={cn(className, "flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden rounded-lg border border-border bg-popover sm:max-w-none")}
+      className={cn(className, "flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden bg-popover sm:max-w-none")}
     >
       {children}
     </div>

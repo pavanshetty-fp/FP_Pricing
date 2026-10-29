@@ -16,7 +16,6 @@ import { Pill } from "@/components/ui/pill";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Combobox } from "@/components/ui/combobox";
-import { CopyValue } from "@/components/ui/copy-value";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -45,7 +44,7 @@ import {
 import { HangingAdd } from "../HangingAdd";
 import { CELL, RecordSheet } from "../RecordSheet";
 import type { PendingItem } from "../PendingStrip";
-import { useOrderFormFields } from "./orderFormFields";
+import { PocUnit } from "../PocDetails";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,11 +59,7 @@ import { DATE_FMT } from "../data";
 import { RENTAL_ASSETS, TANK_TYPES, type RentalAsset } from "./directory";
 import {
   ORDER_TAGS,
-  POCS,
-  POC_DIRECTORY,
   PRODUCTS,
-  SALESPEOPLE,
-  SALES_CONTACTS,
   SHIP_TO_SITES,
   YARDS,
   YARD_SITES,
@@ -774,7 +769,6 @@ export function AssetMovementSheet({
   /* THE ROUTE IS THE ONLY THING THAT DIFFERS between the four, so everything
      below is read off it rather than written out four times. */
   const route = MOVEMENT_ROUTE[direction];
-  const poc = POC_DIRECTORY[draft.primaryPoc];
   const shipTos = SHIP_TO_SITES.map((s) => s.name);
 
   /** What a given end resolves to, once it has been chosen. */
@@ -997,8 +991,6 @@ export function AssetMovementSheet({
   /* NOTHING IS KEPT BEFORE CREATE ORDER (Pavan, 2026-10-06), so closing a
      form with anything in it asks first — the same as a delivery order. */
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
-  /* THE FORM'S OPTIONAL STEPS — the same gear and setting as a delivery order. */
-  const { fields, gear, drawer } = useOrderFormFields("new-asset", open, "New asset order");
   const requestClose = (o: boolean) => {
     if (!o && JSON.stringify(draft) !== JSON.stringify(emptyDraft(direction))) {
       setConfirmDiscard(true);
@@ -1021,8 +1013,6 @@ export function AssetMovementSheet({
       }}
       open={open}
       onOpenChange={requestClose}
-      /* No step column — see the order sheet. The gear goes to the header. */
-      headerActions={gear}
       mode="create"
       showCancel={false}
       editTitle="Asset Order"
@@ -1072,155 +1062,15 @@ export function AssetMovementSheet({
         {blockFor("to")}
       </RouteStep>
 
-      {/* OFF EVERYWHERE UNLESS TURNED ON (Pavan, 2026-10-06). */}
-      {fields.poc && (
-      <SheetSection
-        title="POC details"
-        /* ADDING A PERSON ACTS ON THE SECTION, not on a field, so it sits on
-           the heading row.
-
-           IT ADDS A FIELD, NOT A CHIP. As a token picker in the heading, "Add
-           POC" collected names into a box that was nowhere near the Primary POC
-           it sat above, and a second person ended up looking nothing like the
-           first — no label, no contact read-out, no way to see whose number was
-           whose. It now appends a Secondary POC row of exactly the same shape
-           as Primary, under it, where a second person belongs. */
-        action={
-          <button
-            type="button"
-            onClick={() => set("secondaryPocs", [...draft.secondaryPocs, ""])}
-            className="flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <Plus className="size-4" /> Add POC
-          </button>
-        }
-      >
-        <div className="grid grid-cols-9 items-end gap-4">
-          <SheetField label="Primary POC" className="col-span-4">
-            <Combobox
-              className="w-full"
-              value={draft.primaryPoc}
-              onValueChange={(v) => set("primaryPoc", v)}
-              options={[...POCS]}
-              placeholder="Select Primary POC"
-              searchPlaceholder="Search contacts…"
-            />
-          </SheetField>
-          {/* Derived, so a read-out with its own copy buttons — not a pair of
-              disabled fields pretending to be editable. */}
-          <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-            {poc ? (
-              <>
-                <CopyValue value={poc.phone} label="POC contact" tabular />
-                <span aria-hidden className="mr-6 text-fp-outline-1">
-                  |
-                </span>
-                <CopyValue value={poc.email} label="POC email" />
-              </>
-            ) : (
-              <span className="truncate text-sm text-muted-foreground">
-                Select a POC to see their contact and email.
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* SAME ROW, SAME SHAPE. A second person is another of the first kind
-            of thing, so it gets the first kind of row — and its own Remove,
-            because a row that was added by a click has to be removable by
-            one. */}
-        {draft.secondaryPocs.map((name, i) => {
-          const contact = POC_DIRECTORY[name];
-          return (
-            <div key={i} className="grid grid-cols-9 items-end gap-4">
-              <SheetField
-                label={
-                  <span className="flex w-full items-center justify-between gap-2">
-                    <span>Secondary POC</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        set(
-                          "secondaryPocs",
-                          draft.secondaryPocs.filter((_, k) => k !== i)
-                        )
-                      }
-                      className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-                    >
-                      Remove
-                    </button>
-                  </span>
-                }
-                className="col-span-4"
-              >
-                <Combobox
-                  className="w-full"
-                  value={name}
-                  onValueChange={(v) =>
-                    set(
-                      "secondaryPocs",
-                      draft.secondaryPocs.map((p, k) => (k === i ? v : p))
-                    )
-                  }
-                  /* Nobody is offered twice: a person already on the order is
-                     not a second person to add to it. */
-                  options={POCS.filter(
-                    (p) =>
-                      p === name ||
-                      (p !== draft.primaryPoc && !draft.secondaryPocs.includes(p))
-                  )}
-                  placeholder="Select Secondary POC"
-                  searchPlaceholder="Search contacts…"
-                />
-              </SheetField>
-              <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-                {contact ? (
-                  <>
-                    <CopyValue value={contact.phone} label="POC contact" tabular />
-                    <span aria-hidden className="mr-6 text-fp-outline-1">
-                      |
-                    </span>
-                    <CopyValue value={contact.email} label="POC email" />
-                  </>
-                ) : (
-                  <span className="truncate text-sm text-muted-foreground">
-                    Select a POC to see their contact and email.
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="grid grid-cols-9 items-end gap-4">
-          <SheetField label="Sales Person" className="col-span-4">
-            <Combobox
-              className="w-full"
-              value={draft.salesperson}
-              onValueChange={(v) => set("salesperson", v)}
-              options={[...SALESPEOPLE]}
-              placeholder="Select Sales Person"
-              searchPlaceholder="Search people…"
-            />
-          </SheetField>
-          {/* SAME SHAPE AND SAME GRID as the POC row above — two read-out cards
-              that differ in width read as two different kinds of card. */}
-          <div className="col-span-5 flex h-9 items-center overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-            {SALES_CONTACTS[draft.salesperson] ? (
-              <CopyValue
-                value={SALES_CONTACTS[draft.salesperson]}
-                label="sales contact"
-                tabular
-              />
-            ) : (
-              <span className="truncate text-sm text-muted-foreground">
-                Select a sales person to see their contact.
-              </span>
-            )}
-          </div>
-        </div>
+      {/* POC DETAILS — the shared unit (Pavan, 2026-10-29; ../PocDetails),
+          for the customer end of the route. One POC; optional. */}
+      <SheetSection title="POC details">
+        <PocUnit
+          shipTo={draft.to.shipTo || draft.from.shipTo}
+          value={draft.primaryPoc}
+          onChange={(v) => set("primaryPoc", v)}
+        />
       </SheetSection>
-      )}
 
       <SheetSection id="mv-order" title="Order Details">
         {/* THREE REFERENCE NUMBERS AND A DATE, one row. With the type gone to
@@ -1800,7 +1650,6 @@ export function AssetMovementSheet({
           </SheetField>
         </div>
       </SheetSection>
-      {drawer}
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent>
           <AlertDialogHeader>

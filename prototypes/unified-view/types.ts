@@ -83,6 +83,8 @@ export interface FuelOrder {
   driver: Person | null;
   /** The sheet's "Mark as Urgent" — kept on the order since 2026-10-07. */
   urgent: boolean;
+  /** POC at the ship-to (Pavan, 2026-10-29) — the POC details card. Optional. */
+  poc?: string;
   /** The change log — see `activity.tsx`. Written by the screen's setter. */
   audit?: ActivityEntry[];
   /* SALES SETTINGS' FIELDS (Pavan, 2026-10-07). What a field added on Form

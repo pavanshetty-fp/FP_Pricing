@@ -1153,10 +1153,19 @@ the detail page, a section while creating — the picked ship-to's POCs
 (`SHIP_TO_POCS`, 3–4 a site) in one optional picker with "No POC", the chosen
 one's phone and email under it, and Add POC opening a side sheet (name
 required; phone, email) that adds them to the ship-to and selects them.
-Changing the ship-to drops a POC who isn't at the new one. **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
+Changing the ship-to drops a POC who isn't at the new one. **One unit, every module (2026-10-29):** `../PocDetails` (`PocUnit`, `PocCard`) and `../pocs` (directory,
+`SHIP_TO_POCS`, `pocsAt` — a ship-to not in the map gets three by name, so
+it is never empty). On the 3PL delivery and asset-movement sheets, Sales
+fuel and asset orders, and the Customer Portal order (locked once sent).
+The old POC section (Primary/Secondary POC, Sales Person) and the "Configure
+order form" gear are gone; Sales' "PoC at Delivery" field is dropped from
+Sales Settings (a saved form that lists it drops it). **Dark hover:** the card fills one step (`--muted`) and its grey pills step to `fp-card-1`, all versions.
 
 **2026-10-28.** Version 4: units 8px apart (the 12 / 10 / 16 trial is
 gone); ship-to, driver, vendor and price at the Delivery line's 13px medium.
+**2026-10-29:** those lines and the Delivery line are now 14px regular;
+the order number stays 14px semibold, the date 12px regular. Dark-theme
+main text is pure white (`--fp-ink-1` #ffffff, was #e8eaed).
 **A date in every lane**: Assigned keeps its schedule (no longer off by
 default, all versions); from Completed on, *Completed on* hangs under the
 ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"

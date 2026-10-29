@@ -1031,8 +1031,8 @@
      monochrome; orange stays on the selected-rail marker and focus rings.
      Steps: ground #0f1216 · content #161a20 · card #20252c · inset #282d35. */
   /* LAYER 1 — the same primitives, dark values. */
-  --fp-ink-1: #e8eaed; /* body text */
-  --fp-ink-2: #e8eaed; /* text on an emphasis fill */
+  --fp-ink-1: #ffffff; /* body text — pure white (Pavan, 2026-10-29; was #e8eaed) */
+  --fp-ink-2: #ffffff; /* text on an emphasis fill */
   --fp-ink-3: #a0a7b0; /* secondary text */
   --fp-ink-inverse: #0f1216; /* text on the primary fill */
   --fp-surface-base: #07080a; /* the app ground */
@@ -1134,7 +1134,7 @@
   --fp-banner-border-success: #22c55e;
   /* The panel's own text, which on a near-black fill is the body colour rather
      than pure white. */
-  --fp-banner-foreground: #e8eaed;
+  --fp-banner-foreground: #ffffff;
   --fp-banner-accent-info: #a5b4fc;
   --fp-banner-accent-caution: #fcd34d;
   --fp-banner-accent-warning: #fca5a5;

@@ -40,6 +40,7 @@ import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ActivityCard, RailCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { PocCard } from "../unified-view/PocDetails";
 import { RulePill } from "./cells";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading } from "./TankLevel";
 import { DeliveryWindowTimeline } from "../unified-view/DeliveryWindowTimeline";
@@ -104,6 +105,7 @@ type Draft = Pick<
   | "preferred"
   | "po"
   | "instructions"
+  | "poc"
   | "recurring"
   | "frequency"
   | "schedule"
@@ -119,6 +121,7 @@ const draftOf = (r: OrderRequest): Draft => ({
   preferred: r.preferred,
   po: r.po,
   instructions: r.instructions,
+  poc: r.poc ?? "",
   recurring: r.recurring,
   frequency: r.frequency,
   schedule: r.schedule,
@@ -975,6 +978,9 @@ export function OrderRequestSheet({
             keep their own height below it, the summary takes the rest. */}
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(var(--fp-vh)-10.25rem)]">
           <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} fill />
+          {/* POC DETAILS — the shared unit (Pavan, 2026-10-29), creating too:
+              this sheet has its rail from the start. */}
+          <PocCard shipTo={draft.shipTo} value={draft.poc ?? ""} onChange={(v) => set("poc", v)} disabled={locked} />
           {!creating && ["Out for delivery", "Partial delivery", "Delivered", "Invoiced", "Paid"].includes(request.status) && (
             /* A PLAIN RAIL CARD (Pavan, 2026-10-26) — ONE HIGHLIGHTED CARD PER
                SHEET, and here it is the order summary. */

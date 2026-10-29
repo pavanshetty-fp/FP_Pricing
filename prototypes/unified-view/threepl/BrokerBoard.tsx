@@ -463,12 +463,14 @@ const LEVEL_CLASS_COMPACT: Record<1 | 2 | 3, string> = {
   3: "text-xs text-muted-foreground",
 };
 
-/* VERSION 4 READS AT ONE WEIGHT (Pavan, 2026-10-28) — the ship-to, the
-   driver, the vendor and the price take the Delivery line's 13px medium, so no
-   line on the card shouts over another; only the order number stays bold. */
+/* VERSION 4 READS AT ONE WEIGHT — the ship-to, the driver, the delivery
+   line, the vendor and the price share one style, so no line on the card
+   shouts over another; only the order number stays bold. 14px REGULAR
+   (Pavan, 2026-10-29 — tried on one card first; was 13px medium). */
+const BARE_LINE = "text-sm font-normal text-foreground";
 const LEVEL_CLASS_BARE: Record<1 | 2 | 3, string> = {
   ...LEVEL_CLASS,
-  1: "text-[13px] font-medium text-foreground",
+  1: BARE_LINE,
 };
 
 /** Lines at three levels. Hierarchy does the work a field label used to. */
@@ -525,7 +527,7 @@ function CardStack({
        for both on one line. */
     <div className={cn("flex min-w-0 gap-2.5", compact ? "flex-col gap-0.5" : "items-start justify-between")}>
       {stack}
-      <span className={cn(compact ? "text-[13px] font-bold" : bare ? "text-[13px] font-medium" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
+      <span className={cn(compact ? "text-[13px] font-bold" : bare ? "text-sm font-normal" : "text-sm font-semibold", " tabular-nums whitespace-nowrap text-foreground")}>
         {figure}
       </span>
     </div>
@@ -578,6 +580,8 @@ function CardInline({ parts, quiet }: { parts: string[]; quiet?: boolean }) {
  */
 function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
   const compact = useCompact();
+  /* Version 4: the asset and its quantity at the card's 14px regular. */
+  const bare = useBare();
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {rows.map((r, i) => (
@@ -589,7 +593,7 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
           {/* NAME OVER ID. The id is the thing you read second — when you are
               already at the right row and need to know which unit it is. */}
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-[13px] font-medium text-foreground" title={r.asset}>
+            <span className={cn("truncate text-foreground", bare ? "text-sm font-normal" : "text-[13px] font-medium")} title={r.asset}>
               {r.asset}
             </span>
             {r.assetId && (
@@ -603,8 +607,9 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
           </span>
           <span
             className={cn(
-              "text-right text-[13px] tabular-nums whitespace-nowrap",
-              r.qtySoft ? "font-medium text-muted-foreground" : "font-semibold text-foreground"
+              "text-right tabular-nums whitespace-nowrap",
+              bare ? "text-sm font-normal" : "text-[13px]",
+              r.qtySoft ? cn(!bare && "font-medium", "text-muted-foreground") : cn(!bare && "font-semibold", "text-foreground")
             )}
           >
             {r.qty}
@@ -614,7 +619,7 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
       {total && (
         <div className="flex items-baseline justify-between gap-3 border-t border-dashed border-fp-outline-1 pt-1.5">
           <span className="text-xs text-muted-foreground">Total</span>
-          <span className="text-[13px] font-semibold tabular-nums text-foreground">{total}</span>
+          <span className={cn("tabular-nums text-foreground", bare ? "text-sm font-normal" : "text-[13px] font-semibold")}>{total}</span>
         </div>
       )}
     </div>
@@ -745,7 +750,10 @@ export function CardDelivery({
   total,
   iconTrigger,
   icon: Icon = Info,
+  summaryClassName,
 }: Omit<Extract<BoardCardUnit, { kind: "delivery" }>, "kind" | "key"> & {
+  /** Overrides the summary's size and weight (Version 4's one line style). */
+  summaryClassName?: string;
   /** Version 4: a truck instead of the info icon. */
   icon?: LucideIcon;
   /** Versions 2 and 3 (Pavan, 2026-10-27): an info icon, then the summary as
@@ -781,7 +789,7 @@ export function CardDelivery({
         </HoverCardTrigger>
         {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
         {iconTrigger && (
-          <span className={cn("min-w-0 text-foreground", compact ? "text-xs" : "text-[13px] font-medium")}>
+          <span className={cn("min-w-0 text-foreground", summaryClassName ?? (compact ? "text-xs" : "text-[13px] font-medium"))}>
             {summary.join(" · ")}
           </span>
         )}
@@ -1118,6 +1126,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                   points={u.points}
                   iconTrigger={compact || bare}
                   icon={bare ? Truck : undefined}
+                  summaryClassName={bare ? BARE_LINE : undefined}
                 />
               )}
             </>

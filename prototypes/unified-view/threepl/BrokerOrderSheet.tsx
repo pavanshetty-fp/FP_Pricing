@@ -21,7 +21,6 @@ import {
   FilePlus,
   Image as ImageIcon,
   StickyNote,
-  UserRound,
   Users,
   Ban,
   MoreHorizontal,
@@ -64,7 +63,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
-import { CopyValue } from "@/components/ui/copy-value";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -112,8 +110,8 @@ import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../Record
 import { BLINK_MS, PendingStrip, attend, blinkGroup } from "../PendingStrip";
 import { HangingAdd } from "../HangingAdd";
 import { ActivityCard, RailCard, RailRow, SummaryCard } from "../SheetCards";
+import { PocCard, PocUnit } from "../PocDetails";
 import { EditDrawer } from "./DirectoryRecordSheet";
-import { useOrderFormFields } from "./orderFormFields";
 import { BROKER_CUSTOMERS } from "./directory";
 import { DATE_FMT, MONEY, RATE, dateKeyOf } from "../data";
 import {
@@ -130,9 +128,6 @@ import {
   LISTING_TYPES,
   DRIVERS,
   ORDER_TAGS,
-  POCS,
-  POC_DIRECTORY,
-  SHIP_TO_POCS,
   pocsAt,
   PRODUCTS,
   categoryOfAsset,
@@ -141,8 +136,6 @@ import {
   type QtyUnit,
   unitsFor,
   RECURRENCE_FREQUENCIES,
-  SALESPEOPLE,
-  SALES_CONTACTS,
   SHIP_TO_SITES,
   isAllTopOff,
   quoteFreight,
@@ -1605,7 +1598,6 @@ export function BrokerOrderSheet({
      then, so the sheet only turns into the order — rail, stage bar — once
      Create has made it one. */
   const inCreation = creating;
-  /* THE FORM'S OPTIONAL STEPS — see `useOrderFormFields`. */
   /* QUOTATION SUMMARY, TWO WAYS (Pavan, 2026-10-06 — trying it out on
      D-104634). Option 1: the card in the rail. Option 2: a banner pinned to
      the foot of the form that hands over to Pricing's own totals bar once
@@ -1631,11 +1623,6 @@ export function BrokerOrderSheet({
       io?.disconnect();
     };
   }, [open, summaryMode, order?.id]);
-  const { fields, gear: fieldsGear, drawer: fieldsDrawer } = useOrderFormFields(
-    order?.id ?? "new-delivery",
-    open,
-    order?.orderNo ?? "New order"
-  );
   /* CLOSING AN UNCREATED ORDER ASKS FIRST — it is about to be thrown away. */
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const requestClose = (o: boolean) => {
@@ -1810,15 +1797,7 @@ export function BrokerOrderSheet({
     kind: "customer" | "shipTo";
     name: string;
   } | null>(null);
-  /** Which POC's contact details are open for editing, or none. */
-  const [editingPoc, setEditingPoc] = React.useState<"primary" | "secondary" | null>(null);
-  /** The Add POC side sheet, and what is typed into it. */
-  const [addingPoc, setAddingPoc] = React.useState(false);
-  const [newPoc, setNewPoc] = React.useState({ name: "", phone: "", email: "" });
   /** The order's history, in the header's drawer. */
-  /** The salesperson's contact, open for editing. */
-  const [editingSales, setEditingSales] = React.useState(false);
-  const [salesEdit, setSalesEdit] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmCancel, setConfirmCancel] = React.useState(false);
   /* THE ROW JUST ADDED, per table. Its first cell takes focus when it mounts —
@@ -1838,22 +1817,7 @@ export function BrokerOrderSheet({
   /* AUTOSAVE FEEDBACK. A draft order is kept as it is typed; the header says
      so, because an autosave nobody is told about is one nobody relies on. */
   const saveState = useDraftSaveState(draft, open);
-  /*
-    POC EDITS ARE HELD HERE, not written straight into the directory as you
-    type. The drawer has a Save, so the value has to be somewhere while it is
-    unsaved — and a half-typed phone number must not already be the customer's
-    number everywhere else in the app.
-  */
-  const [pocEdit, setPocEdit] = React.useState({ phone: "", email: "" });
   const [recordEdit, setRecordEdit] = React.useState({ a: "", b: "", c: "", d: "" });
-  const editingPocName =
-    editingPoc === "primary"
-      ? draft?.primaryPoc ?? ""
-      : editingPoc === "secondary"
-        ? draft?.secondaryPoc ?? ""
-        : "";
-  /* A second POC cannot be the first one. Offering the same person twice is a
-     choice nobody wants and a support ticket somebody eventually files. */
   /* The window is STORED as the two labels an order carries, and edited as
      minutes. Parsing here keeps the stored shape unchanged — the board, the
      table and the card all read `window.start` / `window.end` as text. */
@@ -1862,22 +1826,7 @@ export function BrokerOrderSheet({
     return parsed ?? [8 * 60, 12 * 60];
   }, [draft?.windowStart, draft?.windowEnd]);
 
-  const secondPocChoices = React.useMemo(
-    () => POCS.filter((p) => p !== draft?.primaryPoc),
-    [draft?.primaryPoc]
-  );
-
-  /* Load each drawer's own draft when it opens, not on every render. */
-  React.useEffect(() => {
-    if (!editingPoc) return;
-    const p = POC_DIRECTORY[editingPocName];
-    setPocEdit({ phone: p?.phone ?? "", email: p?.email ?? "" });
-  }, [editingPoc, editingPocName]);
-
-  React.useEffect(() => {
-    if (!editingSales) return;
-    setSalesEdit(SALES_CONTACTS[draft?.salesperson ?? ""] ?? "");
-  }, [editingSales, draft?.salesperson]);
+  /* Load the record drawer's own draft when it opens, not on every render. */
 
   React.useEffect(() => {
     if (!editing) return;
@@ -1905,54 +1854,12 @@ export function BrokerOrderSheet({
   /* Read-only companions to the two people/place selects. Derived, never
      stored on the draft — a copy would be a second source of truth. */
   const site = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
-  const poc = POC_DIRECTORY[draft.primaryPoc];
-  /* ── POC DETAILS (Pavan, 2026-10-29) ── the picked ship-to's people, one
-     chosen (optional), and Add POC opening a side sheet when the one needed
-     is not there. A card in the rail; a section while creating. */
-  const sitePocs = draft.shipTo ? pocsAt(draft.shipTo) : [];
-  const pickedPoc = sitePocs.includes(draft.primaryPoc) ? draft.primaryPoc : "";
-  const pocUnit = (
-    <div className="flex flex-col gap-3">
-      <SheetField label="POC">
-        <Combobox
-          className="w-full"
-          value={pickedPoc}
-          onValueChange={(v) => set("primaryPoc", v)}
-          options={sitePocs}
-          clearLabel="No POC"
-          disabled={!draft.shipTo}
-          placeholder={draft.shipTo ? "Select POC" : "Select a ShipTo first"}
-          searchPlaceholder="Search POCs…"
-          emptyText="No POC found."
-        />
-      </SheetField>
-      {pickedPoc && (POC_DIRECTORY[pickedPoc]?.phone || POC_DIRECTORY[pickedPoc]?.email) && (
-        <div className="flex flex-col gap-0.5 text-sm">
-          {POC_DIRECTORY[pickedPoc].phone && (
-            <CopyValue value={POC_DIRECTORY[pickedPoc].phone} label="POC phone" tabular />
-          )}
-          {POC_DIRECTORY[pickedPoc].email && (
-            <CopyValue value={POC_DIRECTORY[pickedPoc].email} label="POC email" />
-          )}
-        </div>
-      )}
-      {draft.shipTo && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            setNewPoc({ name: "", phone: "", email: "" });
-            setAddingPoc(true);
-          }}
-        >
-          <Plus className="size-4" />
-          Add POC
-        </Button>
-      )}
-    </div>
-  );
-  const poc2 = POC_DIRECTORY[draft.secondaryPoc];
+  /* ── POC DETAILS (Pavan, 2026-10-29) ── the shared unit, ../PocDetails. */
+  const pocProps = {
+    shipTo: draft.shipTo,
+    value: draft.primaryPoc,
+    onChange: (v: string) => set("primaryPoc", v),
+  };
 
   const set = <K extends keyof BrokerOrderDraft>(
     key: K,
@@ -4497,10 +4404,8 @@ export function BrokerOrderSheet({
       }}
       open={open}
       onOpenChange={requestClose}
-      /* NO STEP COLUMN (Pavan, 2026-10-06) — archived in
-         docs/ds/ui/archive/step-column.md. The form-settings gear it carried
-         moves to the header. */
-      headerActions={fieldsGear}
+      /* NO FORM-SETTINGS GEAR (Pavan, 2026-10-29) — its one setting was the
+         old POC section, gone now that POC details is a card. */
       mode={inCreation ? "create" : mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
       createTitle="Create Delivery Order"
@@ -5073,217 +4978,6 @@ export function BrokerOrderSheet({
       </SheetSection>
       </FormStep>
 
-      {/* The people on the order, together. POC and salesperson were split
-          across two places; they answer the same question — who to call. */}
-      {fields.poc && (
-      <FormStep label={CREATE_STEPS.contacts}>
-      <SheetSection title="POC Details">
-        {/* One person per row: name and the two ways to reach them read as a
-            single fact, so they sit side by side rather than wrapping over two
-            rows with the contact detached from whose it is.
-
-            FOUR TO FIVE, not one to two. The read-out card took two thirds of
-            every row it appeared in, and it is the half of the row nobody
-            types into — a phone number needs the width it needs, while a name,
-            a date or a picker was being squeezed to fit around it. The card
-            gives back a fifth of its width and the control takes it. The same
-            split is used by the three rows that pair a control with a card and
-            by the schedule row below, so the left edges of the form's controls
-            line up all the way down. */}
-        <div className="grid grid-cols-9 gap-4">
-          <SheetField
-            label={
-              <span className="flex w-full items-center justify-between gap-2">
-                <span>
-                  POC Name<span className="text-destructive"> *</span>
-                </span>
-                {/* ADD A SECOND, on the row it belongs to. A site often has two
-                    numbers — the foreman and the office — and the second only
-                    exists on some orders, so it is a CTA rather than a field
-                    sitting empty on every one of them. */}
-                {draft.secondaryPoc === "" && (
-                  <button
-                    type="button"
-                    className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-                    onClick={() => set("secondaryPoc", secondPocChoices[0] ?? "")}
-                  >
-                    + Secondary POC
-                  </button>
-                )}
-              </span>
-            }
-            className="col-span-4"
-          >
-            <Combobox
-              className="w-full"
-              value={draft.primaryPoc}
-              onValueChange={(v) => set("primaryPoc", v)}
-              options={[...POCS]}
-              placeholder="Select POC Name"
-              searchPlaceholder="Search contacts…"
-              emptyText="No contact found."
-            />
-          </SheetField>
-          {/* NOT FIELDS. The contact and the email are the chosen person's own
-              record arriving with them — the same relationship the ship-to card
-              above has to Customer and ShipTo, so it gets the same treatment: a
-              read-out card, not two disabled inputs pretending to be editable.
-              It sits BESIDE the name rather than under it, because it is that
-              name's answer, and each value carries its own copy button — a
-              number goes to a dialler, an address goes to a mail client, and one
-              control over the pair would hand over both. */}
-          <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-            {poc ? (
-              <>
-                <CopyValue value={poc.phone} label="POC contact" tabular />
-                <span aria-hidden className="mr-6 text-fp-outline-1">
-                  |
-                </span>
-                <CopyValue value={poc.email} label="POC email" />
-                {/* ON HOVER, like the copy buttons beside it. A card that is a
-                    READ-OUT should look like one at rest; a pencil sitting on
-                    it permanently makes it read as a field, which is exactly
-                    what it is not. Keyboard focus reveals it too, so it is not
-                    mouse-only. */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
-                      aria-label={`Edit ${draft.primaryPoc} contact details`}
-                      onClick={() => setEditingPoc("primary")}
-                    >
-                      <Pencil />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit contact details</TooltipContent>
-                </Tooltip>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                Select a POC to see their contact and email.
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* The second person, once asked for. Same row shape as the first, so
-            two POCs read as two of the same thing rather than as a field and
-            an afterthought. */}
-        {draft.secondaryPoc !== "" && (
-          <div className="grid grid-cols-9 gap-4">
-            <SheetField
-              label={
-                <span className="flex w-full items-center justify-between gap-2">
-                  <span>Secondary POC</span>
-                  <button
-                    type="button"
-                    className="text-xs font-normal text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-                    onClick={() => set("secondaryPoc", "")}
-                  >
-                    Remove
-                  </button>
-                </span>
-              }
-              className="col-span-4"
-            >
-              <Combobox
-                className="w-full"
-                value={draft.secondaryPoc}
-                onValueChange={(v) => set("secondaryPoc", v)}
-                options={secondPocChoices}
-                placeholder="Select POC Name"
-                searchPlaceholder="Search contacts…"
-                emptyText="No contact found."
-              />
-            </SheetField>
-            <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-              {poc2 ? (
-                <>
-                  <CopyValue value={poc2.phone} label="Secondary POC contact" tabular />
-                  <span aria-hidden className="mr-6 text-fp-outline-1">
-                    |
-                  </span>
-                  <CopyValue value={poc2.email} label="Secondary POC email" />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
-                        aria-label={`Edit ${draft.secondaryPoc} contact details`}
-                        onClick={() => setEditingPoc("secondary")}
-                      >
-                        <Pencil />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit contact details</TooltipContent>
-                  </Tooltip>
-                </>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  Select a POC to see their contact and email.
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-9 gap-4">
-          {/* Optional: an order can be raised before anyone owns it. */}
-          <SheetField label="Sales Person" className="col-span-4">
-            <Combobox
-              className="w-full"
-              value={draft.salesperson}
-              onValueChange={(v) => set("salesperson", v)}
-              options={[...SALESPEOPLE]}
-              placeholder="Select Sales Person"
-              searchPlaceholder="Search people…"
-              emptyText="No one found."
-            />
-          </SheetField>
-          {/* Same shape, and the SAME GRID as the POC row above — a field that
-              asks for the same kind of thing should be the same size, and two
-              read-out cards side by side that differ in width read as two
-              different kinds of card. */}
-          <div className="group/card col-span-5 flex h-9 items-center self-end overflow-hidden rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3">
-            {SALES_CONTACTS[draft.salesperson] ? (
-              <>
-                <CopyValue
-                  value={SALES_CONTACTS[draft.salesperson]}
-                  label="sales contact"
-                  tabular
-                />
-                {/* SAME CARD, SAME AFFORDANCE. A salesperson's number goes
-                    stale exactly as often as a POC's, and a card that is
-                    editable in one place and not the other is a rule nobody
-                    can learn. */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
-                      aria-label={`Edit ${draft.salesperson} contact details`}
-                      onClick={() => setEditingSales(true)}
-                    >
-                      <Pencil />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit contact details</TooltipContent>
-                </Tooltip>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                Select a sales person to see their contact.
-              </span>
-            )}
-          </div>
-        </div>
-      </SheetSection>
-      </FormStep>
-      )}
 
       <FormStep label={CREATE_STEPS.schedule}>
       <SheetSection title="Schedule Details">
@@ -5880,39 +5574,6 @@ export function BrokerOrderSheet({
             </div>
           </SheetSection>
 
-          {/* OFF UNLESS TURNED ON (Pavan, 2026-10-06) — see `useOrderFormFields`. */}
-          {fields.poc && (
-          <SheetSection title="POC details" headingClassName={READ_HEAD} className="gap-2.5" variant="outline">
-            <FactGrid>
-              <Fact label="Point of contact" wide>
-                {draft.primaryPoc || NOT_SET}
-                {poc && (
-                  <span className="block text-xs text-muted-foreground">
-                    {poc.phone} · {poc.email}
-                  </span>
-                )}
-              </Fact>
-              <Fact label="Second contact" wide>
-                {draft.secondaryPoc ? (
-                  <>
-                    {draft.secondaryPoc}
-                    {poc2 && (
-                      <span className="block text-xs text-muted-foreground">
-                        {poc2.phone} · {poc2.email}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  NOT_SET
-                )}
-              </Fact>
-              <Fact label="Salesperson">{draft.salesperson || NOT_SET}</Fact>
-              <Fact label="Signature on delivery">
-                {draft.signatureOnDelivery ? "Required" : "Not required"}
-              </Fact>
-            </FactGrid>
-          </SheetSection>
-          )}
 
           <SheetSection title="Schedule" headingClassName={READ_HEAD} className="gap-2.5" variant="outline">
             <FactGrid>
@@ -7143,23 +6804,6 @@ export function BrokerOrderSheet({
                     )}
                   </dd>
                 </div>
-                {fields.poc && (
-                <div className="flex flex-col">
-                  <dt className="text-xs text-muted-foreground">Primary POC</dt>
-                  <dd className="truncate text-sm text-foreground">
-                    {draft.primaryPoc || "—"}
-                  </dd>
-                  {/* THE POINT OF A CONTACT IS BEING CONTACTABLE. A name on its
-                      own sends the reader back into the form to find the number
-                      — which is the one thing this column exists to save. */}
-                  {draft.primaryPoc && POC_DIRECTORY[draft.primaryPoc] && (
-                    <dd className="truncate text-xs text-muted-foreground">
-                      {POC_DIRECTORY[draft.primaryPoc].phone} ·{" "}
-                      {POC_DIRECTORY[draft.primaryPoc].email}
-                    </dd>
-                  )}
-                </div>
-                )}
                 {/* THE DRIVER AND WHO RAISED IT (Pavan, 2026-10-27) — off the
                     table, so here on the order. */}
                 {order && (
@@ -7185,9 +6829,7 @@ export function BrokerOrderSheet({
               </dl>
             </RailCard>
 
-            <RailCard title="POC details" icon={<UserRound />}>
-              <div className="p-4">{pocUnit}</div>
-            </RailCard>
+            <PocCard {...pocProps} />
 
             {/* ── NOTES, FROM THE START (Pavan, 2026-10-05) ──
                 The one card in the rail that is typed into: the gate code for
@@ -7370,7 +7012,11 @@ export function BrokerOrderSheet({
       {/* NOTES WHILE CREATING — there is no rail yet, so they stay in the form
           as its last step; once the order exists they are a rail card. */}
       {/* POC DETAILS WHILE CREATING — the rail's card, in the form. */}
-      {inCreation && <SheetSection title="POC details">{pocUnit}</SheetSection>}
+      {inCreation && (
+        <SheetSection title="POC details">
+          <PocUnit {...pocProps} />
+        </SheetSection>
+      )}
 
       {inCreation && (
         <SheetSection title="Notes">
@@ -7700,111 +7346,11 @@ export function BrokerOrderSheet({
         </AlertDialogContent>
       </AlertDialog>
 
-      {fieldsDrawer}
 
       {/* ── linked-record editing ─────────────────────────────────────────
           Both drawers stack a layer above the order sheet, so the draft behind
           them is never unmounted — the whole point is that noticing a wrong
           number should not cost somebody the order they were raising. */}
-      <EditDrawer
-        open={editingPoc !== null}
-        onOpenChange={(o) => !o && setEditingPoc(null)}
-        title="Edit contact details"
-        subtitle={editingPocName}
-        canSave={pocEdit.phone.trim() !== "" && pocEdit.email.includes("@")}
-        onSave={() => {
-          /* Written to the directory, because these belong to the PERSON: the
-             next order that names them should show the corrected number. */
-          POC_DIRECTORY[editingPocName] = { phone: pocEdit.phone, email: pocEdit.email };
-          toast.success("Contact details saved");
-        }}
-      >
-        <SheetField label="Phone" required>
-          <Input
-            type="tel"
-            value={pocEdit.phone}
-            onChange={(e) => setPocEdit((p) => ({ ...p, phone: e.target.value }))}
-          />
-        </SheetField>
-        <SheetField
-          label="Email"
-          required
-        >
-          <Input
-            type="email"
-            value={pocEdit.email}
-            onChange={(e) => setPocEdit((p) => ({ ...p, email: e.target.value }))}
-          />
-        </SheetField>
-        <p className="text-xs text-muted-foreground">
-          This is {editingPocName}&apos;s own record. Changing it here changes it on
-          every order that names them.
-        </p>
-      </EditDrawer>
-
-      <EditDrawer
-        open={addingPoc}
-        onOpenChange={setAddingPoc}
-        title="Add POC"
-        subtitle={draft.shipTo}
-        canSave={newPoc.name.trim() !== "" && !sitePocs.includes(newPoc.name.trim())}
-        onSave={() => {
-          const name = newPoc.name.trim();
-          POC_DIRECTORY[name] = { phone: newPoc.phone.trim(), email: newPoc.email.trim() };
-          SHIP_TO_POCS[draft.shipTo] = [...pocsAt(draft.shipTo), name];
-          set("primaryPoc", name);
-          toast.success("POC added");
-        }}
-      >
-        <SheetField label="Name" required>
-          <Input
-            value={newPoc.name}
-            placeholder="Enter name"
-            onChange={(e) => setNewPoc((p) => ({ ...p, name: e.target.value }))}
-          />
-        </SheetField>
-        <SheetField label="Phone">
-          <Input
-            type="tel"
-            value={newPoc.phone}
-            placeholder="Enter phone"
-            onChange={(e) => setNewPoc((p) => ({ ...p, phone: e.target.value }))}
-          />
-        </SheetField>
-        <SheetField label="Email">
-          <Input
-            type="email"
-            value={newPoc.email}
-            placeholder="Enter email"
-            onChange={(e) => setNewPoc((p) => ({ ...p, email: e.target.value }))}
-          />
-        </SheetField>
-      </EditDrawer>
-
-      <EditDrawer
-        open={editingSales}
-        onOpenChange={setEditingSales}
-        title="Edit contact details"
-        subtitle={draft.salesperson}
-        canSave={salesEdit.trim() !== ""}
-        onSave={() => {
-          SALES_CONTACTS[draft.salesperson] = salesEdit;
-          toast.success("Contact details saved");
-        }}
-      >
-        <SheetField label="Phone" required>
-          <Input
-            type="tel"
-            value={salesEdit}
-            onChange={(e) => setSalesEdit(e.target.value)}
-          />
-        </SheetField>
-        <p className="text-xs text-muted-foreground">
-          This is {draft.salesperson}&apos;s own record. Changing it here changes it
-          on every order they own.
-        </p>
-      </EditDrawer>
-
       <EditDrawer
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}

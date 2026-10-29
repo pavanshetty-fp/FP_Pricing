@@ -223,8 +223,8 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 
 | Utility | Token | Light | Dark | Use |
 |---|---|---|---|---|
-| `text-foreground` | `--foreground` → `--fp-ink-1` | `#030405` | `#e8eaed` | Body text, values, the row's own thing |
-| `text-secondary-foreground` · `text-accent-foreground` | `--fp-ink-2` | `#090c0f` | `#e8eaed` | Text on an emphasis fill |
+| `text-foreground` | `--foreground` → `--fp-ink-1` | `#030405` | `#ffffff` | Body text, values, the row's own thing |
+| `text-secondary-foreground` · `text-accent-foreground` | `--fp-ink-2` | `#090c0f` | `#ffffff` | Text on an emphasis fill |
 | `text-muted-foreground` | `--fp-ink-3` | `#596475` | `#a0a7b0` | Labels, secondary values, placeholders, sub-lines, muted icons |
 | `text-primary-foreground` | `--fp-ink-inverse` | `#f0f2f5` | `#0f1216` | Text on the primary fill |
 | `text-brand` | `--fp-brand-ink` | `#fa6400` | `#fa6400` | Orange TEXT only — Contrast can darken it while the brand fill stays |
@@ -249,7 +249,7 @@ Layer 2 wherever a semantic exists; reach for a primitive utility
 | `bg-primary` · `text-primary-foreground` | `--primary` | `#090c0f` · `#f0f2f5` | `#f1f3f5` · `#0f1216` | **The default CTA** — neutral near-black / near-white |
 | `ring-ring` · `border-ring` | `--ring` → `--brand` | `#fa6400` | `#fa6400` | Focus ring — always `focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50` |
 | `bg-selected` | `--selected` → `--fp-selected` | `#fee8d9` (brand 15%) | `#2e343e` (gray) | **"You chose this."** Selected preset, ticked row, chosen item |
-| `text-selected-foreground` | `--fp-selected-strong` | `#a33f00` | `#e8eaed` | Its label, icon, indicator (underline tabs) |
+| `text-selected-foreground` | `--fp-selected-strong` | `#a33f00` | `#ffffff` | Its label, icon, indicator (underline tabs) |
 | `border-selected-border` | `--fp-selected-border` | `#fdb98c` | `#555e6b` | Its rim |
 | `bg-accent` · `text-accent-foreground` | `--accent` → `--fp-emphasis` | `#e5e7eb` | `#2e343e` | **The gray hover — "the pointer is here."** Not the accent color |
 | `bg-sidebar-accent` | | `#e5e7eb` | `#2e343e` | The nav's current module — neutral, not brand |
@@ -290,7 +290,7 @@ Other status tokens: `--status-processing` `#b45309` / `#f59e0b`; `--status-pink
 | warning | `#991b1b` / `#450a0a` | `#ef4444` | `#b91c1c` / `#fca5a5` |
 | success | `#166534` / `#052e16` | `#22c55e` | `#15803d` / `#bef264` |
 
-Banner text `--fp-banner-foreground`: `#ffffff` / `#e8eaed`.
+Banner text `--fp-banner-foreground`: `#ffffff` / `#ffffff`.
 
 **Trend** (`TrendChip`): `--fp-trend-up` `#3aac73` on `--fp-trend-up-bg` `#e7f6ef`; `--fp-trend-down` `#b74e6d` on `#fae7ec`. Dark: `#5cc994` on `#3aac73`@18%; `#e58aa3` on `#b74e6d`@22%.
 

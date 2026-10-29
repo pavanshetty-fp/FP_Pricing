@@ -98,7 +98,6 @@ const FUEL_FIELDS: FormField[] = [
   field("quantity", "Quantity", "Product Details", "Number", true),
   field("tags", "Tags", "Tags", "Select"),
   field("site", "Site", "Delivery Details", "Select"),
-  field("poc", "PoC at Delivery", "Delivery Details", "Select"),
   field("note", "Note", "Delivery Details", "Text"),
 ];
 
@@ -322,7 +321,10 @@ function revive(raw: unknown): SalesSettings {
   if (isObj(raw.forms)) {
     for (const k of Object.keys(d.forms) as SalesFormKind[]) {
       const list = raw.forms[k];
-      if (Array.isArray(list) && list.every(fieldOk)) forms[k] = list as FormField[];
+      /* "PoC at Delivery" LEFT THE FORM (Pavan, 2026-10-29) — POC details is a
+         card now; a saved form that still lists it drops it. */
+      if (Array.isArray(list) && list.every(fieldOk))
+        forms[k] = (list as FormField[]).filter((f) => !(f.source === "built-in" && f.key === "poc"));
     }
   }
   const stagesOk =

@@ -406,6 +406,8 @@ export interface OrderRequest {
   preferred: TimeSpan[];
   po: string;
   instructions: string;
+  /** POC at the ship-to (Pavan, 2026-10-29) — the POC details card. Optional. */
+  poc?: string;
   recurring: boolean;
   frequency: string;
   /** THE RULE'S OWN FREQUENCY UNIT (Pavan, 2026-10-20) — set on the order

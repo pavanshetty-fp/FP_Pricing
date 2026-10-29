@@ -35,6 +35,8 @@ import {
   type AssetOrderStatus,
 } from "./assetOrders";
 import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { PocCard, PocUnit } from "./PocDetails";
+import { SheetSection } from "@/components/side-sheet/parts";
 import { kindTone } from "./statusKind";
 import {
   ConfiguredForm,
@@ -81,6 +83,8 @@ export interface AssetOrderDraft {
   status: AssetOrderStatus;
   poNumber: string;
   note: string;
+  /** POC at the ship-to — the POC details card (2026-10-29). */
+  poc: string;
   /** Fields added in Sales Settings, by key (2026-10-07). */
   extra: ExtraValues;
   /** The stage a move is waiting on approval for. */
@@ -101,6 +105,7 @@ function draftFrom(o: AssetOrder): AssetOrderDraft {
     status: o.status,
     poNumber: o.poNumber,
     note: o.note,
+    poc: o.poc ?? "",
     extra: { ...(o.extra ?? {}) },
     approvalFor: o.approvalFor,
   };
@@ -122,6 +127,7 @@ function emptyDraft(): AssetOrderDraft {
     salesRep: ownerOnCreate("asset"),
     poNumber: "",
     note: "",
+    poc: "",
     extra: {},
   };
 }
@@ -499,6 +505,13 @@ export function AssetOrderSheet({
             extra={draft.extra}
             onExtraChange={(key, value) => set("extra", { ...draft.extra, [key]: value })}
           />
+          {/* POC DETAILS — the shared unit (Pavan, 2026-10-29); a rail card
+              once the order exists. */}
+          {creating && (
+            <SheetSection title="POC details">
+              <PocUnit shipTo={draft.shipTo} value={draft.poc} onChange={(v) => set("poc", v)} />
+            </SheetSection>
+          )}
         </div>
 
         {/* WHAT THE ORDER HAS BECOME — read-only, sticky; no rail while
@@ -524,6 +537,7 @@ export function AssetOrderSheet({
                 />
               </dl>
             </SummaryCard>
+            <PocCard shipTo={draft.shipTo} value={draft.poc} onChange={(v) => set("poc", v)} />
             <ActivityCard entries={order.audit} timeZone={settings.timeZone} />
           </aside>
         )}

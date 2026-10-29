@@ -980,6 +980,7 @@ export function SalesOrdersScreen({
       status: driverStage({ status: "Requested" }, Boolean(draft.driver)),
       stageSince: new Date().toISOString(),
       urgent: draft.urgent,
+      poc: draft.poc,
       driver: draft.driver ? { name: draft.driver, initials: initialsOf(draft.driver) } : null,
       extra: draft.extra,
     };
@@ -1032,6 +1033,7 @@ export function SalesOrdersScreen({
                 stageSince: moved ? new Date().toISOString() : r.stageSince,
                 approvalFor: draft.approvalFor,
                 urgent: draft.urgent,
+                poc: draft.poc,
                 driver: draft.driver
                   ? { name: draft.driver, initials: initialsOf(draft.driver) }
                   : null,
@@ -1062,6 +1064,7 @@ export function SalesOrdersScreen({
       shipTo: draft.shipTo,
       poNumber: draft.poNumber,
       note: draft.note,
+      poc: draft.poc,
       stageSince: new Date().toISOString(),
       extra: draft.extra,
     };
@@ -1096,6 +1099,7 @@ export function SalesOrdersScreen({
                 extra: draft.extra,
                 poNumber: draft.poNumber,
                 note: draft.note,
+                poc: draft.poc,
                 ...(draft.deliveryDate
                   ? {
                       date: {

@@ -36,6 +36,8 @@ import { PendingStrip, type PendingItem } from "./PendingStrip";
 import { formatFullDate, startOfDay } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
 import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { PocCard, PocUnit } from "./PocDetails";
+import { SheetSection } from "@/components/side-sheet/parts";
 import { kindTone } from "./statusKind";
 import {
   ConfiguredForm,
@@ -104,7 +106,6 @@ const TAG_OPTIONS = [
   "Hazmat",
   "After Hours",
 ];
-const POC_OPTIONS = ["Site manager", "Dispatch desk", "Night supervisor"];
 
 export interface OrderDraft {
   /** The stage before the driver rule — see `stageAfterDriver`. */
@@ -150,7 +151,7 @@ function draftFrom(order: FuelOrder): OrderDraft {
     tags: [...order.tags],
     urgent: order.urgent,
     site: order.customer.description,
-    poc: "",
+    poc: order.poc ?? "",
     note: "",
     extra: { ...(order.extra ?? {}) },
     approvalFor: order.approvalFor,
@@ -381,8 +382,6 @@ export function OrderSheet({
         return draft.tags.length > 0;
       case "site":
         return Boolean(draft.site);
-      case "poc":
-        return Boolean(draft.poc);
       case "note":
         return Boolean(draft.note.trim());
       default:
@@ -542,19 +541,6 @@ export function OrderSheet({
           onValueChange={(v) => set("site", v)}
           options={shipTos}
           placeholder="Select site"
-        />
-      ),
-    }),
-    poc: (f) => ({
-      control: (
-        <Combobox
-          className="w-full"
-          value={draft.poc || (f.required ? "" : "none")}
-          onValueChange={(v) => set("poc", v === "none" ? "" : v)}
-          options={[...(f.required ? [] : [{ value: "none", label: "Not set" }]), ...POC_OPTIONS]}
-          placeholder="Select PoC"
-          searchPlaceholder="Search contacts…"
-          emptyText="No contact found."
         />
       ),
     }),
@@ -723,6 +709,13 @@ export function OrderSheet({
               extra={draft.extra}
               onExtraChange={(key, value) => set("extra", { ...draft.extra, [key]: value })}
             />
+            {/* POC DETAILS — the shared unit (Pavan, 2026-10-29); a rail card
+                once the order exists. */}
+            {creating && (
+              <SheetSection title="POC details">
+                <PocUnit shipTo={draft.shipTo} value={draft.poc} onChange={(v) => set("poc", v)} />
+              </SheetSection>
+            )}
           </div>
 
           {/* WHAT THE ORDER HAS BECOME — read-only, sticky; no rail while
@@ -754,6 +747,7 @@ export function OrderSheet({
                   />
                 </dl>
               </SummaryCard>
+              <PocCard shipTo={draft.shipTo} value={draft.poc} onChange={(v) => set("poc", v)} />
               <ActivityCard entries={order.audit} timeZone={settings.timeZone} />
             </aside>
           )}

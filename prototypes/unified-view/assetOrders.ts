@@ -77,6 +77,8 @@ export interface AssetOrder {
   shipTo: string;
   poNumber: string;
   note: string;
+  /** POC at the ship-to (Pavan, 2026-10-29) — the POC details card. Optional. */
+  poc?: string;
   /** The change log — see `activity.tsx`. */
   audit?: ActivityEntry[];
   /** What a field added in Sales Settings holds, by its key (2026-10-07). */

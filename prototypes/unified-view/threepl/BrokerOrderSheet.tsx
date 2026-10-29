@@ -794,6 +794,10 @@ function VendorRow({ id }: { id: string }) {
 export const VENDOR_SECTION_ID = "broker-order-vendor-section";
 const SECTION_BASICS = "broker-order-basics";
 const SECTION_LINES = "broker-order-lines";
+/** The full rule above Pricing — the totals bar waits for it to pass. */
+const PRICING_RULE_ID = "broker-order-pricing-rule";
+/** The totals bar's height — the rule has to clear it. */
+const TOTALS_BAR_H = 61;
 /** The Pricing section's anchor. Same job, for the stage after Quoting. */
 const PRICING_SECTION_ID = "broker-order-pricing-section";
 /** The vendor's own column inside Pricing — the second, narrower "this one". */
@@ -1599,47 +1603,30 @@ export function BrokerOrderSheet({
      then, so the sheet only turns into the order — rail, stage bar — once
      Create has made it one. */
   const inCreation = creating;
-  /* QUOTATION SUMMARY — CARD AND BANNER, FINAL (Pavan, 2026-10-29; was the
-     D-104634 try-out's Option 3, now every order). The card stays in the
-     rail; the banner rises at the foot once the Vendor unit scrolls in, and
-     widens into Pricing's totals bar once Pricing does. */
-  const [pricingInView, setPricingInView] = React.useState(false);
-  const [vendorReached, setVendorReached] = React.useState(false);
+  /* THE TOTALS BAR (Pavan, 2026-10-29 — final). The rail's summary card is
+     the summary; Pricing's totals bar unfolds at the foot, full width and on
+     the sheet's own surface, once the rule above Pricing has scrolled up past
+     where the bar sits — no half-width banner, no wash. Read on scroll (not
+     an observer): a jump back up crosses no threshold. */
+  const [totalsUp, setTotalsUp] = React.useState(false);
   React.useEffect(() => {
     if (!open) return;
-    let io: IntersectionObserver | null = null;
     let unscroll: (() => void) | undefined;
     const t = window.setTimeout(() => {
-      const el = document.getElementById(PRICING_SECTION_ID);
-      const port = el?.closest<HTMLElement>(".overflow-auto");
-      if (!el || !port) return;
-      io = new IntersectionObserver(
-        ([e]) => setPricingInView(e.isIntersecting),
-        { root: port, threshold: 0 }
-      );
-      /* PRICING AND ADDITIONAL FEES — the span the totals bar covers. */
-      io.observe(el.parentElement ?? el);
-      /* REACHED, NOT JUST VISIBLE — the Vendor unit's top has come up past
-         the foot of the view, and stays reached as it scrolls on up.
-         Read on scroll, not by an observer: a jump straight past the unit
-         (back to the top, or another order picked) crosses no threshold. */
-      const vendor = document.getElementById(VENDOR_SECTION_ID);
-      if (vendor) {
-        const read = () =>
-          setVendorReached(vendor.getBoundingClientRect().top < port.getBoundingClientRect().bottom);
-        read();
-        port.addEventListener("scroll", read, { passive: true });
-        unscroll = () => port.removeEventListener("scroll", read);
-      }
+      const rule = document.getElementById(PRICING_RULE_ID);
+      const port = rule?.closest<HTMLElement>(".overflow-auto");
+      if (!rule || !port) return;
+      const read = () =>
+        setTotalsUp(rule.getBoundingClientRect().top <= port.getBoundingClientRect().bottom - TOTALS_BAR_H);
+      read();
+      port.addEventListener("scroll", read, { passive: true });
+      unscroll = () => port.removeEventListener("scroll", read);
     }, 300);
     return () => {
       window.clearTimeout(t);
-      io?.disconnect();
       unscroll?.();
     };
   }, [open, order?.id]);
-  /** The banner is up from the Vendor unit on. */
-  const bannerUp = vendorReached || pricingInView;
   /* CLOSING AN UNCREATED ORDER ASKS FIRST — it is about to be thrown away. */
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const requestClose = (o: boolean) => {
@@ -6827,7 +6814,7 @@ export function BrokerOrderSheet({
           the form's 40px foot room; the rail's last card sits ON it, no gap
           (2026-10-29); the sheet's own
           40px gap below it, to Pricing. */}
-      {showPricing && !inCreation && <div aria-hidden className="-mx-4 -mt-10 shrink-0 border-t border-border" />}
+      {showPricing && !inCreation && <div id={PRICING_RULE_ID} aria-hidden className="-mx-4 -mt-10 shrink-0 border-t border-border" />}
       {showPricing && pricingSections}
 
       {/* ── WHAT TRAVELS WITH THE ORDER ──────────────────────────────────
@@ -7380,115 +7367,34 @@ export function BrokerOrderSheet({
           </>
         )}
       </EditDrawer>
-        {/* OPTION 2 — THE SUMMARY AS A PINNED BANNER (Pavan, 2026-10-06). The
-          rail card's wash, laid out as one row across the centre column.
-          ONE BAR, TWO SHAPES: once Pricing is on screen it MORPHS into
-          Pricing's totals bar — the vendor band folds away, the title and
-          the product facts close up, the wash fades to the bar's surface and
-          the three money figures spread across — rather than leaving and
-          letting a second bar arrive. Pricing's own bar stands down in this
-          mode; this is it. */}
-      {shownQuote && !inCreation && (() => {
-        const m = pricingInView;
-        const ease = "duration-300 ease-out";
-        const fold = (open: boolean) =>
-          cn("grid transition-[grid-template-rows,opacity]", ease, open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0");
-        const squeeze = (open: boolean) =>
-          cn("overflow-hidden transition-[max-width,opacity,margin]", ease, open ? "max-w-60 opacity-100" : "max-w-0 opacity-0");
-        return (
-        /* THE LAST THING IN THE FORM, so it pins for the whole scroll. Beside
-           the rail it is the centre column's width; merged with Pricing —
-           which runs the full sheet — it widens to match (Pavan,
-           2026-10-06). */
-        <div
-          className={cn(
-            "sticky -bottom-4 z-30 -mx-4 -mb-4 transition-[margin]",
-            ease,
-            m ? "lg:-mr-4" : "lg:mr-87"
-          )}
-        >
-          {/* OPTION 3 RISES INTO PLACE when the Vendor unit arrives. */}
-          <div className={fold(bannerUp)}>
-          <div className="overflow-hidden">
-          {/* THE VENDORS ON A BAND OF THEIR OWN, above the coloured card. */}
-          {choosing && quotedIds.length > 1 && (
-            <div className={fold(!m)}>
-              <div className="overflow-hidden">
-                <div className="border-t border-border bg-fp-surface-1b px-4 pt-1.5">
-                  <Tabs
-                    value={shownQuotedAt >= 0 ? (shownVendorId ?? quotedIds[0]) : quotedIds[0]}
-                    onValueChange={(v) => setShownQuote(v)}
-                  >
-                    <TabsList variant="line" className="h-8 justify-start">
-                      {quotedIds.map((id) => (
-                        <TabsTrigger
-                          key={id}
-                          value={id}
-                          className="flex-none px-2 text-xs data-[state=active]:text-foreground after:bg-foreground dark:data-[state=active]:text-foreground"
-                        >
-                          {vendorById(id)?.name ?? id}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </div>
-            </div>
-          )}
-          <section className="relative overflow-hidden border-t border-border bg-popover">
-            {/* THE WASH, as its own layer so it can fade into the bar. */}
-            <div
-              aria-hidden
-              className={cn("absolute inset-0 transition-opacity", ease, m ? "opacity-0" : "opacity-100", "bg-fp-highlight")}
-            />
-            <div className="relative flex items-center px-4 py-3">
-              <div className={cn("flex shrink-0 flex-col", squeeze(!m), m ? "mr-0" : "mr-8")}>
-                <span className="whitespace-nowrap text-sm font-semibold text-foreground">Quotation summary</span>
-                {!(choosing && quotedIds.length > 1) && (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {vendorById(shownVendorId ?? "")?.name ?? ""}
-                  </span>
-                )}
-              </div>
-              <dl className="flex min-w-0 flex-1 items-end justify-between gap-x-6">
+      {/* PRICING'S TOTALS BAR — the last thing in the form, so it pins at the
+          foot for the whole scroll; it unfolds once the rule above Pricing
+          passes (see `totalsUp`). Figures only, equal thirds, the profit
+          flush right. */}
+      {shownQuote && !inCreation && (
+        <div className="sticky -bottom-4 z-30 -mx-4 -mb-4">
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+              totalsUp ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="overflow-hidden">
+              <dl className="grid grid-cols-3 gap-x-8 border-t border-border bg-popover px-4 py-3">
                 {[
-                  {
-                    key: "products",
-                    label: "Products",
-                    value:
-                      productNames.length === 0
-                        ? "—"
-                        : `${productNames.length} ${productNames.length === 1 ? "product" : "products"}`,
-                    keep: false,
-                  },
-                  {
-                    key: "gallons",
-                    label: "Total gallons",
-                    value: isAllTopOff(draft.lines)
-                      ? "Top-off"
-                      : gal > 0
-                        ? `${gal.toLocaleString()} gal`
-                        : "—",
-                    keep: false,
-                  },
-                  /* THE BAR'S WORDS once merged — the same figures. */
-                  { key: "vendor", label: m ? "Vendor pricing" : "Vendor quote", value: money(carrierTotal), keep: true },
-                  { key: "customer", label: "Customer pricing", value: money(billed), keep: true },
+                  { label: "Vendor pricing", value: money(carrierTotal) },
+                  { label: "Customer pricing", value: money(billed) },
                 ].map((f) => (
-                  <div key={f.key} className={cn("flex flex-col", !f.keep && squeeze(!m))}>
-                    <dt className="whitespace-nowrap text-xs text-muted-foreground">{f.label}</dt>
-                    <dd className="whitespace-nowrap text-sm tabular-nums text-foreground">{f.value}</dd>
+                  <div key={f.label} className="flex flex-col gap-0.5">
+                    <dt className="text-xs text-muted-foreground">{f.label}</dt>
+                    <dd className="text-sm tabular-nums text-foreground">{f.value}</dd>
                   </div>
                 ))}
-                <div className="flex flex-col items-end">
-                  <dt className="whitespace-nowrap text-xs text-muted-foreground">
-                    {m ? "Expected profit" : "Margin"}
-                  </dt>
+                <div className="flex flex-col items-end gap-0.5">
+                  <dt className="text-xs text-muted-foreground">Expected profit</dt>
                   <dd
                     className={cn(
-                      "font-semibold tabular-nums transition-[font-size]",
-                      ease,
-                      m ? "text-sm" : "text-base",
+                      "text-sm font-semibold tabular-nums",
                       margin < 0 ? "text-destructive" : margin > 0 ? "text-status-success" : "text-foreground"
                     )}
                   >
@@ -7497,12 +7403,9 @@ export function BrokerOrderSheet({
                 </div>
               </dl>
             </div>
-          </section>
-          </div>
           </div>
         </div>
-        );
-      })()}
+      )}
     </RecordSheet>
   );
 }

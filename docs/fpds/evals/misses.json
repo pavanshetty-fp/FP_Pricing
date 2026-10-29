@@ -472,6 +472,19 @@
         "id": "one-fact-one-form",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-036",
+      "date": "2026-10-29",
+      "title": "Quoting orders with quotes in said \"Vendor not selected\"; the step depends on invites sent / quotes in",
+      "where": "3PL board cards + List view rows (Orders lane)",
+      "foundBy": "pavan",
+      "pattern": "one-case",
+      "why": "One label for every vendor-less order; only the Draft-with-no-invites case was ever looked at.",
+      "check": {
+        "id": "pending-step-per-state",
+        "status": "manual"
+      }
     }
   ]
 }

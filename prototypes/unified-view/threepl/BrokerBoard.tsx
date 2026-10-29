@@ -304,6 +304,9 @@ export interface BoardCard {
     /** Renders a button and splits the footer left/right, per the DS variant. */
     actionLabel?: string;
     onAction?: () => void;
+    /** The id of the sheet section this step lives in — the list view's
+     *  pending link scrolls the docked form there. */
+    target?: string;
   };
   /**
    * The bottom-most row: where one piece of business on this card has got to,
@@ -1596,8 +1599,14 @@ export function BoardRowList({
               ? [...when.parts].reverse().map(shortDate).join(", ")
               : when.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")
             : undefined);
-        const pending = card.alert;
-        const goPending = pending ? onPending?.(card) : undefined;
+        /* THE PENDING STEP — the card's alert, else its footer row (the
+           invoice step), so a row says what the card's foot says. */
+        const pending =
+          card.alert ??
+          (card.footerAction
+            ? { status: (card.footerAction.waiting ? "success" : "default") as AlertStatus, text: card.footerAction.label }
+            : undefined);
+        const goPending = card.alert ? onPending?.(card) : undefined;
         return (
           <div
             key={card.id}

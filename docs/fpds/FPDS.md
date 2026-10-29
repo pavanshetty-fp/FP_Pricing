@@ -4718,7 +4718,7 @@ One `BoardWithBar` box, like the table's and the board's: the view bar across th
 1. **Left pane** (320px, `border-r border-fp-outline-1`):
    - **Status pills** — one row, scrolled sideways: All, then every status step in board order, each with its count.
    - **Rows** (`BoardRowList`) — order number in blue (`text-fp-banner-accent-info`, as the V3 card) + the type's `CodeDisc` initial (as the card) + status chip — the chip hidden while a status pill other than All is picked · ship-to (pin) · planned date and window · what goes (truck; wrench in Service) · the pending step.
-2. **Detail** (fills the rest of the box) — the record's own sheet inside `DockedSheet`: same header, body and footer, no overlay, no close, no border of its own.
+2. **Detail** (fills the rest of the box) — the record's own sheet inside `DockedSheet`: same header, body and footer, no overlay, no close, no border of its own. Its header is one quiet line — title 14px regular, subtitle beside it, ⋯ on the right — 53px tall, the pill row's height, so the rule under both runs straight across.
 
 ## Look
 - Pills: `Pill` shape; rest = `bg-transparent text-muted-foreground ring-1 ring-inset ring-fp-outline-1`; picked = the neutral pill (`bg-muted`) `font-medium text-foreground`; a 0-count step `opacity-40`.

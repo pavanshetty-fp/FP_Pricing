@@ -16,9 +16,9 @@ Every time Pavan has to point out something that should already have been right 
 | Week of | Misses |
 |---|---|
 | 2026-10-18 | 9 |
-| 2026-10-25 | 26 |
+| 2026-10-25 | 27 |
 
-**35 misses** · found by Pavan 28 · by Claude 7 · guarded by a script 14 · guard proposed 0 · needs eyes 17 · process rule 4
+**36 misses** · found by Pavan 29 · by Claude 7 · guarded by a script 14 · guard proposed 0 · needs eyes 18 · process rule 4
 
 ## Patterns
 
@@ -26,7 +26,7 @@ Every time Pavan has to point out something that should already have been right 
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 10 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 7 |
-| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 4 |
+| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 5 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 2 |
@@ -38,6 +38,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-036 | 2026-10-29 | Quoting orders with quotes in said "Vendor not selected"; the step depends on invites sent / quotes in | 3PL board cards + List view rows (Orders lane) | Pavan | `one-case` | One label for every vendor-less order; only the Draft-with-no-invites case was ever looked at. | `pending-step-per-state` · manual |
 | M-035 | 2026-10-29 | List view drew the order type as a word pill; the board card shows the coloured initial (CodeDisc) | List view rows (3PL, Sales, Service) | Pavan | `generic-over-existing` | Took the table's Type pill instead of the card the rows were built from; the rows are the card's content, so its parts come with them. | `one-fact-one-form` · manual |
 | M-034 | 2026-10-29 | List view picked row used the brand-orange selection tint; the board's cards never use it | 3PL V3 → List view → left pane | Pavan | `generic-over-existing` | Reached for --fp-row-selected (a ticked table row) instead of the card's own states; a picked card is the card pressed, not a ticked row. | `picked-card-uses-card-states` · manual |
 | M-033 | 2026-10-29 | Said every dropdown had the tick column; Customer/ShipTo/Order Type/POC (Combobox) still had the tick on the left | Order sheet → every Combobox | Claude | `partial-unify` | Changed CommandItem and the table pickers, then claimed Combobox matched without opening one — it draws its own rows. | `tick-column-every-picker` · manual |

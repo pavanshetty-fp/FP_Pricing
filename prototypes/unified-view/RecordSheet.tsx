@@ -558,15 +558,24 @@ export function RecordSheet({
               "w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))]"
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex items-center gap-2.5">
-              <Title className="text-base">
+        {/* DOCKED, THE HEADER IS ONE QUIET LINE (Pavan, 2026-10-29) — the
+            list already says which record this is: 14px regular, the
+            subtitle on the same line, and the height of the list's pill row
+            beside it so the rule under both runs straight across. */}
+        <div
+          className={cn(
+            "flex justify-between gap-4 border-b",
+            docked ? "h-[53px] shrink-0 items-center border-fp-outline-1 px-4" : "items-start border-border p-4"
+          )}
+        >
+          <div className={cn("flex min-w-0", docked ? "items-center gap-2.5" : "flex-col gap-1")}>
+            <div className="flex shrink-0 items-center gap-2.5">
+              <Title className={docked ? "text-sm font-normal" : "text-base"}>
                 {creating ? createTitle : editTitle}
               </Title>
               {headerAside}
             </div>
-            {headerSubtitle}
+            {docked ? headerSubtitle && <div className="min-w-0 truncate">{headerSubtitle}</div> : headerSubtitle}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}

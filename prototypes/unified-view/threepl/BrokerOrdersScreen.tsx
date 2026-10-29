@@ -451,8 +451,8 @@ function laneCardCode(r: BrokerOrder) {
  * `null` once a partner accepted or priced, or off Draft.
  */
 function needsVendor(r: BrokerOrder): boolean {
-  /* NO QUOTING STEP (Pavan, 2026-10-27) — an order with no vendor in the
-     Orders lane needs one picked, whatever went out before. */
+  /* NO VENDOR HOLDS IT YET — in the Orders lane. Which step that is (select,
+     await, finalize) is `laneCardAlert`'s to say (Pavan, 2026-10-29). */
   return (r.status === "Draft" || r.status === "Quoting") && !r.vendorId;
 }
 
@@ -644,12 +644,31 @@ function laneCardAlert(
      "Not assigned" under the Vendor heading read as a state; the footer says
      what to do next, the same slot Quoting cards use for theirs. */
   /* Opens on the vendor table. */
+  /* THE STEP SAYS WHERE THE ORDER IS WITH ITS VENDORS (Pavan, 2026-10-29 —
+     a Quoting order with prices in read "Vendor not selected"): nobody
+     asked → select one; asked, no price back → awaiting quotation; priced,
+     none taken → finalize. Each lives in the Vendor unit. */
   if (needsVendor(r)) {
+    if (r.sentVendorIds.length === 0)
+      return {
+        status: "caution",
+        text: "Vendor not selected",
+        actionLabel: "Select Vendor",
+        onAction: onOpen,
+        target: VENDOR_SECTION_ID,
+      };
+    if (r.quotes.length === 0)
+      return {
+        status: "default",
+        text: `Awaiting quotation — ${r.sentVendorIds.length} invited`,
+        target: VENDOR_SECTION_ID,
+      };
     return {
       status: "caution",
-      text: "Vendor not selected",
-      actionLabel: "Select Vendor",
+      text: "Quotation not finalized",
+      actionLabel: "Finalize Vendor",
       onAction: onOpen,
+      target: VENDOR_SECTION_ID,
     };
   }
   /* NOTHING TO REVIEW ON ASSIGNED (Pavan, 2026-10-06) — the vendor has the
@@ -2538,7 +2557,7 @@ export function BrokerOrdersScreen({
             </div>
           ) : view === "list" ? (
             /* LIST VIEW (Pavan, 2026-10-29, after Dynamics 365) — the shared
-               unit; the vendor step scrolls the docked form to Vendors. */
+               unit; a pending step scrolls the docked form to its section. */
             <ListSplitView
               barRef={bar.ref}
               items={listItems}
@@ -2547,14 +2566,15 @@ export function BrokerOrdersScreen({
               onStatusChange={(st) => setListStatus(st as BrokerStatus | null)}
               selectedId={listId}
               onSelect={setListId}
-              onPending={(card) =>
-                card.alert?.actionLabel === "Select Vendor"
+              onPending={(card) => {
+                const target = card.alert?.target;
+                return target
                   ? () => {
                       setListId(card.id);
-                      requestAnimationFrame(() => requestAnimationFrame(() => attend(VENDOR_SECTION_ID)));
+                      requestAnimationFrame(() => requestAnimationFrame(() => attend(target)));
                     }
-                  : undefined
-              }
+                  : undefined;
+              }}
               renderDetail={(id) => (
                 <BrokerOrderSheet
                   order={rows.find((r) => r.id === id) ?? null}

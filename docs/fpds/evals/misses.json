@@ -433,6 +433,19 @@
         "id": "preferred-label-gap",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-033",
+      "date": "2026-10-29",
+      "title": "Said every dropdown had the tick column; Customer/ShipTo/Order Type/POC (Combobox) still had the tick on the left",
+      "where": "Order sheet → every Combobox",
+      "foundBy": "claude",
+      "pattern": "partial-unify",
+      "why": "Changed CommandItem and the table pickers, then claimed Combobox matched without opening one — it draws its own rows.",
+      "check": {
+        "id": "tick-column-every-picker",
+        "status": "manual"
+      }
     }
   ]
 }

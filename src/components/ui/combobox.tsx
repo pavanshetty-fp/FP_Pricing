@@ -226,8 +226,10 @@ export function Combobox({
             <CommandGroup>
               {clearLabel && (
                 <CommandItem value={`__clear__ ${clearLabel}`} onSelect={() => choose("")}>
-                  <Check className={cn("size-4 shrink-0", value === "" ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate text-muted-foreground">{clearLabel}</span>
+                  <span className={cn("min-w-0 shrink basis-[40ch] truncate", value === "" ? "font-medium text-foreground" : "text-muted-foreground")}>
+                    {clearLabel}
+                  </span>
+                  {value === "" && <Check className="size-4 shrink-0 text-foreground" />}
                 </CommandItem>
               )}
               {items.map((o) => (
@@ -238,20 +240,25 @@ export function Combobox({
                   className="group/opt"
                   onSelect={() => choose(o.value)}
                 >
-                  <Check
-                    className={cn(
-                      "size-4 shrink-0",
-                      o.value === value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate">{o.label ?? o.value}</span>
+                  {/* THE TICK IN ONE COLUMN 40 characters in, the chosen name
+                      medium in full ink, the rest muted (Pavan, 2026-10-29) —
+                      as CommandItem's. */}
+                  <span className="flex min-w-0 shrink basis-[40ch] flex-col">
+                    <span
+                      className={cn(
+                        "truncate",
+                        o.value === value ? "font-medium text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {o.label ?? o.value}
+                    </span>
                     {o.description && (
                       <span className="truncate text-xs text-muted-foreground">
                         {o.description}
                       </span>
                     )}
                   </span>
+                  {o.value === value && <Check className="size-4 shrink-0 text-foreground" />}
                   {optionAction && (
                     <span
                       className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/opt:opacity-100 group-focus-within/opt:opacity-100 group-data-[selected=true]/opt:opacity-100"

@@ -21,6 +21,7 @@ import {
   FilePlus,
   Image as ImageIcon,
   StickyNote,
+  UserRound,
   Users,
   Ban,
   MoreHorizontal,
@@ -131,6 +132,8 @@ import {
   ORDER_TAGS,
   POCS,
   POC_DIRECTORY,
+  SHIP_TO_POCS,
+  pocsAt,
   PRODUCTS,
   categoryOfAsset,
   type SiteAsset,
@@ -1809,6 +1812,9 @@ export function BrokerOrderSheet({
   } | null>(null);
   /** Which POC's contact details are open for editing, or none. */
   const [editingPoc, setEditingPoc] = React.useState<"primary" | "secondary" | null>(null);
+  /** The Add POC side sheet, and what is typed into it. */
+  const [addingPoc, setAddingPoc] = React.useState(false);
+  const [newPoc, setNewPoc] = React.useState({ name: "", phone: "", email: "" });
   /** The order's history, in the header's drawer. */
   /** The salesperson's contact, open for editing. */
   const [editingSales, setEditingSales] = React.useState(false);
@@ -1900,6 +1906,52 @@ export function BrokerOrderSheet({
      stored on the draft — a copy would be a second source of truth. */
   const site = SHIP_TO_SITES.find((x) => x.name === draft.shipTo);
   const poc = POC_DIRECTORY[draft.primaryPoc];
+  /* ── POC DETAILS (Pavan, 2026-10-29) ── the picked ship-to's people, one
+     chosen (optional), and Add POC opening a side sheet when the one needed
+     is not there. A card in the rail; a section while creating. */
+  const sitePocs = draft.shipTo ? pocsAt(draft.shipTo) : [];
+  const pickedPoc = sitePocs.includes(draft.primaryPoc) ? draft.primaryPoc : "";
+  const pocUnit = (
+    <div className="flex flex-col gap-3">
+      <SheetField label="POC">
+        <Combobox
+          className="w-full"
+          value={pickedPoc}
+          onValueChange={(v) => set("primaryPoc", v)}
+          options={sitePocs}
+          clearLabel="No POC"
+          disabled={!draft.shipTo}
+          placeholder={draft.shipTo ? "Select POC" : "Select a ShipTo first"}
+          searchPlaceholder="Search POCs…"
+          emptyText="No POC found."
+        />
+      </SheetField>
+      {pickedPoc && (POC_DIRECTORY[pickedPoc]?.phone || POC_DIRECTORY[pickedPoc]?.email) && (
+        <div className="flex flex-col gap-0.5 text-sm">
+          {POC_DIRECTORY[pickedPoc].phone && (
+            <CopyValue value={POC_DIRECTORY[pickedPoc].phone} label="POC phone" tabular />
+          )}
+          {POC_DIRECTORY[pickedPoc].email && (
+            <CopyValue value={POC_DIRECTORY[pickedPoc].email} label="POC email" />
+          )}
+        </div>
+      )}
+      {draft.shipTo && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setNewPoc({ name: "", phone: "", email: "" });
+            setAddingPoc(true);
+          }}
+        >
+          <Plus className="size-4" />
+          Add POC
+        </Button>
+      )}
+    </div>
+  );
   const poc2 = POC_DIRECTORY[draft.secondaryPoc];
 
   const set = <K extends keyof BrokerOrderDraft>(
@@ -4915,7 +4967,12 @@ export function BrokerOrderSheet({
             <Combobox
               className="w-full"
               value={draft.shipTo}
-              onValueChange={(v) => set("shipTo", v)}
+              /* A NEW SHIP-TO, ITS OWN PEOPLE — a POC from the old one is let go. */
+              onValueChange={(v) =>
+                setDraft((d) =>
+                  d ? { ...d, shipTo: v, primaryPoc: pocsAt(v).includes(d.primaryPoc) ? d.primaryPoc : "" } : d
+                )
+              }
               options={shipTos}
               placeholder="Select ShipTo"
               searchPlaceholder="Search ship-tos…"
@@ -7128,6 +7185,10 @@ export function BrokerOrderSheet({
               </dl>
             </RailCard>
 
+            <RailCard title="POC details" icon={<UserRound />}>
+              <div className="p-4">{pocUnit}</div>
+            </RailCard>
+
             {/* ── NOTES, FROM THE START (Pavan, 2026-10-05) ──
                 The one card in the rail that is typed into: the gate code for
                 the driver and the note for nobody outside the building, as two
@@ -7308,6 +7369,9 @@ export function BrokerOrderSheet({
 
       {/* NOTES WHILE CREATING — there is no rail yet, so they stay in the form
           as its last step; once the order exists they are a rail card. */}
+      {/* POC DETAILS WHILE CREATING — the rail's card, in the form. */}
+      {inCreation && <SheetSection title="POC details">{pocUnit}</SheetSection>}
+
       {inCreation && (
         <SheetSection title="Notes">
           <div className="flex flex-col gap-4">
@@ -7676,6 +7740,45 @@ export function BrokerOrderSheet({
           This is {editingPocName}&apos;s own record. Changing it here changes it on
           every order that names them.
         </p>
+      </EditDrawer>
+
+      <EditDrawer
+        open={addingPoc}
+        onOpenChange={setAddingPoc}
+        title="Add POC"
+        subtitle={draft.shipTo}
+        canSave={newPoc.name.trim() !== "" && !sitePocs.includes(newPoc.name.trim())}
+        onSave={() => {
+          const name = newPoc.name.trim();
+          POC_DIRECTORY[name] = { phone: newPoc.phone.trim(), email: newPoc.email.trim() };
+          SHIP_TO_POCS[draft.shipTo] = [...pocsAt(draft.shipTo), name];
+          set("primaryPoc", name);
+          toast.success("POC added");
+        }}
+      >
+        <SheetField label="Name" required>
+          <Input
+            value={newPoc.name}
+            placeholder="Enter name"
+            onChange={(e) => setNewPoc((p) => ({ ...p, name: e.target.value }))}
+          />
+        </SheetField>
+        <SheetField label="Phone">
+          <Input
+            type="tel"
+            value={newPoc.phone}
+            placeholder="Enter phone"
+            onChange={(e) => setNewPoc((p) => ({ ...p, phone: e.target.value }))}
+          />
+        </SheetField>
+        <SheetField label="Email">
+          <Input
+            type="email"
+            value={newPoc.email}
+            placeholder="Enter email"
+            onChange={(e) => setNewPoc((p) => ({ ...p, email: e.target.value }))}
+          />
+        </SheetField>
       </EditDrawer>
 
       <EditDrawer

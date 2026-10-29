@@ -22,6 +22,7 @@ import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
+import { ListSplitView, listSplitCount, type ListSplitItem } from "../ListSplitView";
 import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
 import { ServiceOrderSheet, SECTION_TECH } from "./ServiceOrderSheet";
@@ -529,6 +530,9 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     [setShared]
   );
   const [view, setView] = React.useState<ListView>("board");
+  /* LIST VIEW (Pavan, 2026-10-29) — the picked order and status pill. */
+  const [listId, setListId] = React.useState<string | null>(null);
+  const [listStatus, setListStatus] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
   const [sort, setSort] = React.useState<ListSort<Col> | null>(null);
@@ -1277,6 +1281,14 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
     alertDefs.find((d) => d.sel.length === facetSel.size && d.sel.every((k) => facetSel.has(k)))?.id ?? null;
 
   const openOrder = rows.find((r) => r.id === openId) ?? null;
+  /* THE LIST VIEW'S ROWS — the board's cards in lane order, once each
+     (a job day also shows in Working). */
+  const listItems: ListSplitItem[] = [
+    ...new Map(lanes.flatMap((l) => l.cards).map((c) => [c.id, c])).values(),
+  ].map((card) => {
+    const st = rows.find((r) => r.id === card.id)!.status;
+    return { card, status: st, label: st, tone: WORK_STATUS_TONE[st] };
+  });
 
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
@@ -1293,8 +1305,9 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
+          viewStatement={<ViewStatement count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
+          listView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -1445,6 +1458,46 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
              did, and the boxes are how you undo it. */}
           {sorted.length === 0 && !(view === "table" && colFiltersOpen) ? (
             emptyBody
+          ) : view === "list" ? (
+            /* LIST VIEW (Pavan, 2026-10-29) — 3PL's unit: rows and status
+               pills on the left, the order's own sheet docked on the right. */
+            <ListSplitView
+              barRef={bar.ref}
+              items={listItems}
+              steps={WORK_LANES.flatMap((l) => l.statuses).map((st) => ({ key: st, label: st }))}
+              status={listStatus}
+              onStatusChange={setListStatus}
+              selectedId={listId}
+              onSelect={setListId}
+              whatIcon={Wrench}
+              renderDetail={(id) => (
+                <ServiceOrderSheet
+                  flow={flow}
+                  onDiscard={(gone) => setRows((prev) => prev.filter((r) => r.id !== gone))}
+                  order={rows.find((r) => r.id === id) ?? null}
+                  mode="edit"
+                  open
+                  onOpenChange={() => {}}
+                  onSave={saveOrder}
+                  onOpenOrder={(no) => {
+                    const r = rows.find((x) => x.orderNo === no);
+                    if (r) setListId(r.id);
+                  }}
+                  onCreate={createOrder}
+                  onCreateDraft={(d) => createOrder(d, true)}
+                  onCreateTicket={(from, req) => {
+                    const no = nextOrderNo();
+                    setRows((prev) => [ticketFrom(from, req, no, technicianById(from.technicianId)?.name ?? "Technician"), ...prev]);
+                    return no;
+                  }}
+                  onPartsPending={onPartsPending}
+                  customers={customers}
+                  shipTosFor={shipTosFor}
+                  assetsFor={assetsFor}
+                  blankOrder={blankOrder}
+                />
+              )}
+            />
           ) : view === "board" ? (
             <BoardWithBar barRef={bar.ref}>
               <BrokerBoard

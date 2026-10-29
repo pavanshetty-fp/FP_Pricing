@@ -1594,6 +1594,26 @@
       ]
     },
     {
+      "id": "unit.list-split",
+      "title": "List view",
+      "layer": "unit",
+      "doc": "docs/fpds/units/list-split.md:3",
+      "code": [
+        "prototypes/unified-view/ListSplitView.tsx"
+      ],
+      "registry": "fpds-list-split",
+      "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-list-split.json",
+      "purpose": "Shows a board's records as a slim list on the left and the picked record's own sheet docked on the right, so a reader can read the same section across many records without opening and closing each one. After Dynamics 365's List view.",
+      "useWhen": [
+        "Use when the list has a board (`boardView`) and its records open a `RecordSheet` — 3PL Delivery Orders (V3), Sales Orders, Service Work."
+      ],
+      "dontUseWhen": [
+        "Don't use in the Customer Portal — customer-facing; CP features do not auto-spread.",
+        "Don't use for lists without a sheet to dock, or without status steps → the table."
+      ],
+      "match": []
+    },
+    {
       "id": "unit.map",
       "title": "Map",
       "layer": "unit",

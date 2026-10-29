@@ -133,6 +133,15 @@ function SheetPattern() {
  */
 const ParentSheetWidth = React.createContext<number | null>(null);
 
+/**
+ * DOCKED — THE SHEET AS A PANE (Pavan, 2026-10-29, after Dynamics 365's List
+ * view). Inside this provider a first-level sheet renders in place, filling
+ * its container, with no overlay and no close: the list beside it picks the
+ * record. The same body keeps its scroll when the record changes, so the
+ * reader stays on the section they were reading.
+ */
+export const DockedSheet = React.createContext(false);
+
 /** BODY PADDING (16 + 16) AND THE TABLE BOX'S BORDERS. */
 const FIT_PAD = 34;
 const RAIL = 340 + 24;
@@ -521,9 +530,13 @@ export function RecordSheet({
   const banner =
     footerBanner ??
     (saysWhy && pendingRaised ? <PendingStrip tone="caution" pending={pending} /> : undefined);
+  const docked = React.useContext(DockedSheet) && level === 1;
+  const Root = docked ? DockedRoot : Sheet;
+  const Content = docked ? DockedContent : SheetContent;
+  const Title = docked ? DockedTitle : SheetTitle;
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
+    <Root open={open} onOpenChange={onOpenChange}>
+      <Content
         side="right"
         showCloseButton={false}
         /* THE GAP IS A VARIABLE, so one set of classes serves both levels. A
@@ -548,9 +561,9 @@ export function RecordSheet({
         <div className="flex items-start justify-between gap-4 border-b border-border p-4">
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex items-center gap-2.5">
-              <SheetTitle className="text-base">
+              <Title className="text-base">
                 {creating ? createTitle : editTitle}
-              </SheetTitle>
+              </Title>
               {headerAside}
             </div>
             {headerSubtitle}
@@ -558,10 +571,10 @@ export function RecordSheet({
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}
             {headerMenu}
-            <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
+            {!docked && <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
               <X className="size-4" />
               <span className="sr-only">Close</span>
-            </SheetClose>
+            </SheetClose>}
           </div>
         </div>
 
@@ -640,7 +653,33 @@ export function RecordSheet({
           )}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </Content>
+    </Root>
   );
+}
+
+/* The docked stand-ins for Sheet, SheetContent and SheetTitle — same props,
+   rendered in place. */
+function DockedRoot({ open, children }: { open?: boolean; onOpenChange?: (o: boolean) => void; children: React.ReactNode }) {
+  return open ? <>{children}</> : null;
+}
+
+function DockedContent({
+  className,
+  style,
+  children,
+}: React.ComponentProps<typeof SheetContent>) {
+  return (
+    <div
+      role="region"
+      style={style}
+      className={cn(className, "flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden rounded-lg border border-border bg-popover sm:max-w-none")}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DockedTitle({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <h2 className={cn("font-semibold text-foreground", className)}>{children}</h2>;
 }

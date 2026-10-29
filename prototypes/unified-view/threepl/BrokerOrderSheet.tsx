@@ -791,7 +791,7 @@ function VendorRow({ id }: { id: string }) {
 /* THE SECTIONS THE PENDING STRIP AND THE CARD ACTIONS CAN SEND SOMEBODY TO.
    Named here rather than typed at each call site, so a section that is renamed
    cannot leave one of them pointing at nothing. */
-const VENDOR_SECTION_ID = "broker-order-vendor-section";
+export const VENDOR_SECTION_ID = "broker-order-vendor-section";
 const SECTION_BASICS = "broker-order-basics";
 const SECTION_LINES = "broker-order-lines";
 /** The Pricing section's anchor. Same job, for the stage after Quoting. */
@@ -1492,12 +1492,13 @@ export function BrokerOrderSheet({
        order), the form's 40px foot room below both, then the rule. `mb-10`
        stops the pinned rail there; the cap keeps a short form's rail from
        running past it. */
+    /* …AND ITS LAST CARD SITS ON THE RULE (Pavan, 2026-10-29) — no foot
+       room under the rail: a gap between the last card and the rule read as
+       the card floating. The form keeps its 40px; the rail runs to the rule. */
     const form = rail.previousElementSibling as HTMLElement | null;
     const fit = () => {
-      const foot = form ? parseFloat(getComputedStyle(form).paddingBottom) || 0 : 0;
-      const formH = form ? form.offsetHeight - foot : port.clientHeight;
+      const formH = form ? form.offsetHeight : port.clientHeight;
       rail.style.setProperty("--rail-max", `${Math.min(port.clientHeight, formH)}px`);
-      rail.style.marginBottom = `${foot}px`;
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -6892,7 +6893,8 @@ export function BrokerOrderSheet({
           a question anyone can ask of it. */}
       {/* A FULL RULE BETWEEN THE RECORD AND ITS PRICING (Pavan, 2026-10-26)
           — edge to edge (out through the sheet's 16px padding), right under
-          the form's 40px foot room and the rail's last card; the sheet's own
+          the form's 40px foot room; the rail's last card sits ON it, no gap
+          (2026-10-29); the sheet's own
           40px gap below it, to Pricing. */}
       {showPricing && !inCreation && <div aria-hidden className="-mx-4 -mt-10 shrink-0 border-t border-border" />}
       {showPricing && pricingSections}

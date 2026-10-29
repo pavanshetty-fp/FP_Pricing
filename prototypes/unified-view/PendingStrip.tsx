@@ -47,7 +47,11 @@ export function attend(id: string) {
      ancestor and hands the animation to the browser. Finding the scrollport
      and setting its offset is deterministic. */
   let port: HTMLElement | null = el.parentElement;
-  while (port && port.scrollHeight <= port.clientHeight + 4) {
+  /* A box that merely overflows is not the scrollport — it has to scroll. */
+  while (
+    port &&
+    (port.scrollHeight <= port.clientHeight + 4 || !/auto|scroll/.test(getComputedStyle(port).overflowY))
+  ) {
     port = port.parentElement;
   }
   if (!port) return;

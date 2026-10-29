@@ -16,9 +16,9 @@ Every time Pavan has to point out something that should already have been right 
 | Week of | Misses |
 |---|---|
 | 2026-10-18 | 9 |
-| 2026-10-25 | 24 |
+| 2026-10-25 | 25 |
 
-**33 misses** · found by Pavan 26 · by Claude 7 · guarded by a script 14 · guard proposed 0 · needs eyes 15 · process rule 4
+**34 misses** · found by Pavan 27 · by Claude 7 · guarded by a script 14 · guard proposed 0 · needs eyes 16 · process rule 4
 
 ## Patterns
 
@@ -28,16 +28,17 @@ Every time Pavan has to point out something that should already have been right 
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 7 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
+| `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 3 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 2 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
 | `unchecked-output` | A sweep or generated output assumed correct without checking the result | 2 |
-| `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 2 |
 | `no-guard` | No guard against an impossible value or state | 1 |
 
 ## The log
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-034 | 2026-10-29 | List view picked row used the brand-orange selection tint; the board's cards never use it | 3PL V3 → List view → left pane | Pavan | `generic-over-existing` | Reached for --fp-row-selected (a ticked table row) instead of the card's own states; a picked card is the card pressed, not a ticked row. | `picked-card-uses-card-states` · manual |
 | M-033 | 2026-10-29 | Said every dropdown had the tick column; Customer/ShipTo/Order Type/POC (Combobox) still had the tick on the left | Order sheet → every Combobox | Claude | `partial-unify` | Changed CommandItem and the table pickers, then claimed Combobox matched without opening one — it draws its own rows. | `tick-column-every-picker` · manual |
 | M-032 | 2026-10-29 | Preferred-time labels stayed stuck to the thicker bar | Order sheet → Delivery window & preferred time | Pavan | `partial-unify` | Thickened the bar and moved the read-only label's offset, but not the pressable label (the one every editable sheet shows); never measured the gap after. | `preferred-label-gap` · manual |
 | M-031 | 2026-10-29 | Asked to move the Tags tick next to the text; changed the fee Type ("tax") picker instead | 3PL order sheet → Basic Details → Tags | Pavan | `one-case` | Read "tag" as "tax" and never found a tax picker with a tick to confirm the guess; fixed only the table picker, not the shared dropdown row (CommandItem) every picker uses. | `tick-after-name` · manual |

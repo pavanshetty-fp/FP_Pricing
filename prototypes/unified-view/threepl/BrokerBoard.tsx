@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import {
   Popover,
   PopoverContent,
@@ -1511,5 +1512,145 @@ export function BrokerBoard({
     </Iconed.Provider>
     </Bare.Provider>
     </Compact.Provider>
+  );
+}
+
+/**
+ * LIST VIEW'S LEFT PANE (Pavan, 2026-10-29) — rows, not cards. Each row says
+ * what a Version 3 card says, minus its buttons: the number and status, the
+ * ship-to, the planned window, the delivery line, and the pending step. The
+ * step is pressable when the screen names where it lives (`onPending`). The
+ * picked row takes the lightest grey — the table header's, also the picked
+ * pagination page (bg-muted read too heavy, Pavan 2026-10-29); ↑ ↓ step
+ * through.
+ */
+export function BoardRowList({
+  items,
+  selectedId,
+  onSelect,
+  onPending,
+  whatIcon: WhatIcon = Truck,
+}: {
+  /** The icon before the "what goes" line — a truck for a delivery. */
+  whatIcon?: LucideIcon;
+  /** `when` / `what` override the line read off the card's units, for a
+   *  module whose units are shaped differently. */
+  items: { card: BoardCard; status: string; tone: StatusTone; when?: string; what?: string }[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** Absent for a card = its step is not pressable. */
+  onPending?: (card: BoardCard) => (() => void) | undefined;
+}) {
+  const refs = React.useRef(new Map<string, HTMLDivElement>());
+  React.useEffect(() => {
+    if (selectedId) refs.current.get(selectedId)?.scrollIntoView({ block: "nearest" });
+  }, [selectedId]);
+  const step = (by: number) => {
+    const at = items.findIndex((i) => i.card.id === selectedId);
+    const next = items[Math.min(items.length - 1, Math.max(0, at + by))];
+    if (next) {
+      onSelect(next.card.id);
+      refs.current.get(next.card.id)?.focus();
+    }
+  };
+  return (
+    <div
+      role="listbox"
+      aria-label="Orders"
+      className="h-full overflow-y-auto"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          step(e.key === "ArrowDown" ? 1 : -1);
+        }
+      }}
+    >
+      {items.map(({ card, status, tone, when: whenText, what: whatText }) => {
+        const on = card.id === selectedId;
+        const shipTo = card.units.find((u) => u.kind === "stack" && u.key === "customer");
+        const when = card.units.find((u) => u.kind === "inline" && WHEN_KEYS.has(u.key));
+        /* WHAT GOES — the delivery line, else the product / asset rows,
+           else the asset named on the card. */
+        const what =
+          whatText ??
+          card.units.flatMap((u) =>
+            u.kind === "delivery"
+              ? [u.summary.join(" · ")]
+              : u.kind === "rows" && u.rows.length
+                ? [u.rows.map((r) => [r.asset, r.qty].filter(Boolean).join(" ")).join(" · ")]
+                : u.kind === "stack" && u.key === "asset" && u.lines[0]
+                  ? [u.lines[0].text]
+                  : []
+          )[0];
+        const whenLine =
+          whenText ??
+          (when?.kind === "inline"
+            ? when.key === "schedule"
+              ? [...when.parts].reverse().map(shortDate).join(", ")
+              : when.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")
+            : undefined);
+        const pending = card.alert;
+        const goPending = pending ? onPending?.(card) : undefined;
+        return (
+          <div
+            key={card.id}
+            ref={(el) => {
+              if (el) refs.current.set(card.id, el);
+              else refs.current.delete(card.id);
+            }}
+            role="option"
+            aria-selected={on}
+            tabIndex={on ? 0 : -1}
+            onClick={() => onSelect(card.id)}
+            className={cn(
+              "flex cursor-pointer flex-col gap-1 border-b border-fp-outline-1 px-3 py-2.5 outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+              on && "bg-fp-table-header hover:bg-fp-table-header"
+            )}
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-semibold text-foreground">{card.title}</span>
+              <StatusChip tone={tone} variant="soft">
+                {status}
+              </StatusChip>
+            </span>
+            {shipTo?.kind === "stack" && shipTo.lines[0] && (
+              <span className="flex min-w-0 items-center gap-1 text-sm font-normal text-foreground">
+                <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{shipTo.lines[0].text}</span>
+              </span>
+            )}
+            {whenLine && <span className="pl-4.5 text-xs text-muted-foreground">{whenLine}</span>}
+            {what && (
+              <span className="flex min-w-0 items-center gap-1 text-sm font-normal text-foreground">
+                <WhatIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{what}</span>
+              </span>
+            )}
+            {pending &&
+              (goPending ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goPending();
+                  }}
+                  className={cn(
+                    "flex w-fit min-w-0 items-center gap-1 rounded-sm text-xs underline decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50",
+                    ALERT_ACCENT[pending.status]
+                  )}
+                >
+                  <Info className="size-4 shrink-0" />
+                  <span className="truncate">{pending.text}</span>
+                </button>
+              ) : (
+                <span className={cn("flex min-w-0 items-center gap-1 text-xs", ALERT_ACCENT[pending.status])}>
+                  <Info className="size-4 shrink-0" />
+                  <span className="truncate">{pending.text}</span>
+                </span>
+              ))}
+          </div>
+        );
+      })}
+    </div>
   );
 }

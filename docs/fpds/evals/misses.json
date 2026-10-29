@@ -446,6 +446,19 @@
         "id": "tick-column-every-picker",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-034",
+      "date": "2026-10-29",
+      "title": "List view picked row used the brand-orange selection tint; the board's cards never use it",
+      "where": "3PL V3 → List view → left pane",
+      "foundBy": "pavan",
+      "pattern": "generic-over-existing",
+      "why": "Reached for --fp-row-selected (a ticked table row) instead of the card's own states; a picked card is the card pressed, not a ticked row.",
+      "check": {
+        "id": "picked-card-uses-card-states",
+        "status": "manual"
+      }
     }
   ]
 }

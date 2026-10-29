@@ -27,6 +27,7 @@ import {
   type BoardLane,
 } from "./threepl/BrokerBoard";
 import { OrderMapView } from "./OrderMapView";
+import { ListSplitView, listSplitCount, type ListSplitItem } from "./ListSplitView";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
 import { OrderSheet, type OrderDraft } from "./OrderSheet";
 import { AssetOrderSheet, type AssetOrderDraft } from "./AssetOrderSheet";
@@ -525,6 +526,9 @@ export function SalesOrdersScreen({
   const [colScope, setColScope] = React.useState("customer");
   const [colQuery, setColQuery] = React.useState("");
   const [view, setView] = React.useState<ListView>("table");
+  /* LIST VIEW (Pavan, 2026-10-29) — the picked order and status pill. */
+  const [listId, setListId] = React.useState<string | null>(null);
+  const [listStatus, setListStatus] = React.useState<string | null>(null);
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
   /* EXPORT ASKS FIRST (G10, Pavan, 2026-10-07) — 3PL's ExportSheet. */
@@ -700,6 +704,30 @@ export function SalesOrdersScreen({
         };
       }),
     [sorted, laneSort, cardOff, line, settings, now]
+  );
+
+  /* THE LIST VIEW'S ROWS — the board's cards, in lane order. */
+  const listItems: ListSplitItem[] = React.useMemo(
+    () =>
+      boardLanes.flatMap((l) =>
+        l.cards.map((card) => {
+          const r = sorted.find((x) => x.id === card.id)!;
+          const st = statusOf(r);
+          return {
+            card,
+            status: st,
+            label: stageLabel(st, settings),
+            tone: stageTone(st, settings),
+            when:
+              r.kind === "fuel"
+                ? r.fuel.planned
+                  ? `${r.fuel.planned.date}, ${r.fuel.planned.time}`
+                  : "Not planned"
+                : r.asset.date.title,
+          };
+        })
+      ),
+    [boardLanes, sorted, settings]
   );
 
   /* ✕ is "I have seen this"; snooze is a deadline. Both reset with the range. */
@@ -1328,9 +1356,10 @@ export function SalesOrdersScreen({
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
-          viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
+          viewStatement={<ViewStatement count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           mapView
+          listView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -1553,6 +1582,46 @@ export function SalesOrdersScreen({
                 color: stageColor(statusOf(r), settings),
               }))}
               onOpenOrder={openById}
+            />
+          ) : view === "list" ? (
+            /* LIST VIEW (Pavan, 2026-10-29) — 3PL's unit: rows and status
+               pills on the left, the order's own sheet docked on the right. */
+            <ListSplitView
+              barRef={bar.ref}
+              items={listItems}
+              steps={stageIds(settings).map((st) => ({ key: st, label: stageLabel(st, settings) }))}
+              status={listStatus}
+              onStatusChange={setListStatus}
+              selectedId={listId}
+              onSelect={setListId}
+              renderDetail={(id) => {
+                const fuel = fuelRows.find((r) => r.id === id);
+                const asset = assetRows.find((r) => r.id === id);
+                return fuel ? (
+                  <OrderSheet
+                    order={fuel}
+                    mode="edit"
+                    open
+                    onOpenChange={() => {}}
+                    onSave={saveFuel}
+                    onCreate={createFuel}
+                    customers={fuelCustomers}
+                    shipTos={fuelShipTos}
+                    productNames={productNames}
+                  />
+                ) : asset ? (
+                  <AssetOrderSheet
+                    order={asset}
+                    mode="edit"
+                    open
+                    onOpenChange={() => {}}
+                    onSave={saveAsset}
+                    onCreate={createAsset}
+                    customers={assetCustomers}
+                    shipTos={assetShipTos}
+                  />
+                ) : null;
+              }}
             />
           ) : view === "board" ? (
             <BoardWithBar barRef={bar.ref}>

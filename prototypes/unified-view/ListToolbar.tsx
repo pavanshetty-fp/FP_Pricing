@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import {
   Map as MapIcon,
+  PanelLeft,
   Columns3,
   GripVertical,
   LayoutList,
@@ -67,7 +68,7 @@ import { DateFilter } from "./DateFilter";
  * is true of vendors and of nothing else in the Directory. A view toggle that
  * shows a dead third option on every screen teaches people to ignore it.
  */
-export type ListView = "table" | "board" | "map";
+export type ListView = "table" | "board" | "map" | "list";
 
 export interface ListSearchField {
   key: string;
@@ -162,6 +163,12 @@ export interface ListToolbarProps<K extends string> {
   onViewChange: (v: ListView) => void;
   /** Offer the map view. Off unless the records are geographic. */
   mapView?: boolean;
+  /**
+   * LIST VIEW (Pavan, 2026-10-29, after Dynamics 365) — a slim list of the
+   * records on the left, the picked one's full detail on the right. 3PL V3
+   * only for now.
+   */
+  listView?: boolean;
   /**
    * WHETHER THIS LIST HAS A BOARD AT ALL. Default FALSE (2026-10-01) — most
    * lists here have no board, and the ones that do say so.
@@ -329,6 +336,7 @@ export function ListToolbar<K extends string>({
   view,
   onViewChange,
   mapView = false,
+  listView = false,
   boardView = false,
   dateScope,
   dateControl,
@@ -336,7 +344,7 @@ export function ListToolbar<K extends string>({
   showGroupBy = true,
   cardFields,
 }: ListToolbarProps<K>) {
-  const multiView = boardView || mapView;
+  const multiView = boardView || mapView || listView;
   const colLabel =
     searchFields.find((f) => f.key === colScope)?.label ?? "column";
   const shown = columns.filter((c) => !hiddenColumns.has(c.key)).length;
@@ -856,6 +864,7 @@ export function ListToolbar<K extends string>({
           <div role="group" aria-label="Display" className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-fp-surface-1b">
             {[
               { key: "table" as const, label: "Table view", icon: <List />, on: true },
+              { key: "list" as const, label: "List view", icon: <PanelLeft />, on: listView },
               { key: "board" as const, label: "Board view", icon: <CardsIcon />, on: boardView },
               { key: "map" as const, label: "Map view", icon: <MapIcon />, on: mapView },
             ]
@@ -899,11 +908,11 @@ export function ListToolbar<K extends string>({
       )}
       </div>
       {viewToolsInto &&
-        (view === "table" || view === "board") &&
+        view !== "map" &&
         createPortal(
           <div className="flex h-11 items-center justify-between gap-3 px-3">
             <span className="min-w-0 truncate text-sm text-muted-foreground">{viewStatement}</span>
-            <span className="flex shrink-0 items-center gap-1">{view === "table" ? tableTools : boardTools}</span>
+            <span className="flex shrink-0 items-center gap-1">{view === "table" ? tableTools : view === "board" ? boardTools : null}</span>
           </div>,
           viewToolsInto
         )}

@@ -55,7 +55,9 @@ import {
 import { BoardV2 } from "./BoardV2";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
-import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
+import { BrokerOrderSheet, VENDOR_SECTION_ID, type BrokerOrderDraft } from "./BrokerOrderSheet";
+import { ListSplitView, listSplitCount, type ListSplitItem } from "../ListSplitView";
+import { attend } from "../PendingStrip";
 import {
   AssetMovementSheet,
   type AssetMovementDraft,
@@ -1097,6 +1099,16 @@ export function BrokerOrdersScreen({
   React.useEffect(() => {
     if (boardPick) setView("board");
   }, [boardPick]);
+  /* LIST VIEW IS V3's (Pavan, 2026-10-29) — another version drops back to
+     the board. */
+  const listView = boardVersion === "3";
+  React.useEffect(() => {
+    if (!listView) setView((v) => (v === "list" ? "board" : v));
+  }, [listView]);
+  /** The order the list view shows; the first in the list until one is picked. */
+  const [listId, setListId] = React.useState<string | null>(null);
+  /** The list view's status pill — null is All. */
+  const [listStatus, setListStatus] = React.useState<BrokerStatus | null>(null);
   /** Which view the column control is speaking for. */
   const board = view === "board";
   /* The filter panel's selection, as `facetKey:option` ids. This is what the
@@ -1402,6 +1414,13 @@ export function BrokerOrdersScreen({
         };
       }),
     [filtered, laneSort, requestInvoice, setOpenId, cardOff]
+  );
+  /* THE LIST VIEW'S ROWS — the board's cards, in lane order. */
+  const listItems: ListSplitItem[] = lanes.flatMap((l) =>
+    l.cards.map((card) => {
+      const st = rows.find((r) => r.id === card.id)!.status;
+      return { card, status: st, label: st, tone: BROKER_STATUS_TONE[st] };
+    })
   );
   /* THE CARD OPENS THE ORDER — no quotes on the board to open at
      Pricing for (Pavan, 2026-10-27). */
@@ -2415,7 +2434,7 @@ export function BrokerOrdersScreen({
           viewToolsInto={bar.into}
           viewStatement={
             <ViewStatement
-              count={sorted.length}
+              count={view === "list" ? listSplitCount(listItems, listStatus) : sorted.length}
               one="order"
               many="orders"
               rest={
@@ -2447,6 +2466,7 @@ export function BrokerOrdersScreen({
           view={view}
           onViewChange={setView}
           mapView
+          listView={listView}
           dateControl={
             <DateRangeFilter
               {...dateWindow}
@@ -2516,6 +2536,39 @@ export function BrokerOrdersScreen({
                 </BoardWithBar>
               </div>
             </div>
+          ) : view === "list" ? (
+            /* LIST VIEW (Pavan, 2026-10-29, after Dynamics 365) — the shared
+               unit; the vendor step scrolls the docked form to Vendors. */
+            <ListSplitView
+              barRef={bar.ref}
+              items={listItems}
+              steps={BOARD_LANES.flatMap((l) => l.statuses).map((st) => ({ key: st, label: st }))}
+              status={listStatus}
+              onStatusChange={(st) => setListStatus(st as BrokerStatus | null)}
+              selectedId={listId}
+              onSelect={setListId}
+              onPending={(card) =>
+                card.alert?.actionLabel === "Select Vendor"
+                  ? () => {
+                      setListId(card.id);
+                      requestAnimationFrame(() => requestAnimationFrame(() => attend(VENDOR_SECTION_ID)));
+                    }
+                  : undefined
+              }
+              renderDetail={(id) => (
+                <BrokerOrderSheet
+                  order={rows.find((r) => r.id === id) ?? null}
+                  mode="edit"
+                  open
+                  onOpenChange={() => {}}
+                  onSave={saveOrder}
+                  onCreate={createOrder}
+                  customers={customers}
+                  shipTos={shipTos}
+                  focus={null}
+                />
+              )}
+            />
           ) : view === "map" ? (
             /* THE MAP TAKES THE SORTED SET, NOT THE PAGE. A page boundary is a
                property of a table; half the day's work missing from a map

@@ -37,6 +37,7 @@ import {
   SlidersHorizontal,
   LayoutDashboard,
   ReceiptText,
+  ChevronRight,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
@@ -53,6 +54,7 @@ import { SalesSettingsScreen } from "./SalesSettingsScreen";
 import { setSalesCurrentUser, useSalesUnread } from "./salesSettings";
 import { TechnicianMobile } from "./service/TechnicianMobile";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Empty,
   EmptyDescription,
@@ -62,7 +64,7 @@ import {
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-type BoardVersion = "1" | "1.1" | "2" | "3" | "4";
+type BoardVersion = "1" | "1.1" | "2" | "2.1" | "3";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -446,16 +448,32 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const [boardVersion, setBoardVersionState] = React.useState<BoardVersion>(() => {
     try {
       const v = localStorage.getItem("fp-3pl-board-version");
-      /* 2.1 BECAME 2 (Pavan, 2026-10-28). */
-      if (v === "2.1") return "2";
-      /* V5'S COLOURS BECAME EVERYONE'S (Pavan, 2026-10-29), so V5 is V4. */
-      if (v === "5") return "4";
-      return v === "1.1" || v === "2" || v === "3" || v === "4" ? v : "1";
+      /* V4 IS NOW V3 (Pavan, 2026-10-29) — the old V3 went, its slot became
+         V2.1; V5's colours became everyone's, so V5 is this one too. */
+      if (v === "4" || v === "5") return "3";
+      return v === "1.1" || v === "2" || v === "2.1" || v === "3" ? v : "1";
     } catch {
       return "1";
     }
   });
   const [boardPick, setBoardPick] = React.useState(0);
+  /* THE SIDE VERSIONS (Pavan, 2026-10-29) — V1.1 and V2.1 sit in a second
+     switch, hidden until the chevron brings it out. Kept for this browser. */
+  const [sideVersions, setSideVersionsState] = React.useState(() => {
+    try {
+      return localStorage.getItem("fp-3pl-side-versions") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setSideVersions = (on: boolean) => {
+    setSideVersionsState(on);
+    try {
+      localStorage.setItem("fp-3pl-side-versions", on ? "1" : "0");
+    } catch {
+      // Storage blocked — the toggle still works for this visit.
+    }
+  };
   const pickBoardVersion = (v: BoardVersion) => {
     setBoardVersionState(v);
     setBoardPick((n) => n + 1);
@@ -800,27 +818,59 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                 view of the same data — it changes what the screen IS, so it
                 belongs to the screen's name rather than to its toolbar. */}
             {screenKey === "3pl-delivery-orders" && (
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={boardVersion}
-                /* A second press of the same version still opens its board. */
-                onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
-                aria-label="Board version"
-                className="shrink-0 self-center"
-              >
-                {(["1", "1.1", "2", "3", "4"] as const).map((v) => (
-                  <ToggleGroupItem
-                    key={v}
-                    value={v}
-                    aria-label={`Board version ${v}`}
-                    className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
+              <span className="flex shrink-0 items-center gap-1 self-center">
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  size="sm"
+                  value={boardVersion}
+                  /* A second press of the same version still opens its board. */
+                  onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
+                  aria-label="Board version"
+                >
+                  {(["1", "2", "3"] as const).map((v) => (
+                    <ToggleGroupItem
+                      key={v}
+                      value={v}
+                      aria-label={`Board version ${v}`}
+                      className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
+                    >
+                      V{v}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-5 text-muted-foreground"
+                  aria-label={sideVersions ? "Hide V1.1 and V2.1" : "Show V1.1 and V2.1"}
+                  aria-expanded={sideVersions}
+                  onClick={() => setSideVersions(!sideVersions)}
+                >
+                  <ChevronRight className={cn("size-3.5 transition-transform", sideVersions && "rotate-180")} />
+                </Button>
+                {sideVersions && (
+                  <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    size="sm"
+                    value={boardVersion}
+                    onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
+                    aria-label="More board versions"
                   >
-                    V{v}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+                    {(["1.1", "2.1"] as const).map((v) => (
+                      <ToggleGroupItem
+                      key={v}
+                      value={v}
+                      aria-label={`Board version ${v}`}
+                      className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
+                    >
+                      V{v}
+                    </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                )}
+              </span>
             )}
             {screenKey === "3pl-recurring-orders" && recurringArchive && (
               <span className="flex shrink-0 items-center gap-2 self-center">

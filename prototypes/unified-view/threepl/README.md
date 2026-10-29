@@ -1175,6 +1175,14 @@ hover border 2.2, lines 1.6, field borders 3, grey fills 1.2, pressed fills
 page #101216 (was #07080a). The lane under the cursor tints (light: the
 sorted table column's grey; dark: #232831); a hovered card on it is the
 level above. Values and rule: `src/index.css` ("STANDARD-SCREEN COLOURS").
+**V3 removed (2026-10-29)**; its slot is **V2.1** — V2 exactly, at 7.5 lanes
+in view instead of 5.5 (`BoardV2 lanesInView`). A saved V3 opens V2.1. V2.1 also sets every line at 14px regular
+(`.fp-one-size`; pills and the type circle keep their sizes), and a name's
+figure drops under it rather than squeezing it.
+**V4 renamed V3 (2026-10-29)** — the switch reads V1 · V1.1 · V2 · V2.1 · V3;
+"Version 4" in the notes above is today's V3. A saved V4 opens V3.
+The switch shows **V1 · V2 · V3**; a chevron beside it brings out a second
+switch with **V1.1 · V2.1** (hidden by default, remembered per browser).
 **A date in every lane**: Assigned keeps its schedule (no longer off by
 default, all versions); from Completed on, *Completed on* hangs under the
 ship-to in the schedule's grey — "Oct 28 2026, 3:28 PM · Weekly on Thursday"

@@ -151,6 +151,9 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
           <CardDelivery
             iconTrigger
             icon={Truck}
+            /* THE ASSETS LINE READS LIKE THE SHIP-TO NAME (Pavan, 2026-10-29)
+               — 12px regular, not 13px medium. */
+            summaryClassName="text-xs"
             heading={u.heading}
             summary={u.summary}
             rows={u.rows}
@@ -357,7 +360,8 @@ function LaneV2({
 
 /* FIVE AND A HALF LANES AT A GLANCE (Pavan, 2026-10-28; was 7.5, 6.5, 4.5) — the lane width
    is the board's width over 5.5, gaps and padding taken out first, so the
-   half lane says the board scrolls on. Never under 160px. */
+   half lane says the board scrolls on. Never under 160px. V2.1 (Pavan,
+   2026-10-29) is the same board at 7.5. */
 const LANES_IN_VIEW = 5.5;
 const GAP = 8;
 const PAD = 12;
@@ -365,7 +369,13 @@ const PAD = 12;
 export function BoardV2({
   lanes,
   onOpenCard,
-}: Pick<BrokerBoardProps, "lanes" | "onOpenCard">) {
+  lanesInView = LANES_IN_VIEW,
+  oneSize,
+}: Pick<BrokerBoardProps, "lanes" | "onOpenCard"> & {
+  lanesInView?: number;
+  /** V2.1 (Pavan, 2026-10-29): every line at 14px regular (`.fp-one-size`). */
+  oneSize?: boolean;
+}) {
   const box = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState<number>();
   React.useLayoutEffect(() => {
@@ -373,16 +383,16 @@ export function BoardV2({
     if (!el) return;
     const fit = () =>
       setWidth(
-        Math.max(160, Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(LANES_IN_VIEW)) / LANES_IN_VIEW))
+        Math.max(160, Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(lanesInView)) / lanesInView))
       );
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [lanesInView]);
   return (
     <Wrap.Provider value>
-    <div ref={box} className="flex h-full min-h-0 gap-2 overflow-x-auto bg-fp-surface-1b p-3">
+    <div ref={box} className={cn("flex h-full min-h-0 gap-2 overflow-x-auto bg-fp-surface-1b p-3", oneSize && "fp-one-size")}>
       {lanes.map((lane) => (
         <LaneV2 key={lane.key} lane={lane} onOpenCard={onOpenCard} width={width} />
       ))}

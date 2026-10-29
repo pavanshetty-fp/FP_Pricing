@@ -52,7 +52,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
 } from "./BrokerBoard";
-import { BoardV2, CardV2 } from "./BoardV2";
+import { BoardV2 } from "./BoardV2";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -996,7 +996,7 @@ export function BrokerOrdersScreen({
   boardPick = 0,
 }: {
   /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "1" | "1.1" | "2" | "3" | "4";
+  boardVersion?: "1" | "1.1" | "2" | "2.1" | "3";
   /** A nonce — each pick opens the board, from the table too. */
   boardPick?: number;
   focus?: { id: string; n: number } | null;
@@ -2500,8 +2500,8 @@ export function BrokerOrdersScreen({
             <div className="flex h-full min-h-0 flex-col gap-2">
               <div className="min-h-0 flex-1">
                 <BoardWithBar barRef={bar.ref}>
-                  {boardVersion === "2" ? (
-                    <BoardV2 lanes={lanes} onOpenCard={openBoardCard} />
+                  {boardVersion === "2" || boardVersion === "2.1" ? (
+                    <BoardV2 lanes={lanes} onOpenCard={openBoardCard} lanesInView={boardVersion === "2.1" ? 7.5 : 5.5} oneSize={boardVersion === "2.1"} />
                   ) : (
                     <BrokerBoard
                       lanes={lanes}
@@ -2509,14 +2509,8 @@ export function BrokerOrdersScreen({
                       laneSortOptions={laneSortOptions}
                       laneSort={laneSort}
                       onLaneSortChange={setLaneSortKey}
-                      compact={boardVersion === "3"}
-                      bare={boardVersion === "4"}
+                      bare={boardVersion === "3"}
                       iconed={boardVersion === "1.1"}
-                      renderCard={
-                        boardVersion === "3"
-                          ? (card, onOpen) => <CardV2 flat card={card} onOpen={onOpen} />
-                          : undefined
-                      }
                     />
                   )}
                 </BoardWithBar>

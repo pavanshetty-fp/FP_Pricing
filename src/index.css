@@ -1827,3 +1827,17 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
 [data-fp-unit="lane"]:hover {
   background-color: var(--fp-lane-hover);
 }
+
+/* V2.1 READS AT ONE SIZE (Pavan, 2026-10-29) — every line on the board, the
+   order number and the lane headers included, at 14px regular. Pills and
+   the type circle keep their own fixed sizes, set by their shapes. */
+.fp-one-size :where(*):not(.rounded-full, .rounded-full *) {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  font-weight: var(--font-weight-normal);
+}
+/* …and at 14px in a 7.5-lane board a name and its figure no longer fit on
+   one line: the figure drops under the name instead of squeezing it. */
+.fp-one-size .justify-between {
+  flex-wrap: wrap;
+}

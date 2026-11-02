@@ -783,6 +783,22 @@ export function OrdersScreen({
       </div>
 
 
+      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
+          under them; it cut across the line joining the table to its tools).
+          Every module: what needs attention, then the tools, then the list. */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+          appliedId={applied && applied.key === stateKey ? applied.id : null}
+          onClearApplied={() => {
+            narrowTo([], "today");
+            setApplied(null);
+          }}
+        />
+      )}
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -904,25 +920,6 @@ export function OrdersScreen({
         )}
       </div>
 
-
-      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
-          module): the tools first, then what needs attention, then the list
-          it narrows. */}
-      {/* THE ALERTS — the DS alert banner, one kind at a time with ‹ 1 of N ›
-          and View all; pressing an alert applies the filter it describes. */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={alerts}
-          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
-          appliedId={applied && applied.key === stateKey ? applied.id : null}
-          onClearApplied={() => {
-            narrowTo([], "today");
-            setApplied(null);
-          }}
-        />
-      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

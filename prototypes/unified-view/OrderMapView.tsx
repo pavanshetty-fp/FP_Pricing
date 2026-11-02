@@ -162,7 +162,7 @@ export function OrderMapView({
   const missing = orders.length - plotted;
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
+    <div data-view-in="" className="flex h-full min-h-0 gap-4">
       {/* ── the list ── */}
       <div className="flex min-h-0 w-[340px] shrink-0 flex-col overflow-auto rounded-md border border-border">
         {orders.map((o) => {

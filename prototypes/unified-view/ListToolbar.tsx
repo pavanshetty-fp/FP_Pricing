@@ -161,6 +161,12 @@ export interface ListToolbarProps<K extends string> {
    * tools sit as plain icons after the switch, 12px apart from it.
    */
   toolsBox?: boolean;
+  /**
+   * The Table · List · Board · Map switch. Off where the displays are tabs
+   * in the view row instead (3PL V2, Pavan 2026-11-02) — the view's tools
+   * stay where the switch ended.
+   */
+  viewSwitch?: boolean;
   /** What the bar says on its left — how many records, over what window. */
   viewStatement?: React.ReactNode;
   /** How many of the row's boxes have something in them. */
@@ -267,6 +273,17 @@ function Reveal({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * THE FOUR DISPLAYS, NAMED WITH THEIR ICONS — the switch's segments, and
+ * V2's view tabs (Pavan, 2026-11-02).
+ */
+export const DISPLAY_VIEWS: { key: ListView; label: string; icon: React.ReactNode }[] = [
+  { key: "table", label: "Table view", icon: <List /> },
+  { key: "list", label: "List view", icon: <PanelLeft /> },
+  { key: "board", label: "Board view", icon: <CardsIcon /> },
+  { key: "map", label: "Map view", icon: <MapIcon /> },
+];
+
 /** STACKED CARDS — the board's icon in the display switch (Pavan's reference). */
 /* THE BOARD READS AS A KANBAN (Pavan, 2026-10-26) — two columns standing
    side by side with air between them, not two cards stacked. */
@@ -336,6 +353,7 @@ export function ListToolbar<K extends string>({
   onToggleColumnFilters,
   viewToolsInto,
   toolsBox = VIEW_TOOLS_BESIDE,
+  viewSwitch = true,
   viewStatement,
   columnFilterCount = 0,
   columnOrder,
@@ -867,7 +885,7 @@ export function ListToolbar<K extends string>({
             after his reference): a bordered pill of segments, the view you
             are on filled grey; icons that say the view — a list for the
             table, stacked cards for the board, a map. */}
-        {multiView && (
+        {multiView && viewSwitch && (
           <div
             role="group"
             aria-label="Display"
@@ -993,9 +1011,12 @@ function ToolsLink({ view }: { view: ListView }) {
     ro.observe(viewBox);
     ro.observe(tools);
     window.addEventListener("resize", place);
+    /* The view slides in (`fp-view-in`); measure again once it has landed. */
+    viewBox.addEventListener("animationend", place);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", place);
+      viewBox.removeEventListener("animationend", place);
     };
   }, [view]);
   const line = "pointer-events-none absolute border-muted-foreground/40";

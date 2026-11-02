@@ -34,6 +34,7 @@ import {
   ViewStatement,
   useViewBar,
   type ListView,
+  DISPLAY_VIEWS,
 } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
@@ -1037,7 +1038,14 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
+  layout = "1",
 }: {
+  /**
+   * V1 · V2 BESIDE THE TITLE (Pavan, 2026-11-02). V2: the displays — Table,
+   * List, Board, Map — are tabs in the view row, with their icons, and the
+   * saved views carry on after them; no display switch in the toolbar.
+   */
+  layout?: "1" | "2";
   focus?: { id: string; n: number } | null;
   /**
    * OPEN THE CREATE SHEET ON ARRIVAL. A nonce, not a boolean: the Recurring
@@ -2314,6 +2322,13 @@ export function BrokerOrdersScreen({
     <div className="flex min-h-0 flex-1 flex-col">
       <FuelOrdersViewBar
         {...savedViews}
+        {...(layout === "2"
+          ? {
+              displayViews: DISPLAY_VIEWS.filter((d) => d.key !== "list" || listView),
+              displayValue: view,
+              onDisplayChange: (k: string) => setView(k as ListView),
+            }
+          : {})}
         ctaLabel="Create Order"
         /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; an
            asset order has one asset and a route — different forms, so the
@@ -2496,6 +2511,7 @@ export function BrokerOrdersScreen({
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
+          viewSwitch={layout !== "2"}
           mapView
           listView={listView}
           dateControl={

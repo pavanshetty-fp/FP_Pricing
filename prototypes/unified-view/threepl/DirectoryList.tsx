@@ -555,9 +555,14 @@ export function DirectoryList<Row, K extends string>({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* THE ADD BUTTON SITS ON THE VIEW ROW, beside Export, as on every
+          list (Pavan, 2026-11-02 — it was at the end of the search row). */}
       <FuelOrdersViewBar
         {...savedViews}
         onExport={exportRow ? () => setExporting(true) : undefined}
+        onCreateOrder={onCreate}
+        ctaLabel={createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
+        ctaDisabledReason={canWrite ? undefined : `You do not have permission to add a ${noun}`}
       />
 
       <div className="mt-4 flex shrink-0 items-center gap-2">
@@ -648,20 +653,6 @@ export function DirectoryList<Row, K extends string>({
           />
         </div>
 
-        {onCreate && (
-          <Button
-            size="sm"
-            className="shrink-0"
-            disabled={!canWrite}
-            /* A DEAD CONTROL MUST SAY WHY. Hiding it would leave someone
-               without the permission wondering where the button went. */
-            title={canWrite ? undefined : `You do not have permission to add a ${noun}`}
-            onClick={onCreate}
-          >
-            <Plus />
-            {createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
-          </Button>
-        )}
       </div>
 
       {/* ACTIVE FILTERS, SAID OUT LOUD, on the same shelf as the column
@@ -712,7 +703,7 @@ export function DirectoryList<Row, K extends string>({
             /* THE MAP TAKES THE SORTED ROWS, not the page. A map paginated to
                25 pins is a map of a page, which is not a thing anybody wants —
                and the footer switches to a plain count to match. */
-            renderMap(sorted)
+            <div data-view-in="" className="h-full">{renderMap(sorted)}</div>
           ) : count === 0 && !loading && !colFiltersOpen ? (
             /* NOT WHILE THE ROW IS OPEN: the boxes live in the table's header,
                so swapping the table for an empty state would take away the box

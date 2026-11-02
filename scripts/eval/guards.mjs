@@ -76,13 +76,14 @@ export const thAlign = {
   },
 };
 
-/* ── banner-position (M-001) ─────────────────────────────────────────────
-   The list alert banner sits UNDER the toolbar (search, Filters, chips),
-   right above the table or board — every module. */
+/* ── banner-position (M-001; flipped 2026-11-02) ──────────────────────────
+   The list alert banner sits ABOVE the toolbar (search, Filters, chips) —
+   every module. Under it, it cut across the line joining the table to its
+   tools (Pavan, 2026-11-02). */
 export const bannerPosition = {
   name: "banner-position",
   segment: "2-layouts",
-  rule: "misses M-001 — AlertBanner comes after the ListToolbar shelf, before the list",
+  rule: "Pavan 2026-11-02 — AlertBanner comes before the ListToolbar (search, filters), after the view tabs",
   check() {
     const out = [];
     for (const f of filesUnder(["prototypes"], [".tsx"])) {
@@ -91,7 +92,7 @@ export const bannerPosition = {
       if (bar < 0) continue;
       const banner = src.search(/<AlertBanner\b|\{banner &&/);
       if (banner < 0) continue;
-      if (banner < bar) out.push(finding("L1", rel(f), lineOf(src, banner), "alert banner is above the toolbar", this.rule));
+      if (banner > bar) out.push(finding("L1", rel(f), lineOf(src, banner), "alert banner is under the toolbar", this.rule));
     }
     return out;
   },

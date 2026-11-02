@@ -127,6 +127,15 @@ export interface FuelOrdersViewBarProps {
   presetKey?: string | null;
   /** `null` clears the preset — the row sends it when a view takes over. */
   onPresetChange?: (key: string | null) => void;
+  /**
+   * THE DISPLAYS AS VIEWS (Pavan, 2026-11-02 — 3PL V2): Table, List, Board,
+   * Map as tabs with their icons, in place of "All", always there; the saved
+   * views carry on after them. A display tab is the default view in that
+   * display; a saved view keeps whichever display is on.
+   */
+  displayViews?: { key: string; label: string; icon: React.ReactNode }[];
+  displayValue?: string;
+  onDisplayChange?: (key: string) => void;
   /** `null` = the Default view is active. */
   activeId: string | null;
   /** Current state differs from the active view (or from default). */
@@ -178,6 +187,9 @@ export interface FuelOrdersViewBarProps {
   onCreateSelect?: (key: string) => void;
   /** CTA label. Defaults to Fuel Orders' own verb. */
   ctaLabel?: string;
+  /** Set = the CTA is dead, and this says why (shown on hover). A dead
+   *  control says why rather than vanishing. */
+  ctaDisabledReason?: string;
   /** Export — sits immediately left of the CTA. */
   onExport?: () => void;
 }
@@ -211,6 +223,9 @@ export function FuelOrdersViewBar({
   dirty,
   onApply,
   onResetToDefault,
+  displayViews,
+  displayValue,
+  onDisplayChange,
   presets,
   presetKey = null,
   onPresetChange,
@@ -226,6 +241,7 @@ export function FuelOrdersViewBar({
   onCreateSelect,
   onExport,
   ctaLabel = "Create Order",
+  ctaDisabledReason,
 }: FuelOrdersViewBarProps) {
   const [dialog, setDialog] = React.useState<{
     mode: "new" | "rename";
@@ -303,6 +319,35 @@ export function FuelOrdersViewBar({
           <span aria-hidden className="mx-2 mb-2 h-5 w-px shrink-0 self-end bg-border" />
         )}
 
+        {displayViews ? (
+          displayViews.map((d) => {
+            const on = activeId === null && presetKey === null && displayValue === d.key;
+            return (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => {
+                  /* Out of a saved view or a business, back to the default —
+                     then this display. Inside the default it only switches. */
+                  if (activeId !== null || presetKey !== null) {
+                    onPresetChange?.(null);
+                    onResetToDefault();
+                  }
+                  onDisplayChange?.(d.key);
+                }}
+                className={cn(
+                  tabCls(on),
+                  "inline-flex items-center gap-1.5 border-b-2 [&_svg]:size-3.5",
+                  on ? "border-foreground" : "border-transparent"
+                )}
+              >
+                {d.icon}
+                {d.label}
+                {on && dirty && <DirtyDot />}
+              </button>
+            );
+          })
+        ) : (
         <button
           type="button"
           onClick={onResetToDefault}
@@ -317,6 +362,8 @@ export function FuelOrdersViewBar({
           All
           {activeId === null && presetKey === null && dirty && <DirtyDot />}
         </button>
+        )}
+
 
         {views.map((v) => {
           const isActive = v.id === activeId;
@@ -542,6 +589,8 @@ export function FuelOrdersViewBar({
                 !segments?.length && "ml-auto"
               )}
               onClick={onCreateOrder}
+              disabled={Boolean(ctaDisabledReason)}
+              title={ctaDisabledReason}
             >
               <Plus />
               {ctaLabel}

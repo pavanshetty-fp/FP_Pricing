@@ -1352,6 +1352,35 @@ export function SalesOrdersScreen({
       />
 
 
+      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
+          under them; it cut across the line joining the table to its tools).
+          Every module: what needs attention, then the tools, then the list. */}
+      {alertVisible && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={[
+            {
+              id: "overdue",
+              status: "warning",
+              tag: "Overdue",
+              /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
+              title: `${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`,
+              count: overdue.length,
+              onApply: () => {
+                setOverdueOnly(true);
+                setPage(1);
+              },
+            },
+          ]}
+          appliedId={overdueOnly ? "overdue" : null}
+          onClearApplied={() => {
+            setOverdueOnly(false);
+            setPage(1);
+          }}
+          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
+          onDismiss={() => setAlertDismissed(true)}
+        />
+      )}
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -1504,39 +1533,6 @@ export function SalesOrdersScreen({
         )}
       </div>
 
-      {/* `relative` anchors the floating bulk-action bar. */}
-      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
-          module): the tools first, then what needs attention, then the list
-          it narrows. */}
-      {/* THE DS ALERT BANNER (Pavan, 2026-10-15) — the count in the tag, and
-          its filter as "View details" beside the words, which becomes
-          "Clear filter" while the overdue filter is on. */}
-      {alertVisible && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={[
-            {
-              id: "overdue",
-              status: "warning",
-              tag: "Overdue",
-              /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
-              title: `${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`,
-              count: overdue.length,
-              onApply: () => {
-                setOverdueOnly(true);
-                setPage(1);
-              },
-            },
-          ]}
-          appliedId={overdueOnly ? "overdue" : null}
-          onClearApplied={() => {
-            setOverdueOnly(false);
-            setPage(1);
-          }}
-          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
-          onDismiss={() => setAlertDismissed(true)}
-        />
-      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

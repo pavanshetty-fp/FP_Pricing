@@ -1318,6 +1318,22 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       />
 
 
+      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
+          under them; it cut across the line joining the table to its tools).
+          Every module: what needs attention, then the tools, then the list. */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className="mt-4 shrink-0"
+          alerts={alerts}
+          appliedId={appliedAlert}
+          onClearApplied={() => {
+            setFacetSel(new Set());
+            setPage(1);
+          }}
+          onSnooze={(id, ms) => setSnoozed((m) => ({ ...m, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setAlertsOff((o) => new Set(o).add(id))}
+        />
+      )}
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -1451,22 +1467,6 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
         </FilterChips>
       </div>
 
-      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
-          module): the tools first, then what needs attention, then the list
-          it narrows. */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className="mt-4 shrink-0"
-          alerts={alerts}
-          appliedId={appliedAlert}
-          onClearApplied={() => {
-            setFacetSel(new Set());
-            setPage(1);
-          }}
-          onSnooze={(id, ms) => setSnoozed((m) => ({ ...m, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setAlertsOff((o) => new Set(o).add(id))}
-        />
-      )}
 
       <div className="relative mt-4 min-h-0 flex-1">
         <div className="h-full min-h-0">

@@ -316,6 +316,10 @@ export function StandardList<R, K extends string>({
         onSegmentChange={onSegmentChange}
       />
 
+      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
+          under them; it cut across the line joining the table to its tools).
+          Every module: what needs attention, then the tools, then the list. */}
+      {banner && <div className="mt-4 shrink-0">{banner}</div>}
       <div className="mt-4 shrink-0">
         <ListToolbar
           viewToolsInto={bar.into}
@@ -385,11 +389,6 @@ export function StandardList<R, K extends string>({
         </FilterChips>
       </div>
 
-
-      {/* THE BANNER SITS UNDER SEARCH AND FILTERS (Pavan, 2026-10-25 — every
-          module): the tools first, then what needs attention, then the list
-          it narrows. */}
-      {banner && <div className="mt-4 shrink-0">{banner}</div>}
       <div className="relative mt-4 min-h-0 flex-1">
         {nothing ? (
           <Empty className="h-full">

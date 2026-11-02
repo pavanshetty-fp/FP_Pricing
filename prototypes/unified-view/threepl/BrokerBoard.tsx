@@ -419,6 +419,9 @@ const useBare = () => React.useContext(Bare);
    the ship-to, schedule, delivery and driver headings each swapped for an
    icon leading the unit. */
 const Iconed = React.createContext(false);
+/* VERSION 4 (Pavan, 2026-11-02) — Version 2's card shell (its border, soft
+   shadow, hover lift) around Version 3's inside. */
+const ShellV2 = React.createContext(false);
 const useIconed = () => React.useContext(Iconed);
 const UNIT_ICON: Record<string, LucideIcon> = {
   customer: MapPin,
@@ -1053,9 +1056,21 @@ const shortDate = (p: string) => p.replace(/^(\w{3} \d{1,2}),( \d{4})/, "$1$2");
 
 /* VERSION 4 SETS ITS UNITS 8px APART (Pavan, 2026-10-28) — picked after
    a 12 / 10 / 16 trial; Version 1 keeps 16. */
+/** Version 4's card: Version 3's inside in Version 2's shell. */
+export function CardV4({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
+  return (
+    <Bare.Provider value>
+      <ShellV2.Provider value>
+        <Card card={card} onOpen={onOpen} />
+      </ShellV2.Provider>
+    </Bare.Provider>
+  );
+}
+
 function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
   const compact = useCompact();
   const bare = useBare();
+  const shellV2 = React.useContext(ShellV2);
   /* Compact cards pull their units closer — there is no heading to clear. */
   const gapTop = compact ? "pt-2.5" : bare ? "pt-2" : "pt-4";
   const ruleTop = bare ? "mt-2" : "mt-4";
@@ -1176,17 +1191,19 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         "shrink-0",
         waitLast ? "pb-1" : bandLast ? "pb-2" : "pb-3",
         "group/card cursor-pointer overflow-hidden rounded-md bg-fp-surface-1b outline-none transition-[color,background-color,border-color,box-shadow]",
-        "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
+        shellV2
+          ? "border border-border shadow-xs hover:shadow-md"
+          : "border border-fp-outline-1 hover:border-fp-outline-2 hover:shadow-fp-surface",
         /* DARK HOVER FILLS (Pavan, 2026-10-27) — the rim alone was too quiet;
            one card step up (--muted is --fp-card-2 in dark). The grey pills step up with it (CARD_HOVER_PILL). */
         "dark:hover:bg-muted",
         /* VERSION 4, DARK: THE CARD RIM CLEARS THE LANE'S STROKES (Pavan,
            2026-10-28) — halfway from the quiet rim to the strong one; hover
            still goes to the strong rim. */
-        bare &&
+        bare && !shellV2 &&
           "dark:border-[color-mix(in_srgb,var(--fp-outline-1)_50%,var(--fp-outline-2))] dark:hover:border-fp-outline-2",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
-        "active:border-fp-outline-2 active:bg-fp-card-1"
+        !shellV2 && "active:border-fp-outline-2 active:bg-fp-card-1"
       )}
     >
       {/* UNITS ARE RULED. A rule per unit is affordable here because there are
@@ -1343,6 +1360,150 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
   );
 }
 
+/**
+ * A LANE CAN FOLD AWAY (Pavan, 2026-11-01, after HubSpot). The fold button
+ * shows only while the pointer is over the lane (or it has focus); a folded
+ * lane is a slim strip with its title on its side and its count, and the
+ * whole strip opens it again. Kept per board, for the visit.
+ */
+export function useFoldedLanes() {
+  const [folded, setFolded] = React.useState<ReadonlySet<string>>(new Set());
+  const toggle = React.useCallback(
+    (key: string) =>
+      setFolded((f) => {
+        const n = new Set(f);
+        if (n.has(key)) n.delete(key);
+        else n.add(key);
+        return n;
+      }),
+    []
+  );
+  return { folded, toggle };
+}
+
+/* THE FOLD CONTROL IS A CHEVRON IN A PILL (Pavan, 2026-11-01): ‹ folds,
+   › opens — the neutral pill, so it reads as a control, not a status. */
+const FOLD_PILL =
+  "inline-flex h-6 items-center justify-center rounded-full bg-muted px-2 text-muted-foreground transition-colors hover:text-foreground";
+
+/** The fold button in a lane's header — hidden until the lane is hovered. */
+export function LaneFoldButton({ title, onFold }: { title: string; onFold: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Collapse ${title}`}
+      onClick={onFold}
+      className={cn(
+        FOLD_PILL,
+        "shrink-0 opacity-0 outline-none transition-[opacity,color] group-hover/lane:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+      )}
+    >
+      <ChevronLeft className="size-3.5" />
+    </button>
+  );
+}
+
+/**
+ * A folded lane: a slim strip. Its title stands on its side from the TOP, at
+ * the height of every other lane's title, the count under it; on hover the
+ * › pill lays over the top of it (Pavan, 2026-11-01).
+ */
+export function FoldedLane({
+  title,
+  count,
+  onOpen,
+  className,
+  titleClassName,
+}: {
+  title: string;
+  count: number;
+  onOpen: () => void;
+  className?: string;
+  titleClassName?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Expand ${title} — ${count}`}
+      onClick={onOpen}
+      className={cn(
+        "group/lane relative flex h-full w-12 shrink-0 flex-col items-center justify-start gap-2 overflow-hidden pt-3 outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
+        className
+      )}
+    >
+      <span
+        className={cn(
+          "min-h-0 truncate text-sm font-semibold [writing-mode:vertical-rl]",
+          titleClassName
+        )}
+      >
+        {title}
+      </span>
+      <span
+        aria-hidden
+        className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-fp-lane-count px-1 text-[11px] font-medium tabular-nums text-foreground"
+      >
+        {count}
+      </span>
+      <span
+        aria-hidden
+        className={cn(
+          FOLD_PILL,
+          "absolute top-3 left-1/2 -translate-x-1/2 opacity-0 shadow-sm transition-opacity group-hover/lane:opacity-100 group-focus-visible/lane:opacity-100"
+        )}
+      >
+        <ChevronRight className="size-3.5" />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * THE FOLD MOVES (Pavan, 2026-11-01 — "a little more smoother"). One frame
+ * holds both the open lane and its strip: the frame's width glides between
+ * the lane's and the strip's, the open lane fades out as it narrows, and the
+ * strip fades in once it has. Reduced motion: no glide, no fade.
+ */
+export function LaneFold({
+  folded,
+  width,
+  open,
+  strip,
+  className,
+}: {
+  folded: boolean;
+  /** The open lane's width — a CSS length. */
+  width: string;
+  open: React.ReactNode;
+  strip: React.ReactNode;
+  className?: string;
+}) {
+  const fade = "transition-opacity duration-200 ease-out motion-reduce:transition-none";
+  return (
+    <div
+      className={cn(
+        "relative h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out motion-reduce:transition-none",
+        className
+      )}
+      style={{ width: folded ? "3rem" : width }}
+    >
+      <div
+        inert={folded}
+        className={cn("flex h-full", fade, folded ? "opacity-0" : "opacity-100 delay-100")}
+        style={{ width }}
+      >
+        {open}
+      </div>
+      <div
+        inert={!folded}
+        className={cn("absolute inset-y-0 left-0 flex w-12", fade, folded ? "opacity-100 delay-150" : "opacity-0")}
+      >
+        {strip}
+      </div>
+    </div>
+  );
+}
+
 function Lane({
   lane,
   onOpenCard,
@@ -1350,9 +1511,11 @@ function Lane({
   sortKey,
   onSortChange,
   renderCard,
+  onFold,
 }: {
   lane: BoardLane;
   onOpenCard?: (id: string) => void;
+  onFold?: () => void;
   renderCard?: BrokerBoardProps["renderCard"];
   sortOptions?: LaneSortOption[];
   sortKey?: string;
@@ -1367,9 +1530,7 @@ function Lane({
     <div
       data-fp-unit="lane"
       className={cn(
-        "flex h-full w-(--fp-board-lane-width) shrink-0 flex-col overflow-hidden bg-fp-surface-1b",
-        /* A column of the board's box: one line before it. */
-        "border-l border-border first:border-l-0"
+        "group/lane flex h-full w-(--fp-board-lane-width) shrink-0 flex-col overflow-hidden bg-fp-surface-1b"
       )}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-3">
@@ -1402,6 +1563,11 @@ function Lane({
           {lane.cards.length}
         </span>
         <span className="sr-only">{lane.cards.length} orders</span>
+        {onFold && (
+          <span className="ml-auto flex shrink-0">
+            <LaneFoldButton title={lane.title} onFold={onFold} />
+          </span>
+        )}
         {sortOptions && sortOptions.length > 0 && onSortChange && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1409,7 +1575,8 @@ function Lane({
                 type="button"
                 aria-label={`Sort ${lane.title}${chosen ? ` — ${chosen.label}` : ""}`}
                 className={cn(
-                  "ml-auto shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground",
+                  !onFold && "ml-auto",
+                  "shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground",
                   chosen ? "text-foreground" : "text-muted-foreground"
                 )}
               >
@@ -1485,6 +1652,7 @@ export function BrokerBoard({
     ro.observe(el);
     return () => ro.disconnect();
   }, [compact]);
+  const { folded, toggle } = useFoldedLanes();
   return (
     <Compact.Provider value={compact}>
     <Bare.Provider value={bare}>
@@ -1503,14 +1671,32 @@ export function BrokerBoard({
         {lane.apart && (
           <div aria-hidden className="w-5 shrink-0 border-l border-border bg-fp-surface-1b" />
         )}
-        <Lane
-          lane={lane}
-          onOpenCard={onOpenCard}
-          sortOptions={laneSortOptions?.(lane.key)}
-          sortKey={laneSort?.[lane.key]}
-          renderCard={renderCard}
-          onSortChange={
-            onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
+        {/* A column of the board's box: one line before it (on the frame). */}
+        <LaneFold
+          folded={folded.has(lane.key)}
+          width="var(--fp-board-lane-width)"
+          className="border-l border-border first:border-l-0"
+          strip={
+            <FoldedLane
+              title={lane.title}
+              count={lane.cards.length}
+              onOpen={() => toggle(lane.key)}
+              className="bg-fp-surface-1b"
+              titleClassName={cn("rounded-full px-0.5 py-2.5", LANE_TITLE[lane.color])}
+            />
+          }
+          open={
+            <Lane
+              lane={lane}
+              onFold={() => toggle(lane.key)}
+              onOpenCard={onOpenCard}
+              sortOptions={laneSortOptions?.(lane.key)}
+              sortKey={laneSort?.[lane.key]}
+              renderCard={renderCard}
+              onSortChange={
+                onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined
+              }
+            />
           }
         />
         </React.Fragment>

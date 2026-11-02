@@ -1017,7 +1017,7 @@ export function BrokerOrdersScreen({
   boardPick = 0,
 }: {
   /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "1" | "1.1" | "2" | "2.1" | "3";
+  boardVersion?: "1" | "1.1" | "2" | "2.1" | "3" | "4";
   /** A nonce — each pick opens the board, from the table too. */
   boardPick?: number;
   focus?: { id: string; n: number } | null;
@@ -1120,7 +1120,7 @@ export function BrokerOrdersScreen({
   }, [boardPick]);
   /* LIST VIEW IS V3's (Pavan, 2026-10-29) — another version drops back to
      the board. */
-  const listView = boardVersion === "3";
+  const listView = boardVersion === "3" || boardVersion === "4";
   React.useEffect(() => {
     if (!listView) setView((v) => (v === "list" ? "board" : v));
   }, [listView]);
@@ -2539,8 +2539,14 @@ export function BrokerOrdersScreen({
             <div className="flex h-full min-h-0 flex-col gap-2">
               <div className="min-h-0 flex-1">
                 <BoardWithBar barRef={bar.ref}>
-                  {boardVersion === "2" || boardVersion === "2.1" ? (
-                    <BoardV2 lanes={lanes} onOpenCard={openBoardCard} lanesInView={boardVersion === "2.1" ? 7.5 : 5.5} oneSize={boardVersion === "2.1"} />
+                  {boardVersion === "2" || boardVersion === "2.1" || boardVersion === "4" ? (
+                    <BoardV2
+                      lanes={lanes}
+                      onOpenCard={openBoardCard}
+                      lanesInView={boardVersion === "2.1" ? 7.5 : 5.5}
+                      oneSize={boardVersion === "2.1"}
+                      v3Cards={boardVersion === "4"}
+                    />
                   ) : (
                     <BrokerBoard
                       lanes={lanes}

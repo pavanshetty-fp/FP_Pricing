@@ -8,6 +8,11 @@ import {
   CardDelivery,
   ShipToLine,
   CARD_HOVER_PILL,
+  CardV4,
+  FoldedLane,
+  LaneFold,
+  LaneFoldButton,
+  useFoldedLanes,
   type BoardCard,
   type BoardCardUnit,
   type BoardLane,
@@ -318,25 +323,33 @@ function LaneV2({
   lane,
   onOpenCard,
   width,
+  onFold,
+  v3Cards,
 }: {
   lane: BoardLane;
   onOpenCard?: (id: string) => void;
   width?: number;
+  onFold?: () => void;
+  v3Cards?: boolean;
 }) {
   const total = lane.cards.reduce((sum, c) => sum + moneyOf(amountOf(c)), 0);
   return (
     <div
       data-fp-unit="lane"
       className={cn(
-        "flex h-full shrink-0 flex-col overflow-hidden rounded-md bg-fp-surface-1a",
-        !width && "w-(--fp-board-lane-width)",
-        lane.apart && "ml-3"
+        "group/lane flex h-full shrink-0 flex-col overflow-hidden rounded-md bg-fp-surface-1a",
+        !width && "w-(--fp-board-lane-width)"
       )}
       style={width ? { width } : undefined}
     >
       <div className="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2">
         <h3 className="truncate text-sm font-semibold text-foreground">{lane.title}</h3>
         <span className="text-sm tabular-nums text-muted-foreground">{lane.cards.length}</span>
+        {onFold && (
+          <span className="ml-auto flex shrink-0">
+            <LaneFoldButton title={lane.title} onFold={onFold} />
+          </span>
+        )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
         {lane.cards.length === 0 ? (
@@ -344,7 +357,13 @@ function LaneV2({
             {lane.emptyLabel ?? "Nothing here"}
           </p>
         ) : (
-          lane.cards.map((c) => <CardV2 key={c.id} card={c} onOpen={() => onOpenCard?.(c.id)} />)
+          lane.cards.map((c) =>
+            v3Cards ? (
+              <CardV4 key={c.id} card={c} onOpen={() => onOpenCard?.(c.id)} />
+            ) : (
+              <CardV2 key={c.id} card={c} onOpen={() => onOpenCard?.(c.id)} />
+            )
+          )
         )}
       </div>
       {/* THE STAGE'S TOTAL, at the foot of the column, as HubSpot sets it. */}
@@ -371,13 +390,17 @@ export function BoardV2({
   onOpenCard,
   lanesInView = LANES_IN_VIEW,
   oneSize,
+  v3Cards,
 }: Pick<BrokerBoardProps, "lanes" | "onOpenCard"> & {
+  /** V4 (Pavan, 2026-11-02): this board, Version 3's card inside. */
+  v3Cards?: boolean;
   lanesInView?: number;
   /** V2.1 (Pavan, 2026-10-29): every line at 14px regular (`.fp-one-size`). */
   oneSize?: boolean;
 }) {
   const box = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState<number>();
+  const { folded, toggle } = useFoldedLanes();
   React.useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -394,7 +417,21 @@ export function BoardV2({
     <Wrap.Provider value>
     <div ref={box} className={cn("flex h-full min-h-0 gap-2 overflow-x-auto bg-fp-surface-1b p-3", oneSize && "fp-one-size")}>
       {lanes.map((lane) => (
-        <LaneV2 key={lane.key} lane={lane} onOpenCard={onOpenCard} width={width} />
+        <LaneFold
+          key={lane.key}
+          folded={folded.has(lane.key)}
+          width={width ? `${width}px` : "var(--fp-board-lane-width)"}
+          className={cn("rounded-md", lane.apart && "ml-3")}
+          strip={
+            <FoldedLane
+              title={lane.title}
+              count={lane.cards.length}
+              onOpen={() => toggle(lane.key)}
+              className="rounded-md bg-fp-surface-1a"
+            />
+          }
+          open={<LaneV2 lane={lane} onOpenCard={onOpenCard} width={width} onFold={() => toggle(lane.key)} v3Cards={v3Cards} />}
+        />
       ))}
     </div>
     </Wrap.Provider>

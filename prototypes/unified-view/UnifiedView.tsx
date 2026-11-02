@@ -64,7 +64,7 @@ import {
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-type BoardVersion = "1" | "1.1" | "2" | "2.1" | "3";
+type BoardVersion = "1" | "1.1" | "2" | "2.1" | "3" | "4";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -450,8 +450,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       const v = localStorage.getItem("fp-3pl-board-version");
       /* V4 IS NOW V3 (Pavan, 2026-10-29) — the old V3 went, its slot became
          V2.1; V5's colours became everyone's, so V5 is this one too. */
-      if (v === "4" || v === "5") return "3";
-      return v === "1.1" || v === "2" || v === "2.1" || v === "3" ? v : "1";
+      if (v === "5") return "3";
+      /* V4 (Pavan, 2026-11-02): V2's lanes and card shell, V3's card inside. */
+      return v === "1.1" || v === "2" || v === "2.1" || v === "3" || v === "4" ? v : "1";
     } catch {
       return "1";
     }
@@ -828,7 +829,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                   onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
                   aria-label="Board version"
                 >
-                  {(["1", "2", "3"] as const).map((v) => (
+                  {(["1", "2", "3", "4"] as const).map((v) => (
                     <ToggleGroupItem
                       key={v}
                       value={v}

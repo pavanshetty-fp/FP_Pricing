@@ -74,8 +74,8 @@ export function check() {
       if (!groupOff && !p.has("groupBy")) {
         add(file, t.line, "Group By is shown but given no dimensions — a menu that groups nothing; pass groupBy or showGroupBy={false}", "G8");
       }
-      if (p.has("boardView") && String(p.get("boardView")) !== "{false}" && !/<BrokerBoard\b/.test(src)) {
-        add(file, t.line, "view switch offers a board but the screen renders no BrokerBoard", "G11");
+      if (p.has("boardView") && String(p.get("boardView")) !== "{false}" && !/<(BrokerBoard|BoardV2)\b/.test(src)) {
+        add(file, t.line, "view switch offers a board but the screen renders no board (BrokerBoard or BoardV2)", "G11");
       }
       if (p.has("boardView") && /<BrokerBoard\b/.test(src)) {
         if (!p.has("cardFields")) {

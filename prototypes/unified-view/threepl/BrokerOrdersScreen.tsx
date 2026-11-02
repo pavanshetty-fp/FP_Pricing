@@ -47,7 +47,6 @@ import {
   startOfDay,
 } from "../data";
 import {
-  BrokerBoard,
   type BoardCardBadge,
   type BoardCardUnit,
   type BoardLane,
@@ -895,32 +894,6 @@ const LANE_SORTS: Record<
   },
 };
 
-const COMMON_LANE_SORTS = [
-  "time-asc",
-  "time-desc",
-  "qty-desc",
-  "qty-asc",
-  "customer-asc",
-  "order-desc",
-];
-
-/** The one extra each lane earns from the thing it is waiting on. */
-const LANE_EXTRA_SORTS: Record<string, string> = {
-  Draft: "ready-first",
-  Quoting: "invited-desc",
-  Assigned: "quotes-desc",
-  Completed: "urgent-first",
-  Blocked: "urgent-first",
-};
-
-function laneSortOptions(laneKey: string) {
-  const extra = LANE_EXTRA_SORTS[laneKey];
-  return [...(extra ? [extra] : []), ...COMMON_LANE_SORTS].map((k) => ({
-    key: k,
-    label: LANE_SORTS[k].label,
-  }));
-}
-
 /* GROUP BY GROUPS SOMETHING (Pavan, 2026-10-07). The menu used to fall back
    to the DS demo names and group nothing. These are the order's own fields
    with useful cardinality, like Sales Orders' dims. */
@@ -1013,11 +986,11 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
-  boardVersion = "1",
+  boardVersion = "4",
   boardPick = 0,
 }: {
   /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "1" | "1.1" | "2" | "2.1" | "3" | "4";
+  boardVersion?: "2" | "4";
   /** A nonce — each pick opens the board, from the table too. */
   boardPick?: number;
   focus?: { id: string; n: number } | null;
@@ -1120,7 +1093,7 @@ export function BrokerOrdersScreen({
   }, [boardPick]);
   /* LIST VIEW IS V3's (Pavan, 2026-10-29) — another version drops back to
      the board. */
-  const listView = boardVersion === "3" || boardVersion === "4";
+  const listView = boardVersion === "4";
   React.useEffect(() => {
     if (!listView) setView((v) => (v === "list" ? "board" : v));
   }, [listView]);
@@ -1454,9 +1427,6 @@ export function BrokerOrdersScreen({
     });
     setPage(1);
   };
-
-  const setLaneSortKey = (laneKey: string, option: string | null) =>
-    setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }));
 
   const customers = React.useMemo(
     () => Array.from(new Set(BROKER_ORDERS.map((r) => r.customer.title))),
@@ -2539,25 +2509,7 @@ export function BrokerOrdersScreen({
             <div className="flex h-full min-h-0 flex-col gap-2">
               <div className="min-h-0 flex-1">
                 <BoardWithBar barRef={bar.ref}>
-                  {boardVersion === "2" || boardVersion === "2.1" || boardVersion === "4" ? (
-                    <BoardV2
-                      lanes={lanes}
-                      onOpenCard={openBoardCard}
-                      lanesInView={boardVersion === "2.1" ? 7.5 : 5.5}
-                      oneSize={boardVersion === "2.1"}
-                      v3Cards={boardVersion === "4"}
-                    />
-                  ) : (
-                    <BrokerBoard
-                      lanes={lanes}
-                      onOpenCard={openBoardCard}
-                      laneSortOptions={laneSortOptions}
-                      laneSort={laneSort}
-                      onLaneSortChange={setLaneSortKey}
-                      bare={boardVersion === "3"}
-                      iconed={boardVersion === "1.1"}
-                    />
-                  )}
+                  <BoardV2 lanes={lanes} onOpenCard={openBoardCard} v3Cards={boardVersion === "4"} />
                 </BoardWithBar>
               </div>
             </div>

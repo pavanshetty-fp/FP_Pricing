@@ -346,6 +346,8 @@ export interface BoardLane {
   cards: BoardCard[];
   /** Shown in place of the card stack when the lane is empty. */
   emptyLabel?: string;
+  /** No "Total amount" foot (V2 / V4) — the lane has no prices yet. */
+  noTotal?: boolean;
   /**
    * Starts a new group: a rule is drawn before this lane.
    *

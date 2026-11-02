@@ -1384,6 +1384,8 @@ export function BrokerOrdersScreen({
           title,
           color: BROKER_LANE_COLOR[lane.statuses[lane.statuses.length - 1]],
           apart: lane.apart,
+          /* NO TOTAL ON ORDERS (Pavan, 2026-11-02) — nothing there is priced yet. */
+          noTotal: lane.key === "Draft",
           emptyLabel: `No orders in ${title.toLowerCase()}`,
           cards: cards.map((r) => ({
             id: r.id,

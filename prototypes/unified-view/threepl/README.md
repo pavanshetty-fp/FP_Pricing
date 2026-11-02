@@ -1886,3 +1886,4 @@ Recommendations button. History is INVENTED.
 - 2026-11-01 — The fold glides: `LaneFold` frame animates width (300ms ease-in-out) between the lane and the 48px strip; the open lane fades out as it narrows, the strip fades in after. Reduced motion: instant.
 - 2026-11-02 — Board V4 (Pavan): V2's board — lanes, lane header, totals foot, 5.5 lanes in view — and V2's card shell (border, soft shadow, hover lift), with V3's card inside (`CardV4` = bare `Card` + `ShellV2`). List view on V4 as on V3.
 - 2026-11-02 — 3PL keeps board V2 and V4 only; V1, V1.1, V2.1, V3 archived (docs/archive/board-versions-2026-11-02.md, commit 3ca7a27). Stored versions other than 2 open V4. Per-lane sort went with BrokerBoard on 3PL.
+- 2026-11-02 — Orders lane has no "Total amount" foot on V2/V4 (`noTotal`): nothing there is priced yet.

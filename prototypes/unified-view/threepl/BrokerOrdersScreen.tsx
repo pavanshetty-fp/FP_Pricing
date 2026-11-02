@@ -1353,11 +1353,14 @@ export function BrokerOrdersScreen({
       facets: [],
       colFilters: {},
       cardOff: cardOffToArrays(initialCardOff()),
-      mode: "board",
+      /* V2: EACH DISPLAY TAB IS ITS OWN DEFAULT (Pavan, 2026-11-02) — picking
+         Table is not a change to the default; a saved view still remembers
+         the display it was saved in (`mode`). */
+      mode: layout === "2" ? view : "board",
       laneSort: {},
       groupBy: [],
     }),
-    []
+    [layout, view]
   );
 
   const applyState = (s: ViewState) => {

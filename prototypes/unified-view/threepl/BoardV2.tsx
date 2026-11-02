@@ -1,13 +1,13 @@
 import * as React from "react";
 import { Check, Handshake, Info, MapPin, Truck, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { CodeDisc } from "@/components/ui/code-disc";
 import {
   CardDelivery,
   ShipToLine,
   CARD_HOVER_PILL,
+  BadgePill,
   CardV4,
   FoldedLane,
   LaneFold,
@@ -143,6 +143,19 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
       </>
     );
   }
+  /* THE PLANNED DATE, THEN THE PLANNED TIME (Pavan, 2026-11-02) — one time,
+     not the delivery window, and quieter than the lines around it. V1 only;
+     V2's card draws its own schedule. */
+  if (u.kind === "inline" && u.planned) {
+    const when = [u.planned.date, u.planned.time].filter(Boolean).join(" · ");
+    if (!when) return null;
+    return (
+      <div className="flex min-w-0 items-baseline pl-4.5 text-xs">
+        <span className="sr-only">{label}: </span>
+        <span className={cn("min-w-0 text-muted-foreground", wrap ? "break-words" : "truncate")}>{when}</span>
+      </div>
+    );
+  }
   /* Version 3: the schedule starts where the ship-to name starts, past the pin. */
   if (u.kind === "inline")
     return (
@@ -242,13 +255,11 @@ export function CardV2({
             {card.badges.map((b) => (
               /* SMALLER PILLS ON VERSION 2 (Pavan, 2026-10-28) — 2px
                  above and below the text, not the 28px height. */
-              <Pill
+              <BadgePill
                 key={b.label}
-                kind={b.tone ?? "neutral"}
+                badge={b}
                 className={cn(CARD_HOVER_PILL(b.tone), !flat && "h-auto py-0.5", wrap && "whitespace-normal [&>span]:whitespace-normal")}
-              >
-                {b.label}
-              </Pill>
+              />
             ))}
           </div>
         )}

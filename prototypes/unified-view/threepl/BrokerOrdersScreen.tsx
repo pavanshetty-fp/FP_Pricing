@@ -323,6 +323,12 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
            rule, and "Every weekday" did not say which day this card is. */
         ...(off.has("schedule.when") ? [] : [r.date.title]),
       ],
+      /* V1 (Pavan, 2026-11-02): date first, then the planned time — the
+         window's start; the window itself is not shown. */
+      planned: {
+        date: off.has("schedule.when") ? undefined : r.date.title,
+        time: off.has("schedule.window") ? undefined : r.window.start,
+      },
     },
     /* WHAT A FINISHED ORDER IS ASKED IS WHEN IT WAS DONE, not when it was
        meant to be. The plan and the fact are two different questions, so this
@@ -334,14 +340,17 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       kind: "inline" as const,
       key: "completed",
       heading: "Completed on",
-      parts: r.completedAt
-        ? [
-            ...(off.has("completed.when") ? [] : [completedLabel(r.completedAt)]),
-            ...(off.has("completed.cadence") || !r.recurrence
-              ? []
-              : [r.recurrence.frequency]),
-          ]
-        : [],
+      /* NO CADENCE ON THE CARD (Pavan, 2026-11-02) — "Weekly on Thursday"
+         lives on the Recurring pill's hover; the line is a date and a time,
+         like the schedule. */
+      parts: r.completedAt && !off.has("completed.when") ? [completedLabel(r.completedAt)] : [],
+      planned:
+        r.completedAt && !off.has("completed.when")
+          ? {
+              date: DATE_FMT.format(new Date(r.completedAt)),
+              time: COMPLETED_TIME_FMT.format(new Date(r.completedAt)),
+            }
+          : undefined,
     },
     /* THE PRODUCT LIST STAYS ON THE CARD (Pavan, 2026-10-06). It used to
        fold behind the price on Assigned, which left the Delivery Product
@@ -473,7 +482,8 @@ function laneCardBadges(r: BrokerOrder): BoardCardBadge[] {
      competing with the chips that still matter. Recurrence is not like that —
      it says what KIND of order this is, and a finished one is still one. */
   if (r.urgent && !isDelivered(r.status)) out.push({ label: "Urgent", tone: "critical" });
-  if (r.kind === "Recurring") out.push({ label: "Recurring" });
+  /* THE CADENCE ON THE PILL'S HOVER (Pavan, 2026-11-02), not as a card line. */
+  if (r.kind === "Recurring") out.push({ label: "Recurring", hint: r.recurrence?.frequency });
   /* THE DISPATCHER AGREED IT FOR THE VENDOR (Pavan, 2026-10-06). */
   if (r.vendorId && r.quotes.some((q) => q.vendorId === r.vendorId && q.byDispatcher))
     out.push({ label: "Added by dispatcher" });
@@ -729,7 +739,6 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
      a card where the difference between planned and actual is the point. */
   { key: "completed", label: "Completed on" },
   { key: "completed.when", label: "Date and time", group: "completed" },
-  { key: "completed.cadence", label: "Cadence", group: "completed" },
   { key: "product", label: "Delivery Details" },
   { key: "product.product", label: "Products", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },

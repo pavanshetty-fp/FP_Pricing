@@ -36,6 +36,7 @@ import {
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type MiniMapPoint } from "./SiteMiniMap";
 
 /**
@@ -204,7 +205,15 @@ export type BoardCardUnit =
        *  on hover (Pavan, 2026-11-02). */
       person?: BoardPerson;
     }
-  | { kind: "inline"; key: string; heading: string; parts: string[] }
+  | {
+      kind: "inline";
+      key: string;
+      heading: string;
+      parts: string[];
+      /** V1's schedule (Pavan, 2026-11-02): the planned date, then ONE
+       *  planned time — not the delivery window. */
+      planned?: { date?: string; time?: string };
+    }
   | {
       kind: "rows";
       key: string;
@@ -277,6 +286,26 @@ export interface BoardCardBadge {
    * scans for. (Added 2026-09-23.)
    */
   tone?: "critical" | "neutral" | "caution" | "success" | "info";
+  /** Said on hover — the recurring pill's cadence (Pavan, 2026-11-02). */
+  hint?: string;
+}
+
+/** A card's badge: the DS pill, its `hint` on hover. */
+export function BadgePill({ badge, className }: { badge: BoardCardBadge; className?: string }) {
+  const pill = (
+    <Pill kind={badge.tone ?? "neutral"} className={className}>
+      {badge.label}
+    </Pill>
+  );
+  if (!badge.hint) return pill;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{pill}</span>
+      </TooltipTrigger>
+      <TooltipContent>{badge.hint}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 /* THE BADGE IS THE DS PILL (Pavan, 2026-10-09) — the tone is a kind, and
@@ -1263,7 +1292,11 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                      truncated — a long line wraps.
                      */
                   <span className="pl-4.5 text-xs text-muted-foreground">
-                    {u.key === "schedule"
+                    {/* ONE FORM ON BOTH VERSIONS (Pavan, 2026-11-02): the
+                        date, then one time — "Nov 2, 2026 · 8:00 AM". */}
+                    {u.planned
+                      ? [u.planned.date, u.planned.time].filter(Boolean).join(" · ")
+                      : u.key === "schedule"
                       ? [...u.parts].reverse().map(shortDate).join(", ")
                       : u.parts.map((p, i) => (i === 0 ? p.replace(" · ", ", ") : p)).map(shortDate).join(" · ")}
                   </span>
@@ -1382,9 +1415,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
               )}
             >
               {(manyChips ? card.badges.slice(0, 2) : card.badges).map((b) => (
-                <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
-                  {b.label}
-                </Pill>
+                <BadgePill key={b.label} badge={b} className={CARD_HOVER_PILL(b.tone)} />
               ))}
             </div>
           )}
@@ -1392,9 +1423,7 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
         {manyChips && card.badges!.length > 2 && (
           <div className="flex flex-wrap justify-end gap-1">
             {card.badges!.slice(2).map((b) => (
-              <Pill key={b.label} kind={b.tone ?? "neutral"} className={CARD_HOVER_PILL(b.tone)}>
-                {b.label}
-              </Pill>
+              <BadgePill key={b.label} badge={b} className={CARD_HOVER_PILL(b.tone)} />
             ))}
           </div>
         )}

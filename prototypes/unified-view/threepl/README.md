@@ -1897,3 +1897,5 @@ Recommendations button. History is INVENTED.
 - 2026-11-02 (final, revised) — Section hover now draws a short 1px underline under the icon (or photo) instead of the tile (`MORE_HINT`); the tile / ring comes only when the icon itself is hovered or open.
 - 2026-11-02 — Driver and delivery hover panels fit their content: driver min 208px / max 320px (was 288 fixed), delivery min 256px / max 448px (was 448 fixed); they widen only for long names or many columns of data.
 - 2026-11-02 — Ship-to (and vendor) hover panel fits its content too: min 208px, max 320px (was 288 fixed).
+- 2026-11-02 — V1 card schedule: planned date first, then ONE planned time (the window start), muted grey; the delivery window is not shown (`planned` on the schedule unit; V2 unchanged).
+- 2026-11-02 — One schedule form on V1 and V2: "Nov 2, 2026 · 8:00 AM" (date, then one time), muted; Completed on reads the same. Cadence ("Weekly on Thursday") is off the card and the Cadence card field removed — it is the Recurring pill's hover (`BadgePill`, badge `hint`).

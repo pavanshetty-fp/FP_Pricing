@@ -155,6 +155,12 @@ export interface ListToolbarProps<K extends string> {
    * under the view icons.
    */
   viewToolsInto?: HTMLElement | null;
+  /**
+   * THE VIEW'S TOOLS IN A BOX JOINED TO THE VIEW SWITCH (Pavan, 2026-11-02 —
+   * trial on 3PL Delivery Orders V2): no bar on the view; the active view's
+   * tools sit as plain icons after the switch, 12px apart from it.
+   */
+  toolsBox?: boolean;
   /** What the bar says on its left — how many records, over what window. */
   viewStatement?: React.ReactNode;
   /** How many of the row's boxes have something in them. */
@@ -329,6 +335,7 @@ export function ListToolbar<K extends string>({
   columnFiltersOpen,
   onToggleColumnFilters,
   viewToolsInto,
+  toolsBox = false,
   viewStatement,
   columnFilterCount = 0,
   columnOrder,
@@ -784,7 +791,7 @@ export function ListToolbar<K extends string>({
        search row stays level with the view icons. `data-routed` lets the
        filter chips that follow rise into the tools' row (index.css). */
     <div
-      data-routed={multiView && activeTools ? "" : undefined}
+      data-routed={multiView && activeTools && !toolsBox ? "" : undefined}
       className="flex flex-wrap items-start justify-between gap-3"
     >
       {/* LEFT — quick filters · search · Filters · Group By
@@ -861,7 +868,11 @@ export function ListToolbar<K extends string>({
             are on filled grey; icons that say the view — a list for the
             table, stacked cards for the board, a map. */}
         {multiView && (
-          <div role="group" aria-label="Display" className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-fp-surface-1b">
+          <div
+            role="group"
+            aria-label="Display"
+            className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-fp-surface-1b"
+          >
             {[
               { key: "table" as const, label: "Table view", icon: <List />, on: true },
               { key: "list" as const, label: "List view", icon: <PanelLeft />, on: listView },
@@ -893,6 +904,15 @@ export function ListToolbar<K extends string>({
           </div>
         )}
 
+        {/* THE VIEW'S TOOLS BESIDE THE SWITCH, OPEN (Pavan, 2026-11-02): not
+            in its box and not in one of their own — plain icons after a
+            12px space; what they are follows the view picked. */}
+        {multiView && toolsBox && activeTools && (
+          <div role="group" aria-label="View settings" className="ml-2 inline-flex shrink-0 items-center gap-1">
+            {activeTools}
+          </div>
+        )}
+
         {/* A ONE-VIEW LIST KEEPS ITS TOOLS IN THE ROW — there is no switch
             for them to hang from. */}
         {!multiView && view === "table" && !inBar && tableTools}
@@ -900,7 +920,7 @@ export function ListToolbar<K extends string>({
       {/* THE ACTIVE VIEW'S TOOLS, ROUTED FROM ITS ICON — a line drops from
           under the icon and turns into the tools, so they read as the
           table's (or the board's) and nothing else's. */}
-      {multiView && activeTools && (
+      {multiView && activeTools && !toolsBox && (
         <div className="flex items-start" style={{ paddingLeft: routeX }}>
           <span aria-hidden className="h-4 w-3 shrink-0 rounded-bl-md border-b border-l border-muted-foreground/40" />
           <span className="flex items-center gap-1">{activeTools}</span>
@@ -1180,12 +1200,13 @@ export function BoardWithBar({
   barRef,
   children,
 }: {
-  barRef: (el: HTMLDivElement | null) => void;
+  /** Omitted: the box without the bar (tools in `toolsBox`). */
+  barRef?: (el: HTMLDivElement | null) => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
-      <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />
+      {barRef && <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />}
       <div className="min-h-0 flex-1">{children}</div>
     </div>
   );

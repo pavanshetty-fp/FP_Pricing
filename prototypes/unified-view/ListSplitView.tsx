@@ -41,7 +41,7 @@ export function ListSplitView({
   whatIcon,
   renderDetail,
 }: {
-  barRef: (el: HTMLDivElement | null) => void;
+  barRef?: (el: HTMLDivElement | null) => void;
   /** Every record, in board order. */
   items: ListSplitItem[];
   /** The pills after All, in board order. */

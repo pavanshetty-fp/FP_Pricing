@@ -26,11 +26,9 @@ import {
  * 27665:14074): facet side menu + options pane + Clear All / Apply footer, same
  * sizes and classes Fuel Orders proved.
  *
- * SEARCH IS PER-FACET, and that is the rule this carries forward: a facet gets a
- * search field when its list cannot be taken in at once, and does not when it is
- * short enough to scan. `searchable` is an explicit flag rather than a length
- * threshold, so a facet cannot silently gain or lose the control as its options
- * change.
+ * EVERY FACET HAS A SEARCH (Pavan, 2026-11-02 — was per-facet via
+ * `searchable`, which is now ignored): short lists too, so the pane is the
+ * same whichever facet is open.
  *
  * DS FOLLOW-UP: this is the parameterised `tables-layout/FilterPanel` that
  * `docs/handoff-ds-adoption-2.md` Task 5 asks for. When the DS version takes
@@ -383,7 +381,9 @@ export function ListFilterPanel({
         </div>
       ) : (
       <div className="flex min-w-0 flex-1 flex-col">
-        {facet?.searchable && (
+        {/* EVERY FACET GETS A SEARCH (Pavan, 2026-11-02) — even a short
+            list; the pane reads the same whichever facet is open. */}
+        {facet && (
           <div className="p-2">
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -399,8 +399,7 @@ export function ListFilterPanel({
         <div
           className={cn(
             "flex-1 px-2 pb-2",
-            scrolls && "min-h-0 overflow-auto",
-            !facet?.searchable && "pt-2"
+            scrolls && "min-h-0 overflow-auto"
           )}
         >
           {sections.map((sec) =>

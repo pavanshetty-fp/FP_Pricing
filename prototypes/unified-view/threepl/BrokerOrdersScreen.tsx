@@ -354,6 +354,17 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       kind: "stack" as const,
       key: "driver",
       heading: "Driver",
+      person:
+        driver && !off.has("driver.name")
+          ? {
+              name: driver.name,
+              photo: driver.photo,
+              email: driver.email,
+              phone: driver.phone,
+              shift: driver.shift,
+              truck: driver.truck,
+            }
+          : undefined,
       lines: driver
         ? [
             ...(off.has("driver.name") ? [] : [{ text: driver.name, level: 1 as const }]),
@@ -986,11 +997,11 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
-  boardVersion = "4",
+  boardVersion = "2",
   boardPick = 0,
 }: {
   /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "2" | "4";
+  boardVersion?: "1" | "2";
   /** A nonce — each pick opens the board, from the table too. */
   boardPick?: number;
   focus?: { id: string; n: number } | null;
@@ -1093,7 +1104,10 @@ export function BrokerOrdersScreen({
   }, [boardPick]);
   /* LIST VIEW IS V3's (Pavan, 2026-10-29) — another version drops back to
      the board. */
-  const listView = boardVersion === "4";
+  const listView = boardVersion === "2";
+  /* V2 (Pavan, 2026-11-02 — trial, this screen only): no bar on the view;
+     its tools sit in a box joined to the view switch. */
+  const toolsBeside = boardVersion === "2";
   React.useEffect(() => {
     if (!listView) setView((v) => (v === "list" ? "board" : v));
   }, [listView]);
@@ -2422,7 +2436,8 @@ export function BrokerOrdersScreen({
           /* THE VIEW'S TOOLS IN A BAR ON THE VIEW — the trial (Pavan,
              2026-10-22), this list only for now: what is shown on the
              left, the view's tools on the right. */
-          viewToolsInto={bar.into}
+          viewToolsInto={toolsBeside ? undefined : bar.into}
+          toolsBox={toolsBeside}
           viewStatement={
             <ViewStatement
               count={sorted.length}
@@ -2510,8 +2525,8 @@ export function BrokerOrdersScreen({
           ) : view === "board" ? (
             <div className="flex h-full min-h-0 flex-col gap-2">
               <div className="min-h-0 flex-1">
-                <BoardWithBar barRef={bar.ref}>
-                  <BoardV2 lanes={lanes} onOpenCard={openBoardCard} v3Cards={boardVersion === "4"} />
+                <BoardWithBar barRef={toolsBeside ? undefined : bar.ref}>
+                  <BoardV2 lanes={lanes} onOpenCard={openBoardCard} v3Cards={boardVersion === "2"} />
                 </BoardWithBar>
               </div>
             </div>
@@ -2519,7 +2534,7 @@ export function BrokerOrdersScreen({
             /* LIST VIEW (Pavan, 2026-10-29, after Dynamics 365) — the shared
                unit; a pending step scrolls the docked form to its section. */
             <ListSplitView
-              barRef={bar.ref}
+              barRef={toolsBeside ? undefined : bar.ref}
               items={listItems}
               steps={BOARD_LANES.flatMap((l) => l.statuses).map((st) => ({ key: st, label: st }))}
               status={listStatus}
@@ -2566,7 +2581,7 @@ export function BrokerOrdersScreen({
             />
           ) : (
             <ListTable
-              topBar={bar.slot}
+              topBar={toolsBeside ? undefined : bar.slot}
               rows={pageRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}

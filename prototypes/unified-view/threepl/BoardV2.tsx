@@ -11,6 +11,7 @@ import {
   CardV4,
   FoldedLane,
   LaneFold,
+  PersonLine,
   LaneFoldButton,
   useFoldedLanes,
   type BoardCard,
@@ -90,6 +91,9 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
   const wrap = React.useContext(Wrap);
   /* THE SHIP-TO: its name and an info icon; the rest on hover. */
   /* …and the driver the same way (Pavan, 2026-10-27). */
+  /* THE DRIVER'S PHOTO LEADS THEIR NAME (Pavan, 2026-11-02). */
+  if (u.kind === "stack" && u.person)
+    return <PersonLine person={u.person} wrap={wrap} className="text-xs text-foreground" />;
   if (u.kind === "stack" && (u.key === "customer" || u.key === "driver"))
     return (
       <ShipToLine

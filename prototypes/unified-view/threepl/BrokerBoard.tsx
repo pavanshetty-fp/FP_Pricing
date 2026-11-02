@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/hover-card";
 import { CodeDisc, type CodeDiscTone } from "@/components/ui/code-disc";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type MiniMapPoint } from "./SiteMiniMap";
 
 /**
@@ -174,6 +175,15 @@ export interface BoardCardRow {
   in each; a movement lists the one asset, its type and its capacity. Same three
   columns, so the eye lands in the same place either way.
 */
+export interface BoardPerson {
+  name: string;
+  photo?: string;
+  email?: string;
+  phone?: string;
+  shift?: string;
+  truck?: string;
+}
+
 export type BoardCardUnit =
   | {
       kind: "stack";
@@ -190,6 +200,9 @@ export type BoardCardUnit =
       /** Version 4: what the icon before the first line holds on hover — the
        *  vendor's address (Pavan, 2026-10-28). */
       hover?: BoardCardLine[];
+      /** A person on the card — the driver: photo beside the name, the rest
+       *  on hover (Pavan, 2026-11-02). */
+      person?: BoardPerson;
     }
   | { kind: "inline"; key: string; heading: string; parts: string[] }
   | {
@@ -649,6 +662,92 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
    so it would vanish; it goes one step further (Pavan, 2026-10-27). */
 export const CARD_HOVER_PILL = (tone?: string) =>
   (tone ?? "neutral") === "neutral" ? "dark:group-hover/card:bg-fp-card-1" : undefined;
+/* MORE BEHIND IT (Pavan, 2026-11-02): a card line that opens details on
+   hover — ship-to, delivery details, driver, vendor — underlines while the
+   pointer is on it, so the reader knows there is more there. The whole line
+   is the hover target, not only its icon. */
+const MORE_LINE = "group/more";
+const MORE_UNDERLINE =
+  "decoration-dotted decoration-foreground/60 underline-offset-4 group-hover/more:underline group-focus-visible/more:underline";
+
+/**
+ * A PERSON ON A CARD — THE DRIVER (Pavan, 2026-11-02). Their photo leads the
+ * name; hovering either opens the larger photo with the name, email, phone,
+ * shift and truck. Initials stand in for a photo that cannot load.
+ */
+export function PersonLine({
+  person,
+  className,
+  wrap,
+}: {
+  person: BoardPerson;
+  className?: string;
+  wrap?: boolean;
+}) {
+  const initials = person.name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const photo = (size: string, text: string) => (
+    <Avatar className={size}>
+      {person.photo && <AvatarImage src={person.photo} alt="" className="object-cover" />}
+      <AvatarFallback className={text}>{initials}</AvatarFallback>
+    </Avatar>
+  );
+  const rows = [
+    { label: "Email", value: person.email },
+    { label: "Phone", value: person.phone },
+    { label: "Shift", value: person.shift },
+    { label: "Truck", value: person.truck },
+  ].filter((r) => r.value);
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${person.name} — driver details`}
+          /* THE CARD IS THE BUTTON — this one only explains itself. */
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className={cn(
+            MORE_LINE,
+            "flex min-w-0 max-w-full items-center gap-1.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+            wrap && "items-start"
+          )}
+        >
+          {photo("size-5", "text-[9px]")}
+          <span className={cn(wrap ? "min-w-0 break-words" : "truncate", MORE_UNDERLINE, className)}>{person.name}</span>
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        align="start"
+        className="fp-surface-light w-72 p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          {photo("size-16", "text-lg")}
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-semibold text-foreground">{person.name}</span>
+            <span className="text-xs text-muted-foreground">Driver</span>
+          </div>
+        </div>
+        {rows.length > 0 && (
+          <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
+            {rows.map((r) => (
+              <React.Fragment key={r.label}>
+                <dt className="text-muted-foreground">{r.label}</dt>
+                <dd className="truncate text-foreground">{r.value}</dd>
+              </React.Fragment>
+            ))}
+          </dl>
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
 export function ShipToLine({
   heading,
   lines,
@@ -688,29 +787,41 @@ export function ShipToLine({
       </div>
     </HoverCardContent>
   );
+  const line = cn("flex min-w-0 gap-1", wrap ? "items-start" : "items-center", iconFirst && "flex-row-reverse justify-end");
+  const nameClass = cn(wrap ? "min-w-0 break-words" : "truncate", className);
+  if (rest.length === 0)
+    return (
+      <div className={line}>
+        <span className={nameClass} title={name.text}>
+          {name.text}
+        </span>
+      </div>
+    );
+  /* THE WHOLE LINE OPENS THE DETAILS and underlines on hover (2026-11-02). */
   return (
-    <div className={cn("flex min-w-0 gap-1", wrap ? "items-start" : "items-center", iconFirst && "flex-row-reverse justify-end")}>
-      <span className={cn(wrap ? "min-w-0 break-words" : "truncate", className)} title={name.text}>
-        {name.text}
-      </span>
-      {rest.length > 0 && (
-        <HoverCard openDelay={150} closeDelay={100}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              aria-label={`${name.text} — ${hoverLabel}`}
-              /* THE CARD IS THE BUTTON — this one only explains itself. */
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              className={cn("shrink-0 rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50", wrap && "mt-px")}
-            >
-              <Icon className="size-3.5" />
-            </button>
-          </HoverCardTrigger>
-          {details}
-        </HoverCard>
-      )}
-    </div>
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${name.text} — ${hoverLabel}`}
+          /* THE CARD IS THE BUTTON — this one only explains itself. */
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className={cn(MORE_LINE, line, "max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
+        >
+          <span className={cn(nameClass, MORE_UNDERLINE)} title={name.text}>
+            {name.text}
+          </span>
+          <Icon
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/more:text-foreground",
+              wrap && "mt-px"
+            )}
+          />
+        </button>
+      </HoverCardTrigger>
+      {details}
+    </HoverCard>
   );
 }
 
@@ -779,14 +890,18 @@ export function CardDelivery({
       <HoverCard openDelay={150} closeDelay={100}>
         <HoverCardTrigger asChild>
           {iconTrigger ? (
+            /* THE WHOLE LINE OPENS IT and underlines on hover (2026-11-02). */
             <button
               type="button"
               aria-label={`${heading} — assets and quantities`}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              className="mt-px mr-1 shrink-0 self-start rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              className={cn(MORE_LINE, "flex min-w-0 items-start rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
             >
-              <Icon className="size-3.5" />
+              <Icon className="mt-px mr-1 size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/more:text-foreground" />
+              <span className={cn("min-w-0 text-foreground", MORE_UNDERLINE, summaryClassName ?? (compact ? "text-xs" : "text-[13px] font-medium"))}>
+                {summary.join(" · ")}
+              </span>
             </button>
           ) : (
           <button
@@ -801,11 +916,6 @@ export function CardDelivery({
           )}
         </HoverCardTrigger>
         {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
-        {iconTrigger && (
-          <span className={cn("min-w-0 text-foreground", summaryClassName ?? (compact ? "text-xs" : "text-[13px] font-medium"))}>
-            {summary.join(" · ")}
-          </span>
-        )}
         <HoverCardContent
           align="start"
           className="fp-surface-light w-md p-3"
@@ -1100,7 +1210,9 @@ function Card({ card, onOpen }: { card: BoardCard; onOpen?: () => void }) {
                 u.key === "partner" ? <VendorUnitLabel /> : <UnitHeading>{u.heading}</UnitHeading>
               )}
               {u.kind === "stack" &&
-                ((compact || bare) && (u.key === "customer" || u.key === "driver") ? (
+                (u.person && (compact || bare) ? (
+                  <PersonLine person={u.person} className={bare ? LEVEL_CLASS_BARE[1] : LEVEL_CLASS_COMPACT[1]} />
+                ) : (compact || bare) && (u.key === "customer" || u.key === "driver") ? (
                   /* The driver reads like the ship-to: the name, the rest on
                      hover (Pavan, 2026-10-27). */
                   <ShipToLine

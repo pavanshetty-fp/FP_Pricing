@@ -1472,13 +1472,22 @@ export const CREATED_BY = [
 ];
 
 /* THE VENDORS' DRIVERS (Pavan, 2026-10-27) — on the card, the table and
-   the order. INVENTED. */
-export const DRIVERS: { name: string; phone: string; truck: string }[] = [
-  { name: "Luis Ortega", phone: "+1-559-555-0131", truck: "Truck 214" },
-  { name: "Kendra Mills", phone: "+1-661-555-0157", truck: "Truck 108" },
-  { name: "Omar Haddad", phone: "+1-916-555-0176", truck: "Truck 322" },
-  { name: "Jess Carver", phone: "+1-559-555-0192", truck: "Truck 047" },
-  { name: "Ben Tran", phone: "+1-713-555-0115", truck: "Truck 509" },
+   the order. INVENTED. A photo, email and shift since 2026-11-02 (the board
+   card's driver line and its hover); the photos are stock placeholders, and
+   the initials stand in when one cannot load. */
+export const DRIVERS: {
+  name: string;
+  phone: string;
+  truck: string;
+  email: string;
+  shift: string;
+  photo: string;
+}[] = [
+  { name: "Luis Ortega", phone: "+1-559-555-0131", truck: "Truck 214", email: "luis.ortega@fleetmail.test", shift: "Morning · 5:00 AM – 1:00 PM", photo: "https://randomuser.me/api/portraits/men/32.jpg" },
+  { name: "Kendra Mills", phone: "+1-661-555-0157", truck: "Truck 108", email: "kendra.mills@fleetmail.test", shift: "Day · 8:00 AM – 4:00 PM", photo: "https://randomuser.me/api/portraits/women/44.jpg" },
+  { name: "Omar Haddad", phone: "+1-916-555-0176", truck: "Truck 322", email: "omar.haddad@fleetmail.test", shift: "Evening · 2:00 PM – 10:00 PM", photo: "https://randomuser.me/api/portraits/men/75.jpg" },
+  { name: "Jess Carver", phone: "+1-559-555-0192", truck: "Truck 047", email: "jess.carver@fleetmail.test", shift: "Day · 8:00 AM – 4:00 PM", photo: "https://randomuser.me/api/portraits/women/68.jpg" },
+  { name: "Ben Tran", phone: "+1-713-555-0115", truck: "Truck 509", email: "ben.tran@fleetmail.test", shift: "Night · 10:00 PM – 6:00 AM", photo: "https://randomuser.me/api/portraits/men/46.jpg" },
 ];
 
 export const ORDER_TAGS = [

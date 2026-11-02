@@ -63,7 +63,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 /* V1, V1.1, V2.1 and V3 archived 2026-11-02 — docs/archive/board-versions-2026-11-02.md. */
-type BoardVersion = "2" | "4";
+type BoardVersion = "1" | "2";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -446,12 +446,14 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
      this browser. */
   const [boardVersion, setBoardVersionState] = React.useState<BoardVersion>(() => {
     try {
-      const v = localStorage.getItem("fp-3pl-board-version");
-      /* TWO VERSIONS (Pavan, 2026-11-02): V2, and V4 — V2's lanes and card
-         shell with V3's card inside. Anything else stored opens V4. */
-      return v === "2" ? "2" : "4";
+      /* RENAMED (Pavan, 2026-11-02): the old V2 is V1, the old V4 is V2 —
+         V1's lanes and card shell with the bare card inside, the view tools
+         in a box joined to the view switch. New key; the old one migrates. */
+      const v = localStorage.getItem("fp-3pl-board");
+      if (v === "1" || v === "2") return v;
+      return localStorage.getItem("fp-3pl-board-version") === "2" ? "1" : "2";
     } catch {
-      return "4";
+      return "2";
     }
   });
   const [boardPick, setBoardPick] = React.useState(0);
@@ -459,7 +461,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     setBoardVersionState(v);
     setBoardPick((n) => n + 1);
     try {
-      localStorage.setItem("fp-3pl-board-version", v);
+      localStorage.setItem("fp-3pl-board", v);
     } catch {
       // Storage blocked — the switch still works for this visit.
     }
@@ -809,7 +811,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
                   onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
                   aria-label="Board version"
                 >
-                  {(["2", "4"] as const).map((v) => (
+                  {(["1", "2"] as const).map((v) => (
                     <ToggleGroupItem
                       key={v}
                       value={v}

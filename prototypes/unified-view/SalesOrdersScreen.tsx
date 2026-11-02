@@ -21,11 +21,8 @@ import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
 import { ListTable, TwoLineCell } from "./ListTable";
 import { DateRangeFilter, type DateRange } from "./threepl/DateRangeFilter";
-import {
-  BrokerBoard,
-  type BoardCardUnit,
-  type BoardLane,
-} from "./threepl/BrokerBoard";
+import { type BoardCardUnit, type BoardLane } from "./threepl/BrokerBoard";
+import { BoardV2 } from "./threepl/BoardV2";
 import { OrderMapView } from "./OrderMapView";
 import { ListSplitView, type ListSplitItem } from "./ListSplitView";
 import { FuelOrdersBulkBar } from "./FuelOrdersBulkBar";
@@ -266,6 +263,8 @@ function fuelCardUnits(r: FuelOrder, off: ReadonlySet<string>): BoardCardUnit[] 
       key: "schedule",
       heading: "Schedule",
       parts: r.planned ? [r.planned.date, r.planned.time] : ["Not planned"],
+      /* THE BOARD'S ONE FORM (Pavan, 2026-11-02): date · time, quiet. */
+      planned: r.planned ? { date: r.planned.date, time: r.planned.time } : { date: "Not planned" },
     },
     {
       kind: "rows",
@@ -311,7 +310,7 @@ function assetCardUnits(r: AssetOrder, off: ReadonlySet<string>): BoardCardUnit[
         ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 3 as const }]),
       ],
     },
-    { kind: "inline", key: "date", heading: "Delivery Date", parts: [r.date.title] },
+    { kind: "inline", key: "date", heading: "Delivery Date", parts: [r.date.title], planned: { date: r.date.title } },
     {
       kind: "rows",
       key: "asset",
@@ -1625,7 +1624,7 @@ export function SalesOrdersScreen({
             />
           ) : view === "board" ? (
             <BoardWithBar barRef={bar.ref}>
-              <BrokerBoard
+              <BoardV2
                 lanes={boardLanes}
                 onOpenCard={openById}
                 laneSortOptions={(laneKey) =>

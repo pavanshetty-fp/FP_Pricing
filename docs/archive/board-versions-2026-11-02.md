@@ -26,3 +26,21 @@ git show 3ca7a27:prototypes/unified-view/threepl/BrokerOrdersScreen.tsx   # boar
 
 Gone with them from 3PL: the per-lane sort menu (it lived on `BrokerBoard` only).
 Sales and Service boards still use `BrokerBoard` and are unchanged.
+
+## Later the same day — V1 chosen, V2 archived
+
+Pavan picked **V1** (the HubSpot-style board, `BoardV2` with the V1 card) and
+archived **V2** (V1's board with the bare V3 card inside, `CardV4`, and the
+trial that put the view tools in a box beside the view switch, `toolsBox`).
+The version switch is gone. V1 is now the board in **every module** — 3PL
+Delivery Orders, Sales Orders, Service Work and the Customer Portal (and the
+design reference sample). Per-lane sort moved onto V1's lanes (hover only,
+unless a sort is on); the "Total amount" foot shows only where a lane has
+prices.
+
+Code with V1 and V2 switchable: commit `8e9ec6c`.
+
+```bash
+git show 8e9ec6c:prototypes/unified-view/UnifiedView.tsx               # the V1 · V2 switch
+git show 8e9ec6c:prototypes/unified-view/threepl/BrokerOrdersScreen.tsx  # boardVersion, toolsBeside, v3Cards
+```

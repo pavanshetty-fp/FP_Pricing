@@ -346,6 +346,10 @@ export interface BoardCard {
     /** Renders a button and splits the footer left/right, per the DS variant. */
     actionLabel?: string;
     onAction?: () => void;
+    /** THE BUTTON SAYS IT ALL (Pavan, 2026-11-02): the board shows only the
+     *  button — no line above it, no rule. `text` stays for the list view's
+     *  pending step and for screen readers. */
+    ctaOnly?: boolean;
     /** The id of the sheet section this step lives in — the list view's
      *  pending link scrolls the docked form there. */
     target?: string;
@@ -378,6 +382,10 @@ export interface BoardCard {
     waiting?: boolean;
     /** Right-hand note on a waiting row — "2 days ago". */
     meta?: string;
+    /** THE BUTTON SAYS IT ALL (Pavan, 2026-11-02): the board shows only the
+     *  button — no line above it, no rule. `text` stays for the list view's
+     *  pending step and for screen readers. */
+    ctaOnly?: boolean;
   };
 }
 
@@ -750,7 +758,9 @@ export function PersonLine({
     { label: "Truck", value: person.truck },
   ].filter((r) => r.value);
   return (
-    <div className={cn(MORE_SECTION, "flex min-w-0 max-w-full gap-1.5", wrap ? "items-start" : "items-center")}>
+    /* THE NAME STARTS WHERE EVERY OTHER LINE'S TEXT STARTS (2026-11-02): the
+       16px photo sits over the 14px icon column, 1px out each side. */
+    <div className={cn(MORE_SECTION, "flex min-w-0 max-w-full gap-1", wrap ? "items-start" : "items-center")}>
     <HoverCard openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
         {/* THE PHOTO IS THE ICON — the same underline on the section's
@@ -761,9 +771,9 @@ export function PersonLine({
           /* THE CARD IS THE BUTTON — this one only explains itself. */
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
-          className={cn(MORE_HINT, "shrink-0 rounded-full ring-2 ring-transparent outline-none transition-shadow hover:ring-muted focus-visible:ring-ring/50 data-[state=open]:ring-muted after:-bottom-1 after:text-foreground")}
+          className={cn(MORE_HINT, "-mx-px shrink-0 rounded-full ring-2 ring-transparent outline-none transition-shadow hover:ring-muted focus-visible:ring-ring/50 data-[state=open]:ring-muted after:-bottom-1 after:text-foreground")}
         >
-          {photo("size-5", "text-[9px]")}
+          {photo("size-4", "text-[8px]")}
         </button>
       </HoverCardTrigger>
       <HoverCardContent
@@ -843,6 +853,11 @@ export function ShipToLine({
         <span className={nameClass} title={name.text}>
           {name.text}
         </span>
+        {/* NOTHING BEHIND IT, BUT THE ICON STILL LEADS (2026-11-02) — every
+            card line starts with its icon, opening or not. */}
+        {iconFirst && Icon !== Info && (
+          <Icon aria-hidden className={cn("size-3.5 shrink-0 text-muted-foreground", wrap && "mt-px")} />
+        )}
       </div>
     );
   /* ONLY THE ICON OPENS THE DETAILS (2026-11-02) — see MORE_ICON. */
@@ -859,7 +874,9 @@ export function ShipToLine({
             /* THE CARD IS THE BUTTON — this one only explains itself. */
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
-            className={cn(MORE_ICON, wrap && "mt-px")}
+            /* THE GLYPH ON THE TEXT'S FIRST LINE — 1px down, like every
+               card icon; the tile's 2px padding is taken back first. */
+            className={cn(MORE_ICON, wrap && "-mt-px self-start")}
           >
             <Icon className="size-3.5" />
           </button>
@@ -941,7 +958,7 @@ export function CardDelivery({
               aria-label={`${heading} — assets and quantities`}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              className={cn(MORE_ICON, "mt-px mr-1.5 self-start")}
+              className={cn(MORE_ICON, "-mt-px mr-0.5 self-start")}
             >
               <Icon className="size-3.5" />
             </button>
@@ -1665,6 +1682,56 @@ export function LaneFold({
   );
 }
 
+/** A lane's sort menu — named ways to order it, "Lane order" first. */
+export function LaneSortMenu({
+  title,
+  options,
+  value,
+  onChange,
+  className,
+}: {
+  title: string;
+  options: LaneSortOption[];
+  value?: string;
+  onChange: (option: string | null) => void;
+  className?: string;
+}) {
+  const chosen = options.find((o) => o.key === value);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Sort ${title}${chosen ? ` — ${chosen.label}` : ""}`}
+          className={cn(
+            "shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground",
+            chosen ? "text-foreground" : "text-muted-foreground",
+            className
+          )}
+        >
+          <ArrowDownUp className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
+          Sort {title.toLowerCase()} by
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={value ?? ""} onValueChange={(v) => onChange(v === "" ? null : v)}>
+          {/* THE LANE'S OWN ORDER IS ONE OF THE CHOICES, not the absence
+              of one. A sort you can turn on and cannot name your way out
+              of is a sort you are stuck with. */}
+          <DropdownMenuRadioItem value="">Lane order</DropdownMenuRadioItem>
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o.key} value={o.key}>
+              {o.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function Lane({
   lane,
   onOpenCard,
@@ -1682,7 +1749,6 @@ function Lane({
   sortKey?: string;
   onSortChange?: (option: string | null) => void;
 }) {
-  const chosen = sortOptions?.find((o) => o.key === sortKey);
   return (
     /* 400px, not the DS's 340. The card's product unit is three columns —
        asset, product, quantity — and at 340 the first two truncated on any
@@ -1730,42 +1796,13 @@ function Lane({
           </span>
         )}
         {sortOptions && sortOptions.length > 0 && onSortChange && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={`Sort ${lane.title}${chosen ? ` — ${chosen.label}` : ""}`}
-                className={cn(
-                  !onFold && "ml-auto",
-                  "shrink-0 rounded-sm p-1 outline-none transition-colors hover:bg-fp-card-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:text-foreground",
-                  chosen ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                <ArrowDownUp className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
-                Sort {lane.title.toLowerCase()} by
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={sortKey ?? ""}
-                onValueChange={(v) => onSortChange(v === "" ? null : v)}
-              >
-                {/* THE LANE'S OWN ORDER IS ONE OF THE CHOICES, not the absence
-                    of one. A sort you can turn on and cannot name your way out
-                    of is a sort you are stuck with. */}
-                <DropdownMenuRadioItem value="">
-                  Lane order
-                </DropdownMenuRadioItem>
-                {sortOptions.map((o) => (
-                  <DropdownMenuRadioItem key={o.key} value={o.key}>
-                    {o.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <LaneSortMenu
+            title={lane.title}
+            options={sortOptions}
+            value={sortKey}
+            onChange={onSortChange}
+            className={cn(!onFold && "ml-auto")}
+          />
         )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">

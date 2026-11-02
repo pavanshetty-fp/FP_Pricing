@@ -298,6 +298,7 @@ export function ListTable<Row, K extends string>({
   const body = (
     <div
       ref={frame}
+      data-view-box={topBar ? undefined : ""}
       className={cn(
         "overflow-auto [&_[data-slot=table-container]]:overflow-visible",
         topBar ? "min-h-0 flex-1" : "h-full rounded-md border border-border"
@@ -592,7 +593,7 @@ export function ListTable<Row, K extends string>({
   );
   if (!topBar) return body;
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+    <div data-view-box="" className="flex h-full flex-col overflow-hidden rounded-md border border-border">
       <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{topBar}</div>
       {body}
     </div>

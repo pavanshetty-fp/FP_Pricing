@@ -62,8 +62,6 @@ import {
 } from "@/components/ui/empty";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-/* V1, V1.1, V2.1 and V3 archived 2026-11-02 — docs/archive/board-versions-2026-11-02.md. */
-type BoardVersion = "1" | "2";
 import { SalesOrdersScreen } from "./SalesOrdersScreen";
 import { QuotesScreen } from "./QuotesScreen";
 import { CustomersScreen } from "./CustomersScreen";
@@ -441,31 +439,6 @@ export function UnifiedView({ only }: { only?: string } = {}) {
     kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
-  /* 3PL BOARD VERSIONS (Pavan, 2026-10-27) — V1 to V4 beside the title, on
-     the board and the table alike; picking one opens that board. Kept for
-     this browser. */
-  const [boardVersion, setBoardVersionState] = React.useState<BoardVersion>(() => {
-    try {
-      /* RENAMED (Pavan, 2026-11-02): the old V2 is V1, the old V4 is V2 —
-         V1's lanes and card shell with the bare card inside, the view tools
-         in a box joined to the view switch. New key; the old one migrates. */
-      const v = localStorage.getItem("fp-3pl-board");
-      if (v === "1" || v === "2") return v;
-      return localStorage.getItem("fp-3pl-board-version") === "2" ? "1" : "2";
-    } catch {
-      return "2";
-    }
-  });
-  const [boardPick, setBoardPick] = React.useState(0);
-  const pickBoardVersion = (v: BoardVersion) => {
-    setBoardVersionState(v);
-    setBoardPick((n) => n + 1);
-    try {
-      localStorage.setItem("fp-3pl-board", v);
-    } catch {
-      // Storage blocked — the switch still works for this visit.
-    }
-  };
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -717,8 +690,6 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       case "3pl-delivery-orders":
         return (
           <BrokerOrdersScreen
-            boardVersion={boardVersion}
-            boardPick={boardPick}
             focus={focus}
             drill={drill3pl}
             startCreate={startCreate}
@@ -794,34 +765,6 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
             {listTotal && (
               <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                 {listTotal}
-              </span>
-            )}
-            {/* THE VERSION SWITCH SITS WITH THE TITLE, and only on the one
-                screen that has two versions. It is not a filter and not a
-                view of the same data — it changes what the screen IS, so it
-                belongs to the screen's name rather than to its toolbar. */}
-            {screenKey === "3pl-delivery-orders" && (
-              <span className="flex shrink-0 items-center gap-1 self-center">
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  size="sm"
-                  value={boardVersion}
-                  /* A second press of the same version still opens its board. */
-                  onValueChange={(v) => pickBoardVersion((v || boardVersion) as BoardVersion)}
-                  aria-label="Board version"
-                >
-                  {(["1", "2"] as const).map((v) => (
-                    <ToggleGroupItem
-                      key={v}
-                      value={v}
-                      aria-label={`Board version ${v}`}
-                      className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
-                    >
-                      V{v}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
               </span>
             )}
             {screenKey === "3pl-recurring-orders" && recurringArchive && (

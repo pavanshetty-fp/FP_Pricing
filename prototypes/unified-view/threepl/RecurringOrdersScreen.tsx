@@ -1152,7 +1152,7 @@ export function RecurringOrdersScreen({
           </Empty>
         ) : (
           <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-            <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>
+            {bar.slot && <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>}
             <div
             ref={scrollRef}
             className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible"

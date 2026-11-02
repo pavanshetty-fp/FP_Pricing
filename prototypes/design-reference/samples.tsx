@@ -38,7 +38,8 @@ import {
 } from "@/components/component-demos";
 import { StandardList } from "../unified-view/StandardList";
 import type { ListColumn } from "../unified-view/ListTable";
-import { BrokerBoard, type BoardLane } from "../unified-view/threepl/BrokerBoard";
+import { type BoardLane } from "../unified-view/threepl/BrokerBoard";
+import { BoardV2 } from "../unified-view/threepl/BoardV2";
 import { ACTIVE_KIND, kindTone } from "../unified-view/statusKind";
 
 /*
@@ -130,7 +131,7 @@ export function BoardSample() {
         <span className="font-medium text-foreground">5 orders</span>&nbsp;across 4 of 4 lanes · Thu, Oct 22, 2026
       </div>
       <div className="min-h-0 flex-1">
-        <BrokerBoard lanes={LANES} />
+        <BoardV2 lanes={LANES} />
       </div>
     </div>
   );

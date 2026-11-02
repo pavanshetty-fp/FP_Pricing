@@ -20,7 +20,8 @@ import { ListFilters, type ListFacet } from "../unified-view/ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../unified-view/ExportSheet";
 import { ListTable, TwoLineCell } from "../unified-view/ListTable";
 import { OrderMapView, type MapOrder } from "../unified-view/OrderMapView";
-import { BrokerBoard, type BoardLane, type LaneColor } from "../unified-view/threepl/BrokerBoard";
+import { type BoardLane, type LaneColor } from "../unified-view/threepl/BrokerBoard";
+import { BoardV2 } from "../unified-view/threepl/BoardV2";
 import { DateRangeFilter, type DateRange } from "../unified-view/threepl/DateRangeFilter";
 import { dateKeyOf, formatFullDate, startOfDay } from "../unified-view/data";
 import { formatMinutes } from "@/components/form-layout/TimeWindowSlider";
@@ -654,6 +655,11 @@ export function OrdersScreen({
               key: "schedule",
               heading: "Planned",
               parts: r.date ? [printKey(r.date), windowText(r)] : ["No date"],
+              /* THE BOARD'S ONE FORM (Pavan, 2026-11-02): the date, then one
+                 time — the window's start, not the window. */
+              planned: r.date
+                ? { date: printKey(r.date), time: formatMinutes(r.windowStart) }
+                : { date: "No date" },
             },
             {
               kind: "rows" as const,
@@ -955,7 +961,7 @@ export function OrdersScreen({
             </Empty>
           ) : view === "board" ? (
             <BoardWithBar barRef={bar.ref}>
-              <BrokerBoard
+              <BoardV2
                 lanes={boardLanes}
                 onOpenCard={(id) => {
                   setCreatingId(null);

@@ -574,7 +574,8 @@ function laneCardInvoice(
   if (r.invoiceState === "received") {
     return {
       label: "Invoice received",
-      actionLabel: "Review",
+      actionLabel: "Review invoice",
+      ctaOnly: true,
       /* An outline, not the green one: reading a bill is not the same kind of
          act as sending a request, and two filled greens on one board would
          stop either meaning "this is the one to press". */
@@ -584,7 +585,9 @@ function laneCardInvoice(
       onAction: onOpen,
     };
   }
-  return { label: "Request invoice", actionLabel: "Send request", onAction: onRequest };
+  /* THE BUTTON NAMES THE STEP (Pavan, 2026-11-02) — no "Request invoice"
+     line over a "Send request" button. */
+  return { label: "Request invoice", actionLabel: "Request invoice", onAction: onRequest, ctaOnly: true };
 }
 
 /** Where a bill is worth chasing: the partner is committed and the price is
@@ -673,7 +676,8 @@ function laneCardAlert(
       return {
         status: "caution",
         text: "Vendor not selected",
-        actionLabel: "Select Vendor",
+        actionLabel: "Select vendor",
+        ctaOnly: true,
         onAction: onOpen,
         target: VENDOR_SECTION_ID,
       };
@@ -686,7 +690,8 @@ function laneCardAlert(
     return {
       status: "caution",
       text: "Quotation not finalized",
-      actionLabel: "Finalize Vendor",
+      actionLabel: "Finalize vendor",
+      ctaOnly: true,
       onAction: onOpen,
       target: VENDOR_SECTION_ID,
     };
@@ -914,6 +919,32 @@ const LANE_SORTS: Record<
   },
 };
 
+const COMMON_LANE_SORTS = [
+  "time-asc",
+  "time-desc",
+  "qty-desc",
+  "qty-asc",
+  "customer-asc",
+  "order-desc",
+];
+
+/** The one extra each lane earns from the thing it is waiting on. */
+const LANE_EXTRA_SORTS: Record<string, string> = {
+  Draft: "ready-first",
+  Quoting: "invited-desc",
+  Assigned: "quotes-desc",
+  Completed: "urgent-first",
+  Blocked: "urgent-first",
+};
+
+function laneSortOptions(laneKey: string) {
+  const extra = LANE_EXTRA_SORTS[laneKey];
+  return [...(extra ? [extra] : []), ...COMMON_LANE_SORTS].map((k) => ({
+    key: k,
+    label: LANE_SORTS[k].label,
+  }));
+}
+
 /* GROUP BY GROUPS SOMETHING (Pavan, 2026-10-07). The menu used to fall back
    to the DS demo names and group nothing. These are the order's own fields
    with useful cardinality, like Sales Orders' dims. */
@@ -1006,13 +1037,7 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
-  boardVersion = "2",
-  boardPick = 0,
 }: {
-  /** The board version, picked beside the page title (Pavan, 2026-10-27). */
-  boardVersion?: "1" | "2";
-  /** A nonce — each pick opens the board, from the table too. */
-  boardPick?: number;
   focus?: { id: string; n: number } | null;
   /**
    * OPEN THE CREATE SHEET ON ARRIVAL. A nonce, not a boolean: the Recurring
@@ -1104,22 +1129,11 @@ export function BrokerOrdersScreen({
   // Board-first, per §5.2. This is the one list in the prototype that does not
   // open as a table.
   const [view, setView] = React.useState<ListView>("board");
-  /* BOARD VERSIONS (Pavan, 2026-10-27) — 1 is the V4 board, 2 the trial after
-     HubSpot's deal board, 3 Version 1's lanes with Version 2's cards, 4
-     Version 1 with no labels and a pin / truck / driver icon leading its
-     lines. The switch is beside the page title; a pick opens the board. */
-  React.useEffect(() => {
-    if (boardPick) setView("board");
-  }, [boardPick]);
-  /* LIST VIEW IS V3's (Pavan, 2026-10-29) — another version drops back to
-     the board. */
-  const listView = boardVersion === "2";
-  /* V2 (Pavan, 2026-11-02 — trial, this screen only): no bar on the view;
-     its tools sit in a box joined to the view switch. */
-  const toolsBeside = boardVersion === "2";
-  React.useEffect(() => {
-    if (!listView) setView((v) => (v === "list" ? "board" : v));
-  }, [listView]);
+  /* ONE BOARD (Pavan, 2026-11-02): the version switch is gone — V1 is the
+     board, in every module; V2 and its tools-beside-the-switch trial are
+     archived (docs/archive/board-versions-2026-11-02.md). List view stays,
+     as on every other board module. */
+  const listView = true;
   /** The order the list view shows; the first in the list until one is picked. */
   const [listId, setListId] = React.useState<string | null>(null);
   /** The list view's status pill — null is All. */
@@ -1452,6 +1466,9 @@ export function BrokerOrdersScreen({
     });
     setPage(1);
   };
+
+  const setLaneSortKey = (laneKey: string, option: string | null) =>
+    setLaneSort((prev) => ({ ...prev, [laneKey]: option ?? undefined }));
 
   const customers = React.useMemo(
     () => Array.from(new Set(BROKER_ORDERS.map((r) => r.customer.title))),
@@ -2445,8 +2462,7 @@ export function BrokerOrdersScreen({
           /* THE VIEW'S TOOLS IN A BAR ON THE VIEW — the trial (Pavan,
              2026-10-22), this list only for now: what is shown on the
              left, the view's tools on the right. */
-          viewToolsInto={toolsBeside ? undefined : bar.into}
-          toolsBox={toolsBeside}
+          viewToolsInto={bar.into}
           viewStatement={
             <ViewStatement
               count={sorted.length}
@@ -2534,8 +2550,14 @@ export function BrokerOrdersScreen({
           ) : view === "board" ? (
             <div className="flex h-full min-h-0 flex-col gap-2">
               <div className="min-h-0 flex-1">
-                <BoardWithBar barRef={toolsBeside ? undefined : bar.ref}>
-                  <BoardV2 lanes={lanes} onOpenCard={openBoardCard} v3Cards={boardVersion === "2"} />
+                <BoardWithBar barRef={bar.ref}>
+                  <BoardV2
+                    lanes={lanes}
+                    onOpenCard={openBoardCard}
+                    laneSortOptions={laneSortOptions}
+                    laneSort={laneSort}
+                    onLaneSortChange={setLaneSortKey}
+                  />
                 </BoardWithBar>
               </div>
             </div>
@@ -2543,7 +2565,7 @@ export function BrokerOrdersScreen({
             /* LIST VIEW (Pavan, 2026-10-29, after Dynamics 365) — the shared
                unit; a pending step scrolls the docked form to its section. */
             <ListSplitView
-              barRef={toolsBeside ? undefined : bar.ref}
+              barRef={bar.ref}
               items={listItems}
               steps={BOARD_LANES.flatMap((l) => l.statuses).map((st) => ({ key: st, label: st }))}
               status={listStatus}
@@ -2590,7 +2612,7 @@ export function BrokerOrdersScreen({
             />
           ) : (
             <ListTable
-              topBar={toolsBeside ? undefined : bar.slot}
+              topBar={bar.slot}
               rows={pageRows}
               nodes={g.grouped ? g.groups.nodes : undefined}
               collapsedGroups={g.collapsed}

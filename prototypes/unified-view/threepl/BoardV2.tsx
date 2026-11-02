@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Handshake, Info, MapPin, Truck, UserRound } from "lucide-react";
+import { Check, Handshake, Info, MapPin, Truck, UserRound, Container, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CodeDisc } from "@/components/ui/code-disc";
@@ -11,6 +11,7 @@ import {
   CardV4,
   FoldedLane,
   LaneFold,
+  LaneSortMenu,
   PersonLine,
   LaneFoldButton,
   useFoldedLanes,
@@ -18,6 +19,7 @@ import {
   type BoardCardUnit,
   type BoardLane,
   type BrokerBoardProps,
+  type LaneSortOption,
 } from "./BrokerBoard";
 import { shortLabel } from "./unitLabels";
 
@@ -86,6 +88,16 @@ function UnitGroup({ u, ruled }: { u: BoardCardUnit; ruled?: boolean }) {
   );
 }
 
+/** The icon that leads each kind of card line, by unit key. */
+const UNIT_ICON: Record<string, LucideIcon> = {
+  customer: MapPin,
+  shipTo: MapPin,
+  driver: UserRound,
+  technician: UserRound,
+  salesRep: UserRound,
+  asset: Container,
+};
+
 function UnitProperties({ u }: { u: BoardCardUnit }) {
   const label = shortLabel(u);
   const wrap = React.useContext(Wrap);
@@ -94,11 +106,15 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
   /* THE DRIVER'S PHOTO LEADS THEIR NAME (Pavan, 2026-11-02). */
   if (u.kind === "stack" && u.person)
     return <PersonLine person={u.person} wrap={wrap} className="text-xs text-foreground" />;
-  if (u.kind === "stack" && (u.key === "customer" || u.key === "driver"))
+  /* EVERY LINE LEADS WITH ITS ICON, IN EVERY MODULE (Pavan, 2026-11-02 —
+     Service's asset and technician had none): a pin for a place, a person
+     for a person, a container for equipment. */
+  if (u.kind === "stack" && UNIT_ICON[u.key])
     return (
       <ShipToLine
         iconFirst
-        icon={u.key === "driver" ? UserRound : MapPin}
+        icon={UNIT_ICON[u.key]}
+        hoverLabel={u.key === "customer" || u.key === "shipTo" ? undefined : "details"}
         wrap={wrap}
         heading={u.heading}
         lines={u.lines}
@@ -109,19 +125,25 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
      the address on hover; the price beside it. */
   if (u.kind === "stack" && u.key === "partner" && u.lines[0]) {
     return (
-      <div className="flex min-w-0 items-baseline justify-between gap-2.5 text-xs">
+      /* NAME AND PRICE ON ONE LINE, TOPS LEVEL (2026-11-02) — when the
+         name wraps, the price stays beside its first line; in a lane too
+         narrow for both, the price drops under the name (right-aligned)
+         rather than the name breaking mid-word. */
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-2.5 gap-y-0.5 text-xs">
         <span className="sr-only">{label}: </span>
-        <ShipToLine
-          iconFirst
-          icon={Handshake}
-          wrap={wrap}
-          hoverLabel="address"
-          heading={u.heading}
-          lines={[u.lines[0], ...(u.hover ?? [])]}
-          className="text-xs text-foreground"
-        />
+        <div className="min-w-0 flex-1 basis-24">
+          <ShipToLine
+            iconFirst
+            icon={Handshake}
+            wrap={wrap}
+            hoverLabel="address"
+            heading={u.heading}
+            lines={[u.lines[0], ...(u.hover ?? [])]}
+            className="text-xs text-foreground"
+          />
+        </div>
         {u.figure && (
-          <span className="shrink-0 tabular-nums whitespace-nowrap text-foreground">
+          <span className="ml-auto shrink-0 tabular-nums whitespace-nowrap text-foreground">
             <span className="sr-only">Amount: </span>
             {u.figure}
           </span>
@@ -164,7 +186,15 @@ function UnitProperties({ u }: { u: BoardCardUnit }) {
       </Property>
     );
   if (u.kind === "rows")
-    return <Property label={label}>{u.rows.map((r) => r.asset).join(", ")}</Property>;
+    return (
+      <div className="flex min-w-0 items-start gap-1 text-xs">
+        <Truck aria-hidden className="mt-px size-3.5 shrink-0 text-muted-foreground" />
+        <span className="sr-only">{label}: </span>
+        <span className={cn("min-w-0 text-foreground", wrap ? "break-words" : "truncate")}>
+          {u.rows.map((r) => r.asset).join(", ")}
+        </span>
+      </div>
+    );
   if (u.kind === "delivery")
     return (
       <div className="flex min-w-0 items-baseline text-xs">
@@ -278,12 +308,16 @@ export function CardV2({
         ))}
       </div>
       {card.alert && (
-        /* THE CTA RUNS END TO END (Pavan, 2026-10-27) — the words above it. */
-        <div className="flex flex-col gap-1.5 border-t border-border pt-2">
-          <span className="flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
-            <Info className="mt-px size-3.5 shrink-0" />
-            <span>{card.alert.text}</span>
-          </span>
+        /* THE CTA RUNS END TO END (Pavan, 2026-10-27) — the words above it,
+           unless the button names the step itself (`ctaOnly`, 2026-11-02):
+           then just the button, no rule. */
+        <div className={cn("flex flex-col gap-1.5", !(card.alert.ctaOnly && card.alert.actionLabel) && "border-t border-border pt-2")}>
+          {!(card.alert.ctaOnly && card.alert.actionLabel) && (
+            <span className="flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
+              <Info className="mt-px size-3.5 shrink-0" />
+              <span>{card.alert.text}</span>
+            </span>
+          )}
           {card.alert.actionLabel && (
             <Button
               variant="outline"
@@ -302,19 +336,23 @@ export function CardV2({
       {card.footerAction?.waiting ? (
         /* A done ask in the grey wait box, how long ago on the right
            (Pavan, 2026-10-28 — grey on every version, both themes). */
-        <div className="flex items-center justify-between gap-2 rounded-sm bg-fp-wait-box px-2 py-1.5 text-xs">
-          <span className="flex min-w-0 items-center gap-1 text-foreground">
-            <Check className="size-3.5 shrink-0" />
-            <span className={wrap ? "break-words" : "truncate"}>{card.footerAction.label}</span>
+        /* TOP-ALIGNED (2026-11-02): when the words wrap, the tick and the
+           "2 days ago" stay on the first line. */
+        <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5 rounded-sm bg-fp-wait-box px-2 py-1.5 text-xs">
+          <span className="flex min-w-0 flex-1 basis-24 items-start gap-1 text-foreground">
+            <Check className="mt-px size-3.5 shrink-0" />
+            <span className={cn("min-w-0", wrap ? "break-words" : "truncate")}>{card.footerAction.label}</span>
           </span>
           {card.footerAction.meta && (
-            <span className="shrink-0 whitespace-nowrap text-muted-foreground">{card.footerAction.meta}</span>
+            <span className="ml-auto shrink-0 whitespace-nowrap text-muted-foreground">{card.footerAction.meta}</span>
           )}
         </div>
       ) : card.footerAction && (
         /* THE CTA RUNS END TO END (Pavan, 2026-10-27) — the words above it. */
-        <div className="flex flex-col gap-1.5 border-t border-border pt-2">
-          <span className="text-xs text-muted-foreground">{card.footerAction.label}</span>
+        <div className={cn("flex flex-col gap-1.5", !(card.footerAction.ctaOnly && card.footerAction.actionLabel) && "border-t border-border pt-2")}>
+          {!(card.footerAction.ctaOnly && card.footerAction.actionLabel) && (
+            <span className="text-xs text-muted-foreground">{card.footerAction.label}</span>
+          )}
           {card.footerAction.actionLabel && (
             <Button
               variant={card.footerAction.actionVariant ?? "success"}
@@ -340,12 +378,21 @@ function LaneV2({
   width,
   onFold,
   v3Cards,
+  sortOptions,
+  sortKey,
+  onSortChange,
+  priced = true,
 }: {
+  /** Whether this board carries prices at all — no foot when it does not. */
+  priced?: boolean;
   lane: BoardLane;
   onOpenCard?: (id: string) => void;
   width?: number;
   onFold?: () => void;
   v3Cards?: boolean;
+  sortOptions?: LaneSortOption[];
+  sortKey?: string;
+  onSortChange?: (option: string | null) => void;
 }) {
   const total = lane.cards.reduce((sum, c) => sum + moneyOf(amountOf(c)), 0);
   return (
@@ -360,11 +407,32 @@ function LaneV2({
       <div className="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2">
         <h3 className="truncate text-sm font-semibold text-foreground">{lane.title}</h3>
         <span className="text-sm tabular-nums text-muted-foreground">{lane.cards.length}</span>
-        {onFold && (
-          <span className="ml-auto flex shrink-0">
-            <LaneFoldButton title={lane.title} onFold={onFold} />
-          </span>
-        )}
+        {/* THE LANE'S SORT (Pavan, 2026-11-02 — kept as the board went
+            to every module) and its fold, on the right. */}
+        {/* OUT OF THE WAY UNTIL THE LANE IS HOVERED — not just invisible:
+            hidden, so the title has the whole header to itself at rest. */}
+        <span
+          className={cn(
+            "ml-auto -my-1 shrink-0 items-center gap-0.5 group-hover/lane:flex has-[[data-state=open]]:flex",
+            sortKey ? "flex" : "hidden"
+          )}
+        >
+          {sortOptions && sortOptions.length > 0 && onSortChange && (
+            /* HOVER ONLY, like the fold — unless a sort is on, which has to
+               stay visible. The title keeps its room. */
+            <LaneSortMenu
+              title={lane.title}
+              options={sortOptions}
+              value={sortKey}
+              onChange={onSortChange}
+              className={cn(
+                !sortKey &&
+                  "opacity-0 group-hover/lane:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              )}
+            />
+          )}
+          {onFold && <LaneFoldButton title={lane.title} onFold={onFold} />}
+        </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
         {lane.cards.length === 0 ? (
@@ -383,7 +451,9 @@ function LaneV2({
       </div>
       {/* THE STAGE'S TOTAL, at the foot of the column, as HubSpot sets it —
           not on a lane that has no prices yet (`noTotal`). */}
-      {!lane.noTotal && (
+      {/* …and none on a lane where nothing is priced yet — "Total amount: —"
+          says nothing (Pavan, 2026-11-02). */}
+      {!lane.noTotal && priced && total > 0 && (
         <div className="shrink-0 border-t border-border px-3 py-2 text-xs">
           <span className="text-muted-foreground">Total amount: </span>
           <span className="font-semibold tabular-nums text-foreground">
@@ -409,7 +479,10 @@ export function BoardV2({
   lanesInView = LANES_IN_VIEW,
   oneSize,
   v3Cards,
-}: Pick<BrokerBoardProps, "lanes" | "onOpenCard"> & {
+  laneSortOptions,
+  laneSort,
+  onLaneSortChange,
+}: Pick<BrokerBoardProps, "lanes" | "onOpenCard" | "laneSortOptions" | "laneSort" | "onLaneSortChange"> & {
   /** V4 (Pavan, 2026-11-02): this board, Version 3's card inside. */
   v3Cards?: boolean;
   lanesInView?: number;
@@ -419,6 +492,9 @@ export function BoardV2({
   const box = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState<number>();
   const { folded, toggle } = useFoldedLanes();
+  /* NO "TOTAL AMOUNT" FOOT ON A BOARD WITH NO PRICES (Pavan, 2026-11-02 —
+     the board went to Sales and Service, whose cards carry none). */
+  const priced = lanes.some((l) => l.cards.some((c) => amountOf(c) !== undefined));
   React.useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -448,7 +524,19 @@ export function BoardV2({
               className="rounded-md bg-fp-surface-1a"
             />
           }
-          open={<LaneV2 lane={lane} onOpenCard={onOpenCard} width={width} onFold={() => toggle(lane.key)} v3Cards={v3Cards} />}
+          open={
+            <LaneV2
+              lane={lane}
+              onOpenCard={onOpenCard}
+              width={width}
+              onFold={() => toggle(lane.key)}
+              v3Cards={v3Cards}
+              priced={priced}
+              sortOptions={laneSortOptions?.(lane.key)}
+              sortKey={laneSort?.[lane.key]}
+              onSortChange={onLaneSortChange ? (o) => onLaneSortChange(lane.key, o) : undefined}
+            />
+          }
         />
       ))}
     </div>

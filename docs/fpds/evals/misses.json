@@ -498,6 +498,19 @@
         "id": "one-summary-on-screen",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-038",
+      "date": "2026-11-02",
+      "title": "Archiving board V2 brought the view bar back; the tools-beside-the-switch layout had been decided",
+      "where": "Every list with a table or board (3PL first)",
+      "foundBy": "pavan",
+      "pattern": "stale-rule",
+      "why": "Treated the tools-beside layout as part of the archived V2 trial instead of a separate decision; the decision was never written down as a rule, so the default (bar) came back.",
+      "check": {
+        "id": "view-tools-beside",
+        "status": "manual"
+      }
     }
   ]
 }

@@ -21,7 +21,8 @@ import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
-import { BrokerBoard, type BoardLane } from "../threepl/BrokerBoard";
+import { type BoardLane } from "../threepl/BrokerBoard";
+import { BoardV2 } from "../threepl/BoardV2";
 import { ListSplitView, type ListSplitItem } from "../ListSplitView";
 import { RENTAL_ASSETS } from "../threepl/directory";
 import { DATE_FMT } from "../data";
@@ -233,6 +234,15 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
           : /* NOT SCHEDULED IS A STATE, not an absence — the intake form
                offers "dispatch when you can" and the board has to show it. */
             ["Not scheduled"],
+      /* THE BOARD'S ONE FORM (Pavan, 2026-11-02): date first, then the time. */
+      planned: off.has("schedule")
+        ? undefined
+        : r.scheduledAt
+          ? {
+              date: off.has("schedule.date") ? undefined : dayLabel(r.dateKey),
+              time: off.has("schedule.time") ? undefined : timeLabel(r.scheduledAt),
+            }
+          : { date: "Not scheduled" },
     },
     {
       kind: "inline" as const,
@@ -277,7 +287,9 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
           .filter(Boolean);
 
         if (!tech && past.length === 0) {
-          return [{ text: "No technician assigned", level: 3 as const }];
+          /* AN OPEN CARD'S "Assign technician" BUTTON SAYS IT (Pavan,
+             2026-11-02) — no "No technician assigned" line above it. */
+          return isUnassigned(r.status) ? [] : [{ text: "No technician assigned", level: 3 as const }];
         }
         return [
           ...(tech && !off.has("technician.name")
@@ -905,7 +917,8 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
                     ? {
                         status: "caution" as const,
                         text: "Invoice not raised",
-                        actionLabel: "Review",
+                        actionLabel: "Raise invoice",
+                        ctaOnly: true,
                       }
                     : r.status === "Completed"
                       ? { status: "default" as const, text: "Invoice on its way to accounting" }
@@ -920,6 +933,9 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
             footerAction: isUnassigned(r.status)
               ? {
                   label: "No technician assigned",
+                  /* THE BUTTON SAYS IT (Pavan, 2026-11-02): "Assign
+                     technician", no line above it. */
+                  ctaOnly: true,
                   /* THE ICON CARRIES THE ACT AND THE WORD NAMES IT. "Assign"
                      beside a person is read before it is read — and the
                      footer's own line already says what is missing, so the
@@ -927,7 +943,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
                      in one strip. (Pavan, 2026-09-23.) */
                   actionLabel: (
                     <>
-                      <UserPlus /> Assign
+                      <UserPlus /> Assign technician
                     </>
                   ),
                   actionVariant: "outline" as const,
@@ -1500,7 +1516,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
             />
           ) : view === "board" ? (
             <BoardWithBar barRef={bar.ref}>
-              <BrokerBoard
+              <BoardV2
                 lanes={lanes}
                 onOpenCard={setOpenId}
                 /* FOUR WAYS TO ORDER A LANE, and the fourth belongs to the

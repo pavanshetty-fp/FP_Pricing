@@ -335,7 +335,7 @@ export function ListToolbar<K extends string>({
   columnFiltersOpen,
   onToggleColumnFilters,
   viewToolsInto,
-  toolsBox = false,
+  toolsBox = VIEW_TOOLS_BESIDE,
   viewStatement,
   columnFilterCount = 0,
   columnOrder,
@@ -908,8 +908,9 @@ export function ListToolbar<K extends string>({
             in its box and not in one of their own — plain icons after a
             12px space; what they are follows the view picked. */}
         {multiView && toolsBox && activeTools && (
-          <div role="group" aria-label="View settings" className="ml-2 inline-flex shrink-0 items-center gap-1">
+          <div role="group" aria-label="View settings" className="relative ml-2 inline-flex shrink-0 items-center gap-1">
             {activeTools}
+            <ToolsLink view={view} />
           </div>
         )}
 
@@ -937,6 +938,72 @@ export function ListToolbar<K extends string>({
           viewToolsInto
         )}
     </div>
+  );
+}
+
+/**
+ * THE LINE FROM THE VIEW TO ITS TOOLS (Pavan, 2026-11-02): one stem rises
+ * from the table's (or board's) top edge and forks to each icon — so the
+ * icons read as the view's settings, not the page's. Measured, because
+ * the gap and the icons' places depend on the screen.
+ */
+function ToolsLink({ view }: { view: ListView }) {
+  const self = React.useRef<HTMLSpanElement>(null);
+  const [geo, setGeo] = React.useState<{
+    fork?: React.CSSProperties;
+    stem: React.CSSProperties;
+  } | null>(null);
+  React.useLayoutEffect(() => {
+    const tools = self.current?.parentElement;
+    if (!tools) return;
+    let scope: HTMLElement | null = tools.parentElement;
+    let box: HTMLElement | null = null;
+    while (scope && !box) {
+      box = scope.querySelector<HTMLElement>("[data-view-box]");
+      scope = scope.parentElement;
+    }
+    if (!box) return setGeo(null);
+    const viewBox = box;
+    const place = () => {
+      const t = tools.getBoundingClientRect();
+      const b = viewBox.getBoundingClientRect();
+      const gap = b.top - t.bottom;
+      if (gap < 6) return setGeo(null);
+      const icons = Array.from(tools.querySelectorAll<HTMLElement>("button"));
+      if (icons.length === 0) return setGeo(null);
+      const centre = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect();
+        return r.left + r.width / 2 - t.left;
+      };
+      const c1 = centre(icons[0]);
+      const c2 = centre(icons[icons.length - 1]);
+      const mid = (c1 + c2) / 2;
+      const tick = Math.floor(gap / 2);
+      setGeo({
+        fork: c2 - c1 > 1 ? { left: c1, width: c2 - c1, top: t.height + 2, height: tick - 2 } : undefined,
+        stem: {
+          left: mid,
+          top: c2 - c1 > 1 ? t.height + tick : t.height + 2,
+          height: c2 - c1 > 1 ? gap - tick : gap - 2,
+        },
+      });
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(viewBox);
+    ro.observe(tools);
+    window.addEventListener("resize", place);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, [view]);
+  const line = "pointer-events-none absolute border-muted-foreground/40";
+  return (
+    <span ref={self} aria-hidden className="pointer-events-none absolute inset-0">
+      {geo?.fork && <span className={cn(line, "rounded-b-sm border-x border-b")} style={geo.fork} />}
+      {geo && <span className={cn(line, "border-l")} style={geo.stem} />}
+    </span>
   );
 }
 
@@ -1162,8 +1229,18 @@ export function FilterChips({
   toolbar renders into it (`ListToolbar viewToolsInto`). Every list with a
   table or a board has one.
 */
+/**
+ * THE VIEW'S TOOLS BESIDE THE VIEW SWITCH, NO BAR (Pavan, 2026-11-02 —
+ * tried on 3PL Delivery Orders, then confirmed for every list): Search by
+ * column and Columns on the table, Card fields on the board, as plain icons
+ * 12px right of the Table · List · Board · Map box. The bar on the view —
+ * its count line and its tools — is off everywhere. `false` brings it back.
+ */
+export const VIEW_TOOLS_BESIDE = true;
+
 export function useViewBar() {
   const [into, setInto] = React.useState<HTMLDivElement | null>(null);
+  if (VIEW_TOOLS_BESIDE) return { into: null, ref: undefined, slot: null };
   return { into, ref: setInto, slot: <div ref={setInto} /> };
 }
 
@@ -1205,7 +1282,7 @@ export function BoardWithBar({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
+    <div data-view-box="" className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
       {barRef && <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />}
       <div className="min-h-0 flex-1">{children}</div>
     </div>

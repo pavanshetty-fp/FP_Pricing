@@ -1891,3 +1891,9 @@ Recommendations button. History is INVENTED.
 - 2026-11-02 — Driver on board cards (V1 and V2): photo (20px) leads the name (`PersonLine`); hover → 64px photo, name, "Driver", email, phone, shift, truck. `DRIVERS` gained email, shift, photo (stock placeholder URLs; initials fall back).
 - 2026-11-02 — Card lines with details behind them (ship-to, delivery details, driver, vendor) are one hover target and underline (dotted) on hover (`MORE_LINE` / `MORE_UNDERLINE`, BrokerBoard.tsx) — every board that uses these parts.
 - 2026-11-02 — Filters: every facet's pane has a search field, short lists too (`ListFilters`; `searchable` now ignored) — every module.
+- 2026-11-02 (later) — Hover underline dropped. Only the icon opens a card line's details (ship-to pin, delivery truck, vendor handshake; the driver's photo), and it shows that at rest with a faint tile (`MORE_ICON`: `bg-fp-card-1`, firmer on hover/open) or, for the photo, a faint ring. Small target so a pointer crossing the card opens nothing.
+- 2026-11-02 (later still) — Reversed: no tile/ring at rest; the tile (`bg-muted`) or the photo ring shows only on hover/open.
+- 2026-11-02 (final) — Moving onto a section (ship-to, delivery, driver, vendor) lights its icon's tile (`group/more`); only the icon opens the panel. Hover panel headings are sentence case ("Ship-to details", `PanelHeading`), not capitals.
+- 2026-11-02 (final, revised) — Section hover now draws a short 1px underline under the icon (or photo) instead of the tile (`MORE_HINT`); the tile / ring comes only when the icon itself is hovered or open.
+- 2026-11-02 — Driver and delivery hover panels fit their content: driver min 208px / max 320px (was 288 fixed), delivery min 256px / max 448px (was 448 fixed); they widen only for long names or many columns of data.
+- 2026-11-02 — Ship-to (and vendor) hover panel fits its content too: min 208px, max 320px (was 288 fixed).

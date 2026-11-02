@@ -471,6 +471,18 @@ function UnitHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * A HOVER PANEL'S HEADING — sentence case, not capitals (Pavan, 2026-11-02):
+ * "Ship-to details", not "SHIP-TO DETAILS".
+ */
+function PanelHeading({ children }: { children: string }) {
+  return (
+    <span className="text-xs font-medium text-muted-foreground">
+      {children.charAt(0).toUpperCase() + children.slice(1).toLowerCase()}
+    </span>
+  );
+}
+
 const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
   1: "text-sm font-semibold text-foreground",
   2: "text-[13px] font-medium text-muted-foreground",
@@ -662,13 +674,19 @@ function CardRows({ rows, total }: { rows: BoardCardRow[]; total?: string }) {
    so it would vanish; it goes one step further (Pavan, 2026-10-27). */
 export const CARD_HOVER_PILL = (tone?: string) =>
   (tone ?? "neutral") === "neutral" ? "dark:group-hover/card:bg-fp-card-1" : undefined;
-/* MORE BEHIND IT (Pavan, 2026-11-02): a card line that opens details on
-   hover — ship-to, delivery details, driver, vendor — underlines while the
-   pointer is on it, so the reader knows there is more there. The whole line
-   is the hover target, not only its icon. */
-const MORE_LINE = "group/more";
-const MORE_UNDERLINE =
-  "decoration-dotted decoration-foreground/60 underline-offset-4 group-hover/more:underline group-focus-visible/more:underline";
+/* MORE BEHIND IT (Pavan, 2026-11-02 — replaces a hover underline on the
+   whole line): only the ICON opens the details. Nothing at rest; moving onto
+   the SECTION draws a short underline under its icon — "there is more here"
+   — and hovering the icon itself brings up its soft tile and opens it
+   (Pavan, 2026-11-02). The target stays that small so a pointer crossing the
+   card while reading opens nothing. */
+const MORE_SECTION = "group/more";
+const MORE_HINT =
+  "relative after:pointer-events-none after:absolute after:inset-x-0.5 after:-bottom-0.5 after:h-px after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover/more:after:opacity-100";
+const MORE_ICON = cn(
+  MORE_HINT,
+  "-m-0.5 shrink-0 rounded-sm p-0.5 text-muted-foreground outline-none transition-colors group-hover/more:text-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-muted data-[state=open]:text-foreground"
+);
 
 /**
  * A PERSON ON A CARD — THE DRIVER (Pavan, 2026-11-02). Their photo leads the
@@ -703,35 +721,34 @@ export function PersonLine({
     { label: "Truck", value: person.truck },
   ].filter((r) => r.value);
   return (
+    <div className={cn(MORE_SECTION, "flex min-w-0 max-w-full gap-1.5", wrap ? "items-start" : "items-center")}>
     <HoverCard openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
+        {/* THE PHOTO IS THE ICON — the same underline on the section's
+            hover; a ring on its own. */}
         <button
           type="button"
           aria-label={`${person.name} — driver details`}
           /* THE CARD IS THE BUTTON — this one only explains itself. */
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
-          className={cn(
-            MORE_LINE,
-            "flex min-w-0 max-w-full items-center gap-1.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-            wrap && "items-start"
-          )}
+          className={cn(MORE_HINT, "shrink-0 rounded-full ring-2 ring-transparent outline-none transition-shadow hover:ring-muted focus-visible:ring-ring/50 data-[state=open]:ring-muted after:-bottom-1 after:text-foreground")}
         >
           {photo("size-5", "text-[9px]")}
-          <span className={cn(wrap ? "min-w-0 break-words" : "truncate", MORE_UNDERLINE, className)}>{person.name}</span>
         </button>
       </HoverCardTrigger>
       <HoverCardContent
         align="start"
-        className="fp-surface-light w-72 p-3"
+        className="fp-surface-light w-auto min-w-52 max-w-80 p-3"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           {photo("size-16", "text-lg")}
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-semibold text-foreground">{person.name}</span>
-            <span className="text-xs text-muted-foreground">Driver</span>
-          </div>
+          {/* FITS ITS CONTENT (Pavan, 2026-11-02): a minimum width, wider only
+              for a long name or email — the driver panel and the delivery
+              panel alike. */}
+          {/* NO "Driver" UNDER THE NAME (Pavan, 2026-11-02) — the card already says so. */}
+          <span className="min-w-0 truncate text-sm font-semibold text-foreground">{person.name}</span>
         </div>
         {rows.length > 0 && (
           <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
@@ -745,6 +762,8 @@ export function PersonLine({
         )}
       </HoverCardContent>
     </HoverCard>
+      <span className={cn(wrap ? "min-w-0 break-words" : "truncate", className)}>{person.name}</span>
+    </div>
   );
 }
 
@@ -774,10 +793,10 @@ export function ShipToLine({
   const details = (
     <HoverCardContent
       align="start"
-      className="fp-surface-light w-72 p-3"
+      className="fp-surface-light w-auto min-w-52 max-w-80 p-3"
       onClick={(e) => e.stopPropagation()}
     >
-      <UnitHeading>{heading}</UnitHeading>
+      <PanelHeading>{heading}</PanelHeading>
       <div className="mt-2 flex flex-col gap-0.5">
         {lines.map((l, i) => (
           <span key={i} className={LEVEL_CLASS[l.level ?? 1]}>
@@ -797,31 +816,28 @@ export function ShipToLine({
         </span>
       </div>
     );
-  /* THE WHOLE LINE OPENS THE DETAILS and underlines on hover (2026-11-02). */
+  /* ONLY THE ICON OPENS THE DETAILS (2026-11-02) — see MORE_ICON. */
   return (
-    <HoverCard openDelay={150} closeDelay={100}>
-      <HoverCardTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${name.text} — ${hoverLabel}`}
-          /* THE CARD IS THE BUTTON — this one only explains itself. */
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          className={cn(MORE_LINE, line, "max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
-        >
-          <span className={cn(nameClass, MORE_UNDERLINE)} title={name.text}>
-            {name.text}
-          </span>
-          <Icon
-            className={cn(
-              "size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/more:text-foreground",
-              wrap && "mt-px"
-            )}
-          />
-        </button>
-      </HoverCardTrigger>
-      {details}
-    </HoverCard>
+    <div className={cn(MORE_SECTION, line)}>
+      <span className={nameClass} title={name.text}>
+        {name.text}
+      </span>
+      <HoverCard openDelay={150} closeDelay={100}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            aria-label={`${name.text} — ${hoverLabel}`}
+            /* THE CARD IS THE BUTTON — this one only explains itself. */
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className={cn(MORE_ICON, wrap && "mt-px")}
+          >
+            <Icon className="size-3.5" />
+          </button>
+        </HoverCardTrigger>
+        {details}
+      </HoverCard>
+    </div>
   );
 }
 
@@ -886,22 +902,19 @@ export function CardDelivery({
 }) {
   const compact = useCompact();
   return (
-    <div className="flex min-w-0">
+    <div className={cn(MORE_SECTION, "flex min-w-0")}>
       <HoverCard openDelay={150} closeDelay={100}>
         <HoverCardTrigger asChild>
           {iconTrigger ? (
-            /* THE WHOLE LINE OPENS IT and underlines on hover (2026-11-02). */
+            /* ONLY THE ICON OPENS IT (2026-11-02) — see MORE_ICON. */
             <button
               type="button"
               aria-label={`${heading} — assets and quantities`}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              className={cn(MORE_LINE, "flex min-w-0 items-start rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
+              className={cn(MORE_ICON, "mt-px mr-1.5 self-start")}
             >
-              <Icon className="mt-px mr-1 size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/more:text-foreground" />
-              <span className={cn("min-w-0 text-foreground", MORE_UNDERLINE, summaryClassName ?? (compact ? "text-xs" : "text-[13px] font-medium"))}>
-                {summary.join(" · ")}
-              </span>
+              <Icon className="size-3.5" />
             </button>
           ) : (
           <button
@@ -916,12 +929,17 @@ export function CardDelivery({
           )}
         </HoverCardTrigger>
         {/* ICON FIRST, THE LINE WRAPS (Pavan, 2026-10-27) — never cut. */}
+        {iconTrigger && (
+          <span className={cn("min-w-0 text-foreground", summaryClassName ?? (compact ? "text-xs" : "text-[13px] font-medium"))}>
+            {summary.join(" · ")}
+          </span>
+        )}
         <HoverCardContent
           align="start"
-          className="fp-surface-light w-md p-3"
+          className="fp-surface-light w-auto min-w-64 max-w-md p-3"
           onClick={(e) => e.stopPropagation()}
         >
-          <UnitHeading>{heading}</UnitHeading>
+          <PanelHeading>{heading}</PanelHeading>
           {/* THE TABLE ALONE (Pavan, 2026-10-28; the map beside it is gone).
               Every row shows, total included, from two rows tall up to four
               and a half; past that it scrolls, the half row saying there is
@@ -1084,7 +1102,7 @@ function CardQuotes({
               {/* THE UNIT'S OWN HEADING COMES WITH IT. Opened from a figure
                   with no name on it, a bare list of tanks is three numbers
                   belonging to nothing. */}
-              <UnitHeading>Delivery Details</UnitHeading>
+              <PanelHeading>Delivery details</PanelHeading>
               <div className="mt-2 overflow-hidden rounded-md border border-border">
                 <RowsTable rows={breakdown.rows} total={breakdown.total} />
               </div>

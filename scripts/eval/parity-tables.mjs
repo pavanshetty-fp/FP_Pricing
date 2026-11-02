@@ -72,6 +72,9 @@ export function check() {
     if (hasTable) {
       lines.forEach((line, i) => {
         if (!CAP.test(line) || NOT_LAYOUT.test(line)) return;
+        /* A floating panel's props run over several lines — `<HoverCardContent`
+           a line or two above its className is still a panel, not layout. */
+        if (NOT_LAYOUT.test(lines[i - 1] ?? "") || NOT_LAYOUT.test(lines[i - 2] ?? "")) return;
         if (!/<(?:div|section|main)\b|className=/.test(line)) return;
         add("L1", file, i + 1, `a width cap (${line.match(CAP)[0]}) on a container in a screen that holds a table — tables take the full width`, "G43");
       });

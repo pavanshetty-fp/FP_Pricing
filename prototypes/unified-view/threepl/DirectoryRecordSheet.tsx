@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
@@ -69,6 +70,13 @@ export interface RecordReadSection {
   /** Its table's columns as `CELL` widths — the sheet is as wide as the
       widest section's table (Pavan, 2026-10-15: each record its own width). */
   columns?: number[];
+  /** A control at the right of the section's heading — "New service order". */
+  action?: React.ReactNode;
+  /** THE TAB IT SITS UNDER (Master Data assets, 2026-11-02). Sections with a
+      tab show one tab at a time, under a line tab strip; the rest stay above. */
+  tab?: string;
+  /** The count on its tab — read from the tab's first section that has one. */
+  tabCount?: number;
   render: () => React.ReactNode;
 }
 
@@ -107,6 +115,8 @@ export interface DirectoryRecordSheetProps<T> {
   /** Everything the record shows but does not edit, under the editable blocks. */
   readSections?: RecordReadSection[];
   onSubmit: (draft: T) => void;
+  /** `2` — opened over another sheet (Asset 360's Edit details). */
+  level?: 1 | 2;
 }
 
 /*
@@ -162,6 +172,7 @@ export function DirectoryRecordSheet<T>({
   readSections = [],
   audit,
   onSubmit,
+  level,
 }: DirectoryRecordSheetProps<T>) {
   const [historyOpen, setHistoryOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<T>(initial);
@@ -182,7 +193,10 @@ export function DirectoryRecordSheet<T>({
 
   const visibleSections = React.useMemo(
     () =>
-      sections.map((s) => ({ ...s, fields: s.fields.filter((f) => f.visible?.(draft) ?? true) })),
+      sections
+        .map((s) => ({ ...s, fields: s.fields.filter((f) => f.visible?.(draft) ?? true) }))
+        /* A section whose every field is hidden is not drawn as an empty box. */
+        .filter((s) => s.fields.length > 0),
     [sections, draft]
   );
 
@@ -254,13 +268,14 @@ export function DirectoryRecordSheet<T>({
             <SelectTrigger
               id={f.key}
               aria-invalid={bad || undefined}
-              /* `capitalize` on the TRIGGER only. Radix renders the chosen
-                 item's raw text here and there is no slot to relabel it, so
-                 the CSS does what `optionLabel` does in the list — and a
-                 value like "Net 30" is unaffected either way. */
-              className={cn("w-full capitalize", bad && "border-destructive")}
+              /* THE TRIGGER SAYS WHAT THE LIST SAYS — `optionLabel`, first
+                 letter only. CSS `capitalize` used to do it and turned "500
+                 gal skid tank" into "500 Gal Skid Tank" (2026-11-02). */
+              className={cn("w-full", bad && "border-destructive")}
             >
-              <SelectValue placeholder={f.placeholder ?? "Select…"} />
+              <SelectValue placeholder={f.placeholder ?? "Select…"}>
+                {typeof v === "string" && v !== "" ? optionLabel(v) : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {(f.options ?? []).map((o) => (
@@ -279,6 +294,7 @@ export function DirectoryRecordSheet<T>({
             options={(f.options ?? []).map((o) => ({ value: o, label: optionLabel(o) }))}
             placeholder={f.placeholder ?? "Select…"}
             allowCreate={f.allowCreate}
+            clearLabel={f.clearLabel}
             aria-label={f.label}
             className={cn("w-full", bad && "border-destructive")}
             onValueChange={(next) => {
@@ -329,6 +345,20 @@ export function DirectoryRecordSheet<T>({
   };
 
   const data = readSections.length > 0;
+  /* The tab strip, in the order the sections name their tabs. */
+  const tabs = React.useMemo(() => {
+    const out: { key: string; count?: number }[] = [];
+    for (const s of readSections) {
+      if (!s.tab) continue;
+      const t = out.find((x) => x.key === s.tab);
+      if (!t) out.push({ key: s.tab, count: s.tabCount });
+      else if (t.count === undefined) t.count = s.tabCount;
+    }
+    return out;
+  }, [readSections]);
+  const [tabState, setTab] = React.useState<string | null>(null);
+  React.useEffect(() => setTab(null), [recordKey]);
+  const tab = tabState && tabs.some((t) => t.key === tabState) ? tabState : tabs[0]?.key;
   return (
     <RecordSheet
       /* WIDTH FROM ITS TABLES, PER RECORD (Pavan, 2026-10-15): each read
@@ -338,6 +368,7 @@ export function DirectoryRecordSheet<T>({
          1200 at least, fields three across. A create stays a 600 form. */
       {...(readSections.length > 0 ? { size: "data" as const } : {})}
       fit={{ tables: readSections.map((r) => r.columns ?? []) }}
+      level={level}
       open={open}
       onOpenChange={(o) => {
         if (!o) onClose?.(errorCount === 0 ? draft : null);
@@ -482,7 +513,29 @@ export function DirectoryRecordSheet<T>({
         />
       )}
 
-      {readSections.map((s) => {
+      {tabs.length > 0 && (
+        <Tabs value={tab} onValueChange={setTab}>
+          <div className="overflow-x-auto border-b border-border">
+            <TabsList variant="line" className="h-9 w-max justify-start">
+              {tabs.map((t) => (
+                <TabsTrigger
+                  key={t.key}
+                  value={t.key}
+                  /* BLACK, NOT THE SELECTION ORANGE — as the 3PL quote tabs. */
+                  className="flex-none gap-1.5 px-2 after:bg-foreground group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground"
+                >
+                  {t.key}
+                  {t.count !== undefined && (
+                    <span className="text-xs tabular-nums text-muted-foreground">{t.count}</span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+        </Tabs>
+      )}
+
+      {readSections.filter((s) => !s.tab || s.tab === tab).map((s) => {
         /* A TABLE TAKES THE CARD'S OWN EDGES. Decided here from what the
            section actually renders rather than from a flag on every section,
            so a new table cannot be added with the gap left in by accident. */
@@ -491,6 +544,7 @@ export function DirectoryRecordSheet<T>({
           <SheetSection
             key={s.key}
             title={s.title}
+            action={s.action}
             flush={fillsSection(body)}
             note={
               s.note || s.count !== undefined ? (

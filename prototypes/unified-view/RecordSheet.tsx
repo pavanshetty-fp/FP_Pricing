@@ -296,6 +296,11 @@ export interface RecordSheetProps {
    */
   footerPrimary?: React.ReactNode;
   /**
+   * NO FOOTER AT ALL (Pavan, 2026-11-02 — Asset 360): a read-out sheet with
+   * nothing to commit drops the rule and the button; Close is the exit.
+   */
+  noFooter?: boolean;
+  /**
    * Controls that ride in the footer, left of Cancel/Submit. For decisions
    * taken at the moment of committing rather than while filling the form —
    * they stay in view no matter how far the body has scrolled.
@@ -494,6 +499,7 @@ export function RecordSheet({
   canSubmit = true,
   pending,
   footerPrimary,
+  noFooter = false,
   footerAside,
   onSubmit,
   footerBanner,
@@ -625,6 +631,7 @@ export function RecordSheet({
           </div>
         )}
 
+        {!noFooter && (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-4">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             {footerAside}
@@ -662,6 +669,7 @@ export function RecordSheet({
           )}
           </div>
         </div>
+        )}
       </Content>
     </Root>
   );

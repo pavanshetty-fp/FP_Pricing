@@ -37,7 +37,14 @@ import {
   SlidersHorizontal,
   LayoutDashboard,
   ReceiptText,
+  FolderOpen,
+  MapPin,
+  Container,
+  Warehouse,
+  Factory,
+  FileText,
 } from "lucide-react";
+import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
@@ -139,6 +146,15 @@ const THREE_PL_NAV: NavItem[] = [
 ];
 
 /**
+ * MASTER DATA (Pavan, 2026-11-02, after the Lovable reference's menu) — the
+ * records every module reads. Only Assets is built; the others say so.
+ */
+const MASTER_DATA_NAV: NavItem[] = [
+  { key: "md-directory", label: "Directory", icon: <BookUser /> },
+  { key: "md-documents", label: "Documents", icon: <FolderOpen /> },
+];
+
+/**
  * SERVICE WORK — TIER 1. Two areas, and no second level: Work Orders is a
  * destination in its own right and so is the technician list, so the content
  * layer takes the full width in both (Sales works the same way).
@@ -201,6 +217,24 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       ],
     },
   ],
+  "md-directory": [
+    {
+      items: [
+        { key: "md-customers", label: "Customers", icon: <Contact /> },
+        { key: "md-ship-tos", label: "Ship-tos", icon: <MapPin /> },
+        { key: "md-assets", label: "Assets", icon: <Container /> },
+        { key: "md-products", label: "Products", icon: <Droplet /> },
+        { key: "md-vendors", label: "Vendors", icon: <Truck /> },
+        { key: "md-terminals", label: "Terminals", icon: <Warehouse /> },
+        { key: "md-suppliers", label: "Suppliers", icon: <Factory /> },
+      ],
+    },
+  ],
+  "md-documents": [
+    {
+      items: [{ key: "md-all-documents", label: "All documents", icon: <FileText /> }],
+    },
+  ],
   /* TWO FLOWS, SIDE BY SIDE (Pavan, 2026-09-25) — the same orders, run with
      no technician app (the dispatcher records everything) or with one. Each
      entry fixes the technician-app setting for the board and sheet under it. */
@@ -255,6 +289,7 @@ const APP_MODULES = [
   { key: "service", name: "Service Work", icon: <Cog /> },
   { key: "pricing", name: "Pricing", icon: <DollarSign /> },
   { key: "lease", name: "Lease", icon: <FileSignature /> },
+  { key: "master-data", name: "Master Data", icon: <Database /> },
 ];
 
 /**
@@ -271,6 +306,7 @@ const MODULE_NAV: Record<string, NavItem[]> = {
   service: SERVICE_NAV,
   lease: [],
   pricing: [],
+  "master-data": MASTER_DATA_NAV,
 };
 
 /**
@@ -281,6 +317,12 @@ const MODULE_NAV: Record<string, NavItem[]> = {
 const MODULE_LANDING: Record<string, string> = {
   "3pl": "3pl-orders",
   sales: "sales-orders",
+  "master-data": "md-directory",
+};
+/** THE PAGE A MODULE OPENS ON, inside its landing area — Master Data opens on
+ *  Assets, the one page built there (2026-11-02). */
+const MODULE_LANDING_SUB: Record<string, string> = {
+  "master-data": "md-assets",
 };
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
@@ -394,6 +436,9 @@ const ENTITY_DESTINATION: Record<string, string> = {
 function readEntityBoot(): { module: string; nav: string; sub: string; record: string | null } | null {
   if (typeof window === "undefined") return null;
   const p = new URLSearchParams(window.location.search);
+  /* Master Data's Assets keeps its list and record in the address too. */
+  if (p.get("entity") === "md-assets")
+    return { module: "master-data", nav: "md-directory", sub: "md-assets", record: p.get("record") };
   const dest = ENTITY_DESTINATION[p.get("entity") ?? ""];
   if (!dest) return null;
   return { module: "3pl", nav: "3pl-directory", sub: dest, record: p.get("record") };
@@ -478,7 +523,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     () => boot?.nav ?? landingKey(startModule)
   );
   const [subKey, setSubKey] = React.useState<string | null>(
-    () => boot?.sub ?? firstSubKey(landingKey(startModule))
+    () => boot?.sub ?? MODULE_LANDING_SUB[startModule] ?? firstSubKey(landingKey(startModule))
   );
   /* NO LINE UNDER THE TOP BAR (Pavan, 2026-10-27 — tried on 3PL Delivery
      Orders, then every page): the hairline goes and the drawer and the
@@ -540,6 +585,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     if (only && key !== only) return;
     setModuleKey(key);
     goToArea(landingKey(key));
+    if (MODULE_LANDING_SUB[key]) setSubKey(MODULE_LANDING_SUB[key]);
     try {
       localStorage.setItem(MODULE_STORAGE_KEY, key);
     } catch {
@@ -763,8 +809,16 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <BrokerProductsScreen {...dirProps("3pl-products")} />;
       case "3pl-rental-assets":
         return <BrokerRentalAssetsScreen {...dirProps("3pl-rental-assets")} />;
+      case "md-assets":
+        return (
+          <MasterAssetsScreen
+            onTotalChange={setListTotal}
+            focusId={dirFocus?.nav === "md-assets" ? dirFocus.id : null}
+            onFocusHandled={() => setDirFocus(null)}
+          />
+        );
       default:
-        return <NotBuiltYet label={active?.label ?? "Screen"} detail="Not built yet." />;
+        return <NotBuiltYet label={activeSub?.label ?? active?.label ?? "Screen"} detail="Not built yet." />;
     }
   })();
 

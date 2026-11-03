@@ -17,19 +17,19 @@ Every time Pavan has to point out something that should already have been right 
 |---|---|
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
-| 2026-11-01 | 1 |
+| 2026-11-01 | 6 |
 
-**38 misses** · found by Pavan 31 · by Claude 7 · guarded by a script 14 · guard proposed 0 · needs eyes 20 · process rule 4
+**43 misses** · found by Pavan 33 · by Claude 10 · guarded by a script 18 · guard proposed 0 · needs eyes 21 · process rule 4
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
-| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 10 |
-| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 7 |
+| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 11 |
+| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 8 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 6 |
-| `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 4 |
-| `stale-rule` | A written rule or old note won over Pavan's newer instruction | 3 |
+| `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 6 |
+| `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
 | `unchecked-output` | A sweep or generated output assumed correct without checking the result | 2 |
@@ -39,6 +39,11 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-043 | 2026-11-02 | Asset 360 tables: a Status filter on a value with no column (journey), a blank Status on half the log, a Type filter emptying tabs it does not apply to, and a second date-time format | Master Data › Assets › Asset 360 | Claude | `partial-unify` | Built the global filter and the log from the data, not from what each table shows; did not copy the board card's date-time format. | `manual` · manual |
+| M-042 | 2026-11-02 | Documents drawn as an Attached/Pending status pill instead of the documents cell | Master Data › Assets › Asset 360 movement orders | Claude | `generic-over-existing` | Copied the reference's wording instead of the documents unit the app already has (icon + count + breakdown). | `documents-as-status` · built |
+| M-041 | 2026-11-02 | Read-only Asset 360 sheet kept the footer rule and a Confirm button with nothing to confirm | Master Data › Assets › Asset 360 | Pavan | `stale-rule` | RecordSheet always drew its footer; the sheet's submit only closed it. | `read-sheet-footer` · built |
+| M-040 | 2026-11-02 | Table unit shrank to its three rows — the frame must stay full height with pagination at its foot | Master Data › Assets › Asset 360 | Pavan | `edges` | Sized the table to its rows; the full-unit rule (frame fills, pagination below) was only true of list pages, not written for tables inside sheets. | `full-table-unit` · built |
+| M-039 | 2026-11-02 | Asset 360's three views used the small SheetTable under a search/filter bar — no sorting, moving, resizing, column search, row open; rows capped at 25 | Master Data › Assets › Asset 360 | Claude | `generic-over-existing` | Reached for the record sheet's related-records table instead of the list's full table unit, though the views had become filterable lists. | `filterable-table-unit` · built |
 | M-038 | 2026-11-02 | Archiving board V2 brought the view bar back; the tools-beside-the-switch layout had been decided | Every list with a table or board (3PL first) | Pavan | `stale-rule` | Treated the tools-beside layout as part of the archived V2 trial instead of a separate decision; the decision was never written down as a rule, so the default (bar) came back. | `view-tools-beside` · manual |
 | M-037 | 2026-10-29 | List view kept the Pricing totals bar while the rail's summary card was already on screen | 3PL List view (docked order sheet) | Pavan | `one-case` | The bar was tuned for the slide-in sheet only; docking changed what is on screen and the bar was not re-checked against the 'never both summaries' rule. | `one-summary-on-screen` · manual |
 | M-036 | 2026-10-29 | Quoting orders with quotes in said "Vendor not selected"; the step depends on invites sent / quotes in | 3PL board cards + List view rows (Orders lane) | Pavan | `one-case` | One label for every vendor-less order; only the Draft-with-no-invites case was ever looked at. | `pending-step-per-state` · manual |

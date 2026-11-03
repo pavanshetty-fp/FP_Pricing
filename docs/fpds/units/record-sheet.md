@@ -18,7 +18,7 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 3. **Body** — one scroll; sections (`SheetSection`, card by default) 40px apart. Two-column variant: form (fills) + **rail** 340px, sticky (`unit.summary-rail`).
 4. **Quiet pattern** — added by the sheet itself when the content is half the visible height or less.
 5. **Footer banner** (`footerBanner`, optional) — fixed strip above the footer: what the primary is waiting on (`PendingStrip`) or an exception that stops the work.
-6. **Footer** — left: `footerAside` (decisions taken at the moment of committing); right: Cancel (only where `showCancel`) · the primary (`footerPrimary`, the next act).
+6. **Footer** — left: `footerAside` (decisions taken at the moment of committing); right: Cancel (only where `showCancel`) · the primary (`footerPrimary`, the next act). A read-out sheet with nothing to commit has NO footer (`noFooter`) — Master Data › Asset 360.
 
 ## Look
 - Sheet: `gap-0 p-0`, side `right`, overlay gap `--fp-sheet-gap` = 56px (level 1) / 112px (level 2); width `--fp-sheet-w` = content width × `var(--fp-scale, 1)`, clamped to `var(--fp-vw) − gap`.
@@ -112,6 +112,10 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 25. **Several partners priced → saved-views underline tabs on the column header's bottom rule**, the label level with the sibling headings; Finalize takes the tab on show — `(source: Pavan 2026-10-26)`
 26. **A total row draws `border-t` only** — `border-y` stacks on the card rim — `(source: misses M-017; eval double-stroke)`
 27. **A field that IS a value is read until adjusted** — a pencil BEFORE the figure (tooltip "Make adjustments" + why), the figure on the same right edge as its siblings; pressed, the box replaces it, right-aligned; never the box and the same figure side by side — `(source: Pavan 2026-10-26; misses M-018)`
+28. **A sheet with nothing to commit has no footer** — no rule, no Confirm; Close is the exit (`noFooter`) — `(source: Pavan 2026-11-02, Asset 360; misses M-041; eval read-sheet-footer)`
+29. **A record's related lists that people search and filter are full list units inside the sheet** — tabs choose the view, one search + Filters under them, `ListTable` with pagination filling the height — `(source: Pavan 2026-11-02; misses M-039/M-040)`
+30. **Directory record sheets may group their read sections under a line tab strip** (`RecordReadSection.tab`, counts from `tabCount`) and give a section a heading `action`; an entity can replace the record sheet with its own layout (`EntityConfig.renderRecord`) while creating still uses the form — `(source: Master Data, 2026-11-02)`
+31. **A select shows its chosen value as the list does** — first letter capital only, never CSS `capitalize`; optional comboboxes offer their empty choice first (`clearLabel`) — `(source: 2026-11-02)`
 
 ## Do / Don't
 - ✅ Pass `fit` with `CELL` widths whenever the sheet holds a table; pass the current step's tables.
@@ -126,6 +130,7 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 - ❌ A bespoke summary or activity block in the rail (use `unit.summary-rail`).
 
 ## Checks
+- `read-sheet-footer` — a sheet whose submit only closes it must pass `noFooter`.
 - `sheets` — a RecordSheet carrying a table (`<table`, `ProductTable`, `DocumentsTable`, `ListTable`) without `fit`; census of sizes.
 - `parity-sheets` — G22 draft chip shown, G23 no Cancel / Save / Update, G25 dead primary says why, G27 no step column, G28 no retired `fill`, G29/G30 shared cards.
 - `fields-fill` — fixed-width field containers.
@@ -137,6 +142,7 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 ## Reference
 - 3PL › Delivery Orders — order sheet (`threepl/BrokerOrderSheet.tsx`): fit + rail, ⋯ menu, Quotation summary, Documents, Discard dialog.
 - 3PL › Asset Orders (`threepl/AssetMovementSheet.tsx`); 3PL › Recurring rules (`threepl/RecurringRuleSheet.tsx`, `RecurringProgramCreate.tsx` with steps).
+- Master Data › Assets — Asset 360 (`masterdata/AssetSheet.tsx`: `size="full"`, `noFooter`, Edit details and Create order sheets at level 2).
 - 3PL › Directory — customer / vendor records (`threepl/DirectoryRecordSheet.tsx`); level 2: Invite partner (`InvitePartnerSheet.tsx`), Vendor quote (`VendorQuoteSheet.tsx`).
 - Sales › Orders and Quotes (`OrderSheet.tsx`, `QuoteSheet.tsx`); Sales › Customers / Assets (`CustomerSheet.tsx`, `AssetSheet.tsx` — `data` when existing, `form` when creating); Export (`ExportSheet.tsx`, `compact`).
 - Service Work › Service Orders (`service/ServiceOrderSheet.tsx`); dispatch at level 2 (`service/DispatchFlow.tsx`).

@@ -59,6 +59,8 @@ export interface FormFieldDef<T> {
   options?: readonly string[];
   /** `combobox` only — offer what was typed when it matches no option. */
   allowCreate?: boolean;
+  /** `combobox` only — the empty choice an OPTIONAL picker offers first ("No customer"). */
+  clearLabel?: string;
   /** Full width in the section grid — instructions, notes, addresses. */
   wide?: boolean;
   /** Reads the value out of the draft. */

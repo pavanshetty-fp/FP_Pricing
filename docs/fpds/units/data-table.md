@@ -104,6 +104,9 @@ The list's table: every record a row, every column sortable, movable and resizab
 14. **Flat headers — no two-tier column groups** unless Pavan asks. — `(source: ui §10e)`
 15. **Full content width, never capped.** — `(source: docs/ds/ux/2-rules.md "Tables — full width…"; parity-tables G43)`
 16. **Every header declares its alignment** (`text-left` unless Pavan names a screen) — a bare `<th>` centres — `(source: misses M-005; eval th-align)`
+17. **The unit is whole whatever the row count** — three rows of data still show the full frame filling the height, with pagination at its foot; inside a sheet too. — `(source: Pavan 2026-11-02, Asset 360; misses M-040; eval full-table-unit)`
+18. **A view people search or filter is a list** — it uses `ListTable`, never the related-records `SheetTable`, even inside a sheet. — `(source: misses M-039; eval filterable-table-unit)`
+19. **A documents column is the documents cell** (file icon + "1 document", breakdown on click), never a status pill. — `(source: misses M-042; eval documents-as-status)`
 
 ## Do / Don't
 - ✅ Measure real rendered cells when adding a column; set `width` from that.
@@ -117,6 +120,7 @@ The list's table: every record a row, every column sortable, movable and resizab
 
 ## Checks
 - `parity-lists` G2, G4, G5; `parity-tables` G39 (booleans are checkboxes), G43 (no width cap).
+- `filterable-table-unit`, `full-table-unit`, `documents-as-status` (2026-11-02).
 - `table-rows` (for editable variants), `tokens` (no raw colors).
 - `fpds-units` — header, column search row, body anatomy.
 - By eye: no gap on the right at any window width; all columns left-aligned; sorted column gray with arrow; a click anywhere on a row opens it.
@@ -126,3 +130,4 @@ The list's table: every record a row, every column sortable, movable and resizab
 - Sales › Orders (selection, grouped), Sales › Customers, Sales › Assets.
 - Customer Portal › Orders (stacked tank lines, `alignTop`, grouped).
 - Service Work › Parts, Price Book, Technicians (via `unit.standard-list`).
+- Master Data › Asset 360 — three view tabs inside a full sheet, each a full unit (`masterdata/AssetViews.tsx`).

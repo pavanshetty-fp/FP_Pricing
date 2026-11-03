@@ -381,3 +381,90 @@ export const noEmptyOptions = {
 };
 
 ALL.push(alphaFill, bannerAnatomy, registryLinks, toolbarGaps, uniqueOptions, readHead, oneFont, noEmptyOptions);
+
+/* ── filterable-table-unit (M-039) ───────────────────────────────────────
+   A view people search and filter is a LIST, so its table is the list's
+   full unit (`ListTable`: sorts, moves, resizes, column search, row opens)
+   — never the small related-records `SheetTable`. Asset 360's three views
+   were built on SheetTable under a filter bar. */
+export const filterableTableUnit = {
+  name: "filterable-table-unit",
+  segment: "2-layouts",
+  rule: "misses M-039 — a searched/filtered view uses ListTable, not SheetTable",
+  check() {
+    const out = [];
+    for (const f of tsx()) {
+      const src = read(f);
+      if (!/<SheetTable\b/.test(src)) continue;
+      if (!/<(ListFilters|ListToolbar)\b/.test(src)) continue;
+      const i = src.search(/<SheetTable\b/);
+      out.push(finding("L1", rel(f), lineOf(src, i), "SheetTable under a search/filter bar — use ListTable (the full list unit)", this.rule));
+    }
+    return out;
+  },
+};
+
+/* ── full-table-unit (M-040) ─────────────────────────────────────────────
+   The table unit is whole whatever the row count: its frame fills the
+   height (a flex-1 container) and pagination sits at its foot. Three rows
+   of data still show the full unit (Pavan, 2026-11-02). */
+export const fullTableUnit = {
+  name: "full-table-unit",
+  segment: "2-layouts",
+  rule: "misses M-040 — every ListTable is the full unit: frame fills the height, pagination at its foot",
+  check() {
+    const out = [];
+    for (const f of tsx()) {
+      const src = read(f);
+      const i = src.search(/<ListTable\b/);
+      if (i < 0) continue;
+      if (!/<TablePagination\b/.test(src))
+        out.push(finding("L1", rel(f), lineOf(src, i), "ListTable without TablePagination at its foot", this.rule));
+      if (!/\bflex-1\b/.test(src))
+        out.push(finding("L1", rel(f), lineOf(src, i), "ListTable's frame does not fill the height (no flex-1 container)", this.rule));
+    }
+    return out;
+  },
+};
+
+/* ── read-sheet-footer (M-041) ───────────────────────────────────────────
+   A sheet with nothing to commit — its submit only closes it — has no
+   footer at all: no rule, no Confirm (Pavan, 2026-11-02, Asset 360). */
+export const readSheetFooter = {
+  name: "read-sheet-footer",
+  segment: "2-layouts",
+  rule: "misses M-041 — a sheet whose submit only closes it passes noFooter",
+  check() {
+    const out = [];
+    for (const f of tsx()) {
+      const src = read(f);
+      for (const m of src.matchAll(/<RecordSheet\b[\s\S]*?\n\s*>/g)) {
+        const tag = m[0];
+        if (!/onSubmit=\{(onClose|\(\) => onOpenChange\(false\))\}/.test(tag)) continue;
+        if (/\bnoFooter\b/.test(tag)) continue;
+        out.push(finding("L1", rel(f), lineOf(src, m.index), "read-only sheet keeps its footer and Confirm — pass noFooter", this.rule));
+      }
+    }
+    return out;
+  },
+};
+
+/* ── documents-as-status (M-042) ─────────────────────────────────────────
+   A documents cell is the documents unit (file icon + "1 document", the
+   breakdown on click) — never a status pill saying Attached / Pending. */
+export const documentsAsStatus = {
+  name: "documents-as-status",
+  segment: "1-components",
+  rule: "misses M-042 — documents are drawn as the documents cell, not a status pill",
+  check() {
+    const out = [];
+    for (const f of tsx()) {
+      const src = read(f);
+      for (const m of src.matchAll(/<(Status|StatusChip)\b[^>]*\b[a-z]+\.documents\b/g))
+        out.push(finding("L1", rel(f), lineOf(src, m.index), "documents shown as a status pill", this.rule));
+    }
+    return out;
+  },
+};
+
+ALL.push(filterableTableUnit, fullTableUnit, readSheetFooter, documentsAsStatus);

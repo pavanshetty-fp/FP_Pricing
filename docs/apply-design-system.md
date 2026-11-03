@@ -2745,6 +2745,23 @@ color is never the only cue. One documents table everywhere —
 `prototypes/unified-view/DocumentsTable.tsx`: Document (icon + name) · Added
 · By · download. **No Kind column** — the format icon says what it is.
 
+## Tables are the full unit at any row count (Pavan, 2026-11-02)
+
+A table is never sized to its rows. Three rows of data still show the whole
+unit: the frame fills the height it is given, pagination sits at its foot,
+and the list toolbar (search, Filters, Search by column, Columns) sits above
+it. Inside a sheet too — a record's related list that people search and
+filter is a list, so it uses `ListTable`, never the small related-records
+`SheetTable`. A documents column is the documents cell (icon + "1 document",
+the list on click), never a status pill. Evals: `full-table-unit`,
+`filterable-table-unit`, `documents-as-status`.
+
+## A read-out sheet has no footer (Pavan, 2026-11-02)
+
+A sheet with nothing to commit — its button would only close it — drops the
+footer completely: no rule, no Confirm. Close is the exit (`RecordSheet
+noFooter`). Eval: `read-sheet-footer`.
+
 ## Tables — full width, checkboxes, delete on hover (Pavan, 2026-10-07)
 
 - **A table takes the FULL content width.** No `max-w-*` cap on a page or

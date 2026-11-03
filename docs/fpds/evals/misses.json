@@ -511,6 +511,71 @@
         "id": "view-tools-beside",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-039",
+      "date": "2026-11-02",
+      "title": "Asset 360's three views used the small SheetTable under a search/filter bar — no sorting, moving, resizing, column search, row open; rows capped at 25",
+      "where": "Master Data › Assets › Asset 360",
+      "foundBy": "claude",
+      "pattern": "generic-over-existing",
+      "why": "Reached for the record sheet's related-records table instead of the list's full table unit, though the views had become filterable lists.",
+      "check": {
+        "id": "filterable-table-unit",
+        "status": "built"
+      }
+    },
+    {
+      "id": "M-040",
+      "date": "2026-11-02",
+      "title": "Table unit shrank to its three rows — the frame must stay full height with pagination at its foot",
+      "where": "Master Data › Assets › Asset 360",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "Sized the table to its rows; the full-unit rule (frame fills, pagination below) was only true of list pages, not written for tables inside sheets.",
+      "check": {
+        "id": "full-table-unit",
+        "status": "built"
+      }
+    },
+    {
+      "id": "M-041",
+      "date": "2026-11-02",
+      "title": "Read-only Asset 360 sheet kept the footer rule and a Confirm button with nothing to confirm",
+      "where": "Master Data › Assets › Asset 360",
+      "foundBy": "pavan",
+      "pattern": "stale-rule",
+      "why": "RecordSheet always drew its footer; the sheet's submit only closed it.",
+      "check": {
+        "id": "read-sheet-footer",
+        "status": "built"
+      }
+    },
+    {
+      "id": "M-042",
+      "date": "2026-11-02",
+      "title": "Documents drawn as an Attached/Pending status pill instead of the documents cell",
+      "where": "Master Data › Assets › Asset 360 movement orders",
+      "foundBy": "claude",
+      "pattern": "generic-over-existing",
+      "why": "Copied the reference's wording instead of the documents unit the app already has (icon + count + breakdown).",
+      "check": {
+        "id": "documents-as-status",
+        "status": "built"
+      }
+    },
+    {
+      "id": "M-043",
+      "date": "2026-11-02",
+      "title": "Asset 360 tables: a Status filter on a value with no column (journey), a blank Status on half the log, a Type filter emptying tabs it does not apply to, and a second date-time format",
+      "where": "Master Data › Assets › Asset 360",
+      "foundBy": "claude",
+      "pattern": "partial-unify",
+      "why": "Built the global filter and the log from the data, not from what each table shows; did not copy the board card's date-time format.",
+      "check": {
+        "id": "manual",
+        "status": "manual"
+      }
     }
   ]
 }

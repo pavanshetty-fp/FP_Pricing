@@ -92,6 +92,15 @@ export interface EntityConfig<Row, K extends string> {
   withAudit: (row: Row, entry: AuditEvent) => Row;
   /** An alternative rendering of the same rows — vendors only, for now. */
   renderMap?: (rows: Row[], open: (row: Row) => void) => React.ReactNode;
+  /** A RECORD LAYOUT OF ITS OWN (Master Data's Asset 360, 2026-11-02) — an
+      existing record opens this instead of the standard record sheet;
+      creating still uses the form. `onChange` writes the record back. */
+  renderRecord?: (args: {
+    row: Row;
+    onClose: () => void;
+    onChange: (next: Row) => void;
+    navigate: Navigator;
+  }) => React.ReactNode;
   /** Verbs beyond archive that this entity's selection supports. */
   extraBulkActions?: (
     selected: Row[],
@@ -335,7 +344,14 @@ export function DirectoryEntityScreen<Row, K extends string>({
         }}
       />
 
-      {initial && (
+      {sheet?.kind === "record" && record && config.renderRecord
+        ? config.renderRecord({
+            row: record,
+            onClose: closeSheet,
+            onChange: (next) => replaceRow(config.rowId(record), () => next),
+            navigate,
+          })
+        : initial && (
         <DirectoryRecordSheet<Row>
           open
           onOpenChange={(next) => {

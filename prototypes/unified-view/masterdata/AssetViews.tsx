@@ -10,10 +10,11 @@ import { ListTable, TwoLineCell, type ListColumn, type ListSort } from "../ListT
 import { BoardV2 } from "../threepl/BoardV2";
 import type { BoardLane } from "../threepl/BrokerBoard";
 import { ReadDrawer, ReadField } from "../threepl/DirectoryRecordSheet";
-import { DASH, dateOffset, formatDate, money } from "../threepl/directoryCore";
+import { DASH, formatDate } from "../threepl/directoryCore";
 import type { MdAsset } from "./assets";
-import { Status, gal, stamp } from "./assetParts";
-import { AssetJourney, journeyMilestones } from "./AssetJourney";
+import { Status, stamp } from "./assetParts";
+import { AssetJourney } from "./AssetJourney";
+import { EVENT_TYPES, activityEvents, journeyMilestones, type EventType } from "./story";
 import { TypeTiles, type LogItem } from "./AssetActivity";
 
 /*
@@ -33,9 +34,6 @@ import { TypeTiles, type LogItem } from "./AssetActivity";
   whatever the row count, and pagination at its foot. Movement orders also
   show as a board by status.
 */
-
-const EVENT_TYPES = ["Deliveries", "Service", "Equipment", "Billing", "Movement", "Lease", "Asset"] as const;
-type EventType = (typeof EVENT_TYPES)[number];
 
 const TABS = ["Asset movement orders", "Asset journey", "Asset activity log"] as const;
 type Tab = (typeof TABS)[number];
@@ -77,55 +75,8 @@ function journeyRows(a: MdAsset): ViewRow[] {
   }));
 }
 
-/**
- * What has happened to the asset, newest first — its history and the real
- * records behind it (deliveries, service orders, inspections, parts fitted,
- * invoices, completed moves, leases). Nothing planned, nothing made up: a
- * row is an event that took place on or before the data's today.
- */
 function activityRows(a: MdAsset): ViewRow[] {
-  const out: { at: string; type: EventType; source: string; event: string; detail: string; status: string; id: string }[] = [];
-  const typeOf = (action: string): EventType =>
-    /Fuel delivered/.test(action) ? "Deliveries"
-      : /Invoice/.test(action) ? "Billing"
-        : /^SO-|overdue/i.test(action) ? "Service"
-          : /^AMO-|Movement/.test(action) ? "Movement"
-            : /^LA-/.test(action) ? "Lease"
-              : /Monitor/.test(action) ? "Equipment"
-                : "Asset";
-  const day = (iso: string) => `${iso.slice(0, 10)}T08:00:00Z`;
-  a.audit.forEach((e) => {
-    const type = typeOf(e.action);
-    out.push({ id: e.id, at: e.at, type, source: e.by, event: e.action, detail: e.changes.join(" · ") || DASH, status: type === "Deliveries" ? "Delivered" : "Done" });
-  });
-  a.serviceOrders.forEach((o) =>
-    out.push({ id: `so-${o.id}`, at: o.scheduled, type: "Service", source: o.technician, event: `${o.id} · ${o.job}`, detail: o.amount === null ? DASH : money(o.amount), status: o.stage }),
-  );
-  a.compliance.forEach((c) => {
-    if (c.last) out.push({ id: `cp-${c.requirement}`, at: day(c.last), type: "Service", source: c.authority, event: c.requirement, detail: `Next due ${formatDate(c.due)}`, status: c.status });
-  });
-  a.leakChecks.forEach((l) =>
-    out.push({ id: `lc-${l.id}`, at: day(l.date), type: "Service", source: l.technician, event: `${l.id} · Leak check`, detail: `${l.method} · ${l.pressure}`, status: l.result }),
-  );
-  a.peripherals.forEach((p) =>
-    out.push({ id: `pr-${p.id}`, at: day(p.installed), type: "Equipment", source: p.model, event: `${p.type} fitted`, detail: `${p.serial} · warranty to ${formatDate(p.warrantyEnds)}`, status: p.status }),
-  );
-  a.invoices.forEach((i) =>
-    out.push({ id: `in-${i.id}`, at: day(i.issued), type: "Billing", source: "Billing", event: `${i.id} · ${i.serviceOrder}`, detail: `${money(i.total)} · due ${formatDate(i.due)}`, status: i.status }),
-  );
-  a.movements.forEach((m) => {
-    if (m.status === "Completed")
-      out.push({ id: `mv-${m.id}`, at: day(m.scheduled), type: "Movement", source: m.source, event: `${m.id} · Moved`, detail: `${m.from} → ${m.to}`, status: m.status });
-  });
-  a.leases.forEach((l) => {
-    if (l.from && l.status !== "Draft")
-      out.push({ id: `ls-${l.id}`, at: day(l.from), type: "Lease", source: a.customer ?? DASH, event: `${l.id} · Lease started`, detail: l.committedGal ? `${gal(l.committedGal)} committed` : DASH, status: l.status });
-  });
-  const today = `${dateOffset(0)}T23:59:59Z`;
-  const audit = new Set(a.audit.map((e) => e.id));
-  return out
-    .filter((r) => audit.has(r.id) || r.at <= today)
-    .sort((x, y) => y.at.localeCompare(x.at))
+  return activityEvents(a)
     .map((r) => ({
       id: r.id,
       text: { when: stamp(r.at), type: r.type, source: r.source, event: `${r.event} ${r.detail}`, eventTitle: r.event, detail: r.detail, status: r.status },

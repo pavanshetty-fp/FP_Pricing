@@ -576,6 +576,19 @@
         "id": "manual",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-044",
+      "date": "2026-11-03",
+      "title": "Asset journey said the same thing twice (\"Received into the fleet at Irving Hub · New unit received\"), and the lifeline bars had outlines",
+      "where": "Master Data › Assets › Asset 360 › Asset journey",
+      "foundBy": "pavan",
+      "pattern": "generic-over-existing",
+      "why": "Printed the data's note next to a title built from the same fact, without reading the line as a whole; the log also added audit rows for invoices and moves that already had their own rows.",
+      "check": {
+        "id": "repeated-copy",
+        "status": "built"
+      }
     }
   ]
 }

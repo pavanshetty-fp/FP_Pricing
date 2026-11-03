@@ -58,7 +58,7 @@ Only **Assets** is built. The other pages show "Not built yet".
 - **Asset journey is a timeline, not a table** (`AssetJourney.tsx`). Top: the
   lifeline — one bar from joining the fleet to the expected contract end,
   each placement a stretch (blue on lease, grey at a yard or site, yellow in
-  the workshop), the future outlined, TODAY in the accent violet — with "In
+  the workshop; no outlines), the future a thin dashed line, TODAY in the accent violet — with "In
   the fleet since", "At its current place since", "Contract ends · in N
   days". Below: milestones oldest-first, dated left, the Activity card's
   marks and line; the current one is the highlighted card, what is expected
@@ -76,3 +76,12 @@ Only **Assets** is built. The other pages show "Not built yet".
 - **Docking (2026-11-03):** the figures scroll away; the work area (tabs,
   search, tiles, table, rail cards) is one sheet-height tall and docks at the
   top — a wheel over it scrolls the sheet first, then the table / cards.
+
+- **No repeated words** (Pavan, 2026-11-03). The journey and log wording
+  lives in `story.ts` (plain data, no React) so the `repeated-copy` eval can
+  read every line: a detail never restates its title or its own date, and
+  two log rows never tell one event twice. A new lease on a placement says
+  "Contract started"; lease milestones read Contract ended / Contract
+  expected to end / Contract starts / Renewal would start, the ID only in
+  the pill. Dropped: the audit rows that repeated an invoice or a completed
+  move, and "Asset record created" under "Created".

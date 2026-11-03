@@ -39,7 +39,7 @@ export const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
   <span className="text-sm text-muted-foreground">{children}</span>
 );
 
-export const gal = (n: number) => `${n.toLocaleString()} gal`;
+export { gal } from "./assets";
 export const perMonth = (n: number | null) => (n === null ? DASH : `${money(n)} / mo`);
 /** `Sep 5, 2026 · 3:10 PM` — the board card's date and time, everywhere here. */
 const TIME = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" });

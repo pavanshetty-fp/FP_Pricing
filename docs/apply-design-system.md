@@ -2762,6 +2762,17 @@ A sheet with nothing to commit — its button would only close it — drops the
 footer completely: no rule, no Confirm. Close is the exit (`RecordSheet
 noFooter`). Eval: `read-sheet-footer`.
 
+## A line never says the same thing twice (Pavan, 2026-11-03)
+
+A detail adds to its title — it never restates it in other words ("Received
+into the fleet at Irving Hub · New unit received" → the note goes). It never
+repeats the row's own date ("here since Jun 21" on the Jun 21 milestone →
+"78 days so far"). Two log rows never tell one event twice ("Invoice
+INV-7741 raised" and the invoice row itself → one row). A lease's first day
+reads "Contract started"; its last, "Contract ended". A repeat Pavan has
+approved is listed in the eval and kept. Eval: `repeated-copy` (reads the
+Asset 360 journey and log from `masterdata/story.ts`).
+
 ## Tables — full width, checkboxes, delete on hover (Pavan, 2026-10-07)
 
 - **A table takes the FULL content width.** No `max-w-*` cap on a page or

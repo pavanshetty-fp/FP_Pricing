@@ -468,3 +468,92 @@ export const documentsAsStatus = {
 };
 
 ALL.push(filterableTableUnit, fullTableUnit, readSheetFooter, documentsAsStatus);
+
+/* ── repeated-copy (M-044) ───────────────────────────────────────────────
+   A line never says the same thing twice. Reads the Master Data asset story
+   as the user sees it (journey milestones, activity log events — built in
+   masterdata/story.ts from the asset records) and flags:
+     · a detail that repeats a word of its own title ("Received into the
+       fleet at Irving Hub · New unit received"),
+     · a detail that repeats the row's own date ("here since Jun 21" on the
+       Jun 21 milestone),
+     · two log events on one day about the same record in other words
+       ("Invoice INV-7741 raised" and "INV-7741 · SO-4399").
+   Names (capitalised words inside a phrase, words with digits) are not compared — two depots
+   are not a repeat. A repeat Pavan has approved goes in APPROVED_REPEATS as
+   "title | detail" and is skipped (Pavan, 2026-11-03). */
+const APPROVED_REPEATS = new Set([]);
+const STOP = new Set("the and for from into with until since days far still this that here would been have has".split(" "));
+const words = (s) =>
+  new Set(
+    s
+      .split(/\s*(?:·|→|—|,)\s*/)
+      .flatMap((seg) => seg.split(/\s+/).filter((w, i) => (i === 0 || !/^[A-Z]/.test(w)) && !/\d/.test(w)))
+      .map((w) => w.toLowerCase().replace(/[^a-z]/g, ""))
+      .filter((w) => w.length >= 4 && !STOP.has(w))
+      .map((w) => w.slice(0, 4)),
+  );
+const shared = (a, b) => [...words(a)].filter((w) => words(b).has(w));
+const recordIds = (s) => new Set(s.match(/\b[A-Z]{2,3}-\d+\b/g) ?? []);
+
+let storyCache;
+async function loadStory() {
+  if (storyCache) return storyCache;
+  const { buildSync } = await import("esbuild");
+  const { ROOT } = await import("./lib.mjs");
+  const out = buildSync({
+    stdin: {
+      contents: `export { MD_ASSETS } from "./prototypes/unified-view/masterdata/assets";
+        export { activityEvents, journeyMilestones } from "./prototypes/unified-view/masterdata/story";
+        export { formatDate } from "./prototypes/unified-view/threepl/directoryCore";`,
+      resolveDir: ROOT,
+      loader: "ts",
+    },
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+    write: false,
+    logLevel: "silent",
+  });
+  const module = { exports: {} };
+  new Function("module", "exports", out.outputFiles[0].text)(module, module.exports);
+  return (storyCache = module.exports);
+}
+const STORY = "prototypes/unified-view/masterdata/story.ts";
+
+export const repeatedCopy = {
+  name: "repeated-copy",
+  segment: "4-content",
+  rule: "misses M-044 — a line never repeats its own title, its own date, or another event in other words",
+  async check() {
+    const out = [];
+    const { MD_ASSETS, activityEvents, journeyMilestones, formatDate } = await loadStory();
+    const flag = (title, detail, why) => {
+      if (APPROVED_REPEATS.has(`${title} | ${detail}`)) return;
+      out.push(finding("L1", STORY, 1, `${why}: "${title}" · "${detail}"`, this.rule));
+    };
+    for (const a of MD_ASSETS) {
+      for (const m of journeyMilestones(a)) {
+        const hit = shared(m.title, m.detail);
+        if (hit.length) flag(m.title, m.detail, `${a.id} journey detail repeats its title (${hit.join(", ")}…)`);
+        if (m.detail.includes(formatDate(m.date))) flag(m.title, m.detail, `${a.id} journey detail repeats its own date`);
+      }
+      const events = activityEvents(a);
+      for (const e of events) {
+        const hit = shared(e.event, e.detail);
+        if (hit.length) flag(e.event, e.detail, `${a.id} log detail repeats its event (${hit.join(", ")}…)`);
+      }
+      events.forEach((x, i) =>
+        events.slice(i + 1).forEach((y) => {
+          if (x.at.slice(0, 10) !== y.at.slice(0, 10)) return;
+          const ids = [...recordIds(`${x.event} ${x.detail}`)].filter((id) => recordIds(`${y.event} ${y.detail}`).has(id));
+          if (ids.length >= 2 || (ids.length === 1 && shared(x.event, y.event).length))
+            flag(x.event, y.event, `${a.id} two log events say the same thing on ${x.at.slice(0, 10)}`);
+        }),
+      );
+    }
+    return out;
+  },
+};
+
+ALL.push(repeatedCopy);

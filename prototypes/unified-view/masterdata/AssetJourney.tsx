@@ -4,6 +4,7 @@ import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
 import { DASH, dateOffset, daysFromToday, formatDate } from "../threepl/directoryCore";
 import type { MdAsset } from "./assets";
+import type { Milestone, MilestoneKind } from "./story";
 
 /*
   ASSET JOURNEY AS A TIMELINE (Pavan, 2026-11-03 — "a journey of an asset
@@ -15,7 +16,7 @@ import type { MdAsset } from "./assets";
     · THE LIFELINE — one bar from the day the asset joined the fleet to the
       day its contract is expected to end. Each stretch is a placement,
       sized by how long it lasted (at the yard, in the workshop, on lease);
-      the part still to come is outlined, not filled; TODAY is the violet
+      the part still to come is a thin dashed line; TODAY is the violet
       mark (the accent is for the current stage only). Over it, the three
       dates people ask about: in the fleet since, on the current placement
       since, contract ends.
@@ -30,20 +31,7 @@ import type { MdAsset } from "./assets";
   order.
 */
 
-export type MilestoneState = "Done" | "Current" | "Upcoming";
-
-export interface Milestone {
-  id: string;
-  date: string;
-  state: MilestoneState;
-  kind: "received" | "placed" | "moved" | "lease" | "workshop" | "end";
-  title: string;
-  detail: string;
-  /** Linked records — a lease, an order. */
-  refs: string[];
-}
-
-const ICON: Record<Milestone["kind"], React.ReactNode> = {
+const ICON: Record<MilestoneKind, React.ReactNode> = {
   received: <PackageCheck />,
   placed: <MapPin />,
   moved: <ArrowRightLeft />,
@@ -51,60 +39,6 @@ const ICON: Record<Milestone["kind"], React.ReactNode> = {
   workshop: <Wrench />,
   end: <Flag />,
 };
-
-const placeKind = (location: string, note: string, lease: string | null): Milestone["kind"] =>
-  /workshop|refurb/i.test(`${location} ${note}`) ? "workshop" : lease ? "placed" : "moved";
-
-/** Every milestone in the asset's life, past and expected, oldest first. */
-export function journeyMilestones(a: MdAsset): Milestone[] {
-  const today = dateOffset(0);
-  const out: Milestone[] = [];
-  a.journey.forEach((p, i) => {
-    const current = !p.to;
-    const [place, who] = p.location.split(" — ");
-    const kind: Milestone["kind"] = i === 0 ? "received" : placeKind(p.location, p.note, p.lease);
-    /* A SENTENCE, NOT A LOCATION STRING — what happened, then where. */
-    const verb =
-      i === 0
-        ? a.ownership === "Rental" ? "Received into the fleet at" : "Registered at"
-        : kind === "workshop"
-          ? "In the workshop at"
-          : /lease/i.test(p.note)
-            ? "Placed at"
-            : "Moved to";
-    out.push({
-      id: `pl-${i}`,
-      date: p.from,
-      state: current ? "Current" : "Done",
-      kind,
-      title: `${verb} ${place}`,
-      /* "Agriland FS" is a customer; "yard" is a description — dropped. */
-      detail: [who && /^[A-Z]/.test(who) ? who : null, p.note, current ? `here since ${formatDate(p.from)}` : `until ${formatDate(p.to)}`].filter(Boolean).join(" · "),
-      refs: [p.lease, p.order].filter((x): x is string => Boolean(x)),
-    });
-  });
-  a.leases.forEach((l) => {
-    if (l.status === "Ended" && l.to)
-      out.push({ id: `le-${l.id}`, date: l.to, state: "Done", kind: "lease", title: `Lease ${l.id} ended`, detail: l.from ? `Ran from ${formatDate(l.from)}` : DASH, refs: [l.id] });
-    if (l.status === "Active" && l.to)
-      out.push({ id: `le-${l.id}`, date: l.to, state: "Upcoming", kind: "end", title: "Contract expected to end", detail: `Lease ${l.id}`, refs: [l.id] });
-    if ((l.status === "Signed" || l.status === "Draft") && l.from)
-      out.push({
-        id: `ls-${l.id}`,
-        date: l.from,
-        state: "Upcoming",
-        kind: "lease",
-        title: l.status === "Draft" ? `Renewal ${l.id} would start` : `Lease ${l.id} starts`,
-        detail: l.status === "Draft" ? "Drafted, not signed" : "Signed",
-        refs: [l.id],
-      });
-  });
-  a.movements.forEach((m) => {
-    if ((m.status === "Scheduled" || m.status === "Draft") && m.scheduled >= today)
-      out.push({ id: `mv-${m.id}`, date: m.scheduled, state: "Upcoming", kind: "moved", title: `Move to ${m.to}`, detail: `From ${m.from} · ${m.status.toLowerCase()}`, refs: [m.id] });
-  });
-  return out.sort((x, y) => x.date.localeCompare(y.date));
-}
 
 /* ─────────────────────────────────────────────────────────── lifeline ── */
 
@@ -162,15 +96,15 @@ function Lifeline({ a }: { a: MdAsset }) {
               <span
                 key={i}
                 title={`${p.location} · ${formatDate(p.from)} – ${p.to ? formatDate(p.to) : "today"}`}
-                className={cn("absolute inset-y-0 rounded-full border-2 border-background", SEGMENT[kind])}
+                className={cn("absolute inset-y-0 rounded-full", SEGMENT[kind])}
                 style={{ left: at(p.from), width: width(p.from, end) }}
               />
             );
           })}
-          {/* WHAT IS STILL TO COME — outlined, not filled. */}
+          {/* WHAT IS STILL TO COME — a thin dashed line, not a bar. */}
           {last > today && (
             <span
-              className="absolute inset-y-0 rounded-full border border-dashed border-muted-foreground/60"
+              className="absolute top-1/2 -translate-y-1/2 border-t-2 border-dashed border-muted-foreground/60"
               style={{ left: at(today), width: width(today, last) }}
             />
           )}
@@ -194,7 +128,7 @@ function Lifeline({ a }: { a: MdAsset }) {
           </li>
         ))}
         <li className="flex items-center gap-1.5">
-          <span aria-hidden className="h-2 w-4 rounded-full border border-dashed border-muted-foreground/60" />
+          <span aria-hidden className="w-4 border-t-2 border-dashed border-muted-foreground/60" />
           Expected
         </li>
       </ul>

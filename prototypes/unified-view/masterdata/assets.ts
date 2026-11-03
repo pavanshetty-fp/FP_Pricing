@@ -98,6 +98,8 @@ export interface MdMovement {
   documents: "Attached" | "Pending";
 }
 
+export const gal = (n: number) => `${n.toLocaleString()} gal`;
+
 export interface MdPlacement {
   location: string;
   from: string;
@@ -261,7 +263,7 @@ const created = (days: number): AuditEvent => ({
   at: at(days, "08:00"),
   by: "Dana Whitfield",
   action: "Created",
-  changes: ["Asset record created"],
+  changes: [],
 });
 
 /** Every delivery is an event on the asset's history too — one source. */
@@ -321,9 +323,9 @@ const TK2201: MdAsset = withEvents(
       { id: "AMO-3420", source: "Dispatch", from: "Event Depot", to: "Winterset Depot", scheduled: dateOffset(9), status: "Scheduled", documents: "Pending" },
     ],
     journey: [
-      { location: "Irving Hub — yard", from: dateOffset(-240), to: dateOffset(-188), lease: null, order: null, note: "New unit received" },
-      { location: "Winterset Depot — Agriland FS", from: dateOffset(-187), to: dateOffset(-79), lease: "LA-5005", order: "AMO-3104", note: "Placed under lease" },
-      { location: "Event Depot — Agriland FS", from: dateOffset(-78), to: null, lease: "LA-5006", order: "AMO-3311", note: "Relocated" },
+      { location: "Irving Hub — yard", from: dateOffset(-240), to: dateOffset(-188), lease: null, order: null, note: "" },
+      { location: "Winterset Depot — Agriland FS", from: dateOffset(-187), to: dateOffset(-79), lease: "LA-5005", order: "AMO-3104", note: "" },
+      { location: "Event Depot — Agriland FS", from: dateOffset(-78), to: null, lease: "LA-5006", order: "AMO-3311", note: "" },
     ],
     serviceOrders: [
       { id: "SO-4410", job: "Annual leak check", technician: "Ravi Menon", scheduled: `${dateOffset(7)}T08:00:00Z`, amount: null, stage: "Assigned", documents: "Pending" },
@@ -356,7 +358,6 @@ const TK2201: MdAsset = withEvents(
     ],
   },
   [
-    { id: "au-so4399-i", at: at(-33, "09:20"), by: "Billing", action: "SO-4399 · Invoice INV-7741 raised", changes: ["$151.55"] },
     { id: "au-so4399-c", at: at(-34, "10:48"), by: "Ravi Menon (field app)", action: "SO-4399 · Job completed", changes: ["Signed by M. Reyes"] },
     { id: "au-so4399-a", at: at(-37, "09:00"), by: "Dispatch", action: "SO-4399 · Technician assigned", changes: ["Ravi Menon"] },
     { id: "au-so4410-a", at: at(-2, "15:10"), by: "Dispatch", action: "SO-4410 · Technician assigned", changes: ["Ravi Menon"] },
@@ -401,8 +402,8 @@ const TK2208: MdAsset = withEvents(
     ],
     journey: [
       { location: "Irving Hub — yard", from: dateOffset(-400), to: dateOffset(-229), lease: null, order: null, note: "Refurbished and returned to stock" },
-      { location: "Bear Mountain — Customer Test", from: dateOffset(-228), to: dateOffset(-13), lease: "LA-5009", order: "AMO-3122", note: "Placed under lease" },
-      { location: "Bear Mountain north pad — Customer Test", from: dateOffset(-12), to: null, lease: "LA-5009", order: "AMO-3398", note: "Moved on site" },
+      { location: "Bear Mountain — Customer Test", from: dateOffset(-228), to: dateOffset(-13), lease: "LA-5009", order: "AMO-3122", note: "" },
+      { location: "Bear Mountain north pad — Customer Test", from: dateOffset(-12), to: null, lease: "LA-5009", order: "AMO-3398", note: "Same lease" },
     ],
     serviceOrders: [
       { id: "SO-4415", job: "Gauge calibration", technician: "Ben Ortiz", scheduled: `${dateOffset(4)}T09:30:00Z`, amount: null, stage: "Assigned", documents: "Pending" },
@@ -437,7 +438,6 @@ const TK2208: MdAsset = withEvents(
   },
   [
     { id: "au-so4415", at: at(-1, "11:05"), by: "Dispatch", action: "SO-4415 · Technician assigned", changes: ["Ben Ortiz"] },
-    { id: "au-mv3398", at: at(-12, "14:00"), by: "Dispatch", action: "AMO-3398 · Movement completed", changes: ["Bear Mountain → north pad"] },
   ],
   -400,
 );
@@ -477,9 +477,9 @@ const TT0413: MdAsset = withEvents(
       { id: "AMO-3121", source: "Dispatch", from: "sp ship to 1", to: "Irving Hub", scheduled: dateOffset(-90), status: "Completed", documents: "Attached" },
     ],
     journey: [
-      { location: "sp ship to 1 — SP Energy", from: dateOffset(-460), to: dateOffset(-90), lease: "LA-4991", order: "AMO-2990", note: "Placed under lease" },
+      { location: "sp ship to 1 — SP Energy", from: dateOffset(-460), to: dateOffset(-90), lease: "LA-4991", order: "AMO-2990", note: "" },
       { location: "Irving Hub — yard", from: dateOffset(-90), to: dateOffset(-89), lease: null, order: "AMO-3121", note: "Cleaned between leases" },
-      { location: "sp ship to 1 — SP Energy", from: dateOffset(-88), to: null, lease: "LA-5011", order: "AMO-3260", note: "Placed under lease" },
+      { location: "sp ship to 1 — SP Energy", from: dateOffset(-88), to: null, lease: "LA-5011", order: "AMO-3260", note: "" },
     ],
     serviceOrders: [
       { id: "SO-4380", job: "Seal replacement", technician: "Ana Cruz", scheduled: `${dateOffset(-50)}T09:00:00Z`, amount: 85, stage: "Invoiced", documents: "Attached" },
@@ -545,9 +545,9 @@ const TR7702: MdAsset = withEvents(
       { id: "AMO-2870", source: "Lease", from: "Irving Hub", to: "Fort Worth Yard", scheduled: dateOffset(-500), status: "Completed", documents: "Attached" },
     ],
     journey: [
-      { location: "Fort Worth Yard — Lone Star Transport", from: dateOffset(-500), to: dateOffset(-160), lease: "LA-4870", order: "AMO-2870", note: "Placed under lease" },
+      { location: "Fort Worth Yard — Lone Star Transport", from: dateOffset(-500), to: dateOffset(-160), lease: "LA-4870", order: "AMO-2870", note: "" },
       { location: "Irving Hub — workshop", from: dateOffset(-159), to: dateOffset(-40), lease: null, order: "AMO-3015", note: "Refurbished" },
-      { location: "Irving Hub — yard", from: dateOffset(-39), to: null, lease: null, order: null, note: "Available at hub" },
+      { location: "Irving Hub — yard", from: dateOffset(-39), to: null, lease: null, order: null, note: "Ready to lease" },
     ],
     serviceOrders: [
       { id: "SO-4396", job: "Brake and light inspection", technician: "Ben Ortiz", scheduled: `${dateOffset(-40)}T08:00:00Z`, amount: 540, stage: "Invoiced", documents: "Attached" },
@@ -581,9 +581,8 @@ const TR7702: MdAsset = withEvents(
     ],
   },
   [
-    { id: "au-so4396-p", at: at(-30, "10:00"), by: "Billing", action: "SO-4396 · Invoice INV-7702 paid", changes: ["$562.90"] },
     { id: "au-so4396-c", at: at(-40, "11:40"), by: "Ben Ortiz (field app)", action: "SO-4396 · Job completed", changes: ["Signed by K. Dunn"] },
-    { id: "au-la5007", at: at(-4, "13:00"), by: "Dana Whitfield", action: "LA-5007 · Lease signed", changes: ["Starts in 14 days"] },
+    { id: "au-la5007", at: at(-4, "13:00"), by: "Dana Whitfield", action: "LA-5007 · Contract signed", changes: ["Starts in 14 days"] },
   ],
   -900,
 );
@@ -621,9 +620,9 @@ const TK2214: MdAsset = withEvents(
       { id: "AMO-2950", source: "Lease", from: "Irving Hub", to: "hartest2", scheduled: dateOffset(-521), status: "Completed", documents: "Attached" },
     ],
     journey: [
-      { location: "hartest2 — Hartest123", from: dateOffset(-520), to: dateOffset(-130), lease: "LA-4950", order: "AMO-2950", note: "Placed under lease" },
+      { location: "hartest2 — Hartest123", from: dateOffset(-520), to: dateOffset(-130), lease: "LA-4950", order: "AMO-2950", note: "" },
       { location: "Irving Hub — yard", from: dateOffset(-130), to: dateOffset(-129), lease: null, order: null, note: "Swapped between leases" },
-      { location: "hartest2 — Hartest123", from: dateOffset(-128), to: null, lease: "LA-5010", order: "AMO-3215", note: "Placed under lease" },
+      { location: "hartest2 — Hartest123", from: dateOffset(-128), to: null, lease: "LA-5010", order: "AMO-3215", note: "" },
     ],
     serviceOrders: [
       { id: "SO-4431", job: "Filter change", technician: "Ravi Menon", scheduled: `${dateOffset(2)}T09:00:00Z`, amount: null, stage: "Open", documents: "Not attached" },
@@ -685,7 +684,7 @@ const CO1102: MdAsset = withEvents(
       dl("DL-9803", -22, "Dyed Diesel", 520),
     ],
     movements: [],
-    journey: [{ location: "Adel Yard — Agriland FS", from: dateOffset(-1200), to: null, lease: null, order: null, note: "Customer's own tank, registered for deliveries" }],
+    journey: [{ location: "Adel Yard — Agriland FS", from: dateOffset(-1200), to: null, lease: null, order: null, note: "Customer's own tank, for deliveries" }],
     serviceOrders: [
       { id: "SO-4360", job: "Annual leak check", technician: "Ravi Menon", scheduled: `${dateOffset(-60)}T09:00:00Z`, amount: 110, stage: "Invoiced", documents: "Attached" },
       { id: "SO-4433", job: "Gauge calibration", technician: "Ana Cruz", scheduled: `${dateOffset(20)}T10:00:00Z`, amount: null, stage: "Open", documents: "Not attached" },
@@ -745,7 +744,7 @@ const CO1210: MdAsset = withEvents(
       dl("DL-9806", -18, "Clear Diesel", 410, MD_CARRIERS[1]),
     ],
     movements: [],
-    journey: [{ location: "Asheville Terminal — Blue Ridge Fleet", from: dateOffset(-800), to: null, lease: null, order: null, note: "Customer's own tank, registered for deliveries" }],
+    journey: [{ location: "Asheville Terminal — Blue Ridge Fleet", from: dateOffset(-800), to: null, lease: null, order: null, note: "Customer's own tank, for deliveries" }],
     serviceOrders: [
       { id: "SO-4372", job: "Filter change", technician: "Ana Cruz", scheduled: `${dateOffset(-55)}T09:00:00Z`, amount: 140, stage: "Invoiced", documents: "Attached" },
       { id: "SO-4425", job: "Annual leak check", technician: "Ana Cruz", scheduled: `${dateOffset(16)}T09:00:00Z`, amount: null, stage: "Assigned", documents: "Pending" },

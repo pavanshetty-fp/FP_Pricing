@@ -445,7 +445,13 @@ export function DirectoryRecordSheet<T>({
                 the left edge of the labels and the right edge of the sheet —
                 are the two things the row is pinned to.
               */
-              f.kind === "switch" || f.kind === "checkbox" ? (
+              f.render ? (
+                /* A shared control with its own label — full width. */
+                <div key={f.key} id={f.key} className="col-span-full flex flex-col gap-1.5">
+                  {f.render(draft, (next) => setDraft(next))}
+                  {showError(f.key) && <p className="text-xs text-destructive">{errors[f.key]}</p>}
+                </div>
+              ) : f.kind === "switch" || f.kind === "checkbox" ? (
                 <div
                   key={f.key}
                   className="col-span-full flex items-start justify-between gap-4"

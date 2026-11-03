@@ -38,6 +38,7 @@ export const MD_PRODUCTS = ["Dyed Diesel", "Clear Diesel", "Unleaded 87", "DEF",
 
 export const MD_SITES = [
   "Winterset Depot",
+  "Event Depot",
   "Adel Yard",
   "Bear Mountain",
   "sp ship to 1",
@@ -297,8 +298,11 @@ const TK2201: MdAsset = withEvents(
     status: "On rent",
     recordStatus: "active",
     customer: "Agriland FS",
-    site: "Winterset Depot",
-    address: "1420 Depot Rd, Winterset, IA 50273",
+    /* WHERE THE JOURNEY SAYS IT IS — relocated to Event Depot under
+       LA-5006 (the reference kept Winterset Depot here and Event Depot in
+       the journey). It goes back with AMO-3420. */
+    site: "Event Depot",
+    address: "55 Fairground Rd, Winterset, IA 50273",
     placedOn: dateOffset(-187),
     onRentSince: dateOffset(-187),
     rate: 120,

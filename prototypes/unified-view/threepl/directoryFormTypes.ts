@@ -1,3 +1,4 @@
+import type * as React from "react";
 
 /*
   The Directory's form VOCABULARY — the field and section shapes the four
@@ -72,6 +73,12 @@ export interface FormFieldDef<T> {
   /** Hidden when this returns false — dependent fields, e.g. a limit that only
    *  applies to approved accounts. */
   visible?: (draft: T) => boolean;
+  /**
+   * A SHARED CONTROL IN PLACE OF THE STANDARD ONE (2026-11-03) — the delivery
+   * window timeline, which brings its own label. Drawn full width; `get`
+   * still answers "is it filled" for required and pending.
+   */
+  render?: (draft: T, setDraft: (next: T) => void) => React.ReactNode;
 }
 
 export interface FormSectionDef<T> {

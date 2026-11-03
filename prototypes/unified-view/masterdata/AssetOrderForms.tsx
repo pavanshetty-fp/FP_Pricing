@@ -4,6 +4,8 @@ import type { FormFieldDef, FormSectionDef } from "../threepl/directoryFormTypes
 import { MOVEMENT_LABEL, type MovementDirection } from "../threepl/orders";
 import { dateOffset } from "../threepl/directoryCore";
 import { MD_ASSETS, MD_OWNERSHIP, MD_SITES, type MdAsset } from "./assets";
+import { DeliveryWindowTimeline, type TimeSpan } from "../DeliveryWindowTimeline";
+import { formatWindow } from "@/components/form-layout/TimeWindowSlider";
 
 /*
   CREATE ORDER FROM ASSET 360 (Pavan, 2026-11-02) — "Create order" offers a
@@ -17,8 +19,7 @@ import { MD_ASSETS, MD_OWNERSHIP, MD_SITES, type MdAsset } from "./assets";
 */
 
 const ASSET_IDS = MD_ASSETS.map((a) => a.id);
-const SITES = [...MD_SITES, "Event Depot", "Fort Worth Yard"];
-const WINDOWS = ["6:00 AM – 10:00 AM", "8:00 AM – 12:00 PM", "12:00 PM – 4:00 PM", "4:00 PM – 8:00 PM"];
+const SITES = [...MD_SITES, "Fort Worth Yard"];
 const DIRECTIONS = Object.keys(MOVEMENT_LABEL) as MovementDirection[];
 const TECHNICIANS = ["Ravi Menon", "Dana Kohl", "Lena Kovacs", "Ben Ortiz", "Ana Cruz"];
 const DRIVERS = ["M. Alvarez", "D. Whitfield", "P. Raman", "T. Nguyen", "J. Carter"];
@@ -62,7 +63,11 @@ export interface MovementDraft {
   to: string;
   direction: string;
   date: string;
-  window: string;
+  /** The delivery window, minutes from midnight, and preferred times in it —
+      the shared timeline every order sheet uses. */
+  windowStart: number;
+  windowEnd: number;
+  preferred: TimeSpan[];
   fulfillment: string;
   notes: string;
   linked: string;
@@ -88,7 +93,25 @@ const MOVEMENT_FORM: FormSectionDef<MovementDraft>[] = [
     fields: [
       field("direction", "Movement type", "select", { required: true, options: DIRECTIONS.map((k) => MOVEMENT_LABEL[k]) }),
       field("date", "Scheduled date", "date", { required: true }),
-      field("window", "Window", "select", { required: true, options: WINDOWS }),
+      {
+        key: "window",
+        label: "Delivery window",
+        kind: "text",
+        required: true,
+        wide: true,
+        get: (d) => (d.windowEnd > d.windowStart ? formatWindow(d.windowStart, d.windowEnd) : ""),
+        set: (d) => d,
+        render: (d, setDraft) => (
+          <DeliveryWindowTimeline
+            required
+            start={d.windowStart}
+            end={d.windowEnd}
+            onWindowChange={(windowStart, windowEnd) => setDraft({ ...d, windowStart, windowEnd })}
+            preferred={d.preferred}
+            onPreferredChange={(preferred) => setDraft({ ...d, preferred })}
+          />
+        ),
+      },
       field("fulfillment", "Fulfillment", "select", { required: true, options: ["First party", "3PL"] }),
       field("notes", "Notes", "textarea", { wide: true }),
     ],
@@ -222,7 +245,7 @@ export function AssetOrderSheet({
         noun="Movement Order"
         title="Create New Movement Order"
         recordKey={key}
-        initial={{ uid: key, asset: a.id, from: a.site, to: "", direction: "", date: dateOffset(1), window: "", fulfillment: "First party", notes: "", linked: "" }}
+        initial={{ uid: key, asset: a.id, from: a.site, to: "", direction: "", date: dateOffset(1), windowStart: 8 * 60, windowEnd: 12 * 60, preferred: [], fulfillment: "First party", notes: "", linked: "" }}
         sections={form}
         onSubmit={(d) => {
           onCreateMovement(d);

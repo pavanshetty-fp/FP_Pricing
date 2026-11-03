@@ -22,6 +22,8 @@ import { deliveryStats, levelPct, monitorState, type MdAsset } from "./assets";
 import { STATUS_KIND, Status, assetActions, gal, stamp } from "./assetParts";
 import { AssetViews } from "./AssetViews";
 import { AssetOrderSheet } from "./AssetOrderForms";
+import { DetailsCards, DetailsGrouped } from "./AssetDetails";
+import { VersionSwitch, useVersion } from "./VersionSwitch";
 
 /*
   ASSET 360 (Pavan, 2026-11-02 — "keep the format similar to the Lovable
@@ -81,6 +83,7 @@ export function AssetSheet({
   const { createMovement, createService, toggleMonitor } = assetActions(a, update);
   /* CREATE ORDER (Pavan, 2026-11-02) — one button, two orders, each its own sheet. */
   const [creating, setCreating] = React.useState<"movement" | "service" | null>(null);
+  const [detailsV, setDetailsV] = useVersion("fp-md-asset-details-v");
   const pct = levelPct(a);
   const stats = deliveryStats(a);
   const leases = [...a.leases].sort((x, y) => (y.from ?? "").localeCompare(x.from ?? ""));
@@ -191,7 +194,16 @@ export function AssetSheet({
           <AssetViews asset={a} />
 
           {/* RIGHT, AS THE RAIL (Pavan, 2026-11-02) — every fact the reference lists, read-only. */}
-          <div className="min-h-0 overflow-auto">
+          <div className="flex min-h-0 flex-col gap-3 overflow-auto">
+          {/* THE CARD IN THREE VERSIONS, to choose from (Pavan, 2026-11-03). */}
+          <span className="flex justify-end">
+            <VersionSwitch label="Details" value={detailsV} onChange={setDetailsV} />
+          </span>
+          {detailsV === "2" ? (
+            <DetailsGrouped a={a} onEdit={() => setEditing(true)} onToggleMonitor={toggleMonitor} />
+          ) : detailsV === "3" ? (
+            <DetailsCards a={a} onEdit={() => setEditing(true)} onToggleMonitor={toggleMonitor} />
+          ) : (
           <RailCard
             title="Asset details"
             action={
@@ -256,6 +268,7 @@ export function AssetSheet({
               )}
             </dl>
           </RailCard>
+          )}
           </div>
         </div>
       </RecordSheet>

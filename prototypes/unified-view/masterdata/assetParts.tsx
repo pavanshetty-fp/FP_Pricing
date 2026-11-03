@@ -5,6 +5,7 @@ import { kindTone, type StatusKind } from "../statusKind";
 import { DASH, dateOffset, formatDate, money, type AuditEvent } from "../threepl/directoryCore";
 import { type MdAsset, type MdAssetStatus } from "./assets";
 import type { MovementDraft, ServiceDraft } from "./AssetOrderForms";
+import { formatWindow } from "@/components/form-layout/TimeWindowSlider";
 
 /*
   The parts the Assets list and its Asset 360 sheet share — status pills by
@@ -92,7 +93,7 @@ export function assetActions(a: MdAsset, update: (uid: string, fn: (a: MdAsset) 
         { id, source: d.linked ? "Lease" : "Dispatch", from: d.from, to: d.to, scheduled: d.date, status: "Scheduled", documents: "Pending" },
         ...x.movements,
       ],
-      audit: [log(`${id} · Movement order created`, [`${d.from} → ${d.to}`, `${d.direction} · ${d.window}`]), ...x.audit],
+      audit: [log(`${id} · Movement order created`, [`${d.from} → ${d.to}`, `${d.direction} · ${formatWindow(d.windowStart, d.windowEnd)}`]), ...x.audit],
     }));
     toast.success(`Movement order ${id} created`);
   };

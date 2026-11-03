@@ -13,9 +13,13 @@ import { ReadDrawer, ReadField } from "../threepl/DirectoryRecordSheet";
 import { DASH, dateOffset, formatDate, money } from "../threepl/directoryCore";
 import type { MdAsset } from "./assets";
 import { Status, gal, stamp } from "./assetParts";
+import { AssetJourney, journeyMilestones } from "./AssetJourney";
+import { ActivityFeed, TypeTiles, type LogItem } from "./AssetActivity";
+import { VersionSwitch, useVersion } from "./VersionSwitch";
 
 /*
-  ASSET 360 — THE THREE VIEWS (Pavan, 2026-11-02).
+  ASSET 360 — THE THREE VIEWS (Pavan, 2026-11-02). The journey is a
+  timeline, not a table (2026-11-03 — AssetJourney.tsx).
 
   Tabs on top are the VIEW: Asset movement orders · Asset journey · Asset
   activity log. Under them ONE search and ONE Filters for all three — a
@@ -64,16 +68,14 @@ function movementRows(a: MdAsset): ViewRow[] {
   }));
 }
 
+/** The journey's milestones as rows — so the shared search and Status filter
+ *  narrow the timeline exactly as they narrow a table. */
 function journeyRows(a: MdAsset): ViewRow[] {
-  return [...a.journey].reverse().map((p) => {
-    const status = p.to ? "Ended" : "Current";
-    return {
-      id: `${p.location}-${p.from}`,
-      text: { location: p.location, from: formatDate(p.from), to: p.to ? formatDate(p.to) : DASH, lease: p.lease ?? DASH, order: p.order ?? DASH, status, note: p.note },
-      sort: { from: p.from, to: p.to ?? "9999" },
-      status,
-    };
-  });
+  return journeyMilestones(a).map((m) => ({
+    id: m.id,
+    text: { date: formatDate(m.date), title: m.title, detail: m.detail, refs: m.refs.join(" "), status: m.state },
+    status: m.state,
+  }));
 }
 
 /**
@@ -154,14 +156,13 @@ const COLS: Record<Tab, ListColumn<string>[]> = {
     { key: "status", label: "Status", width: 120, sortable: true },
     { key: "documents", label: "Documents", width: 130, sortable: true },
   ],
+  /* The timeline draws these; they name what search and Filters read. */
   "Asset journey": [
-    { key: "location", label: "Location", width: 230, sortable: true },
-    { key: "from", label: "From", width: 120, sortable: true },
-    { key: "to", label: "To", width: 120, sortable: true },
-    { key: "lease", label: "Lease", width: 90, sortable: true },
-    { key: "order", label: "Order", width: 100, sortable: true },
-    { key: "status", label: "Status", width: 100, sortable: true },
-    { key: "note", label: "Note", width: 190, sortable: true },
+    { key: "date", label: "Date", width: 130, sortable: true },
+    { key: "title", label: "Milestone", width: 260, sortable: true },
+    { key: "detail", label: "Detail", width: 220, sortable: true },
+    { key: "refs", label: "Records", width: 160, sortable: true },
+    { key: "status", label: "Status", width: 110, sortable: true },
   ],
   "Asset activity log": [
     { key: "when", label: "When", width: 200, sortable: true },
@@ -273,7 +274,24 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
     : rows;
   const pageRows = sorted.slice((t.page - 1) * t.pageSize, t.page * t.pageSize);
   const boardable = tab === "Asset movement orders";
-  const view: ListView = boardable ? t.view : "table";
+  /* THE JOURNEY IS A TIMELINE, not a table (Pavan, 2026-11-03) — so it has
+     no column tools and no pages; search and Filters still narrow it. */
+  const journey = tab === "Asset journey";
+  /* THE LOG IN THREE VERSIONS, to choose from (Pavan, 2026-11-03). */
+  const [logV, setLogV] = useVersion("fp-md-asset-log-v");
+  const isLog = tab === "Asset activity log";
+  const feed = isLog && logV === "2";
+  const tiles = isLog && logV === "3";
+  const view: ListView = journey || feed ? "list" : boardable ? t.view : "table";
+  const toItem = (r: ViewRow): LogItem => ({
+    id: r.id,
+    at: r.sort?.when ?? "",
+    type: r.type ?? "Asset",
+    source: r.text.source,
+    title: r.text.eventTitle,
+    detail: r.text.detail,
+    status: r.status,
+  });
   const nameOf = (r: ViewRow) => r.text.id ?? r.text.eventTitle ?? r.text.location ?? r.id;
 
   const renderCell = (r: ViewRow, key: string): React.ReactNode => {
@@ -397,6 +415,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
           onViewChange={(v) => patch({ view: v })}
           boardView={boardable}
           showGroupBy={false}
+          afterFilters={isLog ? <VersionSwitch label="Log" value={logV} onChange={setLogV} /> : undefined}
         />
         <FilterChips facets={facets} selected={mineSel} onChange={setMine}>
           <ColumnSearchChip
@@ -408,9 +427,34 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
         </FilterChips>
       </div>
 
+      {tiles && (
+        <div className="mt-4">
+          <TypeTiles
+            asset={a}
+            items={defs["Asset activity log"].rows.map(toItem)}
+            picked={[...mineSel].filter((id) => id.startsWith("type:")).map((id) => id.slice(5))}
+            onPick={(type) => {
+              const id = `type:${type}`;
+              const next = new Set(mineSel);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setMine(next);
+              patch({ page: 1 });
+            }}
+          />
+        </div>
+      )}
+
       {/* THE FRAME FILLS THE HEIGHT — three rows or three hundred. */}
       <div className="relative mt-4 min-h-[420px] flex-1">
-        {view === "board" ? (
+        {feed ? (
+          <ActivityFeed items={sorted.map(toItem)} />
+        ) : journey ? (
+          <AssetJourney
+            asset={a}
+            milestones={journeyMilestones(a).filter((m) => sorted.some((r) => r.id === m.id))}
+          />
+        ) : view === "board" ? (
           <div data-view-box="" className="h-full overflow-auto">
             <BoardV2 lanes={lanes} lanesInView={4} onOpenCard={(id) => setOpen(sorted.find((r) => r.id === id) ?? null)} />
           </div>
@@ -444,7 +488,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
         )}
       </div>
 
-      <div className="mt-4 shrink-0">
+      {!journey && !feed && <div className="mt-4 shrink-0">
         <TablePagination
           page={t.page}
           pageSize={t.pageSize}
@@ -452,7 +496,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
           onPageChange={(page) => patch({ page })}
           onPageSizeChange={(pageSize) => patch({ pageSize, page: 1 })}
         />
-      </div>
+      </div>}
 
       {/* A ROW OPENS — what it says, in full. */}
       <ReadDrawer

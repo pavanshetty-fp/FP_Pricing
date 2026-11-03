@@ -52,3 +52,20 @@ Only **Assets** is built. The other pages show "Not built yet".
   orders also show as a board by status.
 - The activity log holds real past events only (deliveries, service orders,
   inspections, parts fitted, invoices, completed moves, leases, history).
+
+## 2026-11-03
+
+- **Asset journey is a timeline, not a table** (`AssetJourney.tsx`). Top: the
+  lifeline — one bar from joining the fleet to the expected contract end,
+  each placement a stretch (blue on lease, grey at a yard or site, yellow in
+  the workshop), the future outlined, TODAY in the accent violet — with "In
+  the fleet since", "At its current place since", "Contract ends · in N
+  days". Below: milestones oldest-first, dated left, the Activity card's
+  marks and line; the current one is the highlighted card, what is expected
+  (scheduled move, contract end, renewal) dashed under a "Today" divider;
+  opens scrolled to today. Search and Status (Done · Current · Upcoming)
+  still narrow it; no column tools, no pages.
+- **Movement order window** uses the shared `DeliveryWindowTimeline` (window
+  + preferred times), via a new `render` option on form fields
+  (`FormFieldDef.render`, drawn full width by `DirectoryRecordSheet`).
+- TK-2201's site is Event Depot — where its journey puts it today.

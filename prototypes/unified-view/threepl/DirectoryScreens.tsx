@@ -98,6 +98,7 @@ import {
   vendorsForProduct,
 } from "./directoryLinks";
 import { customerFormSections, customerHeaderAside, customerReadSections } from "./CustomerRecord";
+import { terminalsStocking } from "../masterdata/terminals";
 import { vendorFormSections, vendorHeaderAside, vendorReadSections } from "./VendorRecord";
 import { productFormSections, productHeaderAside, productReadSections } from "./ProductRecord";
 import { assetFormSections, assetHeaderAside, assetReadSections } from "./AssetRecord";
@@ -843,6 +844,10 @@ export function productConfig(
           return <span className="text-sm">{p.category}</span>;
         case "unit":
           return <span className="text-sm">{p.unit}</span>;
+        case "stockedAt": {
+          const at = terminalsStocking(p.name);
+          return at.length ? <OverflowList values={at} label="terminals" /> : <Muted>Not stocked</Muted>;
+        }
         case "topOff":
           /* NO DOT. A dot means a STATE — something that changes, and that you
              might act on. Top-off is a capability the product either has or
@@ -959,6 +964,7 @@ export function productConfig(
       "Product Code": p.productCode,
       Category: p.category,
       "Unit of Measure": p.unit,
+      "Stocked at": terminalsStocking(p.name).join(" | "),
       "TopOff Supported": p.topOffSupported ? "Yes" : "No",
       "Base Price": p.basePrice ?? "",
       "Tax Code": blank(p.taxCode),
@@ -1435,15 +1441,22 @@ export function BrokerVendorsScreen({
   focusId,
   onFocusHandled,
   onTotalChange,
+  urlKey,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
+  /** Where the list keeps its state in the address — Master Data shows the
+   *  same list under its own key (2026-11-03). */
+  urlKey?: string;
 }) {
   const [note, setNote] = React.useState<Vendor | null>(null);
-  const config = React.useMemo(() => vendorConfig(setNote), []);
+  const config = React.useMemo(() => {
+    const c = vendorConfig(setNote);
+    return urlKey ? { ...c, urlKey } : c;
+  }, [urlKey]);
   return (
     <>
       <DirectoryEntityScreen
@@ -1493,15 +1506,22 @@ export function BrokerProductsScreen({
   focusId,
   onFocusHandled,
   onTotalChange,
+  urlKey,
 }: {
   data: DirectoryData;
   navigate: Navigator;
   focusId?: string | null;
   onFocusHandled?: () => void;
   onTotalChange?: (label: string | null) => void;
+  /** Where the list keeps its state in the address — Master Data shows the
+   *  same list under its own key (2026-11-03). */
+  urlKey?: string;
 }) {
   const [note, setNote] = React.useState<BrokerProduct | null>(null);
-  const config = React.useMemo(() => productConfig(setNote), []);
+  const config = React.useMemo(() => {
+    const c = productConfig(setNote);
+    return urlKey ? { ...c, urlKey } : c;
+  }, [urlKey]);
   return (
     <>
       <DirectoryEntityScreen

@@ -1,5 +1,7 @@
 import * as React from "react";
 import { toast } from "sonner";
+import { FileText } from "lucide-react";
+import { BreakdownPopover } from "../BreakdownCard";
 import { StatusChip } from "@/components/ui/status-chip";
 import { kindTone, type StatusKind } from "../statusKind";
 import { DASH, dateOffset, formatDate, money, type AuditEvent } from "../threepl/directoryCore";
@@ -25,7 +27,7 @@ export const kindOf = (s: string): StatusKind =>
   /* Active and Linked are simply true (info, as ACTIVE_KIND); done is success. */
   /^(Active|Linked|Open|Invoiced)$/.test(s)
     ? "info"
-    : /^(Current|Pass|Paid|Completed)$/.test(s)
+    : /^(Current|Pass|Paid|Completed|Delivered)$/.test(s)
     ? "success"
     : /^(Expiring|Due soon|Sent|Assigned|Scheduled|In transit|Signed|Pending)$/.test(s)
       ? "caution"
@@ -34,6 +36,27 @@ export const kindOf = (s: string): StatusKind =>
         : "neutral";
 
 export const Status = ({ value }: { value: string }) => <StatusChip tone={kindTone(kindOf(value))}>{value}</StatusChip>;
+
+/** A documents cell — the file icon and the count, the files on click; a
+ *  dash when there are none (never an Attached / Pending pill — M-042). */
+export function DocumentsCell({ owner, files }: { owner: string; files: { name: string; kind: string }[] }) {
+  if (!files.length) return <span className="text-sm text-muted-foreground">{DASH}</span>;
+  const label = `${files.length} document${files.length === 1 ? "" : "s"}`;
+  return (
+    <BreakdownPopover
+      className="flex items-center gap-1.5 rounded-md"
+      label={`Show documents of ${owner}`}
+      width={320}
+      trigger={
+        <>
+          <FileText className="size-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm text-foreground">{label}</span>
+        </>
+      }
+      card={{ title: `Documents (${files.length})`, rows: files.map((f) => ({ label: f.name, sub: f.kind })) }}
+    />
+  );
+}
 
 export const Muted = ({ children = DASH }: { children?: React.ReactNode }) => (
   <span className="text-sm text-muted-foreground">{children}</span>

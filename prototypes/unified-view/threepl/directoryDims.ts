@@ -24,6 +24,7 @@
 */
 import type { GroupDim } from "@/components/tables-layout";
 import { oneLineAddress } from "./directoryCore";
+import { terminalsStocking } from "../masterdata/terminals";
 import { BROKER_PRODUCTS } from "./directory";
 import {
   MAINTENANCE_STATUSES,
@@ -202,6 +203,7 @@ export type BrokerProductColumnKey =
   | "classification"
   | "category"
   | "unit"
+  | "stockedAt"
   | "topOff"
   | "price"
   | "taxCode"
@@ -222,6 +224,9 @@ export const BROKER_PRODUCT_COLUMNS = [
   { key: "classification" as const, label: "Classification", width: 190, sortable: true },
   { key: "category" as const, label: "Category", width: 100, sortable: true },
   { key: "unit" as const, label: "UOM", width: 80, sortable: true },
+  /* WHERE IT LOADS (the Master Data reference's "Stocked at", 2026-11-03) —
+     the terminals of its loading accounts, read from them. */
+  { key: "stockedAt" as const, label: "Stocked at", width: 200, sortable: true },
   { key: "topOff" as const, label: "TopOff", width: 100, sortable: true },
   { key: "price" as const, label: "Base Price", width: 110, sortable: true },
   { key: "taxCode" as const, label: "Tax Code", width: 100, sortable: true },
@@ -262,6 +267,7 @@ export function sortProducts(rows: BrokerProduct[], sort: ProductSort | null): B
       case "classification": return classificationOf(p)?.severity ?? 0;
       case "category": return p.category;
       case "unit": return p.unit;
+      case "stockedAt": return terminalsStocking(p.name).length;
       case "topOff": return p.topOffSupported ? 1 : 0;
       case "price": return p.basePrice;
       case "taxCode": return p.taxCode;

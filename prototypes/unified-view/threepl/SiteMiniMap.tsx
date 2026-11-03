@@ -44,10 +44,13 @@ const fmt = (n: number) => n.toFixed(5);
 export function SiteMiniMap({
   site,
   points,
+  minRadius = 100,
   className,
 }: {
   site: { lat: number; lng: number };
   points: MiniMapPoint[];
+  /** A site's own geofence, in metres — a terminal's rack radius. */
+  minRadius?: number;
   className?: string;
 }) {
   const box = React.useRef<HTMLDivElement>(null);
@@ -86,7 +89,7 @@ export function SiteMiniMap({
        one plus a margin, never under 100 m. The portal's geofence recipe.
        The view is fitted first: a circle needs a map with a view to draw. */
     const centre = L.latLng(site.lat, site.lng);
-    const radius = Math.max(100, ...points.map((p) => centre.distanceTo([p.lat, p.lng]) + 30));
+    const radius = Math.max(minRadius, ...points.map((p) => centre.distanceTo([p.lat, p.lng]) + 30));
     const bounds = centre.toBounds(radius * 2);
     /* CENTRED ON THE SHIP-TO, zoomed to hold the whole radius — no animation,
        or the hover card's scale-in leaves it mid-pan. */
@@ -118,7 +121,7 @@ export function SiteMiniMap({
       m.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seen, key, site.lat, site.lng]);
+  }, [seen, key, site.lat, site.lng, minRadius]);
 
   return (
     <div

@@ -45,6 +45,9 @@ import {
   FileText,
 } from "lucide-react";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
+import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
+import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
+import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelSourceScreens";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
@@ -320,9 +323,10 @@ const MODULE_LANDING: Record<string, string> = {
   "master-data": "md-directory",
 };
 /** THE PAGE A MODULE OPENS ON, inside its landing area — Master Data opens on
- *  Assets, the one page built there (2026-11-02). */
+ *  Customers, the first page of its Directory (Assets until Customers was
+ *  built, 2026-11-03). */
 const MODULE_LANDING_SUB: Record<string, string> = {
-  "master-data": "md-assets",
+  "master-data": "md-customers",
 };
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
@@ -436,9 +440,10 @@ const ENTITY_DESTINATION: Record<string, string> = {
 function readEntityBoot(): { module: string; nav: string; sub: string; record: string | null } | null {
   if (typeof window === "undefined") return null;
   const p = new URLSearchParams(window.location.search);
-  /* Master Data's Assets keeps its list and record in the address too. */
-  if (p.get("entity") === "md-assets")
-    return { module: "master-data", nav: "md-directory", sub: "md-assets", record: p.get("record") };
+  /* Master Data's built pages keep their list and record in the address too. */
+  const md = p.get("entity");
+  if (md && /^md-(assets|customers|ship-tos|products|vendors|terminals|suppliers)$/.test(md))
+    return { module: "master-data", nav: "md-directory", sub: md, record: p.get("record") };
   const dest = ENTITY_DESTINATION[p.get("entity") ?? ""];
   if (!dest) return null;
   return { module: "3pl", nav: "3pl-directory", sub: dest, record: p.get("record") };
@@ -673,6 +678,29 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       setDirFocus({ nav, id: recordId });
   };
 
+  /* ONE MASTER DATA RECORD OPENS ANOTHER — Ship-to 360's customer opens
+     that Customer 360. */
+  const openMdCustomer = React.useCallback((uid: string) => {
+    setSubKey("md-customers");
+    setDirFocus({ nav: "md-customers", id: uid });
+  }, []);
+
+  /* MASTER DATA SHOWS THE 3PL VENDORS AND PRODUCTS — same records, same
+     lists (2026-11-03). A vendor or product opens here; a 3PL customer or
+     rental asset (not Master Data's) opens in 3PL. */
+  const mdNav: DirectoryNavigator = {
+    openVendor: (id) => {
+      setSubKey("md-vendors");
+      setDirFocus({ nav: "md-vendors", id });
+    },
+    openProduct: (id) => {
+      setSubKey("md-products");
+      setDirFocus({ nav: "md-products", id });
+    },
+    openCustomer: (id) => goTo("3pl", "3pl-customers", id),
+    openAsset: (id) => goTo("3pl", "3pl-rental-assets", id),
+  };
+
   const goCreateOrder = () => {
     /* THE DESTINATION IS THE DRAWER'S, NOT THE RAIL'S. `navKey` names the rail
        item — "3pl-orders" — and `subKey` names the screen inside it. Setting
@@ -809,6 +837,43 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <BrokerProductsScreen {...dirProps("3pl-products")} />;
       case "3pl-rental-assets":
         return <BrokerRentalAssetsScreen {...dirProps("3pl-rental-assets")} />;
+      case "md-customers":
+        return (
+          <MasterCustomersScreen
+            onTotalChange={setListTotal}
+            focusId={dirFocus?.nav === "md-customers" ? dirFocus.id : null}
+            onFocusHandled={() => setDirFocus(null)}
+          />
+        );
+      case "md-products":
+        return <BrokerProductsScreen {...dirProps("md-products")} navigate={mdNav} urlKey="md-products" />;
+      case "md-vendors":
+        return <BrokerVendorsScreen {...dirProps("md-vendors")} navigate={mdNav} urlKey="md-vendors" />;
+      case "md-terminals":
+        return (
+          <MasterTerminalsScreen
+            onTotalChange={setListTotal}
+            focusId={dirFocus?.nav === "md-terminals" ? dirFocus.id : null}
+            onFocusHandled={() => setDirFocus(null)}
+          />
+        );
+      case "md-suppliers":
+        return (
+          <MasterSuppliersScreen
+            onTotalChange={setListTotal}
+            focusId={dirFocus?.nav === "md-suppliers" ? dirFocus.id : null}
+            onFocusHandled={() => setDirFocus(null)}
+          />
+        );
+      case "md-ship-tos":
+        return (
+          <MasterShipTosScreen
+            onTotalChange={setListTotal}
+            focusId={dirFocus?.nav === "md-ship-tos" ? dirFocus.id : null}
+            onFocusHandled={() => setDirFocus(null)}
+            onOpenCustomer={openMdCustomer}
+          />
+        );
       case "md-assets":
         return (
           <MasterAssetsScreen

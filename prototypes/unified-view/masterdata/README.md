@@ -85,3 +85,76 @@ Only **Assets** is built. The other pages show "Not built yet".
   expected to end / Contract starts / Renewal would start, the ID only in
   the pill. Dropped: the audit rows that repeated an invoice or a completed
   move, and "Asset record created" under "Created".
+
+## Customers (2026-11-03)
+
+- **List** (`CustomersScreen.tsx`) — the reference's columns on the Directory
+  template: Customer (name · ERP ID), Primary POC, Region, Ship-to sites,
+  Terms, Credit, Exposure (bar against the limit), Open orders, YTD revenue.
+  Open orders and YTD revenue are COUNTED from the orders, never typed (the
+  reference's form asked for them).
+- **Record = the 3PL Directory customer** (`BrokerCustomer`) and its form
+  (`customerFormSections`) — same data, same form — plus aging, average days
+  to pay and the last credit review (`customers.ts`).
+- **Customer 360** (`CustomerSheet.tsx`) — Asset 360's sheet: header (status,
+  credit, Over limit pills — the 3PL sheet's), four figures (revenue, gross
+  margin, gallons delivered, open orders), two trends by month (volume,
+  margin — the dashboards' bars), then the docked work area: six tabs left
+  (orders across modules + board, products delivered, ship-to sites, assets
+  on site, recurring schedules, leases and contracts), a card per subject
+  right (Credit and payment, Contact, Account, Instructions), Edit details →
+  the customer form at level 2.
+- **One source each**: tank fills and service orders come from the assets,
+  leases from the assets' leases, ship-tos and recurring schedules from
+  `customers.ts`. The asset form's Customer and Site pickers read these.
+- **Shared now**: `RecordViews.tsx` (tabs + one search/filters + full table
+  unit + board + drawer) and `sheetParts.tsx` (figures, docking work area —
+  a callback ref, since the sheet is a portal) serve both 360 sheets.
+- Reference mismatches fixed: Meridian Oil had Agriland's figures; list
+  ship-to counts vs the sites; "No leases" with TK-2201 on lease; a service
+  job listed as a product; 31–60 days not counted overdue; regions vs the
+  assets' addresses. Lovable's "Watch" credit → our **On hold**; "Net 7" →
+  **Net 15** (our terms list has no Net 7).
+
+## Ship-tos (2026-11-03)
+
+- **List** (`ShipTosScreen.tsx`) — the reference's columns: Ship-to (ST-1001…,
+  in a block of a thousand per customer), Location (+ Default pill),
+  Customer, Address, Contact, Rental assets, Customer-owned, Status. The two
+  asset counts are COUNTED from the assets on the site.
+- **Record** — the Directory's `ShipToLocation` fields (address lines,
+  coordinates, default site, record status) plus customer by name, site
+  contact and phone (`customers.ts`). Form: Identity, Address (with
+  latitude/longitude), Site contact.
+- **Ship-to 360** (`ShipToSheet.tsx`) — the same sheet as the other 360s:
+  four figures (deliveries, gallons, revenue, open orders), two trends
+  (volume, spend by month), three tabs (orders and deliveries — Customer
+  360's orders tab without the Site column — assets on site, invoices), and
+  the rail: Location (the board card's `SiteMiniMap`: the site radius and
+  its assets) and Details (customer → opens that Customer 360, contact,
+  terms, assets placed).
+- Invoices: one per invoiced delivery, due on the customer's terms, past due
+  only where the customer's aging says so; plus the site's assets' service
+  invoices.
+- Customer 360 and the asset pickers read the ship-tos as edited
+  (`currentShipTos`). A jump between 360s now writes the opened record into
+  the address (DirectoryEntityScreen focus).
+
+## Products, Vendors, Terminals, Suppliers (2026-11-03)
+
+- **Products and Vendors ARE the 3PL Directory's lists** (`BrokerProductsScreen`,
+  `BrokerVendorsScreen`) — same records, same state: an edit in Master Data
+  shows in 3PL and back. Master Data passes its own `urlKey` and navigator (a
+  vendor or product opens in Master Data; a 3PL customer or rental asset
+  opens in 3PL). The reference's Products "Stocked at" is a new column on the
+  shared list, read from the loading accounts (`terminalsStocking`).
+- **Terminals and Suppliers** (`FuelSourceScreens.tsx`, data `terminals.ts`) —
+  the reference's columns on the Directory template, with the standard
+  record sheet (form + read sections). The LOADING ACCOUNT ties them: the
+  3PL load orders' accounts plus the reference's markets'. A terminal's
+  suppliers, a supplier's terminals, both counts, a supplier's markets and
+  lines of service are read from the accounts (the reference's counts
+  disagreed with each other). Terminal sheet: the site map with the rack
+  radius (`SiteMiniMap` `minRadius`), products loaded, suppliers, accounts.
+- Lovable supplier types "distributor / NA / other" → Major oil, Distributor,
+  Trader, Retail partner.

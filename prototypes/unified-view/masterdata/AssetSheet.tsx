@@ -21,6 +21,7 @@ import { STATUS_KIND, assetActions, gal, stamp } from "./assetParts";
 import { AssetViews } from "./AssetViews";
 import { AssetOrderSheet } from "./AssetOrderForms";
 import { DetailsCards } from "./AssetDetails";
+import { FIGURE_STRIP, Figure, WORK_AREA, useDockedWorkArea } from "./sheetParts";
 
 /*
   ASSET 360 (Pavan, 2026-11-02 — "keep the format similar to the Lovable
@@ -39,28 +40,6 @@ import { DetailsCards } from "./AssetDetails";
       Edit details opening the asset form over the sheet (autosaves).
 */
 
-/** One of the four figures across the top. */
-function Figure({
-  label,
-  value,
-  note,
-  children,
-}: {
-  label: string;
-  value: React.ReactNode;
-  note: React.ReactNode;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1 p-4">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="truncate text-2xl font-semibold tabular-nums text-foreground">{value}</span>
-      <span className="truncate text-xs text-muted-foreground">{note}</span>
-      {children}
-    </div>
-  );
-}
-
 export function AssetSheet({
   asset: a,
   form,
@@ -76,27 +55,7 @@ export function AssetSheet({
   update: (uid: string, fn: (a: MdAsset) => MdAsset) => void;
 }) {
   const [editing, setEditing] = React.useState(false);
-  /* THE PAGE SCROLLS BEFORE THE TABLE. A wheel down over the work area moves
-     the sheet until the work area is docked at the top; only then do the
-     table and the cards scroll. Up, they scroll back first, then the page. */
-  const work = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const el = work.current;
-    if (!el) return undefined;
-    let body: HTMLElement | null = el.parentElement;
-    while (body && !/(auto|scroll)/.test(getComputedStyle(body).overflowY)) body = body.parentElement;
-    if (!body) return undefined;
-    const page = body;
-    const onWheel = (e: WheelEvent) => {
-      if (e.deltaY <= 0) return;
-      const left = page.scrollHeight - page.clientHeight - page.scrollTop;
-      if (left <= 1) return;
-      e.preventDefault();
-      page.scrollTop += Math.min(e.deltaY, left);
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  const work = useDockedWorkArea();
 
   const { createMovement, createService, toggleMonitor } = assetActions(a, update);
   /* CREATE ORDER (Pavan, 2026-11-02) — one button, two orders, each its own sheet. */
@@ -184,7 +143,7 @@ export function AssetSheet({
         onSubmit={onClose}
       >
         {/* THE FOUR FIGURES — one bordered strip, as the reference. */}
-        <div className="grid shrink-0 grid-cols-2 divide-border overflow-hidden rounded-lg border border-border lg:grid-cols-4 lg:divide-x">
+        <div className={FIGURE_STRIP}>
           <Figure
             label="Tank level"
             value={pct === null ? "Not monitored" : `${pct}%`}
@@ -205,14 +164,7 @@ export function AssetSheet({
           />
         </div>
 
-        {/* THE WORK AREA IS ONE SCREEN TALL (Pavan, 2026-11-03). The figures
-            scroll away; once the tabs reach the top, the tabs, search, table
-            and the cards on the right fill the sheet and stay — the page
-            scrolls first, then the table. */}
-        <div
-          ref={work}
-          className="grid h-full min-h-[560px] shrink-0 grid-rows-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]"
-        >
+        <div ref={work} className={WORK_AREA}>
           {/* LEFT — the three views, under one filter bar. */}
           <AssetViews asset={a} />
 

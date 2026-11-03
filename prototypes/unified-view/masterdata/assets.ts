@@ -36,25 +36,6 @@ export const MD_ASSET_TYPES = [
 
 export const MD_PRODUCTS = ["Dyed Diesel", "Clear Diesel", "Unleaded 87", "DEF", "Heating Oil"] as const;
 
-export const MD_SITES = [
-  "Winterset Depot",
-  "Event Depot",
-  "Adel Yard",
-  "Bear Mountain",
-  "sp ship to 1",
-  "hartest2",
-  "Asheville Terminal",
-  "Irving Hub",
-] as const;
-
-export const MD_CUSTOMERS = [
-  "Agriland FS",
-  "Blue Ridge Fleet",
-  "Customer Test",
-  "Hartest123",
-  "SP Energy",
-] as const;
-
 export const MD_CARRIERS = ["Acorn Petroleum", "Ridgeline Haulers", "Prairie Fuel Co."] as const;
 
 export const MONITOR_STATES = ["Linked", "Not linked", "No monitor"] as const;

@@ -178,8 +178,10 @@ export function DirectoryEntityScreen<Row, K extends string>({
   React.useEffect(() => {
     if (!focusId) return;
     setSheet({ kind: "record", id: focusId });
+    /* The address names the record now open, not the one jumped from. */
+    writeUrl({ entity: config.urlKey, record: focusId });
     onFocusHandled?.();
-  }, [focusId, onFocusHandled]);
+  }, [focusId, onFocusHandled, config.urlKey]);
 
   const record =
     sheet?.kind === "record" ? rows.find((r) => config.rowId(r) === sheet.id) ?? null : null;

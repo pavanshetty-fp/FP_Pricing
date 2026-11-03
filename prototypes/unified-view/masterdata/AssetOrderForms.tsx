@@ -3,7 +3,8 @@ import { DirectoryRecordSheet } from "../threepl/DirectoryRecordSheet";
 import type { FormFieldDef, FormSectionDef } from "../threepl/directoryFormTypes";
 import { MOVEMENT_LABEL, type MovementDirection } from "../threepl/orders";
 import { dateOffset } from "../threepl/directoryCore";
-import { MD_ASSETS, MD_OWNERSHIP, MD_SITES, type MdAsset } from "./assets";
+import { MD_ASSETS, MD_OWNERSHIP, type MdAsset } from "./assets";
+import { MD_PLACES } from "./customers";
 import { DeliveryWindowTimeline, type TimeSpan } from "../DeliveryWindowTimeline";
 import { formatWindow } from "@/components/form-layout/TimeWindowSlider";
 
@@ -19,7 +20,7 @@ import { formatWindow } from "@/components/form-layout/TimeWindowSlider";
 */
 
 const ASSET_IDS = MD_ASSETS.map((a) => a.id);
-const SITES = [...MD_SITES, "Fort Worth Yard"];
+const SITES = MD_PLACES;
 const DIRECTIONS = Object.keys(MOVEMENT_LABEL) as MovementDirection[];
 const TECHNICIANS = ["Ravi Menon", "Dana Kohl", "Lena Kovacs", "Ben Ortiz", "Ana Cruz"];
 const DRIVERS = ["M. Alvarez", "D. Whitfield", "P. Raman", "T. Nguyen", "J. Carter"];

@@ -13,10 +13,8 @@ import {
   MD_ASSET_STATUSES,
   MD_ASSET_TYPES,
   MD_CONDITIONS,
-  MD_CUSTOMERS,
   MD_OWNERSHIP,
   MD_PRODUCTS,
-  MD_SITES,
   MONITOR_STATES,
   contractUse,
   deliveryStats,
@@ -27,6 +25,7 @@ import {
 } from "./assets";
 import { Muted, Reading, STATUS_KIND, UsageBar, gal, perMonth } from "./assetParts";
 import { AssetSheet } from "./AssetSheet";
+import { MD_CUSTOMER_NAMES, MD_PLACES } from "./customers";
 
 /*
   MASTER DATA · ASSETS (Pavan, 2026-11-02) — the Lovable reference's Assets
@@ -153,8 +152,8 @@ const FORM: FormSectionDef<MdAsset>[] = [
     key: "placement",
     title: "Placement",
     fields: [
-      { key: "customer", label: "Customer", kind: "combobox", clearLabel: "No customer", options: MD_CUSTOMERS, get: (a) => a.customer ?? "", set: (a, v) => ({ ...a, customer: text(v) }) },
-      { key: "site", label: "Site", kind: "combobox", required: true, options: MD_SITES, get: (a) => a.site, set: (a, v) => ({ ...a, site: String(v ?? "") }) },
+      { key: "customer", label: "Customer", kind: "combobox", clearLabel: "No customer", options: MD_CUSTOMER_NAMES, get: (a) => a.customer ?? "", set: (a, v) => ({ ...a, customer: text(v) }) },
+      { key: "site", label: "Site", kind: "combobox", required: true, options: MD_PLACES, get: (a) => a.site, set: (a, v) => ({ ...a, site: String(v ?? "") }) },
       { key: "placedOn", label: "Placed on", kind: "date", get: (a) => a.placedOn ?? "", set: (a, v) => ({ ...a, placedOn: text(v) }) },
       { key: "address", label: "Address", kind: "text", wide: true, get: (a) => a.address, set: (a, v) => ({ ...a, address: String(v ?? "") }) },
     ],
@@ -200,7 +199,7 @@ function config(update: (id: string, fn: (a: MdAsset) => MdAsset) => void): Enti
       { key: "status", label: "Status", options: [...MD_ASSET_STATUSES], valueOf: (a) => a.status },
       { key: "ownership", label: "Ownership", options: [...MD_OWNERSHIP], valueOf: (a) => a.ownership },
       { key: "type", label: "Type", options: [...MD_ASSET_TYPES], valueOf: (a) => a.type },
-      { key: "customer", label: "Customer", searchable: true, options: [...MD_CUSTOMERS], valueOf: (a) => a.customer ?? "" },
+      { key: "customer", label: "Customer", searchable: true, options: [...MD_CUSTOMER_NAMES], valueOf: (a) => a.customer ?? "" },
       { key: "monitor", label: "Monitor", options: [...MONITOR_STATES], valueOf: (a) => monitorState(a) },
       { key: "contract", label: "Contract", options: ["With contract volume", "No contract"], valueOf: (a) => (contractUse(a) ? "With contract volume" : "No contract") },
     ],
@@ -307,6 +306,8 @@ function config(update: (id: string, fn: (a: MdAsset) => MdAsset) => void): Enti
 
 /* The list's records outlive a visit to another page in the session. */
 let kept: MdAsset[] = MD_ASSETS;
+/** The assets as they are now — Customer 360 reads its tanks, fills and leases from here. */
+export const currentAssets = () => kept;
 
 const NO_NAV: Navigator = {
   openCustomer: () => {},

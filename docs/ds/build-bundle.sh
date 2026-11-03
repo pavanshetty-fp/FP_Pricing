@@ -15,6 +15,7 @@ FILES=(
   00-meta/token-provenance.md
   00-meta/conformance.md
   00-meta/prompt-preamble.md
+  ../fpds/10-archive.md
 )
 
 {

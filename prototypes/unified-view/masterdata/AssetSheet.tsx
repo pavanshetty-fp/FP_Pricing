@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Archive, ArrowRightLeft, CheckCircle2, ChevronDown, Link2, Link2Off, MoreHorizontal, Pencil, Plus, Wrench } from "lucide-react";
+import { Archive, ArrowRightLeft, CheckCircle2, ChevronDown, MoreHorizontal, Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -10,20 +10,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RecordSheet } from "../RecordSheet";
-import { RailCard } from "../SheetCards";
 import { kindTone } from "../statusKind";
 import { LevelGauge } from "../../customer-portal/TankLevel";
-import { DirectoryRecordSheet, ReadField } from "../threepl/DirectoryRecordSheet";
+import { DirectoryRecordSheet } from "../threepl/DirectoryRecordSheet";
 import type { FormSectionDef } from "../threepl/directoryFormTypes";
-import { DASH, formatDate, money } from "../threepl/directoryCore";
+import { DASH } from "../threepl/directoryCore";
 import { deliveryStats, levelPct, monitorState, type MdAsset } from "./assets";
-import { STATUS_KIND, Status, assetActions, gal, stamp } from "./assetParts";
+import { STATUS_KIND, assetActions, gal, stamp } from "./assetParts";
 import { AssetViews } from "./AssetViews";
 import { AssetOrderSheet } from "./AssetOrderForms";
-import { DetailsCards, DetailsGrouped } from "./AssetDetails";
-import { VersionSwitch, useVersion } from "./VersionSwitch";
+import { DetailsCards } from "./AssetDetails";
 
 /*
   ASSET 360 (Pavan, 2026-11-02 — "keep the format similar to the Lovable
@@ -37,9 +34,9 @@ import { VersionSwitch, useVersion } from "./VersionSwitch";
       deliveries, monitor;
     · left, three views — movement orders, journey, activity log — under
       one search and filter bar (AssetViews.tsx);
-    · right, as the rail, Asset details — every fact the reference lists,
-      read-only, with Edit details opening the asset form over the sheet
-      (autosaves). Swapped from the reference's sides (Pavan, 2026-11-02).
+    · right, as the rail, the asset's details as a card per subject —
+      Placement, Contract, Tank and monitor (AssetDetails.tsx) — each with
+      Edit details opening the asset form over the sheet (autosaves).
 */
 
 /** One of the four figures across the top. */
@@ -83,10 +80,8 @@ export function AssetSheet({
   const { createMovement, createService, toggleMonitor } = assetActions(a, update);
   /* CREATE ORDER (Pavan, 2026-11-02) — one button, two orders, each its own sheet. */
   const [creating, setCreating] = React.useState<"movement" | "service" | null>(null);
-  const [detailsV, setDetailsV] = useVersion("fp-md-asset-details-v");
   const pct = levelPct(a);
   const stats = deliveryStats(a);
-  const leases = [...a.leases].sort((x, y) => (y.from ?? "").localeCompare(x.from ?? ""));
   const archived = a.recordStatus === "archived";
 
   const setArchived = (on: boolean) => {
@@ -195,80 +190,9 @@ export function AssetSheet({
 
           {/* RIGHT, AS THE RAIL (Pavan, 2026-11-02) — every fact the reference lists, read-only. */}
           <div className="flex min-h-0 flex-col gap-3 overflow-auto">
-          {/* THE CARD IN THREE VERSIONS, to choose from (Pavan, 2026-11-03). */}
-          <span className="flex justify-end">
-            <VersionSwitch label="Details" value={detailsV} onChange={setDetailsV} />
-          </span>
-          {detailsV === "2" ? (
-            <DetailsGrouped a={a} onEdit={() => setEditing(true)} onToggleMonitor={toggleMonitor} />
-          ) : detailsV === "3" ? (
-            <DetailsCards a={a} onEdit={() => setEditing(true)} onToggleMonitor={toggleMonitor} />
-          ) : (
-          <RailCard
-            title="Asset details"
-            action={
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="Edit details" onClick={() => setEditing(true)}>
-                    <Pencil />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Edit details</TooltipContent>
-              </Tooltip>
-            }
-          >
-            <dl className="flex flex-col gap-4 px-4 py-4">
-              <ReadField label="Asset ID" value={a.id} />
-              <ReadField label="Asset type" value={a.type} />
-              <ReadField label="Placed on" value={a.placedOn ? formatDate(a.placedOn) : null} />
-              {a.ownership === "Rental" && <ReadField
-                label="Lease contract"
-                value={
-                  leases.length ? (
-                    <span className="flex flex-col gap-1.5 pt-0.5">
-                      {leases.map((l) => (
-                        <span key={l.id} className="flex items-center gap-2">
-                          <span className="tabular-nums">{l.id}</span>
-                          <Status value={l.status} />
-                        </span>
-                      ))}
-                    </span>
-                  ) : null
-                }
-              />}
-              <ReadField label="Customer" value={a.customer} />
-              <ReadField label="Site" value={a.site} />
-              <ReadField label="Address" value={a.address} />
-              {/* A customer's own tank has no rental terms — as its form. */}
-              {a.ownership === "Rental" && (
-                <>
-                  <ReadField label="On rent since" value={a.onRentSince ? formatDate(a.onRentSince) : null} />
-                  <ReadField label="Rental rate" value={a.rate === null ? null : `${money(a.rate)} / mo`} />
-                </>
-              )}
-              <ReadField label="Fuel product" value={a.product} />
-              <ReadField label="Capacity" value={gal(a.capacityGal)} />
-              <ReadField
-                label="Current level"
-                value={pct === null ? "Not monitored" : `${gal(a.monitor?.levelGal ?? 0)} · ${pct}%`}
-              />
-              <ReadField
-                label="Monitor"
-                value={a.monitor ? `${a.monitor.model} · ${a.monitor.id} · ${monitorState(a)}` : "No monitor"}
-              />
-              <ReadField
-                label="Last ping"
-                value={a.monitor?.lastPing ? stamp(a.monitor.lastPing) : null}
-              />
-              {a.monitor && (
-                <Button variant="outline" size="sm" className="self-start" onClick={toggleMonitor}>
-                  {a.monitor.linked ? <Link2Off /> : <Link2 />}
-                  {a.monitor.linked ? "Unlink monitor" : "Link monitor"}
-                </Button>
-              )}
-            </dl>
-          </RailCard>
-          )}
+          {/* A CARD PER SUBJECT (Pavan chose V3, 2026-11-03; the long list
+              and the grouped card are archived). */}
+          <DetailsCards a={a} onEdit={() => setEditing(true)} onToggleMonitor={toggleMonitor} />
           </div>
         </div>
       </RecordSheet>

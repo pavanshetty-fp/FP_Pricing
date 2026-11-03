@@ -9,18 +9,13 @@ import { activeLease, contractUse, levelPct, monitorState, type MdAsset } from "
 import { Status, UsageBar, gal, stamp } from "./assetParts";
 
 /*
-  ASSET DETAILS — VERSIONS (Pavan, 2026-11-03). V1 is the long list as it
-  was (in AssetSheet). These two use the rail's own row — label left, value
-  right (`RailRow`) — so the card reads like the other rail cards:
-
-    V2  ONE CARD, GROUPED — Asset · Placement · Contract · Tank and monitor,
-        each under a small heading, a rule between. Same facts as V1, a
-        third of the height.
-    V3  A CARD PER SUBJECT — Placement, Contract, Tank and monitor as their
-        own rail cards, each with Edit. The contract card leads with the
-        active lease, its end date and how much of its volume is used; the
-        tank card leads with the level gauge. ID and type are in the header
-        already, so they are not repeated.
+  ASSET DETAILS — A CARD PER SUBJECT (Pavan chose V3 of three, 2026-11-03;
+  the long list and the grouped card are archived in
+  docs/archive/asset-360-versions-2026-11-03.md). Placement, Contract, Tank
+  and monitor as their own rail cards, each with Edit, in the rail's own row
+  (`RailRow`, label left, value right). The contract card leads with the
+  active lease, its end date and how much of its volume is used; the tank
+  card leads with the level gauge. ID and type are in the header already.
 */
 
 const Edit = ({ onEdit }: { onEdit: () => void }) => (
@@ -32,13 +27,6 @@ const Edit = ({ onEdit }: { onEdit: () => void }) => (
     </TooltipTrigger>
     <TooltipContent>Edit details</TooltipContent>
   </Tooltip>
-);
-
-const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="border-b border-border py-1 last:border-b-0">
-    <h4 className="px-4 pt-2.5 pb-0.5 text-xs font-medium text-muted-foreground">{title}</h4>
-    <dl className="flex flex-col">{children}</dl>
-  </div>
 );
 
 /** A value too long for one line — the label over it, as a rail row would wrap. */
@@ -72,54 +60,6 @@ const MonitorButton = ({ a, onToggle }: { a: MdAsset; onToggle: () => void }) =>
     </div>
   ) : null;
 
-const Level = ({ a }: { a: MdAsset }) => {
-  const pct = levelPct(a);
-  return pct === null ? (
-    <span className="text-muted-foreground">Not monitored</span>
-  ) : (
-    <span className="flex items-center gap-2">
-      <LevelGauge pct={pct} />
-      <span className="tabular-nums">{pct}% · {gal(a.monitor?.levelGal ?? 0)}</span>
-    </span>
-  );
-};
-
-/* ───────────────────────────────────────────────────────── V2 ── */
-
-export function DetailsGrouped({ a, onEdit, onToggleMonitor }: { a: MdAsset; onEdit: () => void; onToggleMonitor: () => void }) {
-  const rental = a.ownership === "Rental";
-  return (
-    <RailCard title="Asset details" action={<Edit onEdit={onEdit} />}>
-      <Group title="Asset">
-        <RailRow label="Asset ID" value={a.id} />
-        <RailRow label="Type" value={a.type} />
-        <RailRow label="Ownership" value={`${a.ownership} · ${a.condition}`} />
-        <RailRow label="Placed on" value={a.placedOn ? formatDate(a.placedOn) : DASH} />
-      </Group>
-      <Group title="Placement">
-        <RailRow label="Customer" value={a.customer ?? DASH} />
-        <RailRow label="Site" value={a.site} />
-        <Stacked label="Address">{a.address}</Stacked>
-      </Group>
-      {rental && (
-        <Group title="Contract">
-          <Stacked label="Leases">{a.leases.length ? <Leases a={a} /> : DASH}</Stacked>
-          <RailRow label="On rent since" value={a.onRentSince ? formatDate(a.onRentSince) : DASH} />
-          <RailRow label="Rate" value={a.rate === null ? DASH : `${money(a.rate)} / mo`} />
-        </Group>
-      )}
-      <Group title="Tank and monitor">
-        <RailRow label="Product" value={a.product ?? DASH} />
-        <RailRow label="Capacity" value={gal(a.capacityGal)} />
-        <RailRow label="Level" value={<Level a={a} />} />
-        <RailRow label="Monitor" value={a.monitor ? `${a.monitor.model} · ${a.monitor.id}` : "No monitor"} />
-        {a.monitor && <RailRow label="Status" value={<Status value={monitorState(a)} />} />}
-        <RailRow label="Last ping" value={a.monitor?.lastPing ? stamp(a.monitor.lastPing) : DASH} />
-        <MonitorButton a={a} onToggle={onToggleMonitor} />
-      </Group>
-    </RailCard>
-  );
-}
 
 /* ───────────────────────────────────────────────────────── V3 ── */
 

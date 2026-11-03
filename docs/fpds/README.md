@@ -23,6 +23,7 @@ Owner: Pavan Shetty · pavanshetty@fleetpanda.com
 | — | Not designed yet | `09-later.md` | UX copy, empty pages, highlight units, illustrations |
 | — | Checks | `evals/README.md` | Five levels of evals, golden prompts |
 | — | Misses log | `evals/misses.md` | Every miss the owner had to point out, its pattern and its guard — read before reporting |
+| — | Archive | `10-archive.md` | Retired designs — what they were, why they went, the commit that restores them (each a page under Archive in the design reference) |
 
 Every atom, molecule, unit and template is a **spec card** with the same twelve sections
 (`_spec-card-template.md`): Purpose · Use when / Don't use when · Anatomy · Look · States ·

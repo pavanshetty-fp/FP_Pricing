@@ -30,6 +30,7 @@ Owner: Pavan Shetty · pavanshetty@fleetpanda.com
 | — | Not designed yet | `09-later.md` | UX copy, empty pages, highlight units, illustrations |
 | — | Checks | `evals/README.md` | Five levels of evals, golden prompts |
 | — | Misses log | `evals/misses.md` | Every miss the owner had to point out, its pattern and its guard — read before reporting |
+| — | Archive | `10-archive.md` | Retired designs — what they were, why they went, the commit that restores them (each a page under Archive in the design reference) |
 
 Every atom, molecule, unit and template is a **spec card** with the same twelve sections
 (`_spec-card-template.md`): Purpose · Use when / Don't use when · Anatomy · Look · States ·
@@ -6252,7 +6253,7 @@ reference page. Open them in `FP-DS-2026-unified-view.html` and
 | 3PL | Recurring Orders (programs) | template.list-page | view-row, toolbar, filter-panel, chip-shelf, view-bar, data-table, pagination | `prototypes/unified-view/threepl/RecurringProgramsScreen.tsx` |
 | 3PL | Directory › Customers, Vendors, Products, Rental Assets | template.list-page + template.directory-record | standard list units, record-sheet | `prototypes/unified-view/threepl/DirectoryList.tsx`, `DirectoryRecordSheet.tsx` |
 | Master Data | Assets (Directory › Assets; other Directory and Documents pages not built) | template.list-page + template.directory-record | standard list units, record-sheet | `prototypes/unified-view/masterdata/AssetsScreen.tsx` |
-| Master Data | Asset 360 (full sheet: figures strip, three view tabs as full list units under one search + Filters, Asset details rail, Create order → movement / service order sheets at level 2) | template.record-sheet | record-sheet (`size="full"`, `noFooter`), toolbar, filter-panel, chip-shelf, data-table, board, pagination | `prototypes/unified-view/masterdata/AssetSheet.tsx`, `AssetViews.tsx`, `AssetOrderForms.tsx` |
+| Master Data | Asset 360 (full sheet: figures strip; tabs — movement orders (table · board), journey (lifeline + milestone timeline), activity log (type tiles over the table) — under one search + Filters; rail of Placement · Contract · Tank and monitor cards; Create order → movement / service order sheets at level 2, window on the shared timeline) | template.record-sheet | record-sheet (`size="full"`, `noFooter`), toolbar, filter-panel, chip-shelf, data-table, board, pagination | `prototypes/unified-view/masterdata/AssetSheet.tsx`, `AssetViews.tsx`, `AssetJourney.tsx`, `AssetActivity.tsx`, `AssetDetails.tsx`, `AssetOrderForms.tsx` |
 | Sales | Dashboard | template.dashboard | dashboard | `prototypes/unified-view/SalesDashboard.tsx` |
 | Sales | Orders | template.list-page | as 3PL Delivery Orders (table + board) | `prototypes/unified-view/SalesOrdersScreen.tsx` |
 | Sales | Quotes, Customers, Assets | template.list-page | view-row, toolbar, filter-panel, chip-shelf, view-bar, data-table, pagination | `QuotesScreen.tsx`, `CustomersScreen.tsx`, `AssetsScreen.tsx` |
@@ -8225,6 +8226,27 @@ each with its own rules, spec cards and checks (Pavan, 2026-10-23).
 | **Empty pages & empty states** | First use, no records, no results, no permission, error, offline — per page type and per unit | Use the Empty state molecule exactly as the reference pages do; anything else is a gap |
 | **Highlight units** | Everything that draws attention — banners, recommendations, awaiting pills, running-late cues, new-item marks — as one family with ranking rules | Use the Alert banner unit and the Status & awaiting pills; anything else is a gap |
 | **Illustrations** | Style, palette, where they are allowed (likely empty states and onboarding) | None are used; any request for one is a gap |
+
+
+<!-- ===== docs/fpds/10-archive.md ===== -->
+
+# FPDS — Archive
+
+Designs Pavan built, compared and retired. Each is kept so it can come back
+exactly as it was: what it was, why it went, and the commit that restores it.
+**Nothing here is in use** — build from the units and templates, never from
+this page. Full write-ups are in `docs/archive/` and `docs/ds/ui/archive/`
+(each is its own page in the design reference under Archive).
+
+| Date | What | Status today | Restore | Write-up |
+|---|---|---|---|---|
+| 2026-10-06 | **Step column** — the stepped form's left-hand step list | Off in every module; code kept (`form-steps.tsx`), `stepColumn` per sheet | Remove `stepColumn={false}` | `docs/ds/ui/archive/step-column.md` |
+| 2026-10-06 | **Two-layer navigation** — 52px rail + drawer | Kept in code behind `NAV_STYLE` in `UnifiedView.tsx`; the one-panel sidebar is current | Set `NAV_STYLE = "two-layer"` | `app-shell` card |
+| 2026-10-25 | **Board V1–V3** — the first board comparison (V4 chosen) | Archived | `git show e389e2e` | `docs/archive/board-versions-2026-10-25.md` |
+| 2026-10-27 | **Quoting on the 3PL board** — Quoting lane, quotes unit on cards | Off; the dispatcher enters vendors' details | `git show 60e2b71` | `docs/archive/3pl-board-quoting-2026-10-27.md` |
+| 2026-11-02 | **Board V1, V1.1, V2.1, V3** (second comparison), then **V2** | Archived; `BoardV2` (V1 card) is the one board | `git show 3ca7a27`, `8e9ec6c` | `docs/archive/board-versions-2026-11-02.md` |
+| 2026-11-02 | **3PL Recurring V1 and V2** | Reachable from Recurring Orders › Archive; V1.1 is current | In the app | UX-127 |
+| 2026-11-03 | **Asset 360 log V1/V2 and details V1/V2** | Archived; Log V3 + Details V3 chosen | `git show 9dbd7cc` | `docs/archive/asset-360-versions-2026-11-03.md` |
 
 
 <!-- ===== docs/fpds/evals/README.md ===== -->

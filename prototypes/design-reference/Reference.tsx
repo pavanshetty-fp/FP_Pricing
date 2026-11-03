@@ -17,6 +17,14 @@ import register from "../../docs/fpds/register.json";
 */
 
 const DOCS = import.meta.glob("../../docs/fpds/**/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+/* THE ARCHIVE (Pavan, 2026-11-03 — "whatever was archived … I hope all of
+   that is in the design reference"): every retired design's write-up, a page
+   each, under Archive. */
+const ARCHIVE = import.meta.glob(["../../docs/archive/*.md", "../../docs/ds/ui/archive/*.md"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const archiveTitle = (src: string, path: string) => {
+  const t = src.match(/^#\s+(.+)$/m)?.[1].replace(/^Archived — /, "") ?? path.split("/").pop()!.replace(/\.md$/, "");
+  return t[0].toUpperCase() + t.slice(1);
+};
 const doc = (path: string) => DOCS[`../../${path}`] ?? "";
 
 type Entry = (typeof register.entries)[number];
@@ -49,6 +57,7 @@ const DOC_PAGES: [string, string, string, string][] = [
   ["Rules", "UX rules", "docs/fpds/07-ux-rules.md", "ux-rules"],
   ["Rules", "Interaction rules", "docs/fpds/08-interaction-rules.md", "interaction-rules"],
   ["Reference pages", "Reference pages", "docs/fpds/06-pages.md", "reference-pages"],
+  ["Archive", "Archive — index", "docs/fpds/10-archive.md", "archive"],
 ];
 
 const LAYER_GROUP: Record<string, string> = { atom: "Atoms", molecule: "Molecules", unit: "Units", template: "Templates" };
@@ -150,8 +159,16 @@ const PAGES: Page[] = [
       .map((e) => ({ key: e.id, label: e.title, group: LAYER_GROUP[layer], body: () => <CardPage e={e} /> }))
   ),
   { key: "fpds-register", label: "Register", group: "Start", body: () => <RegisterPage /> },
+  ...Object.entries(ARCHIVE)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([path, src]) => ({
+      key: `archive-${path.split("/").pop()!.replace(/\.md$/, "")}`,
+      label: archiveTitle(src, path),
+      group: "Archive",
+      body: () => <Markdown source={src} />,
+    })),
 ];
-const GROUPS = ["Start", "Foundations", "Atoms", "Molecules", "Units", "Templates", "Reference pages", "Rules"];
+const GROUPS = ["Start", "Foundations", "Atoms", "Molecules", "Units", "Templates", "Reference pages", "Rules", "Archive"];
 
 export function Reference() {
   const [current, setCurrent] = React.useState(() => {

@@ -193,7 +193,7 @@ export function build({ write = true } = {}) {
   /* ONE FILE TO INSTALL — the docs in reading order. */
   const order = ["README.md", "00-protocol.md", "01-foundations.md", "02-atoms.md", "03-molecules.md"];
   const unitFiles = existsSync(join(DOCS, "units")) ? readdirSync(join(DOCS, "units")).filter((f) => f.endsWith(".md")).sort().map((f) => `units/${f}`) : [];
-  const rest = ["05-templates.md", "06-pages.md", "07-ux-rules.md", "08-interaction-rules.md", "09-later.md", "evals/README.md"];
+  const rest = ["05-templates.md", "06-pages.md", "07-ux-rules.md", "08-interaction-rules.md", "09-later.md", "10-archive.md", "evals/README.md"];
   const parts = [...order, ...unitFiles, ...rest]
     .filter((f) => existsSync(join(DOCS, f)))
     .map((f) => `\n\n<!-- ===== docs/fpds/${f} ===== -->\n\n` + readFileSync(join(DOCS, f), "utf8"));

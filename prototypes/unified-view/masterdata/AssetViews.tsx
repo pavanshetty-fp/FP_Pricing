@@ -14,8 +14,7 @@ import { DASH, dateOffset, formatDate, money } from "../threepl/directoryCore";
 import type { MdAsset } from "./assets";
 import { Status, gal, stamp } from "./assetParts";
 import { AssetJourney, journeyMilestones } from "./AssetJourney";
-import { ActivityFeed, TypeTiles, type LogItem } from "./AssetActivity";
-import { VersionSwitch, useVersion } from "./VersionSwitch";
+import { TypeTiles, type LogItem } from "./AssetActivity";
 
 /*
   ASSET 360 — THE THREE VIEWS (Pavan, 2026-11-02). The journey is a
@@ -277,12 +276,11 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
   /* THE JOURNEY IS A TIMELINE, not a table (Pavan, 2026-11-03) — so it has
      no column tools and no pages; search and Filters still narrow it. */
   const journey = tab === "Asset journey";
-  /* THE LOG IN THREE VERSIONS, to choose from (Pavan, 2026-11-03). */
-  const [logV, setLogV] = useVersion("fp-md-asset-log-v");
+  /* THE LOG = TYPE TILES OVER THE TABLE (Pavan chose V3, 2026-11-03;
+     the day feed and the plain table are archived —
+     docs/archive/asset-360-versions-2026-11-03.md). */
   const isLog = tab === "Asset activity log";
-  const feed = isLog && logV === "2";
-  const tiles = isLog && logV === "3";
-  const view: ListView = journey || feed ? "list" : boardable ? t.view : "table";
+  const view: ListView = journey ? "list" : boardable ? t.view : "table";
   const toItem = (r: ViewRow): LogItem => ({
     id: r.id,
     at: r.sort?.when ?? "",
@@ -415,7 +413,6 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
           onViewChange={(v) => patch({ view: v })}
           boardView={boardable}
           showGroupBy={false}
-          afterFilters={isLog ? <VersionSwitch label="Log" value={logV} onChange={setLogV} /> : undefined}
         />
         <FilterChips facets={facets} selected={mineSel} onChange={setMine}>
           <ColumnSearchChip
@@ -427,7 +424,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
         </FilterChips>
       </div>
 
-      {tiles && (
+      {isLog && (
         <div className="mt-4">
           <TypeTiles
             asset={a}
@@ -447,9 +444,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
 
       {/* THE FRAME FILLS THE HEIGHT — three rows or three hundred. */}
       <div className="relative mt-4 min-h-[420px] flex-1">
-        {feed ? (
-          <ActivityFeed items={sorted.map(toItem)} />
-        ) : journey ? (
+        {journey ? (
           <AssetJourney
             asset={a}
             milestones={journeyMilestones(a).filter((m) => sorted.some((r) => r.id === m.id))}
@@ -488,7 +483,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
         )}
       </div>
 
-      {!journey && !feed && <div className="mt-4 shrink-0">
+      {!journey && <div className="mt-4 shrink-0">
         <TablePagination
           page={t.page}
           pageSize={t.pageSize}

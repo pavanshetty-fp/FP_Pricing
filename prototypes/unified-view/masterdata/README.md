@@ -69,3 +69,7 @@ Only **Assets** is built. The other pages show "Not built yet".
   + preferred times), via a new `render` option on form fields
   (`FormFieldDef.render`, drawn full width by `DirectoryRecordSheet`).
 - TK-2201's site is Event Depot — where its journey puts it today.
+- **Chosen 2026-11-03:** activity log = type tiles over the table
+  (`AssetActivity.tsx`), details = a card per subject (`AssetDetails.tsx`).
+  The other versions are archived — `docs/archive/asset-360-versions-2026-11-03.md`
+  (restore from commit 9dbd7cc).

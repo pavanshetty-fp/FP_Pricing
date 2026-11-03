@@ -443,7 +443,7 @@ export function AssetViews({ asset: a }: { asset: MdAsset }) {
       )}
 
       {/* THE FRAME FILLS THE HEIGHT — three rows or three hundred. */}
-      <div className="relative mt-4 min-h-[420px] flex-1">
+      <div className="relative mt-4 min-h-48 flex-1">
         {journey ? (
           <AssetJourney
             asset={a}

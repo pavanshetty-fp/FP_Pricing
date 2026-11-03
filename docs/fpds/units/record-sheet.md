@@ -116,6 +116,7 @@ The right-hand side sheet that creates or edits ONE record — an order, a quote
 29. **A record's related lists that people search and filter are full list units inside the sheet** — tabs choose the view, one search + Filters under them, `ListTable` with pagination filling the height — `(source: Pavan 2026-11-02; misses M-039/M-040)`
 30. **Directory record sheets may group their read sections under a line tab strip** (`RecordReadSection.tab`, counts from `tabCount`) and give a section a heading `action`; an entity can replace the record sheet with its own layout (`EntityConfig.renderRecord`) while creating still uses the form — `(source: Master Data, 2026-11-02)`
 31. **A select shows its chosen value as the list does** — first letter capital only, never CSS `capitalize`; optional comboboxes offer their empty choice first (`clearLabel`) — `(source: 2026-11-02)`
+32. **A full sheet with a working list docks it** — what sits above (figures) scrolls away first; then the work area (tabs, search, table, rail cards) fills the sheet's height and stays, and only its table and cards scroll. A wheel over the work area moves the sheet until it is docked — `(source: Pavan 2026-11-03, Master Data › Asset 360)`
 
 ## Do / Don't
 - ✅ Pass `fit` with `CELL` widths whenever the sheet holds a table; pass the current step's tables.

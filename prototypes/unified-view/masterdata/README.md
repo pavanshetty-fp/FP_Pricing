@@ -73,3 +73,6 @@ Only **Assets** is built. The other pages show "Not built yet".
   (`AssetActivity.tsx`), details = a card per subject (`AssetDetails.tsx`).
   The other versions are archived — `docs/archive/asset-360-versions-2026-11-03.md`
   (restore from commit 9dbd7cc).
+- **Docking (2026-11-03):** the figures scroll away; the work area (tabs,
+  search, tiles, table, rail cards) is one sheet-height tall and docks at the
+  top — a wheel over it scrolls the sheet first, then the table / cards.

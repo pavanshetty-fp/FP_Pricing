@@ -2,6 +2,14 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.1 — 2026-11-08
+
+Built from commit `6ee1977`.
+
+- **3PL Delivery Orders uses Version 2 only.** The displays are tabs on the views row. Version 1 is archived as "Version 1: Separate Views".
+- **Settings:** one gear beside the view tabs opens a narrow sheet with three tabs: Table (columns), Board (card fields) and Detail page view (IX-93).
+- **Search by column** now lives in the table header. A darker grey tab slides in at the right edge when you hover the header row (IX-94).
+
 ## v1.0 — 2026-11-08
 
 First version on DocsHub. Built from commit `dc67c48`.

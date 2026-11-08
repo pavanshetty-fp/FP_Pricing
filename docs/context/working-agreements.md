@@ -1,7 +1,7 @@
 # Working agreements — how Pavan works, and the routines
 
 > **Load this when:** at the start of any working session; before replying, before adding UI, before "push it" / "sync it", when Pavan points out a miss. **Not for:** design rules themselves (`design-system.md`) or business facts (the domain docs).
-> **Sources:** global `~/.claude/CLAUDE.md`; memory notes `feedback_communication`, `feedback_no_unrequested_ui`, `feedback_push_it`, `feedback_service_repos`, `feedback_miss_patterns`, `feedback_ds_sourcing_rule`, `feedback_ui_rules`, `feedback_uv_source_of_truth`. **Last updated:** 2026-11-06.
+> **Sources:** global `~/.claude/CLAUDE.md`; memory notes `feedback_communication`, `feedback_no_unrequested_ui`, `feedback_push_it`, `feedback_service_repos`, `feedback_miss_patterns`, `feedback_ds_sourcing_rule`, `feedback_ui_rules`, `feedback_uv_source_of_truth`. **Last updated:** 2026-11-08.
 
 ## In one paragraph
 
@@ -40,7 +40,8 @@ Run without asking, then report:
 4. Builds: `npm run build:unified`, `build:single`, `build:portal`, `build:reference`; copy `dist-unified/index.html` → `../FP-DS-2026-unified-view.html`, `dist-single` → `../FP-DS-2026.html`, `dist-portal` → `../FP-DS-2026-customer-portal.html`, `dist-reference` → `../FP-DS-2026-design-reference.html`; the "Board views - versions.html" copy from the unified build with its title changed.
 5. Commit on `main` (end with the Co-Authored-By line) and `git push origin main`.
 6. Republish the design reference artifact and send the unified-view HTML.
-7. If Service Work files changed, ask in Doubts whether to sync — never sync silently.
+7. **DocsHub:** add a version entry at the top of `docs/fpds/CHANGELOG.md` (next vX.Y · date · commit · plain bullets), rebuild `build:reference`, commit; then republish the design reference, unified view and portal builds to the same DocsHub links (folder "Design System"; IDs in memory `reference_docshub`).
+8. If Service Work files changed, ask in Doubts whether to sync — never sync silently.
 
 ## "Sync it" (FP_Service-Work)
 

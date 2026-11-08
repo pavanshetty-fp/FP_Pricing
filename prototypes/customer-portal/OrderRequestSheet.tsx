@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
+import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { Pill } from "@/components/ui/pill";
 import { toast } from "sonner";
 import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send, Truck } from "lucide-react";
@@ -716,6 +717,7 @@ export function OrderRequestSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              <DetailViewMenuItem />
               <DropdownMenuItem
                 onSelect={() => {
                   flush();

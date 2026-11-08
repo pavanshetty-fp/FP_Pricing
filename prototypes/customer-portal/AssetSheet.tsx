@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
+import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -314,6 +315,7 @@ export function AssetSheet({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
+                <DetailViewMenuItem />
                 {active && site && (
                   <DropdownMenuItem onSelect={() => onCreateOrder(site.name, [asset.id])}>
                     <ClipboardPlus />

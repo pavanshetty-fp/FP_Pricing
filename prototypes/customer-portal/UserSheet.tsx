@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { toast } from "sonner";
 import { Ban, MoreHorizontal, RotateCcw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,7 @@ export function UserSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              <DetailViewMenuItem />
               {user.invitationStatus === "Pending" && !deactivated && (
                 <DropdownMenuItem
                   onSelect={() => {

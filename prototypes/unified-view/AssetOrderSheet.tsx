@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DetailViewMenuItem } from "./RecordSheet";
 import { Ban, CalendarDays, MoreHorizontal } from "lucide-react";
 import { DatePanel, DatePopover } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -482,6 +483,7 @@ export function AssetOrderSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              <DetailViewMenuItem />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();

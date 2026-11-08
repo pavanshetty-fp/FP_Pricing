@@ -1,7 +1,7 @@
 # Design system — where the visual and interaction rules live
 
 > **Load this when:** building or changing any screen, component, token, layout, motion or copy rule. **Not for:** business facts (the domain docs) or how Pavan works (`working-agreements.md`).
-> **Sources:** `docs/fpds/README.md`, `docs/unified-view/map.md`, memory `project_fp_ds_foundation`. **Last updated:** 2026-11-06.
+> **Sources:** `docs/fpds/README.md`, `docs/unified-view/map.md`, memory `project_fp_ds_foundation`. **Last updated:** 2026-11-08.
 
 The design system is already split into small files; this page is a router into them, not a copy. **Do not restate design rules in the domain docs** — point here.
 
@@ -38,4 +38,5 @@ A newer instruction from Pavan beats any of them — follow it and update the ru
 - Tables are the full unit at any row count (fill the height, pagination at the foot); every column sorts; Search by column is a row under the header.
 - Every chip/badge and status column is a pill; status colored by kind (waiting · true · done · warning · neutral).
 - One fact, one form: the same fact uses the same component and color everywhere.
+- Detail pages open as Side sheet (default), Modal or Full page — one app-wide choice behind "Detail page view" in every sheet's ··· (IX-92).
 - Views arrive by kind: board from the right, table settles up from below, list and map from the left (map zooms in).

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, Link2, MoreHorizontal, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -642,6 +643,7 @@ export function ShipToSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              <DetailViewMenuItem />
               {active && onCreateOrder && (
                 <DropdownMenuItem onSelect={() => onCreateOrder?.(shipTo.name, [])}>
                   <ClipboardPlus />

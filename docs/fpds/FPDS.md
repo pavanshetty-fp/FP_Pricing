@@ -8117,6 +8117,14 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** `ui/7-variants.md` §1 Navigation (2026-10-15)
 
+## 17. Detail page view
+
+**IX-92. Every detail page's ··· menu starts with "Detail page view": open detail pages as Side sheet (default), Modal or Full page. One choice for every module, applied at once and remembered per browser; Full page is an overlay on the page, never a new tab.**
+- **Why:** some people work one record at a time and want the room; the board stays the default context.
+- **Applies to:** every first-level `RecordSheet` (a sheet with its own ··· lists `DetailViewMenuItem` first; one without gets a ··· holding only it). The list view's docked panel and second-level sheets stay side sheets.
+- **Check:** review
+- **Source:** Pavan, 2026-11-08
+
 ---
 
 ## Index
@@ -8214,6 +8222,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-89 | Text on a color fill switches automatically between white and dark at a quarter of the slider, rather than blending; on the fixed brand orange it is held to AA |
 | IX-90 | "Collapse navigation" (a quiet gray mark in the panel's top-right corner) folds the panel to an icon rail; the choice is remembered per browser |
 | IX-91 | Pressing an area that has sub-pages opens its first page |
+| IX-92 | Every detail page's ··· starts with "Detail page view" — Side sheet (default) · Modal · Full page, one choice for all modules |
 
 
 <!-- ===== docs/fpds/09-later.md ===== -->

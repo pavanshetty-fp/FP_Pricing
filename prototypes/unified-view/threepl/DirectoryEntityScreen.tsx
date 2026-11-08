@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DetailViewMenuItem } from "../RecordSheet";
 import { toast } from "sonner";
 import { Archive, CheckCircle2, Download, MoreHorizontal, Tag, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -377,6 +378,7 @@ export function DirectoryEntityScreen<Row, K extends string>({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
+                  <DetailViewMenuItem />
                   {config.statusField.get(record) === "archived" ? (
                     <DropdownMenuItem
                       disabled={!canWrite}

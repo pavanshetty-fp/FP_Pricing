@@ -1,11 +1,26 @@
 import * as React from "react";
-import { Check, Loader2, X } from "lucide-react";
+import { AppWindow, Check, Loader2, MoreHorizontal, X } from "lucide-react";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import type { PillColor } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
 import { QuietPattern } from "@/components/ui/quiet-pattern";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  PRESENTATION_LABEL,
+  setSheetPresentation,
+  useSheetPresentation,
+  type SheetPresentation,
+} from "./sheetPresentation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { SteppedFormBody } from "@/components/side-sheet/form-steps";
 import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 import { PendingStrip, attend, type PendingItem } from "./PendingStrip";
@@ -188,6 +203,9 @@ export interface RecordSheetProps {
    * A sheet opened OVER another one takes that gap TWICE — see `level`.
    */
   size?: "compact" | "form" | "data" | "full";
+  /** Overrides the app-wide Detail page view (side sheet · modal · full
+   *  page, Pavan 2026-11-08). Ignored when docked or at level 2. */
+  presentation?: SheetPresentation;
   /** Width from the sheet's tables — see `size` and `fitWidth`. */
   fit?: SheetFit;
   /**
@@ -481,6 +499,7 @@ export function DraftStatusChip({
 
 export function RecordSheet({
   size = "form",
+  presentation: presentationProp,
   fit,
   level = 1,
   open,
@@ -514,7 +533,11 @@ export function RecordSheet({
   const [navOn, setNavOn] = React.useState(false);
   const navShown = stepped && navOn;
   /* FULL WIDTH WHILE THE STEP COLUMN SHOWS (Pavan, 2026-10-05). */
-  const fills = size === "full" || navShown;
+  const docked = React.useContext(DockedSheet) && level === 1;
+  const chosen = useSheetPresentation();
+  const presentation: SheetPresentation = docked || level === 2 ? "sheet" : (presentationProp ?? chosen);
+  const [viewOpen, setViewOpen] = React.useState(false);
+  const fills = size === "full" || navShown || presentation === "full";
   const parentWidth = React.useContext(ParentSheetWidth);
   const own =
     size === "data"
@@ -536,7 +559,6 @@ export function RecordSheet({
   const banner =
     footerBanner ??
     (saysWhy && pendingRaised ? <PendingStrip tone="caution" pending={pending} /> : undefined);
-  const docked = React.useContext(DockedSheet) && level === 1;
   const Root = docked ? DockedRoot : Sheet;
   const Content = docked ? DockedContent : SheetContent;
   const Title = docked ? DockedTitle : SheetTitle;
@@ -561,7 +583,13 @@ export function RecordSheet({
             ? /* FULL — the intense forms, and any sheet showing its step column. */
               "w-[calc(var(--fp-vw)-var(--fp-sheet-gap))] sm:max-w-[calc(var(--fp-vw)-var(--fp-sheet-gap))]"
             : /* THE CONTENT'S WIDTH, clamped by the gap (`--fp-sheet-w`). */
-              "w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))]"
+              "w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))]",
+          /* MODAL — the sheet's own width, centred, the gap kept all round. */
+          presentation === "modal" &&
+            "inset-auto top-1/2 left-1/2 right-auto h-[calc(100dvh-var(--fp-sheet-gap))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:[--tw-enter-translate-x:0] data-[state=closed]:[--tw-exit-translate-x:0]",
+          /* FULL PAGE — an overlay over the whole page, not a new tab. */
+          presentation === "full" &&
+            "inset-0 h-full w-full max-w-none border-l-0 sm:max-w-none data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:[--tw-enter-translate-x:0] data-[state=closed]:[--tw-exit-translate-x:0]"
         )}
       >
         {/* DOCKED, THE HEADER IS ONE QUIET LINE (Pavan, 2026-10-29) — the
@@ -585,7 +613,26 @@ export function RecordSheet({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}
-            {headerMenu}
+            {/* DETAIL PAGE VIEW IS IN EVERY ··· (Pavan, 2026-11-08) — a sheet
+                with its own menu lists it via `DetailViewMenuItem`; a sheet
+                without one gets a ··· holding only it. */}
+            {level === 1 && (
+              <DetailViewOpen.Provider value={() => setViewOpen(true)}>
+                {headerMenu ?? (!docked && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DetailViewMenuItem separated={false} />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ))}
+              </DetailViewOpen.Provider>
+            )}
+            {level !== 1 && headerMenu}
             {!docked && <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
               <X className="size-4" />
               <span className="sr-only">Close</span>
@@ -670,8 +717,66 @@ export function RecordSheet({
           </div>
         </div>
         )}
+        {level === 1 && <DetailViewSheet open={viewOpen} onOpenChange={setViewOpen} />}
       </Content>
     </Root>
+  );
+}
+
+const DetailViewOpen = React.createContext<(() => void) | null>(null);
+
+/** "Detail page view" for a sheet's own ··· menu — put it first; it brings
+ *  its own separator. Renders nothing outside a first-level record sheet. */
+export function DetailViewMenuItem({ separated = true }: { separated?: boolean }) {
+  const open = React.useContext(DetailViewOpen);
+  if (!open) return null;
+  return (
+    <>
+      <DropdownMenuItem onSelect={open}>
+        <AppWindow />
+        Detail page view
+      </DropdownMenuItem>
+      {separated && <DropdownMenuSeparator />}
+    </>
+  );
+}
+
+/* DETAIL PAGE VIEW (Pavan, 2026-11-08) — one choice for every detail page in
+   every module. Applies at once; no footer. */
+function DetailViewSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const value = useSheetPresentation();
+  return (
+    <RecordSheet
+      size="compact"
+      level={2}
+      open={open}
+      onOpenChange={onOpenChange}
+      mode="edit"
+      editTitle="Detail page view"
+      createTitle=""
+      createAction=""
+      noFooter
+      showCancel={false}
+      onSubmit={() => {}}
+    >
+      <SheetSection title="Open detail pages as" variant="plain">
+        <SheetField>
+          <RadioGroup
+            value={value}
+            onValueChange={(v) => setSheetPresentation(v as SheetPresentation)}
+            className="gap-3"
+          >
+            {(Object.keys(PRESENTATION_LABEL) as SheetPresentation[]).map((p) => (
+              <label key={p} htmlFor={`open-as-${p}`} className="flex cursor-pointer items-center gap-2.5">
+                <RadioGroupItem id={`open-as-${p}`} value={p} />
+                <span className="text-sm">{PRESENTATION_LABEL[p]}</span>
+              </label>
+            ))}
+          </RadioGroup>
+        </SheetField>
+        <p className="text-sm text-muted-foreground">Applies to every detail page in all modules.</p>
+      </SheetSection>
+    </RecordSheet>
   );
 }
 

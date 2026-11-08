@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DetailViewMenuItem } from "../RecordSheet";
 import { siteTank } from "./tankMonitors";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, LevelReading } from "../../customer-portal/TankLevel";
 import { capGal, daysUntil, maxGal, suggestedGal } from "../../customer-portal/orders";
@@ -4446,6 +4447,7 @@ export function BrokerOrderSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              <DetailViewMenuItem />
               {/* COPY IT, PRINT IT — what is left to do once the order itself
                   is settled. They were two outline buttons at the foot of the
                   form, which put them in the reading path of somebody filling

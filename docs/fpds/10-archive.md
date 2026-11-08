@@ -15,3 +15,4 @@ this page. Full write-ups are in `docs/archive/` and `docs/ds/ui/archive/`
 | 2026-11-02 | **Board V1, V1.1, V2.1, V3** (second comparison), then **V2** | Archived; `BoardV2` (V1 card) is the one board | `git show 3ca7a27`, `8e9ec6c` | `docs/archive/board-versions-2026-11-02.md` |
 | 2026-11-02 | **3PL Recurring V1 and V2** | Reachable from Recurring Orders › Archive; V1.1 is current | In the app | UX-127 |
 | 2026-11-03 | **Asset 360 log V1/V2 and details V1/V2** | Archived; Log V3 + Details V3 chosen | `git show 9dbd7cc` | `docs/archive/asset-360-versions-2026-11-03.md` |
+| 2026-11-08 | **Version 1: Separate Views** — 3PL Delivery Orders with the display switch in the toolbar | Archived; Version 2 (displays as view tabs) is the screen | `layout="1"`; `git show 487e083` | `docs/archive/3pl-delivery-orders-v1-2026-11-08.md` |

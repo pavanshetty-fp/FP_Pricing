@@ -8125,6 +8125,20 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** Pavan, 2026-11-08
 
+## 18. List settings and header column search
+
+**IX-93. A list with Settings has ONE gear beside the view tabs (no line to the view). It opens a 300px side sheet with tabs: Table (show/hide and reorder columns) · Board (card fields per lane) · Detail page view, landing on the tab of the view you are on. Changes apply at once.**
+- **Why:** one place for everything about what a list shows (HubSpot-style), instead of a different icon per view.
+- **Applies to:** `ListToolbar settings` — 3PL Delivery Orders first.
+- **Check:** review
+- **Source:** Pavan, 2026-11-08
+
+**IX-94. Search by column lives in the table header: hidden until the header row is hovered, then a full-row-height grey tab (header mixed 12% toward the ink) slides in at the table's right edge, above every header layer; hovering it spells out "Search by column". It stays while the search row is open.**
+- **Why:** the tool sits on the thing it acts on and costs no toolbar space.
+- **Applies to:** `ListTable onToggleColumnFilters` — 3PL Delivery Orders first.
+- **Check:** review
+- **Source:** Pavan, 2026-11-08
+
 ---
 
 ## Index
@@ -8222,6 +8236,8 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-89 | Text on a color fill switches automatically between white and dark at a quarter of the slider, rather than blending; on the fixed brand orange it is held to AA |
 | IX-90 | "Collapse navigation" (a quiet gray mark in the panel's top-right corner) folds the panel to an icon rail; the choice is remembered per browser |
 | IX-91 | Pressing an area that has sub-pages opens its first page |
+| IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
+| IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
 | IX-92 | Every detail page's ··· starts with "Detail page view" — Side sheet (default) · Modal · Full page, one choice for all modules |
 
 
@@ -8261,6 +8277,7 @@ this page. Full write-ups are in `docs/archive/` and `docs/ds/ui/archive/`
 | 2026-11-02 | **Board V1, V1.1, V2.1, V3** (second comparison), then **V2** | Archived; `BoardV2` (V1 card) is the one board | `git show 3ca7a27`, `8e9ec6c` | `docs/archive/board-versions-2026-11-02.md` |
 | 2026-11-02 | **3PL Recurring V1 and V2** | Reachable from Recurring Orders › Archive; V1.1 is current | In the app | UX-127 |
 | 2026-11-03 | **Asset 360 log V1/V2 and details V1/V2** | Archived; Log V3 + Details V3 chosen | `git show 9dbd7cc` | `docs/archive/asset-360-versions-2026-11-03.md` |
+| 2026-11-08 | **Version 1: Separate Views** — 3PL Delivery Orders with the display switch in the toolbar | Archived; Version 2 (displays as view tabs) is the screen | `layout="1"`; `git show 487e083` | `docs/archive/3pl-delivery-orders-v1-2026-11-08.md` |
 
 
 <!-- ===== docs/fpds/evals/README.md ===== -->

@@ -489,24 +489,6 @@ export function UnifiedView({ only }: { only?: string } = {}) {
     kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
-  /* 3PL DELIVERY ORDERS, V1 · V2 BESIDE THE TITLE (Pavan, 2026-11-02): V1
-     as it is; V2 makes the displays tabs in the view row. Kept for this
-     browser. */
-  const [layout3pl, setLayout3plState] = React.useState<"1" | "2">(() => {
-    try {
-      return localStorage.getItem("fp-3pl-layout") === "2" ? "2" : "1";
-    } catch {
-      return "1";
-    }
-  });
-  const setLayout3pl = (v: "1" | "2") => {
-    setLayout3plState(v);
-    try {
-      localStorage.setItem("fp-3pl-layout", v);
-    } catch {
-      // Storage blocked — the switch still works for this visit.
-    }
-  };
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -782,7 +764,6 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
       case "3pl-delivery-orders":
         return (
           <BrokerOrdersScreen
-            layout={layout3pl}
             focus={focus}
             drill={drill3pl}
             startCreate={startCreate}
@@ -903,31 +884,6 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
             {listTotal && (
               <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                 {listTotal}
-              </span>
-            )}
-            {/* THE VERSION SWITCH SITS WITH THE TITLE — it changes what the
-                screen IS, not what it shows. */}
-            {screenKey === "3pl-delivery-orders" && (
-              <span className="flex shrink-0 items-center self-center">
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  size="sm"
-                  value={layout3pl}
-                  onValueChange={(v) => v && setLayout3pl(v as "1" | "2")}
-                  aria-label="Version"
-                >
-                  {(["1", "2"] as const).map((v) => (
-                    <ToggleGroupItem
-                      key={v}
-                      value={v}
-                      aria-label={`Version ${v}`}
-                      className="h-5 min-w-0 px-1.5 text-[11px] font-normal text-muted-foreground"
-                    >
-                      V{v}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
               </span>
             )}
             {screenKey === "3pl-recurring-orders" && recurringArchive && (

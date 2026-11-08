@@ -206,6 +206,12 @@ export interface RecordSheetProps {
   /** Overrides the app-wide Detail page view (side sheet · modal · full
    *  page, Pavan 2026-11-08). Ignored when docked or at level 2. */
   presentation?: SheetPresentation;
+  /** An exact width in px, for a small settings sheet whose content has one
+   *  natural width (the list Settings sheet: 300, Pavan 2026-11-08). */
+  width?: number;
+  /** False drops the ··· "Detail page view" entry — a settings sheet, not a
+   *  record. */
+  detailViewMenu?: boolean;
   /** Width from the sheet's tables — see `size` and `fitWidth`. */
   fit?: SheetFit;
   /**
@@ -500,6 +506,8 @@ export function DraftStatusChip({
 export function RecordSheet({
   size = "form",
   presentation: presentationProp,
+  detailViewMenu = true,
+  width: widthProp,
   fit,
   level = 1,
   open,
@@ -540,13 +548,14 @@ export function RecordSheet({
   const fills = size === "full" || navShown || presentation === "full";
   const parentWidth = React.useContext(ParentSheetWidth);
   const own =
-    size === "data"
+    widthProp ??
+    (size === "data"
       ? Math.max(DATA_WIDTH, fit ? fitWidth(fit) : 0)
       : fit
         ? fitWidth(fit)
         : size === "compact"
           ? 510
-          : FORM_WIDTH;
+          : FORM_WIDTH);
   const width = level === 2 && parentWidth !== null ? Math.min(own, parentWidth - 56) : own;
   /* WHY (Pavan, 2026-10-07). A dead primary says why on press (G25): the
      strip is raised by the press, not shown up front, and drops on close. */
@@ -616,7 +625,7 @@ export function RecordSheet({
             {/* DETAIL PAGE VIEW IS IN EVERY ··· (Pavan, 2026-11-08) — a sheet
                 with its own menu lists it via `DetailViewMenuItem`; a sheet
                 without one gets a ··· holding only it. */}
-            {level === 1 && (
+            {level === 1 && detailViewMenu && (
               <DetailViewOpen.Provider value={() => setViewOpen(true)}>
                 {headerMenu ?? (!docked && (
                   <DropdownMenu>
@@ -632,7 +641,7 @@ export function RecordSheet({
                 ))}
               </DetailViewOpen.Provider>
             )}
-            {level !== 1 && headerMenu}
+            {(level !== 1 || !detailViewMenu) && headerMenu}
             {!docked && <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
               <X className="size-4" />
               <span className="sr-only">Close</span>
@@ -717,7 +726,7 @@ export function RecordSheet({
           </div>
         </div>
         )}
-        {level === 1 && <DetailViewSheet open={viewOpen} onOpenChange={setViewOpen} />}
+        {level === 1 && detailViewMenu && <DetailViewSheet open={viewOpen} onOpenChange={setViewOpen} />}
       </Content>
     </Root>
   );
@@ -744,7 +753,6 @@ export function DetailViewMenuItem({ separated = true }: { separated?: boolean }
 /* DETAIL PAGE VIEW (Pavan, 2026-11-08) — one choice for every detail page in
    every module. Applies at once; no footer. */
 function DetailViewSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const value = useSheetPresentation();
   return (
     <RecordSheet
       size="compact"
@@ -759,23 +767,7 @@ function DetailViewSheet({ open, onOpenChange }: { open: boolean; onOpenChange: 
       showCancel={false}
       onSubmit={() => {}}
     >
-      <SheetSection title="Open detail pages as" variant="plain">
-        <SheetField>
-          <RadioGroup
-            value={value}
-            onValueChange={(v) => setSheetPresentation(v as SheetPresentation)}
-            className="gap-3"
-          >
-            {(Object.keys(PRESENTATION_LABEL) as SheetPresentation[]).map((p) => (
-              <label key={p} htmlFor={`open-as-${p}`} className="flex cursor-pointer items-center gap-2.5">
-                <RadioGroupItem id={`open-as-${p}`} value={p} />
-                <span className="text-sm">{PRESENTATION_LABEL[p]}</span>
-              </label>
-            ))}
-          </RadioGroup>
-        </SheetField>
-        <p className="text-sm text-muted-foreground">Applies to every detail page in all modules.</p>
-      </SheetSection>
+      <DetailViewChoice />
     </RecordSheet>
   );
 }
@@ -807,4 +799,29 @@ function DockedContent({
 
 function DockedTitle({ className, children }: { className?: string; children: React.ReactNode }) {
   return <h2 className={cn("font-semibold text-foreground", className)}>{children}</h2>;
+}
+
+/** The Detail page view choice itself — in its own sheet and in a list's
+ *  Settings sheet. */
+export function DetailViewChoice() {
+  const value = useSheetPresentation();
+  return (
+    <SheetSection title="Open detail pages as" variant="plain">
+      <SheetField>
+        <RadioGroup
+          value={value}
+          onValueChange={(v) => setSheetPresentation(v as SheetPresentation)}
+          className="gap-3"
+        >
+          {(Object.keys(PRESENTATION_LABEL) as SheetPresentation[]).map((p) => (
+            <label key={p} htmlFor={`open-as-${p}`} className="flex cursor-pointer items-center gap-2.5">
+              <RadioGroupItem id={`open-as-${p}`} value={p} />
+              <span className="text-sm">{PRESENTATION_LABEL[p]}</span>
+            </label>
+          ))}
+        </RadioGroup>
+      </SheetField>
+      <p className="text-sm text-muted-foreground">Applies to every detail page in all modules.</p>
+    </SheetSection>
+  );
 }

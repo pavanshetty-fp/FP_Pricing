@@ -9,6 +9,7 @@ import {
   List,
   Search,
   Settings2,
+  Settings as SettingsIcon,
   TextSearch,
   X,
 } from "lucide-react";
@@ -35,6 +36,8 @@ import {
   type GroupByDimension,
 } from "@/components/tables-layout/GroupByMenu";
 import { DateFilter } from "./DateFilter";
+import { DetailViewChoice, RecordSheet } from "./RecordSheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
  * The action bar, generic over the list it serves.
@@ -76,6 +79,12 @@ export interface ListSearchField {
 }
 
 export interface ListToolbarProps<K extends string> {
+  /**
+   * SETTINGS SHEET (Pavan, 2026-11-08) — Show/hide columns and Card fields
+   * move into one gear beside Search by column; the sheet has a tab each,
+   * plus Detail page view. Search by column stays in the bar.
+   */
+  settings?: boolean;
   searchValue: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder: string;
@@ -368,6 +377,7 @@ export function ListToolbar<K extends string>({
   groupBy,
   showGroupBy = true,
   cardFields,
+  settings = false,
 }: ListToolbarProps<K>) {
   const multiView = boardView || mapView || listView;
   const colLabel =
@@ -433,109 +443,10 @@ export function ListToolbar<K extends string>({
             THIS IS A LIST RULE, NOT A 3PL ONE: it lives here so every screen
             using this toolbar gets it. See `docs/ds/ui/2-rules.md` §10. */
   const inBar = Boolean(viewToolsInto);
-  const tableTools = (
+  /* THE LISTS ARE ONE PIECE, SHOWN IN TWO PLACES — the popover, and the
+     Settings sheet (Pavan, 2026-11-08) where `tall` drops the scroll cap. */
+  const columnsPicker = (tall: boolean) => (
     <>
-        {/* Search by column — the row, where the table has one. */}
-        {onToggleColumnFilters ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size={inBar ? "sm" : "icon-sm"}
-                aria-label="Search by column"
-                aria-pressed={columnFiltersOpen}
-                onClick={onToggleColumnFilters}
-                className={cn(
-                  inBar
-                    ? BAR_TOOL
-                    : (columnFiltersOpen || columnFilterCount > 0) && "bg-accent text-foreground"
-                )}
-              >
-                <TextSearch />
-                {inBar && <Reveal>Search by column</Reveal>}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className={cn(inBar && "hidden")}>
-              {columnFiltersOpen ? "Hide column search" : "Search by column"}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-        <Popover>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size={inBar ? "sm" : "icon-sm"}
-                  aria-label="Search by column"
-                  className={cn(inBar ? BAR_TOOL : colQuery.trim() && "text-foreground")}
-                >
-                  <TextSearch />
-                  {inBar && <Reveal>Search by column</Reveal>}
-                </Button>
-              </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent className={cn(inBar && "hidden")}>Search by column</TooltipContent>
-          </Tooltip>
-          <PopoverContent align="end" className="w-64 space-y-2 p-3">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <TextSearch className="size-3.5" /> Search by column
-            </div>
-            <Combobox
-              size="sm"
-              className="w-full"
-              value={colScope}
-              onValueChange={onColScopeChange}
-              options={searchFields.map((f) => ({
-                value: f.key,
-                label: f.label,
-              }))}
-              placeholder="Choose a column"
-              searchPlaceholder="Search columns…"
-              emptyText="No column found."
-            />
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={colQuery}
-                onChange={(e) => onColQueryChange(e.target.value)}
-                placeholder={`Find in ${colLabel}…`}
-                className={cn("h-8 pl-8", colQuery && "pr-8")}
-              />
-              {colQuery && (
-                <button
-                  type="button"
-                  aria-label="Clear column search"
-                  onClick={() => onColQueryChange("")}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-        )}
-
-        {/* Show/Hide columns */}
-        <Popover>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size={inBar ? "sm" : "icon-sm"}
-                  aria-label="Show/Hide columns"
-                  className={cn(inBar && BAR_TOOL)}
-                >
-                  {inBar ? <Settings2 /> : <Columns3 />}
-                  {inBar && <Reveal>Show/hide columns</Reveal>}
-                </Button>
-              </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent className={cn(inBar && "hidden")}>Show/Hide columns</TooltipContent>
-          </Tooltip>
-          <PopoverContent align="end" className="w-56 p-1">
             <div className="flex items-center justify-between px-2 py-1.5">
               <span className="text-xs font-medium text-muted-foreground">
                 Columns
@@ -544,7 +455,7 @@ export function ListToolbar<K extends string>({
                 {shown}/{columns.length}
               </span>
             </div>
-            <div className="max-h-64 overflow-y-auto">
+            <div className={cn(!tall && "max-h-64 overflow-y-auto")}>
               {ordered.map((c) => {
                 const draggable = reorderable && !c.group;
                 return (
@@ -662,15 +573,244 @@ export function ListToolbar<K extends string>({
                 Show all
               </Button>
             </div>
+    </>
+  );
+  const cardPicker = (tall: boolean) => {
+    const cf = cardFields;
+    if (!cf) return null;
+    return (
+    <>
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Card fields
+                  </span>
+                  <span className="rounded bg-fp-card-1 px-1.5 text-[11px] tabular-nums text-muted-foreground">
+                    {cardShown}/{cf.units.length}
+                  </span>
+                </div>
+                {/* WHICH CARDS THIS IS ABOUT, above the ticks it governs. A
+                    card in the first lane and one in the last are answering
+                    different questions, so the field list has to be able to
+                    differ between them — and the reader has to be told which
+                    set they are editing BEFORE they edit it, not after. */}
+                {cf.scopes && cf.onScopeChange && (
+                  <div className="px-2 pb-2">
+                    <Combobox
+                      size="sm"
+                      className="w-full"
+                      value={cf.scope ?? ALL_LANES}
+                      onValueChange={(v) =>
+                        cf.onScopeChange?.(v === ALL_LANES ? null : v)
+                      }
+                      options={[
+                        { value: ALL_LANES, label: "All lanes" },
+                        ...cf.scopes.map((sc) => ({
+                          value: sc.key,
+                          label: sc.label,
+                        })),
+                      ]}
+                      placeholder="All lanes"
+                      searchPlaceholder="Search lanes…"
+                      emptyText="No lane found."
+                    />
+                  </div>
+                )}
+                <div className={cn(!tall && "max-h-64 overflow-y-auto")}>
+                  {/* A TOGGLE PER CATEGORY, a tick per field inside it (Pavan,
+                      2026-09-23). The category — Customer, Asset & Fault — is
+                      the decision somebody actually makes about a card, so it
+                      is a switch: on or off, and it reads that way. Its fields
+                      are the finer adjustment, shown only while the category
+                      is on, because ticking a field inside a hidden block
+                      changes nothing anybody can see. */}
+                  {cf.units.map((u) => {
+                    if (!u.group) {
+                      const on = !cf.hidden.has(u.key);
+                      return (
+                        <label
+                          key={u.key}
+                          className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                        >
+                          <span className="flex-1 truncate">{u.label}</span>
+                          <Switch
+                            size="sm"
+                            checked={on}
+                            onCheckedChange={() => cf.onToggle(u.key)}
+                          />
+                        </label>
+                      );
+                    }
+                    if (cf.hidden.has(u.group)) return null;
+                    return (
+                      <label
+                        key={u.key}
+                        className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-5 text-[13px] text-muted-foreground transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                      >
+                        <Checkbox
+                          checked={!cf.hidden.has(u.key)}
+                          onCheckedChange={() => cf.onToggle(u.key)}
+                        />
+                        <span className="flex-1 truncate">{u.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <Separator className="my-1" />
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={cf.hidden.size === 0}
+                    onClick={cf.onShowAll}
+                  >
+                    Show all
+                  </Button>
+                </div>
+    </>
+    );
+  };
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsTab, setSettingsTab] = React.useState<SettingsTab>("table");
+  /* SETTINGS (Pavan, 2026-11-08, HubSpot-style) — one gear beside Search by
+     column; opens on the tab for the view you are on. */
+  const settingsButton = settings ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size={inBar ? "sm" : "icon-sm"}
+          aria-label="Settings"
+          aria-expanded={settingsOpen}
+          onClick={() => {
+            setSettingsTab(view === "board" && cardFields ? "board" : "table");
+            setSettingsOpen(true);
+          }}
+          className={cn(inBar && BAR_TOOL)}
+        >
+          <SettingsIcon />
+          {inBar && <Reveal>Settings</Reveal>}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className={cn(inBar && "hidden")}>Settings</TooltipContent>
+    </Tooltip>
+  ) : null;
+  const tableTools = (
+    <>
+        {/* Search by column — the row, where the table has one. With
+            Settings it lives in the table's header instead (2026-11-08). */}
+        {settings ? null : onToggleColumnFilters ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size={inBar ? "sm" : "icon-sm"}
+                aria-label="Search by column"
+                aria-pressed={columnFiltersOpen}
+                onClick={onToggleColumnFilters}
+                className={cn(
+                  inBar
+                    ? BAR_TOOL
+                    : (columnFiltersOpen || columnFilterCount > 0) && "bg-accent text-foreground"
+                )}
+              >
+                <TextSearch />
+                {inBar && <Reveal>Search by column</Reveal>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className={cn(inBar && "hidden")}>
+              {columnFiltersOpen ? "Hide column search" : "Search by column"}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size={inBar ? "sm" : "icon-sm"}
+                  aria-label="Search by column"
+                  className={cn(inBar ? BAR_TOOL : colQuery.trim() && "text-foreground")}
+                >
+                  <TextSearch />
+                  {inBar && <Reveal>Search by column</Reveal>}
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent className={cn(inBar && "hidden")}>Search by column</TooltipContent>
+          </Tooltip>
+          <PopoverContent align="end" className="w-64 space-y-2 p-3">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <TextSearch className="size-3.5" /> Search by column
+            </div>
+            <Combobox
+              size="sm"
+              className="w-full"
+              value={colScope}
+              onValueChange={onColScopeChange}
+              options={searchFields.map((f) => ({
+                value: f.key,
+                label: f.label,
+              }))}
+              placeholder="Choose a column"
+              searchPlaceholder="Search columns…"
+              emptyText="No column found."
+            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={colQuery}
+                onChange={(e) => onColQueryChange(e.target.value)}
+                placeholder={`Find in ${colLabel}…`}
+                className={cn("h-8 pl-8", colQuery && "pr-8")}
+              />
+              {colQuery && (
+                <button
+                  type="button"
+                  aria-label="Clear column search"
+                  onClick={() => onColQueryChange("")}
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </PopoverContent>
         </Popover>
+        )}
+
+        {settingsButton}
+        {/* Show/Hide columns — inside Settings when the list has one. */}
+        {!settings && (
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size={inBar ? "sm" : "icon-sm"}
+                  aria-label="Show/Hide columns"
+                  className={cn(inBar && BAR_TOOL)}
+                >
+                  {inBar ? <Settings2 /> : <Columns3 />}
+                  {inBar && <Reveal>Show/hide columns</Reveal>}
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent className={cn(inBar && "hidden")}>Show/Hide columns</TooltipContent>
+          </Tooltip>
+          <PopoverContent align="end" className="w-56 p-1">
+            {columnsPicker(false)}
+          </PopoverContent>
+        </Popover>
+        )}
     </>
   );
   /* WHAT IS ON THE CARD — the board's own control, in the slot the
             column tools vacate. Same place, different subject, and the subject
             is written at the top of the menu and spoken by the icon, so the
             two can never be mistaken for one control that moved. */
-  const boardTools = cardFields ? (
+  const boardTools = settings ? settingsButton : cardFields ? (
     <>
             <Popover>
               <Tooltip>
@@ -690,92 +830,7 @@ export function ListToolbar<K extends string>({
                 <TooltipContent className={cn(inBar && "hidden")}>Card fields</TooltipContent>
               </Tooltip>
               <PopoverContent align="end" className="w-60 p-1">
-                <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Card fields
-                  </span>
-                  <span className="rounded bg-fp-card-1 px-1.5 text-[11px] tabular-nums text-muted-foreground">
-                    {cardShown}/{cardFields.units.length}
-                  </span>
-                </div>
-                {/* WHICH CARDS THIS IS ABOUT, above the ticks it governs. A
-                    card in the first lane and one in the last are answering
-                    different questions, so the field list has to be able to
-                    differ between them — and the reader has to be told which
-                    set they are editing BEFORE they edit it, not after. */}
-                {cardFields.scopes && cardFields.onScopeChange && (
-                  <div className="px-2 pb-2">
-                    <Combobox
-                      size="sm"
-                      className="w-full"
-                      value={cardFields.scope ?? ALL_LANES}
-                      onValueChange={(v) =>
-                        cardFields.onScopeChange?.(v === ALL_LANES ? null : v)
-                      }
-                      options={[
-                        { value: ALL_LANES, label: "All lanes" },
-                        ...cardFields.scopes.map((sc) => ({
-                          value: sc.key,
-                          label: sc.label,
-                        })),
-                      ]}
-                      placeholder="All lanes"
-                      searchPlaceholder="Search lanes…"
-                      emptyText="No lane found."
-                    />
-                  </div>
-                )}
-                <div className="max-h-64 overflow-y-auto">
-                  {/* A TOGGLE PER CATEGORY, a tick per field inside it (Pavan,
-                      2026-09-23). The category — Customer, Asset & Fault — is
-                      the decision somebody actually makes about a card, so it
-                      is a switch: on or off, and it reads that way. Its fields
-                      are the finer adjustment, shown only while the category
-                      is on, because ticking a field inside a hidden block
-                      changes nothing anybody can see. */}
-                  {cardFields.units.map((u) => {
-                    if (!u.group) {
-                      const on = !cardFields.hidden.has(u.key);
-                      return (
-                        <label
-                          key={u.key}
-                          className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
-                        >
-                          <span className="flex-1 truncate">{u.label}</span>
-                          <Switch
-                            size="sm"
-                            checked={on}
-                            onCheckedChange={() => cardFields.onToggle(u.key)}
-                          />
-                        </label>
-                      );
-                    }
-                    if (cardFields.hidden.has(u.group)) return null;
-                    return (
-                      <label
-                        key={u.key}
-                        className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-5 text-[13px] text-muted-foreground transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
-                      >
-                        <Checkbox
-                          checked={!cardFields.hidden.has(u.key)}
-                          onCheckedChange={() => cardFields.onToggle(u.key)}
-                        />
-                        <span className="flex-1 truncate">{u.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <Separator className="my-1" />
-                <div className="flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={cardFields.hidden.size === 0}
-                    onClick={cardFields.onShowAll}
-                  >
-                    Show all
-                  </Button>
-                </div>
+                {cardPicker(false)}
               </PopoverContent>
             </Popover>
     </>
@@ -928,7 +983,8 @@ export function ListToolbar<K extends string>({
         {multiView && toolsBox && activeTools && (
           <div role="group" aria-label="View settings" className="relative ml-2 inline-flex shrink-0 items-center gap-1">
             {activeTools}
-            <ToolsLink view={view} />
+            {/* NO LINE WITH SETTINGS (Pavan, 2026-11-08). */}
+            {!settings && <ToolsLink view={view} />}
           </div>
         )}
 
@@ -955,9 +1011,55 @@ export function ListToolbar<K extends string>({
           </div>,
           viewToolsInto
         )}
+      {settings && (
+        <RecordSheet
+          size="compact"
+          /* 300 — THE TAB ROW'S WIDTH (251) PLUS THE BODY'S PADDING, with room
+             to breathe (Pavan, 2026-11-08: "at least 50%" of 510; 255 would
+             cut "Detail page view"). */
+          width={300}
+          presentation="sheet"
+          detailViewMenu={false}
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          mode="edit"
+          editTitle="Settings"
+          createTitle=""
+          createAction=""
+          noFooter
+          showCancel={false}
+          onSubmit={() => {}}
+          stepNav={false}
+        >
+          <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v as SettingsTab)} className="gap-4">
+            <TabsList variant="line" className="h-9 w-max justify-start">
+              {([
+                ["table", "Table"],
+                ...(cardFields ? [["board", "Board"]] : []),
+                ["detail", "Detail page view"],
+              ] as [SettingsTab, string][]).map(([k, label]) => (
+                <TabsTrigger
+                  key={k}
+                  value={k}
+                  className="flex-none px-2 after:bg-foreground group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground"
+                >
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <div className="-mx-1">
+            {settingsTab === "table" && columnsPicker(true)}
+            {settingsTab === "board" && cardPicker(true)}
+            {settingsTab === "detail" && <div className="px-1"><DetailViewChoice /></div>}
+          </div>
+        </RecordSheet>
+      )}
     </div>
   );
 }
+
+type SettingsTab = "table" | "board" | "detail";
 
 /**
  * THE LINE FROM THE VIEW TO ITS TOOLS (Pavan, 2026-11-02): one stem rises

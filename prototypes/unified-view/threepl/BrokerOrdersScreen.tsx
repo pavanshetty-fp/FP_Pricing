@@ -1038,12 +1038,13 @@ export function BrokerOrdersScreen({
   startCreate,
   onCreateClose,
   drill = null,
-  layout = "1",
+  layout = "2",
 }: {
   /**
-   * V1 · V2 BESIDE THE TITLE (Pavan, 2026-11-02). V2: the displays — Table,
-   * List, Board, Map — are tabs in the view row, with their icons, and the
-   * saved views carry on after them; no display switch in the toolbar.
+   * V2 IS THE SCREEN (Pavan, 2026-11-08): the displays — Table, List, Board,
+   * Map — are tabs in the view row, with their icons, and the saved views
+   * carry on after them; no display switch in the toolbar. "1" is archived
+   * ("Version 1: Separate Views", docs/archive/3pl-delivery-orders-v1-2026-11-08.md).
    */
   layout?: "1" | "2";
   focus?: { id: string; n: number } | null;
@@ -2318,6 +2319,19 @@ export function BrokerOrdersScreen({
     </Empty>
   );
 
+  const toggleColFilters = () =>
+    setColFiltersOpen((open) => {
+      /* CLOSING THE ROW PUTS THE TABLE BACK. The boxes go away when you close
+         it, so leaving what was typed in them applying would be a narrowing
+         with nothing on screen saying so. Hiding the control is the same act
+         as being finished with it. */
+      if (open) {
+        setColFilters({});
+        setPage(1);
+      }
+      return !open;
+    });
+
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
 
@@ -2493,28 +2507,12 @@ export function BrokerOrdersScreen({
               }
             />
           }
-          onToggleColumnFilters={
-            board
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* CLOSING THE ROW PUTS THE TABLE BACK. The boxes go away
-                       when you close it, so leaving what was typed in them
-                       applying would be a narrowing with nothing on screen
-                       saying so — the reader would be looking at 33 of 44
-                       orders with no way to find out why. Hiding the control
-                       is the same act as being finished with it. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
+          onToggleColumnFilters={board ? undefined : toggleColFilters}
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
           viewSwitch={layout !== "2"}
+          settings
           mapView
           listView={listView}
           dateControl={
@@ -2652,6 +2650,7 @@ export function BrokerOrdersScreen({
               openLabel={(r) => `Open order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={toggleColFilters}
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

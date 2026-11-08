@@ -237,9 +237,93 @@
 [data-view-in] {
   animation: fp-view-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+/* A TABLE ARRIVES FROM BELOW (Pavan, 2026-11-05) — the board's lanes come
+   in from the right; a table's box rises a few pixels instead, and its rows
+   stack up from the BOTTOM one after another, 20ms apart (`--fp-row` counts
+   up from the last row in view; rows below the fold go at once). `data-entering` is on only while the view
+   arrives, so a sort or a new page does not replay it. */
+/* NO FADE (Pavan, 2026-11-05 — "let it be there"): the table and its rows
+   are on screen from the start and only move up a few pixels. */
+@keyframes fp-view-up {
+  from {
+    transform: translateY(4px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fp-row-up {
+  from {
+    transform: translateY(4px);
+  }
+  to {
+    transform: none;
+  }
+}
+/* ALREADY MOVING WHEN IT APPEARS (Pavan, 2026-11-05 — "it should feel like
+   the animation has already started and it's just settling in"). Every delay
+   is NEGATIVE, so nothing waits: on the first frame each row is part-way up
+   and only settles. The bottom row in view is furthest along, the top row
+   least — still bottom first. */
+[data-view-box][data-view-table] {
+  animation: fp-view-up 360ms cubic-bezier(0.2, 0.7, 0.2, 1) -120ms both;
+}
+[data-entering] .fp-row-in {
+  animation: fp-row-up 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc((min(var(--fp-row, 0), 14) - 14) * 18ms - 60ms);
+}
+/* THE LIST ARRIVES FROM THE LEFT (Pavan, 2026-11-05) — the box slides in
+   from the left and its rows follow, top first, 20ms apart. */
+@keyframes fp-view-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fp-list-left {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-view-box][data-view-list],
+[data-view-in][data-view-list] {
+  animation: fp-view-left 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+[data-entering] .fp-list-in {
+  animation: fp-list-left 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(min(var(--fp-row, 0), 14) * 20ms + 60ms);
+}
+/* THE MAP SETTLES IN — it opens about 20% zoomed out and slowly zooms in. */
+@keyframes fp-map-zoom {
+  from {
+    transform: scale(0.8);
+  }
+  to {
+    transform: none;
+  }
+}
+.fp-map-zoom {
+  transform-origin: center;
+  animation: fp-map-zoom 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
   [data-view-box],
-  [data-view-in] {
+  [data-view-in],
+  [data-view-box][data-view-table],
+  [data-entering] .fp-row-in,
+  [data-view-box][data-view-list],
+  [data-view-in][data-view-list],
+  [data-entering] .fp-list-in,
+  .fp-map-zoom {
     animation: none;
   }
 }

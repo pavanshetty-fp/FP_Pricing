@@ -9,10 +9,11 @@ import { BoardRowList, type BoardCard } from "./threepl/BrokerBoard";
 
 /*
   LIST VIEW — ONE UNIT, EVERY BOARD MODULE (Pavan, 2026-10-29, after
-  Dynamics 365's List view). Left: one sideways row of status pills (All plus
-  every step, with counts; one at a time, All is the way back) over the
-  records as rows, a rule, then the picked record's own sheet, docked
-  (`DockedSheet`), keeping its scroll as the pick changes.
+  Dynamics 365's List view; drawn like the board 2026-11-05). Left, a lane:
+  one sideways row of status pills (All plus every step, with counts; one at
+  a time, All is the way back) over the records as the board's cards. A gap,
+  then the picked record's own sheet in its own box, docked (`DockedSheet`),
+  keeping its scroll as the pick changes.
 
   The pills are neutral — outlined at rest, the grey pill when picked — and the
   picked row is the lightest grey; no status or brand colour here.
@@ -63,16 +64,18 @@ export function ListSplitView({
     { key: null as string | null, label: "All", n: items.length },
     ...steps.map((s) => ({ ...s, n: items.filter((i) => i.status === s.key).length })),
   ];
-  /* ONE BOX, LIKE THE TABLE AND THE BOARD (Pavan, 2026-10-29): the view bar
-     across the top, then the list and the form side by side, a rule between. */
+  /* LIKE THE BOARD (Pavan, 2026-11-05 — was one box with a rule between):
+     on the board's ground, the left side is a LANE — the status pills and
+     the records as cards — then a gap, then the picked record in its own
+     box. */
   return (
-    <BoardWithBar barRef={barRef}>
-      <div className="flex h-full min-h-0">
-        <div className="flex w-80 shrink-0 flex-col border-r border-fp-outline-1">
+    <BoardWithBar barRef={barRef} list>
+      <div className="flex h-full min-h-0 gap-3 bg-fp-surface-1b p-3">
+        <div data-fp-unit="lane" className="flex w-80 shrink-0 flex-col overflow-hidden rounded-md bg-fp-surface-1a">
           <div
             role="group"
             aria-label="Filter by status"
-            className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-fp-outline-1 p-3 [scrollbar-width:thin]"
+            className="flex shrink-0 gap-1.5 overflow-x-auto px-3 pt-3 pb-2 [scrollbar-width:thin]"
           >
             {pills.map(({ key, label, n }) => {
               const on = status === key;
@@ -110,7 +113,7 @@ export function ListSplitView({
             />
           </div>
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden rounded-md border border-fp-outline-1">
           {picked && <DockedSheet.Provider value>{renderDetail(picked.card.id)}</DockedSheet.Provider>}
         </div>
       </div>

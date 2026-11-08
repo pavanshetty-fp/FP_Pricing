@@ -158,24 +158,36 @@ export function OrderMapView({
     };
   }, [groups, trucks, minPad]);
 
+  /* THE VIEW ARRIVES FROM THE LEFT (Pavan, 2026-11-05) — the list's rows
+     follow one after another; the plot zooms in from 20% out. */
+  const [entering, setEntering] = React.useState(true);
+  React.useEffect(() => {
+    const t = window.setTimeout(() => setEntering(false), 900);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const plotted = groups.reduce((n, g) => n + g.rows.length, 0);
   const missing = orders.length - plotted;
 
   return (
-    <div data-view-in="" className="flex h-full min-h-0 gap-4">
-      {/* ── the list ── */}
-      <div className="flex min-h-0 w-[340px] shrink-0 flex-col overflow-auto rounded-md border border-border">
-        {orders.map((o) => {
+    <div data-view-in="" data-view-list="" className="flex h-full min-h-0 gap-4">
+      {/* ── the list ── (its rows slide in from the left as the view arrives) */}
+      <div
+        data-entering={entering ? "" : undefined}
+        className="flex min-h-0 w-[340px] shrink-0 flex-col overflow-auto rounded-md border border-border"
+      >
+        {orders.map((o, rowIndex) => {
           const on = hovered === o.site;
           return (
             <button
               key={o.id}
               type="button"
+              style={{ "--fp-row": rowIndex } as React.CSSProperties}
               onClick={() => onOpenOrder(o.id)}
               onMouseEnter={() => setHovered(o.site)}
               onMouseLeave={() => setHovered(null)}
               className={cn(
-                "flex flex-col gap-1 border-b border-border px-3 py-2.5 text-left outline-none transition-colors last:border-b-0",
+                "fp-list-in flex flex-col gap-1 border-b border-border px-3 py-2.5 text-left outline-none transition-colors last:border-b-0",
                 "focus-visible:ring-2 focus-visible:ring-ring/50",
                 on ? "bg-selected" : "hover:bg-accent"
               )}
@@ -207,6 +219,9 @@ export function OrderMapView({
 
       {/* ── the plot ── */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-fp-surface-1a">
+        {/* THE MAP SETTLES IN (Pavan, 2026-11-05) — it opens about 20% zoomed
+            out and slowly zooms in to fit (`fp-map-zoom`). */}
+        <div className="fp-map-zoom absolute inset-0">
         {/* THE ROADS — a dashed line from where each truck left to where it
             is going, the part already driven solid. */}
         {trucks.length > 0 && (
@@ -308,6 +323,7 @@ export function OrderMapView({
             </button>
           );
         })}
+        </div>
         {missing > 0 && (
           <span className="absolute right-3 bottom-3 text-xs text-muted-foreground">
             {missing} without a mapped site

@@ -1296,14 +1296,17 @@ export function ViewStatement({
  */
 export function BoardWithBar({
   barRef,
+  list,
   children,
 }: {
   /** Omitted: the box without the bar (tools in `toolsBox`). */
   barRef?: (el: HTMLDivElement | null) => void;
+  /** The list view — it arrives from the left, the board from the right. */
+  list?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div data-view-box="" className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
+    <div data-view-box="" data-view-list={list ? "" : undefined} className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-fp-surface-1b">
       {barRef && <div ref={barRef} className="shrink-0 border-b border-fp-outline-1" />}
       <div className="min-h-0 flex-1">{children}</div>
     </div>

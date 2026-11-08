@@ -201,6 +201,22 @@ export function ListTable<Row, K extends string>({
   /* THE FRAME'S WIDTH — what the columns fill, and what a nested layer
      spans (the visible width, not the scrolled one). */
   const frame = React.useRef<HTMLDivElement>(null);
+  /* THE TABLE ARRIVES FROM BELOW (Pavan, 2026-11-05) — as the board's lanes
+     settle in from the right, the table rises and its rows stack up from the
+     bottom one after another. Only while the view is arriving: a sort, a filter or a new page
+     afterwards does not replay it. */
+  const [entering, setEntering] = React.useState(true);
+  /* BOTTOM ROW FIRST — the rows on screen, counted from the frame's height
+     (a 40px header, 56px rows); the last one in view leads. */
+  const [inView, setInView] = React.useState(14);
+  React.useLayoutEffect(() => {
+    const h = frame.current?.clientHeight ?? 0;
+    if (h) setInView(Math.max(1, Math.ceil((h - 40) / 56)));
+  }, []);
+  React.useEffect(() => {
+    const t = window.setTimeout(() => setEntering(false), 900);
+    return () => window.clearTimeout(t);
+  }, []);
   const [frameWidth, setFrameWidth] = React.useState<number | undefined>();
   React.useEffect(() => {
     if (!frame.current) return;
@@ -299,6 +315,8 @@ export function ListTable<Row, K extends string>({
     <div
       ref={frame}
       data-view-box={topBar ? undefined : ""}
+      data-view-table=""
+      data-entering={entering ? "" : undefined}
       className={cn(
         "overflow-auto [&_[data-slot=table-container]]:overflow-visible",
         topBar ? "min-h-0 flex-1" : "h-full rounded-md border border-border"
@@ -451,7 +469,7 @@ export function ListTable<Row, K extends string>({
               depth: 0,
               row,
             }))
-          ).map((node) =>
+          ).map((node, rowIndex) =>
             node.kind === "group" ? (
               <GroupHeaderRow
                 key={node.id}
@@ -483,8 +501,9 @@ export function ListTable<Row, K extends string>({
                not a click either. */
             <React.Fragment key={node.id}>
             <TableRow
+              style={{ "--fp-row": Math.max(inView - 1 - rowIndex, 0) } as React.CSSProperties}
               className={cn(
-                "group/row h-14",
+                "fp-row-in group/row h-14",
                 onOpenRow && "cursor-pointer outline-none focus-visible:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
                 /* The open parent keeps a tint and drops its divider, so the
                    rail runs on into its layer (DS). */
@@ -593,7 +612,7 @@ export function ListTable<Row, K extends string>({
   );
   if (!topBar) return body;
   return (
-    <div data-view-box="" className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+    <div data-view-box="" data-view-table="" className="flex h-full flex-col overflow-hidden rounded-md border border-border">
       <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{topBar}</div>
       {body}
     </div>

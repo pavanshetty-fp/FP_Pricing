@@ -1939,6 +1939,13 @@ export function BoardRowList({
   React.useEffect(() => {
     if (selectedId) refs.current.get(selectedId)?.scrollIntoView({ block: "nearest" });
   }, [selectedId]);
+  /* THE LIST ARRIVES FROM THE LEFT (Pavan, 2026-11-05) — its rows slide in
+     one after another while the view arrives; not on every filter after. */
+  const [entering, setEntering] = React.useState(true);
+  React.useEffect(() => {
+    const t = window.setTimeout(() => setEntering(false), 900);
+    return () => window.clearTimeout(t);
+  }, []);
   const step = (by: number) => {
     const at = items.findIndex((i) => i.card.id === selectedId);
     const next = items[Math.min(items.length - 1, Math.max(0, at + by))];
@@ -1951,7 +1958,10 @@ export function BoardRowList({
     <div
       role="listbox"
       aria-label="Orders"
-      className="h-full overflow-y-auto"
+      data-entering={entering ? "" : undefined}
+      /* THE LANE'S BODY (Pavan, 2026-11-05) — the records as the board's
+         cards, 8px apart, inside the list view's lane. */
+      className="flex h-full flex-col gap-2 overflow-y-auto px-2 pb-2"
       onKeyDown={(e) => {
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
@@ -1959,7 +1969,7 @@ export function BoardRowList({
         }
       }}
     >
-      {items.map(({ card, status, tone, when: whenText, what: whatText }) => {
+      {items.map(({ card, status, tone, when: whenText, what: whatText }, rowIndex) => {
         const on = card.id === selectedId;
         const shipTo = card.units.find((u) => u.kind === "stack" && u.key === "customer");
         const when = card.units.find((u) => u.kind === "inline" && WHEN_KEYS.has(u.key));
@@ -2002,9 +2012,12 @@ export function BoardRowList({
             aria-selected={on}
             tabIndex={on ? 0 : -1}
             onClick={() => onSelect(card.id)}
+            style={{ "--fp-row": rowIndex } as React.CSSProperties}
             className={cn(
-              "flex cursor-pointer flex-col gap-1 border-b border-fp-outline-1 px-3 py-2.5 outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-              on && "bg-fp-table-header hover:bg-fp-table-header"
+              /* THE BOARD'S FLAT CARD — its rim, fill, 10px inside and hover. */
+              "fp-list-in flex shrink-0 cursor-pointer flex-col gap-1 rounded-md border border-fp-outline-1 bg-fp-surface-1b p-2.5 outline-none transition-[background-color,border-color,box-shadow] hover:border-fp-outline-2 hover:shadow-fp-surface focus-visible:ring-2 focus-visible:ring-ring/50 dark:border-[color-mix(in_srgb,var(--fp-outline-1)_50%,var(--fp-outline-2))] dark:hover:border-fp-outline-2 dark:hover:bg-muted",
+              /* The picked one — the strong rim on the lightest grey. */
+              on && "border-fp-outline-2 bg-fp-table-header hover:bg-fp-table-header dark:border-fp-outline-2"
             )}
           >
             {/* THE NUMBER AND ITS TYPE AS THE V3 CARD DRAWS THEM (Pavan,

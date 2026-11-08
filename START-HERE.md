@@ -113,6 +113,7 @@ need their own copy of the shell + tokens + components, causing duplication and 
 
 | Path | What it is |
 |---|---|
+| `docs/context/` | **The context layer** — FleetPanda knowledge by subject (fuel supply, fleet and routes, dispatch, delivery orders, 3PL, customers, portal, assets, service, sales, master data) + working agreements. Read its `README.md`, then only the docs the task needs |
 | `docs/ds/` | The rulebook (UX structure · UI look · interactions · meta) |
 | `docs/apply-design-system.md` | All rules combined into one file (generated) |
 | `docs/unified-view/` | The **Unified View app's own** docs — components, layouts, interactions — plus `evals/`. A CHILD of the rulebook: it records how the app uses the system and never redefines it. Start at its `map.md`. |

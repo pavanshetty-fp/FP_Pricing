@@ -26,6 +26,9 @@ const archiveTitle = (src: string, path: string) => {
   return t[0].toUpperCase() + t.slice(1);
 };
 const doc = (path: string) => DOCS[`../../${path}`] ?? "";
+/* THE VERSION IS THE CHANGELOG'S NEWEST HEADING (2026-11-08) — one place to
+   bump, and the badge can never disagree with the history under it. */
+const VERSION = doc("docs/fpds/CHANGELOG.md").match(/^##\s+(v[\d.]+)/m)?.[1];
 
 type Entry = (typeof register.entries)[number];
 
@@ -52,6 +55,7 @@ const DOC_PAGES: [string, string, string, string][] = [
   ["Start", "Overview", "docs/fpds/README.md", "overview"],
   ["Start", "How to build (protocol)", "docs/fpds/00-protocol.md", "protocol"],
   ["Start", "Checks", "docs/fpds/evals/README.md", "checks"],
+  ["Start", "Changelog", "docs/fpds/CHANGELOG.md", "changelog"],
   ["Start", "Not designed yet", "docs/fpds/09-later.md", "not-designed-yet"],
   ["Foundations", "Foundations", "docs/fpds/01-foundations.md", "foundations"],
   ["Rules", "UX rules", "docs/fpds/07-ux-rules.md", "ux-rules"],
@@ -186,6 +190,15 @@ export function Reference() {
     <div className="flex h-screen flex-col bg-fp-surface-1b text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
         <span className="text-base font-semibold">FPDS</span>
+        {VERSION && (
+          <button
+            type="button"
+            onClick={() => setCurrent("changelog")}
+            className="rounded-full bg-fp-surface-1a px-2 py-0.5 text-xs text-muted-foreground tabular-nums outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {VERSION}
+          </button>
+        )}
         <span className="hidden truncate text-sm text-muted-foreground sm:inline">FleetPanda Design System — design reference</span>
         <span className="ml-auto hidden text-xs text-muted-foreground md:inline">Owner: {register.owner}</span>
         <ThemeToggle />

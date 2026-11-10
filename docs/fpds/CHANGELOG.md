@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.8 — 2026-11-10
+
+Built from commit `3cade40`.
+
+- **Settings sheet tabs** now sit on a full-width line, and the content starts 16px below it (was 40px). The Tabs spec gains rule 3: line tabs plus their content are one unit.
+
 ## v1.7 — 2026-11-10
 
 Built from commit `0a094cb`.

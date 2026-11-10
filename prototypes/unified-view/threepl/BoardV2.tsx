@@ -472,6 +472,11 @@ function LaneV2({
    half lane says the board scrolls on. Never under 160px. V2.1 (Pavan,
    2026-10-29) is the same board at 7.5. */
 const LANES_IN_VIEW = 5.5;
+/* CARDS 20% NARROWER (Pavan, 2026-11-10) — the card, not the padding: the
+   lane keeps its 8px each side round a card 80% of the fitted width, so more
+   of the board shows at once. */
+const CARD_SCALE = 0.8;
+const LANE_INSET = 16;
 const GAP = 8;
 const PAD = 12;
 
@@ -502,7 +507,14 @@ export function BoardV2({
     if (!el) return;
     const fit = () =>
       setWidth(
-        Math.max(160, Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(lanesInView)) / lanesInView))
+        Math.max(
+          140,
+          LANE_INSET +
+            Math.floor(
+              (Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(lanesInView)) / lanesInView) - LANE_INSET) *
+                CARD_SCALE
+            )
+        )
       );
     fit();
     const ro = new ResizeObserver(fit);

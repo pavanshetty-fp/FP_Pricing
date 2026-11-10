@@ -69,7 +69,6 @@ import { VENDORS, vendorById, vendorName } from "./vendors";
 import {
   BROKER_COLUMNS,
   DRIVERS,
-  BROKER_HIDDEN_BY_DEFAULT,
   BROKER_LANE_COLOR,
   BROKER_STATUSES,
   SERVICE_LINES,
@@ -841,23 +840,14 @@ function toggleField(
  * fields menu, per lane, and turning the schedule back on in Quoting is one
  * click.
  */
-const SCHEDULE_FIELDS = ["schedule", "schedule.window", "schedule.when"];
 
-const LANE_FIELD_DEFAULTS: Record<string, string[]> = {
-  Quoting: SCHEDULE_FIELDS,
-  /* Assigned keeps its date (Pavan, 2026-10-28): every lane shows one —
-     the schedule until the delivery, "Completed on" after it. */
-  Completed: SCHEDULE_FIELDS,
-  Review: SCHEDULE_FIELDS,
-  Verified: SCHEDULE_FIELDS,
-  Synced: SCHEDULE_FIELDS,
-};
 
+/* EVERYTHING ON BY DEFAULT (Pavan, 2026-11-10) — with no Show all in the
+   Settings sheet, every card field starts shown; the reader switches off
+   what they don't want. (Was `LANE_FIELD_DEFAULTS` per lane.) */
 function initialCardOff(): Record<string, Set<string>> {
   const out: Record<string, Set<string>> = {};
-  for (const lane of BOARD_LANES) {
-    out[lane.key] = new Set(LANE_FIELD_DEFAULTS[lane.key] ?? []);
-  }
+  for (const lane of BOARD_LANES) out[lane.key] = new Set();
   return out;
 }
 
@@ -1096,7 +1086,8 @@ export function BrokerOrdersScreen({
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [hidden, setHidden] = React.useState<Set<BrokerColumnKey>>(
-    () => new Set(BROKER_HIDDEN_BY_DEFAULT)
+    /* EVERY COLUMN SHOWN BY DEFAULT (Pavan, 2026-11-10). */
+    () => new Set<BrokerColumnKey>()
   );
   /* THE BOARD KEEPS ITS OWN SET, because the two controls narrow different
      things and share one button. Folding them together would mean turning
@@ -1344,7 +1335,7 @@ export function BrokerOrdersScreen({
       sortDir: null,
       /* THE SCREEN'S OWN DEFAULT HIDDEN SET — it was `[]`, so Default read
          as changed the moment the screen opened. */
-      hidden: [...BROKER_HIDDEN_BY_DEFAULT],
+      hidden: [],
       columnOrder: [],
       columnWidths: {},
       pageSize: 25,

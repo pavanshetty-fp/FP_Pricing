@@ -629,7 +629,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 
 ## 18. List settings and header column search
 
-**IX-93. A list with Settings has ONE gear beside the view tabs (no line to the view). It opens a 300px side sheet with tabs: Table (show/hide and reorder columns) · Board (card fields per lane) · Detail page view, landing on the tab of the view you are on. Changes apply at once.**
+**IX-93. A list with Settings has ONE gear beside the view tabs (no line to the view). It opens a 300px side sheet with tabs: Table (show/hide and reorder columns) · Board (card fields per lane) · Detail page view, landing on the tab of the view you are on. Changes apply at once.** No "Show all" in the sheet — every column and card field starts shown (2026-11-10).
 - **Why:** one place for everything about what a list shows (HubSpot-style), instead of a different icon per view.
 - **Applies to:** `ListToolbar settings` — 3PL Delivery Orders first.
 - **Check:** review

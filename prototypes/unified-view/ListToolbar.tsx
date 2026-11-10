@@ -561,6 +561,9 @@ export function ListToolbar<K extends string>({
                 );
               })}
             </div>
+            {/* NO SHOW ALL IN THE SETTINGS SHEET (Pavan, 2026-11-10) — every
+                field is shown by default there; the popover keeps it. */}
+            {!tall && (<>
             <Separator className="my-1" />
             {/* SHOW ALL, AND NOTHING FACING IT. Hide all emptied the table —
                 a control whose only outcome is a screen with no data in it,
@@ -578,6 +581,7 @@ export function ListToolbar<K extends string>({
                 Show all
               </Button>
             </div>
+            </>)}
     </>
   );
   const cardPicker = (tall: boolean) => {
@@ -660,6 +664,7 @@ export function ListToolbar<K extends string>({
                     );
                   })}
                 </div>
+                {!tall && (<>
                 <Separator className="my-1" />
                 <div className="flex justify-end">
                   <Button
@@ -671,6 +676,7 @@ export function ListToolbar<K extends string>({
                     Show all
                   </Button>
                 </div>
+                </>)}
     </>
     );
   };

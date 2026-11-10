@@ -589,6 +589,19 @@
         "id": "repeated-copy",
         "status": "built"
       }
+    },
+    {
+      "id": "M-045",
+      "date": "2026-11-10",
+      "title": "Dark theme swimlanes invisible — the darker lane colour landed on the board's own ground (#1e222a on #1d222a); the lane hover (#232831) then darkened it back onto the board",
+      "where": "Every board (BoardV2) and the list view's lane, dark theme",
+      "foundBy": "pavan",
+      "pattern": "one-case",
+      "why": "Derived the new lane colour from two tokens and checked dark only against the cards, not against the board ground it sits on; reported dark as fine.",
+      "check": {
+        "id": "review",
+        "status": "manual"
+      }
     }
   ]
 }

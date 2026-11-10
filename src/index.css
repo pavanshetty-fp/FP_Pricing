@@ -481,7 +481,7 @@
   /* THE SWIMLANE GROUND (Pavan, 2026-11-10: "a little darker") — the inner
      panel (--fp-surface-1a) moved 40% toward the board-lane step, so it
      follows both themes and every WCAG mode from two tokens. */
-  --color-fp-lane-ground: color-mix(in oklab, var(--fp-surface-1a), var(--fp-board-lane) 40%);
+  --color-fp-lane-ground: var(--fp-lane-ground);
   /* THE QUIET ICON INK (Pavan, 2026-10-26) — the metric icons' line, halfway
      from the muted ink to the tile it sits on: half as dark, still a solid
      colour, in both themes. */
@@ -703,6 +703,9 @@
      and inventing a fourth near-white between them would only crowd a ladder
      that is already tight at the top. */
   --fp-surface-1a: #f4f5f8; /* inner panel — one step under the content layer */
+  /* SWIMLANE GROUND, LIGHT (2026-11-10) — the inner panel 40% toward the
+     board-lane step: a little darker than the panel. */
+  --fp-lane-ground: color-mix(in oklab, var(--fp-surface-1a), var(--fp-board-lane) 40%);
   --fp-surface-1b: #ffffff; /* content layer */
   /* THE APP SHELL'S OWN SET (Pavan, 2026-10-06 — after the AirOps reference).
      The ground the whole app sits on (top bar included), the box the
@@ -1200,6 +1203,12 @@
      under the content layer, so the cards (content-layer fill) sit LIGHTER
      on it, the way they do in light. On card-1 they read as sunk into it. */
   --fp-board-lane: var(--fp-surface-base);
+  /* SWIMLANE GROUND, DARK (Pavan, 2026-11-10: "not at all visible … really
+     good contrast"). The light formula lands on the board's own ground here
+     (#1e222a on #1d222a), so dark takes the raised-card step instead: the
+     lane clearly lighter than the board, the cards (content-layer fill, with
+     their rims) clearly darker inside it. */
+  --fp-lane-ground: var(--fp-card-1);
   /* Dark tracks light onto --fp-card-1. It used to be --fp-surface-1a, which
      is the same value the section card's title band takes — two bands of one
      colour stacked, with the table's header invisible under the card's.
@@ -1929,8 +1938,10 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
   --fp-lane-hover: color-mix(in oklab, var(--fp-row-hover) 55%, var(--fp-surface-1b));
 }
 .dark {
-  /* 1.08 against the lane; a hovered card goes to --muted, 1.13 above. */
-  --fp-lane-hover: #232831;
+  /* THE LANE A SHADE OR TWO LIGHTER (Pavan, 2026-11-10). #232831 was darker
+     than the new lane ground (#353b45) and nearly the board's own colour, so
+     a hovered lane all but vanished; now the lane ground 6% toward the ink. */
+  --fp-lane-hover: color-mix(in oklab, var(--fp-lane-ground), var(--foreground) 6%);
 }
 /* THE LANE UNDER THE CURSOR TINTS (Pavan, 2026-10-29) — so you can see
    which lane you are in; the card under the cursor is the level above it. */

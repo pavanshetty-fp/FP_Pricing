@@ -18,8 +18,9 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
+| 2026-11-08 | 1 |
 
-**44 misses** · found by Pavan 34 · by Claude 10 · guarded by a script 19 · guard proposed 0 · needs eyes 21 · process rule 4
+**45 misses** · found by Pavan 35 · by Claude 10 · guarded by a script 19 · guard proposed 0 · needs eyes 22 · process rule 4
 
 ## Patterns
 
@@ -27,8 +28,8 @@ Every time Pavan has to point out something that should already have been right 
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 11 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 8 |
+| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 7 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 7 |
-| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 6 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
@@ -39,6 +40,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-045 | 2026-11-10 | Dark theme swimlanes invisible — the darker lane colour landed on the board's own ground (#1e222a on #1d222a); the lane hover (#232831) then darkened it back onto the board | Every board (BoardV2) and the list view's lane, dark theme | Pavan | `one-case` | Derived the new lane colour from two tokens and checked dark only against the cards, not against the board ground it sits on; reported dark as fine. | `review` · manual |
 | M-044 | 2026-11-03 | Asset journey said the same thing twice ("Received into the fleet at Irving Hub · New unit received"), and the lifeline bars had outlines | Master Data › Assets › Asset 360 › Asset journey | Pavan | `generic-over-existing` | Printed the data's note next to a title built from the same fact, without reading the line as a whole; the log also added audit rows for invoices and moves that already had their own rows. | `repeated-copy` · built |
 | M-043 | 2026-11-02 | Asset 360 tables: a Status filter on a value with no column (journey), a blank Status on half the log, a Type filter emptying tabs it does not apply to, and a second date-time format | Master Data › Assets › Asset 360 | Claude | `partial-unify` | Built the global filter and the log from the data, not from what each table shows; did not copy the board card's date-time format. | `manual` · manual |
 | M-042 | 2026-11-02 | Documents drawn as an Attached/Pending status pill instead of the documents cell | Master Data › Assets › Asset 360 movement orders | Claude | `generic-over-existing` | Copied the reference's wording instead of the documents unit the app already has (icon + count + breakdown). | `documents-as-status` · built |

@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.5 — 2026-11-10
+
+Built from commit `6be4369`.
+
+- **Board cards are back to their full width** in every module. The 20% narrower card from v1.4 is reverted.
+
 ## v1.4 — 2026-11-10
 
 Built from commit `342b4cb`.

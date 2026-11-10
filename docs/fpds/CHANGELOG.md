@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.6 — 2026-11-10
+
+Built from commit `c642441`.
+
+- **Dark theme swimlanes are clearly visible.** The lane is a step lighter than the board, and the cards are darker inside it. A hovered lane now goes a shade lighter instead of fading into the board.
+
 ## v1.5 — 2026-11-10
 
 Built from commit `6be4369`.

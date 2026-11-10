@@ -2,6 +2,13 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.10 — 2026-11-10
+
+Built from commit `de2cadb`.
+
+- **Fixed:** on 3PL Delivery Orders the top of Create Order and the ends of the views row's line were cut off by the collapse-header fold. They are whole again.
+- **New clip check** (`scripts/eval/clip-check.browser.js`): it finds anything a clipping box cuts and now runs on every page before work is reported and on every push.
+
 ## v1.9 — 2026-11-10
 
 Built from commit `e351d83`.

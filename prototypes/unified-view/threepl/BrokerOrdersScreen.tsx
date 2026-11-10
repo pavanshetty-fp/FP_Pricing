@@ -53,6 +53,7 @@ import {
   type BoardLane,
 } from "./BrokerBoard";
 import { BoardV2 } from "./BoardV2";
+import { setHeadCollapsed, useHeadCollapsed } from "../pageHead";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, VENDOR_SECTION_ID, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -2319,6 +2320,9 @@ export function BrokerOrdersScreen({
     </Empty>
   );
 
+  const headCollapsed = useHeadCollapsed();
+  /* Leaving the page puts its head back. */
+  React.useEffect(() => () => setHeadCollapsed(false), []);
   const toggleColFilters = () =>
     setColFiltersOpen((open) => {
       /* CLOSING THE ROW PUTS THE TABLE BACK. The boxes go away when you close
@@ -2337,6 +2341,14 @@ export function BrokerOrdersScreen({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* THE VIEWS ROW FOLDS WITH THE PAGE TITLE (Pavan, 2026-11-10). */}
+      <div
+        className="grid shrink-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
+        style={{ gridTemplateRows: headCollapsed ? "0fr" : "1fr" }}
+        aria-hidden={headCollapsed || undefined}
+        inert={headCollapsed || undefined}
+      >
+      <div className="min-h-0 overflow-hidden">
       <FuelOrdersViewBar
         {...savedViews}
         {...(layout === "2"
@@ -2380,8 +2392,10 @@ export function BrokerOrdersScreen({
         }}
         onExport={() => setExporting(true)}
       />
+      </div>
+      </div>
 
-      <div className="mt-4 shrink-0">
+      <div className={cn("shrink-0 transition-[margin] duration-200 ease-out", headCollapsed ? "mt-0" : "mt-4")}>
         <ListToolbar
           boardView
           searchValue={search}
@@ -2513,6 +2527,7 @@ export function BrokerOrdersScreen({
           onViewChange={setView}
           viewSwitch={layout !== "2"}
           settings
+          headCollapse={{ collapsed: headCollapsed, onToggle: () => setHeadCollapsed(!headCollapsed) }}
           mapView
           listView={listView}
           dateControl={

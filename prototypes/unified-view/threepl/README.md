@@ -1923,3 +1923,7 @@ Recommendations button. History is INVENTED.
 ## Board lanes — 8px and a darker tray (2026-11-10)
 
 Every board (one board, every module): 8px between the lane tray and everything in it, and the tray a little darker (`bg-fp-lane-ground`). See `docs/fpds/units/board.md`.
+
+## Delivery Orders — outlined gear, collapse header (2026-11-10)
+
+The Settings gear is outlined and sits after a thin divider; a chevron beside it folds away the title and views rows (every view; reset on leaving the page). IX-96.

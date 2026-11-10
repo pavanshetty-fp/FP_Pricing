@@ -53,6 +53,9 @@ export interface AppShellProps {
    * semibold title; pass a node for custom header content.
    */
   title?: React.ReactNode;
+  /** FOLDS THE HEADER AWAY (2026-11-10) — a list's head-collapse chevron;
+   *  the header slides shut and the body takes the room. */
+  headerCollapsed?: boolean;
   /**
    * Optional breadcrumb (the nav path). Rendered **inside the header, directly
    * below the title text** (above the header's bottom divider). Omit it (e.g. via
@@ -102,6 +105,7 @@ export function AppShell({
   sidebar,
   sidebarPeek = false,
   title,
+  headerCollapsed = false,
   breadcrumb,
   headerAction,
   children,
@@ -310,6 +314,13 @@ export function AppShell({
               sits directly beneath the title text, inside the header unit, above
               the divider. */}
           {hasHeader && (
+            <div
+              className="grid shrink-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
+              style={{ gridTemplateRows: headerCollapsed ? "0fr" : "1fr" }}
+              aria-hidden={headerCollapsed || undefined}
+              inert={headerCollapsed || undefined}
+            >
+              <div className="min-h-0 overflow-hidden">
             <header className={cn("flex shrink-0 flex-col gap-1 px-4", compactHeader ? "py-1" : "py-3", !compactHeader && headerDivider && "border-b border-fp-outline-1")}>
               <div className="flex items-center gap-6">
                 {titleEl}
@@ -323,6 +334,8 @@ export function AppShell({
                 <div className="flex items-center">{breadcrumb}</div>
               )}
             </header>
+              </div>
+            </div>
           )}
           {/* Body: 16px inset (hard rule). Children manage their own scroll. */}
           <div

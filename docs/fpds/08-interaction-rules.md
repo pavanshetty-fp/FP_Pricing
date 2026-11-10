@@ -649,6 +649,12 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** eval `pointer-means-navigate` (a hand on a label or stage control fails).
 - **Source:** Pavan, 2026-11-10
 
+**IX-96. On a list with Settings, the gear is an outlined 32px button (like Search, Filters and the date), set off from the date by a thin vertical divider with 16px each side. Beside it, an outlined chevron folds away everything above the search row (page title row and views row) and brings it back; it shows in every view (table, board, list, map) and the head comes back when you leave the page.**
+- **Why:** HubSpot-style room for the work; the controls read as one set.
+- **Applies to:** `ListToolbar settings` + `headCollapse` — 3PL Delivery Orders first; `AppShell headerCollapsed`.
+- **Check:** review
+- **Source:** Pavan, 2026-11-10
+
 ---
 
 ## Index
@@ -748,5 +754,6 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-91 | Pressing an area that has sub-pages opens its first page |
 | IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
 | IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
+| IX-96 | Outlined gear behind a divider; chevron beside it folds the page head away (every view) |
 | IX-95 | Hand cursor = goes somewhere (links, link text, record cards/rows/tiles); in-place controls keep the arrow |
 | IX-92 | Every detail page's ··· starts with "Detail page view" — Side sheet (default) · Modal · Full page, one choice for all modules |

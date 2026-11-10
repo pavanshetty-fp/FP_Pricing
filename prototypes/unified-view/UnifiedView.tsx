@@ -56,6 +56,7 @@ import { ModuleSidebar } from "./ModuleSidebar";
 import { ModuleSkeleton } from "./ModuleSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useHeadCollapsed } from "./pageHead";
 import { ServiceWorkScreen } from "./service/ServiceWorkScreen";
 import { TechniciansScreen } from "./service/TechniciansScreen";
 import { ServiceSettingsScreen } from "./service/ServiceSettingsScreen";
@@ -489,6 +490,7 @@ export function UnifiedView({ only }: { only?: string } = {}) {
     kept to refer to until they are kept or deleted for good.
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
+  const headCollapsed = useHeadCollapsed();
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -871,6 +873,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   return (
     <TooltipProvider>
       <AppShell
+        headerCollapsed={headCollapsed}
         title={
           <div className="flex min-w-0 items-baseline gap-3">
             {loadingModule ? (

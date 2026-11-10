@@ -10,6 +10,7 @@ import {
   Search,
   Settings2,
   Settings as SettingsIcon,
+  ChevronUp,
   TextSearch,
   X,
 } from "lucide-react";
@@ -85,6 +86,9 @@ export interface ListToolbarProps<K extends string> {
    * plus Detail page view. Search by column stays in the bar.
    */
   settings?: boolean;
+  /** HEAD COLLAPSE (Pavan, 2026-11-10, after HubSpot) — a chevron beside the
+   *  gear folding away everything above the search row. */
+  headCollapse?: { collapsed: boolean; onToggle: () => void };
   searchValue: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder: string;
@@ -378,6 +382,7 @@ export function ListToolbar<K extends string>({
   showGroupBy = true,
   cardFields,
   settings = false,
+  headCollapse,
 }: ListToolbarProps<K>) {
   const multiView = boardView || mapView || listView;
   const colLabel =
@@ -673,11 +678,33 @@ export function ListToolbar<K extends string>({
   const [settingsTab, setSettingsTab] = React.useState<SettingsTab>("table");
   /* SETTINGS (Pavan, 2026-11-08, HubSpot-style) — one gear beside Search by
      column; opens on the tab for the view you are on. */
+  /* THE HEAD-COLLAPSE CHEVRON — beside the gear on the table and board, and
+     on its own in list and map view, so a folded head can always come back
+     (Pavan, 2026-11-10). */
+  const headChevron = headCollapse ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={headCollapse.collapsed ? "Expand header" : "Collapse header"}
+            aria-expanded={!headCollapse.collapsed}
+            onClick={headCollapse.onToggle}
+            className="ml-1"
+          >
+            <ChevronUp className={cn("transition-transform duration-200", headCollapse.collapsed && "rotate-180")} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{headCollapse.collapsed ? "Expand header" : "Collapse header"}</TooltipContent>
+      </Tooltip>
+  ) : null;
   const settingsButton = settings ? (
+    <>
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="ghost"
+          /* OUTLINED, like Search, Filters and the date (Pavan, 2026-11-10). */
+          variant={inBar ? "ghost" : "outline"}
           size={inBar ? "sm" : "icon-sm"}
           aria-label="Settings"
           aria-expanded={settingsOpen}
@@ -693,6 +720,8 @@ export function ListToolbar<K extends string>({
       </TooltipTrigger>
       <TooltipContent className={cn(inBar && "hidden")}>Settings</TooltipContent>
     </Tooltip>
+    {headChevron}
+    </>
   ) : null;
   const tableTools = (
     <>
@@ -980,9 +1009,13 @@ export function ListToolbar<K extends string>({
         {/* THE VIEW'S TOOLS BESIDE THE SWITCH, OPEN (Pavan, 2026-11-02): not
             in its box and not in one of their own — plain icons after a
             12px space; what they are follows the view picked. */}
-        {multiView && toolsBox && activeTools && (
-          <div role="group" aria-label="View settings" className="relative ml-2 inline-flex shrink-0 items-center gap-1">
-            {activeTools}
+        {multiView && toolsBox && (activeTools || headChevron) && (
+          <div role="group" aria-label="View settings" className={cn("relative inline-flex shrink-0 items-center gap-1", settings ? "ml-0" : "ml-2")}>
+            {/* ROOM AND A HAIRLINE BEFORE SETTINGS (Pavan, 2026-11-10) — 16px
+                each side of a thin divider, so the gear reads apart from the
+                date. */}
+            {settings && <Separator orientation="vertical" className="mr-3 ml-1 data-[orientation=vertical]:h-5" />}
+            {activeTools ?? headChevron}
             {/* NO LINE WITH SETTINGS (Pavan, 2026-11-08). */}
             {!settings && <ToolsLink view={view} />}
           </div>

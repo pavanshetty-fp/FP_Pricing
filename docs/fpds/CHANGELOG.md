@@ -2,6 +2,13 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.7 — 2026-11-10
+
+Built from commit `0a094cb`.
+
+- **Settings gear** is now an outlined button, set apart from the date by a thin divider (IX-96).
+- **Collapse header:** a chevron beside the gear folds away the page title and views rows so the board or table gets the room. It shows in every view, and the header comes back when you leave the page.
+
 ## v1.6 — 2026-11-10
 
 Built from commit `c642441`.

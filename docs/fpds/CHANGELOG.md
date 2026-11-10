@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.9 — 2026-11-10
+
+Built from commit `e351d83`.
+
+- **Settings sheet:** no "Show all" on the Board or Table tab. On 3PL Delivery Orders every column and every card field now starts shown, and you switch off what you don't want.
+
 ## v1.8 — 2026-11-10
 
 Built from commit `3cade40`.

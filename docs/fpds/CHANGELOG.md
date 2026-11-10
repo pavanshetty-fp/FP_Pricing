@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.3 — 2026-11-10
+
+Built from commit `f7f8c14`.
+
+- **Cursors:** the hand cursor now means "this takes you somewhere": links, link-styled text, and cards, rows and tiles that open a record. Buttons, tabs, toggles and their labels, stage steps and tick-to-select rows keep the normal arrow (IX-95, with a check).
+
 ## v1.2 — 2026-11-10
 
 Built from commit `fd5892f`.

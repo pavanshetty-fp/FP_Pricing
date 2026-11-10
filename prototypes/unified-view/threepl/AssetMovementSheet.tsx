@@ -725,7 +725,7 @@ function FlagRow({
   return (
     <div className="flex flex-wrap items-center gap-x-10 gap-y-3">
       {flags.map((f) => (
-        <label key={f.id} htmlFor={f.id} className="flex cursor-pointer items-center gap-2.5">
+        <label key={f.id} htmlFor={f.id} className="flex items-center gap-2.5">
           <Checkbox
             id={f.id}
             checked={f.checked}
@@ -1131,7 +1131,7 @@ export function AssetMovementSheet({
             same 40px the next section stands clear of it. */}
         <label
           htmlFor="mv-notify"
-          className="mt-6 flex cursor-pointer items-center justify-between gap-4"
+          className="mt-6 flex items-center justify-between gap-4"
         >
           <span className="text-sm font-medium text-foreground">
                 Send email notifications to vendor

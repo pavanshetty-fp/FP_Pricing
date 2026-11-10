@@ -713,7 +713,7 @@ export function RuleFrequencyPicker({
           <div className="flex items-center gap-6">
             <label
               className={cn(
-                "flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground",
+                "flex w-fit items-center gap-2.5 text-sm text-foreground",
                 cycle && "cursor-not-allowed opacity-50"
               )}
             >
@@ -736,7 +736,7 @@ export function RuleFrequencyPicker({
                 }}
               />
             </label>
-            <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+            <label className="flex w-fit items-center gap-2.5 text-sm text-foreground">
               Custom cycle
               <Switch
                 checked={cycle}

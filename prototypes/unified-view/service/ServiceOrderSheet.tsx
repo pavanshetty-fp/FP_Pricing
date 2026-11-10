@@ -1456,7 +1456,7 @@ export function ServiceOrderSheet({
           </span>
         ))}
         {!assessLocked && (
-          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm text-foreground hover:bg-accent">
+          <label className="flex h-9 items-center gap-2 rounded-md border border-input px-3 text-sm text-foreground hover:bg-accent">
             <ImagePlus className="size-4" />
             Upload photos
             <input
@@ -1597,7 +1597,7 @@ export function ServiceOrderSheet({
         draft.status === "Drafted" && draft.customer ? (
           /* ONE PRESS, BOTH ACTS (Pavan, 2026-09-25): ticked, Create new
              order also sends the quote. */
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+          <label className="flex items-center gap-2.5 text-sm text-foreground">
             <Checkbox
               checked={quoteOnCreate}
               onCheckedChange={(v) => setQuoteOnCreate(v === true)}
@@ -1613,10 +1613,10 @@ export function ServiceOrderSheet({
             className="flex items-center gap-5"
             aria-label="Parts not available"
           >
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <RadioGroupItem value="neworder" /> Create new order
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <RadioGroupItem value="rollover" /> Rollover
             </label>
           </RadioGroup>

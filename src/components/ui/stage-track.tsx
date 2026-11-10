@@ -108,7 +108,7 @@ export function StageTrack({
         onClick={() => onStageClick(key)}
         className={cn(
           "rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-          why ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+          why ? "cursor-not-allowed opacity-50" : undefined
         )}
       >
         {children}
@@ -204,7 +204,7 @@ export function StageTrack({
                     onClick={() => onStageClick(s.key)}
                     className={cn(
                       "flex flex-col items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                      why ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                      why ? "cursor-not-allowed opacity-50" : undefined
                     )}
                   >
                     {body}
@@ -276,7 +276,7 @@ export function StageTrack({
                     onClick={() => onStageClick(s.key)}
                     className={cn(
                       "flex flex-col items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                      why ? "cursor-not-allowed opacity-50" : "cursor-pointer [&:hover>span:last-child]:text-foreground"
+                      why ? "cursor-not-allowed opacity-50" : "[&:hover>span:last-child]:text-foreground"
                     )}
                   >
                     {body}
@@ -363,7 +363,7 @@ export function StageTrack({
                 "absolute top-0 text-xs whitespace-nowrap",
                 anchor(i),
                 at >= 0 && i < at ? "text-foreground" : "text-muted-foreground",
-                onStageClick && (disabledReason?.(s.key) ? "opacity-50" : "cursor-pointer hover:text-foreground")
+                onStageClick && (disabledReason?.(s.key) ? "opacity-50" : "hover:text-foreground")
               )}
               style={{ left: `${pos(i)}%` }}
             >

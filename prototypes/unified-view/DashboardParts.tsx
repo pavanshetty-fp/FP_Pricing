@@ -84,7 +84,7 @@ export function StatTile({
       onClick={onOpen}
       disabled={!onOpen}
       className={cn(
-        "flex min-w-0 flex-col items-start gap-2 p-5 text-left outline-none transition-shadow enabled:hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/50",
+        "flex min-w-0 flex-col items-start gap-2 p-5 text-left outline-none transition-shadow enabled:cursor-pointer enabled:hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/50",
         CARD
       )}
     >

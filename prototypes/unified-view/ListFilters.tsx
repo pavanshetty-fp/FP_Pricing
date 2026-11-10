@@ -417,7 +417,7 @@ export function ListFilterPanel({
                   return (
                     <label
                       key={id}
-                      className="flex min-h-8 cursor-pointer items-start gap-2 py-1"
+                      className="flex min-h-8 items-start gap-2 py-1"
                     >
                       <Checkbox
                         checked={checked.has(id)}

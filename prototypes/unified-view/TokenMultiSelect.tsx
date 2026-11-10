@@ -123,7 +123,7 @@ export function TokenMultiSelect({
               }
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border border-border bg-fp-surface-1b py-1 pr-1 pl-1.5 text-sm",
-                onChipClick && "cursor-pointer hover:border-fp-outline-2",
+                onChipClick && "hover:border-fp-outline-2",
                 highlighted?.includes(opt) &&
                   "border-fp-banner-accent-info hover:border-fp-banner-accent-info",
                 flashing && "fp-attention-info"

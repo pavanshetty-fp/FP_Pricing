@@ -40,4 +40,5 @@ A newer instruction from Pavan beats any of them — follow it and update the ru
 - One fact, one form: the same fact uses the same component and color everywhere.
 - Detail pages open as Side sheet (default), Modal or Full page — one app-wide choice behind "Detail page view" in every sheet's ··· (IX-92).
 - 3PL Delivery Orders: one Settings gear (Table · Board · Detail page view) and Search by column as a header hover tab (IX-93, IX-94).
+- Hand cursor = navigation only (links, record cards/rows/tiles); in-place controls keep the arrow (IX-95).
 - Views arrive by kind: board from the right, table settles up from below, list and map from the left (map zooms in).

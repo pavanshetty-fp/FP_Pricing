@@ -893,7 +893,7 @@ export function RecurringProgramCreate({
          rather than a question about the rule, and a card of its own for one
          checkbox was a section heading doing no work. */
       footerAside={
-        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+        <label className="flex items-center gap-2.5 text-sm text-foreground">
           <Checkbox
             checked={draft.signatureOnDelivery}
             onCheckedChange={(v) => set("signatureOnDelivery", v === true)}
@@ -966,7 +966,7 @@ export function RecurringProgramCreate({
                     <label
                       key={j}
                       htmlFor={`jt-${j}`}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                      className="flex items-center gap-2 text-sm text-foreground"
                     >
                       <RadioGroupItem id={`jt-${j}`} value={j} />
                       {j}
@@ -1059,7 +1059,7 @@ export function RecurringProgramCreate({
                             }))
                           }
                           className={cn(
-                            "cursor-pointer border-b border-fp-outline-1 last:border-0 hover:bg-fp-row-hover",
+                            "border-b border-fp-outline-1 last:border-0 hover:bg-fp-row-hover",
                             on && "bg-fp-row-selected"
                           )}
                         >
@@ -1159,7 +1159,7 @@ export function RecurringProgramCreate({
               <div className="flex flex-col gap-1 border-t border-fp-outline-1 p-4">
                 {/* THE WORD, THEN THE SWITCH; the instruction right under it,
                     only while the chips are a picker (Pavan, 2026-10-16). */}
-                <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+                <label className="flex w-fit items-center gap-2.5 text-sm text-foreground">
                   Mark as winter blend
                   <Switch
                     checked={winterOn}

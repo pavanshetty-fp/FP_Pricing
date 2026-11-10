@@ -557,3 +557,34 @@ export const repeatedCopy = {
 };
 
 ALL.push(repeatedCopy);
+
+/* ── pointer-means-navigate (2026-11-10) ─────────────────────────────────
+   THE HAND MEANS "THIS TAKES YOU SOMEWHERE" (Pavan, after Apple HIG / W3C):
+   links, link-styled text, and whole cards / rows that open a record. A
+   control that changes something in place — a checkbox, radio or switch and
+   its label, a stage step, a tick-to-select row — keeps the arrow. Flags a
+   `cursor-pointer` on a <label> or on a stage control. */
+export const pointerMeansNavigate = {
+  name: "pointer-means-navigate",
+  segment: "3-interactions",
+  rule: "hand cursor = navigation only; labels, toggles and stage steps keep the arrow",
+  check() {
+    const out = [];
+    for (const f of tsx()) {
+      const lines = read(f).split("\n");
+      let tag = "";
+      lines.forEach((l, i) => {
+        const open = l.match(/<([A-Za-z][\w.]*)/g);
+        if (open) tag = open[open.length - 1].slice(1);
+        if (!/\bcursor-pointer\b/.test(l)) return;
+        const onLabel = tag === "label" || /<label\b/.test(l);
+        const onStage = /stage-(track|bar)\.tsx$/.test(f);
+        if (onLabel || onStage)
+          out.push(finding("L1", rel(f), i + 1, `hand cursor on a ${onStage ? "stage control" : "label"}`, this.rule));
+      });
+    }
+    return out;
+  },
+};
+ALL.push(pointerMeansNavigate);
+

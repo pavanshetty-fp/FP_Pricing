@@ -482,7 +482,7 @@ export function OnBehalfDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Record the job</AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <label className="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+            <label className="flex items-start gap-2.5 text-sm text-foreground">
               <Checkbox checked={ack} onCheckedChange={(v) => setAck(v === true)} className="mt-0.5" />
               <span>
                 I acknowledge the technician has shared all the relevant information with me,
@@ -579,7 +579,7 @@ export function InvoiceSummarySheet({
         partial ? undefined : (
           /* APPROVED ON THE CUSTOMER'S BEHALF (Pavan, 2026-09-25) — ticked, the
              act is Mark as completed; unticked, it is sending the invoice. */
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+          <label className="flex items-center gap-2.5 text-sm text-foreground">
             <Checkbox checked={approved} onCheckedChange={(v) => setApproved(v === true)} />
             Customer approved — recording on their behalf
           </label>

@@ -400,7 +400,7 @@ export function AssetSheet({
                     onValueChange={(v) => set("rented", v === "rented")}
                   >
                     {(["owned", "rented"] as const).map((v) => (
-                      <label key={v} className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                      <label key={v} className="flex items-center gap-2 text-sm text-foreground">
                         <RadioGroupItem value={v} />
                         {v === "owned" ? "Owned" : "Rented"}
                       </label>
@@ -435,7 +435,7 @@ export function AssetSheet({
           <SheetSection id="asset-monitor" title="Tank monitor">
             <div className="grid grid-cols-2 items-end gap-4">
               <SheetField>
-                <label className="flex h-9 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
+                <label className="flex h-9 w-fit items-center gap-2.5 text-sm font-medium text-foreground">
                   <Checkbox
                     checked={draft.monitor}
                     onCheckedChange={(v) => {

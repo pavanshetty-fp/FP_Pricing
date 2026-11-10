@@ -110,7 +110,7 @@ function RadioCard({
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-md border border-border bg-fp-surface-1a p-4 transition-colors",
+        "flex items-start gap-3 rounded-md border border-border bg-fp-surface-1a p-4 transition-colors",
         "has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b"
       )}
     >
@@ -128,7 +128,7 @@ function RadioTile({ value }: { value: string }) {
   return (
     <label
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-fp-surface-1a p-4 text-center transition-colors",
+        "flex flex-col items-center gap-1 rounded-md border border-border bg-fp-surface-1a p-4 text-center transition-colors",
         "has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b"
       )}
     >

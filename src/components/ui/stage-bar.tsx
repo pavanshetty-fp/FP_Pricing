@@ -105,7 +105,7 @@ export function StageBar({
                  segment that is actually there. */
               !first && "pl-5",
               onSelect &&
-                "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
               here && "bg-brand text-brand-foreground",
               done && "bg-status-success/15 text-status-success",
               !here && !done && "bg-accent text-muted-foreground",

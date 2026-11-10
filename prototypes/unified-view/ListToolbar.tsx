@@ -520,7 +520,7 @@ export function ListToolbar<K extends string>({
                     )}
                     <label
                       className={cn(
-                        "flex flex-1 cursor-pointer items-center gap-2 py-1.5 pr-2 text-sm",
+                        "flex flex-1 items-center gap-2 py-1.5 pr-2 text-sm",
                         /* THE INDENT IS THE ONLY THING SAYING "UNDER". A child
                            at the parent's left edge is a sibling with a smaller
                            label; the offset and the lighter weight say which
@@ -629,7 +629,7 @@ export function ListToolbar<K extends string>({
                       return (
                         <label
                           key={u.key}
-                          className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                          className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
                         >
                           <span className="flex-1 truncate">{u.label}</span>
                           <Switch
@@ -644,7 +644,7 @@ export function ListToolbar<K extends string>({
                     return (
                       <label
                         key={u.key}
-                        className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-5 text-[13px] text-muted-foreground transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
+                        className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-5 text-[13px] text-muted-foreground transition-colors hover:bg-accent has-[:focus-visible]:bg-accent"
                       >
                         <Checkbox
                           checked={!cf.hidden.has(u.key)}

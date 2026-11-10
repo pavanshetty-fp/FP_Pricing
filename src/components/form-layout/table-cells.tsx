@@ -832,7 +832,7 @@ export function TableCellCombobox({
                 const id = `${radioId}-${gi}`;
                 const on = gi - 1 === group;
                 return (
-                  <label key={g.label} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap">
+                  <label key={g.label} htmlFor={id} className="flex items-center gap-1.5 text-xs whitespace-nowrap">
                     <RadioGroupItem id={id} value={String(gi - 1)} />
                     <span className={on ? "font-medium text-foreground" : "text-muted-foreground"}>{g.label}</span>
                   </label>

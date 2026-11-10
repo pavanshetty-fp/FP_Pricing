@@ -1954,3 +1954,17 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
 .fp-one-size .justify-between {
   flex-wrap: wrap;
 }
+
+/* THE HAND MEANS "THIS TAKES YOU SOMEWHERE" (Pavan, 2026-11-10 — Apple HIG,
+   W3C/Microsoft, with the pragmatic exception for whole cards). Links and
+   link-styled text get it; so do cards and rows that open a record (set where
+   they are built). Buttons, toggles, tabs, menu items and stage steps change
+   something in place and keep the arrow (Tailwind's default for buttons). */
+@layer base {
+  a[href],
+  [role="link"],
+  button[class*="underline"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+

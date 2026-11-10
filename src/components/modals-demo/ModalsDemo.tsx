@@ -58,7 +58,7 @@ function RadioCard({
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-md border border-border bg-fp-surface-1a p-4 transition-colors has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b",
+        "flex items-start gap-3 rounded-md border border-border bg-fp-surface-1a p-4 transition-colors has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b",
         className
       )}
     >
@@ -75,7 +75,7 @@ function RadioCard({
 
 function RadioTile({ value }: { value: string }) {
   return (
-    <label className="flex cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-fp-surface-1a p-4 text-center transition-colors has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b">
+    <label className="flex flex-col items-center gap-1 rounded-md border border-border bg-fp-surface-1a p-4 text-center transition-colors has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-fp-surface-1b">
       <RadioGroupItem value={value} className="mb-2" />
       <span className="text-sm font-medium">Title</span>
       <span className="text-xs text-muted-foreground">Subtext</span>

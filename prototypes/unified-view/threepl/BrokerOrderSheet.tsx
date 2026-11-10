@@ -312,11 +312,11 @@ function CustomRecurrenceDialog({
               onValueChange={(v) => setEnds(v as typeof ends)}
               className="gap-3"
             >
-              <label htmlFor="ends-never" className="flex cursor-pointer items-center gap-2.5">
+              <label htmlFor="ends-never" className="flex items-center gap-2.5">
                 <RadioGroupItem id="ends-never" value="never" />
                 <span className="text-sm">Never</span>
               </label>
-              <label htmlFor="ends-on" className="flex cursor-pointer items-center gap-2.5">
+              <label htmlFor="ends-on" className="flex items-center gap-2.5">
                 <RadioGroupItem id="ends-on" value="on" />
                 <span className="text-sm">On</span>
                 <DatePopover>
@@ -339,7 +339,7 @@ function CustomRecurrenceDialog({
                   </PopoverContent>
                 </DatePopover>
               </label>
-              <label htmlFor="ends-after" className="flex cursor-pointer items-center gap-2.5">
+              <label htmlFor="ends-after" className="flex items-center gap-2.5">
                 <RadioGroupItem id="ends-after" value="after" />
                 <span className="text-sm">After</span>
                 <Input
@@ -408,7 +408,7 @@ function FlagRow({
           htmlFor={f.id}
           className={cn(
             "flex items-center gap-2.5",
-            f.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            f.disabled ? "cursor-not-allowed opacity-50" : undefined
           )}
         >
           <Checkbox
@@ -2670,7 +2670,7 @@ export function BrokerOrderSheet({
             })
           }
           className={cn(
-            "cursor-pointer border-b border-border last:border-0 hover:bg-fp-row-hover",
+            "border-b border-border last:border-0 hover:bg-fp-row-hover",
             ticked && "bg-fp-row-selected"
           )}
         >
@@ -3548,7 +3548,7 @@ export function BrokerOrderSheet({
         quotedIds.length >= 2 && !pastCompletion ? (
           <div className="flex items-center gap-4">
             {quotedIds.length >= 2 && (
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+          <label className="flex items-center gap-2 text-sm text-foreground">
             Compare
             <Switch checked={comparing} onCheckedChange={setComparing} />
           </label>
@@ -4740,7 +4740,7 @@ export function BrokerOrderSheet({
             <label
               key={sl}
               htmlFor={`svc-${sl}`}
-              className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+              className="flex items-center gap-2 text-sm text-foreground"
             >
               <RadioGroupItem id={`svc-${sl}`} value={sl} />
               {sl}
@@ -5041,7 +5041,7 @@ export function BrokerOrderSheet({
                   add rather than stacked under it. (Pavan, 2026-09-22.) */}
               <label
                 htmlFor="winter-additive"
-                className="flex cursor-pointer items-center gap-2.5 pr-1 text-sm text-foreground"
+                className="flex items-center gap-2.5 pr-1 text-sm text-foreground"
               >
                 Mark as winter additive
                 <Switch
@@ -6406,7 +6406,7 @@ export function BrokerOrderSheet({
         <div className="-mt-4 flex shrink-0 flex-wrap items-center gap-x-10 gap-y-2">
           <label
             htmlFor="do-notify"
-            className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+            className="flex items-center gap-2.5 text-sm font-medium text-foreground"
           >
             Send email notifications to vendor
             <Switch
@@ -6420,7 +6420,7 @@ export function BrokerOrderSheet({
           {draft.status === "Draft" && (
             <label
               htmlFor="quote"
-              className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground"
+              className="flex items-center gap-2.5 text-sm font-medium text-foreground"
             >
               Request a quote
               <Switch

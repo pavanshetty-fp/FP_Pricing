@@ -270,7 +270,7 @@ export function RuleSheet({
               </div>
             </SheetField>
             <SheetField label="Reminders">
-              <label className="flex min-h-9 w-fit cursor-pointer items-center gap-2.5 text-sm text-foreground">
+              <label className="flex min-h-9 w-fit items-center gap-2.5 text-sm text-foreground">
                 Tell me as each order is made
                 <Switch checked={draft.remind} onCheckedChange={(on) => set("remind", on)} />
               </label>

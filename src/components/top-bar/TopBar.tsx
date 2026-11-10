@@ -118,7 +118,7 @@ export function TopBar({
                 /* NO RIM (Pavan, 2026-10-06) — the white field on the
                    shell ground is edge enough; the focus ring still shows. */
                 "h-9 rounded-md border-transparent pl-8 shadow-none",
-                onSearchActivate && "cursor-pointer caret-transparent"
+                onSearchActivate && "caret-transparent"
               )}
             />
             {onSearchActivate && (

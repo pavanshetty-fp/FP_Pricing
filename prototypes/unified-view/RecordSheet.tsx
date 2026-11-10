@@ -814,7 +814,7 @@ export function DetailViewChoice() {
           className="gap-3"
         >
           {(Object.keys(PRESENTATION_LABEL) as SheetPresentation[]).map((p) => (
-            <label key={p} htmlFor={`open-as-${p}`} className="flex cursor-pointer items-center gap-2.5">
+            <label key={p} htmlFor={`open-as-${p}`} className="flex items-center gap-2.5">
               <RadioGroupItem id={`open-as-${p}`} value={p} />
               <span className="text-sm">{PRESENTATION_LABEL[p]}</span>
             </label>

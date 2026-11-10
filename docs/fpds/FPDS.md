@@ -8140,6 +8140,14 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** Pavan, 2026-11-08
 
+## 19. Cursors
+
+**IX-95. The hand cursor means "this takes you somewhere": links, link-styled text, and whole cards / rows / tiles that open a record. Everything that changes something in place keeps the arrow — buttons and icon buttons, tabs, menu items, checkboxes, radios, switches and their labels, stage steps, rows that only tick a selection. Text fields keep the I-beam, drag handles the grab hand, disabled controls not-allowed.**
+- **Why:** Apple HIG and W3C/Microsoft reserve the hand for navigation, because a link has no button shape to say it is clickable; a whole card or row is the pragmatic exception, since it has no button shape either.
+- **Applies to:** everywhere. Link-styled buttons get it from a base rule (`button[class*="underline"]`, `[role=link]`, `a[href]`); cards and rows set `cursor-pointer` where built.
+- **Check:** eval `pointer-means-navigate` (a hand on a label or stage control fails).
+- **Source:** Pavan, 2026-11-10
+
 ---
 
 ## Index
@@ -8239,6 +8247,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-91 | Pressing an area that has sub-pages opens its first page |
 | IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
 | IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
+| IX-95 | Hand cursor = goes somewhere (links, link text, record cards/rows/tiles); in-place controls keep the arrow |
 | IX-92 | Every detail page's ··· starts with "Detail page view" — Side sheet (default) · Modal · Full page, one choice for all modules |
 
 

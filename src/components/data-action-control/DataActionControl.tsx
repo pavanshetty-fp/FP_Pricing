@@ -358,7 +358,7 @@ export function DataActionControl({
                 </div>
                 <div className="max-h-56 overflow-y-auto">
                   {TOGGLE_COLUMNS.map((c) => (
-                    <label key={c.key} className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent">
+                    <label key={c.key} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent has-[:focus-visible]:bg-accent">
                       <Checkbox checked={!hidden.has(c.key as ColumnKey)} onCheckedChange={() => toggleColumn(c.key)} />
                       <span className="flex-1 truncate">{c.label}</span>
                     </label>

@@ -478,6 +478,10 @@
   --color-chip: var(--chip);
   --color-fp-lane: var(--fp-lane);
   --color-fp-board-lane: var(--fp-board-lane);
+  /* THE SWIMLANE GROUND (Pavan, 2026-11-10: "a little darker") — the inner
+     panel (--fp-surface-1a) moved 40% toward the board-lane step, so it
+     follows both themes and every WCAG mode from two tokens. */
+  --color-fp-lane-ground: color-mix(in oklab, var(--fp-surface-1a), var(--fp-board-lane) 40%);
   /* THE QUIET ICON INK (Pavan, 2026-10-26) — the metric icons' line, halfway
      from the muted ink to the tile it sits on: half as dark, still a solid
      colour, in both themes. */

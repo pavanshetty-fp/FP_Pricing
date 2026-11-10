@@ -399,12 +399,14 @@ function LaneV2({
     <div
       data-fp-unit="lane"
       className={cn(
-        "group/lane flex h-full shrink-0 flex-col overflow-hidden rounded-md bg-fp-surface-1a",
+        "group/lane flex h-full shrink-0 flex-col overflow-hidden rounded-md bg-fp-lane-ground",
         !width && "w-(--fp-board-lane-width)"
       )}
       style={width ? { width } : undefined}
     >
-      <div className="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2">
+      {/* 8px EVERYWHERE (Pavan, 2026-11-10) — lane top to header, header to
+          the first card, and the sides, so the title lines up with the cards. */}
+      <div className="flex shrink-0 items-center gap-2 p-2">
         <h3 className="truncate text-sm font-semibold text-foreground">{lane.title}</h3>
         <span className="text-sm tabular-nums text-muted-foreground">{lane.cards.length}</span>
         {/* THE LANE'S SORT (Pavan, 2026-11-02 — kept as the board went
@@ -521,7 +523,7 @@ export function BoardV2({
               title={lane.title}
               count={lane.cards.length}
               onOpen={() => toggle(lane.key)}
-              className="rounded-md bg-fp-surface-1a"
+              className="rounded-md bg-fp-lane-ground"
             />
           }
           open={

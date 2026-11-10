@@ -1919,3 +1919,7 @@ Recommendations button. History is INVENTED.
 - Version 2 (displays as view tabs) is the screen; the V1·V2 switch is gone. Version 1 is archived as **"Version 1: Separate Views"** (`docs/archive/3pl-delivery-orders-v1-2026-11-08.md`).
 - The toolbar has one gear (**Settings**, no connecting line). It opens a 300px sheet: Table (columns) · Board (card fields) · Detail page view (IX-93).
 - **Search by column** is a hover tab at the table header's right edge (IX-94).
+
+## Board lanes — 8px and a darker tray (2026-11-10)
+
+Every board (one board, every module): 8px between the lane tray and everything in it, and the tray a little darker (`bg-fp-lane-ground`). See `docs/fpds/units/board.md`.

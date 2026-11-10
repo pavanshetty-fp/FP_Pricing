@@ -71,7 +71,7 @@ export function ListSplitView({
   return (
     <BoardWithBar barRef={barRef} list>
       <div className="flex h-full min-h-0 gap-3 bg-fp-surface-1b p-3">
-        <div data-fp-unit="lane" className="flex w-80 shrink-0 flex-col overflow-hidden rounded-md bg-fp-surface-1a">
+        <div data-fp-unit="lane" className="flex w-80 shrink-0 flex-col overflow-hidden rounded-md bg-fp-lane-ground">
           <div
             role="group"
             aria-label="Filter by status"

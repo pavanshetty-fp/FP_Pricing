@@ -1649,6 +1649,7 @@ Another view of the same thing.
 ### Rules
 1. **The segment look is greyscale; only the underline tabs keep the selection ink.** `(2026-10-16)`
 2. **Tabs are not steps.** — *Tabs may be read in any order; steps can't.*
+3. **Line tabs sit on a full-width hairline, and the tab's content starts 16px under it** (`border-b border-border` on the tabs' row; content `mt-4`). Tabs and their content are ONE unit — inside a sheet they are one child of the body, never two, so the body's 40px section gap never falls between them. `(2026-11-10)`
 
 ### Do / Don't
 - ✅ Card / Banner switch in the order summary.

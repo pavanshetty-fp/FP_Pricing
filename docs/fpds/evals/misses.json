@@ -602,6 +602,19 @@
         "id": "review",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-046",
+      "date": "2026-11-10",
+      "title": "List Settings sheet: no line under the tabs, and 40px between the tabs and their content",
+      "where": "3PL Delivery Orders › Settings sheet",
+      "foundBy": "pavan",
+      "pattern": "generic-over-existing",
+      "why": "Built the tabs from the bare TabsList instead of copying the tabbed view already in the system (Master Data 360: tabs on a border-b row, content mt-4), and placed tabs and content as two sheet-body children so the 40px section gap fell between them.",
+      "check": {
+        "id": "review",
+        "status": "manual"
+      }
     }
   ]
 }

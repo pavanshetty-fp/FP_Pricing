@@ -1064,27 +1064,36 @@ export function ListToolbar<K extends string>({
           onSubmit={() => {}}
           stepNav={false}
         >
-          <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v as SettingsTab)} className="gap-4">
-            <TabsList variant="line" className="h-9 w-max justify-start">
-              {([
-                ["table", "Table"],
-                ...(cardFields ? [["board", "Board"]] : []),
-                ["detail", "Detail page view"],
-              ] as [SettingsTab, string][]).map(([k, label]) => (
-                <TabsTrigger
-                  key={k}
-                  value={k}
-                  className="flex-none px-2 after:bg-foreground group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground"
-                >
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <div className="-mx-1">
-            {settingsTab === "table" && columnsPicker(true)}
-            {settingsTab === "board" && cardPicker(true)}
-            {settingsTab === "detail" && <div className="px-1"><DetailViewChoice /></div>}
+          {/* ONE UNIT, AS THE OTHER TABBED VIEWS (Master Data 360, the quote
+              tabs; Pavan, 2026-11-10): the tabs sit on a full-width hairline
+              and the tab's content starts 16px under it. They were two
+              children of the sheet body, so its 40px section gap fell
+              between them, and the line tabs had no rule under them. */}
+          <div className="flex flex-col">
+            <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v as SettingsTab)} className="gap-0">
+              <div className="overflow-x-auto border-b border-border">
+                <TabsList variant="line" className="h-9 w-max justify-start">
+                  {([
+                    ["table", "Table"],
+                    ...(cardFields ? [["board", "Board"]] : []),
+                    ["detail", "Detail page view"],
+                  ] as [SettingsTab, string][]).map(([k, label]) => (
+                    <TabsTrigger
+                      key={k}
+                      value={k}
+                      className="flex-none px-2 after:bg-foreground group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground"
+                    >
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </Tabs>
+            <div className="mt-4 -mx-1">
+              {settingsTab === "table" && columnsPicker(true)}
+              {settingsTab === "board" && cardPicker(true)}
+              {settingsTab === "detail" && <div className="px-1"><DetailViewChoice /></div>}
+            </div>
           </div>
         </RecordSheet>
       )}

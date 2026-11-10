@@ -2332,14 +2332,20 @@ export function BrokerOrdersScreen({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* THE VIEWS ROW FOLDS WITH THE PAGE TITLE (Pavan, 2026-11-10). */}
+      {/* THE VIEWS ROW FOLDS WITH THE PAGE TITLE (Pavan, 2026-11-10).
+          THE CLIP BOX TAKES THE BAR'S BLEED: the views bar reaches 16px past
+          the body inset (-mx-4 -mt-4) to the page edges, so the box that
+          clips it for the fold reaches out the same 16px and pads it back —
+          otherwise the fold's overflow-hidden cut the top 16px off the CTA
+          and the ends off the bar's rule (Pavan, 2026-11-10). Folded, the
+          pad and the negative margin cancel, so nothing is left behind. */}
       <div
         className="grid shrink-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
         style={{ gridTemplateRows: headCollapsed ? "0fr" : "1fr" }}
         aria-hidden={headCollapsed || undefined}
         inert={headCollapsed || undefined}
       >
-      <div className="min-h-0 overflow-hidden">
+      <div className="-mx-4 -mt-4 min-h-0 overflow-hidden px-4 pt-4">
       <FuelOrdersViewBar
         {...savedViews}
         {...(layout === "2"

@@ -18,16 +18,16 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
-| 2026-11-08 | 2 |
+| 2026-11-08 | 3 |
 
-**46 misses** · found by Pavan 36 · by Claude 10 · guarded by a script 19 · guard proposed 0 · needs eyes 23 · process rule 4
+**47 misses** · found by Pavan 37 · by Claude 10 · guarded by a script 19 · guard proposed 0 · needs eyes 23 · process rule 5
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 11 |
-| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 8 |
+| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 9 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 8 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 7 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
@@ -40,6 +40,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-047 | 2026-11-10 | Top of Create Order and the ends of the views row's rule cut off on 3PL Delivery Orders | 3PL Delivery Orders › views row (after the collapse-header fold) | Pavan | `edges` | Wrapped the views bar in an overflow-hidden box for the fold without noticing the bar bleeds 16px past the body inset (-mx-4 -mt-4); verified the fold opened and closed, not that the open state still matched the page before. | `clip-check` · process |
 | M-046 | 2026-11-10 | List Settings sheet: no line under the tabs, and 40px between the tabs and their content | 3PL Delivery Orders › Settings sheet | Pavan | `generic-over-existing` | Built the tabs from the bare TabsList instead of copying the tabbed view already in the system (Master Data 360: tabs on a border-b row, content mt-4), and placed tabs and content as two sheet-body children so the 40px section gap fell between them. | `review` · manual |
 | M-045 | 2026-11-10 | Dark theme swimlanes invisible — the darker lane colour landed on the board's own ground (#1e222a on #1d222a); the lane hover (#232831) then darkened it back onto the board | Every board (BoardV2) and the list view's lane, dark theme | Pavan | `one-case` | Derived the new lane colour from two tokens and checked dark only against the cards, not against the board ground it sits on; reported dark as fine. | `review` · manual |
 | M-044 | 2026-11-03 | Asset journey said the same thing twice ("Received into the fleet at Irving Hub · New unit received"), and the lifeline bars had outlines | Master Data › Assets › Asset 360 › Asset journey | Pavan | `generic-over-existing` | Printed the data's note next to a title built from the same fact, without reading the line as a whole; the log also added audit rows for invoices and moves that already had their own rows. | `repeated-copy` · built |

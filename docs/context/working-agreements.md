@@ -24,6 +24,7 @@ Pavan is a designer, not an engineer. Replies are short and plain, in Done · Pe
 - **A new instruction beats an older written rule** — follow it, update the rule, say so.
 - **Pick the closest existing pattern** before a generic component.
 - **Verify before reporting:** every stage the screen appears in, light AND dark, a blank AND a filled row; grep leftovers after a sweep; `git diff --stat` after a scripted edit.
+- **Clip check before reporting any layout change** (2026-11-10, M-047): run `scripts/eval/clip-check.browser.js` in the preview on every screen the change can reach — every module page, every view of the list, folded and open states, open sheets. It lists any control, heading or rule a clipping box cuts; it must return nothing. Also on every "push it".
 - **Retired designs** get a dated archive doc (what, why kept, why removed, last commit) — indexed in `docs/fpds/10-archive.md`.
 
 ## The misses log
@@ -35,7 +36,7 @@ The moment Pavan points out something that should already have been right (or so
 Run without asking, then report:
 
 1. Update docs where the session's decisions live (design-system docs, Unified View docs, module READMEs, `docs/context/` when domain facts changed).
-2. `node scripts/fpds/build.mjs` · `bash docs/ds/build-bundle.sh` · `npm run misses`.
+2. Clip check (`scripts/eval/clip-check.browser.js`) across every module page in the preview — must be clean. Then `node scripts/fpds/build.mjs` · `bash docs/ds/build-bundle.sh` · `npm run misses`.
 3. Checks: `npx tsc -p tsconfig.app.json --noEmit` · `npm run eval` (baseline 7 findings; revert the dated results file if only its commit hash changed) · eslint on changed files.
 4. Builds: `npm run build:unified`, `build:single`, `build:portal`, `build:reference`; copy `dist-unified/index.html` → `../FP-DS-2026-unified-view.html`, `dist-single` → `../FP-DS-2026.html`, `dist-portal` → `../FP-DS-2026-customer-portal.html`, `dist-reference` → `../FP-DS-2026-design-reference.html`; the "Board views - versions.html" copy from the unified build with its title changed.
 5. Commit on `main` (end with the Co-Authored-By line) and `git push origin main`.

@@ -615,6 +615,19 @@
         "id": "review",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-047",
+      "date": "2026-11-10",
+      "title": "Top of Create Order and the ends of the views row's rule cut off on 3PL Delivery Orders",
+      "where": "3PL Delivery Orders › views row (after the collapse-header fold)",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "Wrapped the views bar in an overflow-hidden box for the fold without noticing the bar bleeds 16px past the body inset (-mx-4 -mt-4); verified the fold opened and closed, not that the open state still matched the page before.",
+      "check": {
+        "id": "clip-check",
+        "status": "process"
+      }
     }
   ]
 }

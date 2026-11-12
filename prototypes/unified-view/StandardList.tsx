@@ -357,15 +357,7 @@ export function StandardList<R, K extends string>({
             setPage(1);
           }}
           columnFiltersOpen={colFiltersOpen}
-          onToggleColumnFilters={() =>
-            setColFiltersOpen((open) => {
-              if (open) {
-                setColFilters({});
-                setPage(1);
-              }
-              return !open;
-            })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -435,6 +427,15 @@ export function StandardList<R, K extends string>({
             openLabel={openLabel}
             onOpenRow={onOpen}
             showColumnFilters={colFiltersOpen}
+            onToggleColumnFilters={() =>
+              setColFiltersOpen((open) => {
+                if (open) {
+                  setColFilters({});
+                  setPage(1);
+                }
+                return !open;
+              })
+            }
             columnFilters={colFilters}
             onColumnFilterChange={(key, value) => {
               setColFilters((prev) => ({ ...prev, [key]: value }));

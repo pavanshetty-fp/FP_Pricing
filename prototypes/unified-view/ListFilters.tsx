@@ -154,10 +154,27 @@ export function ListFilters({
           `--border` in light but ALREADY uses `--input` in dark, so light was the
           odd one out and the button read a shade lighter than the input. */}
       <PopoverTrigger asChild>
+        {fullWidth ? (
+          /* IN THE EXPORT SHEET, AN ICON (Pavan, 2026-11-12) — the same
+             popover as the page's Filters, opened from a filter icon beside
+             the count. */
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={applied > 0 ? `Filters, ${applied} applied` : "Filters"}
+            className="relative"
+          >
+            <ListFilter />
+            {applied > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-accent px-1 text-[10px] leading-4 tabular-nums text-accent-foreground">
+                {applied}
+              </span>
+            )}
+          </Button>
+        ) : (
         <Button
           variant="outline"
           size="sm"
-          className={cn(fullWidth && "h-8 w-full justify-start")}
         >
           <ListFilter />
           Filters
@@ -173,8 +190,9 @@ export function ListFilters({
             </span>
           )}
         </Button>
+        )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[600px] overflow-hidden p-0">
+      <PopoverContent align={fullWidth ? "end" : "start"} className="w-[600px] overflow-hidden p-0">
         <ListFilterPanel
           facets={facets}
           checked={checked}

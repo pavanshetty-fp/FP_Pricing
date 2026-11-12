@@ -268,9 +268,7 @@ export function RecordViews({
           colQuery={t.colQuery}
           onColQueryChange={(colQuery) => patch({ colQuery, page: 1 })}
           columnFiltersOpen={t.colFiltersOpen}
-          onToggleColumnFilters={() =>
-            patch(t.colFiltersOpen ? { colFiltersOpen: false, colFilters: {}, page: 1 } : { colFiltersOpen: true })
-          }
+          settings
           columnFilterCount={boxes.length}
           view={view}
           onViewChange={(v) => patch({ view: v })}
@@ -329,6 +327,9 @@ export function RecordViews({
             openLabel={(r) => `Open ${def.one} ${nameOf(r)}`}
             onOpenRow={setOpen}
             showColumnFilters={t.colFiltersOpen}
+            onToggleColumnFilters={() =>
+              patch(t.colFiltersOpen ? { colFiltersOpen: false, colFilters: {}, page: 1 } : { colFiltersOpen: true })
+            }
             columnFilters={t.colFilters}
             onColumnFilterChange={(key, value) => patch({ colFilters: { ...t.colFilters, [key]: value }, page: 1 })}
           />

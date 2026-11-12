@@ -113,7 +113,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** `unified-view/2-layouts.md` §4; 3PL README
 
-**IX-17. The Export sheet edits the list's own narrowings (already applied behind it); it commits nothing on the way through, so it has no Cancel. The format is chosen beside Export in the footer.**
+**IX-17. The Export sheet opens on the count large, with the calendar and filter icons on its right (each opens the same popover as the page's date control and Filters; Apply commits to the page), and dates · format · columns on one line under it. Below, what the list adds (`ExportSummary`) as SHEET SECTIONS — a heading over each, 40px between sections and 16px under a heading, no dividers: Overview (up to three metric tiles), then the wide facts (3PL: Gallons by product, two lists in one box with a divider), By status (one bar with a legend), then the short facts three across with the label above the value (3PL: total value, one-time orders, recurring orders); then Filters applied as removable chips in a row per category, only when filters are on. 3PL Delivery Orders and Sales Orders carry a summary. No card, no Cancel; the format is chosen beside Export in the footer.**
 - **Why:** the count in the footer is the count on the list; the format is part of the act.
 - **Applies to:** `ExportSheet`.
 - **Check:** review
@@ -621,15 +621,15 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 
 ## 17. Detail page view
 
-**IX-92. Every detail page's ··· menu starts with "Detail page view": open detail pages as Side sheet (default), Modal or Full page. One choice for every module, applied at once and remembered per browser; Full page is an overlay on the page, never a new tab.**
+**IX-92. Detail pages open as Side sheet (default), Modal or Full page — one choice for every module, set in the list Settings sheet's Detail page view tab (IX-93), applied at once and remembered per browser; Full page is an overlay on the page, never a new tab. No sheet's ··· menu carries it (removed 2026-11-12).**
 - **Why:** some people work one record at a time and want the room; the board stays the default context.
-- **Applies to:** every first-level `RecordSheet` (a sheet with its own ··· lists `DetailViewMenuItem` first; one without gets a ··· holding only it). The list view's docked panel and second-level sheets stay side sheets.
+- **Applies to:** every first-level `RecordSheet`; the choice is `DetailViewChoice` in the Settings sheet. The list view's docked panel and second-level sheets stay side sheets.
 - **Check:** review
-- **Source:** Pavan, 2026-11-08
+- **Source:** Pavan, 2026-11-08; ··· entry removed 2026-11-12
 
 ## 18. List settings and header column search
 
-**IX-93. A list with Settings has ONE gear beside the view tabs (no line to the view). It opens a 300px side sheet with tabs: Table (show/hide and reorder columns) · Board (card fields per lane) · Detail page view, landing on the tab of the view you are on. Changes apply at once.** No "Show all" in the sheet — every column and card field starts shown (2026-11-10).
+**IX-93. Every list has ONE Settings gear (2026-11-12: all modules — Sales, 3PL, Service Work, Master Data, Customer Portal); beside the view tabs on a multi-view list (no line to the view), at the end of the search row on a table-only list. Search by column is the table header's hover tab (IX-94) on every list, never a toolbar button. It opens a 300px side sheet with tabs: Table (show/hide and reorder columns) · Board (card fields per lane) · Detail page view, landing on the tab of the view you are on. Changes apply at once.** No "Show all" in the sheet — every column and card field starts shown (2026-11-10).
 - **Why:** one place for everything about what a list shows (HubSpot-style), instead of a different icon per view.
 - **Applies to:** `ListToolbar settings` — 3PL Delivery Orders first.
 - **Check:** review
@@ -655,6 +655,12 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** Pavan, 2026-11-10
 
+**IX-97. A table wider than its box shows a thin horizontal scrollbar under it, inside its frame, only while it is wider: drag the handle, or click the track to move one view's width (less 120px of overlap). The wheel, Shift + wheel and the trackpad work as before. It is the app's own bar, not the browser's, so no vertical bar comes with it and it looks the same on every platform.**
+- **Why:** the app draws no scrollbars, so mouse users had no way to reach columns to the right. (Hover arrows on the header row were tried the same day and replaced by the bar.)
+- **Applies to:** every sideways-scrolling table — the shared `Table`, `ListTable`, `DataTable`, the Recurring list tables, and the lines tables (3PL Delivery Order, Customer Portal order) via `ScrollX` / `ScrollXBar` (`src/components/ui/scroll-x.tsx`). The one exception to "no scrollbars" (index.css).
+- **Check:** review
+- **Source:** Pavan, 2026-11-12
+
 ---
 
 ## Index
@@ -677,7 +683,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-14 | Search and the column-search boxes are LIVE: rows narrow as you type |
 | IX-15 | Applying any narrowing resets the list to page 1 |
 | IX-16 | A new record is revealed by WIDENING the list's window to take it in — never by moving the window |
-| IX-17 | The Export sheet edits the list's own narrowings (already applied behind it); it commits nothing on the way through, so it has no Cancel |
+| IX-17 | Export sheet: "Export data" summary card + applied filters as chips; calendar and filter icons on the title line open their own sheets; no Cancel |
 | IX-18 | The Accessibility panel changes the page LIVE and is saved; there is no Apply |
 | IX-19 | An existing record autosaves 600ms after a change settles |
 | IX-20 | The draft is built once per RECORD, not per save: the row coming back from the sheet's own save never rebuilds the form |
@@ -755,5 +761,6 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
 | IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
 | IX-96 | Outlined gear behind a divider; chevron beside it folds the page head away (every view) |
+| IX-97 | Wide tables: a thin scrollbar under the table, inside its frame, only while it overflows; drag or click the track |
 | IX-95 | Hand cursor = goes somewhere (links, link text, record cards/rows/tiles); in-place controls keep the arrow |
-| IX-92 | Every detail page's ··· starts with "Detail page view" — Side sheet (default) · Modal · Full page, one choice for all modules |
+| IX-92 | Detail page view (Side sheet · Modal · Full page) lives in the Settings gear only, one choice for all modules; no ··· entry |

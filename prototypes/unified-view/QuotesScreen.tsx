@@ -414,17 +414,7 @@ export function QuotesScreen({
             setPage(1);
           }}
           columnFiltersOpen={colFiltersOpen}
-          onToggleColumnFilters={() =>
-            setColFiltersOpen((open) => {
-              /* Closing the row clears it: a narrowing with no boxes on
-                 screen would be one nobody could see. */
-              if (open) {
-                setColFilters({});
-                setPage(1);
-              }
-              return !open;
-            })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -516,6 +506,17 @@ export function QuotesScreen({
                 setOpenId(r.id);
               }}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={() =>
+                setColFiltersOpen((open) => {
+                  /* Closing the row clears it: a narrowing with no boxes on
+                     screen would be one nobody could see. */
+                  if (open) {
+                    setColFilters({});
+                    setPage(1);
+                  }
+                  return !open;
+                })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

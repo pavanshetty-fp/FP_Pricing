@@ -1,3 +1,5 @@
+import { ScrollX } from "@/components/ui/scroll-x";
+import { ColumnSearchTab } from "../ListTable";
 import * as React from "react";
 import {
   ArrowDown,
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ScrollXBar } from "@/components/ui/scroll-x";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { OverflowChip } from "../BreakdownCard";
@@ -401,7 +404,7 @@ function DeliveryTable({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <ScrollX>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
@@ -437,7 +440,7 @@ function DeliveryTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollX>
     </div>
   );
 }
@@ -1083,16 +1086,7 @@ export function RecurringOrdersScreen({
           colQuery={colQuery}
           onColQueryChange={setColQuery}
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view === "table"
-              ? () =>
-                  setColFiltersOpen((open) => {
-                    /* Closing the row puts the table back. */
-                    if (open) setColFilters({});
-                    return !open;
-                  })
-              : undefined
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -1153,6 +1147,7 @@ export function RecurringOrdersScreen({
         ) : (
           <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
             {bar.slot && <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>}
+            <div className="group/frame relative flex min-h-0 flex-1 flex-col">
             <div
             ref={scrollRef}
             className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible"
@@ -1302,6 +1297,19 @@ export function RecurringOrdersScreen({
               </TableBody>
             </Table>
           </div>
+              {view === "table" && <ScrollXBar />}
+              {view === "table" && (
+                <ColumnSearchTab
+                  open={colFiltersOpen}
+                  onToggle={() =>
+                  setColFiltersOpen((open) => {
+                    /* Closing the row puts the table back. */
+                    if (open) setColFilters({});
+                    return !open;
+                  })}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>

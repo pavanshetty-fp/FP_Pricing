@@ -18,7 +18,8 @@ import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FuelOrdersViewBar, viewStateKey, type ViewState } from "./FuelOrdersViewBar";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
-import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
+import { ExportSheet, type ExportFilterRow, type ExportSummary } from "./ExportSheet";
+import { TERM_ICONS } from "@/components/ui/term-icons";
 import { ListTable, TwoLineCell } from "./ListTable";
 import { DateRangeFilter, type DateRange } from "./threepl/DateRangeFilter";
 import { type BoardCardUnit, type BoardLane } from "./threepl/BrokerBoard";
@@ -662,6 +663,26 @@ export function SalesOrdersScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the stage order and names sort and group the rows
     [filtered, sort, settings]
   );
+
+  /* THE EXPORT SUMMARY — as 3PL Delivery Orders (Pavan, 2026-11-12): the
+     file's reach, then its rows by status. */
+  const exportSummary = React.useMemo((): ExportSummary => {
+    const gal = sorted.reduce((n, r) => n + (r.kind === "fuel" ? r.fuel.qtyGal : 0), 0);
+    return {
+      tilesTitle: "Overview",
+      tiles: [
+        { label: "Ship-tos", value: new Set(sorted.map(shipToOf)).size.toLocaleString(), icon: TERM_ICONS.shipTos },
+        { label: "Customers", value: new Set(sorted.map(customerOf)).size.toLocaleString(), icon: TERM_ICONS.customers },
+        { label: "Gallons", value: gal.toLocaleString(), icon: TERM_ICONS.gallons },
+      ],
+      breakdown: {
+        title: "By status",
+        parts: stageIds(settings)
+          .map((st) => ({ label: stageLabel(st, settings), count: sorted.filter((r) => statusOf(r) === st).length, tone: stageTone(st, settings) }))
+          .filter((p) => p.count > 0),
+      },
+    };
+  }, [sorted, settings]);
 
   /* THE BANNER — urgent fuel orders whose planned time has gone by. Derived,
      never seeded, and absent when there are none. */
@@ -1387,7 +1408,6 @@ export function SalesOrdersScreen({
           viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
           mapView
-          listView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -1463,19 +1483,7 @@ export function SalesOrdersScreen({
           }}
           /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only. */
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view !== "table"
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* Closing the row clears it. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -1658,6 +1666,19 @@ export function SalesOrdersScreen({
               openLabel={(r) => `Open order ${orderNoOf(r)}`}
               onOpenRow={openRow}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={
+                view !== "table"
+                  ? undefined
+                  : () =>
+                      setColFiltersOpen((open) => {
+                        /* Closing the row clears it. */
+                        if (open) {
+                          setColFilters({});
+                          setPage(1);
+                        }
+                        return !open;
+                      })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));
@@ -1700,18 +1721,14 @@ export function SalesOrdersScreen({
         noun={noun}
         nounOne={noun.replace(/s$/, "")}
         count={sorted.length}
-        date={
-          <DateRangeFilter
-            {...dateWindow}
-            noun="orders"
-            value={range}
-            onChange={(next) => {
-              setRange(next);
-              setPage(1);
-            }}
-            fullWidth
-          />
-        }
+        range={{
+          ...dateWindow,
+          value: range,
+          onChange: (next) => {
+            setRange(next);
+            setPage(1);
+          },
+        }}
         filtersControl={
           <ListFilters
             facets={facets}
@@ -1724,6 +1741,7 @@ export function SalesOrdersScreen({
             fullWidth
           />
         }
+        summary={exportSummary}
         filters={exportFilters}
         onExport={(format) => {
           setExporting(false);

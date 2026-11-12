@@ -856,15 +856,7 @@ export function OrdersScreen({
             setPage(1);
           }}
           columnFiltersOpen={colFiltersOpen}
-          onToggleColumnFilters={() =>
-            setColFiltersOpen((open) => {
-              if (open) {
-                setColFilters({});
-                setPage(1);
-              }
-              return !open;
-            })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -1008,6 +1000,15 @@ export function OrdersScreen({
               groupNoun="row"
               groupUnit="gal"
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={() =>
+                setColFiltersOpen((open) => {
+                  if (open) {
+                    setColFilters({});
+                    setPage(1);
+                  }
+                  return !open;
+                })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

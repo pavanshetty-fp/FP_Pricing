@@ -17,7 +17,7 @@ One day drawn once, full width: the delivery window as a range on a 24-hour trac
 2. **Outlined box** (input-style):
    - **Read-out line** — the window ("8:00 AM – 12:00 PM", `formatWindow`) left; the span ("4 hr window" / "All day", `formatSpan`) right.
    - **Track** — DS `Slider`, two thumbs, midnight to midnight, 30-minute steps, minimum one hour apart.
-   - **Hour ticks** — 12a · 3a · 6a · 9a · 12p · 3p · 6p · 9p · 12a; end labels pinned to the edges.
+   - **Hour ticks** — every hour, 12a · 1 · 2 … 11 · 12p · 1 … 11 · 12a; only the 12s carry a/p. Every label centred on its hour, the ends too (Pavan, 2026-11-12).
    - **Preferred-time bars** — one per preferred time, under the track, each with dashed lines up to the track at its two ends, a resize grip at each end, and a ✕ just past its right end (on hover/focus).
    - **Time labels** — short times under each bar's ends ("8a", "1:30p"), dotted-underlined, pressable; a narrow bar shows one label "8a–9:20a"; where two bars meet the shared time prints once.
 3. **Hanging add** — `HangingAdd` "Add preferred time" off the box's squared bottom-left corner.

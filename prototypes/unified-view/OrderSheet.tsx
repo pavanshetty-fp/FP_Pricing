@@ -1,5 +1,4 @@
 import * as React from "react";
-import { DetailViewMenuItem } from "./RecordSheet";
 import { toast } from "sonner";
 import { Ban, CalendarDays, Clock, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -676,7 +675,6 @@ export function OrderSheet({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DetailViewMenuItem />
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();

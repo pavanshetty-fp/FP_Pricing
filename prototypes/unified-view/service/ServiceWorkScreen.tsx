@@ -1339,7 +1339,6 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView
-          listView
           searchValue={search}
           onSearchChange={(v) => {
             setSearch(v);
@@ -1408,20 +1407,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
              board keeps the button pointed at nothing rather than opening a
              row of boxes above cards that have no columns. */
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view !== "table"
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* CLOSING THE ROW PUTS THE TABLE BACK — a narrowing with
-                       no box on screen saying so is one nobody can find. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -1554,6 +1540,20 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
               openLabel={(r) => `Open service order ${r.orderNo}`}
               onOpenRow={(r) => setOpenId(r.id)}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={
+                view !== "table"
+                  ? undefined
+                  : () =>
+                      setColFiltersOpen((open) => {
+                        /* CLOSING THE ROW PUTS THE TABLE BACK — a narrowing with
+                           no box on screen saying so is one nobody can find. */
+                        if (open) {
+                          setColFilters({});
+                          setPage(1);
+                        }
+                        return !open;
+                      })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

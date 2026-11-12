@@ -38,7 +38,8 @@ A newer instruction from Pavan beats any of them — follow it and update the ru
 - Tables are the full unit at any row count (fill the height, pagination at the foot); every column sorts; Search by column is a row under the header.
 - Every chip/badge and status column is a pill; status colored by kind (waiting · true · done · warning · neutral).
 - One fact, one form: the same fact uses the same component and color everywhere.
-- Detail pages open as Side sheet (default), Modal or Full page — one app-wide choice behind "Detail page view" in every sheet's ··· (IX-92).
-- 3PL Delivery Orders: one Settings gear (Table · Board · Detail page view) and Search by column as a header hover tab (IX-93, IX-94).
+- Detail pages open as Side sheet (default), Modal or Full page — one app-wide choice in the Settings gear's Detail page view tab; no ··· entry (IX-92, 2026-11-12).
+- Export sheet: summary on the sheet (no card) + applied filters as chips by category, only when some are on; calendar and filter icons beside the count open the page's own date and Filters popovers (IX-17, 2026-11-12).
+- Every list: one Settings gear (Table · Board · Detail page view) and Search by column as a header hover tab (IX-93, IX-94; all lists since 2026-11-12, guarded by parity-lists G2).
 - Hand cursor = navigation only (links, record cards/rows/tiles); in-place controls keep the arrow (IX-95).
 - Views arrive by kind: board from the right, table settles up from below, list and map from the left (map zooms in).

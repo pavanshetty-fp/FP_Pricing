@@ -285,16 +285,18 @@ function TargetEditor({
           className="overflow-hidden rounded-md rounded-bl-none border border-fp-outline-1"
         >
           <table className="w-full table-fixed border-collapse">
-            {/* AS THE DELIVERY ORDER (Pavan, 2026-10-26): the quantity, then
-                TOP OFF LAST with its ticks right-aligned under the select-all;
-                the bin a sticky layer at the right edge. */}
+            {/* AS THE DELIVERY ORDER (Pavan, 2026-11-12): QTY AND TOP OFF
+                RIGHT AFTER THE PRODUCT, then the load's account and supplier;
+                ticks right-aligned under the select-all; the bin a sticky
+                layer at the right edge. */}
             <colgroup>
               <col className={loads ? "w-[22%]" : "w-[34%]"} />
               <col className={loads ? "w-[18%]" : "w-[30%]"} />
+              <col />
+              {/* TOP OFF FITS ITS HEADER — as the delivery order. */}
+              <col className="w-[96px]" />
               {loads && <col className="w-[18%]" />}
               {loads && <col className="w-[16%]" />}
-              <col />
-              <col className="w-[130px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
@@ -305,22 +307,12 @@ function TargetEditor({
                 <th className="px-3 py-2.5 text-left">
                   <TableRequiredLabel required>Product</TableRequiredLabel>
                 </th>
-                {loads && (
-                  <th className="px-3 py-2.5 text-left">
-                    <TableRequiredLabel>Loading account</TableRequiredLabel>
-                  </th>
-                )}
-                {loads && (
-                  <th className="px-3 py-2.5 text-left">
-                    <TableRequiredLabel>Supplier</TableRequiredLabel>
-                  </th>
-                )}
                 <th className="px-3 py-2.5 text-left">
                   <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
                 </th>
                 {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under
                     this one (Pavan, 2026-10-16). */}
-                <th className="px-3 py-2.5 text-left" data-top-off-last>
+                <th className="px-3 py-2.5 text-left" data-qty-after-product>
                   <span className="flex items-center justify-between gap-2">
                     <TableRequiredLabel>Top off</TableRequiredLabel>
                     <Checkbox
@@ -339,6 +331,16 @@ function TargetEditor({
                     />
                   </span>
                 </th>
+                {loads && (
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Loading account</TableRequiredLabel>
+                  </th>
+                )}
+                {loads && (
+                  <th className="px-3 py-2.5 text-left">
+                    <TableRequiredLabel>Supplier</TableRequiredLabel>
+                  </th>
+                )}
                 <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
               </tr>
             </thead>
@@ -423,6 +425,36 @@ function TargetEditor({
                         onChange={(v) => setLine(i, { product: v })}
                       />
                     </td>
+                    <td className="relative p-0">
+                      <TableCellInput
+                        value={
+                          line.topOff ? "" : line.gal != null ? String(line.gal) : ""
+                        }
+                        placeholder={line.topOff ? "Top-off" : "0"}
+                        disabled={line.topOff}
+                        numeric
+                        aria-label={`Gallons for line ${i + 1}`}
+                        onChange={(v) =>
+                          setLine(i, {
+                            gal: Number(v.replace(/[^0-9]/g, "")) || null,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-3">
+                      <span className="flex justify-end">
+                      <Checkbox
+                        checked={Boolean(line.topOff)}
+                        onCheckedChange={(c) =>
+                          setLine(i, {
+                            topOff: c === true,
+                            gal: c === true ? null : line.gal,
+                          })
+                        }
+                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
+                      />
+                      </span>
+                    </td>
                     {loads && (() => {
                       /* THE ACCOUNTS THAT CARRY THIS LINE'S PRODUCT, then
                          that account's suppliers. */
@@ -458,36 +490,6 @@ function TargetEditor({
                         </>
                       );
                     })()}
-                    <td className="relative p-0">
-                      <TableCellInput
-                        value={
-                          line.topOff ? "" : line.gal != null ? String(line.gal) : ""
-                        }
-                        placeholder={line.topOff ? "Top-off" : "0"}
-                        disabled={line.topOff}
-                        numeric
-                        aria-label={`Gallons for line ${i + 1}`}
-                        onChange={(v) =>
-                          setLine(i, {
-                            gal: Number(v.replace(/[^0-9]/g, "")) || null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="px-3">
-                      <span className="flex justify-end">
-                      <Checkbox
-                        checked={Boolean(line.topOff)}
-                        onCheckedChange={(c) =>
-                          setLine(i, {
-                            topOff: c === true,
-                            gal: c === true ? null : line.gal,
-                          })
-                        }
-                        aria-label={`Top off ${line.asset || `line ${i + 1}`}`}
-                      />
-                      </span>
-                    </td>
                     <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                       <TableRowRemove
                         aria-label={`Remove ${line.asset || `line ${i + 1}`}`}

@@ -18,9 +18,9 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
-| 2026-11-08 | 3 |
+| 2026-11-08 | 5 |
 
-**47 misses** · found by Pavan 37 · by Claude 10 · guarded by a script 19 · guard proposed 0 · needs eyes 23 · process rule 5
+**49 misses** · found by Pavan 39 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 23 · process rule 6
 
 ## Patterns
 
@@ -28,18 +28,20 @@ Every time Pavan has to point out something that should already have been right 
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 11 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 9 |
+| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 8 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 8 |
-| `one-case` | Verified one case only (one row, one order, one stage, one theme) | 7 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
 | `unchecked-output` | A sweep or generated output assumed correct without checking the result | 2 |
-| `no-guard` | No guard against an impossible value or state | 1 |
+| `no-guard` | No guard against an impossible value or state | 2 |
 
 ## The log
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-049 | 2026-11-12 | Accessibility panel: Fill contrast didn't reach the swimlanes, Component width didn't widen board lanes, Text size skipped titles and px-sized labels | Accessibility panel › every board and list | Pavan | `no-guard` | The new lane colour (--fp-lane-ground) wasn't added to a11y.ts's lists (the rule was in memory); BoardV2's fitted lane width ignored --fp-lane-k; the text scale covered xs–lg tokens only, not text-xl+ or text-[Npx]. | `a11y-token-reach` · built |
+| M-048 | 2026-11-10 | Collapsed header left a 16px strip of the views row (tabs, top of Create Order) showing above the search row | 3PL Delivery Orders › collapse-header fold | Pavan | `one-case` | The M-047 fix padded the fold's clip box to take the bar's bleed; the pad stayed when folded, so 16px of the bar still showed. Verified the open state after the fix but not the folded one, and the clip check skipped hidden content instead of checking it showed nothing. | `clip-check` · process |
 | M-047 | 2026-11-10 | Top of Create Order and the ends of the views row's rule cut off on 3PL Delivery Orders | 3PL Delivery Orders › views row (after the collapse-header fold) | Pavan | `edges` | Wrapped the views bar in an overflow-hidden box for the fold without noticing the bar bleeds 16px past the body inset (-mx-4 -mt-4); verified the fold opened and closed, not that the open state still matched the page before. | `clip-check` · process |
 | M-046 | 2026-11-10 | List Settings sheet: no line under the tabs, and 40px between the tabs and their content | 3PL Delivery Orders › Settings sheet | Pavan | `generic-over-existing` | Built the tabs from the bare TabsList instead of copying the tabbed view already in the system (Master Data 360: tabs on a border-b row, content mt-4), and placed tabs and content as two sheet-body children so the 40px section gap fell between them. | `review` · manual |
 | M-045 | 2026-11-10 | Dark theme swimlanes invisible — the darker lane colour landed on the board's own ground (#1e222a on #1d222a); the lane hover (#232831) then darkened it back onto the board | Every board (BoardV2) and the list view's lane, dark theme | Pavan | `one-case` | Derived the new lane colour from two tokens and checked dark only against the cards, not against the board ground it sits on; reported dark as fine. | `review` · manual |

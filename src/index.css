@@ -1289,6 +1289,10 @@
       and the inconsistency was more confusing than the overflow ever was: one
       strip with a visible scrollbar teaches the reader that the absence of one
       elsewhere means "this does not scroll", which is false.
+
+      ONE EXCEPTION, DRAWN BY US (Pavan, 2026-11-12): a table wider than its
+      box gets a thin sideways bar under it — `ScrollXBar`, in the flow, not a
+      browser gutter (IX-97). Mouse users had no other way to the right.
     */
     scrollbar-width: none;
   }
@@ -1361,6 +1365,12 @@
   --text-sm: calc(0.875rem * var(--fp-text-scale));
   --text-base: calc(1rem * var(--fp-text-scale));
   --text-lg: calc(1.125rem * var(--fp-text-scale));
+  /* TITLES AND FIGURES GROW TOO (Pavan, 2026-11-12 — "some of the features
+     are not functioning": the page title and dashboard figures stayed put). */
+  --text-xl: calc(1.25rem * var(--fp-text-scale));
+  --text-2xl: calc(1.5rem * var(--fp-text-scale));
+  --text-3xl: calc(1.875rem * var(--fp-text-scale));
+  --text-4xl: calc(2.25rem * var(--fp-text-scale));
   /* HEAVIER AS IT GROWS — Geist is variable: +75 at 130% — plus the Text
      weight slider's own step (--fp-weight-add, 2026-10-26). */
   --font-weight-normal: calc(400 + (var(--fp-text-scale) - 1) * 250 + var(--fp-weight-add, 0));
@@ -1371,6 +1381,15 @@
 .a11y-text body {
   font-weight: var(--font-weight-normal);
 }
+/* THE FIXED-PIXEL SIZES GROW WITH THE REST (2026-11-12) — pills, counts,
+   unit headings and lane titles are set in px (text-[11px] …), which the
+   size tokens above never reached. */
+.a11y-text [class~="text-[7px]"] { font-size: calc(7px * var(--fp-text-scale)); }
+.a11y-text [class~="text-[8px]"] { font-size: calc(8px * var(--fp-text-scale)); }
+.a11y-text [class~="text-[9px]"] { font-size: calc(9px * var(--fp-text-scale)); }
+.a11y-text [class~="text-[10px]"] { font-size: calc(10px * var(--fp-text-scale)); }
+.a11y-text [class~="text-[11px]"] { font-size: calc(11px * var(--fp-text-scale)); }
+.a11y-text [class~="text-[13px]"] { font-size: calc(13px * var(--fp-text-scale)); }
 /* TABLE HEADERS WRAP AT BIGGER TEXT (Pavan, 2026-10-21) — a header that no
    longer fits breaks onto a second line, between words, rather than being
    cut or widening its column; the row just gets taller. */
@@ -1444,6 +1463,9 @@
 
 /* ── WCAG light ───────────────────────────────────────────────────────── */
 .wcag:not(.dark) {
+  /* THE SWIMLANE STEPS DARKER WITH FILL CONTRAST (2026-11-12) — to the
+     raised-card step at WCAG; the maximum follows from its formula. */
+  --fp-lane-ground: var(--fp-card-1);
   /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
      their initial goes black at 7:1; the lane count steps on. */
   --pastel-blue: #88a8cc;
@@ -1531,6 +1553,8 @@
 
 /* ── WCAG dark ────────────────────────────────────────────────────────── */
 .dark.wcag {
+  /* THE SWIMLANE STEPS LIGHTER WITH FILL CONTRAST in dark (2026-11-12). */
+  --fp-lane-ground: color-mix(in oklab, var(--fp-card-1), var(--foreground) 6%);
   /* BUTTONS AND FIELDS IN DARK fill up with Fill contrast (Pavan, 2026-10-28). */
   --fp-field-fill: color-mix(in oklab, #474f5b 60%, transparent);
   --fp-field-fill-hover: color-mix(in oklab, #474f5b 80%, transparent);
@@ -1605,6 +1629,7 @@
    the middle → this. Text still 7:1 on every (darker) surface; rims and
    dividers 5:1 and more. Tokens not named here stay at their WCAG value. */
 .a11y-max:not(.dark) {
+  --fp-lane-ground: color-mix(in oklab, var(--fp-surface-1a), var(--fp-board-lane) 40%);
   /* FILL CONTRAST (Pavan, 2026-10-28) — the code discs' pastels deepen,
      their initial goes white at 7:1; the lane count steps on. */
   --pastel-blue: #3c5979;
@@ -1683,6 +1708,7 @@
   --ring: #2f1300;
 }
 .dark.a11y-max {
+  --fp-lane-ground: color-mix(in oklab, var(--fp-card-1), var(--foreground) 12%);
   /* BUTTONS AND FIELDS IN DARK fill up with Fill contrast (Pavan, 2026-10-28). */
   --fp-field-fill: color-mix(in oklab, #474f5b 85%, transparent);
   --fp-field-fill-hover: color-mix(in oklab, #474f5b 100%, transparent);

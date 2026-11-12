@@ -134,6 +134,8 @@ const BACKGROUND = [
   "--fp-emphasis-quiet",
   "--fp-table-header",
   "--fp-board-lane",
+  /* THE SWIMLANE GROUND (2026-11-12) — added with the darker lanes. */
+  "--fp-lane-ground",
   "--fp-row-hover",
   "--fp-banner-caution",
   /* BOARD FILLS (Pavan, 2026-10-28) — the lane-count bubble, the dark

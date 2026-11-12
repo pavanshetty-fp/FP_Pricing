@@ -53,5 +53,32 @@
       }
     }
   }
+  /* LEAKS — the other half (M-048): anything folded away (inside an
+     aria-hidden/inert box) must show NOTHING. A fold that keeps a pad left a
+     16px strip of the views row visible above the search row. */
+  const visibleRect = (el) => {
+    let r = el.getBoundingClientRect();
+    let t = r.top, b = r.bottom, l = r.left, rt = r.right;
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (!clips(p)) continue;
+      const pr = p.getBoundingClientRect();
+      t = Math.max(t, pr.top); b = Math.min(b, pr.bottom); l = Math.max(l, pr.left); rt = Math.min(rt, pr.right);
+    }
+    return { h: b - t, w: rt - l };
+  };
+  /* Faded out by itself or by any box around it = not showing. */
+  const faded = (el) => {
+    for (let p = el; p && p !== document.body; p = p.parentElement) if (Number(getComputedStyle(p).opacity) === 0) return true;
+    return false;
+  };
+  for (const box of document.querySelectorAll('[aria-hidden="true"][inert], [inert]')) {
+    for (const el of box.querySelectorAll(sel)) {
+      if (faded(el)) continue;
+      const v = visibleRect(el);
+      if (v.h > 1 && v.w > 1) {
+        out.push({ what: (el.getAttribute("aria-label") || el.textContent || el.tagName).trim().slice(0, 40), cutAt: "LEAK — folded but " + Math.round(v.h) + "px still shows", by: box.className.toString().slice(0, 70) });
+      }
+    }
+  }
   return out;
 })();

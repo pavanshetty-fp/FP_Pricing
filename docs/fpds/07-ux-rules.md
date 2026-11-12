@@ -202,7 +202,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 - **Check:** review
 - **Source:** `interactions/2-rules.md` §4c; 3PL README "The Directory"
 
-**UX-31. Export means the rows you are looking at — filtered, searched, sorted, all pages — through `ExportSheet`, which shows the list's own date and Filters controls and every narrowing as a removable chip.**
+**UX-31. Export means the rows you are looking at — filtered, searched, sorted, all pages — through `ExportSheet`, which summarises the file (count, dates, format, list-specific facts) and lists every applied filter as a removable chip by category; dates and filters change in their own sheets from the calendar and filter icons on its title line.**
 - **Why:** a page boundary has no business deciding what ends up in a file; the sheet answers "what am I exporting".
 - **Applies to:** every list that exports.
 - **Check:** review (G10)
@@ -1078,7 +1078,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-28 | Every list carries the view bar ON the view (above the table header or the lanes): LEFT a statement ("62 orders · Thu, Oct 22, 2026"; board "62 orders across 9 of 9 la… |
 | UX-29 | A paged list has pagination in three slots (Showing N–N of N · page numbers · page size) using `TablePagination`'s own sizes and copy |
 | UX-30 | A list's total sits beside the page title and follows the filtered rows — never under the footer |
-| UX-31 | Export means the rows you are looking at — filtered, searched, sorted, all pages — through `ExportSheet`, which shows the list's own date and Filters controls and ever… |
+| UX-31 | Export means the rows you are looking at — filtered, searched, sorted, all pages — through `ExportSheet`, which summarises the file and lists applied filters as chips by category… |
 | UX-32 | The create CTA goes where creation actually happens |
 | UX-33 | Date scope: a list whose record IS a day opens on one day; records that outlive a day open on a week (today ±3) |
 | UX-34 | An empty list says its cause: nothing in this date window · nothing matches the narrowing · nothing here yet · the module has no screens — each with its one way out |

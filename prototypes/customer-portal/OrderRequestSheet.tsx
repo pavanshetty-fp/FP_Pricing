@@ -1,6 +1,6 @@
+import { ScrollX } from "@/components/ui/scroll-x";
 import { cn } from "@/lib/utils";
 import * as React from "react";
-import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { Pill } from "@/components/ui/pill";
 import { toast } from "sonner";
 import { Ban, CalendarDays, Copy, Info, MoreHorizontal, Pencil, Send, Truck } from "lucide-react";
@@ -209,27 +209,27 @@ export function LinesTable({
   return (
     /* NEVER SQUEEZED — on a narrow screen the table scrolls sideways rather
        than closing the asset and product cells. */
-    <div className="overflow-x-auto">
+    <ScrollX>
     <table
       className="w-full table-fixed border-collapse"
-      style={{ minWidth: `calc(${live ? 1252 : 1112}px * var(--fp-scale))` }}
+      style={{ minWidth: `calc(${live ? 1192 : 1052}px * var(--fp-scale))` }}
     >
       {/* NARROW BY DESIGN (Pavan, 2026-10-15) — as the Delivery Order.
           WHAT THE ORDER DOES TO THE TANK FIRST (Pavan, 2026-10-17): its level
           now, the % on fulfillment, and while ordering days to empty (the
           suggested quantity is the Qty cell's placeholder, 2026-10-20). AS THE
-          DELIVERY ORDER NOW (Pavan, 2026-10-26): days to empty, on
-          fulfillment right before the quantity, TOP OFF LAST with its ticks
-          right-aligned; every column its own width and the table scrolling
-          sideways; the bin a sticky layer at the right edge. */}
+          DELIVERY ORDER NOW (Pavan, 2026-11-12): QTY AND TOP OFF RIGHT AFTER
+          THE PRODUCT, then the tank's readings; ticks right-aligned; every
+          column its own width and the table scrolling sideways; the bin a
+          sticky layer at the right edge. */}
       <colgroup>
         <col className="w-[calc(240px*var(--fp-scale))]" />
         <col className="w-[calc(220px*var(--fp-scale))]" />
+        <col className="w-[calc(124px*var(--fp-scale))]" />
+        <col className="w-[calc(96px*var(--fp-scale))]" />
         <col className="w-[calc(150px*var(--fp-scale))]" />
         {live && <col className="w-[calc(140px*var(--fp-scale))]" />}
         <col className="w-[calc(170px*var(--fp-scale))]" />
-        <col className="w-[calc(150px*var(--fp-scale))]" />
-        <col className="w-[calc(130px*var(--fp-scale))]" />
         <col className="w-[calc(52px*var(--fp-scale))]" />
       </colgroup>
       <thead>
@@ -239,6 +239,20 @@ export function LinesTable({
           </th>
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel required>Product</TableRequiredLabel>
+          </th>
+          <th className="px-3 py-2.5 text-left">
+            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
+          </th>
+          {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
+          <th className="px-3 py-2.5 text-left" data-qty-after-product>
+            <span className="flex items-center justify-between gap-2">
+              <TableRequiredLabel>Top off</TableRequiredLabel>
+              <Checkbox
+                checked={allTop ? true : someTop ? "indeterminate" : false}
+                aria-label="Top off every line"
+                onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
+              />
+            </span>
           </th>
           <th className="px-3 py-2.5 text-left">
             <TableRequiredLabel>Current level</TableRequiredLabel>
@@ -252,20 +266,6 @@ export function LinesTable({
             <TableRequiredLabel>
               <FulfilmentHead />
             </TableRequiredLabel>
-          </th>
-          <th className="px-3 py-2.5 text-left">
-            <TableRequiredLabel>Qty (gal)</TableRequiredLabel>
-          </th>
-          {/* TOP OFF LAST, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
-          <th className="px-3 py-2.5 text-left" data-top-off-last>
-            <span className="flex items-center justify-between gap-2">
-              <TableRequiredLabel>Top off</TableRequiredLabel>
-              <Checkbox
-                checked={allTop ? true : someTop ? "indeterminate" : false}
-                aria-label="Top off every line"
-                onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
-              />
-            </span>
           </th>
           <th aria-hidden className="sticky right-0 z-10 border-l border-border bg-fp-table-header" />
         </tr>
@@ -347,15 +347,6 @@ export function LinesTable({
                   onChange={(v) => update(i, { product: v })}
                 />
               </td>
-              <td className="px-3">
-                {l.assetId ? <LevelReading asset={asset} /> : <span className="text-sm text-muted-foreground">—</span>}
-              </td>
-              {live && (
-                <td className="px-3">
-                  <DaysToEmpty asset={asset} days={days} />
-                </td>
-              )}
-              <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
               <td className="relative p-0">
                 <TableCellInput
                   value={l.topOff ? "" : l.gal ? String(capGal(asset, days, l.gal)) : ""}
@@ -386,6 +377,15 @@ export function LinesTable({
                   />
                 </span>
               </td>
+              <td className="px-3">
+                {l.assetId ? <LevelReading asset={asset} /> : <span className="text-sm text-muted-foreground">—</span>}
+              </td>
+              {live && (
+                <td className="px-3">
+                  <DaysToEmpty asset={asset} days={days} />
+                </td>
+              )}
+              <td className="px-3">{live || !request ? <AfterDelivery line={l} days={days} dateKey={deliveryKey} /> : <FulfilmentPct line={l} r={request} />}</td>
               <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                 {/* A request needs a line, so the last row keeps no bin. */}
                 <TableRowRemove
@@ -402,19 +402,19 @@ export function LinesTable({
       {started && (
         <tfoot>
           <tr className="h-11 border-t border-border">
-            <td colSpan={live ? 5 : 4} className="px-3 text-sm text-muted-foreground">
+            <td colSpan={2} className="px-3 text-sm text-muted-foreground">
               Total
             </td>
             <td className="px-3 text-sm font-medium tabular-nums text-foreground">
               {total.gal > 0 ? `${total.gal.toLocaleString()} gal` : "Top off"}
             </td>
-            <td aria-hidden />
+            <td aria-hidden colSpan={live ? 4 : 3} />
             <td aria-hidden className="sticky right-0 z-10 border-l border-border bg-popover" />
           </tr>
         </tfoot>
       )}
     </table>
-    </div>
+    </ScrollX>
   );
 }
 
@@ -717,7 +717,6 @@ export function OrderRequestSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DetailViewMenuItem />
               <DropdownMenuItem
                 onSelect={() => {
                   flush();

@@ -1,3 +1,4 @@
+import { ColumnSearchTab } from "../ListTable";
 import * as React from "react";
 import {
   Archive,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ScrollXBar } from "@/components/ui/scroll-x";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -853,17 +855,7 @@ export function RecurringProgramsScreen({
           colQuery={colQuery}
           onColQueryChange={setColQuery}
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view === "table"
-              ? () =>
-                  setColFiltersOpen((open) => {
-                    /* CLOSING THE ROW PUTS THE TABLE BACK — boxes that are
-                       gone must not go on narrowing. */
-                    if (open) setColFilters({});
-                    return !open;
-                  })
-              : undefined
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -914,6 +906,7 @@ export function RecurringProgramsScreen({
         ) : (
           <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
             {bar.slot && <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{bar.slot}</div>}
+            <div className="group/frame relative flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-auto [&_[data-slot=table-container]]:overflow-visible">
             {/* Separated borders — see `docs/ds/ui/2-rules.md` §10d. */}
             <Table
@@ -1022,6 +1015,20 @@ export function RecurringProgramsScreen({
               </TableBody>
             </Table>
           </div>
+              {view === "table" && <ScrollXBar />}
+              {view === "table" && (
+                <ColumnSearchTab
+                  open={colFiltersOpen}
+                  onToggle={() =>
+                  setColFiltersOpen((open) => {
+                    /* CLOSING THE ROW PUTS THE TABLE BACK — boxes that are
+                       gone must not go on narrowing. */
+                    if (open) setColFilters({});
+                    return !open;
+                  })}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>

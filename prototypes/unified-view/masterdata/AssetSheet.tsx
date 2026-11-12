@@ -1,5 +1,4 @@
 import * as React from "react";
-import { DetailViewMenuItem } from "../RecordSheet";
 import { toast } from "sonner";
 import { Archive, ArrowRightLeft, CheckCircle2, ChevronDown, MoreHorizontal, Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -127,7 +126,6 @@ export function AssetSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DetailViewMenuItem />
               {archived ? (
                 <DropdownMenuItem onSelect={() => setArchived(false)}>
                   <CheckCircle2 />

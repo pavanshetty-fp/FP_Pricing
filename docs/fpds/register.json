@@ -4,7 +4,7 @@
   "gapMessage": "This unit needs a tweak in design/new design. Please contact the owner to get a design for this gap, pavanshetty@fleetpanda.com.",
   "protocol": "docs/fpds/00-protocol.md",
   "registryUrl": "https://pavanshetty-rgb.github.io/FP-DS-2026/r",
-  "generated": "2026-11-10",
+  "generated": "2026-11-12",
   "entries": [
     {
       "id": "atom.button",
@@ -1597,7 +1597,7 @@
       "id": "unit.list-split",
       "title": "List view",
       "layer": "unit",
-      "doc": "docs/fpds/units/list-split.md:3",
+      "doc": "docs/fpds/units/list-split.md:5",
       "code": [
         "prototypes/unified-view/ListSplitView.tsx"
       ],

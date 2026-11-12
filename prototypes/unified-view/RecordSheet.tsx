@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AppWindow, Check, Loader2, MoreHorizontal, X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import type { PillColor } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
@@ -12,13 +12,6 @@ import {
   useSheetPresentation,
   type SheetPresentation,
 } from "./sheetPresentation";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { SteppedFormBody } from "@/components/side-sheet/form-steps";
@@ -209,9 +202,6 @@ export interface RecordSheetProps {
   /** An exact width in px, for a small settings sheet whose content has one
    *  natural width (the list Settings sheet: 300, Pavan 2026-11-08). */
   width?: number;
-  /** False drops the ··· "Detail page view" entry — a settings sheet, not a
-   *  record. */
-  detailViewMenu?: boolean;
   /** Width from the sheet's tables — see `size` and `fitWidth`. */
   fit?: SheetFit;
   /**
@@ -506,7 +496,6 @@ export function DraftStatusChip({
 export function RecordSheet({
   size = "form",
   presentation: presentationProp,
-  detailViewMenu = true,
   width: widthProp,
   fit,
   level = 1,
@@ -544,7 +533,6 @@ export function RecordSheet({
   const docked = React.useContext(DockedSheet) && level === 1;
   const chosen = useSheetPresentation();
   const presentation: SheetPresentation = docked || level === 2 ? "sheet" : (presentationProp ?? chosen);
-  const [viewOpen, setViewOpen] = React.useState(false);
   const fills = size === "full" || navShown || presentation === "full";
   const parentWidth = React.useContext(ParentSheetWidth);
   const own =
@@ -622,26 +610,7 @@ export function RecordSheet({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}
-            {/* DETAIL PAGE VIEW IS IN EVERY ··· (Pavan, 2026-11-08) — a sheet
-                with its own menu lists it via `DetailViewMenuItem`; a sheet
-                without one gets a ··· holding only it. */}
-            {level === 1 && detailViewMenu && (
-              <DetailViewOpen.Provider value={() => setViewOpen(true)}>
-                {headerMenu ?? (!docked && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DetailViewMenuItem separated={false} />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ))}
-              </DetailViewOpen.Provider>
-            )}
-            {(level !== 1 || !detailViewMenu) && headerMenu}
+            {headerMenu}
             {!docked && <SheetClose className="rounded-sm p-1 text-muted-foreground opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50">
               <X className="size-4" />
               <span className="sr-only">Close</span>
@@ -726,49 +695,8 @@ export function RecordSheet({
           </div>
         </div>
         )}
-        {level === 1 && detailViewMenu && <DetailViewSheet open={viewOpen} onOpenChange={setViewOpen} />}
       </Content>
     </Root>
-  );
-}
-
-const DetailViewOpen = React.createContext<(() => void) | null>(null);
-
-/** "Detail page view" for a sheet's own ··· menu — put it first; it brings
- *  its own separator. Renders nothing outside a first-level record sheet. */
-export function DetailViewMenuItem({ separated = true }: { separated?: boolean }) {
-  const open = React.useContext(DetailViewOpen);
-  if (!open) return null;
-  return (
-    <>
-      <DropdownMenuItem onSelect={open}>
-        <AppWindow />
-        Detail page view
-      </DropdownMenuItem>
-      {separated && <DropdownMenuSeparator />}
-    </>
-  );
-}
-
-/* DETAIL PAGE VIEW (Pavan, 2026-11-08) — one choice for every detail page in
-   every module. Applies at once; no footer. */
-function DetailViewSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  return (
-    <RecordSheet
-      size="compact"
-      level={2}
-      open={open}
-      onOpenChange={onOpenChange}
-      mode="edit"
-      editTitle="Detail page view"
-      createTitle=""
-      createAction=""
-      noFooter
-      showCancel={false}
-      onSubmit={() => {}}
-    >
-      <DetailViewChoice />
-    </RecordSheet>
   );
 }
 
@@ -801,8 +729,8 @@ function DockedTitle({ className, children }: { className?: string; children: Re
   return <h2 className={cn("font-semibold text-foreground", className)}>{children}</h2>;
 }
 
-/** The Detail page view choice itself — in its own sheet and in a list's
- *  Settings sheet. */
+/** The Detail page view choice — lives only in a list's Settings sheet (the
+ *  gear). The ··· entry on every sheet was removed, Pavan 2026-11-12. */
 export function DetailViewChoice() {
   const value = useSheetPresentation();
   return (

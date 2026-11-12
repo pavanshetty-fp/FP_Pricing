@@ -1058,7 +1058,6 @@ export function ListToolbar<K extends string>({
              cut "Detail page view"). */
           width={300}
           presentation="sheet"
-          detailViewMenu={false}
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           mode="edit"

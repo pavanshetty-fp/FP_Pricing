@@ -3,18 +3,27 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { ScrollXBar } from "@/components/ui/scroll-x"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  /* The sideways scrollbar (scroll-x.tsx). A caller whose own frame scrolls
+     sets this container `overflow-visible`; it then never scrolls and its bar
+     never shows — the frame carries its own. */
+  const ref = React.useRef<HTMLDivElement>(null)
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+    <div data-slot="table-scroll" className="w-full">
+      <div
+        ref={ref}
+        data-slot="table-container"
+        className="relative w-full overflow-x-auto"
+      >
+        <table
+          data-slot="table"
+          className={cn("w-full caption-bottom text-sm", className)}
+          {...props}
+        />
+      </div>
+      <ScrollXBar target={ref} />
     </div>
   )
 }

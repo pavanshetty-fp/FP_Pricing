@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DateRangePopover, formatDateRange, type DateRange } from "@/components/ui/date-picker";
@@ -59,6 +59,27 @@ export function DateRangeFilter({
   const isAll =
     !!all && dateKeyOf(all.from) === dateKeyOf(value.from) && dateKeyOf(all.to) === dateKeyOf(value.to);
   const label = isAll ? "All dates" : formatDateRange(value);
+  /* IN THE EXPORT SHEET, A CALENDAR ICON (Pavan, 2026-11-12) — the same
+     picker popover as the page's date control, opened beside the count. */
+  if (fullWidth) {
+    return (
+      <DateRangePopover
+        value={value}
+        onChange={onChange}
+        all={all}
+        count={count}
+        noun={noun}
+        resetTo={(() => {
+          const t = startOfDay(new Date());
+          return { from: t, to: t };
+        })()}
+      >
+        <Button variant="outline" size="icon-sm" aria-label={`Date range: ${label}. Change`}>
+          <CalendarDays />
+        </Button>
+      </DateRangePopover>
+    );
+  }
 
   return (
     <div className={cn("flex items-center gap-1", fullWidth && "w-full")}>

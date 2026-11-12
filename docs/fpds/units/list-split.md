@@ -1,5 +1,7 @@
 # List view
 
+> **ARCHIVED 2026-11-12 (Pavan): removed from every module.** Lists offer Table, Board and Map only. Kept for the record — see `10-archive.md`.
+
 `id: unit.list-split` · `layer: unit` · `code: prototypes/unified-view/ListSplitView.tsx` · `registry: fpds-list-split`
 
 ## Purpose

@@ -1,5 +1,4 @@
 import * as React from "react";
-import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { toast } from "sonner";
 import { Ban, MoreHorizontal, Pause, Pencil, Play, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -169,7 +168,6 @@ function RuleDetail({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DetailViewMenuItem />
                 <DropdownMenuItem onSelect={onEdit}>
                   <Pencil />
                   Edit rule

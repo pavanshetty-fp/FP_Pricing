@@ -1,5 +1,5 @@
 import * as React from "react";
-import { MapPin, Truck } from "lucide-react";
+import { Building2, MapPin, Truck } from "lucide-react";
 
 /*
   ONE ICON PER TERM, EVERY MODULE (Pavan, 2026-10-20). Wherever the app says
@@ -14,7 +14,7 @@ import { MapPin, Truck } from "lucide-react";
   reference), so it reads as liquid.
 */
 
-type IconProps = { className?: string; strokeWidth?: number };
+export type IconProps = { className?: string; strokeWidth?: number };
 const SOFT = 0.22;
 
 /** A wavy liquid surface across x 3–21 at height `y`. */
@@ -87,11 +87,18 @@ export function PinIcon({ className, strokeWidth }: IconProps) {
   return <MapPin className={className} strokeWidth={strokeWidth} fill="currentColor" fillOpacity={SOFT} />;
 }
 
-export const TERM_ICONS: Record<"deliveries" | "products" | "gallons" | "shipTos", React.ComponentType<IconProps>> = {
+/* CUSTOMERS — Lucide's building, with the soft fill (the Export data card,
+   2026-11-12). */
+export function BuildingIcon({ className, strokeWidth }: IconProps) {
+  return <Building2 className={className} strokeWidth={strokeWidth} fill="currentColor" fillOpacity={SOFT} />;
+}
+
+export const TERM_ICONS: Record<"deliveries" | "products" | "gallons" | "shipTos" | "customers", React.ComponentType<IconProps>> = {
   deliveries: TruckIcon,
   products: DropIcon,
   gallons: DrumIcon,
   shipTos: PinIcon,
+  customers: BuildingIcon,
 };
 
 /*

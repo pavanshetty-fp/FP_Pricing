@@ -631,21 +631,7 @@ export function DirectoryList<Row, K extends string>({
                the map keeps the button pointed at nothing rather than opening
                a row of boxes above pins that have no columns. */
             columnFiltersOpen={view === "table" && colFiltersOpen}
-            onToggleColumnFilters={
-              view === "table"
-                ? () =>
-                    setColFiltersOpen((open) => {
-                      /* CLOSING THE ROW PUTS THE LIST BACK. Leaving what was
-                         typed applying after the boxes have gone would be a
-                         narrowing with nothing on screen saying so. */
-                      if (open) {
-                        setColFilters({});
-                        setPage(1);
-                      }
-                      return !open;
-                    })
-                : undefined
-            }
+            settings
             columnFilterCount={activeColFilters.length}
             view={view}
             onViewChange={setView}
@@ -767,6 +753,21 @@ export function DirectoryList<Row, K extends string>({
               openLabel={openLabel}
               onOpenRow={onOpenRow}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={
+                view === "table"
+                  ? () =>
+                      setColFiltersOpen((open) => {
+                        /* CLOSING THE ROW PUTS THE LIST BACK. Leaving what was
+                           typed applying after the boxes have gone would be a
+                           narrowing with nothing on screen saying so. */
+                        if (open) {
+                          setColFilters({});
+                          setPage(1);
+                        }
+                        return !open;
+                      })
+                  : undefined
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

@@ -1,3 +1,4 @@
+import { ScrollX } from "@/components/ui/scroll-x";
 import * as React from "react";
 import {
   ArrowDown,
@@ -284,7 +285,7 @@ function NestedTable({ width }: { width?: number }) {
       className="sticky left-0 bg-fp-surface-1b before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70"
       style={{ width }}
     >
-      <div className="overflow-x-auto">
+      <ScrollX>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
@@ -326,7 +327,7 @@ function NestedTable({ width }: { width?: number }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollX>
     </div>
   );
 }

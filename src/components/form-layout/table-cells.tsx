@@ -371,11 +371,16 @@ export function TableCellInput({
     cell's input still fills the width, which is where typing should start.
   */
   const moneyish = Boolean(numeric && prefix);
+  /* A FIXED UNIT HUGS ITS WORD (Pavan, 2026-11-12): with nothing to pick
+     there is no chevron, so the unit sits inside the field after the figure —
+     its rule, 8px, the word, then the cell's own 12px. A unit to pick keeps
+     its 64px slot for the chevron. */
+  const picks = Boolean(unit && unit.options.length > 1 && !disabled);
   const field = (
     <label
       className={cn(
         "absolute inset-0 flex cursor-text items-center px-3 transition-colors",
-        unit && "right-[calc(64px*var(--fp-scale))]",
+        picks && "right-[calc(64px*var(--fp-scale))]",
         moneyish ? "gap-1" : "gap-1.5",
         "hover:bg-accent",
         "focus-within:bg-fp-surface-1a focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring/50",
@@ -421,6 +426,11 @@ export function TableCellInput({
       {suffix && (
         <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span>
       )}
+      {unit && !picks && (
+        <span className="flex shrink-0 self-stretch items-center border-l border-border/70 my-2 pl-2 text-xs text-muted-foreground">
+          {unit.value}
+        </span>
+      )}
     </label>
   );
   const unitCls =
@@ -443,7 +453,7 @@ export function TableCellInput({
   ) : (
     <>
       {tipped}
-      {unit.options.length > 1 && !disabled ? (
+      {picks ? (
         <Popover open={unitOpen} onOpenChange={setUnitOpen}>
           <PopoverTrigger asChild>
             <button
@@ -475,9 +485,7 @@ export function TableCellInput({
             ))}
           </PopoverContent>
         </Popover>
-      ) : (
-        <span className={unitCls}>{unit.value}</span>
-      )}
+      ) : null}
     </>
   );
   return cell;

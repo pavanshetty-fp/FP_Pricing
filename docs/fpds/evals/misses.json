@@ -628,6 +628,32 @@
         "id": "clip-check",
         "status": "process"
       }
+    },
+    {
+      "id": "M-048",
+      "date": "2026-11-10",
+      "title": "Collapsed header left a 16px strip of the views row (tabs, top of Create Order) showing above the search row",
+      "where": "3PL Delivery Orders › collapse-header fold",
+      "foundBy": "pavan",
+      "pattern": "one-case",
+      "why": "The M-047 fix padded the fold's clip box to take the bar's bleed; the pad stayed when folded, so 16px of the bar still showed. Verified the open state after the fix but not the folded one, and the clip check skipped hidden content instead of checking it showed nothing.",
+      "check": {
+        "id": "clip-check",
+        "status": "process"
+      }
+    },
+    {
+      "id": "M-049",
+      "date": "2026-11-12",
+      "title": "Accessibility panel: Fill contrast didn't reach the swimlanes, Component width didn't widen board lanes, Text size skipped titles and px-sized labels",
+      "where": "Accessibility panel › every board and list",
+      "foundBy": "pavan",
+      "pattern": "no-guard",
+      "why": "The new lane colour (--fp-lane-ground) wasn't added to a11y.ts's lists (the rule was in memory); BoardV2's fitted lane width ignored --fp-lane-k; the text scale covered xs–lg tokens only, not text-xl+ or text-[Npx].",
+      "check": {
+        "id": "a11y-token-reach",
+        "status": "built"
+      }
     }
   ]
 }

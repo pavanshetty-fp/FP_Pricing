@@ -483,20 +483,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
           }}
           /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only. */
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view !== "table"
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* Closing the row clears it: a narrowing with no boxes on
-                       screen would be one nobody could see. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -599,6 +586,20 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
               openLabel={(a) => `Open asset ${a.displayName}`}
               onOpenRow={(a) => setOpenId(a.id)}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={
+                view !== "table"
+                  ? undefined
+                  : () =>
+                      setColFiltersOpen((open) => {
+                        /* Closing the row clears it: a narrowing with no boxes on
+                           screen would be one nobody could see. */
+                        if (open) {
+                          setColFilters({});
+                          setPage(1);
+                        }
+                        return !open;
+                      })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

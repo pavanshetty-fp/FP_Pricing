@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useA11y } from "@/components/theme/a11y";
 import { Check, Handshake, Info, MapPin, Truck, UserRound, Container, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -492,6 +493,7 @@ export function BoardV2({
   oneSize?: boolean;
 }) {
   const box = React.useRef<HTMLDivElement>(null);
+  const { component } = useA11y();
   const [width, setWidth] = React.useState<number>();
   const { folded, toggle } = useFoldedLanes();
   /* NO "TOTAL AMOUNT" FOOT ON A BOARD WITH NO PRICES (Pavan, 2026-11-02 —
@@ -502,13 +504,19 @@ export function BoardV2({
     if (!el) return;
     const fit = () =>
       setWidth(
-        Math.max(160, Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(lanesInView)) / lanesInView))
+        /* COMPONENT WIDTH & SPACE WIDENS THE LANES (Accessibility panel,
+           2026-11-12 — the fitted width ignored it, so the setting did
+           nothing on the board). */
+        Math.round(
+          Math.max(160, Math.floor((el.clientWidth - PAD * 2 - GAP * Math.floor(lanesInView)) / lanesInView)) *
+            component
+        )
       );
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [lanesInView]);
+  }, [lanesInView, component]);
   return (
     <Wrap.Provider value>
     <div ref={box} className={cn("flex h-full min-h-0 gap-2 overflow-x-auto bg-fp-surface-1b p-3", oneSize && "fp-one-size")}>

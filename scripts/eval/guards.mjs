@@ -588,3 +588,46 @@ export const pointerMeansNavigate = {
 };
 ALL.push(pointerMeansNavigate);
 
+/* ── a11y-token-reach (M-049, 2026-11-12) ───────────────────────────────
+   EVERY THEME COLOUR ANSWERS THE CONTRAST SLIDERS. A colour that changes
+   with the theme (declared in the dark block) must be in a11y.ts's lists
+   (STROKE / INK / BACKGROUND) so Stroke and Fill contrast reach it — the
+   swimlane ground (--fp-lane-ground, 2026-11-10) was left out, so Fill
+   contrast barely moved the lanes. KNOWN = reviewed exceptions (derived or
+   deliberately fixed); add to it only on purpose. */
+const A11Y_KNOWN = new Set([
+  "--fp-banner-border-caution", "--fp-banner-border-info", "--fp-banner-border-success", "--fp-banner-border-warning",
+  "--fp-banner-foreground", "--fp-banner-info", "--fp-banner-success", "--fp-banner-warning",
+  "--fp-ink-inverse", "--fp-lane", "--fp-selected", "--fp-shell-panel", "--fp-surface-1b",
+  "--fp-switch-track", "--fp-trend-down-bg", "--fp-trend-up-bg",
+]);
+export const a11yTokenReach = {
+  name: "a11y-token-reach",
+  segment: "1-components",
+  rule: "misses M-049 — every theme colour is on the Accessibility contrast sliders (a11y.ts lists)",
+  check() {
+    const out = [];
+    const cssFile = "src/index.css";
+    const css = read(cssFile);
+    const ts = read("src/components/theme/a11y.ts");
+    const anchor = css.indexOf("--fp-surface-1a: #272c35");
+    if (anchor < 0) return out;
+    const start = css.lastIndexOf("{", anchor);
+    const end = css.indexOf("\n}", anchor);
+    const block = css.slice(start, end);
+    const listed = new Set([...ts.matchAll(/"(--fp-[a-z0-9-]+)"/g)].map((m) => m[1]));
+    for (const l of ["grey", "blue", "yellow", "green", "cyan", "purple", "pink", "orange", "red", "violet"]) {
+      listed.add(`--fp-lane-${l}`);
+      listed.add(`--fp-lane-${l}-vivid`);
+    }
+    for (let n = 1; n <= 8; n++) listed.add(`--fp-viz-${n}`);
+    for (const m of block.matchAll(/(--fp-[a-z0-9-]+)\s*:/g)) {
+      const t = m[1];
+      if (listed.has(t) || A11Y_KNOWN.has(t)) continue;
+      out.push(finding("L1", cssFile, lineOf(css, start + m.index), `theme colour ${t} is not on the contrast sliders (a11y.ts)`, this.rule));
+    }
+    return out;
+  },
+};
+ALL.push(a11yTokenReach);
+

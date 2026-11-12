@@ -64,8 +64,20 @@ export function check() {
     const toolbars = openTags(src, "ListToolbar");
     for (const t of toolbars) {
       const p = t.props;
-      if (!p.has("onToggleColumnFilters")) {
-        add(file, t.line, "toolbar has no column filter row (onToggleColumnFilters) — search by column is the row of boxes under the header", "G2");
+      /* SEARCH BY COLUMN: the toolbar's toggle, or — with the Settings gear
+         (Pavan, 2026-11-12, every list) — the header tab on the table
+         (ListTable's onToggleColumnFilters, or ColumnSearchTab). */
+      const headerTab = /<ListTable[\s\S]*?onToggleColumnFilters=|<ColumnSearchTab/.test(src);
+      if (!p.has("onToggleColumnFilters") && !(p.has("settings") && headerTab)) {
+        add(file, t.line, "no search by column — a Settings list needs the header tab (ListTable onToggleColumnFilters / ColumnSearchTab)", "G2");
+      }
+      /* ONE GEAR ON EVERY LIST (Pavan, 2026-11-12: "everywhere, we should
+         have the same setting icon"). */
+      if (!p.has("settings")) {
+        add(file, t.line, "list toolbar without the Settings gear (settings) — columns, card fields and Detail page view live there", "G2");
+      }
+      if (p.has("settings") && !headerTab && !p.has("onToggleColumnFilters")) {
+        add(file, t.line, "Settings gear without the header Search by column tab", "G2");
       }
       if (!(p.has("columnOrder") && p.has("onReorderColumns"))) {
         add(file, t.line, `column menu cannot reorder (${p.has("columnOrder") ? "onReorderColumns" : "columnOrder + onReorderColumns"} missing)`, "G3");

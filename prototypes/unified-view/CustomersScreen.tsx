@@ -425,20 +425,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
           }}
           /* THE ROW, NOT THE POPOVER — the 3PL behaviour. Table view only. */
           columnFiltersOpen={view === "table" && colFiltersOpen}
-          onToggleColumnFilters={
-            view !== "table"
-              ? undefined
-              : () =>
-                  setColFiltersOpen((open) => {
-                    /* Closing the row clears it: a narrowing with no boxes on
-                       screen would be one nobody could see. */
-                    if (open) {
-                      setColFilters({});
-                      setPage(1);
-                    }
-                    return !open;
-                  })
-          }
+          settings
           columnFilterCount={activeColFilters.length}
           view={view}
           onViewChange={setView}
@@ -539,6 +526,20 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
               openLabel={(c) => `Open customer ${c.name}`}
               onOpenRow={(c) => setOpenId(c.id)}
               showColumnFilters={colFiltersOpen}
+              onToggleColumnFilters={
+                view !== "table"
+                  ? undefined
+                  : () =>
+                      setColFiltersOpen((open) => {
+                        /* Closing the row clears it: a narrowing with no boxes on
+                           screen would be one nobody could see. */
+                        if (open) {
+                          setColFilters({});
+                          setPage(1);
+                        }
+                        return !open;
+                      })
+              }
               columnFilters={colFilters}
               onColumnFilterChange={(key, value) => {
                 setColFilters((prev) => ({ ...prev, [key]: value }));

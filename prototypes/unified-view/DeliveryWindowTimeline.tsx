@@ -49,8 +49,8 @@ const GAP = 0;
    handle steps 2.5px away from the shared time, so the two inner strokes
    touch and the two dotted lines stand 5px apart. */
 const SPLIT = 2.5;
-/** Every third hour labelled, as the reference. */
-const TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+/** EVERY HOUR LABELLED, 12a to 12a (Pavan, 2026-11-12; was every third). */
+const TICKS = Array.from({ length: 25 }, (_, h) => h);
 const pct = (m: number) => `${(m / DAY) * 100}%`;
 /** `4a`, `1:30p` — the reference's short times. */
 const short = (m: number) => {
@@ -65,14 +65,11 @@ const fromHhmm = (v: string) => {
   const m = v.match(/^(\d{1,2}):(\d{2})$/);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
+/* With every hour on the scale, the a/p rides only on the 12s that mark
+   midnight and noon — "10a 11a 12p 1p" side by side touched at sheet width,
+   and the 12s already say which half of the day each run of numbers is in. */
 const tick = (h: number) =>
-  h === 0 || h === 24
-    ? "12a"
-    : h === 12
-      ? "12p"
-      : h < 12
-        ? `${h}a`
-        : `${h - 12}p`;
+  h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : `${h % 12}`;
 
 type Drag = {
   i: number;
@@ -267,20 +264,14 @@ export function DeliveryWindowTimeline({
               aria-hidden
               className="absolute inset-x-0 top-6 h-3.5 select-none"
             >
-              {TICKS.map((h, i) => (
+              {/* EVERY LABEL CENTRED ON ITS HOUR, the two 12a's too — pinned
+                  to the edges they sat closer to "1" and "11" than every
+                  other pair; centred, the ends hang into the box's padding. */}
+              {TICKS.map((h) => (
                 <span
                   key={h}
-                  className={cn(
-                    "absolute top-0 text-xs leading-none tabular-nums text-muted-foreground",
-                    i === 0 && "left-0",
-                    i === TICKS.length - 1 && "right-0",
-                    i > 0 && i < TICKS.length - 1 && "-translate-x-1/2",
-                  )}
-                  style={
-                    i === 0 || i === TICKS.length - 1
-                      ? undefined
-                      : { left: `${(h / 24) * 100}%` }
-                  }
+                  className="absolute top-0 -translate-x-1/2 text-xs leading-none tabular-nums text-muted-foreground"
+                  style={{ left: `${(h / 24) * 100}%` }}
                 >
                   {tick(h)}
                 </span>

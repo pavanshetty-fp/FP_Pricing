@@ -1,5 +1,5 @@
+import { ScrollX } from "@/components/ui/scroll-x";
 import * as React from "react";
-import { DetailViewMenuItem } from "../RecordSheet";
 import { siteTank } from "./tankMonitors";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, LevelReading } from "../../customer-portal/TankLevel";
 import { capGal, daysUntil, maxGal, suggestedGal } from "../../customer-portal/orders";
@@ -3587,7 +3587,7 @@ export function BrokerOrderSheet({
           2026-10-05): one partner column per quote, in the same format, the
           chosen one editable and the rest read-only. Wider than the form, the
           table scrolls sideways. */}
-      <div className={cn(vendorCols.length > 1 && "overflow-x-auto")}>
+      <ScrollX>
       <div
         ref={pricingGridRef}
         className="relative grid grid-cols-1 items-stretch gap-y-8 lg:grid-cols-[var(--pricing-cols)] lg:gap-y-0"
@@ -4148,7 +4148,7 @@ export function BrokerOrderSheet({
           </span>
         </div>
       </div>
-      </div>
+      </ScrollX>
 
     </SheetSection>
 
@@ -4447,7 +4447,6 @@ export function BrokerOrderSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DetailViewMenuItem />
               {/* COPY IT, PRINT IT — what is left to do once the order itself
                   is settled. They were two outline buttons at the foot of the
                   form, which put them in the reading path of somebody filling
@@ -5065,17 +5064,15 @@ export function BrokerOrderSheet({
             {/* NO BORDER AND NO RADIUS OF ITS OWN — the card supplies both, and
                 its `overflow-hidden` clips these corners for us. SIDEWAYS
                 SCROLL when the sheet is narrower than the columns (2026-10-26). */}
-            <div className="overflow-x-auto">
+            <ScrollX>
               <table
                 className="w-full table-fixed border-collapse"
                 style={{ minWidth: "calc(1252px * var(--fp-scale))" }}
               >
                 {/* NARROW BY DESIGN (Pavan, 2026-10-15): names are short, a
-                    quantity is six digits. ON FULFILMENT RIGHT BEFORE THE
-                    QUANTITY, TOP OFF LAST (Pavan, 2026-10-26 — this sheet
-                    only): the level the quantity lands at sits beside it, and
-                    the top-off tick closes the row, right-aligned under its
-                    select-all. */}
+                    quantity is six digits. QTY AND TOP OFF RIGHT AFTER THE
+                    PRODUCT (Pavan, 2026-11-12 — this sheet; was last): what
+                    goes in sits beside what it is, then the tank's readings. */}
                 <colgroup>
                   {/* ROOM TO BREATHE (Pavan, 2026-10-26): every column its own
                       width, the table scrolling sideways when the sheet is
@@ -5085,11 +5082,15 @@ export function BrokerOrderSheet({
                   {/* THE TANK'S MONITOR READINGS (Pavan, 2026-10-20) — as on
                       the portal's order: level now, on fulfillment, days to
                       empty. */}
+                  {/* QTY FITS ITS WIDEST CELL (Pavan, 2026-11-12): 12 padding ·
+                      six digits · the unit slot (64 with a picker, 44 fixed). */}
+                  <col className="w-[calc(124px*var(--fp-scale))]" />
+                  {/* TOP OFF FITS ITS HEADER (Pavan, 2026-11-12): 12 padding ·
+                      label · 8 gap · tick · 12 padding — no spare room. */}
+                  <col className="w-[calc(96px*var(--fp-scale))]" />
                   <col className="w-[calc(150px*var(--fp-scale))]" />
                   <col className="w-[calc(140px*var(--fp-scale))]" />
                   <col className="w-[calc(170px*var(--fp-scale))]" />
-                  <col className="w-[calc(150px*var(--fp-scale))]" />
-                  <col className="w-[calc(130px*var(--fp-scale))]" />
                   <col className="w-[calc(52px*var(--fp-scale))]" />
                 </colgroup>
                 <thead>
@@ -5105,23 +5106,12 @@ export function BrokerOrderSheet({
                       <TableRequiredLabel required>Product</TableRequiredLabel>
                     </th>
                     <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Current level</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>Days to empty</TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
-                      <TableRequiredLabel>
-                        <FulfilmentHead />
-                      </TableRequiredLabel>
-                    </th>
-                    <th className="px-3 py-2.5 text-left">
                       <TableRequiredLabel>Qty</TableRequiredLabel>
                     </th>
                     {/* THE COLUMN IS NAMED, so the tick means one thing on its
                         own. Its select-all sits beside the label; every row's
                         tick is right-aligned under it. */}
-                    <th className="px-3 py-2.5 text-left" data-top-off-last>
+                    <th className="px-3 py-2.5 text-left" data-qty-after-product>
                       <span className="flex items-center justify-between gap-2">
                         <TableRequiredLabel>Top off</TableRequiredLabel>
                         <Checkbox
@@ -5136,6 +5126,17 @@ export function BrokerOrderSheet({
                           onCheckedChange={(c) => draft.lines.forEach((_, i) => setTopOff(i, c === true))}
                         />
                       </span>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Current level</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>Days to empty</TableRequiredLabel>
+                    </th>
+                    <th className="px-3 py-2.5 text-left">
+                      <TableRequiredLabel>
+                        <FulfilmentHead />
+                      </TableRequiredLabel>
                     </th>
                     {/* THE DELETE LAYER (Pavan, 2026-10-26) — the remove column is pinned to
                         the table's right edge and the rest scroll behind it.
@@ -5253,23 +5254,6 @@ export function BrokerOrderSheet({
                             onChange={(v) => setLine(i, { product: v })}
                           />
                         </td>
-                        <td className="px-3">
-                          {tank ? <LevelReading asset={tank} /> : <span className="text-sm text-muted-foreground">—</span>}
-                        </td>
-                        <td className="px-3">
-                          <DaysToEmpty asset={tank} days={plannedDays} />
-                        </td>
-                        <td className="px-3">
-                          {tank ? (
-                            <AfterDelivery
-                              asset={tank}
-                              dateKey={plannedKey}
-                              line={{ assetId: tank.id, product: line.product, topOff: Boolean(line.topOff), gal: line.gal ?? 0 }}
-                            />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </td>
                         <td className="relative p-0">
                           <TableCellInput
                             value={
@@ -5323,6 +5307,23 @@ export function BrokerOrderSheet({
                             />
                           </span>
                         </td>
+                        <td className="px-3">
+                          {tank ? <LevelReading asset={tank} /> : <span className="text-sm text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-3">
+                          <DaysToEmpty asset={tank} days={plannedDays} />
+                        </td>
+                        <td className="px-3">
+                          {tank ? (
+                            <AfterDelivery
+                              asset={tank}
+                              dateKey={plannedKey}
+                              line={{ assetId: tank.id, product: line.product, topOff: Boolean(line.topOff), gal: line.gal ?? 0 }}
+                            />
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="sticky right-0 z-10 border-l border-border bg-popover p-0 text-center">
                           <TableRowRemove
                             aria-label={`Remove ${line.asset || `asset line ${i + 1}`}`}
@@ -5347,7 +5348,7 @@ export function BrokerOrderSheet({
                   <tfoot>
                     <tr className="h-11 border-t border-border">
                       <td
-                        colSpan={5}
+                        colSpan={2}
                         className="px-3 text-sm text-muted-foreground"
                       >
                         Total
@@ -5357,13 +5358,13 @@ export function BrokerOrderSheet({
                           ? "Top-off"
                           : qtyTotals}
                       </td>
-                      <td aria-hidden />
+                      <td aria-hidden colSpan={4} />
                       <td aria-hidden className="sticky right-0 z-10 border-l border-border bg-popover" />
                     </tr>
                   </tfoot>
                 )}
               </table>
-            </div>
+            </ScrollX>
           </div>
 
         </SheetSection>

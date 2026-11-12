@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown, TextSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollXBar } from "@/components/ui/scroll-x";
 import { useA11y } from "@/components/theme/a11y";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -326,7 +327,7 @@ export function ListTable<Row, K extends string>({
       data-entering={entering ? "" : undefined}
       className={cn(
         "overflow-auto [&_[data-slot=table-container]]:overflow-visible",
-        topBar ? "min-h-0 flex-1" : "h-full rounded-md border border-border"
+        "min-h-0 flex-1"
       )}
     >
       <Table style={{ tableLayout: "fixed", width: widths.reduce((a, b) => a + b, selectable ? 44 : 0) }}>
@@ -617,23 +618,51 @@ export function ListTable<Row, K extends string>({
       </Table>
     </div>
   );
-  /* SEARCH BY COLUMN, AT THE HEADER'S RIGHT EDGE (Pavan, 2026-11-08) — over
-     the table, not in a column, so it holds the right edge however far the
-     table scrolls sideways. Hidden until the header row is hovered (or the
-     search row is open); it slides in from the right, the header row's
-     height, above every layer of the header; hovered, it spells itself out.
-     THE GREY: the header mixed 12% toward the ink — about five steps darker
-     than the header in light, and the same distance in dark, from two tokens. */
   const columnSearchTab = onToggleColumnFilters ? (
-    <div className={cn("pointer-events-none absolute right-0 z-40 flex h-10 w-60 justify-end overflow-hidden", topBar ? "top-0" : "top-px right-px")}>
+    <ColumnSearchTab open={Boolean(showColumnFilters)} onToggle={onToggleColumnFilters} flush={Boolean(topBar)} />
+  ) : null;
+  /* THE FRAME — the table, the column-search tab over it, and the sideways
+     scrollbar under it (scroll-x.tsx). */
+  const framed = (cls: string) => (
+    <div className={cn("group/frame relative flex flex-col", cls)}>
+      {body}
+      <ScrollXBar target={frame} />
+      {columnSearchTab}
+    </div>
+  );
+  if (!topBar) return framed("h-full overflow-hidden rounded-md border border-border");
+  return (
+    <div data-view-box="" data-view-table="" className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+      <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{topBar}</div>
+      {framed("flex min-h-0 flex-1 flex-col")}
+    </div>
+  );
+}
+
+/**
+ * SEARCH BY COLUMN, AT THE HEADER'S RIGHT EDGE (Pavan, 2026-11-08) — over the
+ * table, not in a column, so it holds the right edge however far the table
+ * scrolls sideways. Hidden until the header row is hovered (or the search row
+ * is open); it slides in from the right, the header row's height, above every
+ * layer of the header; hovered, it spells itself out. THE GREY: the header
+ * mixed 12% toward the ink — about five steps darker than the header in light,
+ * the same distance in dark, from two tokens.
+ *
+ * Put it inside a `group/frame relative` box that also holds the table. Every
+ * table with column search uses it (Pavan, 2026-11-12) — ListTable and the
+ * hand-built Recurring tables.
+ */
+export function ColumnSearchTab({ open, onToggle, flush = true }: { open: boolean; onToggle: () => void; flush?: boolean }) {
+  return (
+    <div className={cn("pointer-events-none absolute right-0 z-50 flex h-10 w-60 justify-end overflow-hidden", flush ? "top-0" : "top-px right-px")}>
       <button
         type="button"
         aria-label="Search by column"
-        aria-pressed={Boolean(showColumnFilters)}
-        onClick={onToggleColumnFilters}
+        aria-pressed={open}
+        onClick={onToggle}
         className={cn(
           "group/cs flex h-full items-center bg-[color-mix(in_oklab,var(--fp-table-header),var(--foreground)_12%)] px-3 text-xs font-medium text-foreground outline-none transition-[translate,opacity] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-          showColumnFilters
+          open
             ? "pointer-events-auto translate-x-0 opacity-100"
             : "translate-x-full opacity-0 group-has-[thead:hover]/frame:pointer-events-auto group-has-[thead:hover]/frame:translate-x-0 group-has-[thead:hover]/frame:opacity-100 hover:pointer-events-auto hover:translate-x-0 hover:opacity-100 focus-visible:pointer-events-auto focus-visible:translate-x-0 focus-visible:opacity-100"
         )}
@@ -643,28 +672,6 @@ export function ListTable<Row, K extends string>({
           Search by column
         </span>
       </button>
-    </div>
-  ) : null;
-  if (!topBar)
-    return columnSearchTab ? (
-      <div className="group/frame relative h-full">
-        {body}
-        {columnSearchTab}
-      </div>
-    ) : (
-      body
-    );
-  return (
-    <div data-view-box="" data-view-table="" className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-      <div className="shrink-0 border-b border-fp-outline-1 bg-fp-surface-1b">{topBar}</div>
-      {columnSearchTab ? (
-        <div className="group/frame relative flex min-h-0 flex-1 flex-col">
-          {body}
-          {columnSearchTab}
-        </div>
-      ) : (
-        body
-      )}
     </div>
   );
 }

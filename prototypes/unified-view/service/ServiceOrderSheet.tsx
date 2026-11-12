@@ -1,5 +1,4 @@
 import * as React from "react";
-import { DetailViewMenuItem } from "../RecordSheet";
 import { DeliveryWindowTimeline } from "../DeliveryWindowTimeline";
 import {
   ClipboardList,
@@ -1537,7 +1536,6 @@ export function ServiceOrderSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DetailViewMenuItem />
               {cancellable && (
                 <DropdownMenuItem
                   onSelect={(e) => {

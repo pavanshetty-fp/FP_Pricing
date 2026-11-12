@@ -101,6 +101,20 @@ export function check() {
       /* TOP OFF LAST, ON PURPOSE (Pavan, 2026-10-26 — the 3PL order sheet):
          a header marked \`data-top-off-last\` puts Qty right before Top off,
          and Top off closes the row. */
+      /* QTY AND TOP OFF AFTER THE PRODUCT (Pavan, 2026-11-12 — the 3PL
+         order sheet): a header marked `data-qty-after-product` keeps Qty
+         right before Top off, the pair right after Product. */
+      if (/data-qty-after-product/.test(h)) {
+        const prod = h.search(/>Product</);
+        const ok = prod >= 0 && prod < qty && qty < top &&
+          (h.slice(prod, qty).match(/<th\b/g)?.length ?? 0) <= 1 &&
+          (h.slice(qty, top).match(/<th\b/g)?.length ?? 0) <= 1;
+        if (!ok) {
+          out.push(finding("L1", rel(file), src.slice(0, at + top).split("\n").length,
+            "Marked qty-after-product: Product, then Qty, then Top off (§10i)", rule));
+        }
+        continue;
+      }
       if (/data-top-off-last/.test(h)) {
         const after = h.slice(top);
         const lastTh = h.lastIndexOf("<th");

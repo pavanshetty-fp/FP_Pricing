@@ -1,5 +1,4 @@
 import * as React from "react";
-import { DetailViewMenuItem } from "../unified-view/RecordSheet";
 import { toast } from "sonner";
 import { Download, Flag, MoreHorizontal } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
@@ -306,7 +305,6 @@ export function InvoiceSheet({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DetailViewMenuItem />
               <DropdownMenuItem onSelect={() => setDisputing(true)}>
                 <Flag />
                 Dispute invoice

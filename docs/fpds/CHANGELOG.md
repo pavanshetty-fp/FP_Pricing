@@ -2,6 +2,17 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.11 — 2026-11-12
+
+Built from commit `d0c18ef`.
+
+- **Export sheet:** the count large, with calendar and filter icons beside it that open the page's own pop-ups. Below it sit headed sections with no dividers: Overview, Gallons by product, By status and Orders. 3PL Delivery Orders and Sales Orders show this summary. Applied filters show only when some are on.
+- **Detail page view** lives only in the Settings gear. The ··· menu entry is gone from every sheet. Every list has the gear and the header "Search by column" tab.
+- **Tables that run off to the right** now show a thin scrollbar under them: drag it, or click the track (IX-97).
+- **List view is removed** from 3PL, Sales and Service Work (archived).
+- **Order lines:** Qty and Top off now come right after Product on the 3PL delivery order, the Customer Portal order and the 3PL recurring create. Top off is only as wide as its header, and "gal" sits right after the quantity.
+- **Delivery window timeline:** every hour is labelled, from 12a to 12a.
+
 ## v1.10 — 2026-11-10
 
 Built from commit `de2cadb`.

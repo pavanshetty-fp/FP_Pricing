@@ -359,7 +359,7 @@ A boolean value; in a row-adding picker, rows.
 
 ### Rules
 1. **Booleans are checkboxes, not toggles.** `(feedback_table_conventions, 2026-10-07)`
-2. **Top off: header label + select-all at the right (`justify-between`), row ticks right-aligned; it sits right before Qty.** `(DS ui §10i)`
+2. **Top off: select-all first, then the label, both at the left; row ticks left-aligned under the select-all (Pavan, 2026-11-13).** `(DS ui §10i)`
 3. **The tick stays white on the filled box.** — *A muted parent once turned it gray.*
 
 ### Do / Don't

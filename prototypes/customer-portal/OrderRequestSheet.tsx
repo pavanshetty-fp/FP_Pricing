@@ -245,13 +245,13 @@ export function LinesTable({
           </th>
           {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under this one. */}
           <th className="px-3 py-2.5 text-left" data-qty-after-product>
-            <span className="flex items-center justify-between gap-2">
-              <TableRequiredLabel>Top off</TableRequiredLabel>
+            <span className="flex items-center gap-2">
               <Checkbox
                 checked={allTop ? true : someTop ? "indeterminate" : false}
                 aria-label="Top off every line"
                 onCheckedChange={(c) => onChange(lines.map((l) => ({ ...l, topOff: c === true })))}
               />
+              <TableRequiredLabel>Top off</TableRequiredLabel>
             </span>
           </th>
           <th className="px-3 py-2.5 text-left">
@@ -369,7 +369,7 @@ export function LinesTable({
                 />
               </td>
               <td className="px-3">
-                <span className="flex justify-end">
+                <span className="flex justify-start">
                   <Checkbox
                     checked={l.topOff}
                     onCheckedChange={(c) => update(i, { topOff: c === true })}

@@ -318,9 +318,8 @@ export function RecurringDeliverySheet({
                   Asset
                 </th>
                 <th className="w-[104px] px-3 py-2 text-xs font-medium text-muted-foreground text-left">
-                  {/* TOP OFF, THEN ITS SELECT-ALL; ticks right-aligned under it (DS ui §10i). */}
-                  <span className="flex items-center justify-between gap-2">
-                    Top off
+                  {/* SELECT-ALL, THEN TOP OFF, at the left; ticks left-aligned under it (Pavan, 2026-11-13). */}
+                  <span className="flex items-center gap-2">
                     {editable && (
                       <Checkbox
                         checked={lines.length > 0 && lines.every((l) => l.topOff) ? true : lines.some((l) => l.topOff) ? "indeterminate" : false}
@@ -328,6 +327,7 @@ export function RecurringDeliverySheet({
                         onCheckedChange={(v) => onPatch(delivery.dateKey, { lines: lines.map((l) => ({ ...l, topOff: v === true })) })}
                       />
                     )}
+                    Top off
                   </span>
                 </th>
                 <th className="w-[150px] px-3 py-2 text-xs font-medium text-muted-foreground text-left">

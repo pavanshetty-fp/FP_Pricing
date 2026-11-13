@@ -5066,8 +5066,7 @@ export function BrokerOrderSheet({
                         own. Its select-all sits beside the label; every row's
                         tick is right-aligned under it. */}
                     <th className="px-3 py-2.5 text-left" data-qty-after-product>
-                      <span className="flex items-center justify-between gap-2">
-                        <TableRequiredLabel>Top off</TableRequiredLabel>
+                      <span className="flex items-center gap-2">
                         <Checkbox
                           checked={
                             draft.lines.length > 0 && draft.lines.every((l) => l.topOff)
@@ -5079,6 +5078,7 @@ export function BrokerOrderSheet({
                           aria-label="Top off every line"
                           onCheckedChange={(c) => draft.lines.forEach((_, i) => setTopOff(i, c === true))}
                         />
+                        <TableRequiredLabel>Top off</TableRequiredLabel>
                       </span>
                     </th>
                     <th className="px-3 py-2.5 text-left">
@@ -5253,7 +5253,7 @@ export function BrokerOrderSheet({
                         {/* Checked = fill it. Unchecked = type a number. One
                             control, so a row cannot claim both at once. */}
                         <td className="px-3">
-                          <span className="flex justify-end">
+                          <span className="flex justify-start">
                             <Checkbox
                               checked={Boolean(line.topOff)}
                               onCheckedChange={(c) => setTopOff(i, c === true)}

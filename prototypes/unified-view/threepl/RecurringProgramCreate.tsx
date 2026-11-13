@@ -287,7 +287,7 @@ function TargetEditor({
           <table className="w-full table-fixed border-collapse">
             {/* AS THE DELIVERY ORDER (Pavan, 2026-11-12): QTY AND TOP OFF
                 RIGHT AFTER THE PRODUCT, then the load's account and supplier;
-                ticks right-aligned under the select-all; the bin a sticky
+                ticks left-aligned under the select-all (2026-11-13); the bin a sticky
                 layer at the right edge. */}
             <colgroup>
               <col className={loads ? "w-[22%]" : "w-[34%]"} />
@@ -313,8 +313,7 @@ function TargetEditor({
                 {/* TOP OFF, THEN ITS SELECT-ALL; every row's tick sits under
                     this one (Pavan, 2026-10-16). */}
                 <th className="px-3 py-2.5 text-left" data-qty-after-product>
-                  <span className="flex items-center justify-between gap-2">
-                    <TableRequiredLabel>Top off</TableRequiredLabel>
+                  <span className="flex items-center gap-2">
                     <Checkbox
                       checked={allTop ? true : someTop ? "indeterminate" : false}
                       aria-label="Top off every line"
@@ -329,6 +328,7 @@ function TargetEditor({
                         })
                       }
                     />
+                    <TableRequiredLabel>Top off</TableRequiredLabel>
                   </span>
                 </th>
                 {loads && (
@@ -442,7 +442,7 @@ function TargetEditor({
                       />
                     </td>
                     <td className="px-3">
-                      <span className="flex justify-end">
+                      <span className="flex justify-start">
                       <Checkbox
                         checked={Boolean(line.topOff)}
                         onCheckedChange={(c) =>

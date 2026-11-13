@@ -922,7 +922,7 @@ A boolean value; in a row-adding picker, rows.
 
 ### Rules
 1. **Booleans are checkboxes, not toggles.** `(feedback_table_conventions, 2026-10-07)`
-2. **Top off: header label + select-all at the right (`justify-between`), row ticks right-aligned; it sits right before Qty.** `(DS ui §10i)`
+2. **Top off: select-all first, then the label, both at the left; row ticks left-aligned under the select-all (Pavan, 2026-11-13).** `(DS ui §10i)`
 3. **The tick stays white on the filled box.** — *A muted parent once turned it gray.*
 
 ### Do / Don't
@@ -4592,7 +4592,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 ## Anatomy
 1. **Section header band** — the `SheetSection` title ("Delivery Order" in 3PL, "Tanks & assets" in the portal); the section is `flush`, so the table's edges are the card's edges.
 2. **Header row** — Asset · Product * · Current level · On fulfillment (with an ⓘ breakdown popover, `FulfilmentHead`) · Days to empty (while ordering only) · **Top off** + select-all checkbox · **Qty (gal)** · unnamed bin column.
-3. **Rows** — `TableCellSelect`/`TableCellCombobox` (asset, multi-pick from a blank row) · `TableCellSelect` (product, ONE VALUE) · `LevelReading` (gauge + %) · `AfterDelivery` / `FulfilmentPct` · `DaysToEmpty` · Top off checkbox (right-aligned) · `TableCellInput` (numeric, suffix "gal", suggestion placeholder) · `TableRowRemove`.
+3. **Rows** — `TableCellSelect`/`TableCellCombobox` (asset, multi-pick from a blank row) · `TableCellSelect` (product, ONE VALUE) · `LevelReading` (gauge + %) · `AfterDelivery` / `FulfilmentPct` · `DaysToEmpty` · Top off checkbox (left-aligned, under the header's select-all) · `TableCellInput` (numeric, suffix "gal", suggestion placeholder) · `TableRowRemove`.
 4. **Total row** (`tfoot`) — "Total" label spanning every column before Qty; the sum under Qty, or "Top-off"/"Top off" when every line tops off.
 5. **Hanging add** — `HangingAdd` "Add asset" (3PL) / "Add tank or asset" (portal) off the card's squared bottom-left corner.
 6. **Hanging-row flag** (3PL only) — "Mark as winter additive" + switch, at the right end of the hanging row, outside the card.
@@ -4661,7 +4661,7 @@ The order's lines as an editable table: which tank or asset gets which product, 
 ## Rules
 1. **Repeated inputs are an editable table, every cell editable in place** — *Pavan had to ask for a table where three fields were built; consistency is the default* — `(source: ux/2-rules "Forms — like inputs are a table by default"; memory feedback_table_by_default 2026-10-07)`
 2. **Same data, same control: a fuel line is the 3PL Delivery Order's line table, Top off checkbox included** — *the portal shipped a "Gal / Fill to full" menu where every module has Top off* — `(source: ux/2-rules "Same data, same control" 2026-10-13)`
-3. **Top off sits just before Qty; Qty is the last column; select-all in the Top off header, row ticks right-aligned** — *Top off replaces the number, so the two are never apart, and the figure the row leads to ends the row; Pavan had to ask twice* — `(source: ui §10i; memory feedback_top_off_after_qty 2026-10-20 final)`
+3. **Top off sits just before Qty; Qty is the last column; select-all in the Top off header, LEFT of its label, row ticks left-aligned under it (Pavan, 2026-11-13; were right-aligned)** — *Top off replaces the number, so the two are never apart, and the figure the row leads to ends the row; Pavan had to ask twice* — `(source: ui §10i; memory feedback_top_off_after_qty 2026-10-20 final)`
 4. **The picker that names the row takes several (checkbox + Apply); first pick fills the row, each other its own row; only from a blank row; picks on other rows show ticked + locked** — *the customer had to open the list once per tank; said three times* — `(source: ui §10f "Picking several makes rows"; memory feedback_multi_pick_rows 2026-10-15/16)`
 5. **Every other picker in the row is marked ONE VALUE** — *there is no third kind; the eval checks it* — `(source: ui §10f)`
 6. **Top off is a named checkbox column, not a unit menu; the typed number is kept but never counted** — *a unit is not a yes/no; a choice that replaces the number is a checkbox* — `(source: ux/2-rules "A unit is not a yes/no"; interactions §4a T3, T5)`
@@ -7011,7 +7011,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 - **Check:** review
 - **Source:** `ui/2-rules.md` §11b "Red is only for a warning"
 
-**UX-114. Every lines table ends Top off · Qty: Asset · Product · (readings, accounts…) · Top off · Qty LAST · bin. The Top off header is the label plus a select-all checkbox (indeterminate when some); row ticks right-aligned under it.**
+**UX-114. Every lines table ends Top off · Qty: Asset · Product · (readings, accounts…) · Top off · Qty LAST · bin. The Top off header is a select-all checkbox (indeterminate when some) then the label, at the left; row ticks left-aligned under it (2026-11-13).**
 - **Why:** Top off replaces the number, so the two are never apart, and the figure ends the row. Pavan had to ask twice; final 2026-10-20 for EVERY module — supersedes "Top off after Qty" (2026-10-16) and the create-rule order Asset · Product · Qty · Top off.
 - **Applies to:** 3PL, Sales, Service, CP lines tables.
 - **Check:** table-rows

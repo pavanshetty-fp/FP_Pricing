@@ -724,7 +724,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 - **Check:** review
 - **Source:** `ui/2-rules.md` §11b "Red is only for a warning"
 
-**UX-114. Every lines table ends Top off · Qty: Asset · Product · (readings, accounts…) · Top off · Qty LAST · bin. The Top off header is the label plus a select-all checkbox (indeterminate when some); row ticks right-aligned under it.**
+**UX-114. Every lines table ends Top off · Qty: Asset · Product · (readings, accounts…) · Top off · Qty LAST · bin. The Top off header is a select-all checkbox (indeterminate when some) then the label, at the left; row ticks left-aligned under it (2026-11-13).**
 - **Why:** Top off replaces the number, so the two are never apart, and the figure ends the row. Pavan had to ask twice; final 2026-10-20 for EVERY module — supersedes "Top off after Qty" (2026-10-16) and the create-rule order Asset · Product · Qty · Top off.
 - **Applies to:** 3PL, Sales, Service, CP lines tables.
 - **Check:** table-rows

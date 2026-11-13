@@ -129,7 +129,7 @@ export function check() {
       const between = top < qty ? (h.slice(top, qty).match(/<th\b/g)?.length ?? 0) : 0;
       if (top > qty || between > 1) {
         out.push(finding("L1", rel(file), src.slice(0, at + top).split("\n").length,
-          "Top off must be the column right before Qty, and Qty last — select-all in its header, ticks right-aligned (§10i)",
+          "Top off must be the column right before Qty, and Qty last — select-all in its header, ticks left-aligned (§10i)",
           rule));
       }
     }

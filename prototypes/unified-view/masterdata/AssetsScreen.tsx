@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Boxes } from "lucide-react";
+import { Boxes, Link2Off } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { TwoLineCell } from "../ListTable";
@@ -7,7 +7,7 @@ import { kindTone } from "../statusKind";
 import { LevelGauge } from "../../customer-portal/TankLevel";
 import { DirectoryEntityScreen, type EntityConfig, type Navigator } from "../threepl/DirectoryEntityScreen";
 import type { FormSectionDef } from "../threepl/directoryFormTypes";
-import { DASH, formatDate, money } from "../threepl/directoryCore";
+import { formatDate, money } from "../threepl/directoryCore";
 import {
   MD_ASSETS,
   MD_ASSET_STATUSES,
@@ -35,14 +35,19 @@ import { MD_CUSTOMER_NAMES, MD_PLACES } from "./customers";
   sheet in the reference's layout (AssetSheet.tsx).
 */
 
-type Col = "asset" | "ownership" | "customer" | "monitor" | "deliveries" | "contract" | "onRent" | "status";
+type Col = "asset" | "ownership" | "customer" | "shipTo" | "monitor" | "deliveries" | "contract" | "onRent" | "status";
 
-const COLUMNS: { key: Col; label: string; width: number; sortable: boolean }[] = [
+/* THE WIDTHS (Pavan, 2026-11-13): Deliveries is a date and two short
+   figures, never longer — a fixed width (grow 0). Ship-to carries a name and
+   its address, so it takes twice the spare room; every other column an
+   even share. */
+const COLUMNS: { key: Col; label: string; width: number; sortable: boolean; grow?: number }[] = [
   { key: "asset", label: "Asset", width: 140, sortable: true },
   { key: "ownership", label: "Ownership", width: 146, sortable: true },
   { key: "customer", label: "Customer", width: 140, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 220, sortable: true, grow: 2 },
   { key: "monitor", label: "Monitor", width: 126, sortable: true },
-  { key: "deliveries", label: "Deliveries", width: 170, sortable: true },
+  { key: "deliveries", label: "Deliveries", width: 170, sortable: true, grow: 0 },
   { key: "contract", label: "Contract", width: 130, sortable: true },
   { key: "onRent", label: "On rent", width: 120, sortable: true },
   { key: "status", label: "Status", width: 120, sortable: true },
@@ -52,6 +57,14 @@ const COLUMNS: { key: Col; label: string; width: number; sortable: boolean }[] =
 
 const monitorCell = (a: MdAsset) => {
   const pct = levelPct(a);
+  /* NOT LINKED READS AS A BROKEN LINK (Pavan, 2026-11-13). */
+  if (pct === null && monitorState(a) === "Not linked")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link2Off className="size-4 shrink-0" aria-hidden />
+        Not linked
+      </span>
+    );
   if (pct === null) return <Muted>{monitorState(a)}</Muted>;
   return (
     <Reading
@@ -88,6 +101,8 @@ const sortValue = (a: MdAsset, key: Col): string | number => {
       return a.ownership;
     case "customer":
       return a.customer ?? "";
+    case "shipTo":
+      return a.site;
     case "monitor":
       return levelPct(a) ?? -1;
     case "deliveries":
@@ -213,7 +228,11 @@ function config(update: (id: string, fn: (a: MdAsset) => MdAsset) => void): Enti
         case "ownership":
           return <Pill>{a.ownership}</Pill>;
         case "customer":
-          return <TwoLineCell title={a.customer ?? DASH} description={a.site} />;
+          return a.customer ?? <Muted />;
+        /* THE SHIP-TO, ITS OWN COLUMN (Pavan, 2026-11-13) — it was the
+           Customer cell's second line; now the site and its address. */
+        case "shipTo":
+          return <TwoLineCell title={a.site} description={a.address} />;
         case "monitor":
           return monitorCell(a);
         case "deliveries":
@@ -238,7 +257,8 @@ function config(update: (id: string, fn: (a: MdAsset) => MdAsset) => void): Enti
         Type: a.type,
         Ownership: a.ownership,
         Customer: a.customer ?? "",
-        Site: a.site,
+        "Ship-to": a.site,
+        "Ship-to address": a.address,
         "Level %": levelPct(a) ?? "",
         Capacity: a.capacityGal,
         "Last delivery": s.last ? s.last.date : "",

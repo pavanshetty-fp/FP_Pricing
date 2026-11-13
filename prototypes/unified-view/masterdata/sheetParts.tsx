@@ -51,18 +51,23 @@ export const FIGURE_STRIP =
  *  scroll away; once the tabs reach the top, the tabs, search, table and the
  *  cards on the right fill the sheet and stay — the page scrolls first,
  *  then the table. */
+/** THE WORK AREA UNDER FIGURES THAT STAY (Asset 360 Overview, Pavan
+ *  2026-11-13): it fills what the figures leave, so nothing scrolls the page. */
+export const WORK_AREA_FIT =
+  "grid min-h-[560px] flex-1 grid-rows-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]";
+
 export const WORK_AREA =
   "grid h-full min-h-[560px] shrink-0 grid-rows-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]";
 
 /** THE PAGE SCROLLS BEFORE THE TABLE. A wheel down over the work area moves
  *  the sheet until the work area is docked at the top; only then do the
  *  table and the cards scroll. Up, they scroll back first, then the page. */
-export function useDockedWorkArea() {
+export function useDockedWorkArea(enabled = true) {
   /* A CALLBACK REF — the sheet's content mounts after this hook first runs
      (the sheet is a portal), so the listener attaches when the area does. */
   const [el, setEl] = React.useState<HTMLDivElement | null>(null);
   React.useEffect(() => {
-    if (!el) return undefined;
+    if (!el || !enabled) return undefined;
     let body: HTMLElement | null = el.parentElement;
     while (body && !/(auto|scroll)/.test(getComputedStyle(body).overflowY)) body = body.parentElement;
     if (!body) return undefined;
@@ -76,6 +81,6 @@ export function useDockedWorkArea() {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [el]);
+  }, [el, enabled]);
   return setEl;
 }

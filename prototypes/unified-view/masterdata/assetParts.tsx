@@ -19,8 +19,6 @@ import { formatWindow } from "@/components/form-layout/TimeWindowSlider";
 export const STATUS_KIND: Record<MdAssetStatus, StatusKind> = {
   "On rent": "info",
   Available: "success",
-  "Service due": "caution",
-  "On site": "neutral",
 };
 
 export const kindOf = (s: string): StatusKind =>

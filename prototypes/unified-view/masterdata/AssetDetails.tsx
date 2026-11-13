@@ -1,6 +1,16 @@
 import * as React from "react";
 import { Link2, Link2Off, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RailCard, RailRow } from "../SheetCards";
 import { LevelGauge } from "../../customer-portal/TankLevel";
@@ -50,15 +60,39 @@ const Leases = ({ a }: { a: MdAsset }) => (
   </span>
 );
 
-const MonitorButton = ({ a, onToggle }: { a: MdAsset; onToggle: () => void }) =>
-  a.monitor ? (
-    <div className="px-4 pt-1 pb-3">
-      <Button variant="outline" size="sm" onClick={onToggle}>
-        {a.monitor.linked ? <Link2Off /> : <Link2 />}
-        {a.monitor.linked ? "Unlink monitor" : "Link monitor"}
-      </Button>
-    </div>
-  ) : null;
+/* THE MONITOR LINK, ITS OWN CARD AT THE FOOT (Pavan, 2026-11-13) — it was a
+   button inside Tank and monitor. Unlinking stops the level readings, so it
+   asks first; linking back does not. */
+function MonitorLinkCard({ a, onToggle }: { a: MdAsset; onToggle: () => void }) {
+  const [asking, setAsking] = React.useState(false);
+  if (!a.monitor) return null;
+  const linked = a.monitor.linked;
+  return (
+    <RailCard title="Monitor link" icon={linked ? <Link2 /> : <Link2Off />}>
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <span className="text-sm text-muted-foreground">{linked ? `${a.monitor.id} · Linked` : `${a.monitor.id} · Not linked`}</span>
+        <Button variant="outline" size="sm" onClick={() => (linked ? setAsking(true) : onToggle())}>
+          {linked ? <Link2Off /> : <Link2 />}
+          {linked ? "Unlink" : "Link"}
+        </Button>
+      </div>
+      <AlertDialog open={asking} onOpenChange={setAsking}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink {a.monitor.id} from {a.id}?</AlertDialogTitle>
+            <AlertDialogDescription>Level readings for this tank stop until it is linked again.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep linked</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onToggle}>
+              Unlink monitor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </RailCard>
+  );
+}
 
 
 /* ───────────────────────────────────────────────────────── V3 ── */
@@ -130,8 +164,9 @@ export function DetailsCards({ a, onEdit, onToggleMonitor }: { a: MdAsset; onEdi
           {a.monitor && <RailRow label="Status" value={<Status value={monitorState(a)} />} />}
           <RailRow label="Last ping" value={a.monitor?.lastPing ? stamp(a.monitor.lastPing) : DASH} />
         </dl>
-        <MonitorButton a={a} onToggle={onToggleMonitor} />
       </RailCard>
+
+      <MonitorLinkCard a={a} onToggle={onToggleMonitor} />
     </div>
   );
 }

@@ -23,7 +23,9 @@ export type MdOwnership = (typeof MD_OWNERSHIP)[number];
 export const MD_CONDITIONS = ["New", "Refurbished", "Used"] as const;
 export type MdCondition = (typeof MD_CONDITIONS)[number];
 
-export const MD_ASSET_STATUSES = ["On rent", "Available", "Service due", "On site"] as const;
+/* TWO STATUSES (Pavan, 2026-11-13): "On site" said what "Available" says,
+   and "Service due" is a fact about upkeep, not where the asset is. */
+export const MD_ASSET_STATUSES = ["On rent", "Available"] as const;
 export type MdAssetStatus = (typeof MD_ASSET_STATUSES)[number];
 
 export const MD_ASSET_TYPES = [
@@ -574,7 +576,7 @@ const TK2214: MdAsset = withEvents(
     type: "500 gal skid tank",
     ownership: "Rental",
     condition: "Used",
-    status: "Service due",
+    status: "On rent",
     recordStatus: "active",
     customer: "Hartest123",
     site: "hartest2",
@@ -646,7 +648,7 @@ const CO1102: MdAsset = withEvents(
     type: "2,000 gal fuel tank",
     ownership: "Customer owned",
     condition: "Used",
-    status: "On site",
+    status: "Available",
     recordStatus: "active",
     customer: "Agriland FS",
     site: "Adel Yard",
@@ -707,7 +709,7 @@ const CO1210: MdAsset = withEvents(
     type: "1,000 gal tank",
     ownership: "Customer owned",
     condition: "Used",
-    status: "On site",
+    status: "Available",
     recordStatus: "active",
     customer: "Blue Ridge Fleet",
     site: "Asheville Terminal",

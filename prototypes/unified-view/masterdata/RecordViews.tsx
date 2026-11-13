@@ -104,7 +104,10 @@ export function RecordViews({
   tabs,
   searchPlaceholder,
   historyKey,
+  onTabChange,
 }: {
+  /** Told which tab is showing — the sheet lays itself out per tab. */
+  onTabChange?: (key: string) => void;
   /** The record — a different one starts the views afresh. */
   resetKey: string;
   tabs: ViewTab[];
@@ -126,6 +129,7 @@ export function RecordViews({
   }, [resetKey]);
 
   const def = tabs.find((t) => t.key === tabKey) ?? tabs[0];
+  React.useEffect(() => onTabChange?.(def.key), [def.key, onTabChange]);
   const t = tables[def.key] ?? freshTable(def);
   const patch = (next: Partial<TableState>) => setTables((prev) => ({ ...prev, [def.key]: { ...(prev[def.key] ?? freshTable(def)), ...next } }));
 

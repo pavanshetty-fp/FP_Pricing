@@ -60,6 +60,14 @@ export interface ListColumn<K extends string> {
    * right edge miles from the header looks like a mistake.
    */
   align?: "left" | "right" | "center";
+  /**
+   * ITS SHARE OF THE SPARE WIDTH (Pavan, 2026-11-13). Once any column in a
+   * table sets it, every column takes `grow ?? 1` shares — even by default,
+   * `0` keeps a column at its width (a value that can't run long), `2` gives
+   * a name-plus-address column twice the room. Unset everywhere, the old
+   * rule holds: a share in proportion to how far a column is wider than 120.
+   */
+  grow?: number;
 }
 
 export interface ListSort<K extends string> {
@@ -308,7 +316,9 @@ export function ListTable<Row, K extends string>({
     const lead = selectable ? 44 : 0;
     const spare = (frameWidth ?? 0) - lead - base.reduce((a, b) => a + b, 0);
     if (spare <= 0) return base;
-    const weight = base.map((w) => Math.max(0, w - 120));
+    const weight = visible.some((c) => c.grow !== undefined)
+      ? visible.map((c) => Math.max(0, c.grow ?? 1))
+      : base.map((w) => Math.max(0, w - 120));
     const total = weight.reduce((a, b) => a + b, 0) || base.reduce((a, b) => a + b, 0);
     const share = total === 0 ? base.map(() => 0) : (weight.some((w) => w > 0) ? weight : base).map((w) => w / total);
     const out = base.map((w, i) => Math.floor(w + spare * share[i]));

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowRightLeft, ChevronDown, Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Pill } from "@/components/ui/pill";
+import { Separator } from "@/components/ui/separator";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   DropdownMenu,
@@ -20,7 +20,8 @@ import { STATUS_KIND, assetActions, gal, stamp } from "./assetParts";
 import { AssetViews } from "./AssetViews";
 import { AssetOrderSheet } from "./AssetOrderForms";
 import { DetailsCards } from "./AssetDetails";
-import { FIGURE_STRIP, Figure, WORK_AREA, useDockedWorkArea } from "./sheetParts";
+import { FIGURE_STRIP, Figure, WORK_AREA, WORK_AREA_FIT, useDockedWorkArea } from "./sheetParts";
+import { cn } from "@/lib/utils";
 
 /*
   ASSET 360 (Pavan, 2026-11-02 — "keep the format similar to the Lovable
@@ -54,7 +55,23 @@ export function AssetSheet({
   update: (uid: string, fn: (a: MdAsset) => MdAsset) => void;
 }) {
   const [editing, setEditing] = React.useState(false);
-  const work = useDockedWorkArea();
+  /* OVERVIEW KEEPS THE FIGURES (Pavan, 2026-11-13): on Overview the four
+     figures stay while the tables scroll under them; a wheel down over the
+     figures folds them away, a wheel up at the top of the tables (or the
+     rail) brings them back. The other tabs keep the docking scroll. */
+  const [tab, setTab] = React.useState("overview");
+  const overview = tab === "overview";
+  const [figuresHidden, setFiguresHidden] = React.useState(false);
+  const work = useDockedWorkArea(!overview);
+  React.useEffect(() => setFiguresHidden(false), [tab, a.uid]);
+  /** Wheel up with nothing above to scroll back to → the figures return. */
+  const onWorkWheel = (e: React.WheelEvent) => {
+    if (!overview || !figuresHidden || e.deltaY >= 0) return;
+    for (let n = e.target as HTMLElement | null; n && n !== e.currentTarget; n = n.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(n).overflowY) && n.scrollTop > 0) return;
+    }
+    setFiguresHidden(false);
+  };
 
   const { createMovement, createService, toggleMonitor } = assetActions(a, update);
   /* CREATE ORDER (Pavan, 2026-11-02) — one button, two orders, each its own sheet. */
@@ -78,18 +95,17 @@ export function AssetSheet({
         /* NO FOOTER (Pavan, 2026-11-02) — nothing here to confirm; edits
            autosave in Edit details, and Close is the exit. */
         noFooter
+        /* ONE CHIP, THEN TWO GROUPS (Pavan, 2026-11-13): the status alone
+           beside the name; under it, what and where · a rule · whose and in
+           what shape. Ownership and condition were two more chips. */
         headerSubtitle={
-          <span className="text-sm text-muted-foreground">
-            {[a.type, a.customer ?? "No customer", a.site].join(" · ")}
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span>{[a.type, a.customer ?? "No customer", a.site].join(" · ")}</span>
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-3.5" />
+            <span>{[a.ownership, a.condition].join(" · ")}</span>
           </span>
         }
-        headerAside={
-          <span className="flex items-center gap-1.5">
-            <StatusChip tone={kindTone(STATUS_KIND[a.status])}>{a.status}</StatusChip>
-            <Pill>{a.ownership}</Pill>
-            <Pill>{a.condition}</Pill>
-          </span>
-        }
+        headerAside={<StatusChip tone={kindTone(STATUS_KIND[a.status])}>{a.status}</StatusChip>}
         headerActions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -113,7 +129,16 @@ export function AssetSheet({
         }
         onSubmit={onClose}
       >
-        {/* THE FOUR FIGURES — one bordered strip, as the reference. */}
+        {/* THE FOUR FIGURES — one bordered strip, as the reference. On
+            Overview they fold away only when wheeled down over. */}
+        <div
+          className="-mb-10 grid shrink-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
+          style={{ gridTemplateRows: overview && figuresHidden ? "0fr" : "1fr" }}
+          aria-hidden={(overview && figuresHidden) || undefined}
+          inert={(overview && figuresHidden) || undefined}
+          onWheel={(e) => overview && e.deltaY > 0 && setFiguresHidden(true)}
+        >
+        <div className={cn("min-h-0 overflow-hidden", !(overview && figuresHidden) && "pb-10")}>
         <div className={FIGURE_STRIP}>
           <Figure
             label="Tank level"
@@ -134,10 +159,12 @@ export function AssetSheet({
             note={a.monitor ? `${a.monitor.id} · ${a.monitor.lastPing ? stamp(a.monitor.lastPing) : "No ping yet"}` : DASH}
           />
         </div>
+        </div>
+        </div>
 
-        <div ref={work} className={WORK_AREA}>
+        <div ref={work} className={overview ? WORK_AREA_FIT : WORK_AREA} onWheel={onWorkWheel}>
           {/* LEFT — the three views, under one filter bar. */}
-          <AssetViews asset={a} />
+          <AssetViews asset={a} onTabChange={setTab} />
 
           {/* RIGHT, AS THE RAIL (Pavan, 2026-11-02) — every fact the reference lists, read-only. */}
           <div className="flex min-h-0 flex-col gap-3 overflow-auto">

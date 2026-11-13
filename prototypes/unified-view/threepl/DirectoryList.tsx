@@ -133,6 +133,8 @@ export interface DirectoryColumn<K extends string> {
   width: number;
   sortable?: boolean;
   align?: "right" | "center";
+  /** Share of the spare width — see `ListColumn.grow`. */
+  grow?: number;
 }
 
 export interface DirectoryListProps<Row, K extends string> {

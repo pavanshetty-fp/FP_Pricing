@@ -2,6 +2,18 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.17 — 2026-11-13
+
+Built from commit `172e78d`.
+
+- **Copy pass across every module (UX-167):**
+  - Sentence case everywhere: "Schedule details", "Create order".
+  - One spelling per term: Ship-to, Top off, PO number, (gal).
+  - "Create" makes a record; "Add" adds a row inside a form.
+  - Empty lines read "No … yet."
+  - 360 titles read "{name} · Asset".
+- **A new check** flags Title Case or a second spelling on any new screen.
+
 ## v1.16 — 2026-11-13
 
 Built from commit `155e847`.

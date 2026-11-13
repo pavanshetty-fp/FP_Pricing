@@ -15,7 +15,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
-import { HeadFold, displayViewsFor, useHeadFold } from "../unified-view/HeadFold";
+import { HeadFold, displayViewsFor, useHeadFold, useTopBanner } from "../unified-view/HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "../unified-view/ListToolbar";
 import { ListFilters, type ListFacet } from "../unified-view/ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../unified-view/ExportSheet";
@@ -760,6 +760,7 @@ export function OrdersScreen({
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.date ?? "")), [rows]);
 
   const fold = useHeadFold();
+  useTopBanner(alerts.length > 0);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE OVERVIEW SITS ABOVE EVERYTHING (Pavan, 2026-10-13) — the
@@ -770,8 +771,24 @@ export function OrdersScreen({
           from orders on both segments, so the page does not jump on a switch. */}
       {/* THE OVERVIEW FOLDS WITH THE VIEWS ROW — everything above the search
           row goes (Pavan, 2026-11-13). */}
+      {/* THE BANNER ON TOP, under the title, 8px each side (Pavan, 2026-11-13). */}
+      {alerts.length > 0 && (
+        <AlertBanner
+          className={fold.collapsed ? "mb-4 shrink-0" : "-mt-4 mb-2 shrink-0"}
+          alerts={alerts}
+          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
+          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
+          appliedId={applied && applied.key === stateKey ? applied.id : null}
+          onClearApplied={() => {
+            narrowTo([], "today");
+            setApplied(null);
+          }}
+        />
+      )}
       <HeadFold collapsed={fold.collapsed}>
-      <div className="-mt-3.5 shrink-0">
+      {/* With the banner over it, the overview keeps its place: the banner
+          already sits 8px under the title. */}
+      <div className={cn("shrink-0", alerts.length === 0 && "-mt-3.5")}>
         <OverviewCards rows={orderRows} onDetails={(about) => (setTodayAbout(about), setTodayOpen(true))} />
       </div>
 
@@ -790,23 +807,7 @@ export function OrdersScreen({
       <TodaySheet rows={orderRows} about={todayAbout} open={todayOpen} onOpenChange={setTodayOpen} />
 
 
-      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
-          under them; it cut across the line joining the table to its tools).
-          Every module: what needs attention, then the tools, then the list. */}
-      {alerts.length > 0 && (
-        <AlertBanner
-          className={fold.gap}
-          alerts={alerts}
-          onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
-          onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
-          appliedId={applied && applied.key === stateKey ? applied.id : null}
-          onClearApplied={() => {
-            narrowTo([], "today");
-            setApplied(null);
-          }}
-        />
-      )}
-      <div className={alerts.length > 0 ? "mt-4 shrink-0" : fold.gap}>
+      <div className={fold.gap}>
         <ListToolbar
           viewSwitch={false}
           headCollapse={fold.headCollapse}

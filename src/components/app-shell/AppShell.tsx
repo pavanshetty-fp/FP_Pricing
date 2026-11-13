@@ -71,6 +71,9 @@ export interface AppShellProps {
   inset?: boolean;
   /** Tighter page header (less vertical padding) for dense, ClickUp-style tops. */
   compactHeader?: boolean;
+  /** 8px under the title instead of 12 — for a page that puts a strip
+   *  (a banner) right under its title (Pavan, 2026-11-13). */
+  tightHeaderBottom?: boolean;
   /** Bottom hairline under the (non-compact) header. On by default. */
   headerDivider?: boolean;
   className?: string;
@@ -111,6 +114,7 @@ export function AppShell({
   children,
   inset = true,
   compactHeader = false,
+  tightHeaderBottom = false,
   headerDivider = true,
   flushTop = false,
   className,
@@ -321,7 +325,7 @@ export function AppShell({
               inert={headerCollapsed || undefined}
             >
               <div className="min-h-0 overflow-hidden">
-            <header className={cn("flex shrink-0 flex-col gap-1 px-4", compactHeader ? "py-1" : "py-3", !compactHeader && headerDivider && "border-b border-fp-outline-1")}>
+            <header className={cn("flex shrink-0 flex-col gap-1 px-4", compactHeader ? "py-1" : tightHeaderBottom ? "pt-3 pb-2" : "py-3", !compactHeader && headerDivider && "border-b border-fp-outline-1")}>
               <div className="flex items-center gap-6">
                 {titleEl}
                 {headerAction != null && (

@@ -18,16 +18,16 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
-| 2026-11-08 | 8 |
+| 2026-11-08 | 9 |
 
-**52 misses** · found by Pavan 42 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 26 · process rule 6
+**53 misses** · found by Pavan 43 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 26 · process rule 7
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
 | `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 13 |
-| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 9 |
+| `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 10 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 8 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 8 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
@@ -40,6 +40,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-053 | 2026-11-13 | Banner V1 reported as 8px/8px while its top 4px was clipped by the content layer | Sales › Orders › banner trial V1 | Pavan | `edges` | A negative top margin (20px) pulled the banner past the content layer's 16px padding into its overflow-hidden; I measured gaps but ran no clip check before reporting. Fixed with -mt-4 and a tighter header bottom pad. | `clip-check` · process |
 | M-052 | 2026-11-13 | Archive / Restore actions built on Directory and Master Data records without being asked | 3PL › Directory sheets + bulk bar; Master Data Customer, Ship-to, Asset 360 | Pavan | `no-guard` | Added 2026-09-07 with the Directory module as an assumed record action; never requested. Removed 2026-11-13. | `no-unrequested-actions` · manual |
 | M-051 | 2026-11-13 | Directory record sheets (Vendor, Customer, Product, Rental Asset) have no right rail: history is a header icon, not the shared Activity card | 3PL › Directory › every record sheet | Pavan | `partial-unify` | Built 2026-09-07, before the one-summary-one-activity rule (2026-10-07); never moved onto the rail when the rule came in. | `sheet-rail-activity` · manual |
 | M-050 | 2026-11-13 | 3PL list head (views as tabs on top, Settings + collapse chevron, head fold) never reached the other lists | Every list › Sales, Service, 3PL Recurring + Directory, Master Data, Customer Portal | Pavan | `partial-unify` | Built inside BrokerOrdersScreen as a trial (layout '2', inline fold markup) instead of as a shared part; nothing told the other lists it existed. Now one shared HeadFold.tsx (useHeadFold, HeadFold, displayViewsFor) used by every list. | `list-head-reach` · manual |

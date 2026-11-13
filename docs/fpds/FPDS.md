@@ -3286,7 +3286,7 @@ Under the line (open, item alerts only): **item rows** — title (pressable when
 10. **Padding stays 12px sides / 6px top-bottom** — *white fill and 6px/4px were tried and reverted* — `(source: memory feedback_banner_final 2026-10-14)`
 11. **Tag pills sweep (collapsed only); every CTA shines — added by the banner, not by screens; the count pill does NOT sweep** — *one component, one behavior across modules* — `(source: ui §10l, Pavan 2026-10-20, 2026-10-26)`
 12. **Opened items sit on white inside the banner's coloured outline; rich facts are the record's own readings in equal columns** — *a tank is drawn the way the app draws it everywhere* — `(source: alert-banner.tsx, Pavan 2026-10-20)`
-13. **On every list the banner sits under the toolbar (search, Filters, chips), right above the table or board** — *the tools first, then what needs attention, then the list it narrows* — `(source: Pavan 2026-10-25)`.
+13. **On every list the banner sits on top, right under the page title** — above the views row, saved views, Create and Export; 8px from the title and 8px from what follows (`HeadFold.tsx` → `useTopBanner`, `topBannerClass`) — *what needs attention first* — `(source: Pavan 2026-11-13, after a V1–V3 trial; was under the toolbar, 2026-10-25)`.
 14. **The banner is always the info blue; the pills carry the severity** (red Overdue/Needs action, amber caution…) — *a banner is information; the pill says how serious* — `(source: Pavan 2026-10-25)`.
 15. **View all** beside ‹ 1 of N › lays every alert out as its own banner, one under another; the first carries **Collapse** to fold them back to one at a time — `(source: Pavan 2026-10-25)`.
 16. **Every alert wears the same anatomy** — tag pill (icon · label · count inside) · title · ghost "View details" that filters the list → "✕ Clear filter". An alert with items still filters; no count/chevron pill outside the tag — *"Needs action" looked different from the rest* — `(source: Pavan 2026-10-26; misses M-003)`
@@ -5269,7 +5269,7 @@ Top to bottom, with its fixed vertical rhythm:
 1. *(optional)* **Above** — overview cards (`above`), 32px (`mb-8`) above the view row.
 2. **View row** (`unit.view-row`) — All · saved views · + View · [segment] · [Create CTA] · Export.
 3. **Toolbar shelf** (`mt-4`) — `unit.toolbar`: search · Filters [· afterFilters]; no Group by, no date, no display switch (one view). Then `unit.chip-shelf` with the column-search chip inside it.
-4. *(optional)* **Banner** (`mt-4`) — the alert banner, under the toolbar shelf, right above the table.
+4. *(optional)* **Banner** — the alert banner, first on the page, under the title (`topBannerClass`, 8px each side).
 5. **Table area** (`mt-4`, fills the height) — `unit.data-table` with `unit.view-bar` as its top bar ("62 invoices"; Search by column · Show/hide columns). OR the **empty state** in its place.
 6. **Pagination** (`mt-4`) — `unit.pagination`, 25 rows a page by default.
 7. **Export sheet** — `unit.export-sheet`, titled "Export {Noun}".
@@ -5333,7 +5333,7 @@ Inherits every unit's look. Its own values:
 7. **Every change to the narrowing resets to page 1.** — `(source: docs/unified-view/3-interactions.md §7)`
 8. **No CTA where the user doesn't create** (Customer Portal › Invoices). — `(source: StandardList.tsx; ui §10c)`
 9. **A saved view stores the display it opens in** (`mode`), with everything else. — `(source: ui §10p)`
-10. **Banner under the toolbar shelf, right above the table — every module** (Pavan, 2026-10-25).
+10. **Banner on top, under the page title — every module** (Pavan, 2026-11-13; was under the toolbar, 2026-10-25).
 
 ## Do / Don't
 - ✅ Hand it `text` that returns exactly what the cell shows.
@@ -7176,7 +7176,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 - **Check:** review
 - **Source:** `interactions/2-rules.md` §7a; memory `feedback_banner_final.md`
 
-**UX-140. Banner placement: in every module (UV and CP), under the toolbar — search, Filters, chips — and right above the table or board (Pavan, 2026-10-25). The banner is always the info blue; each alert's pill carries its severity colour. More than one alert: ‹ 1 of N › plus View all, which lays every alert out as its own banner, one under another; Collapse folds them back.**
+**UX-140. Banner placement: in every module (UV and CP), on top of every list, right under the page title — above the views row, saved views, Create and Export — 8px from the title and 8px from what follows; the page header takes 8px off its bottom pad while a banner shows (Pavan, 2026-11-13; was under the toolbar). The banner is always the info blue; each alert's pill carries its severity colour. More than one alert: ‹ 1 of N › plus View all, which lays every alert out as its own banner, one under another; Collapse folds them back.**
 - **Why:** UV (2026-10-11) — read what needs attention before the tools to act on it; Pavan moved the portal's down on 2026-10-14 and the difference is still open.
 - **Applies to:** list pages.
 - **Check:** review
@@ -7471,7 +7471,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-137 | The CP dashboard (after the Anirudh review, 2026-10-19): Attention required → Schedule (next 7 days) → Tank levels → Spend → Billing & credit |
 | UX-138 | Two banners, chosen by one question — does pressing it do something to the page? B1 (`BannerCallout` / `BannerInline`) says one thing with at most one action or ✕. B2… |
 | UX-139 | AlertBanner, filter alerts (standard since 2026-10-15): tag pill with its icon and the count inside · plain title · muted detail · ghost "View details" that applies th… |
-| UX-140 | Banner under the toolbar, right above the list, in every module; always info blue, pills carry severity; View all stacks every alert, Collapse folds back |
+| UX-140 | Banner on top, under the page title, 8px each side, in every module; always info blue, pills carry severity; View all stacks every alert, Collapse folds back |
 | UX-141 | One snooze set everywhere: 1 h · 2 h · 4 h · 8 h · Tomorrow, same time · Custom… (hours and minutes, no calendar) |
 | UX-142 | A list gets an alert banner only for a time-critical condition on that list (Sales "N urgent orders overdue for dispatch"; Service urgent with no technician · needs ap… |
 | UX-143 | The CP dashboard's "Attention required" tiles are a different pattern by design — not an AlertBanner and not a gap |

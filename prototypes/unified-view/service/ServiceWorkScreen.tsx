@@ -18,7 +18,7 @@ import { ListToolbar, FilterChips, ColumnSearchChip, type ListView, useViewBar, 
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
-import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
+import { HeadFold, displayViewsFor, topBannerClass, useHeadFold, useTopBanner } from "../HeadFold";
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
@@ -1311,24 +1311,13 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
 
   const fold = useHeadFold();
+  useTopBanner(alerts.length > 0);
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <HeadFold collapsed={fold.collapsed}>
-      <FuelOrdersViewBar
-        {...savedViews}
-        {...displayViewsFor({ board: true, map: false }, view, setView)}
-        ctaLabel="New service order"
-        onCreateOrder={() => setCreating(true)}
-      />
-      </HeadFold>
-
-
-      {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
-          under them; it cut across the line joining the table to its tools).
-          Every module: what needs attention, then the tools, then the list. */}
+      {/* THE BANNER ON TOP, under the title (Pavan, 2026-11-13; HeadFold.tsx). */}
       {alerts.length > 0 && (
         <AlertBanner
-          className={fold.gap}
+          className={topBannerClass(fold.collapsed)}
           alerts={alerts}
           appliedId={appliedAlert}
           onClearApplied={() => {
@@ -1339,7 +1328,17 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           onDismiss={(id) => setAlertsOff((o) => new Set(o).add(id))}
         />
       )}
-      <div className={alerts.length > 0 ? "mt-4 shrink-0" : fold.gap}>
+      <HeadFold collapsed={fold.collapsed}>
+      <FuelOrdersViewBar
+        {...savedViews}
+        {...displayViewsFor({ board: true, map: false }, view, setView)}
+        ctaLabel="New service order"
+        onCreateOrder={() => setCreating(true)}
+      />
+      </HeadFold>
+
+
+      <div className={fold.gap}>
         <ListToolbar
           viewSwitch={false}
           headCollapse={fold.headCollapse}

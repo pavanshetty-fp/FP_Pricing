@@ -56,3 +56,39 @@ export function displayViewsFor(
     onDisplayChange: (k: string) => onViewChange(k as ListView),
   };
 }
+
+/* THE BANNER ON TOP (Pavan, 2026-11-13 — trial V1, chosen for every list):
+   a list's banner sits first, right under the page title — above the views
+   row, saved views, Create and Export — 8px from the title and 8px from what
+   follows. The page header takes 8px off its bottom pad while one shows
+   (`useTopBannerShown`, read by the shell), and the banner rises the content
+   layer's 16px top pad — no further, or the layer's overflow cuts it (M-053). */
+let topBanners = 0;
+const bannerListeners = new Set<() => void>();
+const bannerEmit = () => bannerListeners.forEach((l) => l());
+export function useTopBanner(shown: boolean) {
+  React.useEffect(() => {
+    if (!shown) return;
+    topBanners += 1;
+    bannerEmit();
+    return () => {
+      topBanners -= 1;
+      bannerEmit();
+    };
+  }, [shown]);
+}
+export function useTopBannerShown(): boolean {
+  return React.useSyncExternalStore(
+    (l) => {
+      bannerListeners.add(l);
+      return () => bannerListeners.delete(l);
+    },
+    () => topBanners > 0
+  );
+}
+/** The banner's margins. `next` is what follows it: the views row (which
+ *  pulls itself up 16 and puts its buttons 2 into that), or a plain block. */
+export function topBannerClass(collapsed: boolean, next: "views" | "block" = "views") {
+  if (collapsed) return "mb-4 shrink-0";
+  return next === "views" ? "-mt-4 mb-5.5 shrink-0" : "-mt-4 mb-2 shrink-0";
+}

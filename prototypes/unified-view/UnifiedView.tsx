@@ -45,6 +45,7 @@ import {
   Factory,
   FileText,
 } from "lucide-react";
+import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
@@ -510,6 +511,7 @@ export function UnifiedView({ only }: { only?: string } = {}) {
   */
 const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const headCollapsed = useHeadCollapsed();
+  const topBannerShown = useTopBannerShown();
   const [recurringArchive, setRecurringArchive] = React.useState(false);
 
   /* CREATE ON RECURRING ORDERS SENDS YOU TO DELIVERY ORDERS, because that is
@@ -897,6 +899,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     <TooltipProvider>
       <AppShell
         headerCollapsed={headCollapsed}
+        /* A list's banner sits 8px under the title (HeadFold.tsx). */
+        tightHeaderBottom={topBannerShown}
         title={
           <div className="flex min-w-0 items-baseline gap-3">
             {loadingModule ? (

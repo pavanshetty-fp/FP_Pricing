@@ -16,7 +16,7 @@ Top to bottom, with its fixed vertical rhythm:
 1. *(optional)* **Above** — overview cards (`above`), 32px (`mb-8`) above the view row.
 2. **View row** (`unit.view-row`) — All · saved views · + View · [segment] · [Create CTA] · Export.
 3. **Toolbar shelf** (`mt-4`) — `unit.toolbar`: search · Filters [· afterFilters]; no Group by, no date, no display switch (one view). Then `unit.chip-shelf` with the column-search chip inside it.
-4. *(optional)* **Banner** (`mt-4`) — the alert banner, under the toolbar shelf, right above the table.
+4. *(optional)* **Banner** — the alert banner, first on the page, under the title (`topBannerClass`, 8px each side).
 5. **Table area** (`mt-4`, fills the height) — `unit.data-table` with `unit.view-bar` as its top bar ("62 invoices"; Search by column · Show/hide columns). OR the **empty state** in its place.
 6. **Pagination** (`mt-4`) — `unit.pagination`, 25 rows a page by default.
 7. **Export sheet** — `unit.export-sheet`, titled "Export {Noun}".
@@ -80,7 +80,7 @@ Inherits every unit's look. Its own values:
 7. **Every change to the narrowing resets to page 1.** — `(source: docs/unified-view/3-interactions.md §7)`
 8. **No CTA where the user doesn't create** (Customer Portal › Invoices). — `(source: StandardList.tsx; ui §10c)`
 9. **A saved view stores the display it opens in** (`mode`), with everything else. — `(source: ui §10p)`
-10. **Banner under the toolbar shelf, right above the table — every module** (Pavan, 2026-10-25).
+10. **Banner on top, under the page title — every module** (Pavan, 2026-11-13; was under the toolbar, 2026-10-25).
 
 ## Do / Don't
 - ✅ Hand it `text` that returns exactly what the cell shows.

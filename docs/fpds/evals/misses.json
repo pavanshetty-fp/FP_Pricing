@@ -693,6 +693,19 @@
         "id": "no-unrequested-actions",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-053",
+      "date": "2026-11-13",
+      "title": "Banner V1 reported as 8px/8px while its top 4px was clipped by the content layer",
+      "where": "Sales › Orders › banner trial V1",
+      "foundBy": "pavan",
+      "pattern": "edges",
+      "why": "A negative top margin (20px) pulled the banner past the content layer's 16px padding into its overflow-hidden; I measured gaps but ran no clip check before reporting. Fixed with -mt-4 and a tighter header bottom pad.",
+      "check": {
+        "id": "clip-check",
+        "status": "process"
+      }
     }
   ]
 }

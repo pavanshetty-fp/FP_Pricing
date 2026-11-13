@@ -16,7 +16,7 @@ import {
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FuelOrdersViewBar, viewStateKey, type ViewState } from "./FuelOrdersViewBar";
-import { HeadFold, displayViewsFor, useHeadFold } from "./HeadFold";
+import { HeadFold, displayViewsFor, topBannerClass, useHeadFold, useTopBanner } from "./HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow, type ExportSummary } from "./ExportSheet";
@@ -1351,8 +1351,37 @@ export function SalesOrdersScreen({
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map(dateKeyOfRow)), [rows]);
 
   const fold = useHeadFold();
+  /* THE BANNER ON TOP, 8px from the title and the views row (HeadFold.tsx). */
+  useTopBanner(alertVisible);
+  const banner = (bannerCls?: string) => (
+        <AlertBanner
+          className={bannerCls}
+          alerts={[
+            {
+              id: "overdue",
+              status: "warning",
+              tag: "Overdue",
+              /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
+              title: `${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`,
+              count: overdue.length,
+              onApply: () => {
+                setOverdueOnly(true);
+                setPage(1);
+              },
+            },
+          ]}
+          appliedId={overdueOnly ? "overdue" : null}
+          onClearApplied={() => {
+            setOverdueOnly(false);
+            setPage(1);
+          }}
+          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
+          onDismiss={() => setAlertDismissed(true)}
+        />
+  );
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {alertVisible && banner(topBannerClass(fold.collapsed))}
       <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
@@ -1381,33 +1410,7 @@ export function SalesOrdersScreen({
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
           under them; it cut across the line joining the table to its tools).
           Every module: what needs attention, then the tools, then the list. */}
-      {alertVisible && (
-        <AlertBanner
-          className={fold.gap}
-          alerts={[
-            {
-              id: "overdue",
-              status: "warning",
-              tag: "Overdue",
-              /* THE STAGE BY ITS NAME — renamed in Sales Settings, renamed here. */
-              title: `${overdue.length} urgent ${overdue.length === 1 ? "order" : "orders"} overdue for dispatch`,
-              count: overdue.length,
-              onApply: () => {
-                setOverdueOnly(true);
-                setPage(1);
-              },
-            },
-          ]}
-          appliedId={overdueOnly ? "overdue" : null}
-          onClearApplied={() => {
-            setOverdueOnly(false);
-            setPage(1);
-          }}
-          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
-          onDismiss={() => setAlertDismissed(true)}
-        />
-      )}
-      <div className={alertVisible ? "mt-4 shrink-0" : fold.gap}>
+      <div className={fold.gap}>
         <ListToolbar
           viewSwitch={false}
           headCollapse={fold.headCollapse}

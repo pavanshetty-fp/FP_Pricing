@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
-import { HeadFold, displayViewsFor, useHeadFold } from "./HeadFold";
+import { HeadFold, displayViewsFor, topBannerClass, useHeadFold, useTopBanner } from "./HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
@@ -83,7 +83,7 @@ export interface StandardListProps<R, K extends string> {
   onCreate?: () => void;
   /** Above the view row — a page's overview cards (Orders' layout). */
   above?: React.ReactNode;
-  /** The alert banner — under the toolbar, as in every module (2026-10-25). */
+  /** The alert banner — on top, under the page title (2026-11-13). */
   banner?: React.ReactNode;
   /**
    * Sets the facet filter from outside — a banner title applies its filter.
@@ -305,8 +305,11 @@ export function StandardList<R, K extends string>({
   );
 
   const fold = useHeadFold();
+  useTopBanner(Boolean(banner));
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* THE BANNER ON TOP, under the title (Pavan, 2026-11-13; HeadFold.tsx). */}
+      {banner && <div className={topBannerClass(fold.collapsed, above ? "block" : "views")}>{banner}</div>}
       {above && <div className="mb-8 shrink-0">{above}</div>}
       <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
@@ -324,8 +327,7 @@ export function StandardList<R, K extends string>({
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
           under them; it cut across the line joining the table to its tools).
           Every module: what needs attention, then the tools, then the list. */}
-      {banner && <div className={fold.gap}>{banner}</div>}
-      <div className={banner ? "mt-4 shrink-0" : fold.gap}>
+      <div className={fold.gap}>
         <ListToolbar
           viewSwitch={false}
           headCollapse={fold.headCollapse}

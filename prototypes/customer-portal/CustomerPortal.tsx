@@ -22,6 +22,7 @@ import { DashboardScreen, DeliveryPerformanceReport } from "./DashboardScreen";
 import { InvoicesScreen } from "./InvoicesScreen";
 import { PortalNavContext } from "./nav";
 import { useHeadCollapsed } from "../unified-view/pageHead";
+import { useTopBannerShown } from "../unified-view/HeadFold";
 import { TeamScreen } from "./TeamScreen";
 
 /*
@@ -112,6 +113,7 @@ export function CustomerPortal() {
   useEventToasts(openOrder, openInvoice);
   /* The Orders list folds the page title with its views row (as every list). */
   const headCollapsed = useHeadCollapsed();
+  const topBannerShown = useTopBannerShown();
 
   return (
     <PortalNavContext.Provider value={{ openOrder, openInvoice }}>
@@ -120,6 +122,7 @@ export function CustomerPortal() {
         /* No line under the top bar, panels right under it (2026-10-27). */
         flushTop
         headerCollapsed={headCollapsed}
+        tightHeaderBottom={topBannerShown}
         title={
           <h1 className="truncate text-xl font-semibold leading-none text-foreground">
             {active.label}

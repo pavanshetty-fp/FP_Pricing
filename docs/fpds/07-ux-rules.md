@@ -892,7 +892,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 - **Check:** review
 - **Source:** `interactions/2-rules.md` §7a; memory `feedback_banner_final.md`
 
-**UX-140. Banner placement: in every module (UV and CP), under the toolbar — search, Filters, chips — and right above the table or board (Pavan, 2026-10-25). The banner is always the info blue; each alert's pill carries its severity colour. More than one alert: ‹ 1 of N › plus View all, which lays every alert out as its own banner, one under another; Collapse folds them back.**
+**UX-140. Banner placement: in every module (UV and CP), on top of every list, right under the page title — above the views row, saved views, Create and Export — 8px from the title and 8px from what follows; the page header takes 8px off its bottom pad while a banner shows (Pavan, 2026-11-13; was under the toolbar). The banner is always the info blue; each alert's pill carries its severity colour. More than one alert: ‹ 1 of N › plus View all, which lays every alert out as its own banner, one under another; Collapse folds them back.**
 - **Why:** UV (2026-10-11) — read what needs attention before the tools to act on it; Pavan moved the portal's down on 2026-10-14 and the difference is still open.
 - **Applies to:** list pages.
 - **Check:** review
@@ -1187,7 +1187,7 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-137 | The CP dashboard (after the Anirudh review, 2026-10-19): Attention required → Schedule (next 7 days) → Tank levels → Spend → Billing & credit |
 | UX-138 | Two banners, chosen by one question — does pressing it do something to the page? B1 (`BannerCallout` / `BannerInline`) says one thing with at most one action or ✕. B2… |
 | UX-139 | AlertBanner, filter alerts (standard since 2026-10-15): tag pill with its icon and the count inside · plain title · muted detail · ghost "View details" that applies th… |
-| UX-140 | Banner under the toolbar, right above the list, in every module; always info blue, pills carry severity; View all stacks every alert, Collapse folds back |
+| UX-140 | Banner on top, under the page title, 8px each side, in every module; always info blue, pills carry severity; View all stacks every alert, Collapse folds back |
 | UX-141 | One snooze set everywhere: 1 h · 2 h · 4 h · 8 h · Tomorrow, same time · Custom… (hours and minutes, no calendar) |
 | UX-142 | A list gets an alert banner only for a time-critical condition on that list (Sales "N urgent orders overdue for dispatch"; Service urgent with no technician · needs ap… |
 | UX-143 | The CP dashboard's "Attention required" tiles are a different pattern by design — not an AlertBanner and not a gap |

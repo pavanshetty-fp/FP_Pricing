@@ -21,6 +21,7 @@ import { SitesScreen } from "./SitesScreen";
 import { DashboardScreen, DeliveryPerformanceReport } from "./DashboardScreen";
 import { InvoicesScreen } from "./InvoicesScreen";
 import { PortalNavContext } from "./nav";
+import { useHeadCollapsed } from "../unified-view/pageHead";
 import { TeamScreen } from "./TeamScreen";
 
 /*
@@ -109,6 +110,8 @@ export function CustomerPortal() {
     go("invoices");
   };
   useEventToasts(openOrder, openInvoice);
+  /* The Orders list folds the page title with its views row (as every list). */
+  const headCollapsed = useHeadCollapsed();
 
   return (
     <PortalNavContext.Provider value={{ openOrder, openInvoice }}>
@@ -116,6 +119,7 @@ export function CustomerPortal() {
       <AppShell
         /* No line under the top bar, panels right under it (2026-10-27). */
         flushTop
+        headerCollapsed={headCollapsed}
         title={
           <h1 className="truncate text-xl font-semibold leading-none text-foreground">
             {active.label}

@@ -15,6 +15,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "./HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
@@ -419,17 +420,23 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
     }),
   ];
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: false }, view, setView)}
         ctaLabel="Create New Asset"
         onCreateOrder={() => setCreating(true)}
         onExport={() => setExporting(true)}
       />
+      </HeadFold>
 
-      <div className="mt-4 shrink-0">
+      <div className={fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one="asset" many="assets" />}
           searchValue={search}

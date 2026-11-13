@@ -18,6 +18,7 @@ import { ListToolbar, FilterChips, ColumnSearchChip, type ListView, useViewBar, 
 import { ListFilters } from "../ListFilters";
 import { ListTable, type ListColumn, type ListSort } from "../ListTable";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { useSavedViews } from "../useSavedViews";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
@@ -1309,13 +1310,17 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.dateKey)), [rows]);
 
+  const fold = useHeadFold();
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: true, map: false }, view, setView)}
         ctaLabel="New service order"
         onCreateOrder={() => setCreating(true)}
       />
+      </HeadFold>
 
 
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
@@ -1323,7 +1328,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           Every module: what needs attention, then the tools, then the list. */}
       {alerts.length > 0 && (
         <AlertBanner
-          className="mt-4 shrink-0"
+          className={fold.gap}
           alerts={alerts}
           appliedId={appliedAlert}
           onClearApplied={() => {
@@ -1334,8 +1339,10 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
           onDismiss={(id) => setAlertsOff((o) => new Set(o).add(id))}
         />
       )}
-      <div className="mt-4 shrink-0">
+      <div className={alerts.length > 0 ? "mt-4 shrink-0" : fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one="service order" many="service orders" rest={view === "board" ? `across ${lanes.filter((l) => l.cards.length > 0).length} of ${lanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView

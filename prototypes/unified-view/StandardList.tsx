@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "./FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "./HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow } from "./ExportSheet";
@@ -303,11 +304,14 @@ export function StandardList<R, K extends string>({
     />
   );
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {above && <div className="mb-8 shrink-0">{above}</div>}
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: false }, view, setView)}
         ctaLabel={ctaLabel}
         onCreateOrder={onCreate}
         onExport={() => setExporting(true)}
@@ -315,13 +319,16 @@ export function StandardList<R, K extends string>({
         segmentValue={segmentValue}
         onSegmentChange={onSegmentChange}
       />
+      </HeadFold>
 
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
           under them; it cut across the line joining the table to its tools).
           Every module: what needs attention, then the tools, then the list. */}
-      {banner && <div className="mt-4 shrink-0">{banner}</div>}
-      <div className="mt-4 shrink-0">
+      {banner && <div className={fold.gap}>{banner}</div>}
+      <div className={banner ? "mt-4 shrink-0" : fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one={nounOne} many={noun} />}
           searchValue={search}

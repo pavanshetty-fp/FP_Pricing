@@ -308,11 +308,11 @@ export function SteppedFormBody({
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {top && (
-            <div className="shrink-0 border-b border-border px-4">{top}</div>
+            <div className="shrink-0 border-b border-border fp-page-pad">{top}</div>
           )}
           <div
             ref={formRef}
-            className="flex min-h-0 min-w-0 flex-1 flex-col gap-10 overflow-auto p-4"
+            className="flex min-h-0 min-w-0 flex-1 flex-col gap-10 overflow-auto fp-page-pad py-4"
           >
             {children}
           </div>

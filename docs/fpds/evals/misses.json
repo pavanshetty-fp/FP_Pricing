@@ -654,6 +654,19 @@
         "id": "a11y-token-reach",
         "status": "built"
       }
+    },
+    {
+      "id": "M-050",
+      "date": "2026-11-13",
+      "title": "3PL list head (views as tabs on top, Settings + collapse chevron, head fold) never reached the other lists",
+      "where": "Every list › Sales, Service, 3PL Recurring + Directory, Master Data, Customer Portal",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "Built inside BrokerOrdersScreen as a trial (layout '2', inline fold markup) instead of as a shared part; nothing told the other lists it existed. Now one shared HeadFold.tsx (useHeadFold, HeadFold, displayViewsFor) used by every list.",
+      "check": {
+        "id": "list-head-reach",
+        "status": "manual"
+      }
     }
   ]
 }

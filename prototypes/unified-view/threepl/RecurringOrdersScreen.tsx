@@ -59,6 +59,7 @@ import {
 import { ListFilters } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
 import {
@@ -1002,23 +1003,29 @@ export function RecurringOrdersScreen({
     }
   };
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE SCOPE SHELF — preset views, the line and its business, Export and
           the CTA. Same bar as the orders board and as V1. */}
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: false }, view, setView)}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}
       />
+      </HeadFold>
 
-      <div className="mt-4 shrink-0">
+      <div className={fold.gap}>
         {/* THE ACTION UNIT — the same one every list in this app carries, in the
             same order. Board, map and Group By are off: a series has no lanes,
             no pins, and grouping rows that already expand is two disclosure
             mechanics fighting for one triangle. */}
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={total} one="recurring order" many="recurring orders" />}
           searchValue={search}

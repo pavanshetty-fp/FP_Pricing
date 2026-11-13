@@ -2005,3 +2005,10 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
   }
 }
 
+
+/* FULL PAGE DETAIL, A CENTRED COLUMN (IX-99, Pavan 2026-11-13). RecordSheet
+   sets --fp-page-pad only in Full page view (756–1200px column); everywhere
+   else the side padding is the sheet's usual 16px. */
+@utility fp-page-pad {
+  padding-inline: var(--fp-page-pad, 1rem);
+}

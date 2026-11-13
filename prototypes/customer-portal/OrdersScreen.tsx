@@ -15,6 +15,7 @@ import {
 import { StatusChip } from "@/components/ui/status-chip";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FuelOrdersViewBar } from "../unified-view/FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../unified-view/HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "../unified-view/ListToolbar";
 import { ListFilters, type ListFacet } from "../unified-view/ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../unified-view/ExportSheet";
@@ -758,6 +759,7 @@ export function OrdersScreen({
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map((r) => r.date ?? "")), [rows]);
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE OVERVIEW SITS ABOVE EVERYTHING (Pavan, 2026-10-13) — the
@@ -766,21 +768,26 @@ export function OrdersScreen({
           body's padding, less 14. Everything below moves up with it. */}
       {/* THE DAY'S DELIVERIES ARE THE ORDERS' (Pavan, 2026-10-19) — counted
           from orders on both segments, so the page does not jump on a switch. */}
+      {/* THE OVERVIEW FOLDS WITH THE VIEWS ROW — everything above the search
+          row goes (Pavan, 2026-11-13). */}
+      <HeadFold collapsed={fold.collapsed}>
       <div className="-mt-3.5 shrink-0">
         <OverviewCards rows={orderRows} onDetails={(about) => (setTodayAbout(about), setTodayOpen(true))} />
       </div>
-      <TodaySheet rows={orderRows} about={todayAbout} open={todayOpen} onOpenChange={setTodayOpen} />
 
       {/* AIR BETWEEN THE OVERVIEW AND THE CONTROLS (Pavan, 2026-10-13). */}
       <div className="mt-8 shrink-0">
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: true, map: true }, view, setView)}
         /* ORDERS COME FROM THE TENANT — only a request is created here. */
         ctaLabel="Create Order"
         onCreateOrder={startCreate}
         onExport={() => setExporting(true)}
       />
       </div>
+      </HeadFold>
+      <TodaySheet rows={orderRows} about={todayAbout} open={todayOpen} onOpenChange={setTodayOpen} />
 
 
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
@@ -788,7 +795,7 @@ export function OrdersScreen({
           Every module: what needs attention, then the tools, then the list. */}
       {alerts.length > 0 && (
         <AlertBanner
-          className="mt-4 shrink-0"
+          className={fold.gap}
           alerts={alerts}
           onSnooze={(id, ms) => setSnoozed((prev) => ({ ...prev, [id]: Date.now() + ms }))}
           onDismiss={(id) => setDismissed((prev) => new Set(prev).add(id))}
@@ -799,8 +806,10 @@ export function OrdersScreen({
           }}
         />
       )}
-      <div className="mt-4 shrink-0">
+      <div className={alerts.length > 0 ? "mt-4 shrink-0" : fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${dateKeyOf(range.from) === dateKeyOf(range.to) ? formatFullDate(range.from) : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`}` : `· ${dateKeyOf(range.from) === dateKeyOf(range.to) ? formatFullDate(range.from) : `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`}`} />}
           searchValue={search}

@@ -50,6 +50,7 @@ import {
 } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
@@ -770,10 +771,13 @@ export function RecurringProgramsScreen({
     }
   };
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: false }, view, setView)}
         /* CREATE RULE, NOT CREATE ORDER — and it opens HERE rather than
            sending the reader to the delivery-order form. V1 and V2 make a
            recurring order by ticking a box on an order, so their CTA goes
@@ -786,9 +790,12 @@ export function RecurringProgramsScreen({
         }}
         onExport={() => setExporting(true)}
       />
+      </HeadFold>
 
-      <div className="mt-4 shrink-0">
+      <div className={fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={total} one="program" many="programs" />}
           /* RECOMMENDATIONS ON THE LIST TOO (Pavan, 2026-10-06) — a rule's

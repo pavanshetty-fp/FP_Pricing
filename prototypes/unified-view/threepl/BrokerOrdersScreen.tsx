@@ -54,7 +54,7 @@ import {
   type BoardLane,
 } from "./BrokerBoard";
 import { BoardV2 } from "./BoardV2";
-import { setHeadCollapsed, useHeadCollapsed } from "../pageHead";
+import { HeadFold, useHeadFold } from "../HeadFold";
 import { OrderMapView } from "../OrderMapView";
 import { discTonePill, type CodeDiscTone } from "@/components/ui/code-disc";
 import { BrokerOrderSheet, VENDOR_SECTION_ID, type BrokerOrderDraft } from "./BrokerOrderSheet";
@@ -2387,9 +2387,8 @@ export function BrokerOrdersScreen({
     </Empty>
   );
 
-  const headCollapsed = useHeadCollapsed();
-  /* Leaving the page puts its head back. */
-  React.useEffect(() => () => setHeadCollapsed(false), []);
+  const fold = useHeadFold();
+  const headCollapsed = fold.collapsed;
   const toggleColFilters = () =>
     setColFiltersOpen((open) => {
       /* CLOSING THE ROW PUTS THE TABLE BACK. The boxes go away when you close
@@ -2415,15 +2414,7 @@ export function BrokerOrdersScreen({
           otherwise the fold's overflow-hidden cut the top 16px off the CTA
           and the ends off the bar's rule (Pavan, 2026-11-10). Folded, the
           pad and the negative margin cancel, so nothing is left behind. */}
-      <div
-        className="grid shrink-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
-        style={{ gridTemplateRows: headCollapsed ? "0fr" : "1fr" }}
-        aria-hidden={headCollapsed || undefined}
-        inert={headCollapsed || undefined}
-      >
-      {/* Folded, the top pad goes too — kept, it left a 16px strip of the
-          bar showing above the search row (Pavan, 2026-11-10). */}
-      <div className={cn("-mx-4 min-h-0 overflow-hidden px-4", headCollapsed ? "mt-0 pt-0" : "-mt-4 pt-4")}>
+      <HeadFold collapsed={headCollapsed}>
       <FuelOrdersViewBar
         {...savedViews}
         {...(layout === "2"
@@ -2467,10 +2458,9 @@ export function BrokerOrdersScreen({
         }}
         onExport={() => setExporting(true)}
       />
-      </div>
-      </div>
+      </HeadFold>
 
-      <div className={cn("shrink-0 transition-[margin] duration-200 ease-out", headCollapsed ? "mt-0" : "mt-4")}>
+      <div className={fold.gap}>
         <ListToolbar
           boardView
           searchValue={search}
@@ -2602,7 +2592,7 @@ export function BrokerOrdersScreen({
           onViewChange={setView}
           viewSwitch={layout !== "2"}
           settings
-          headCollapse={{ collapsed: headCollapsed, onToggle: () => setHeadCollapsed(!headCollapsed) }}
+          headCollapse={fold.headCollapse}
           mapView
           listView={listView}
           dateControl={

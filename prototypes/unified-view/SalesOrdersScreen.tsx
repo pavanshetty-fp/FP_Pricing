@@ -16,6 +16,7 @@ import {
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FuelOrdersViewBar, viewStateKey, type ViewState } from "./FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "./HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement, BoardWithBar } from "./ListToolbar";
 import { ListFilters, type ListFacet } from "./ListFilters";
 import { ExportSheet, type ExportFilterRow, type ExportSummary } from "./ExportSheet";
@@ -1349,10 +1350,13 @@ export function SalesOrdersScreen({
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every record's day. */
   const dateWindow = React.useMemo(() => dateWindowOf(rows.map(dateKeyOfRow)), [rows]);
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: true, map: true }, view, setView)}
         ctaLabel="Create Order"
         /* CREATE IS A MENU, as 3PL's — three different forms, so the choice
            comes before the form (Pavan, 2026-10-07). */
@@ -1371,6 +1375,7 @@ export function SalesOrdersScreen({
         }}
         onExport={() => setExporting(true)}
       />
+      </HeadFold>
 
 
       {/* THE BANNER SITS ABOVE SEARCH AND FILTERS (Pavan, 2026-11-02 — was
@@ -1378,7 +1383,7 @@ export function SalesOrdersScreen({
           Every module: what needs attention, then the tools, then the list. */}
       {alertVisible && (
         <AlertBanner
-          className="mt-4 shrink-0"
+          className={fold.gap}
           alerts={[
             {
               id: "overdue",
@@ -1402,8 +1407,10 @@ export function SalesOrdersScreen({
           onDismiss={() => setAlertDismissed(true)}
         />
       )}
-      <div className="mt-4 shrink-0">
+      <div className={alertVisible ? "mt-4 shrink-0" : fold.gap}>
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={sorted.length} one="order" many="orders" rest={view === "board" ? `across ${boardLanes.filter((l) => l.cards.length > 0).length} of ${boardLanes.length} lanes · ${rangeLabel}` : `· ${rangeLabel}`} />}
           boardView

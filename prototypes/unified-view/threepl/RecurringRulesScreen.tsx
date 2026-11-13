@@ -45,6 +45,7 @@ import {
 import { ListFilters } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { useSavedViews } from "../useSavedViews";
 import { downloadCsv } from "../csv";
 import { toast } from "sonner";
@@ -877,6 +878,7 @@ export function RecurringRulesScreen({
     }
   };
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE SCOPE SHELF — preset views, the line and the business inside it,
@@ -884,18 +886,21 @@ export function RecurringRulesScreen({
           the SAME BAR the orders board carries, because a reader who has
           learnt one list has learnt this one. See `docs/ds/ui/2-rules.md`
           §10c. */}
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: false }, view, setView)}
         ctaLabel="Create Order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}
       />
+      </HeadFold>
 
       {/* THE TOOLBAR AND THE CHIPS ARE ONE SHELF, and the shelf is spaced
           off the bar above it — `mt-4`, the same step the orders board and
           the directory lists use. Dropped in without it, the view bar and
           the toolbar sat flush and read as one crowded band. */}
-      <div className="mt-4 shrink-0">
+      <div className={fold.gap}>
         {/* THE ACTION UNIT. Every list in this app carries it, and it carries the
           same controls in the same order — search, filters, the view switch,
           the column tools. A list that grew its own two-control bar was a list
@@ -906,6 +911,8 @@ export function RecurringRulesScreen({
           groups this table already has for the word "group". Each is switched
             off at the toolbar rather than drawn dead. */}
         <ListToolbar
+          viewSwitch={false}
+          headCollapse={fold.headCollapse}
           viewToolsInto={bar.into}
           viewStatement={<ViewStatement count={total} one="rule" many="rules" />}
           searchValue={search}

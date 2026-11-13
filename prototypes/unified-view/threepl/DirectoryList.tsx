@@ -20,6 +20,7 @@ import {
 } from "@/components/tables-layout";
 import { toast } from "sonner";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListFilters } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
@@ -553,21 +554,27 @@ export function DirectoryList<Row, K extends string>({
     }),
   ];
 
+  const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* THE ADD BUTTON SITS ON THE VIEW ROW, beside Export, as on every
           list (Pavan, 2026-11-02 — it was at the end of the search row). */}
+      <HeadFold collapsed={fold.collapsed}>
       <FuelOrdersViewBar
         {...savedViews}
+        {...displayViewsFor({ board: false, map: Boolean(renderMap) }, view, setView)}
         onExport={exportRow ? () => setExporting(true) : undefined}
         onCreateOrder={onCreate}
         ctaLabel={createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
         ctaDisabledReason={canWrite ? undefined : `You do not have permission to add a ${noun}`}
       />
+      </HeadFold>
 
-      <div className="mt-4 flex shrink-0 items-center gap-2">
+      <div className={`flex items-center gap-2 ${fold.gap}`}>
         <div className="min-w-0 flex-1">
           <ListToolbar
+            viewSwitch={false}
+            headCollapse={fold.headCollapse}
             viewToolsInto={bar.into}
             viewStatement={<ViewStatement count={sorted.length} one={noun} many={plural} />}
             searchValue={search}

@@ -155,6 +155,8 @@ const FIT_PAD = 34;
 const RAIL = 340 + 24;
 export const FORM_WIDTH = 600;
 export const DATA_WIDTH = 1200;
+/** Full page: the content column's widest (Pavan, 2026-11-13; 756 the narrowest). */
+export const PAGE_MAX = 1200;
 /** A data-intensive sheet's field grid — three across, at 1200. */
 export const DATA_FIELDS = "grid grid-cols-3 gap-4";
 
@@ -572,6 +574,17 @@ export function RecordSheet({
             "--fp-sheet-gap": level === 2 ? "112px" : "56px",
             /* SCALED IN THE WCAG MODES — wider text, wider sheet (§10n). */
             "--fp-sheet-w": `calc(${width}px * var(--fp-scale, 1))`,
+            /* FULL PAGE, NOT END TO END (Pavan, 2026-11-13) — the overlay
+               covers the page, but the content keeps a centred column as
+               wide as the sheet's own content: never under 756, never over
+               1200. The rules and bands still run edge to edge; only the
+               padding grows. */
+            ...(presentation === "full"
+              ? {
+                  "--fp-page-col": `clamp(756px, calc(${size === "full" ? PAGE_MAX : width}px * var(--fp-scale, 1)), ${PAGE_MAX}px)`,
+                  "--fp-page-pad": "max(1rem, calc((100% - var(--fp-page-col)) / 2 + 1rem))",
+                }
+              : {}),
           } as React.CSSProperties
         }
         className={cn(
@@ -596,7 +609,7 @@ export function RecordSheet({
         <div
           className={cn(
             "flex justify-between gap-4 border-b",
-            docked ? "h-[53px] shrink-0 items-center border-fp-outline-1 px-4" : "items-start border-border p-4"
+            docked ? "h-[53px] shrink-0 items-center border-fp-outline-1 px-4" : "items-start border-border py-4 fp-page-pad"
           )}
         >
           <div className={cn("flex min-w-0", docked ? "items-center gap-2.5" : "flex-col gap-1")}>
@@ -623,7 +636,7 @@ export function RecordSheet({
         {steps && !navShown && (
           /* NO RULE UNDER THE STEPS (Pavan, 2026-10-16) — the strip keeps the
              sheet's own white, and the form scrolls under it. */
-          <div className="shrink-0 bg-popover px-4">{steps}</div>
+          <div className="shrink-0 bg-popover fp-page-pad">{steps}</div>
         )}
 
         {stepped ? (
@@ -640,7 +653,7 @@ export function RecordSheet({
           </SteppedFormBody>
         ) : (
           <FormStepsContext.Provider value={false}>
-            <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto p-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-auto py-4 fp-page-pad">
               <ParentSheetWidth.Provider value={fills ? 99999 : width}>{children}</ParentSheetWidth.Provider>
             <SheetPattern />
             </div>
@@ -651,13 +664,13 @@ export function RecordSheet({
           /* ABOVE THE FOOTER AND OUTSIDE THE SCROLL — the same reason the
              stage bar sits under the header: a strip that describes the
              footer's button has to be visible whenever the button is. */
-          <div className="shrink-0 border-t border-border px-4 py-2.5">
+          <div className="shrink-0 border-t border-border fp-page-pad py-2.5">
             {banner}
           </div>
         )}
 
         {!noFooter && (
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border py-4 fp-page-pad">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             {footerAside}
           </div>

@@ -18,15 +18,15 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
-| 2026-11-08 | 5 |
+| 2026-11-08 | 6 |
 
-**49 misses** · found by Pavan 39 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 23 · process rule 6
+**50 misses** · found by Pavan 40 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 24 · process rule 6
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
-| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 11 |
+| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 12 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 9 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 8 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 8 |
@@ -40,6 +40,7 @@ Every time Pavan has to point out something that should already have been right 
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-050 | 2026-11-13 | 3PL list head (views as tabs on top, Settings + collapse chevron, head fold) never reached the other lists | Every list › Sales, Service, 3PL Recurring + Directory, Master Data, Customer Portal | Pavan | `partial-unify` | Built inside BrokerOrdersScreen as a trial (layout '2', inline fold markup) instead of as a shared part; nothing told the other lists it existed. Now one shared HeadFold.tsx (useHeadFold, HeadFold, displayViewsFor) used by every list. | `list-head-reach` · manual |
 | M-049 | 2026-11-12 | Accessibility panel: Fill contrast didn't reach the swimlanes, Component width didn't widen board lanes, Text size skipped titles and px-sized labels | Accessibility panel › every board and list | Pavan | `no-guard` | The new lane colour (--fp-lane-ground) wasn't added to a11y.ts's lists (the rule was in memory); BoardV2's fitted lane width ignored --fp-lane-k; the text scale covered xs–lg tokens only, not text-xl+ or text-[Npx]. | `a11y-token-reach` · built |
 | M-048 | 2026-11-10 | Collapsed header left a 16px strip of the views row (tabs, top of Create Order) showing above the search row | 3PL Delivery Orders › collapse-header fold | Pavan | `one-case` | The M-047 fix padded the fold's clip box to take the bar's bleed; the pad stayed when folded, so 16px of the bar still showed. Verified the open state after the fix but not the folded one, and the clip check skipped hidden content instead of checking it showed nothing. | `clip-check` · process |
 | M-047 | 2026-11-10 | Top of Create Order and the ends of the views row's rule cut off on 3PL Delivery Orders | 3PL Delivery Orders › views row (after the collapse-header fold) | Pavan | `edges` | Wrapped the views bar in an overflow-hidden box for the fold without noticing the bar bleeds 16px past the body inset (-mx-4 -mt-4); verified the fold opened and closed, not that the open state still matched the page before. | `clip-check` · process |

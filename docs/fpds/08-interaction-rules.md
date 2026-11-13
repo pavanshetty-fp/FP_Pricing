@@ -661,6 +661,18 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** Pavan, 2026-11-12
 
+**IX-98. Every list has the 3PL Delivery Orders head: its views (Table, Board, Map, whichever the list has) are tabs on the views row in place of "All", with saved views after them; no view switch in the search row; the Settings gear and the collapse chevron at the right end of the search row; the chevron folds the page title and the views row (and the Customer Portal's overview cards). A table-only list shows one "Table view" tab. The banner stays when the head folds.**
+- **Why:** it was built on 3PL Delivery Orders alone and never reached the other lists (M-050).
+- **Applies to:** every list, through one shared part, `prototypes/unified-view/HeadFold.tsx` (`useHeadFold`, `HeadFold`, `displayViewsFor`). Not a record's 360 page: its tabs are the record's sections, not views.
+- **Check:** review
+- **Source:** Pavan, 2026-11-13
+
+**IX-99. A detail page opened as Full page covers the page, but its content keeps a centred column as wide as the sheet's own content: never under 756px, never over 1200px. The header and footer rules and any bands still run edge to edge; only the side padding grows.**
+- **Why:** end to end, forms and tables stretched across a wide screen and were hard to read (Pavan, 2026-11-13).
+- **Applies to:** every `RecordSheet` in Full page view (`--fp-page-col`, `--fp-page-pad`; the stepped body in `form-steps.tsx` reads the same padding). Side sheet and modal are unchanged.
+- **Check:** review
+- **Source:** Pavan, 2026-11-13
+
 ---
 
 ## Index
@@ -761,6 +773,8 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
 | IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
 | IX-96 | Outlined gear behind a divider; chevron beside it folds the page head away (every view) |
+| IX-98 | Every list: views as tabs on top, gear + collapse chevron at the end of the search row (shared HeadFold) |
+| IX-99 | Full page detail: content in a centred column, 756–1200px by content; rules run edge to edge |
 | IX-97 | Wide tables: a thin scrollbar under the table, inside its frame, only while it overflows; drag or click the track |
 | IX-95 | Hand cursor = goes somewhere (links, link text, record cards/rows/tiles); in-place controls keep the arrow |
 | IX-92 | Detail page view (Side sheet · Modal · Full page) lives in the Settings gear only, one choice for all modules; no ··· entry |

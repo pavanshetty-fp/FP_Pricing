@@ -2,6 +2,13 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.12 — 2026-11-13
+
+Built from commit `192a083`.
+
+- **Every list now has the 3PL Delivery Orders head:** Table, Board and Map are tabs on the views row (in place of "All"); the Settings gear and the collapse chevron sit at the end of the search row; the chevron folds the page title and the views row. Sales, Service Work, 3PL Recurring and Directory, Master Data and the Customer Portal (IX-98).
+- **Full page detail view** no longer runs end to end: the content sits in a centred column as wide as the sheet's content, between 756px and 1200px (IX-99).
+
 ## v1.11 — 2026-11-12
 
 Built from commit `d0c18ef`.

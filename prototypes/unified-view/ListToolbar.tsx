@@ -1053,10 +1053,10 @@ export function ListToolbar<K extends string>({
       {settings && (
         <RecordSheet
           size="compact"
-          /* 300 — THE TAB ROW'S WIDTH (251) PLUS THE BODY'S PADDING, with room
-             to breathe (Pavan, 2026-11-08: "at least 50%" of 510; 255 would
-             cut "Detail page view"). */
-          width={300}
+          /* 340 — THE TAB ROW'S WIDTH (287 with "Information page view",
+             2026-11-13) PLUS THE BODY'S PADDING, with the same room to
+             breathe as before (Pavan, 2026-11-08: "at least 50%" of 510). */
+          width={340}
           presentation="sheet"
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
@@ -1081,7 +1081,7 @@ export function ListToolbar<K extends string>({
                   {([
                     ["table", "Table"],
                     ...(cardFields ? [["board", "Board"]] : []),
-                    ["detail", "Detail page view"],
+                    ["detail", "Information page view"],
                   ] as [SettingsTab, string][]).map(([k, label]) => (
                     <TabsTrigger
                       key={k}

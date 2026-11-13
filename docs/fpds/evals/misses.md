@@ -18,28 +18,30 @@ Every time Pavan has to point out something that should already have been right 
 | 2026-10-18 | 9 |
 | 2026-10-25 | 28 |
 | 2026-11-01 | 7 |
-| 2026-11-08 | 6 |
+| 2026-11-08 | 8 |
 
-**50 misses** · found by Pavan 40 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 24 · process rule 6
+**52 misses** · found by Pavan 42 · by Claude 10 · guarded by a script 20 · guard proposed 0 · needs eyes 26 · process rule 6
 
 ## Patterns
 
 | Pattern | What it means | Count |
 |---|---|---|
-| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 12 |
+| `partial-unify` | Unified some parts of a unit (position, colour) but not all (anatomy, spacing) | 13 |
 | `edges` | Didn't look at the edges — last rows, card rims, repeated values, empty states | 9 |
 | `one-case` | Verified one case only (one row, one order, one stage, one theme) | 8 |
 | `generic-over-existing` | Reached for a generic component instead of the closest pattern already in the app | 8 |
 | `stale-rule` | A written rule or old note won over Pavan's newer instruction | 4 |
 | `unsafe-edit` | A scripted edit or tool run that damaged files | 3 |
+| `no-guard` | No guard against an impossible value or state | 3 |
 | `by-block` | Applied to the code block being edited, not to everything the user sees on that screen/stage | 2 |
 | `unchecked-output` | A sweep or generated output assumed correct without checking the result | 2 |
-| `no-guard` | No guard against an impossible value or state | 2 |
 
 ## The log
 
 | # | Date | What was missed | Where | Found by | Pattern | Why (my side) | Guard |
 |---|---|---|---|---|---|---|---|
+| M-052 | 2026-11-13 | Archive / Restore actions built on Directory and Master Data records without being asked | 3PL › Directory sheets + bulk bar; Master Data Customer, Ship-to, Asset 360 | Pavan | `no-guard` | Added 2026-09-07 with the Directory module as an assumed record action; never requested. Removed 2026-11-13. | `no-unrequested-actions` · manual |
+| M-051 | 2026-11-13 | Directory record sheets (Vendor, Customer, Product, Rental Asset) have no right rail: history is a header icon, not the shared Activity card | 3PL › Directory › every record sheet | Pavan | `partial-unify` | Built 2026-09-07, before the one-summary-one-activity rule (2026-10-07); never moved onto the rail when the rule came in. | `sheet-rail-activity` · manual |
 | M-050 | 2026-11-13 | 3PL list head (views as tabs on top, Settings + collapse chevron, head fold) never reached the other lists | Every list › Sales, Service, 3PL Recurring + Directory, Master Data, Customer Portal | Pavan | `partial-unify` | Built inside BrokerOrdersScreen as a trial (layout '2', inline fold markup) instead of as a shared part; nothing told the other lists it existed. Now one shared HeadFold.tsx (useHeadFold, HeadFold, displayViewsFor) used by every list. | `list-head-reach` · manual |
 | M-049 | 2026-11-12 | Accessibility panel: Fill contrast didn't reach the swimlanes, Component width didn't widen board lanes, Text size skipped titles and px-sized labels | Accessibility panel › every board and list | Pavan | `no-guard` | The new lane colour (--fp-lane-ground) wasn't added to a11y.ts's lists (the rule was in memory); BoardV2's fitted lane width ignored --fp-lane-k; the text scale covered xs–lg tokens only, not text-xl+ or text-[Npx]. | `a11y-token-reach` · built |
 | M-048 | 2026-11-10 | Collapsed header left a 16px strip of the views row (tabs, top of Create Order) showing above the search row | 3PL Delivery Orders › collapse-header fold | Pavan | `one-case` | The M-047 fix padded the fold's clip box to take the bar's bleed; the pad stayed when folded, so 16px of the bar still showed. Verified the open state after the fix but not the folded one, and the clip check skipped hidden content instead of checking it showed nothing. | `clip-check` · process |

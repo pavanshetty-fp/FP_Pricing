@@ -1,6 +1,6 @@
 import * as React from "react";
 import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
-import { Download, FileText, History, Image as ImageIcon, Sheet as SheetIcon, X } from "lucide-react";
+import { Download, FileText, Image as ImageIcon, Sheet as SheetIcon, X } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,14 +22,10 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { SheetField, SheetSection, SheetSectionNote } from "@/components/side-sheet/parts";
 import { cn } from "@/lib/utils";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { DATA_WIDTH, DraftStatusChip, RecordSheet, SHEET_RAIL, fitWidth, useDraftSaveState } from "../RecordSheet";
+import { ActivityCard, SheetRail } from "../SheetCards";
 import type { PendingItem } from "../PendingStrip";
 import { DASH, formatDate, formatStamp, type Attachment, type AuditEvent } from "./directoryCore";
 import type { FieldKind, FormFieldDef, FormSectionDef } from "./directoryFormTypes";
@@ -174,7 +170,6 @@ export function DirectoryRecordSheet<T>({
   onSubmit,
   level,
 }: DirectoryRecordSheetProps<T>) {
-  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<T>(initial);
   const [touched, setTouched] = React.useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = React.useState(false);
@@ -345,6 +340,8 @@ export function DirectoryRecordSheet<T>({
   };
 
   const data = readSections.length > 0;
+  /* An existing record carries its Activity in a rail. */
+  const railed = data && audit !== undefined;
   /* The tab strip, in the order the sections name their tabs. */
   const tabs = React.useMemo(() => {
     const out: { key: string; count?: number }[] = [];
@@ -368,6 +365,8 @@ export function DirectoryRecordSheet<T>({
          1200 at least, fields three across. A create stays a 600 form. */
       {...(readSections.length > 0 ? { size: "data" as const } : {})}
       fit={{ tables: readSections.map((r) => r.columns ?? []) }}
+      /* THE RAIL ADDS ITS OWN WIDTH — the form keeps its 1200 (three up). */
+      width={railed ? Math.max(DATA_WIDTH, fitWidth({ tables: readSections.map((r) => r.columns ?? []) })) + SHEET_RAIL : undefined}
       level={level}
       open={open}
       onOpenChange={(o) => {
@@ -391,25 +390,6 @@ export function DirectoryRecordSheet<T>({
           )}
         </span>
       }
-      headerActions={
-        audit && audit.length > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Audit history (${audit.length} ${audit.length === 1 ? "entry" : "entries"})`}
-                onClick={() => setHistoryOpen(true)}
-              >
-                <History />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Audit history · {audit.length} {audit.length === 1 ? "entry" : "entries"}
-            </TooltipContent>
-          </Tooltip>
-        ) : undefined
-      }
       canSubmit={errorCount === 0}
       pending={pending}
       onSubmit={() => {
@@ -418,6 +398,11 @@ export function DirectoryRecordSheet<T>({
         onSubmit(draft);
       }}
     >
+      {/* THE ACTIVITY LOG ON THE RIGHT, as on the 3PL delivery order (Pavan,
+          2026-11-13: "regardless of orders or something else"). It was a
+          clock icon in the header opening a drawer. */}
+      <div className={cn("grid items-start gap-6", railed && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
+      <div className="flex min-w-0 flex-col gap-10">
       {visibleSections.map((s) => (
         <SheetSection
           key={s.key}
@@ -510,14 +495,6 @@ export function DirectoryRecordSheet<T>({
         </SheetSection>
       ))}
 
-      {audit && (
-        <AuditDrawer
-          open={historyOpen}
-          onOpenChange={setHistoryOpen}
-          title={title}
-          events={audit}
-        />
-      )}
 
       {tabs.length > 0 && (
         <Tabs value={tab} onValueChange={setTab}>
@@ -564,6 +541,17 @@ export function DirectoryRecordSheet<T>({
           </SheetSection>
         );
       })}
+      </div>
+      {railed && (
+        <SheetRail>
+          <ActivityCard
+            entries={[...audit!]
+              .sort((a, b) => (a.at < b.at ? -1 : 1))
+              .map((e) => ({ at: e.at, by: e.by, changes: e.changes.length > 0 ? e.changes : [e.action] }))}
+          />
+        </SheetRail>
+      )}
+      </div>
     </RecordSheet>
   );
 }

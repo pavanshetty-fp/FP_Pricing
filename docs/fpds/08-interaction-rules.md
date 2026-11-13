@@ -667,9 +667,27 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** Pavan, 2026-11-13
 
-**IX-99. A detail page opened as Full page covers the page, but its content keeps a centred column as wide as the sheet's own content: never under 756px, never over 1200px. The header and footer rules and any bands still run edge to edge; only the side padding grows.**
+**IX-99. A detail page opened as Full page or Modal: the overlay covers the page (Full page) or is as wide as that column, 24px from the top and bottom and never closer than 60px to the sides (Modal); the content keeps a centred column as wide as the sheet's own content: never under 756px, never over 1200px. The header and footer rules and any bands still run edge to edge; only the side padding grows.**
 - **Why:** end to end, forms and tables stretched across a wide screen and were hard to read (Pavan, 2026-11-13).
 - **Applies to:** every `RecordSheet` in Full page view (`--fp-page-col`, `--fp-page-pad`; the stepped body in `form-steps.tsx` reads the same padding). Side sheet and modal are unchanged.
+- **Check:** review
+- **Source:** Pavan, 2026-11-13
+
+**IX-100. Every record sheet's right column is the shared `SheetRail`: pinned at the top of the form's scroller, never taller than what the scroller shows (its 16px padding kept top and bottom) or than the form beside it, and scrolling itself all the way to its last card. When Activity is its only card, the card runs the column's full height, 16px from top and bottom, and lists every entry. The activity log is always the shared Activity card in this column, never a header icon or a drawer. Same in side sheet, modal and full page.**
+- **Why:** the last card (Activity) sat under the sticky footer; Directory and Portal sheets had the log as a clock icon (Pavan, 2026-11-13).
+- **Applies to:** every sheet with a rail, in every module (`prototypes/unified-view/SheetCards.tsx` → `SheetRail`, `ActivityCard`).
+- **Check:** review
+- **Source:** Pavan, 2026-11-13
+
+**IX-101. Archive is a module in the main navigation. It holds each module's pages for records Master Data now holds, named for the module they came from: "3PL directory", "Sales customers", "Sales assets". Master Data stays its own module. No record has an Archive / Restore action.**
+- **Why:** the Archive action was added without being asked (M-052); module copies of Master Data records belong out of the way (Pavan, 2026-11-13).
+- **Applies to:** the main navigation (`UnifiedView.tsx` → `ARCHIVE_NAV`); links and search to those pages land under Archive.
+- **Check:** review
+- **Source:** Pavan, 2026-11-13
+
+**IX-102. Settings → "Information page view" (was "Detail page view") opens on a looping lo-fi wireframe as wide as the sheet, showing a record opening the chosen way: side sheet slides in from the right, modal grows in the middle, full page rises over everything with a close cross. 4s a cycle; still where motion is reduced.**
+- **Why:** a picture of the choice, so people can tell before switching (Pavan, 2026-11-13).
+- **Applies to:** every list's Settings sheet (`RecordSheet.tsx` → `DetailViewChoice`, `PresentationPreview`); the sheet is 340px so the tab row fits.
 - **Check:** review
 - **Source:** Pavan, 2026-11-13
 
@@ -773,8 +791,11 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-93 | List Settings: one gear → 300px sheet with Table · Board · Detail page view tabs, opens on the current view's tab |
 | IX-94 | Search by column = a hover tab at the header row's right edge, full row height, darker grey, above all header layers |
 | IX-96 | Outlined gear behind a divider; chevron beside it folds the page head away (every view) |
+| IX-100 | Right column = shared SheetRail: pinned, capped to the view less padding, scrolls to its last card; lone Activity fills it |
+| IX-101 | Archive module: module pages Master Data holds (3PL directory, Sales customers, Sales assets); no Archive action |
+| IX-102 | Settings → Information page view: looping wireframe of the chosen view |
 | IX-98 | Every list: views as tabs on top, gear + collapse chevron at the end of the search row (shared HeadFold) |
-| IX-99 | Full page detail: content in a centred column, 756–1200px by content; rules run edge to edge |
+| IX-99 | Full page and modal detail: content in a centred column, 756–1200px by content; modal = that column's width, 24px top/bottom |
 | IX-97 | Wide tables: a thin scrollbar under the table, inside its frame, only while it overflows; drag or click the track |
 | IX-95 | Hand cursor = goes somewhere (links, link text, record cards/rows/tiles); in-place controls keep the arrow |
 | IX-92 | Detail page view (Side sheet · Modal · Full page) lives in the Settings gear only, one choice for all modules; no ··· entry |

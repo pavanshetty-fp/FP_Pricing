@@ -1,13 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Archive, CheckCircle2, Download, MoreHorizontal, Tag, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { CheckCircle2, Download, Tag, XCircle } from "lucide-react";
 import type { BulkAction } from "@/components/tables-layout";
 import { DirectoryList, type DirectoryColumn, type DirectoryFacet } from "./DirectoryList";
 import {
@@ -243,19 +236,6 @@ export function DirectoryEntityScreen<Row, K extends string>({
     return entry;
   };
 
-  /* Archive / Restore from the ⋯ — one write with the visit's audit, then
-     back to the list. */
-  const setStatusFromSheet = (row: Row, status: RecordStatus, message: string) => {
-    const before = opened.current;
-    opened.current = null;
-    const after = config.statusField.set(row, status);
-    const entry = before ? auditFor(before, after, config.formSections, "Dana Whitfield") : null;
-    const next = entry ? config.withAudit(after, entry) : after;
-    replaceRow(config.rowId(next), () => next);
-    toast.success(message);
-    closeSheet();
-  };
-
   const submit = (draft: Row) => {
     if (sheet?.kind === "create") {
       onRowsChange([draft, ...rows]);
@@ -309,7 +289,6 @@ export function DirectoryEntityScreen<Row, K extends string>({
         createLabel={`Add New ${Noun}`}
         bulkActions={(selected, clear) => {
           const ids = selected.map(config.rowId);
-          const allArchived = selected.every((r) => config.statusField.get(r) === "archived");
           return [
             {
               key: "export",
@@ -326,22 +305,6 @@ export function DirectoryEntityScreen<Row, K extends string>({
               applyToMany(ids, fn, message);
               clear();
             }) ?? []),
-            {
-              key: "archive",
-              label: allArchived ? "Restore" : "Archive",
-              icon: allArchived ? <CheckCircle2 /> : <Archive />,
-              destructive: !allArchived,
-              disabled: !canWrite,
-              title: canWrite ? undefined : "You do not have permission to archive records",
-              onSelect: () => {
-                applyToMany(
-                  ids,
-                  (r) => config.statusField.set(r, allArchived ? "active" : "archived"),
-                  `${ids.length} ${ids.length === 1 ? config.noun : plural} ${allArchived ? "restored" : "archived"}`
-                );
-                clear();
-              },
-            },
           ];
         }}
       />
@@ -368,37 +331,6 @@ export function DirectoryEntityScreen<Row, K extends string>({
           }}
           recordKey={config.rowId(initial)}
           onAutosave={autosave}
-          headerMenu={
-            sheet?.kind === "create" || !record ? undefined : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label={`More ${config.noun} actions`}>
-                    <MoreHorizontal />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {config.statusField.get(record) === "archived" ? (
-                    <DropdownMenuItem
-                      disabled={!canWrite}
-                      onSelect={() => setStatusFromSheet(record, "active", `${Noun} restored`)}
-                    >
-                      <CheckCircle2 />
-                      Restore
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!canWrite}
-                      onSelect={() => setStatusFromSheet(record, "archived", `${Noun} archived`)}
-                    >
-                      <Archive />
-                      Archive
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )
-          }
           mode={sheet?.kind === "create" ? "create" : "edit"}
           noun={Noun}
           title={config.nameOf(initial)}

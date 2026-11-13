@@ -1,16 +1,9 @@
 import * as React from "react";
-import { toast } from "sonner";
-import { Archive, CheckCircle2, MoreHorizontal, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { RecordSheet } from "../RecordSheet";
 import { BarColumns } from "../DashboardParts";
 import { RailCard, RailRow } from "../SheetCards";
@@ -99,13 +92,7 @@ export function ShipToSheet({
   const open = orders.filter(isOpen).sort((x, y) => x.date.localeCompare(y.date));
   const months = monthsOf(orders);
   const rental = here.filter((a) => a.ownership === "Rental").length;
-  const archived = s.status === "archived";
 
-  const setArchived = (on: boolean) => {
-    onChange({ ...s, status: on ? "archived" : "active" });
-    toast.success(on ? "Ship-to archived" : "Ship-to restored");
-    if (on) onClose();
-  };
 
   const tabs: ViewTab[] = [
     { ...ordersTab(orders, { site: false, label: "Orders and deliveries" }) },
@@ -148,28 +135,6 @@ export function ShipToSheet({
             </StatusChip>
             {s.isDefault && <Pill>Default site</Pill>}
           </span>
-        }
-        headerMenu={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More ship-to actions">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {archived ? (
-                <DropdownMenuItem onSelect={() => setArchived(false)}>
-                  <CheckCircle2 />
-                  Restore
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem variant="destructive" onSelect={() => setArchived(true)}>
-                  <Archive />
-                  Archive
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         }
         onSubmit={onClose}
       >

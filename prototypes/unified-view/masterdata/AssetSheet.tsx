@@ -1,6 +1,5 @@
 import * as React from "react";
-import { toast } from "sonner";
-import { Archive, ArrowRightLeft, CheckCircle2, ChevronDown, MoreHorizontal, Plus, Wrench } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -62,13 +61,7 @@ export function AssetSheet({
   const [creating, setCreating] = React.useState<"movement" | "service" | null>(null);
   const pct = levelPct(a);
   const stats = deliveryStats(a);
-  const archived = a.recordStatus === "archived";
 
-  const setArchived = (on: boolean) => {
-    onChange({ ...a, recordStatus: on ? "archived" : "active" });
-    toast.success(on ? "Asset archived" : "Asset restored");
-    if (on) onClose();
-  };
 
   return (
     <>
@@ -115,28 +108,6 @@ export function AssetSheet({
                 <Wrench />
                 Service order
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
-        headerMenu={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More asset actions">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {archived ? (
-                <DropdownMenuItem onSelect={() => setArchived(false)}>
-                  <CheckCircle2 />
-                  Restore
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem variant="destructive" onSelect={() => setArchived(true)}>
-                  <Archive />
-                  Archive
-                </DropdownMenuItem>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         }

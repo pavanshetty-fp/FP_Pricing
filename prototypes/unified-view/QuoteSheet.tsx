@@ -25,7 +25,7 @@ import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "./RecordS
 import { ProductTable } from "./ProductTable";
 import { HangingAdd } from "./HangingAdd";
 import { PendingStrip, type PendingItem } from "./PendingStrip";
-import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { ActivityCard, RailRow, SummaryCard, SheetRail } from "./SheetCards";
 import { EmailChips } from "./threepl/InvitePartnerSheet";
 import { CUSTOMERS } from "./customers";
 import { MONEY, RATE, dateKeyOf, formatFullDate, startOfDay } from "./data";
@@ -774,7 +774,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
 
           {/* WHAT THE FORM MAKES — read-only, and it stays put while the form
               scrolls (ux §Side-sheet anatomy, the two-column sheet). */}
-          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+          <SheetRail>
             {/* THE SHARED SUMMARY CARD (Pavan, 2026-10-07 — ux §Record
                 sheets): the 3PL Quotation summary's shell. A fee or tax row
                 made of several shows its parts on hover. */}
@@ -827,7 +827,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
             </SummaryCard>
             {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07). */}
             <ActivityCard entries={quote.audit} timeZone={settings.timeZone} />
-          </aside>
+          </SheetRail>
         </div>
       </RecordSheet>
 

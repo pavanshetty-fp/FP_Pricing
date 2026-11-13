@@ -35,7 +35,7 @@ import { TokenMultiSelect } from "./TokenMultiSelect";
 import { PendingStrip, type PendingItem } from "./PendingStrip";
 import { formatFullDate, startOfDay } from "./data";
 import type { FuelOrder, FuelOrderStatus, OrderTypeCode } from "./types";
-import { ActivityCard, RailRow, SummaryCard } from "./SheetCards";
+import { ActivityCard, RailRow, SummaryCard, SheetRail } from "./SheetCards";
 import { PocCard, PocUnit } from "./PocDetails";
 import { SheetSection } from "@/components/side-sheet/parts";
 import { kindTone } from "./statusKind";
@@ -721,7 +721,7 @@ export function OrderSheet({
           {/* WHAT THE ORDER HAS BECOME — read-only, sticky; no rail while
               creating (G29 · G30 · G31 · G32, Pavan, 2026-10-07). */}
           {!creating && order && (
-            <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            <SheetRail>
               <SummaryCard title="Order summary">
                 <dl className="flex flex-col">
                   {draft.products.length === 0 ? (
@@ -749,7 +749,7 @@ export function OrderSheet({
               </SummaryCard>
               <PocCard shipTo={draft.shipTo} value={draft.poc} onChange={(v) => set("poc", v)} />
               <ActivityCard entries={order.audit} timeZone={settings.timeZone} />
-            </aside>
+            </SheetRail>
           )}
         </div>
       </RecordSheet>

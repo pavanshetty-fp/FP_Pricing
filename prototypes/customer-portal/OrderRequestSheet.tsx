@@ -40,7 +40,7 @@ import { RecordLink, usePortalNav } from "./nav";
 import { INVOICES } from "./invoices";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
-import { ActivityCard, RailCard, RailRow, SummaryCard } from "../unified-view/SheetCards";
+import { ActivityCard, RailCard, RailRow, SummaryCard, SheetRail } from "../unified-view/SheetCards";
 import { PocCard } from "../unified-view/PocDetails";
 import { RulePill } from "./cells";
 import { AfterDelivery, DaysToEmpty, FulfilmentHead, FulfilmentPct, LevelReading } from "./TankLevel";
@@ -977,7 +977,7 @@ export function OrderRequestSheet({
         {/* THE SUMMARY TAKES THE RAIL'S FULL HEIGHT (Pavan, 2026-10-20) — the
             sheet's scroll area less its padding; the trip and activity cards
             keep their own height below it, the summary takes the rest. */}
-        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:h-[calc(var(--fp-vh)-10.25rem)]">
+        <SheetRail className="lg:h-(--rail-max)">
           <RequestSummary lines={draft.lines} invoiceNo={request.invoiceNo} fill />
           {/* POC DETAILS — the shared unit (Pavan, 2026-10-29), creating too:
               this sheet has its rail from the start. */}
@@ -992,7 +992,7 @@ export function OrderRequestSheet({
             </RailCard>
           )}
           {!creating && <ActivityCard entries={request.audit} />}
-        </aside>
+        </SheetRail>
       </div>
     </RecordSheet>
 

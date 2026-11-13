@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, History, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Ban, ClipboardPlus, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/ui/pill";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusChip } from "@/components/ui/status-chip";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SheetField, SheetSection, SheetSteps } from "@/components/side-sheet/parts";
 import { MultiSelect } from "@/components/form-layout/MultiSelect";
 import {
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DATE_FMT } from "../unified-view/data";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
-import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { CELL, DATA_WIDTH, DraftStatusChip, RecordSheet, SHEET_RAIL, useDraftSaveState } from "../unified-view/RecordSheet";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import {
   ASSET_TYPES,
@@ -48,9 +47,9 @@ import {
   type AssetDraft,
 } from "./sites";
 import { LocationMap } from "./LocationMap";
-import { ActivityLogSheet } from "./ActivityLogSheet";
+import { ActivityCard, SheetRail } from "../unified-view/SheetCards";
 import { ShipToSheet } from "./ShipToSheet";
-import { assetLog } from "./activityLog";
+import { assetLog, toTimeline } from "./activityLog";
 
 /*
   THE ASSET SHEET (Pavan, 2026-10-13). The customer's own record of a tank or
@@ -112,7 +111,7 @@ export function AssetSheet({
   const shipTos = useShipTos();
   const [draft, setDraft] = React.useState<AssetDraft | null>(null);
   const [siteId, setSiteId] = React.useState("");
-  const [showLog, setShowLog] = React.useState(false);
+  const railed = !creating && Boolean(asset);
   /* THE TWO STEPS (Pavan, 2026-10-14) — the asset, then the ship-to it is
      mapped to and where it stands there. A new ship-to can be made from step
      2 without leaving. */
@@ -126,7 +125,6 @@ export function AssetSheet({
        last one's, or opening it reads as an edit ("Draft saved"). */
     if (!open) {
       setDraft(null);
-      setShowLog(false);
       return;
     }
     const d = creating ? blankAsset() : asset ? draftOf(asset) : null;
@@ -239,7 +237,7 @@ export function AssetSheet({
            (Pavan, 2026-10-15). Creating keeps the widths above. */
         {...(!creating
           ? /* …and at least as wide as its order history (Pavan, 2026-10-17). */
-            { size: "data" as const, fit: { tables: [[CELL.name, CELL.date, CELL.name, CELL.number, CELL.level, CELL.status]] } }
+            { size: "data" as const, fit: { tables: [[CELL.name, CELL.date, CELL.name, CELL.number, CELL.level, CELL.status]] }, width: DATA_WIDTH + SHEET_RAIL }
           : {})}
         open={open}
         onOpenChange={onOpenChange}
@@ -293,18 +291,6 @@ export function AssetSheet({
             {saveState !== "idle" && <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />}
           </span>
         }
-        headerActions={
-          creating || !asset ? undefined : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Activity log" onClick={() => setShowLog(true)}>
-                  <History />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Activity log</TooltipContent>
-            </Tooltip>
-          )
-        }
         headerMenu={
           creating || !asset ? undefined : (
             <DropdownMenu>
@@ -333,6 +319,9 @@ export function AssetSheet({
           toast.success(`${a.name} created`);
         }}
       >
+        {/* THE ACTIVITY LOG ON THE RIGHT, as on the 3PL delivery order
+            (Pavan, 2026-11-13 — it was an icon in the header). */}
+        <div className={cn("grid items-start gap-6", railed && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
         {step === "details" ? (
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="asset-details" title="Details">
@@ -547,6 +536,12 @@ export function AssetSheet({
 
         </div>
         )}
+        {railed && (
+          <SheetRail>
+            <ActivityCard entries={toTimeline(assetLog(asset!.id))} />
+          </SheetRail>
+        )}
+        </div>
       </RecordSheet>
       <ShipToSheet
         level={2}
@@ -555,13 +550,6 @@ export function AssetSheet({
         creating
         onOpenChange={setNewShipTo}
         onCreated={(st) => setSiteId(st.id)}
-      />
-      <ActivityLogSheet
-        open={showLog && Boolean(asset)}
-        onOpenChange={setShowLog}
-        title={asset?.name ?? "Asset"}
-        subtitle={site?.name}
-        entries={asset ? assetLog(asset.id) : []}
       />
     </>
   );

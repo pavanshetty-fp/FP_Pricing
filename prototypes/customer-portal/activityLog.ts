@@ -50,3 +50,9 @@ export function shipToLog(s: ShipTo): LogEntry[] {
   }
   return newestFirst(out);
 }
+
+/** The log in the shared Activity card's shape — oldest first, one change
+ *  per entry (the card shows the latest six, newest on top). */
+export function toTimeline(log: LogEntry[]): { at: string; by: string; changes: string[] }[] {
+  return [...log].sort((a, b) => a.at.localeCompare(b.at)).map((e) => ({ at: e.at, by: e.by, changes: [e.text] }));
+}

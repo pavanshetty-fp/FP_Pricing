@@ -1,13 +1,4 @@
 import * as React from "react";
-import { toast } from "sonner";
-import { Archive, CheckCircle2, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { RecordSheet } from "../RecordSheet";
 import { BarColumns } from "../DashboardParts";
 import { DirectoryRecordSheet } from "../threepl/DirectoryRecordSheet";
@@ -52,13 +43,7 @@ export function CustomerSheet({
   const orders = React.useMemo(() => ordersOf(c, assets), [c, assets]);
   const f = figuresOf(c, orders);
   const months = monthsOf(orders);
-  const archived = c.status === "archived";
 
-  const setArchived = (on: boolean) => {
-    onChange({ ...c, status: on ? "archived" : "active" });
-    toast.success(on ? "Customer archived" : "Customer restored");
-    if (on) onClose();
-  };
 
   return (
     <>
@@ -78,28 +63,6 @@ export function CustomerSheet({
           <span className="text-sm text-muted-foreground">{[c.mainContactName, regionOf(c)].filter(Boolean).join(" · ")}</span>
         }
         headerAside={customerHeaderAside(c)}
-        headerMenu={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More customer actions">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {archived ? (
-                <DropdownMenuItem onSelect={() => setArchived(false)}>
-                  <CheckCircle2 />
-                  Restore
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem variant="destructive" onSelect={() => setArchived(true)}>
-                  <Archive />
-                  Archive
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
         onSubmit={onClose}
       >
         <div className={FIGURE_STRIP}>

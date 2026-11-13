@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { CELL, RecordSheet } from "../unified-view/RecordSheet";
-import { ActivityCard } from "../unified-view/SheetCards";
+import { ActivityCard, SheetRail } from "../unified-view/SheetCards";
 import { DATE_FMT } from "../unified-view/data";
 import { kindTone, statusTones } from "../unified-view/statusKind";
 import { TwoLineCell, type ListColumn } from "../unified-view/ListTable";
@@ -309,9 +309,9 @@ function RuleDetail({
               </table>
             </SheetSection>
           </div>
-          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+          <SheetRail>
             <ActivityCard entries={rule.audit} />
-          </aside>
+          </SheetRail>
         </div>
       </RecordSheet>
       <AlertDialog open={ending} onOpenChange={setEnding}>

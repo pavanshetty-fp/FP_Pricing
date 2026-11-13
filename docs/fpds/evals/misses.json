@@ -667,6 +667,32 @@
         "id": "list-head-reach",
         "status": "manual"
       }
+    },
+    {
+      "id": "M-051",
+      "date": "2026-11-13",
+      "title": "Directory record sheets (Vendor, Customer, Product, Rental Asset) have no right rail: history is a header icon, not the shared Activity card",
+      "where": "3PL › Directory › every record sheet",
+      "foundBy": "pavan",
+      "pattern": "partial-unify",
+      "why": "Built 2026-09-07, before the one-summary-one-activity rule (2026-10-07); never moved onto the rail when the rule came in.",
+      "check": {
+        "id": "sheet-rail-activity",
+        "status": "manual"
+      }
+    },
+    {
+      "id": "M-052",
+      "date": "2026-11-13",
+      "title": "Archive / Restore actions built on Directory and Master Data records without being asked",
+      "where": "3PL › Directory sheets + bulk bar; Master Data Customer, Ship-to, Asset 360",
+      "foundBy": "pavan",
+      "pattern": "no-guard",
+      "why": "Added 2026-09-07 with the Directory module as an assumed record action; never requested. Removed 2026-11-13.",
+      "check": {
+        "id": "no-unrequested-actions",
+        "status": "manual"
+      }
     }
   ]
 }

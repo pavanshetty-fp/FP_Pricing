@@ -157,15 +157,17 @@ export function RailCard({
   title,
   icon,
   action,
+  className,
   children,
 }: {
   title: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="shrink-0 overflow-hidden rounded-lg border border-border">
+    <section className={cn("shrink-0 overflow-hidden rounded-lg border border-border", className)}>
       {/* A QUIET HEADER (Pavan, 2026-10-26) — the band's fill and the
           semibold made every read-out card shout as loud as the one that
           changes (Invitations); now the title sits on the card's own ground,
@@ -222,10 +224,15 @@ export interface TimelineEntry {
 export function ActivityCard({
   entries,
   timeZone,
+  fill = false,
 }: {
   entries?: TimelineEntry[];
   /** Print the stamps in this zone — Sales' Preferences (2026-10-07). */
   timeZone?: string;
+  /** THE ONLY CARD IN THE RAIL (Pavan, 2026-11-13) — it runs the rail's
+   *  full height and lists every entry, scrolling inside. `SheetRail` sets
+   *  it on its own when Activity is alone. */
+  fill?: boolean;
 }) {
   const fmt = timeZone
     ? new Intl.DateTimeFormat("en-US", {
@@ -238,7 +245,7 @@ export function ActivityCard({
       })
     : AUDIT_FMT;
   return (
-    <RailCard title="Activity" icon={<HistoryIcon />}>
+    <RailCard title="Activity" icon={<HistoryIcon />} className={cn(fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}>
       {!entries || entries.length === 0 ? (
         <p className="px-4 py-3 text-sm text-muted-foreground">
           Nothing has changed yet.
@@ -253,10 +260,10 @@ export function ActivityCard({
            WHAT CHANGED LEADS, WHO AND WHEN FOLLOWS. The reader is
            looking for the event; the name and the timestamp are what
            they check once they have found it. */
-        <ol className="flex flex-col px-4 py-3">
+        <ol className={cn("flex flex-col px-4 py-3", fill && "lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain")}>
           {[...entries]
             .reverse()
-            .slice(0, 6)
+            .slice(0, fill ? undefined : 6)
             .flatMap((e, i) =>
               e.changes.map((c, j) => ({ e, c, key: `${e.at}-${i}-${j}` }))
             )
@@ -292,5 +299,79 @@ export function ActivityCard({
         </ol>
       )}
     </RailCard>
+  );
+}
+
+/**
+ * THE RIGHT COLUMN OF EVERY RECORD SHEET (Pavan, 2026-11-13: "the last group,
+ * Activity, is not scrolling above the sticky at the bottom"). One part for
+ * every module and every view — side sheet, modal, full page.
+ *
+ * Pinned at the top of the form's scroller, and NEVER TALLER THAN WHAT THE
+ * SCROLLER SHOWS: its padding taken off top and bottom (the old cap was the
+ * whole scroller, so the last card ran 16px+ under the footer), and never past
+ * the form beside it. What doesn't fit scrolls inside the column, all the way
+ * to its last card; a wheel over it moves it and never the form.
+ */
+export function SheetRail({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  /* ACTIVITY ALONE FILLS THE COLUMN (Pavan, 2026-11-13): the same 16px
+     above and below as the scroller's padding, the card as tall as the view. */
+  const cards = React.Children.toArray(children).filter(React.isValidElement);
+  const fill = cards.length === 1 && cards[0].type === ActivityCard;
+  const cleanup = React.useRef<(() => void) | null>(null);
+  /* A CALLBACK REF — the sheet's body mounts a commit after the open render.
+     `top-0` already sits inside the scroller's padding (sticky insets are
+     measured from its content box), so only the cap takes the padding off. */
+  const ref = React.useCallback((rail: HTMLElement | null) => {
+    cleanup.current?.();
+    cleanup.current = null;
+    const port = rail?.closest<HTMLElement>(".overflow-auto");
+    if (!rail || !port) return;
+    const form = rail.previousElementSibling as HTMLElement | null;
+    const fit = () => {
+      const cs = getComputedStyle(port);
+      const top = parseFloat(cs.paddingTop) || 0;
+      const view = port.clientHeight - top - (parseFloat(cs.paddingBottom) || 0);
+      const formH = form && !rail.hasAttribute("data-fill") ? form.offsetHeight : view;
+      rail.style.setProperty("--rail-max", `${Math.max(0, Math.min(view, formH))}px`);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(port);
+    if (form) ro.observe(form);
+    const onWheel = (e: WheelEvent) => {
+      if (getComputedStyle(rail).position !== "sticky") return;
+      const up = e.deltaY < 0;
+      const atEnd = up
+        ? rail.scrollTop <= 0
+        : rail.scrollTop + rail.clientHeight >= rail.scrollHeight - 1;
+      if (atEnd) e.preventDefault();
+    };
+    rail.addEventListener("wheel", onWheel, { passive: false });
+    cleanup.current = () => {
+      ro.disconnect();
+      rail.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+  return (
+    <aside
+      ref={ref}
+      data-fill={fill ? "" : undefined}
+      className={cn(
+        "flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:max-h-(--rail-max) lg:overflow-y-auto lg:overscroll-contain",
+        fill && "lg:h-(--rail-max) lg:overflow-hidden",
+        className
+      )}
+    >
+      {fill
+        ? React.cloneElement(cards[0] as React.ReactElement<{ fill?: boolean }>, { fill: true })
+        : children}
+    </aside>
   );
 }

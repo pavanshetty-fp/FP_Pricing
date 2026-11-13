@@ -2012,3 +2012,37 @@ th:is([aria-sort="ascending"], [aria-sort="descending"]) button {
 @utility fp-page-pad {
   padding-inline: var(--fp-page-pad, 1rem);
 }
+
+/* INFORMATION PAGE VIEW — THE WIREFRAME PREVIEW (Pavan, 2026-11-13). In the
+   Settings sheet, a lo-fi page that opens a record the chosen way, on a loop:
+   the side sheet slides in from the right, the modal grows in the middle, the
+   full page rises over everything. 4s a cycle; held still where motion is
+   reduced. */
+@keyframes fp-wf-sheet {
+  0%, 15% { transform: translateX(105%); }
+  30%, 75% { transform: translateX(0); }
+  90%, 100% { transform: translateX(105%); }
+}
+@keyframes fp-wf-modal {
+  0%, 15% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  30%, 75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  90%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+}
+@keyframes fp-wf-full {
+  0%, 15% { opacity: 0; transform: translateY(12%); }
+  30%, 75% { opacity: 1; transform: translateY(0); }
+  90%, 100% { opacity: 0; transform: translateY(12%); }
+}
+@keyframes fp-wf-scrim {
+  0%, 15% { opacity: 0; }
+  30%, 75% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+.fp-wf-sheet { animation: fp-wf-sheet 4s ease-in-out infinite; }
+.fp-wf-modal { animation: fp-wf-modal 4s ease-in-out infinite; }
+.fp-wf-full { animation: fp-wf-full 4s ease-in-out infinite; }
+.fp-wf-scrim { animation: fp-wf-scrim 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .fp-wf-sheet, .fp-wf-modal, .fp-wf-full, .fp-wf-scrim { animation: none; }
+  .fp-wf-modal { transform: translate(-50%, -50%); }
+}

@@ -25,15 +25,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { kindTone, ACTIVE_KIND } from "../unified-view/statusKind";
-import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../unified-view/RecordSheet";
+import { CELL, DATA_WIDTH, DraftStatusChip, RecordSheet, SHEET_RAIL, useDraftSaveState } from "../unified-view/RecordSheet";
+import { ActivityCard, SheetRail } from "../unified-view/SheetCards";
 import { HangingAdd } from "../unified-view/HangingAdd";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LocationMap } from "./LocationMap";
 import { searchPlaces } from "./geo";
 import { ActivityLogSheet } from "./ActivityLogSheet";
-import { assetLog, shipToLog } from "./activityLog";
+import { assetLog, shipToLog, toTimeline } from "./activityLog";
 import { PendingStrip, type PendingItem } from "../unified-view/PendingStrip";
 import { ASSET_TYPES, PRODUCT_CATEGORIES, assetById, clampPreferred, productsIn, sizeRequired, type Asset, type ShipTo } from "./orders";
 import { BatteryCell, LevelReading } from "./TankLevel";
@@ -412,7 +412,7 @@ export function ShipToSheet({
   const [focusRow, setFocusRow] = React.useState<number | undefined>();
   const typed = React.useRef(false);
   const [logFor, setLogFor] = React.useState<number | null>(null);
-  const [shipLog, setShipLog] = React.useState(false);
+  const railed = !creating && Boolean(shipTo);
   const lastSaved = React.useRef<string | null>(null);
   const key = creating ? "new" : (shipTo?.id ?? null);
   React.useEffect(() => {
@@ -569,6 +569,8 @@ export function ShipToSheet({
       /* AN EXISTING SHIP-TO IS DATA-INTENSIVE — 1200 at least (Pavan,
          2026-10-15); creating keeps the widths above. */
       {...(!creating ? { size: "data" as const } : {})}
+      /* The rail adds its own width — the form keeps its 1200. */
+      {...(railed ? { width: DATA_WIDTH + SHEET_RAIL } : {})}
       open={open}
       onOpenChange={onOpenChange}
       mode={creating ? "create" : "edit"}
@@ -621,18 +623,6 @@ export function ShipToSheet({
           {saveState !== "idle" && <DraftStatusChip tone="neutral" label="Draft" saveState={saveState} />}
         </span>
       }
-      headerActions={
-        creating || !shipTo ? undefined : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Activity log" onClick={() => setShipLog(true)}>
-                <History />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Activity log</TooltipContent>
-          </Tooltip>
-        )
-      }
       headerMenu={
         creating || !shipTo ? undefined : (
           <DropdownMenu>
@@ -662,9 +652,10 @@ export function ShipToSheet({
         onCreated?.(s);
       }}
     >
-      {/* ONE COLUMN — no summary card for a ship-to (Pavan, 2026-10-13); its
-          history is the activity icon in the header. */}
-      <div className="grid items-start gap-6">
+      {/* THE ACTIVITY LOG ON THE RIGHT, as on the 3PL delivery order (Pavan,
+          2026-11-13 — it was an icon in the header). No summary card for a
+          ship-to (2026-10-13). */}
+      <div className={cn("grid items-start gap-6", railed && "lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]")}>
         {step === "details" ? (
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection id="st-details" title="Details">
@@ -842,6 +833,11 @@ export function ShipToSheet({
           </SheetSection>
         </div>
         )}
+        {railed && (
+          <SheetRail>
+            <ActivityCard entries={toTimeline(shipToLog(shipTo!))} />
+          </SheetRail>
+        )}
       </div>
     </RecordSheet>
     <ActivityLogSheet
@@ -850,12 +846,6 @@ export function ShipToSheet({
       title={(logFor !== null && draft.assets[logFor]?.name) || "Asset"}
       subtitle={draft.name}
       entries={logFor !== null ? assetLog(draft.assets[logFor]?.id) : []}
-    />
-    <ActivityLogSheet
-      open={shipLog && Boolean(shipTo)}
-      onOpenChange={setShipLog}
-      title={shipTo?.name ?? "Ship-to"}
-      entries={shipTo ? shipToLog(shipTo) : []}
     />
     </>
   );

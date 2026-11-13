@@ -13,7 +13,7 @@ import {
   type SheetPresentation,
 } from "./sheetPresentation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { SheetField, SheetSection } from "@/components/side-sheet/parts";
+import { SheetField } from "@/components/side-sheet/parts";
 import { SteppedFormBody } from "@/components/side-sheet/form-steps";
 import { FormStepsContext } from "@/components/side-sheet/form-steps-context";
 import { PendingStrip, attend, type PendingItem } from "./PendingStrip";
@@ -153,6 +153,8 @@ export const DockedSheet = React.createContext(false);
 /** BODY PADDING (16 + 16) AND THE TABLE BOX'S BORDERS. */
 const FIT_PAD = 34;
 const RAIL = 340 + 24;
+/** The rail and its gap — for a sheet that sets its own width. */
+export const SHEET_RAIL = RAIL;
 export const FORM_WIDTH = 600;
 export const DATA_WIDTH = 1200;
 /** Full page: the content column's widest (Pavan, 2026-11-13; 756 the narrowest). */
@@ -579,10 +581,16 @@ export function RecordSheet({
                wide as the sheet's own content: never under 756, never over
                1200. The rules and bands still run edge to edge; only the
                padding grows. */
-            ...(presentation === "full"
+            /* THE MODAL TOO (Pavan, 2026-11-13): the box is the viewport
+               less its gaps, the content the same centred column. */
+            ...(presentation === "full" || presentation === "modal"
               ? {
                   "--fp-page-col": `clamp(756px, calc(${size === "full" ? PAGE_MAX : width}px * var(--fp-scale, 1)), ${PAGE_MAX}px)`,
-                  "--fp-page-pad": "max(1rem, calc((100% - var(--fp-page-col)) / 2 + 1rem))",
+                  /* Full page pads the column in; the modal IS the column
+                     (its width follows the content, Pavan 2026-11-13). */
+                  ...(presentation === "full"
+                    ? { "--fp-page-pad": "max(1rem, calc((100% - var(--fp-page-col)) / 2 + 1rem))" }
+                    : {}),
                 }
               : {}),
           } as React.CSSProperties
@@ -594,9 +602,11 @@ export function RecordSheet({
               "w-[calc(var(--fp-vw)-var(--fp-sheet-gap))] sm:max-w-[calc(var(--fp-vw)-var(--fp-sheet-gap))]"
             : /* THE CONTENT'S WIDTH, clamped by the gap (`--fp-sheet-w`). */
               "w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))] sm:max-w-[min(var(--fp-sheet-w),calc(var(--fp-vw)-var(--fp-sheet-gap)))]",
-          /* MODAL — the sheet's own width, centred, the gap kept all round. */
+          /* MODAL — AS WIDE AS ITS CONTENT (756–1200, never closer than
+             60px to the sides), 24px top and bottom; centred (Pavan,
+             2026-11-13). */
           presentation === "modal" &&
-            "inset-auto top-1/2 left-1/2 right-auto h-[calc(100dvh-var(--fp-sheet-gap))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:[--tw-enter-translate-x:0] data-[state=closed]:[--tw-exit-translate-x:0]",
+            "inset-auto top-1/2 left-1/2 right-auto w-[min(var(--fp-page-col),calc(100vw-120px))] sm:max-w-[min(var(--fp-page-col),calc(100vw-120px))] h-[calc(100dvh-48px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:[--tw-enter-translate-x:0] data-[state=closed]:[--tw-exit-translate-x:0]",
           /* FULL PAGE — an overlay over the whole page, not a new tab. */
           presentation === "full" &&
             "inset-0 h-full w-full max-w-none border-l-0 sm:max-w-none data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:[--tw-enter-translate-x:0] data-[state=closed]:[--tw-exit-translate-x:0]"
@@ -747,7 +757,9 @@ function DockedTitle({ className, children }: { className?: string; children: Re
 export function DetailViewChoice() {
   const value = useSheetPresentation();
   return (
-    <SheetSection title="Open detail pages as" variant="plain">
+    <div className="flex flex-col gap-4">
+      {/* A PICTURE OF THE CHOICE IN PLACE OF THE HEADING (Pavan, 2026-11-13). */}
+      <PresentationPreview value={value} />
       <SheetField>
         <RadioGroup
           value={value}
@@ -762,7 +774,87 @@ export function DetailViewChoice() {
           ))}
         </RadioGroup>
       </SheetField>
-      <p className="text-sm text-muted-foreground">Applies to every detail page in all modules.</p>
-    </SheetSection>
+      <p className="text-sm text-muted-foreground">Applies to every information page in all modules.</p>
+    </div>
+  );
+}
+
+/* ONE LO-FI LINE OF TEXT — a bar standing in for a word. */
+function WfLine({ className }: { className?: string }) {
+  return <span className={cn("block h-1 rounded-full bg-muted-foreground/25", className)} />;
+}
+
+/* THE RECORD'S PAGE, LO-FI — a title, a few fields, a rail of cards. */
+function WfRecord() {
+  return (
+    <div className="flex h-full flex-col gap-1.5 p-2">
+      <WfLine className="w-1/3 bg-muted-foreground/45" />
+      <div className="flex min-h-0 flex-1 gap-1.5">
+        <div className="flex flex-1 flex-col gap-1.5 pt-1">
+          <WfLine className="w-3/4" />
+          <WfLine className="w-1/2" />
+          <WfLine className="w-2/3" />
+          <WfLine className="w-1/2" />
+        </div>
+        <div className="flex w-1/3 flex-col gap-1">
+          <span className="block h-3 rounded-sm border border-border" />
+          <span className="block h-3 rounded-sm border border-border" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * INFORMATION PAGE VIEW, SHOWN (Pavan, 2026-11-13) — an outline wireframe as
+ * wide as the Settings sheet: a list page, and the record opening on it the
+ * way the chosen option opens it, on a loop. Keyed on the choice, so a switch
+ * starts the new one from the top.
+ */
+function PresentationPreview({ value }: { value: SheetPresentation }) {
+  return (
+    <div
+      aria-hidden
+      className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-fp-surface-1b"
+    >
+      {/* THE LIST PAGE — a nav column, a title, rows. */}
+      <div className="flex h-full">
+        <div className="flex w-1/6 flex-col gap-1.5 border-r border-border p-2">
+          <WfLine className="w-full" />
+          <WfLine className="w-3/4" />
+          <WfLine className="w-full" />
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-2">
+          <WfLine className="w-1/4 bg-muted-foreground/45" />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-2 border-b border-border pb-1.5">
+              <WfLine className="w-1/4" />
+              <WfLine className="w-1/3" />
+              <WfLine className="w-1/6" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div key={value} className="absolute inset-0">
+        {value !== "full" && <div className="fp-wf-scrim absolute inset-0 bg-foreground/10" />}
+        {value === "sheet" && (
+          <div className="fp-wf-sheet absolute inset-y-0 right-0 w-1/2 border-l border-border bg-popover">
+            <WfRecord />
+          </div>
+        )}
+        {value === "modal" && (
+          <div className="fp-wf-modal absolute top-1/2 left-1/2 h-3/4 w-3/5 rounded-sm border border-border bg-popover">
+            <WfRecord />
+          </div>
+        )}
+        {value === "full" && (
+          <div className="fp-wf-full absolute inset-0 bg-popover px-6">
+            <WfRecord />
+            {/* ITS WAY BACK — the close cross, top right (Pavan, 2026-11-13). */}
+            <X className="absolute top-1.5 right-1.5 size-3 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

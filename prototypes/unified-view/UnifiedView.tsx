@@ -10,6 +10,7 @@ import {
 import { ThreePLDashboard, type ThreePLDrill } from "./threepl/ThreePLDashboard";
 import { SalesDashboard, type SalesDrill } from "./SalesDashboard";
 import {
+  Archive as ArchiveIcon,
   ClipboardList,
   Users,
   Database,
@@ -130,8 +131,8 @@ const SALES_NAV: NavItem[] = [
   { key: "sales-orders", label: "Orders", icon: <ClipboardList /> },
   /* QUOTES (Pavan, 2026-10-07) — after the orders a quote turns into. */
   { key: "quotes", label: "Quotes", icon: <ReceiptText /> },
-  { key: "customers", label: "Customers", icon: <Users /> },
-  { key: "assets", label: "Assets", icon: <Database /> },
+  /* Customers and Assets moved to Archive as "Sales customers" and "Sales
+     assets" — Master Data holds them now (Pavan, 2026-11-13). */
   /* THE MODULE'S OWN SETTINGS, last — as Service's (Pavan, 2026-10-07). */
   { key: "sales-settings", label: "Sales Settings", icon: <SlidersHorizontal /> },
 ];
@@ -146,7 +147,7 @@ const THREE_PL_NAV: NavItem[] = [
      Orders for now (2026-10-06) — see `MODULE_LANDING`. */
   { key: "3pl-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
   { key: "3pl-orders", label: "Orders", icon: <ClipboardList /> },
-  { key: "3pl-directory", label: "Directory", icon: <BookUser /> },
+  /* The Directory moved to Archive as "3PL directory" (Pavan, 2026-11-13). */
 ];
 
 /**
@@ -157,6 +158,20 @@ const MASTER_DATA_NAV: NavItem[] = [
   { key: "md-directory", label: "Directory", icon: <BookUser /> },
   { key: "md-documents", label: "Documents", icon: <FolderOpen /> },
 ];
+
+/**
+ * ARCHIVE (Pavan, 2026-11-13) — a module of its own in the main navigation,
+ * holding each module's pages for records Master Data now holds, named for
+ * the module they came from. Same pages, same keys; only where they sit in
+ * the navigation changed.
+ */
+const ARCHIVE_NAV: NavItem[] = [
+  { key: "3pl-directory", label: "3PL directory", icon: <BookUser /> },
+  { key: "customers", label: "Sales customers", icon: <Users /> },
+  { key: "assets", label: "Sales assets", icon: <Database /> },
+];
+/** The areas that live under Archive — a link to one switches module. */
+const ARCHIVE_AREAS = new Set(ARCHIVE_NAV.map((i) => i.key));
 
 /**
  * SERVICE WORK — TIER 1. Two areas, and no second level: Work Orders is a
@@ -294,6 +309,7 @@ const APP_MODULES = [
   { key: "pricing", name: "Pricing", icon: <DollarSign /> },
   { key: "lease", name: "Lease", icon: <FileSignature /> },
   { key: "master-data", name: "Master Data", icon: <Database /> },
+  { key: "archive", name: "Archive", icon: <ArchiveIcon /> },
 ];
 
 /**
@@ -311,6 +327,7 @@ const MODULE_NAV: Record<string, NavItem[]> = {
   lease: [],
   pricing: [],
   "master-data": MASTER_DATA_NAV,
+  archive: ARCHIVE_NAV,
 };
 
 /**
@@ -322,12 +339,14 @@ const MODULE_LANDING: Record<string, string> = {
   "3pl": "3pl-orders",
   sales: "sales-orders",
   "master-data": "md-directory",
+  archive: "3pl-directory",
 };
 /** THE PAGE A MODULE OPENS ON, inside its landing area — Master Data opens on
  *  Customers, the first page of its Directory (Assets until Customers was
  *  built, 2026-11-03). */
 const MODULE_LANDING_SUB: Record<string, string> = {
   "master-data": "md-customers",
+  archive: "3pl-customers",
 };
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
@@ -447,7 +466,7 @@ function readEntityBoot(): { module: string; nav: string; sub: string; record: s
     return { module: "master-data", nav: "md-directory", sub: md, record: p.get("record") };
   const dest = ENTITY_DESTINATION[p.get("entity") ?? ""];
   if (!dest) return null;
-  return { module: "3pl", nav: "3pl-directory", sub: dest, record: p.get("record") };
+  return { module: "archive", nav: "3pl-directory", sub: dest, record: p.get("record") };
 }
 
 /**
@@ -601,6 +620,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   );
   const openInDirectory = React.useCallback(
     (nav: string, id: string) => {
+      setModuleKey("archive");
       setNavKey("3pl-directory");
       setSubKey(nav);
       setDirFocus({ nav, id });
@@ -645,6 +665,9 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
     const owner = Object.keys(SUB_NAV).find((areaKey) =>
       SUB_NAV[areaKey].some((g) => g.items.some((i) => i.key === nav))
     );
+    /* A page that moved to Archive is reached there, whatever module the
+       link names. */
+    if (ARCHIVE_AREAS.has(owner ?? nav)) setModuleKey("archive");
     if (owner) {
       setNavKey(owner);
       setSubKey(nav);

@@ -50,7 +50,7 @@ import { CELL, RecordSheet, DraftStatusChip, useDraftSaveState } from "../Record
 import { PendingStrip } from "../PendingStrip";
 import { DATE_FMT } from "../data";
 import { RailCard, RailRow, useElapsedHours } from "./sheet-parts";
-import { ActivityCard, RailRow as SummaryRow, SummaryCard } from "../SheetCards";
+import { ActivityCard, RailRow as SummaryRow, SummaryCard, SheetRail } from "../SheetCards";
 import { useServiceSettings, type ReturnMode } from "./settings";
 import { INVENTORY } from "./catalog";
 
@@ -2556,7 +2556,7 @@ export function ServiceOrderSheet({
             Summary, Associated records and Activity describe an order that
             exists; on a new one they are empty boxes beside the form. */}
         {!newVisit && (
-        <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+        <SheetRail>
           {/* THE SHARED SUMMARY CARD (Pavan, 2026-10-07 — ux §Record sheets):
               the 3PL Quotation summary's shell, the headline figure last. */}
           <SummaryCard title="Summary">
@@ -2697,7 +2697,7 @@ export function ServiceOrderSheet({
           {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07). THE LIVE ROW, not
               the sheet's draft: the log is written by the screen on save. */}
           {!creating && order && <ActivityCard entries={order.audit} />}
-        </aside>
+        </SheetRail>
 
         )}      </div>
 

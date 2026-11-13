@@ -30,6 +30,7 @@ import {
   Trash2,
   Shield,
   ThumbsDown,
+  Mail,
   MailX,
   X,
 } from "lucide-react";
@@ -110,7 +111,7 @@ import {
 import { CELL, DockedSheet, DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { BLINK_MS, PendingStrip, attend, blinkGroup } from "../PendingStrip";
 import { HangingAdd } from "../HangingAdd";
-import { ActivityCard, RailCard, RailRow, SummaryCard } from "../SheetCards";
+import { ActivityCard, RailCard, RailRow, SheetRail, SummaryCard } from "../SheetCards";
 import { PocCard, PocUnit } from "../PocDetails";
 import { EditDrawer } from "./DirectoryRecordSheet";
 import { BROKER_CUSTOMERS } from "./directory";
@@ -1479,53 +1480,6 @@ export function BrokerOrderSheet({
      the table sits in a clipped card (and, comparing, a sideways scroller),
      either of which would capture a sticky head. */
   const pricingGridRef = React.useRef<HTMLDivElement>(null);
-  /* THE RAIL'S CAP — the height of the form's scroller, kept current.
-     A CALLBACK REF, because the sheet's body mounts a commit after the open
-     render: an effect reading a plain ref found nothing, the cap was never
-     set, and the rail scrolled along with the form (Pavan, 2026-10-06). */
-  const railCleanup = React.useRef<(() => void) | null>(null);
-  const railRef = React.useCallback((rail: HTMLElement | null) => {
-    railCleanup.current?.();
-    railCleanup.current = null;
-    const port = rail?.closest<HTMLElement>(".overflow-auto");
-    if (!rail || !port) return;
-    /* …AND NEVER PAST THE FORM BESIDE IT (Pavan, 2026-10-26): the rail ends
-       where the form (and its foot room) ends, so its last card meets the
-       full rule above Pricing; what doesn't fit scrolls inside the rail. */
-    /* …LEVEL WITH THE FORM'S LAST UNIT (Pavan, 2026-10-26): the rail's last
-       card bottoms out where the last unit on the left does (Vendor, Load
-       order), the form's 40px foot room below both, then the rule. `mb-10`
-       stops the pinned rail there; the cap keeps a short form's rail from
-       running past it. */
-    /* …AND ITS LAST CARD SITS ON THE RULE (Pavan, 2026-10-29) — no foot
-       room under the rail: a gap between the last card and the rule read as
-       the card floating. The form keeps its 40px; the rail runs to the rule. */
-    const form = rail.previousElementSibling as HTMLElement | null;
-    const fit = () => {
-      const formH = form ? form.offsetHeight : port.clientHeight;
-      rail.style.setProperty("--rail-max", `${Math.min(port.clientHeight, formH)}px`);
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(port);
-    if (form) ro.observe(form);
-    /* ITS OWN SCROLL, NEVER THE FORM'S. A wheel over the rail moves the rail
-       or nothing — even when the rail is short enough not to scroll, or has
-       hit its end, the form beside it stays where it is. */
-    const onWheel = (e: WheelEvent) => {
-      if (getComputedStyle(rail).position !== "sticky") return;
-      const up = e.deltaY < 0;
-      const atEnd = up
-        ? rail.scrollTop <= 0
-        : rail.scrollTop + rail.clientHeight >= rail.scrollHeight - 1;
-      if (atEnd) e.preventDefault();
-    };
-    rail.addEventListener("wheel", onWheel, { passive: false });
-    railCleanup.current = () => {
-      ro.disconnect();
-      rail.removeEventListener("wheel", onWheel);
-    };
-  }, []);
   React.useEffect(() => {
     const grid = pricingGridRef.current;
     const port = grid?.closest<HTMLElement>(".overflow-auto");
@@ -6474,14 +6428,9 @@ export function BrokerOrderSheet({
             Summary, Associated records and Activity describe an order that
             exists; on a new one they are empty boxes beside the form. */}
         {!inCreation && (
-        <aside
-          ref={railRef}
-          /* PINNED, AND NEVER TALLER THAN THE FORM'S VIEW. With Notes in it the
-             rail can outgrow the screen, and a pinned column taller than its
-             scroller hides its own foot; capped at the scroller's height
-             (`--rail-max`, measured) it scrolls itself instead. */
-          className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0 lg:max-h-(--rail-max) lg:overflow-y-auto lg:overscroll-contain"
-        >
+        /* PINNED, NEVER TALLER THAN THE FORM'S VIEW — the shared rail
+           (SheetRail), which scrolls itself to its last card. */
+        <SheetRail>
             {/* ── SUMMARY ──
                 IT SHOWS ITS FIGURES WHETHER OR NOT ANYBODY HAS QUOTED. Three
                 of the four are known from the moment the order has lines —
@@ -6510,23 +6459,20 @@ export function BrokerOrderSheet({
                 wants is who has been asked. The summary takes over once the
                 first quote lands. */}
             {draft.status === "Draft" && !draft.vendorId && quotes.length === 0 ? (
-            <section className="shrink-0 rounded-xl bg-fp-highlight p-1">
-              <h3 className="px-3 pt-2 pb-2.5 text-base font-semibold text-foreground">
-                Invitations
-              </h3>
-              <div className="rounded-lg border border-border bg-fp-surface-1b p-3">
+            /* A PLAIN RAIL CARD IN THE ORDERS LANE (Pavan, 2026-11-13) — like
+               Associated records and POC details; the tinted summary card
+               stays for every other lane. */
+            <RailCard title="Invitations" icon={<Mail />}>
+              <div className="px-4 py-3">
                 {sentIds.filter(Boolean).length === 0 ? (
-                  <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
-                    <MailX
-                      aria-hidden
-                      strokeWidth={1}
-                      className="size-[120px] text-muted-foreground"
-                    />
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm font-medium text-foreground">No invitations</p>
-                      <p className="text-sm text-muted-foreground">
-                        Invitations not sent to any vendors.
-                      </p>
+                  /* NOT A GRAND EMPTY STATE (Pavan, 2026-11-13) — the
+                     illustration under half its old 120px, and only the step
+                     that's next. */
+                  <div className="flex flex-col items-center gap-2 px-2 py-3 text-center">
+                    <MailX aria-hidden strokeWidth={1.25} className="size-14 text-muted-foreground" />
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-sm font-medium text-foreground">Vendor invites</p>
+                      <p className="text-xs text-muted-foreground">Pending</p>
                     </div>
                   </div>
                 ) : (
@@ -6544,7 +6490,7 @@ export function BrokerOrderSheet({
                   </ul>
                 )}
               </div>
-            </section>
+            </RailCard>
             ) : (
             /* THE SHARED SUMMARY CARD (Pavan, 2026-10-07) — ../SheetCards. */
             <SummaryCard title="Quotation summary">
@@ -6792,7 +6738,7 @@ export function BrokerOrderSheet({
             {/* THE SHARED ACTIVITY CARD (Pavan, 2026-10-07) — moved to
                 ../SheetCards so every module's sheet draws this one. */}
             <ActivityCard entries={order?.audit} />
-          </aside>
+          </SheetRail>
 
         )}        </div>
 

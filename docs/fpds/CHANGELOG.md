@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.16 — 2026-11-13
+
+Built from commit `155e847`.
+
+- **Top off checkboxes sit at the left** of their column: the select-all comes first in the header, then "Top off", with each row's tick lined up under it. Applies to the 3PL delivery order, the Customer Portal order, and the recurring create and delivery sheets.
+
 ## v1.15 — 2026-11-13
 
 Built from commit `aeadb2b`.
